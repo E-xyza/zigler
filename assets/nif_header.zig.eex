@@ -1,0 +1,3 @@
+const c = @cImport({
+@cInclude("<%= zig_nif_h %>");
+});

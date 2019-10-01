@@ -1,0 +1,9 @@
+var exported_nifs = [<%= Enum.count(funcs) %>] c.ErlNifFunc{
+<%= for {func, {params, _}} <- funcs do %>
+c.ErlNifFunc{
+    .name = c"<%= func %>",
+    .arity = <%= Enum.count(params) %>,
+    .fptr = __<%= func %>,
+    .flags = 0,
+},<% end %>
+};

@@ -1,0 +1,13 @@
+extern fn __<%= func %>(env: ?*c.ErlNifEnv, argc: c_int, argv: [*c] const c.ErlNifTerm) c.ErlNifTerm {
+<%= for {param, idx} <- Enum.with_index(params) do %>
+var arg<%= idx %>: <%= param %> = 0;<% end %>
+var res: c_int = 0;
+<%= for idx <- 0..Enum.count(params) - 1 do %>
+res = c.<%= Zigler.Zig.getfor(type) %>(env, argv[<%= idx %>], &arg<%= idx %>);<% end %>
+
+var result: <%= type %> = <%= func %>(<%= 
+  0..Enum.count(params) - 1 |> Enum.map(&"arg#{&1}") |> Enum.join(", ") 
+%>);
+
+return c.<%= Zigler.Zig.makefor(type) %>(env, result);
+}
