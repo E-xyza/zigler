@@ -5,25 +5,25 @@ defmodule ZiglerTest.ZigAdlibTest do
 
   test "nif_adapter produces expected content" do
     assert """
-    extern fn __foo(env: ?*c.ErlNifEnv, argc: c_int, argv: [*c] const c.ErlNifTerm) c.ErlNifTerm {
+    extern fn __foo(env: ?*e.ErlNifEnv, argc: c_int, argv: [*c] const e.ErlNifTerm) e.ErlNifTerm {
 
     var arg0: c_int = 0;
     var arg1: c_int = 0;
     var res: c_int = 0;
 
-    res = c.enif_get_int(env, argv[0], &arg0);
-    res = c.enif_get_int(env, argv[1], &arg1);
+    res = e.enif_get_int(env, argv[0], &arg0);
+    res = e.enif_get_int(env, argv[1], &arg1);
 
     var result: c_int = foo(arg0, arg1);
 
-    return c.enif_make_int(env, result);
+    return e.enif_make_int(env, result);
     }
     """ == Zig.nif_adapter({:foo, {[:c_int, :c_int], :c_int}})
   end
 
   test "nif_header produces expected content" do
     assert """
-    const c = @cImport({
+    const e = @cImport({
     @cInclude("/foo/bar/baz.h");
     });
     """ == Zig.nif_header("/foo/bar/baz.h")
@@ -31,7 +31,7 @@ defmodule ZiglerTest.ZigAdlibTest do
 
   test "nif_footer produces expected content" do
   assert """
-  const entry = c.ErlNifEntry{
+  const entry = e.ErlNifEntry{
       .major = 2,
       .minor = 15,
       .name = c"Elixir.FooBar",
@@ -47,7 +47,7 @@ defmodule ZiglerTest.ZigAdlibTest do
       .min_erts = c"erts-10.4"
   };
 
-  export fn nif_init() *const c.ErlNifEntry{
+  export fn nif_init() *const e.ErlNifEntry{
       return &entry;
   }
   """ == Zig.nif_footer(FooBar, [:foo, :bar])
@@ -55,15 +55,15 @@ defmodule ZiglerTest.ZigAdlibTest do
 
   test "nif_exports produces expected content" do
     assert """
-    var exported_nifs = [2] c.ErlNifFunc{
+    var exported_nifs = [2] e.ErlNifFunc{
 
-    c.ErlNifFunc{
+    e.ErlNifFunc{
         .name = c"foo",
         .arity = 2,
         .fptr = __foo,
         .flags = 0,
     },
-    c.ErlNifFunc{
+    e.ErlNifFunc{
         .name = c"bar",
         .arity = 3,
         .fptr = __bar,
@@ -71,7 +71,19 @@ defmodule ZiglerTest.ZigAdlibTest do
     },
     };
     """ == Zig.nif_exports(foo: {[:u64, :u64], :u64}, bar: {[:i64, :i64, :i64], :i64})
-    end
+  end
 
+  test "nif_exports strips ?*ErlNifEnv from arity" do
+    assert """
+    var exported_nifs = [1] e.ErlNifFunc{
 
+    e.ErlNifFunc{
+        .name = c"foo",
+        .arity = 2,
+        .fptr = __foo,
+        .flags = 0,
+    },
+    };
+    """ == Zig.nif_exports(foo: {[:"?*e.ErlNifEnv", :u64, :u64], :u64})
+  end
 end

@@ -46,8 +46,8 @@ defmodule Zigler do
     # first do an analysis on the zig code.
     code_spec = Zig.code_spec(zig_code)
 
-    empty_functions = Enum.map(code_spec, fn {func, {lst, _type}} ->
-      empty_function(func, Enum.count(lst))
+    empty_functions = Enum.map(code_spec, fn {func, {params, _type}} ->
+      empty_function(func, params |> Zig.adjust_params |> Enum.count)
     end)
 
     quote do

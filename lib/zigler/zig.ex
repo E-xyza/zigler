@@ -44,7 +44,7 @@ defmodule Zigler.Zig do
       a == "(" ->
         [bef, aft] = String.split(rest, ")", parts: 2)
         tokens(aft, tokens_list ++ [token_so_far, tokens(bef)], "")
-      a =~ ~r/[[:alnum:]_]/ ->
+      a =~ ~r/[[:alnum:]_\.]/ ->
         tokens(rest, tokens_list, token_so_far <> a)
 
       token_so_far == "" ->
@@ -59,14 +59,21 @@ defmodule Zigler.Zig do
 
   @spec params([String.t]) :: [atom]
   def params([_, ":", type]), do: [String.to_atom(type)]
+  def params([_, ":", "?", "*", "e.ErlNifEnv"]), do: [:"?*e.ErlNifEnv"]
   def params([_, ":", type, "," | rest]), do: [String.to_atom(type) | params(rest)]
+  def params([_, ":", "?", "*", "e.ErlNifEnv", "," | rest]), do: [:"?*e.ErlNifEnv" | params(rest)]
   def params(_), do: raise "invalid zig syntax"
 
   @nif_adapter File.read!("assets/nif_adapter.zig.eex")
 
   @spec nif_adapter({atom, {[atom], atom}}) :: iodata
   def nif_adapter({func, {params, type}}) do
-    EEx.eval_string(@nif_adapter, func: func, params: params, type: type)
+    has_env = match?([:"?*e.ErlNifEnv" | _], params)
+    EEx.eval_string(@nif_adapter, func: func, params: adjust_params(params), type: type, has_env: has_env)
+  end
+
+  def adjust_params(params) do
+    Enum.reject(params, &(&1 == :"?*e.ErlNifEnv"))
   end
 
   @nif_header File.read!("assets/nif_header.zig.eex")
@@ -91,7 +98,8 @@ defmodule Zigler.Zig do
   end
 
   def getfor(:c_int), do: "enif_get_int"
-  def makefor(:c_int), do: "enif_make_int"
+  def makefor(:c_int), do: "e.enif_make_int(env, result)"
+  def makefor(:"e.ErlNifTerm"), do: "result"
 
   def strip_nif(code) do
     String.replace(code, ~r/\@nif\(.*\)/U, "")

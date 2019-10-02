@@ -1,4 +1,4 @@
-const entry = c.ErlNifEntry{
+const entry = e.ErlNifEntry{
     .major = 2,
     .minor = 15,
     .name = c"<%= nif_module %>",
@@ -14,6 +14,6 @@ const entry = c.ErlNifEntry{
     .min_erts = c"erts-10.4"
 };
 
-export fn nif_init() *const c.ErlNifEntry{
+export fn nif_init() *const e.ErlNifEntry{
     return &entry;
 }
