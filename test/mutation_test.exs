@@ -23,4 +23,14 @@ defmodule ZigTest.MutationTest do
     # function in order to be able to access its mutated value
     assert check(my_binary)
   end
+
+  def self_deal(binary, 1) do
+    BinaryMutator.mutate(binary)
+    self_deal(binary, 0)
+  end
+  def self_deal(binary, 0), do: binary
+
+  test "passing binaries across a function self-call works" do
+    assert "mello" == self_deal("hello", 1)
+  end
 end
