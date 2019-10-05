@@ -86,6 +86,7 @@ extern int enif_get_long(ErlNifEnv*, ErlNifTerm, long* ip);
 extern int enif_get_ulong(ErlNifEnv *, ErlNifTerm, unsigned long * ip);
 extern int enif_get_double(ErlNifEnv *, ErlNifTerm, double * dp);
 extern int enif_get_list_cell(ErlNifEnv *, ErlNifTerm, ErlNifTerm *head, ErlNifTerm *tail);
+extern int enif_get_list_length(ErlNifEnv*, ErlNifTerm, unsigned* len);
 extern int enif_get_tuple(ErlNifEnv *, ErlNifTerm, int* arity, const ErlNifTerm **array);
 extern int enif_get_string(ErlNifEnv*, ErlNifTerm list, char* buf, unsigned len, ErlNifCharEncoding);
 extern int enif_get_atom(ErlNifEnv*, ErlNifTerm atom, char* buf, unsigned len, ErlNifCharEncoding);

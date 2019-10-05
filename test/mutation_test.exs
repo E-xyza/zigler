@@ -7,7 +7,9 @@ defmodule ZigTest.MutationTest do
     ~Z"""
     @nif("mutate")
     fn mutate(val: []u8) c_int {
-      val[0] = 109;
+      val[0] = 109; // set it to ascii letter 'm'
+
+      // don't return the binary, we don't want to trigger a conversion.
       return 0;
     }
     """

@@ -16,6 +16,12 @@ defmodule Zigler.Zig do
   def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, "[", "]", "u8", :block | rest]) do
     [{String.to_atom(nif_name), {params(nif_params), :"[]u8"}} | code_spec(rest)]
   end
+  def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, "[", "]", "i64", :block | rest]) do
+    [{String.to_atom(nif_name), {params(nif_params), :"[]i64"}} | code_spec(rest)]
+  end
+  def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, "[", "]", "f64", :block | rest]) do
+    [{String.to_atom(nif_name), {params(nif_params), :"[]f64"}} | code_spec(rest)]
+  end
   def code_spec([_ | rest]), do: code_spec(rest)
   def code_spec([]), do: []
 
@@ -71,10 +77,14 @@ defmodule Zigler.Zig do
   def params([_, ":", "?", "*", "e.ErlNifEnv"]), do: [:"?*e.ErlNifEnv"]
   def params([_, ":", "[", "*", "c", "]", "u8"]), do: [:"[*c]u8"]
   def params([_, ":", "[", "]", "u8"]), do: [:"[]u8"]
+  def params([_, ":", "[", "]", "i64"]), do: [:"[]i64"]
+  def params([_, ":", "[", "]", "f64"]), do: [:"[]f64"]
   def params([_, ":", type, "," | rest]), do: [String.to_atom(type) | params(rest)]
   def params([_, ":", "?", "*", "e.ErlNifEnv", "," | rest]), do: [:"?*e.ErlNifEnv" | params(rest)]
   def params([_, ":", "[", "*", "c", "]", "u8", "," | rest]), do: [:"[*c]u8" | params(rest)]
   def params([_, ":", "[", "]", "u8", "," | rest]), do: [:"[]u8" | params(rest)]
+  def params([_, ":", "[", "]", "i64", "," | rest]), do: [:"[]i64" | params(rest)]
+  def params([_, ":", "[", "]", "f64", "," | rest]), do: [:"[]f64" | params(rest)]
   def params(_), do: raise "invalid zig syntax"
 
   @nif_adapter File.read!("assets/nif_adapter.zig.eex")
@@ -111,6 +121,11 @@ defmodule Zigler.Zig do
   end
 
   def getfor(:c_int, idx), do: "res = e.enif_get_int(env, argv[#{idx}], &arg#{idx});"
+  def getfor(:i64, idx), do: """
+  var int#{idx}: c_int = undefined;
+  res = e.enif_get_int(env, argv[#{idx}], &int#{idx});
+  arg#{idx} = @intCast(i64, int#{idx});
+  """
   def getfor(:f64, idx), do: "res = e.enif_get_double(env, argv[#{idx}], &arg#{idx});"
   def getfor(:"[*c]u8", idx), do: """
   var bin#{idx}: e.ErlNifBinary = undefined;
@@ -122,12 +137,72 @@ defmodule Zigler.Zig do
   res = e.enif_inspect_binary(env, argv[#{idx}], &bin#{idx});
   arg#{idx} = bin#{idx}.data[0..bin#{idx}.size];
   """
+  def getfor(:"[]i64", idx), do: """
+  var length#{idx}: c_uint = undefined;
+  var array#{idx}: [*]i64 = undefined;
+  var head#{idx}: e.ErlNifTerm = undefined;
+  var elem#{idx}: c_int = undefined;
+  var list#{idx} = argv[#{idx}];
+  var idx#{idx}: usize = 0;
+
+  res = e.enif_get_list_length(env, argv[#{idx}], &length#{idx});
+
+  // unmarshall the list using a while loop.
+  if (res != 0) {
+
+    // but first we have to allocate memory.
+    var binary#{idx} = e.enif_alloc(length#{idx} * 8);
+    array#{idx} = @ptrCast([*]i64, @alignCast(@alignOf(*i64), binary#{idx}));
+    arg#{idx} = array#{idx}[0..length#{idx}];
+
+    while (idx#{idx} < length#{idx}) {
+      res = e.enif_get_list_cell(env, list#{idx}, &head#{idx}, &list#{idx});
+      res = e.enif_get_int(env, head#{idx}, &elem#{idx});
+      arg#{idx}[idx#{idx}] = @intCast(i64, elem#{idx});
+      idx#{idx} += 1;
+    }
+
+  } else {
+    return e.enif_make_atom(env, c"badarg");
+  }
+  """  # NB this code memory leaks so we will have to fix that.
+  def getfor(:"[]f64", idx), do: """
+  var length#{idx}: c_uint = undefined;
+  var array#{idx}: [*]f64 = undefined;
+  var head#{idx}: e.ErlNifTerm = undefined;
+  var elem#{idx}: f64 = undefined;
+  var list#{idx} = argv[#{idx}];
+  var idx#{idx}: usize = 0;
+
+  res = e.enif_get_list_length(env, argv[#{idx}], &length#{idx});
+
+  // unmarshall the list using a while loop.
+  if (res != 0) {
+
+    // but first we have to allocate memory.
+    var binary#{idx} = e.enif_alloc(length#{idx} * 8);
+    array#{idx} = @ptrCast([*]f64, @alignCast(@alignOf(*f64), binary#{idx}));
+    arg#{idx} = array#{idx}[0..length#{idx}];
+
+    while (idx#{idx} < length#{idx}) {
+      res = e.enif_get_list_cell(env, list#{idx}, &head#{idx}, &list#{idx});
+      res = e.enif_get_double(env, head#{idx}, &elem#{idx});
+      arg#{idx}[idx#{idx}] = elem#{idx};
+      idx#{idx} += 1;
+    }
+
+  } else {
+    return e.enif_make_atom(env, c"badarg");
+  }
+  """
   def getfor(:"e.ErlNifTerm", idx), do: "arg#{idx} = argv[#{idx}];"
   def getfor(:"e.ErlNifPid", idx), do: """
   res = e.enif_get_local_pid(env, argv[#{idx}], &arg#{idx});
   """
 
   def makefor(:c_int), do: "return e.enif_make_int(env, result);"
+  def makefor(:i64), do: "return e.enif_make_int(env, @intCast(c_int, result));"
+  def makefor(:f64), do: "return e.enif_make_double(env, result);"
   def makefor(:"e.ErlNifTerm"), do: "return result;"
   def makefor(:bool), do: ~S/return if (result) e.enif_make_atom(env, c"true") else e.enif_make_atom(env, c"false");/
   def makefor(:"[*c]u8"), do: """
@@ -151,6 +226,42 @@ defmodule Zigler.Zig do
   var i: usize = 0;
   while (i < result.len) { bin[i] = result[i]; i += 1;}
 
+  return result_term;
+  """
+  def makefor(:"[]i64"), do: """
+  var binary_result = e.enif_alloc(result.len * 8);
+  var array_result: [*]e.ErlNifTerm = @ptrCast(
+    [*]e.ErlNifTerm, @alignCast(@alignOf(*e.ErlNifTerm), binary_result));
+  var i: usize = 0;
+
+  while (i < result.len) {
+    array_result[i] = e.enif_make_int(env, @intCast(c_int, result[i]));
+    i += 1;
+  }
+  var result_term = e.enif_make_list_from_array(env, array_result, @intCast(c_uint, result.len));
+
+  // deallocate our binary_result
+  e.enif_free(binary_result);
+
+  // return the term
+  return result_term;
+  """
+  def makefor(:"[]f64"), do: """
+  var binary_result = e.enif_alloc(result.len * 8);
+  var array_result: [*]e.ErlNifTerm = @ptrCast(
+    [*]e.ErlNifTerm, @alignCast(@alignOf(*e.ErlNifTerm), binary_result));
+  var i: usize = 0;
+
+  while (i < result.len) {
+    array_result[i] = e.enif_make_double(env, result[i]);
+    i += 1;
+  }
+  var result_term = e.enif_make_list_from_array(env, array_result, @intCast(c_uint, result.len));
+
+  // deallocate our binary_result
+  e.enif_free(binary_result);
+
+  // return the term
   return result_term;
   """
 
