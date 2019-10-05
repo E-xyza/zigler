@@ -122,7 +122,7 @@ extern void enif_free_env(ErlNifEnv* env);
 extern void enif_clear_env(ErlNifEnv* env);
 
 // NIF Functions: message passing
-extern int enif_send(ErlNifEnv *, const ErlNifPid*, ErlNifEnv *msg_env, ErlNifTerm, msg);
+extern int enif_send(ErlNifEnv *, const ErlNifPid*, ErlNifEnv *msg_env, ErlNifTerm msg);
 extern ErlNifTerm enif_make_copy(ErlNifEnv *, ErlNifTerm);
 extern ErlNifPid *enif_self(ErlNifEnv *, ErlNifPid *);
 extern int enif_get_local_pid(ErlNifEnv *, ErlNifTerm, ErlNifPid *pid);

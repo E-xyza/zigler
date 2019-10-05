@@ -41,7 +41,8 @@ defmodule ZiglerTest.ZiglerTypesTest do
     fn slice_in(env: ?*e.ErlNifEnv, val: []u8) e.ErlNifTerm {
 
       // build a tuple with the first letter and
-      // the slice length.
+      // the slice length, this should prove we can send stuff
+      // as slices.
 
       var temp = [2]e.ErlNifTerm{
         e.enif_make_int(env, @intCast(c_int, val.len)),
@@ -106,5 +107,53 @@ defmodule ZiglerTest.ZiglerTypesTest do
 
   test "we can get out a slice" do
     assert SliceOut.slice_out(3) == "hel"
+  end
+
+  defmodule TermIn do
+    use Zigler, app: :zigler
+
+    ~Z"""
+    @nif("term_in")
+    fn term_in(env: ?*e.ErlNifEnv, msg: e.ErlNifTerm) c_int {
+
+      // we can put an arbitrary term in there; in this case
+      // we will send a PID and use it to shoot a message back
+      // to the calling test.
+
+      var pid: e.ErlNifPid = undefined;
+
+      var p2 = e.enif_self(env, &pid);
+      var res = e.enif_send(env, &pid, env, msg);
+
+      return 47;  // why not.
+    }
+    """
+  end
+
+  test "we can send a term in" do
+    assert 47 == TermIn.term_in({:test, "me"})
+    assert_receive {:test, "me"}
+  end
+
+  defmodule PidIn do
+    use Zigler, app: :zigler
+
+    ~Z"""
+    @nif("pid_in")
+    fn pid_in(env: ?*e.ErlNifEnv, pid: e.ErlNifPid) c_int {
+
+      // we can can also send pids directly
+      var msg: e.ErlNifTerm = e.enif_make_atom(env, c"ok");
+
+      var res = e.enif_send(env, &pid, env, msg);
+
+      return 47;  // why not.
+    }
+    """
+  end
+
+  test "we can send a pid in" do
+    assert 47 == PidIn.pid_in(self())
+    assert_receive :ok
   end
 end

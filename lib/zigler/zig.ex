@@ -74,6 +74,7 @@ defmodule Zigler.Zig do
   def params([_, ":", type, "," | rest]), do: [String.to_atom(type) | params(rest)]
   def params([_, ":", "?", "*", "e.ErlNifEnv", "," | rest]), do: [:"?*e.ErlNifEnv" | params(rest)]
   def params([_, ":", "[", "*", "c", "]", "u8", "," | rest]), do: [:"[*c]u8" | params(rest)]
+  def params([_, ":", "[", "]", "u8", "," | rest]), do: [:"[]u8" | params(rest)]
   def params(_), do: raise "invalid zig syntax"
 
   @nif_adapter File.read!("assets/nif_adapter.zig.eex")
@@ -120,6 +121,10 @@ defmodule Zigler.Zig do
   var bin#{idx}: e.ErlNifBinary = undefined;
   res = e.enif_inspect_binary(env, argv[#{idx}], &bin#{idx});
   arg#{idx} = bin#{idx}.data[0..bin#{idx}.size];
+  """
+  def getfor(:"e.ErlNifTerm", idx), do: "arg#{idx} = argv[#{idx}];"
+  def getfor(:"e.ErlNifPid", idx), do: """
+  res = e.enif_get_local_pid(env, argv[#{idx}], &arg#{idx});
   """
 
   def makefor(:c_int), do: "return e.enif_make_int(env, result);"
