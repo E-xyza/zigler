@@ -116,7 +116,6 @@ extern int enif_term_to_binary(ErlNifEnv *env, ErlNifTerm term, ErlNifBinary *bi
 extern size_t enif_binary_to_term(ErlNifEnv *env, const unsigned char* data, size_t sz, ErlNifTerm *term, unsigned int opts);
 extern ErlNifUInt64 enif_hash(ErlNifHash type, ErlNifTerm term, ErlNifUInt64 salt);
 
-
 // NIF Functions: environments
 extern ErlNifEnv* enif_alloc_env(void);
 extern void enif_free_env(ErlNifEnv* env);

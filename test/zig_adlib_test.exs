@@ -7,10 +7,9 @@ defmodule ZiglerTest.ZigAdlibTest do
     assert """
     extern fn __foo(env: ?*e.ErlNifEnv, argc: c_int, argv: [*c] const e.ErlNifTerm) e.ErlNifTerm {
 
-    var arg0: c_int = 0;
-    var arg1: c_int = 0;
+    var arg0: c_int = undefined;
+    var arg1: c_int = undefined;
     var res: c_int = 0;
-
     res = e.enif_get_int(env, argv[0], &arg0);
     res = e.enif_get_int(env, argv[1], &arg1);
 

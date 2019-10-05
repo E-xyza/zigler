@@ -7,6 +7,15 @@ defmodule Zigler.Zig do
   def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, nif_type, :block | rest]) do
     [{String.to_atom(nif_name), {params(nif_params), String.to_atom(nif_type)}} | code_spec(rest)]
   end
+  def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, "[", "]", "const", "u8", :block | rest]) do
+    [{String.to_atom(nif_name), {params(nif_params), :"[]const u8"}} | code_spec(rest)]
+  end
+  def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, "[", "*", "c", "]", "u8", :block | rest]) do
+    [{String.to_atom(nif_name), {params(nif_params), :"[*c]u8"}} | code_spec(rest)]
+  end
+  def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, "[", "]", "u8", :block | rest]) do
+    [{String.to_atom(nif_name), {params(nif_params), :"[]u8"}} | code_spec(rest)]
+  end
   def code_spec([_ | rest]), do: code_spec(rest)
   def code_spec([]), do: []
 
@@ -60,8 +69,11 @@ defmodule Zigler.Zig do
   @spec params([String.t]) :: [atom]
   def params([_, ":", type]), do: [String.to_atom(type)]
   def params([_, ":", "?", "*", "e.ErlNifEnv"]), do: [:"?*e.ErlNifEnv"]
+  def params([_, ":", "[", "*", "c", "]", "u8"]), do: [:"[*c]u8"]
+  def params([_, ":", "[", "]", "u8"]), do: [:"[]u8"]
   def params([_, ":", type, "," | rest]), do: [String.to_atom(type) | params(rest)]
   def params([_, ":", "?", "*", "e.ErlNifEnv", "," | rest]), do: [:"?*e.ErlNifEnv" | params(rest)]
+  def params([_, ":", "[", "*", "c", "]", "u8", "," | rest]), do: [:"[*c]u8" | params(rest)]
   def params(_), do: raise "invalid zig syntax"
 
   @nif_adapter File.read!("assets/nif_adapter.zig.eex")
@@ -97,9 +109,45 @@ defmodule Zigler.Zig do
     EEx.eval_string(@nif_exports, funcs: funcs)
   end
 
-  def getfor(:c_int), do: "enif_get_int"
-  def makefor(:c_int), do: "e.enif_make_int(env, result)"
-  def makefor(:"e.ErlNifTerm"), do: "result"
+  def getfor(:c_int, idx), do: "res = e.enif_get_int(env, argv[#{idx}], &arg#{idx});"
+  def getfor(:f64, idx), do: "res = e.enif_get_double(env, argv[#{idx}], &arg#{idx});"
+  def getfor(:"[*c]u8", idx), do: """
+  var bin#{idx}: e.ErlNifBinary = undefined;
+  res = e.enif_inspect_binary(env, argv[#{idx}], &bin#{idx});
+  arg#{idx} = bin#{idx}.data;
+  """
+  def getfor(:"[]u8", idx), do: """
+  var bin#{idx}: e.ErlNifBinary = undefined;
+  res = e.enif_inspect_binary(env, argv[#{idx}], &bin#{idx});
+  arg#{idx} = bin#{idx}.data[0..bin#{idx}.size];
+  """
+
+  def makefor(:c_int), do: "return e.enif_make_int(env, result);"
+  def makefor(:"e.ErlNifTerm"), do: "return result;"
+  def makefor(:bool), do: ~S/return if (result) e.enif_make_atom(env, c"true") else e.enif_make_atom(env, c"false");/
+  def makefor(:"[*c]u8"), do: """
+  var result_term: e.ErlNifTerm = undefined;
+
+  var i: usize = 0;
+  while (result[i] != 0) { i += 1; }
+
+  var bin: [*]u8 = @ptrCast([*]u8, e.enif_make_new_binary(env, i, &result_term));
+
+  // copy over to the target:
+  i = 0;
+  while (result[i] != 0) { bin[i] = result[i]; i += 1;}
+
+  return result_term;
+  """
+  def makefor(:"[]u8"), do: """
+  var result_term: e.ErlNifTerm = undefined;
+
+  var bin: [*]u8 = @ptrCast([*]u8, e.enif_make_new_binary(env, result.len, &result_term));
+  var i: usize = 0;
+  while (i < result.len) { bin[i] = result[i]; i += 1;}
+
+  return result_term;
+  """
 
   def strip_nif(code) do
     String.replace(code, ~r/\@nif\(.*\)/U, "")

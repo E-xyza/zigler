@@ -33,6 +33,18 @@ defmodule ZiglerTest.ZigAnalysisTest do
   }
   """
 
+  @string_function """
+  const fmt = @import("std").fmt;
+
+  @nif("concat")
+  fn concat(left: [*c]u8, right: [*c]u8) [*c]u8 {
+    var all_together: [100]u8 = undefined;
+    const all_together_slice = all_together[0..];
+    const hello_world = try fmt.bufPrint(all_together_slice, "{} {}", left, right);
+    return hello_world;
+  }
+  """
+
   describe "when passed to Zig.tokens/1" do
     test "a simple function is correctly parsed" do
       assert Zig.tokens(@simple_function) ==
@@ -42,6 +54,11 @@ defmodule ZiglerTest.ZigAnalysisTest do
     test "a function with erlnifenv is correctly parsed" do
       assert Zig.tokens(@erlnifenv_function) ==
         ["@", "nif", ["\"", "compare", "\""], "fn", "compare", ["env", ":", "?", "*", "e.ErlNifEnv", ",", "val1", ":", "c_int", ",",  "val2", ":", "c_int"], "e.ErlNifTerm", :block]
+    end
+
+    test "a function with strings and a preamble is correctly parsed" do
+      assert Zig.tokens(@string_function) ==
+        ["const", "fmt", "=", "@", "import", ["\"", "std", "\""], ".fmt", ";", "@", "nif", ["\"", "concat", "\""], "fn", "concat", ["left", ":", "[", "*", "c", "]", "u8", ",", "right", ":", "[", "*", "c", "]", "u8"], "[", "*", "c", "]", "u8", :block]
     end
   end
 
@@ -54,6 +71,7 @@ defmodule ZiglerTest.ZigAnalysisTest do
   test "can identify the export, header and result for a simple function" do
     assert Zig.code_spec(@simple_function) == [compare: {[:c_int, :c_int], :c_int}]
     assert Zig.code_spec(@erlnifenv_function) == [compare: {[:"?*e.ErlNifEnv", :c_int, :c_int], :"e.ErlNifTerm"}]
+    assert Zig.code_spec(@string_function) == [concat: {[:"[*c]u8", :"[*c]u8"], :"[*c]u8"}]
   end
 
 end
