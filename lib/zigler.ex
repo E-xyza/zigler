@@ -61,6 +61,12 @@ defmodule Zigler do
     end
   end
 
+  defp empty_function(func, 0) do
+    quote do
+      def unquote(func)(), do: throw unquote("#{func} not defined")
+    end
+  end
+
   defp empty_function(func, arity) do
     {:def, [context: Elixir, import: Kernel],
     [

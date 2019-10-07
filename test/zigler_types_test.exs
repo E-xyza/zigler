@@ -1,6 +1,27 @@
 defmodule ZiglerTest.ZiglerTypesTest do
   use ExUnit.Case
 
+  defmodule ZeroArity do
+    use Zigler, app: :zigler
+
+    ~Z"""
+    @nif("zeroarity")
+    fn zeroarity() i64 {
+      return 47;
+    }
+
+    @nif("zeroarity2")
+    fn zeroarity2(env: elixir.env) i64 {
+      return 47;
+    }
+    """
+  end
+
+  test "zero arity functions work fine" do
+    assert 47 == ZeroArity.zeroarity()
+    assert 47 == ZeroArity.zeroarity2()
+  end
+
   defmodule Int64 do
     use Zigler, app: :zigler
 
@@ -16,21 +37,6 @@ defmodule ZiglerTest.ZiglerTypesTest do
     assert Int64.compare(2, 3)
     refute Int64.compare(6, 2)
   end
-
-  #defmodule Int64Out do
-  #  use Zigler, app: :zigler
-#
-  #  ~Z"""
-  #  @nif("int64_out")
-  #  fn int64_out() i64 {
-  #    return 47;
-  #  }
-  #  """
-  #end
-#
-  #test "we can retrieve i64 types" do
-  #  assert 47 == Int64Out.int64_out
-  #end
 
   defmodule Floats do
     use Zigler, app: :zigler

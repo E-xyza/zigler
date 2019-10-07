@@ -75,7 +75,7 @@ defmodule Allocations do
       double_string[i + string.len] = char;
     }
 
-    return elixir.make_atom(double_string);
+    return elixir.make_atom(env, double_string);
   }
   """
 end

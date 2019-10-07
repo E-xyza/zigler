@@ -5,8 +5,12 @@ var res: c_int = 0;
 <%= for {param, idx} <- Enum.with_index(params) do 
   Zigler.Zig.getfor(param, idx) <> "\n"
 end %>
-var result: <%= type %> = <%= func %>(<%= if has_env, do: "env, ", else: "" %><%= 
-  0..Enum.count(params) - 1 |> Enum.map(&"arg#{&1}") |> Enum.join(", ") 
+var result: <%= type %> = <%= func %>(<%= if has_env, do: "env, ", else: "" %><%=
+  if params == [] do
+    "" 
+  else
+    0..Enum.count(params) - 1 |> Enum.map(&"arg#{&1}") |> Enum.join(", ") 
+  end
 %>);
 
 <%= Zigler.Zig.makefor(type) %>

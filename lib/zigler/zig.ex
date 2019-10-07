@@ -73,6 +73,7 @@ defmodule Zigler.Zig do
   def tokens("", tokens_list, any) when is_integer(any), do: tokens_list ++ [:block]
 
   @spec params([String.t]) :: [atom]
+  def params([]), do: []
   def params([_, ":", type]), do: [String.to_atom(type)]
   def params([_, ":", "?", "*", "e.ErlNifEnv"]), do: [:"?*e.ErlNifEnv"]
   def params([_, ":", "[", "*", "c", "]", "u8"]), do: [:"[*c]u8"]
