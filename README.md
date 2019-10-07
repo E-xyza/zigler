@@ -87,6 +87,20 @@ iex> Allocations.double_atom("foo")
 
 ## Installation
 
+```elixir
+def deps do
+  [
+    {:zigler, git: "https://github.com/ityonemo/zigler.git"}
+  ]
+end
+```
+
+once you have this dependency, you should cache the zig build tools by running the following:
+
+`mix zigler.get_zig latest`
+
+## Future installation
+
 If [available in Hex](https://hex.pm/docs/publish), the package can be installed
 by adding `zigler` to your list of dependencies in `mix.exs`:
 
@@ -97,6 +111,9 @@ def deps do
   ]
 end
 ```
+
+You'll also want to grab the latest zig binary and cache it with zigler.
+You can do this by executing:
 
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
