@@ -45,3 +45,9 @@ fn beam_shrink(self: *Allocator,
     return @ptrCast([*]u8, buf)[0..new_size];
   }
 }
+
+// create a global enomem string
+const enomem_str = "enomem";
+pub fn enomem(comptime T: type, env: ?*T.ErlNifEnv) T.ErlNifTerm {
+  return T.enif_make_atom_len(env, @ptrCast([*c]const u8, &enomem_str[0]), 6);
+}

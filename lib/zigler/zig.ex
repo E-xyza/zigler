@@ -140,7 +140,6 @@ defmodule Zigler.Zig do
   """
   def getfor(:"[]i64", idx), do: """
   var length#{idx}: c_uint = undefined;
-  var array#{idx}: [*]i64 = undefined;
   var head#{idx}: e.ErlNifTerm = undefined;
   var elem#{idx}: c_int = undefined;
   var list#{idx} = argv[#{idx}];
@@ -152,9 +151,8 @@ defmodule Zigler.Zig do
   if (res != 0) {
 
     // but first we have to allocate memory.
-    var binary#{idx} = e.enif_alloc(length#{idx} * 8);
-    array#{idx} = @ptrCast([*]i64, @alignCast(@alignOf(*i64), binary#{idx}));
-    arg#{idx} = array#{idx}[0..length#{idx}];
+    arg#{idx} = elixir.allocator.alloc(i64, @intCast(usize, length#{idx}))
+      catch | _err | return e.enif_raise_exception(env, elixir.enomem(e, env));
 
     while (idx#{idx} < length#{idx}) {
       res = e.enif_get_list_cell(env, list#{idx}, &head#{idx}, &list#{idx});
@@ -166,10 +164,12 @@ defmodule Zigler.Zig do
   } else {
     return e.enif_make_atom(env, c"badarg");
   }
-  """  # NB this code memory leaks so we will have to fix that.
+
+  // free it after we're done with the entire function.
+  defer elixir.allocator.free(arg#{idx});
+  """
   def getfor(:"[]f64", idx), do: """
   var length#{idx}: c_uint = undefined;
-  var array#{idx}: [*]f64 = undefined;
   var head#{idx}: e.ErlNifTerm = undefined;
   var elem#{idx}: f64 = undefined;
   var list#{idx} = argv[#{idx}];
@@ -181,9 +181,8 @@ defmodule Zigler.Zig do
   if (res != 0) {
 
     // but first we have to allocate memory.
-    var binary#{idx} = e.enif_alloc(length#{idx} * 8);
-    array#{idx} = @ptrCast([*]f64, @alignCast(@alignOf(*f64), binary#{idx}));
-    arg#{idx} = array#{idx}[0..length#{idx}];
+    arg#{idx} = elixir.allocator.alloc(f64, @intCast(usize, length#{idx}))
+      catch | _err | return e.enif_raise_exception(env, elixir.enomem(e, env));
 
     while (idx#{idx} < length#{idx}) {
       res = e.enif_get_list_cell(env, list#{idx}, &head#{idx}, &list#{idx});
@@ -193,8 +192,11 @@ defmodule Zigler.Zig do
     }
 
   } else {
-    return e.enif_make_atom(env, c"badarg");
+    return e.enif_make_badarg(env);
   }
+
+  // free it after we're done with the entire function.
+  defer elixir.allocator.free(arg#{idx});
   """
   def getfor(:"e.ErlNifTerm", idx), do: "arg#{idx} = argv[#{idx}];"
   def getfor(:"e.ErlNifPid", idx), do: """
@@ -224,43 +226,35 @@ defmodule Zigler.Zig do
   var result_term: e.ErlNifTerm = undefined;
 
   var bin: [*]u8 = @ptrCast([*]u8, e.enif_make_new_binary(env, result.len, &result_term));
-  var i: usize = 0;
-  while (i < result.len) { bin[i] = result[i]; i += 1;}
+
+  for (result) | _chr, i | {
+    bin[i] = result[i];
+  }
 
   return result_term;
   """
   def makefor(:"[]i64"), do: """
-  var binary_result = e.enif_alloc(result.len * 8);
-  var array_result: [*]e.ErlNifTerm = @ptrCast(
-    [*]e.ErlNifTerm, @alignCast(@alignOf(*e.ErlNifTerm), binary_result));
-  var i: usize = 0;
+  var term_slice = elixir.allocator.alloc(e.ErlNifTerm, result.len)
+    catch | _err | return e.enif_raise_exception(env, elixir.enomem(e, env));
+  defer elixir.allocator.free(term_slice);
 
-  while (i < result.len) {
-    array_result[i] = e.enif_make_int(env, @intCast(c_int, result[i]));
-    i += 1;
+  for (term_slice) | _term, i | {
+    term_slice[i] = e.enif_make_int(env, @intCast(c_int, result[i]));
   }
-  var result_term = e.enif_make_list_from_array(env, array_result, @intCast(c_uint, result.len));
-
-  // deallocate our binary_result
-  e.enif_free(binary_result);
+  var result_term = e.enif_make_list_from_array(env, term_slice.ptr, @intCast(c_uint, result.len));
 
   // return the term
   return result_term;
   """
   def makefor(:"[]f64"), do: """
-  var binary_result = e.enif_alloc(result.len * 8);
-  var array_result: [*]e.ErlNifTerm = @ptrCast(
-    [*]e.ErlNifTerm, @alignCast(@alignOf(*e.ErlNifTerm), binary_result));
-  var i: usize = 0;
+  var term_slice = elixir.allocator.alloc(e.ErlNifTerm, result.len)
+    catch | _err | return e.enif_raise_exception(env, elixir.enomem(e, env));
+  defer elixir.allocator.free(term_slice);
 
-  while (i < result.len) {
-    array_result[i] = e.enif_make_double(env, result[i]);
-    i += 1;
+  for (term_slice) | _term, i | {
+    term_slice[i] = e.enif_make_double(env, result[i]);
   }
-  var result_term = e.enif_make_list_from_array(env, array_result, @intCast(c_uint, result.len));
-
-  // deallocate our binary_result
-  e.enif_free(binary_result);
+  var result_term = e.enif_make_list_from_array(env, term_slice.ptr, @intCast(c_uint, result.len));
 
   // return the term
   return result_term;

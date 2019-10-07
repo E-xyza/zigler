@@ -7,13 +7,10 @@ defmodule ZigTest.AllocatorsTest do
     ~Z"""
     @nif("alloctest")
     fn alloctest(env: ?*e.ErlNifEnv, length: i64) e.ErlNifTerm {
-      const enomem = "enomem";
-      const enomem_atom = e.enif_make_atom_len(env, @ptrCast([*c]const u8, &enomem[0]), 6);
-
       var usize_length = @intCast(usize, length);
 
       var slice = elixir.allocator.alloc(u8, usize_length)
-        catch | _err | return e.enif_raise_exception(env, enomem_atom);
+        catch | _err | return e.enif_raise_exception(env, elixir.enomem(e, env));
       defer elixir.allocator.free(slice);
 
       // fill the slice with letters
@@ -26,17 +23,14 @@ defmodule ZigTest.AllocatorsTest do
 
     @nif("realloctest")
     fn realloctest(env: ?*e.ErlNifEnv, length: i64) e.ErlNifTerm {
-      const enomem = "enomem";
-      const enomem_atom = e.enif_make_atom_len(env, @ptrCast([*c]const u8, &enomem[0]), 6);
-
       var usize_length = @intCast(usize, length);
 
       var slice = elixir.allocator.alloc(u8, usize_length)
-        catch | _err | return e.enif_raise_exception(env, enomem_atom);
+        catch | _err | return e.enif_raise_exception(env, elixir.enomem(e, env));
       defer elixir.allocator.free(slice);
 
       var slice2 = elixir.allocator.realloc(slice, usize_length * 2)
-        catch | _err | return e.enif_raise_exception(env, enomem_atom);
+        catch | _err | return e.enif_raise_exception(env, elixir.enomem(e, env));
 
       // fill the slice with letters
       for (slice2) | _char, i | {
@@ -68,13 +62,11 @@ defmodule ZigTest.AllocatorsTest do
 
     @nif("allocate")
     fn allocate(env: ?*e.ErlNifEnv, length: i64) bool {
-      const enomem = "enomem";
-      const enomem_atom = e.enif_make_atom_len(env, @ptrCast([*c]const u8, &enomem[0]), 6);
 
       var usize_length = @intCast(usize, length);
 
       global_slice = elixir.allocator.alloc(u8, usize_length) catch | _err | {
-        var execption = e.enif_raise_exception(env, enomem_atom);
+        var execption = e.enif_raise_exception(env, elixir.enomem(e, env));
         return false;
       };
       // don't defer a free here (don't do this in real life!!!)
