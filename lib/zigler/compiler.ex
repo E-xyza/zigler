@@ -5,7 +5,7 @@ defmodule Zigler.Compiler do
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
   @erl_nif_zig_h Path.join(@zig_dir_path, "include/erl_nif_zig.h")
-  @elixir_zig_eex File.read!("zig/elixir/elixir.zig")
+  @erl_nif_zig_eex File.read!("zig/elixir/erl_nif.zig")
 
   defmacro __before_compile__(context) do
     app = Module.get_attribute(context.module, :zigler_app)
@@ -19,8 +19,7 @@ defmodule Zigler.Compiler do
     zig_specs = Module.get_attribute(context.module, :zig_specs)
     |> Enum.flat_map(&(&1))
 
-    full_code = [Zig.nif_header(@erl_nif_zig_h),
-      zig_code,
+    full_code = [Zig.nif_header(), zig_code,
       Enum.map(zig_specs, &Zig.nif_adapter/1),
       Zig.nif_exports(zig_specs),
       Zig.nif_footer(context.module, zig_specs)]
@@ -33,9 +32,12 @@ defmodule Zigler.Compiler do
 
     Enum.into(full_code, File.stream!(Path.join(tmp_dir, "zig_nif.zig")))
 
+    # put the erl_nif.zig adapter into the path.
+    erl_nif_zig_path = Path.join(tmp_dir, "erl_nif.zig")
+    File.write!(erl_nif_zig_path, EEx.eval_string(@erl_nif_zig_eex, erl_nif_zig_h: @erl_nif_zig_h))
     # now put the elixir.zig file into the temporary directory too.
-    elixir_zig_path = Path.join(tmp_dir, "elixir.zig")
-    File.write!(elixir_zig_path, EEx.eval_string(@elixir_zig_eex, erl_nif_zig_h: @erl_nif_zig_h))
+    elixir_zig_src = Path.join(@zig_dir_path, "elixir/elixir.zig")
+    File.cp!(elixir_zig_src, Path.join(tmp_dir, "elixir.zig"))
     # now put the erl_nif.h file into the temporary directory.
     erl_nif_zig_h_path = Path.join(@zig_dir_path, "include/erl_nif_zig.h")
     File.cp!(erl_nif_zig_h_path, Path.join(tmp_dir, "erl_nif_zig.h"))

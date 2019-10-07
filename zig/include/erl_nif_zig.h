@@ -137,6 +137,8 @@ extern int enif_get_map_value(ErlNifEnv *, ErlNifTerm map, ErlNifTerm key, ErlNi
 extern int enif_make_map_update(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, ErlNifTerm value, ErlNifTerm *map_out);
 extern int enif_make_map_remove(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, ErlNifTerm *map_out);
 
+typedef struct enif_resource_type_t ErlNifResourceType;
+
 typedef struct enif_entry_t
 {
     int major;

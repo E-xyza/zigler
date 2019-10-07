@@ -1,6 +1,4 @@
-const e = @cImport({
-  @cInclude("<%= erl_nif_zig_h %>");
-});
+const e = @import("erl_nif.zig").c;
 const std = @import("std");
 
 const Allocator = std.mem.Allocator;
@@ -46,8 +44,30 @@ fn beam_shrink(self: *Allocator,
   }
 }
 
-// create a global enomem string
-const enomem_str = "enomem";
-pub fn enomem(comptime T: type, env: ?*T.ErlNifEnv) T.ErlNifTerm {
-  return T.enif_make_atom_len(env, @ptrCast([*c]const u8, &enomem_str[0]), 6);
+////////////////////////////////////////////////////////////////////////////////////
+
+
+////////////////////////////////////////////////////////////////////////////////////
+// syntactic sugar
+///////////////////////////////////////////////////////////////////////////////////
+
+// env
+pub const env = ?*e.ErlNifEnv;
+
+// terms
+pub const term = e.ErlNifTerm;
+
+// atoms
+pub const atom = e.ErlNifTerm;
+pub fn make_atom(erl_env: env, atom_str: []const u8) term {
+  return e.enif_make_atom_len(erl_env, @ptrCast([*c]const u8, &atom_str[0]), atom_str.len);
+}
+
+// implementation for :enomem
+
+// create a global enomem string, then throw it.
+const enomem_slice = "enomem"[0..];
+pub fn enomem(erl_env: env) noreturn {
+  var res = e.enif_raise_exception(erl_env, make_atom(erl_env, enomem_slice));
+  unreachable;
 }

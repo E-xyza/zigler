@@ -9,8 +9,7 @@ defmodule ZigTest.AllocatorsTest do
     fn alloctest(env: ?*e.ErlNifEnv, length: i64) e.ErlNifTerm {
       var usize_length = @intCast(usize, length);
 
-      var slice = elixir.allocator.alloc(u8, usize_length)
-        catch | _err | return e.enif_raise_exception(env, elixir.enomem(e, env));
+      var slice = elixir.allocator.alloc(u8, usize_length) catch elixir.enomem(env);
       defer elixir.allocator.free(slice);
 
       // fill the slice with letters
@@ -25,12 +24,10 @@ defmodule ZigTest.AllocatorsTest do
     fn realloctest(env: ?*e.ErlNifEnv, length: i64) e.ErlNifTerm {
       var usize_length = @intCast(usize, length);
 
-      var slice = elixir.allocator.alloc(u8, usize_length)
-        catch | _err | return e.enif_raise_exception(env, elixir.enomem(e, env));
+      var slice = elixir.allocator.alloc(u8, usize_length) catch elixir.enomem(env);
       defer elixir.allocator.free(slice);
 
-      var slice2 = elixir.allocator.realloc(slice, usize_length * 2)
-        catch | _err | return e.enif_raise_exception(env, elixir.enomem(e, env));
+      var slice2 = elixir.allocator.realloc(slice, usize_length * 2) catch elixir.enomem(env);
 
       // fill the slice with letters
       for (slice2) | _char, i | {
@@ -65,10 +62,8 @@ defmodule ZigTest.AllocatorsTest do
 
       var usize_length = @intCast(usize, length);
 
-      global_slice = elixir.allocator.alloc(u8, usize_length) catch | _err | {
-        var execption = e.enif_raise_exception(env, elixir.enomem(e, env));
-        return false;
-      };
+      global_slice = elixir.allocator.alloc(u8, usize_length) catch elixir.enomem(env);
+
       // don't defer a free here (don't do this in real life!!!)
 
       // fill the slice with letters
@@ -89,5 +84,38 @@ defmodule ZigTest.AllocatorsTest do
   test "elixir persistent memory works" do
     assert true == PersistentMemory.allocate(2);
     assert :ab == PersistentMemory.fetch(0);
+  end
+
+  defmodule TagResource do
+    use Zigler, app: :zigler
+
+    # a better version of the above code.  Generates some memory, passes back
+    # a resource, and then accesses it safely.
+
+    ~Z"""
+    var global_nothing = [_]u8{};
+    var global_slice = global_nothing[0..0];
+
+    @nif("allocate")
+    fn allocate(env: ?*e.ErlNifEnv, length: i64) bool {
+
+      var usize_length = @intCast(usize, length);
+
+      global_slice = elixir.allocator.alloc(u8, usize_length) catch elixir.enomem(env);
+      // don't defer a free here (don't do this in real life!!!)
+
+      // fill the slice with letters
+      for (global_slice) | _char, i | {
+        global_slice[i] = 97 + @intCast(u8, i);
+      }
+
+      return true;
+    }
+
+    @nif("fetch")
+    fn fetch(env: ?*e.ErlNifEnv, dummy: i64) e.ErlNifTerm {
+      return e.enif_make_atom_len(env, global_slice.ptr, global_slice.len);
+    }
+    """
   end
 end
