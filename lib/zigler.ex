@@ -1,5 +1,7 @@
 defmodule Zigler do
 
+  @latest_zig_version Application.get_env(:zigler, :latest_zig_version)
+
   defmacro __using__(opts) do
 
     unless opts[:app] do
@@ -13,6 +15,7 @@ defmodule Zigler do
 
     mod_name = __CALLER__.module |> Atom.to_string |> String.downcase
     nif_dir = Application.app_dir(opts[:app], "priv/nifs")
+    zig_version = opts[:version] || @latest_zig_version
 
     File.mkdir_p!(nif_dir)
 
@@ -21,6 +24,7 @@ defmodule Zigler do
 
       @on_load :__load_nifs__
       @zigler_app unquote(opts[:app])
+      @zig_version unquote(zig_version)
 
       def __load_nifs__ do
         nif_dir = unquote(nif_dir)

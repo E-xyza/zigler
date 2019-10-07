@@ -22,9 +22,12 @@ defmodule ZiglerTest.ZigAdlibTest do
 
   test "nif_header produces expected content" do
     assert """
+    // import a header containing all of the NIF ABI forwards.
     const e = @cImport({
-    @cInclude("/foo/bar/baz.h");
+      @cInclude("/foo/bar/baz.h");
     });
+
+    const elixir = @import("elixir.zig");
     """ == Zig.nif_header("/foo/bar/baz.h")
   end
 

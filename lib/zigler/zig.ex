@@ -99,11 +99,12 @@ defmodule Zigler.Zig do
     Enum.reject(params, &(&1 == :"?*e.ErlNifEnv"))
   end
 
-  @nif_header File.read!("assets/nif_header.zig.eex")
+  # TODO: move these to an "ASSEMBLER" module.
 
+  @nif_header File.read!("assets/nif_header.zig.eex")
   @spec nif_header(Path.t) :: iodata
-  def nif_header(zig_nif_h) do
-    EEx.eval_string(@nif_header, zig_nif_h: zig_nif_h)
+  def nif_header(erl_nif_zig_h) do
+    EEx.eval_string(@nif_header, erl_nif_zig_h: erl_nif_zig_h)
   end
 
   @nif_footer File.read!("assets/nif_footer.zig.eex")

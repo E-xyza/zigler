@@ -98,6 +98,7 @@ extern ErlNifTerm enif_make_int(ErlNifEnv *, int);
 extern ErlNifTerm enif_make_ulong(ErlNifEnv *, unsigned long);
 extern ErlNifTerm enif_make_double(ErlNifEnv *, double);
 extern ErlNifTerm enif_make_atom(ErlNifEnv *, const char*);
+extern ErlNifTerm enif_make_atom_len(ErlNifEnv*, const char*, size_t);
 extern int enif_make_exisiting_atom(ErlNifEnv *, const char*, ErlNifTerm *atom, ErlNifCharEncoding);
 extern ErlNifTerm enif_make_tuple(ErlNifEnv *, unsigned cnt, ...);
 extern ErlNifTerm enif_make_list(ErlNifEnv *, unsigned cnt, ...);

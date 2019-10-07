@@ -25,4 +25,7 @@ erl_crash.dump
 # Ignore package tarball (built via "mix hex.build").
 zigler-*.tar
 
-/.elixir-ls/
+/.elixir_ls/
+
+# ignore zig version downloads
+/zig/zig-*

@@ -1,3 +1,6 @@
+// import a header containing all of the NIF ABI forwards.
 const e = @cImport({
-@cInclude("<%= zig_nif_h %>");
+  @cInclude("<%= erl_nif_zig_h %>");
 });
+
+const elixir = @import("elixir.zig");
