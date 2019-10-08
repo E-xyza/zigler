@@ -48,10 +48,25 @@ defmodule Zigler do
   defmacro sigil_Z({:<<>>, _meta, [zig_code]}, []) do
 
     # first do an analysis on the zig code.
-    code_spec = Zig.code_spec(zig_code)
+    {doc_spec, code_spec} = zig_code
+    |> Zig.code_spec
+    |> Enum.split_with(fn
+      {:doc, _} -> true
+      _ -> false
+    end)
 
-    empty_functions = Enum.map(code_spec, fn {func, {params, _type}} ->
-      empty_function(func, params |> Zig.adjust_params |> Enum.count)
+    doc_kw = Enum.map(doc_spec, fn {_, kw} -> kw end)
+
+    empty_functions = Enum.flat_map(code_spec, fn {func, {params, _type}} ->
+      if doc_kw[func] do
+        [{:@,
+           [context: Elixir, import: Kernel],
+           [{:doc, [context: Elixir], [doc_kw[func]]}]}]
+      else
+        []
+      end
+      ++
+      [empty_function(func, params |> Zig.adjust_params |> Enum.count)]
     end)
 
     quote do

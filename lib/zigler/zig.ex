@@ -1,9 +1,14 @@
 defmodule Zigler.Zig do
 
+  alias Zigler.Parser
+
   @type primitives :: :i64 | :u64 | :i8 | :u8 | :f64 | :erl_nif_env
 
   @spec code_spec(String.t | [zig_token]) :: keyword({[atom], atom})
   def code_spec(code) when is_binary(code), do: code_spec(tokens(code))
+  def code_spec([{:comment, txt}, "@", "nif", ["\"", nif_name, "\""] | rest]) do
+    [{:doc, {String.to_atom(nif_name), txt}} | code_spec(["@", "nif", ["\"", nif_name, "\""] | rest])]
+  end
   def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, nif_type, :block | rest]) do
     [{String.to_atom(nif_name), {params(nif_params), String.to_atom(nif_type)}} | code_spec(rest)]
   end
@@ -28,10 +33,15 @@ defmodule Zigler.Zig do
   @type zig_token :: String.t | :block | [zig_token]
   @spec tokens(String.t) :: [zig_token]
   def tokens(code) do
-    tokens(code, [], "")
+    code
+    |> String.split("\n")
+    |> Enum.reduce([], &Parser.find_comments/2)
+    |> Parser.stitch_strings
+    |> Enum.flat_map(&tokens(&1, [], ""))
   end
 
   @spec tokens(binary, [zig_token], String.t | non_neg_integer) :: [zig_token]
+  def tokens(c = {:comment, _}, _, _), do: [c]
   def tokens(<<a::binary-size(1)>> <> rest, tokens_list, token_so_far) do
     cond do
       is_integer(token_so_far) && a == "{" ->
