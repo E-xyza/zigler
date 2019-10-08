@@ -19,6 +19,19 @@ defmodule Mix.Tasks.Zigler.GetZig do
 
   def run(["latest"]), do: run([@latest_version])
   def run([version]) do
+
+    unless {:unix, :linux} == :os.type() do
+      Mix.raise("""
+      non-linux systems not currently supported.
+
+      If you think you can help, please help out!  There's no
+      reason why zigler can't run on MacOS, butI have no
+      way of testing anything MacOS related.
+
+      https://github.com/ityonemo/zigler/issues/15
+      """)
+    end
+
     Logger.configure(level: :info)
     Application.ensure_all_started(:mojito)
 
