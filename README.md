@@ -85,6 +85,28 @@ iex> Allocations.double_atom("foo")
 
 ```
 
+Zigler even has support for zig docstrings.
+
+```elixir
+
+defmodule AllTheDocs do
+  use Zigler, app: :zigler
+  ~Z"""
+  /// a zero-arity function which returns 47.
+  @nif("zeroarity")
+  fn zeroarity() i64 {
+    return 47;
+  }
+  """
+end
+
+iex> h AllTheDocs.zeroarity
+
+                                def zeroarity()                                 
+
+a zero-arity function which returns 47.
+```
+
 ## Installation
 
 ```elixir
