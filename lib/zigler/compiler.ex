@@ -24,9 +24,15 @@ defmodule Zigler.Compiler do
     "zig-#{os}-x86_64-#{version}"
   end
 
+  def release_mode_text(:fast), do: "--release-fast"
+  def release_mode_text(:safe), do: "--release-safe"
+  def release_mode_text(:small), do: "--release-small"
+  def release_mode_text(:debug), do: ""
+
   defmacro __before_compile__(context) do
     app = Module.get_attribute(context.module, :zigler_app)
     version = Module.get_attribute(context.module, :zig_version)
+    release_mode = Module.get_attribute(context.module, :release_mode)
 
     zig_tree = Path.join(@zig_dir_path, basename(version))
     # check to see if the zig version has been downloaded.
@@ -64,7 +70,9 @@ defmodule Zigler.Compiler do
     # our zig cache
     zig_cmd = Path.join(zig_tree, "zig")
     zig_rpath = Path.join(zig_tree, "lib/zig")
-    cmd_opts = ~w(build-lib zig_nif.zig -dynamic --disable-gen-h --override-lib-dir) ++ [zig_rpath]
+    cmd_opts = ~w(build-lib zig_nif.zig -dynamic --disable-gen-h --override-lib-dir) ++ [
+      zig_rpath, release_mode_text(release_mode)]
+
     cmd_opts_text = Enum.join(cmd_opts, " ")
 
     Logger.info("compiling using command: `#{zig_cmd} #{cmd_opts_text}`")
