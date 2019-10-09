@@ -11,7 +11,7 @@ defmodule ZiglerTest.ZiglerTypesTest do
     }
 
     @nif("zeroarity2")
-    fn zeroarity2(env: elixir.env) i64 {
+    fn zeroarity2(env: beam.env) i64 {
       return 47;
     }
     """
