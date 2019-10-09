@@ -9,7 +9,7 @@ defmodule Zigler do
     end
 
     # make sure that we're in the correct operating system.
-    unless {:win32, _} == :os.type() do
+    if match?({:win32, _}, :os.type()) do
       raise "non-unix systems not currently supported."
     end
 
