@@ -9,8 +9,8 @@ defmodule ZigTest.AllocatorsTest do
     fn alloctest(env: ?*e.ErlNifEnv, length: i64) e.ErlNifTerm {
       var usize_length = @intCast(usize, length);
 
-      var slice = elixir.allocator.alloc(u8, usize_length) catch elixir.enomem(env);
-      defer elixir.allocator.free(slice);
+      var slice = beam.allocator.alloc(u8, usize_length) catch beam.enomem(env);
+      defer beam.allocator.free(slice);
 
       // fill the slice with letters
       for (slice) | _char, i | {
@@ -24,10 +24,10 @@ defmodule ZigTest.AllocatorsTest do
     fn realloctest(env: ?*e.ErlNifEnv, length: i64) e.ErlNifTerm {
       var usize_length = @intCast(usize, length);
 
-      var slice = elixir.allocator.alloc(u8, usize_length) catch elixir.enomem(env);
-      defer elixir.allocator.free(slice);
+      var slice = beam.allocator.alloc(u8, usize_length) catch beam.enomem(env);
+      defer beam.allocator.free(slice);
 
-      var slice2 = elixir.allocator.realloc(slice, usize_length * 2) catch elixir.enomem(env);
+      var slice2 = beam.allocator.realloc(slice, usize_length * 2) catch beam.enomem(env);
 
       // fill the slice with letters
       for (slice2) | _char, i | {
@@ -62,7 +62,7 @@ defmodule ZigTest.AllocatorsTest do
 
       var usize_length = @intCast(usize, length);
 
-      global_slice = elixir.allocator.alloc(u8, usize_length) catch elixir.enomem(env);
+      global_slice = beam.allocator.alloc(u8, usize_length) catch beam.enomem(env);
 
       // don't defer a free here (don't do this in real life!!!)
 
@@ -101,7 +101,7 @@ defmodule ZigTest.AllocatorsTest do
 
       var usize_length = @intCast(usize, length);
 
-      global_slice = elixir.allocator.alloc(u8, usize_length) catch elixir.enomem(env);
+      global_slice = beam.allocator.alloc(u8, usize_length) catch beam.enomem(env);
       // don't defer a free here (don't do this in real life!!!)
 
       // fill the slice with letters

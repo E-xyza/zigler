@@ -92,7 +92,7 @@ defmodule Zigler.Zig do
   def params([_, ":", "[", "]", "f64"]), do: [:"[]f64"]
   def params([_, ":", type, "," | rest]), do: [String.to_atom(type) | params(rest)]
   def params([_, ":", "?", "*", "e.ErlNifEnv", "," | rest]), do: [:"?*e.ErlNifEnv" | params(rest)]
-  def params([_, ":", "elixir.env", "," | rest]), do: [:"elixir.env" | params(rest)]
+  def params([_, ":", "beam.env", "," | rest]), do: [:"beam.env" | params(rest)]
   def params([_, ":", "[", "*", "c", "]", "u8", "," | rest]), do: [:"[*c]u8" | params(rest)]
   def params([_, ":", "[", "]", "u8", "," | rest]), do: [:"[]u8" | params(rest)]
   def params([_, ":", "[", "]", "i64", "," | rest]), do: [:"[]i64" | params(rest)]
@@ -103,12 +103,12 @@ defmodule Zigler.Zig do
 
   @spec nif_adapter({atom, {[atom], atom}}) :: iodata
   def nif_adapter({func, {params, type}}) do
-    has_env = match?([:"?*e.ErlNifEnv" | _], params) || match?([:"elixir.env" | _], params)
+    has_env = match?([:"?*e.ErlNifEnv" | _], params) || match?([:"beam.env" | _], params)
     EEx.eval_string(@nif_adapter, func: func, params: adjust_params(params), type: type, has_env: has_env)
   end
 
   def adjust_params(params) do
-    Enum.reject(params, &(&1 in [:"?*e.ErlNifEnv" , :"elixir.env"]))
+    Enum.reject(params, &(&1 in [:"?*e.ErlNifEnv" , :"beam.env"]))
   end
 
   # TODO: move these to an "ASSEMBLER" module.
@@ -161,8 +161,8 @@ defmodule Zigler.Zig do
   if (res != 0) {
 
     // but first we have to allocate memory.
-    arg#{idx} = elixir.allocator.alloc(i64, @intCast(usize, length#{idx}))
-      catch elixir.enomem(env);
+    arg#{idx} = beam.allocator.alloc(i64, @intCast(usize, length#{idx}))
+      catch beam.enomem(env);
 
     while (idx#{idx} < length#{idx}) {
       res = e.enif_get_list_cell(env, list#{idx}, &head#{idx}, &list#{idx});
@@ -176,7 +176,7 @@ defmodule Zigler.Zig do
   }
 
   // free it after we're done with the entire function.
-  defer elixir.allocator.free(arg#{idx});
+  defer beam.allocator.free(arg#{idx});
   """
   def getfor(:"[]f64", idx), do: """
   var length#{idx}: c_uint = undefined;
@@ -191,8 +191,8 @@ defmodule Zigler.Zig do
   if (res != 0) {
 
     // but first we have to allocate memory.
-    arg#{idx} = elixir.allocator.alloc(f64, @intCast(usize, length#{idx}))
-      catch elixir.enomem(env);
+    arg#{idx} = beam.allocator.alloc(f64, @intCast(usize, length#{idx}))
+      catch beam.enomem(env);
 
     while (idx#{idx} < length#{idx}) {
       res = e.enif_get_list_cell(env, list#{idx}, &head#{idx}, &list#{idx});
@@ -206,14 +206,14 @@ defmodule Zigler.Zig do
   }
 
   // free it after we're done with the entire function.
-  defer elixir.allocator.free(arg#{idx});
+  defer beam.allocator.free(arg#{idx});
   """
   def getfor(:"e.ErlNifTerm", idx), do: "arg#{idx} = argv[#{idx}];"
   def getfor(:"e.ErlNifPid", idx), do: """
   res = e.enif_get_local_pid(env, argv[#{idx}], &arg#{idx});
   """
 
-  def makefor(:"elixir.atom"), do: "return result;"
+  def makefor(:"beam.atom"), do: "return result;"
   def makefor(:c_int), do: "return e.enif_make_int(env, result);"
   def makefor(:i64), do: "return e.enif_make_int(env, @intCast(c_int, result));"
   def makefor(:f64), do: "return e.enif_make_double(env, result);"
@@ -245,9 +245,9 @@ defmodule Zigler.Zig do
   return result_term;
   """
   def makefor(:"[]i64"), do: """
-  var term_slice = elixir.allocator.alloc(e.ErlNifTerm, result.len)
-    catch elixir.enomem(env);
-  defer elixir.allocator.free(term_slice);
+  var term_slice = beam.allocator.alloc(e.ErlNifTerm, result.len)
+    catch beam.enomem(env);
+  defer beam.allocator.free(term_slice);
 
   for (term_slice) | _term, i | {
     term_slice[i] = e.enif_make_int(env, @intCast(c_int, result[i]));
@@ -258,9 +258,9 @@ defmodule Zigler.Zig do
   return result_term;
   """
   def makefor(:"[]f64"), do: """
-  var term_slice = elixir.allocator.alloc(e.ErlNifTerm, result.len)
-    catch elixir.enomem(env);
-  defer elixir.allocator.free(term_slice);
+  var term_slice = beam.allocator.alloc(e.ErlNifTerm, result.len)
+    catch beam.enomem(env);
+  defer beam.allocator.free(term_slice);
 
   for (term_slice) | _term, i | {
     term_slice[i] = e.enif_make_double(env, result[i]);

@@ -45,19 +45,19 @@ defmodule ZiglerTest.ReadmeTest do
     use Zigler, app: :zigler
     ~Z"""
     @nif("double_atom")
-    fn double_atom(env: elixir.env, string: []u8) elixir.atom {
+    fn double_atom(env: beam.env, string: []u8) beam.atom {
 
-      var double_string = elixir.allocator.alloc(u8, string.len * 2)
-        catch elixir.enomem(env);
+      var double_string = beam.allocator.alloc(u8, string.len * 2)
+        catch beam.enomem(env);
 
-      defer elixir.allocator.free(double_string);
+      defer beam.allocator.free(double_string);
 
       for (string) | char, i | {
         double_string[i] = char;
         double_string[i + string.len] = char;
       }
 
-      return elixir.make_atom(env, double_string);
+      return beam.make_atom(env, double_string);
     }
     """
   end
