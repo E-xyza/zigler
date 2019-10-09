@@ -7,11 +7,34 @@ defmodule Zigler.Compiler do
   @erl_nif_zig_h Path.join(@zig_dir_path, "include/erl_nif_zig.h")
   @erl_nif_zig_eex File.read!("zig/elixir/erl_nif.zig")
 
+  def basename(version) do
+    os = case :os.type do
+      {:unix, :linux} ->
+        "linux"
+      {:unix, :darwin} ->
+        Logger.warn("macos support is experimental")
+        "macos"
+      {:unix, :freebsd} ->
+        Logger.error("freebsd is not supported.")
+        "freebsd"
+      {:win32, _} ->
+        Logger.error("windows is definitely not supported.")
+        "windows"
+    end
+    "zig-#{os}-x86_64-#{version}"
+  end
+
+  def release_mode_text(:fast), do: ["--release-fast"]
+  def release_mode_text(:safe), do: ["--release-safe"]
+  def release_mode_text(:small), do: ["--release-small"]
+  def release_mode_text(:debug), do: []
+
   defmacro __before_compile__(context) do
     app = Module.get_attribute(context.module, :zigler_app)
     version = Module.get_attribute(context.module, :zig_version)
+    release_mode = Module.get_attribute(context.module, :release_mode)
 
-    zig_tree = Path.join(@zig_dir_path, "zig-linux-x86_64-#{version}")
+    zig_tree = Path.join(@zig_dir_path, basename(version))
     # check to see if the zig version has been downloaded.
     unless File.dir?(zig_tree), do: raise "zig hasn't been downloaded.  Run mix zigler.get_zig #{version}"
 
@@ -47,7 +70,9 @@ defmodule Zigler.Compiler do
     # our zig cache
     zig_cmd = Path.join(zig_tree, "zig")
     zig_rpath = Path.join(zig_tree, "lib/zig")
-    cmd_opts = ~w(build-lib zig_nif.zig -dynamic --disable-gen-h --override-lib-dir) ++ [zig_rpath]
+    cmd_opts = ~w(build-lib zig_nif.zig -dynamic --disable-gen-h --override-lib-dir) ++ [
+      zig_rpath | release_mode_text(release_mode)]
+
     cmd_opts_text = Enum.join(cmd_opts, " ")
 
     Logger.info("compiling using command: `#{zig_cmd} #{cmd_opts_text}`")

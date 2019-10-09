@@ -12,7 +12,11 @@ defmodule Mix.Tasks.Zigler.GetZig do
   version can be "latest"
   """
 
+  @shortdoc "caches a version of zig."
+
   require Logger
+
+  alias Zigler.Compiler
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
   @latest_version Application.get_env(:zigler, :latest_zig_version)
@@ -35,7 +39,7 @@ defmodule Mix.Tasks.Zigler.GetZig do
     Logger.configure(level: :info)
     Application.ensure_all_started(:mojito)
 
-    tarfile = "zig-linux-x86_64-#{version}.tar.xz"
+    tarfile = Compiler.basename(version) <> ".tar.xz"
     zig_download_path = Path.join(@zig_dir_path, tarfile)
 
     unless File.exists?(zig_download_path) do

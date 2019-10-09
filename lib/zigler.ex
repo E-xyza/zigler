@@ -3,14 +3,15 @@ defmodule Zigler do
   @latest_zig_version Application.get_env(:zigler, :latest_zig_version)
 
   defmacro __using__(opts) do
-
     unless opts[:app] do
       raise ArgumentError, "you must provide the application"
     end
 
+    mode = opts[:release_mode] || Application.get_env(:zigler, :release_mode)
+
     # make sure that we're in the correct operating system.
-    unless {:unix, :linux} == :os.type() do
-      raise "non-linux systems not currently supported."
+    if match?({:win32, _}, :os.type()) do
+      raise "non-unix systems not currently supported."
     end
 
     mod_name = __CALLER__.module |> Atom.to_string |> String.downcase
@@ -21,6 +22,8 @@ defmodule Zigler do
 
     quote do
       import Zigler
+
+      @release_mode unquote(mode)
 
       @on_load :__load_nifs__
       @zigler_app unquote(opts[:app])
