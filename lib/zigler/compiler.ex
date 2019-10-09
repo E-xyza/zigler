@@ -24,10 +24,10 @@ defmodule Zigler.Compiler do
     "zig-#{os}-x86_64-#{version}"
   end
 
-  def release_mode_text(:fast), do: "--release-fast"
-  def release_mode_text(:safe), do: "--release-safe"
-  def release_mode_text(:small), do: "--release-small"
-  def release_mode_text(:debug), do: ""
+  def release_mode_text(:fast), do: ["--release-fast"]
+  def release_mode_text(:safe), do: ["--release-safe"]
+  def release_mode_text(:small), do: ["--release-small"]
+  def release_mode_text(:debug), do: []
 
   defmacro __before_compile__(context) do
     app = Module.get_attribute(context.module, :zigler_app)
@@ -71,7 +71,7 @@ defmodule Zigler.Compiler do
     zig_cmd = Path.join(zig_tree, "zig")
     zig_rpath = Path.join(zig_tree, "lib/zig")
     cmd_opts = ~w(build-lib zig_nif.zig -dynamic --disable-gen-h --override-lib-dir) ++ [
-      zig_rpath, release_mode_text(release_mode)]
+      zig_rpath | release_mode_text(release_mode)]
 
     cmd_opts_text = Enum.join(cmd_opts, " ")
 
