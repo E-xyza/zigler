@@ -7,11 +7,28 @@ defmodule Zigler.Compiler do
   @erl_nif_zig_h Path.join(@zig_dir_path, "include/erl_nif_zig.h")
   @erl_nif_zig_eex File.read!("zig/elixir/erl_nif.zig")
 
+  def basename(version) do
+    os = case :os.type do
+      {:unix, :linux} ->
+        "linux"
+      {:unix, :darwin} ->
+        Logger.warn("macos support is experimental")
+        "macos"
+      {:unix, :freebsd} ->
+        Logger.error("freebsd is not supported.")
+        "freebsd"
+      {:win32, _} ->
+        Logger.error("windows is definitely not supported.")
+        "windows"
+    end
+    "zig-#{os}-x86_64-#{version}"
+  end
+
   defmacro __before_compile__(context) do
     app = Module.get_attribute(context.module, :zigler_app)
     version = Module.get_attribute(context.module, :zig_version)
 
-    zig_tree = Path.join(@zig_dir_path, "zig-linux-x86_64-#{version}")
+    zig_tree = Path.join(@zig_dir_path, basename(version))
     # check to see if the zig version has been downloaded.
     unless File.dir?(zig_tree), do: raise "zig hasn't been downloaded.  Run mix zigler.get_zig #{version}"
 

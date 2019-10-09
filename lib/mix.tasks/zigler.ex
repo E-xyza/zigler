@@ -22,7 +22,7 @@ defmodule Mix.Tasks.Zigler.GetZig do
     Logger.configure(level: :info)
     Application.ensure_all_started(:mojito)
 
-    tarfile = "zig-linux-x86_64-#{version}.tar.xz"
+    tarfile = basename(version) <> ".tar.xz"
     zig_download_path = Path.join(@zig_dir_path, tarfile)
 
     unless File.exists?(zig_download_path) do

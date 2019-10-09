@@ -9,8 +9,8 @@ defmodule Zigler do
     end
 
     # make sure that we're in the correct operating system.
-    unless {:unix, :linux} == :os.type() do
-      raise "non-linux systems not currently supported."
+    unless {:win32, _} == :os.type() do
+      raise "non-unix systems not currently supported."
     end
 
     mod_name = __CALLER__.module |> Atom.to_string |> String.downcase
