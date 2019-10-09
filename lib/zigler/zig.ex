@@ -131,22 +131,30 @@ defmodule Zigler.Zig do
     EEx.eval_string(@nif_exports, funcs: funcs)
   end
 
-  def getfor(:c_int, idx), do: "res = e.enif_get_int(env, argv[#{idx}], &arg#{idx});"
-  def getfor(:i64, idx), do: """
-  var int#{idx}: c_int = undefined;
-  res = e.enif_get_int(env, argv[#{idx}], &int#{idx});
-  arg#{idx} = @intCast(i64, int#{idx});
+  def getfor(:c_int, idx), do: """
+    arg#{idx} = beam.get_c_int(env, argv[#{idx}]) catch {
+      return beam.throw_function_clause_error(env);
+    };
   """
-  def getfor(:f64, idx), do: "res = e.enif_get_double(env, argv[#{idx}], &arg#{idx});"
+  def getfor(:i64, idx), do: """
+    arg#{idx} = beam.get_i64(env, argv[#{idx}]) catch {
+      return beam.throw_function_clause_error(env);
+    };
+  """
+  def getfor(:f64, idx), do: """
+    arg#{idx} = beam.get_f64(env, argv[#{idx}]) catch {
+      return beam.throw_function_clause_error(env);
+    };
+  """
   def getfor(:"[*c]u8", idx), do: """
-  var bin#{idx}: e.ErlNifBinary = undefined;
-  res = e.enif_inspect_binary(env, argv[#{idx}], &bin#{idx});
-  arg#{idx} = bin#{idx}.data;
+    arg#{idx} = beam.get_c_string(env, argv[#{idx}]) catch {
+      return beam.throw_function_clause_error(env);
+    };
   """
   def getfor(:"[]u8", idx), do: """
-  var bin#{idx}: e.ErlNifBinary = undefined;
-  res = e.enif_inspect_binary(env, argv[#{idx}], &bin#{idx});
-  arg#{idx} = bin#{idx}.data[0..bin#{idx}.size];
+    arg#{idx} = beam.get_char_slice(env, argv[#{idx}]) catch {
+      return beam.throw_function_clause_error(env);
+    };
   """
   def getfor(:"[]i64", idx), do: """
   var length#{idx}: c_uint = undefined;

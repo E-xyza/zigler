@@ -10,8 +10,14 @@ defmodule ZiglerTest.ZigAdlibTest do
     var arg0: c_int = undefined;
     var arg1: c_int = undefined;
     var res: c_int = 0;
-    res = e.enif_get_int(env, argv[0], &arg0);
-    res = e.enif_get_int(env, argv[1], &arg1);
+      arg0 = beam.get_c_int(env, argv[0]) catch {
+        return beam.throw_function_clause_error(env);
+      };
+
+      arg1 = beam.get_c_int(env, argv[1]) catch {
+        return beam.throw_function_clause_error(env);
+      };
+
 
     var result: c_int = foo(arg0, arg1);
 
