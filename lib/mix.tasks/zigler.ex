@@ -13,6 +13,8 @@ defmodule Mix.Tasks.Zigler.GetZig do
   """
 
   require Logger
+  
+  alias Zigler.Compiler
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
   @latest_version Application.get_env(:zigler, :latest_zig_version)
@@ -22,7 +24,7 @@ defmodule Mix.Tasks.Zigler.GetZig do
     Logger.configure(level: :info)
     Application.ensure_all_started(:mojito)
 
-    tarfile = basename(version) <> ".tar.xz"
+    tarfile = Compiler.basename(version) <> ".tar.xz"
     zig_download_path = Path.join(@zig_dir_path, tarfile)
 
     unless File.exists?(zig_download_path) do
