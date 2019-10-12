@@ -3,7 +3,8 @@ const std = @import("std");
 
 const Allocator = std.mem.Allocator;
 
-// add syntactic sugar!
+// basic allocator
+
 pub const allocator = &allocator_state;
 var allocator_state = Allocator{
   .reallocFn = beam_realloc,
@@ -108,6 +109,22 @@ pub fn get_f64(erl_env: env, src_term: term) !f64 {
 // binaries
 pub const binary = e.ErlNifBinary;
 
+// lists
+
+pub fn get_list_length(erl_env: env, list: term) !usize {
+  var res: c_uint = undefined;
+  if (0 != e.enif_get_list_length(erl_env, list, &res)) {
+    return @intCast(usize, res);
+  } else { return Error.FunctionClauseError; }
+}
+
+pub fn get_head_and_iter(erl_env: env, list: *term) !term {
+  var head: term = undefined;
+  if (0 != e.enif_get_list_cell(erl_env, list.*, &head, list)) {
+    return head;
+  } else { return Error.FunctionClauseError; }
+}
+
 // slices
 pub fn get_char_slice(erl_env: env, src_term: term) ![]u8 {
   var bin: binary = undefined;
@@ -133,6 +150,15 @@ pub fn make_atom(erl_env: env, atom_str: []const u8) term {
   return e.enif_make_atom_len(erl_env, @ptrCast([*c]const u8, &atom_str[0]), atom_str.len);
 }
 
+// pids
+pub const pid = e.ErlNifPid;
+pub fn get_pid(erl_env: env, src_term: term) !pid {
+  var res :pid = undefined; 
+  if (0 != e.enif_get_local_pid(erl_env, src_term, &res)) {
+    return res;
+  } else { return Error.FunctionClauseError; }
+}
+
 // implementation for :enomem
 
 // create a global enomem string, then throw it.
@@ -140,6 +166,10 @@ const enomem_slice = "enomem"[0..];
 pub fn enomem(erl_env: env) noreturn {
   var res = e.enif_raise_exception(erl_env, make_atom(erl_env, enomem_slice));
   unreachable;
+}
+// then throw it and return.
+pub fn throw_enomem(erl_env: env) term {
+  return e.enif_raise_exception(erl_env, make_atom(erl_env, enomem_slice));
 }
 
 // implementation for throw_function_clause_error;
