@@ -100,11 +100,21 @@ defmodule Zigler.Zig do
   def params(_), do: raise "invalid zig syntax"
 
   @nif_adapter File.read!("assets/nif_adapter.zig.eex")
+  @nif_adapter_guarded File.read!("assets/nif_adapter.guarded.zig.eex")
+
+  @guarded_types [:i8, :i16, :i32, :i64, :f16, :f32, :f64, :"[]u8", :"[*c]u8", :"[]i64", :"[]f64",
+  :"e.ErlNifPid", :"beam.pid", :c_int]
+  defp needs_guard?(params) do
+    Enum.any?(params, &(&1 in @guarded_types))
+  end
 
   @spec nif_adapter({atom, {[atom], atom}}) :: iodata
   def nif_adapter({func, {params, type}}) do
     has_env = match?([:"?*e.ErlNifEnv" | _], params) || match?([:"beam.env" | _], params)
-    EEx.eval_string(@nif_adapter, func: func, params: adjust_params(params), type: type, has_env: has_env)
+
+    adapter = if needs_guard?(params), do: @nif_adapter_guarded, else: @nif_adapter
+
+    EEx.eval_string(adapter, func: func, params: adjust_params(params), type: type, has_env: has_env)
   end
 
   def adjust_params(params) do
@@ -131,86 +141,62 @@ defmodule Zigler.Zig do
     EEx.eval_string(@nif_exports, funcs: funcs)
   end
 
-  def getfor(:c_int, idx), do: "res = e.enif_get_int(env, argv[#{idx}], &arg#{idx});"
-  def getfor(:i64, idx), do: """
-  var int#{idx}: c_int = undefined;
-  res = e.enif_get_int(env, argv[#{idx}], &int#{idx});
-  arg#{idx} = @intCast(i64, int#{idx});
+  def getfor(:c_int, idx), do: """
+    arg#{idx} = try beam.get_c_int(env, argv[#{idx}]);
   """
-  def getfor(:f64, idx), do: "res = e.enif_get_double(env, argv[#{idx}], &arg#{idx});"
+  def getfor(:i64, idx), do: """
+    arg#{idx} = try beam.get_i64(env, argv[#{idx}]);
+  """
+  def getfor(:f64, idx), do: """
+    arg#{idx} = try beam.get_f64(env, argv[#{idx}]);
+  """
   def getfor(:"[*c]u8", idx), do: """
-  var bin#{idx}: e.ErlNifBinary = undefined;
-  res = e.enif_inspect_binary(env, argv[#{idx}], &bin#{idx});
-  arg#{idx} = bin#{idx}.data;
+    arg#{idx} = try beam.get_c_string(env, argv[#{idx}]);
   """
   def getfor(:"[]u8", idx), do: """
-  var bin#{idx}: e.ErlNifBinary = undefined;
-  res = e.enif_inspect_binary(env, argv[#{idx}], &bin#{idx});
-  arg#{idx} = bin#{idx}.data[0..bin#{idx}.size];
+    arg#{idx} = try beam.get_char_slice(env, argv[#{idx}]);
   """
   def getfor(:"[]i64", idx), do: """
-  var length#{idx}: c_uint = undefined;
-  var head#{idx}: e.ErlNifTerm = undefined;
-  var elem#{idx}: c_int = undefined;
-  var list#{idx} = argv[#{idx}];
-  var idx#{idx}: usize = 0;
+    var head#{idx}: e.ErlNifTerm = undefined;
+    var list#{idx} = argv[#{idx}];
+    var idx#{idx}: usize = 0;
 
-  res = e.enif_get_list_length(env, argv[#{idx}], &length#{idx});
-
-  // unmarshall the list using a while loop.
-  if (res != 0) {
+    const size#{idx} = try beam.get_list_length(env, argv[#{idx}]);
 
     // but first we have to allocate memory.
-    arg#{idx} = beam.allocator.alloc(i64, @intCast(usize, length#{idx}))
-      catch beam.enomem(env);
+    arg#{idx} = try beam.allocator.alloc(i64, size#{idx});
+    // free it after we're done with the entire function.
+    defer beam.allocator.free(arg#{idx});
 
-    while (idx#{idx} < length#{idx}) {
-      res = e.enif_get_list_cell(env, list#{idx}, &head#{idx}, &list#{idx});
-      res = e.enif_get_int(env, head#{idx}, &elem#{idx});
-      arg#{idx}[idx#{idx}] = @intCast(i64, elem#{idx});
+    // unmarshall the list using a for loop.
+    while (idx#{idx} < size#{idx}){
+      head#{idx} = try beam.get_head_and_iter(env, &list#{idx});
+      arg#{idx}[idx#{idx}] = try beam.get_i64(env, head#{idx});
       idx#{idx} += 1;
     }
-
-  } else {
-    return e.enif_make_atom(env, c"badarg");
-  }
-
-  // free it after we're done with the entire function.
-  defer beam.allocator.free(arg#{idx});
   """
   def getfor(:"[]f64", idx), do: """
-  var length#{idx}: c_uint = undefined;
-  var head#{idx}: e.ErlNifTerm = undefined;
-  var elem#{idx}: f64 = undefined;
-  var list#{idx} = argv[#{idx}];
-  var idx#{idx}: usize = 0;
+    var head#{idx}: e.ErlNifTerm = undefined;
+    var list#{idx} = argv[#{idx}];
+    var idx#{idx}: usize = 0;
 
-  res = e.enif_get_list_length(env, argv[#{idx}], &length#{idx});
-
-  // unmarshall the list using a while loop.
-  if (res != 0) {
+    const size#{idx} = try beam.get_list_length(env, argv[#{idx}]);
 
     // but first we have to allocate memory.
-    arg#{idx} = beam.allocator.alloc(f64, @intCast(usize, length#{idx}))
-      catch beam.enomem(env);
+    arg#{idx} = try beam.allocator.alloc(f64, size#{idx});
+    // free it after we're done with the entire function.
+    defer beam.allocator.free(arg#{idx});
 
-    while (idx#{idx} < length#{idx}) {
-      res = e.enif_get_list_cell(env, list#{idx}, &head#{idx}, &list#{idx});
-      res = e.enif_get_double(env, head#{idx}, &elem#{idx});
-      arg#{idx}[idx#{idx}] = elem#{idx};
+    // unmarshall the list using a for loop.
+    while (idx#{idx} < size#{idx}){
+      head#{idx} = try beam.get_head_and_iter(env, &list#{idx});
+      arg#{idx}[idx#{idx}] = try beam.get_f64(env, head#{idx});
       idx#{idx} += 1;
     }
-
-  } else {
-    return e.enif_make_badarg(env);
-  }
-
-  // free it after we're done with the entire function.
-  defer beam.allocator.free(arg#{idx});
   """
   def getfor(:"e.ErlNifTerm", idx), do: "arg#{idx} = argv[#{idx}];"
   def getfor(:"e.ErlNifPid", idx), do: """
-  res = e.enif_get_local_pid(env, argv[#{idx}], &arg#{idx});
+    arg#{idx} = try beam.get_pid(env, argv[#{idx}]);
   """
 
   def makefor(:"beam.atom"), do: "return result;"
