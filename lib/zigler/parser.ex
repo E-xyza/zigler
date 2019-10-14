@@ -1,10 +1,24 @@
 defmodule Zigler.Parser do
+
+  # TODO: test this:
   def find_comments(line, so_far) do
     case String.trim(line) do
       "///" <> rest ->
         [{:comment, String.trim(rest)} | so_far]
       any -> [any | so_far]
     end
+  end
+
+  @spec imports([binary] | binary) :: [binary | {:absolute, binary}]
+  def imports(code) when is_binary(code), do: imports([code])
+  def imports(code) do
+    code
+    |> Enum.flat_map(&String.split(&1,"\n"))
+    |> Enum.map(&Regex.run(~r/@import\(\"(.*)\"\)/, &1))
+    |> Enum.flat_map(fn
+      [_, v] -> [v]
+      _ -> []
+    end)
   end
 
   def stitch_strings(lst, so_far \\ [])
