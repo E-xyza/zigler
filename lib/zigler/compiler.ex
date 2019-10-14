@@ -98,16 +98,18 @@ defmodule Zigler.Compiler do
 
   defp copy_files(files, src_dir, dst_dir) do
     Enum.each(files, fn file_path ->
-      src_file_path = Path.join(src_dir, file_path)
+      src_file_path = Path.join(src_dir, file_path) |> Path.expand()
       dst_file_path = Path.join(dst_dir, file_path)
+      # we might be trying to import something which doesn't exist as
+      # a relative file (e.g. `std`); in that case just don't complain,
+      # but also don't copy.
       if File.exists?(src_file_path) do
         # make sure our target directory exists.
         dst_file_path
         |> Path.dirname
         |> File.mkdir_p!
-        # we might be trying to import something which doesn't exist as
-        # a relative file (e.g. `std`); in that case just don't complain,
-        # but also don't copy.
+
+        # copy the file.
         File.cp!(src_file_path, dst_file_path)
         # now that we've copied this file, we need to recursively enter it
         # and make sure that its dependencies are OK.

@@ -42,4 +42,28 @@ defmodule ZiglerTest.ExternalFilesTest do
   test "a recursive external file can be called" do
     assert 3 == RecursiveCall.add_one(2)
   end
+
+  # although elixir will support this, this feature itself appears to be
+  # currently disallowed by zig, so we can't safely test it.
+
+  #defmodule RelativeCall do
+#
+  #  # tests that an external file relative to the current file can have
+  #  # a recursive @import statement and still wind up in the correct place.
+#
+  #  use Zigler, app: :zigler
+#
+  #  ~Z"""
+  #  const rel = @import("support/relative.zig");
+#
+  #  @nif("add_one")
+  #  fn add_one(integer: i64) i64 {
+  #    return rel.add.one(integer);
+  #  }
+  #  """
+  #end
+#
+  #test "a relative external file can be called" do
+  #  assert 3 == RelativeCall.add_one(2)
+  #end
 end
