@@ -4,7 +4,7 @@ defmodule ZigTest.ZigTestModule do
   ~Z"""
   const assert = @import("std").debug.assert;
 
-  @nif("one")
+  @nif("one");
   fn one() i64 {
     return 1;
   }

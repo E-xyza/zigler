@@ -8,7 +8,7 @@ defmodule ZigTest.DoubleZigTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("compare")
+    @nif("compare");
     fn compare(env: ?*e.ErlNifEnv, val1: c_int, val2: c_int) e.ErlNifTerm {
       var result: [*]const u8 = c"eq";
 
@@ -21,7 +21,7 @@ defmodule ZigTest.DoubleZigTest do
       return e.enif_make_atom(env, result);
     }
 
-    @nif("reverse")
+    @nif("reverse");
     fn reverse(env: ?*e.ErlNifEnv, val1: c_int, val2: c_int) e.ErlNifTerm {
       var result: [*]const u8 = c"eq";
 
@@ -48,7 +48,7 @@ defmodule ZigTest.DoubleZigTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("compare")
+    @nif("compare");
     fn compare(env: ?*e.ErlNifEnv, val1: c_int, val2: c_int) e.ErlNifTerm {
       var result: [*]const u8 = c"eq";
 
@@ -63,7 +63,7 @@ defmodule ZigTest.DoubleZigTest do
     """
 
     ~Z"""
-    @nif("reverse")
+    @nif("reverse");
     fn reverse(env: ?*e.ErlNifEnv, val1: c_int, val2: c_int) e.ErlNifTerm {
       var result: [*]const u8 = c"eq";
 

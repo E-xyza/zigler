@@ -11,7 +11,7 @@ defmodule ZiglerTest.ExternalFilesTest do
     ~Z"""
     const add = @import("support/add.zig");
 
-    @nif("add_one")
+    @nif("add_one");
     fn add_one(integer: i64) i64 {
       return add.one(integer);
     }
@@ -32,7 +32,7 @@ defmodule ZiglerTest.ExternalFilesTest do
     ~Z"""
     const rec = @import("support/recursive.zig");
 
-    @nif("add_one")
+    @nif("add_one");
     fn add_one(integer: i64) i64 {
       return rec.add.one(integer);
     }

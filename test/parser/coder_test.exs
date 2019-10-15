@@ -4,7 +4,6 @@ defmodule ZigTest.CodeTest do
   alias Zigler.Code
   alias Zigler.Parser
 
-  @tag :one
   test "tokenization" do
     assert Parser.tokenize(1, """
         @nif("hello");

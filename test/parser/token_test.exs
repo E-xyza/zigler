@@ -33,7 +33,7 @@ defmodule Parser.TokenTest do
       assert Parser.tokenize(1, """
         const assert = @import("std").debug.assert;
 
-        @nif("one")
+        @nif("one");
         fn one() i64 {
           return 1;
         }
@@ -42,8 +42,8 @@ defmodule Parser.TokenTest do
           assert(one() + 1 == 2);
         }
       """) == ["const", "assert", "=", :import, [string: "std"], :., "debug", :.,
-      "assert", {:line, 1}, :nif, [string: "one"], :fn, "one", [], :i64, {:block, 4,
-      "\n    return 1;\n  "}, :test, {:string, "the truth"}, {:block, 8,
+      "assert", {:line, 1}, :nif, [string: "one"], {:line, 3}, :fn, "one", [], :i64,
+      {:block, 4, "\n    return 1;\n  "}, :test, {:string, "the truth"}, {:block, 8,
       "\n    assert(one() + 1 == 2);\n  "}]
     end
 
@@ -76,7 +76,7 @@ defmodule Parser.TokenTest do
     end
 
     test "and respects docstrings" do
-      assert [{:docstring, " this is a docstring\n so get it right.\n"},
+      assert [{:docstring, "this is a docstring\nso get it right.\n"},
         :fn, "test_fn", [], :i64, {:block, 3, _}] =
         Parser.tokenize(1, """
       /// this is a docstring

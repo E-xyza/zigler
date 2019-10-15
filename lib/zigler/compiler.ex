@@ -31,6 +31,27 @@ defmodule Zigler.Compiler do
   def release_mode_text(:small), do: ["--release-small"]
   def release_mode_text(:debug), do: []
 
+  alias Zigler.Parser
+  alias Zigler.Code
+
+  def find_imports_recursively(code, code_dir) do
+    Parser.tokenize(1, code)
+    |> Code.imports
+    |> Enum.flat_map(fn file_path ->
+      full_file_path = Path.join(code_dir, file_path)
+      new_code_dir = Path.dirname(file_path)
+
+      if File.exists?(full_file_path) do
+        [code | (full_file_path
+        |> File.read!
+        |> find_imports_recursively(Path.join(code_dir, new_code_dir))
+        |> Enum.map(&Path.join(new_code_dir, &1)))]
+      else
+        []
+      end
+    end)
+  end
+
   defmacro __before_compile__(context) do
     app = Module.get_attribute(context.module, :zigler_app)
     version = Module.get_attribute(context.module, :zig_version)
@@ -46,7 +67,8 @@ defmodule Zigler.Compiler do
     zig_specs = Module.get_attribute(context.module, :zig_specs)
     |> Enum.flat_map(&(&1))
 
-    full_code = [Zig.nif_header(), zig_code,
+    full_code = [Zig.nif_header(),
+      zig_code,
       Enum.map(zig_specs, &Zig.nif_adapter/1),
       Zig.nif_exports(zig_specs),
       Zig.nif_footer(context.module, zig_specs)]
@@ -68,9 +90,11 @@ defmodule Zigler.Compiler do
     # now put the erl_nif.h file into the temporary directory.
     erl_nif_zig_h_path = Path.join(@zig_dir_path, "include/erl_nif_zig.h")
     File.cp!(erl_nif_zig_h_path, Path.join(tmp_dir, "erl_nif_zig.h"))
-    # now put the zig import dependencies into the file.
+
+    # now put the zig import dependencies into the directory, too.
     zig_code
-    |> Parser.imports
+    |> :erlang.iolist_to_binary
+    |> find_imports_recursively(code_dir)
     |> copy_files(code_dir, tmp_dir)
 
     # now use zig to build the library in the temporary directory.

@@ -3,39 +3,6 @@ defmodule Zigler.Parser do
   alias Zigler.Parser.Macros
   require Macros
 
-  # TODO: test this.
-  def find_comments(line, so_far) do
-    case String.trim(line) do
-      "///" <> rest ->
-        [{:comment, String.trim(rest)} | so_far]
-      any -> [any | so_far]
-    end
-  end
-
-  @spec imports([binary] | binary) :: [binary | {:absolute, binary}]
-  def imports(code) when is_binary(code), do: imports([code])
-  def imports(code) do
-    code
-    |> Enum.flat_map(&String.split(&1,"\n"))
-    |> Enum.map(&Regex.run(~r/@import\(\"(.*)\"\)/, &1))
-    |> Enum.flat_map(fn
-      [_, v] -> [v]
-      _ -> []
-    end)
-  end
-
-  def stitch_strings(lst, so_far \\ [])
-  def stitch_strings([line1, line2 | rest], so_far) when is_binary(line1) and is_binary(line2) do
-    stitch_strings([line2 <> "\n" <> line1 | rest], so_far)
-  end
-  def stitch_strings([{:comment, c1}, {:comment, c2} | rest], so_far) do
-    stitch_strings([{:comment, c2 <> "\n" <> c1} | rest], so_far)
-  end
-  def stitch_strings([any | rest], so_far) do
-    stitch_strings(rest, [any | so_far])
-  end
-  def stitch_strings([], so_far), do: so_far
-
   @alphanum Macros.alphanum
 
   @spec tokenize(non_neg_integer, String.t) :: [any]
@@ -60,6 +27,8 @@ defmodule Zigler.Parser do
   def tokenize(line, "",  " " <> rest, lst),    do: tokenize(line, "", rest, lst)
   def tokenize(line, "",  "\t" <> rest, lst),   do: tokenize(line, "", rest, lst)
   def tokenize(line, "",  "\n" <> rest, lst),   do: tokenize(line + 1, "", rest, lst)
+  def tokenize(line, "",  ".." <> rest, lst),   do: tokenize(line, "", rest, [:.. | lst])
+  def tokenize(line, str, ".." <> rest, lst),   do: tokenize(line, "", rest, [:.., str | lst])
   def tokenize(line, "",  "." <> rest, lst),    do: tokenize(line, "", rest, [:. | lst])
   def tokenize(line, str, " " <> rest, lst),    do: tokenize(line, "", rest, [str | lst])
   def tokenize(line, str, "\t" <> rest, lst),   do: tokenize(line, "", rest, [str | lst])
@@ -67,7 +36,10 @@ defmodule Zigler.Parser do
   def tokenize(line, str, "." <> rest, lst),    do: tokenize(line, "", rest, [:., str | lst])
   def tokenize(line, "", ";" <> rest, lst),     do: tokenize(line, "", rest, [{:line, line} | lst])
   def tokenize(line, str, ";" <> rest, lst),    do: tokenize(line, "", rest, [{:line, line}, str | lst])
-  Macros.tokenizers_for(~w(i8 i16 i32 i64 f16 f32 f64 fn test @import @nif))
+  Macros.tokenizers_for(~w(i8 i16 i32 i64 f16 f32 f64 c_int bool
+                           fn test @import @nif
+                           ?*e.ErlNifEnv e.ErlNifTerm e.ErlNifPid
+                           beam.env beam.atom beam.pid))
   def tokenize(line, "",  "[]" <> rest, lst),   do: sliceize(line, rest, lst)
   def tokenize(line, "",  "[*c]" <> rest, lst), do: cstrize(line, rest, lst)
   def tokenize(line, "",  "(" <> rest, lst) do
@@ -119,10 +91,10 @@ defmodule Zigler.Parser do
   def block_comment(_, _, _, _), do: raise "error parsing, missing block comment close"
 
   def doc_string(line, docline, "\n" <> rest, [{:docstring, old} | lst]) do
-    tokenize(line + 1, "", rest, [{:docstring, old <> docline <> "\n"} | lst])
+    tokenize(line + 1, "", rest, [{:docstring, old <> String.trim(docline) <> "\n"} | lst])
   end
   def doc_string(line, docline, "\n" <> rest, lst) do
-    tokenize(line + 1, "", rest, [{:docstring, docline <> "\n"} | lst])
+    tokenize(line + 1, "", rest, [{:docstring, String.trim(docline) <> "\n"} | lst])
   end
   def doc_string(line, docline, <<v>> <> rest, lst) do
     doc_string(line, docline <> <<v>>, rest, lst)

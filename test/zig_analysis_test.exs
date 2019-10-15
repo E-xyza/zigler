@@ -1,10 +1,11 @@
 defmodule ZiglerTest.ZigAnalysisTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.Zig
+  alias Zigler.Parser
+  alias Zigler.Code
 
   @simple_function """
-  @nif("compare")
+  @nif("compare");
   fn compare(val1: c_int, val2: c_int) c_int {
     var result: c_int = 0;
 
@@ -19,7 +20,7 @@ defmodule ZiglerTest.ZigAnalysisTest do
   """
 
   @erlnifenv_function """
-  @nif("compare")
+  @nif("compare");
   fn compare(env: ?*e.ErlNifEnv, val1: c_int, val2: c_int) e.ErlNifTerm {
     var result: [*]const u8 = c"eq";
 
@@ -36,7 +37,7 @@ defmodule ZiglerTest.ZigAnalysisTest do
   @string_function """
   const fmt = @import("std").fmt;
 
-  @nif("concat")
+  @nif("concat");
   fn concat(left: [*c]u8, right: [*c]u8) [*c]u8 {
     var all_together: [100]u8 = undefined;
     const all_together_slice = all_together[0..];
@@ -45,33 +46,14 @@ defmodule ZiglerTest.ZigAnalysisTest do
   }
   """
 
-  describe "when passed to Zig.tokens/1" do
-    test "a simple function is correctly parsed" do
-      assert Zig.tokens(@simple_function) ==
-        ["@", "nif", ["\"", "compare", "\""], "fn", "compare", ["val1", ":", "c_int", ",", "val2", ":", "c_int"], "c_int", :block]
-    end
-
-    test "a function with erlnifenv is correctly parsed" do
-      assert Zig.tokens(@erlnifenv_function) ==
-        ["@", "nif", ["\"", "compare", "\""], "fn", "compare", ["env", ":", "?", "*", "e.ErlNifEnv", ",", "val1", ":", "c_int", ",",  "val2", ":", "c_int"], "e.ErlNifTerm", :block]
-    end
-
-    test "a function with strings and a preamble is correctly parsed" do
-      assert Zig.tokens(@string_function) ==
-        ["const", "fmt", "=", "@", "import", ["\"", "std", "\""], ".fmt", ";", "@", "nif", ["\"", "concat", "\""], "fn", "concat", ["left", ":", "[", "*", "c", "]", "u8", ",", "right", ":", "[", "*", "c", "]", "u8"], "[", "*", "c", "]", "u8", :block]
-    end
-  end
-
-  test "terms lists get turned into correct types" do
-    assert Zig.params(["val1", ":", "c_int", ",", "val2", ":", "c_int"]) == [:c_int, :c_int]
-    assert Zig.params(["env", ":", "?", "*", "e.ErlNifEnv", ",", "val1", ":", "c_int", ",",  "val2", ":", "c_int"])
-      == [:"?*e.ErlNifEnv", :c_int, :c_int]
+  def code_spec(txt) do
+    1 |> Parser.tokenize(txt) |> Code.to_spec
   end
 
   test "can identify the export, header and result for a simple function" do
-    assert Zig.code_spec(@simple_function) == [compare: {[:c_int, :c_int], :c_int}]
-    assert Zig.code_spec(@erlnifenv_function) == [compare: {[:"?*e.ErlNifEnv", :c_int, :c_int], :"e.ErlNifTerm"}]
-    assert Zig.code_spec(@string_function) == [concat: {[:"[*c]u8", :"[*c]u8"], :"[*c]u8"}]
+    assert code_spec(@simple_function) == [compare: {[:c_int, :c_int], :c_int}]
+    assert code_spec(@erlnifenv_function) == [compare: {[:"?*e.ErlNifEnv", :c_int, :c_int], :"e.ErlNifTerm"}]
+    assert code_spec(@string_function) == [concat: {[:cstring, :cstring], :cstring}]
   end
 
 end

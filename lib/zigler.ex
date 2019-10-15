@@ -47,34 +47,32 @@ defmodule Zigler do
     end
   end
 
+  alias Zigler.Code
+  alias Zigler.Parser
   alias Zigler.Zig
 
-  defmacro sigil_Z({:<<>>, _meta, [zig_source]}, []) do
+  defmacro sigil_Z({:<<>>, meta, [zig_source]}, []) do
 
     # modify the zig code to include tests, if we're in test
     # environment.
     #  TODO: make this not call Mix.env in the module itself.
-    zig_code = if Mix.env() == :test do
-      make_tests_funcs(zig_source)
-    else
-      zig_source
-    end
+    #zig_code = if Mix.env() == :test do
+    #  make_tests_funcs(zig_source)
+    #else
+    #  zig_source
+    #end
 
-    # first do an analysis on the zig code.
-    {doc_spec, code_spec} = zig_code
-    |> Zig.code_spec
-    |> Enum.split_with(fn
-      {:doc, _} -> true
-      _ -> false
-    end)
+    # parse the zig code here.
+    tokens = Parser.tokenize(meta[:line], zig_source)
 
-    doc_kw = Enum.map(doc_spec, fn {_, kw} -> kw end)
+    code_spec = Code.to_spec(tokens)
+    docs_spec = Code.to_docs(tokens)
 
     empty_functions = Enum.flat_map(code_spec, fn {func, {params, _type}} ->
-      if doc_kw[func] do
+      if docs_spec[func] do
         [{:@,
            [context: Elixir, import: Kernel],
-           [{:doc, [context: Elixir], [doc_kw[func]]}]}]
+           [{:doc, [context: Elixir], [docs_spec[func]]}]}]
       else
         []
       end
@@ -83,7 +81,7 @@ defmodule Zigler do
     end)
 
     quote do
-      @zig_code unquote(Zig.strip_nif(zig_code))
+      @zig_code unquote(Code.to_iolist tokens)
       @zig_specs unquote(code_spec)
       unquote_splicing(empty_functions)
     end
@@ -113,7 +111,7 @@ defmodule Zigler do
       cond do
         line =~ ~r/test(\s*)\".*\"(\s*){/ ->
           """
-          @nif("__test0")
+          @nif("__test0");
           fn __test0() void {
           """
         true -> line
