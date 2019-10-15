@@ -1,5 +1,5 @@
 defmodule ZiglerTest.ZigAnalysisTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias Zigler.Zig
 

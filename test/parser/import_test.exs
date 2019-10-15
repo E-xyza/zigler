@@ -1,5 +1,5 @@
 defmodule ZiglerTest.Parser.ImportTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   alias Zigler.Parser
 

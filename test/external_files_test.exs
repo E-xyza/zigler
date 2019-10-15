@@ -1,5 +1,5 @@
 defmodule ZiglerTest.ExternalFilesTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   defmodule RelativeCall do
 

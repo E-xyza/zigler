@@ -1,5 +1,5 @@
 defmodule ZiglerTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   defmodule SigilZ do
 

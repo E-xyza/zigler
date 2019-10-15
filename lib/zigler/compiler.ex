@@ -51,7 +51,7 @@ defmodule Zigler.Compiler do
       Zig.nif_exports(zig_specs),
       Zig.nif_footer(context.module, zig_specs)]
 
-    mod_name = context.module |> Atom.to_string |> String.downcase
+    mod_name = Macro.underscore(context.module)
     tmp_dir = Path.join("/tmp/.elixir-nifs", mod_name)
     nif_dir = Application.app_dir(app, "priv/nifs")
 

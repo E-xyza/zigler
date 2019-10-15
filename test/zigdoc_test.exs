@@ -1,6 +1,6 @@
 defmodule ZiglerTest.ZigdocTest do
 
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   test "gets the docs" do
     [{AllTheDocs, beam}] = Code.compile_file("test/support/all_the_docs.exs")

@@ -1,5 +1,5 @@
 defmodule ZigTest.DoubleZigTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   defmodule DoubleZig1 do
 

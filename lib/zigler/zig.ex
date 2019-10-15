@@ -1,5 +1,9 @@
 defmodule Zigler.Zig do
 
+  @moduledoc """
+  contains all parts of the Zigler library which is involved in generating zig code.
+  """
+
   alias Zigler.Parser
 
   @type primitives :: :i64 | :u64 | :i8 | :u8 | :f64 | :erl_nif_env
@@ -205,6 +209,7 @@ defmodule Zigler.Zig do
   def makefor(:f64), do: "return e.enif_make_double(env, result);"
   def makefor(:"e.ErlNifTerm"), do: "return result;"
   def makefor(:bool), do: ~S/return if (result) e.enif_make_atom(env, c"true") else e.enif_make_atom(env, c"false");/
+  def makefor(:void), do: ~S/return e.enif_make_atom(env, c"nil");/
   def makefor(:"[*c]u8"), do: """
   var result_term: e.ErlNifTerm = undefined;
 
