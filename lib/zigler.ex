@@ -42,46 +42,37 @@ defmodule Zigler do
 
       Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
       Module.register_attribute(__MODULE__, :zig_code, accumulate: true)
+      Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
 
       @before_compile Zigler.Compiler
     end
   end
 
-  alias Zigler.Code
-  alias Zigler.Parser
-  alias Zigler.Zig
+  defmacro sigil_Z({:<<>>, meta, [zig_code]}, []) do
+    file = __CALLER__.file
+    line = meta[:line]
 
-  defmacro sigil_Z({:<<>>, meta, [zig_source]}, []) do
+    # perform code analysis
+    code = Zigler.Code.from_string(zig_code, file, line)
 
-    # modify the zig code to include tests, if we're in test
-    # environment.
-    #  TODO: make this not call Mix.env in the module itself.
-    #zig_code = if Mix.env() == :test do
-    #  make_tests_funcs(zig_source)
-    #else
-    #  zig_source
-    #end
+    code_spec = Enum.map(code.nifs, &{&1.name, {&1.params, &1.retval}})
 
-    # parse the zig code here.
-    tokens = Parser.tokenize(meta[:line], zig_source)
+    Enum.map(code.nifs, &(&1.name))
 
-    code_spec = Code.to_spec(tokens)
-    docs_spec = Code.to_docs(tokens)
-
-    empty_functions = Enum.flat_map(code_spec, fn {func, {params, _type}} ->
-      if docs_spec[func] do
+    empty_functions = Enum.flat_map(code.nifs, fn nif ->
+      if nif.doc do
         [{:@,
            [context: Elixir, import: Kernel],
-           [{:doc, [context: Elixir], [docs_spec[func]]}]}]
+           [{:doc, [context: Elixir], [IO.iodata_to_binary(nif.doc)]}]}]
       else
         []
       end
       ++
-      [empty_function(func, params |> Zig.adjust_params |> Enum.count)]
+      [empty_function(nif.name, nif.arity)]
     end)
 
     quote do
-      @zig_code unquote(Code.to_iolist tokens)
+      @zig_code unquote(code.code)
       @zig_specs unquote(code_spec)
       unquote_splicing(empty_functions)
     end

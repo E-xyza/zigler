@@ -1,4 +1,4 @@
-Code.compile_file("test/support/zig_test_module.exs")
+Code.compile_file("test/assets/zig_test_module.exs")
 
 defmodule ZigTest.ZigTest do
   use ExUnit.Case, async: true

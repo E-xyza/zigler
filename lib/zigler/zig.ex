@@ -9,36 +9,28 @@ defmodule Zigler.Zig do
   @nif_adapter File.read!("assets/nif_adapter.zig.eex")
   @nif_adapter_guarded File.read!("assets/nif_adapter.guarded.zig.eex")
 
-  @guarded_types [:i8, :i16, :i32, :i64, :f16, :f32, :f64, :string, :cstring,
-  :"e.ErlNifPid", :"beam.pid", :c_int]
-
+  @guarded_types ["i8", "i16", "i32", "i64", "f16", "f32", "f64", "[]u8", "[*c]u8", "[]i64", "[]f64",
+  "e.ErlNifPid", "beam.pid", "c_int"]
   defp needs_guard?(params) do
     Enum.any?(params, &(&1 in @guarded_types || match?({:slice, _}, &1)))
   end
 
   @spec nif_adapter({atom, {[atom], atom}}) :: iodata
   def nif_adapter({func, {params, type}}) do
-    has_env = match?([:"?*e.ErlNifEnv" | _], params) || match?([:"beam.env" | _], params)
+    has_env = match?(["?*e.ErlNifEnv" | _], params) || match?(["beam.env" | _], params)
 
     adapter = if needs_guard?(params), do: @nif_adapter_guarded, else: @nif_adapter
 
     EEx.eval_string(adapter,
       func: func,
       params: adjust_params(params),
-      type: type_to_string(type),
+      type: type,
       has_env: has_env)
   end
 
   def adjust_params(params) do
-    params
-    |> Enum.reject(&(&1 in [:"?*e.ErlNifEnv" , :"beam.env"]))
-    |> Enum.map(&type_to_string/1)
+    Enum.reject(params, &(&1 in ["?*e.ErlNifEnv" , "beam.env"]))
   end
-
-  defp type_to_string(:string), do: "[]u8"
-  defp type_to_string(:cstring), do: "[*c]u8"
-  defp type_to_string({:slice, t}), do: "[]#{t}"
-  defp type_to_string(atom), do: Atom.to_string(atom)
 
   @nif_header File.read!("assets/nif_header.zig")
   @spec nif_header() :: iodata
@@ -174,9 +166,5 @@ defmodule Zigler.Zig do
   // return the term
   return result_term;
   """
-
-  def strip_nif(code) do
-    String.replace(code, ~r/\@nif\(.*\)/U, "")
-  end
 
 end

@@ -1,11 +1,11 @@
 defmodule ZiglerTest.ReadmeTest do
   # validates all of the claims in the readme.
-  use ExUnit.Case, async: true
+  use ExUnit.Case
 
   defmodule ExampleZig do
     use Zigler, app: :zigler
     ~Z"""
-    @nif("example_fun");
+    /// nif: example_fun/2
     fn example_fun(value1: f64, value2: f64) bool {
       return value1 > value2;
     }
@@ -20,12 +20,12 @@ defmodule ZiglerTest.ReadmeTest do
   defmodule ZigCollections do
     use Zigler, app: :zigler
     ~Z"""
-    @nif("string_count");
+    /// nif: string_count/1
     fn string_count(string: []u8) i64 {
       return @intCast(i64, string.len);
     }
 
-    @nif("list_sum");
+    /// nif: list_sum/1
     fn list_sum(array: []f64) f64 {
       var sum: f64 = 0.0;
       for(array) | item | {
@@ -44,7 +44,7 @@ defmodule ZiglerTest.ReadmeTest do
   defmodule Allocations do
     use Zigler, app: :zigler
     ~Z"""
-    @nif("double_atom");
+    /// nif: double_atom/1
     fn double_atom(env: beam.env, string: []u8) beam.atom {
 
       var double_string = beam.allocator.alloc(u8, string.len * 2)
