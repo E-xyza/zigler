@@ -41,9 +41,11 @@ defmodule Zigler.Parser do
   defp match_function_if_nif(_rest, content = [name | _], context = %{nif: %{name: name}}, _line, _offset) do
     {content, context}
   end
-  defp match_function_if_nif(_, [fn_name | _], %{nif: %{name: nif_name}}, _, _) do
-    # TODO: make this a proper compiler error.
-    raise "nif docstring #{nif_name} not next to function (next to #{fn_name})"
+  defp match_function_if_nif(_, [fn_name | _], context = %{nif: %{name: nif_name}}, {line, _}, _) do
+    raise CompileError,
+      file: context.file,
+      line: line,
+      description: ~s/nif docstring expecting "#{nif_name}" not adjacent to function (next to "#{fn_name}")/
   end
   defp match_function_if_nif(_rest, content, context, _line, _offset), do: {content, context}
 
@@ -66,13 +68,17 @@ defmodule Zigler.Parser do
     doc = Map.get(context, :docstring, nil)
     retval = context.retval
     arity = nif.arity
+    found_arity = Enum.count(Zig.adjust_params(params))
     # perform the arity checkt.
-    unless arity == Enum.count(Zig.adjust_params(params)), do: raise "mismatch of arity declaration."
+    unless arity == found_arity do
+      raise CompileError,
+        file: context.file,
+        line: code_line,
+        description: "mismatch of arity declaration, expected #{arity}, got #{found_arity}"
+    end
     # retrieve the file name and the context from the process dictionary,
     # then generate the line number comment.
-    file = Process.get(:file)
-    line = Process.get(:line)
-    comment = " // #{file} line: #{line + code_line - 1}"
+    comment = " // #{context.file} line: #{code_line}"
 
     # build the nif struct that we're going to send back with the code.
     res = %Nif{name: String.to_atom(nif.name),
@@ -215,9 +221,7 @@ defmodule Zigler.Parser do
   def parse(code, file, line) do
     # store the file and line in the process dictionary as a side channel.
     # we'll use these later in adding comments to the function headers.
-    Process.put(:file, file)
-    Process.put(:line, line)
-    {:ok, new_code, _, _, _, _} = zig_by_line(code)
+    {:ok, new_code, _, _, _, _} = zig_by_line(code, line: line, context: %{file: file})
 
     Enum.reduce(new_code, %{code: "", nifs: [], imports: []}, fn
       res = %Zigler.Nif{}, acc = %{nifs: nifs} ->

@@ -90,7 +90,6 @@ defmodule ZiglerTest.ParserTest do
       assert {:ok, _, _, _, _, _} = Parser.parse_function_header(code)
     end
 
-    @tag :one
     test "can identify beam.env headers" do
       code = """
         fn double_atom(env: beam.env, string: []u8) beam.atom {
