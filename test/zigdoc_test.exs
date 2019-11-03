@@ -1,6 +1,6 @@
 defmodule ZiglerTest.ZigdocTest do
 
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   test "gets the docs" do
     [{AllTheDocs, beam}] = Code.compile_file("test/support/all_the_docs.exs")
@@ -20,13 +20,13 @@ defmodule ZiglerTest.ZigdocTest do
     |> Enum.find(&doc_for(&1, :zeroarity))
     |> Tuple.to_list |> Enum.at(3)
 
-    assert %{"en" => "a zero-arity function which returns 47."} = zeroarity_doc
+    assert %{"en" => "a zero-arity function which returns 47.\n"} = zeroarity_doc
 
     twoliner = lst
     |> Enum.find(&doc_for(&1, :twoliner))
     |> Tuple.to_list |> Enum.at(3)
 
-    assert %{"en" => "this function\nhas two lines of document."} = twoliner
+    assert %{"en" => "this function\nhas two lines of document.\n"} = twoliner
   end
 
   defp doc_for({{:function, name1, _}, _, _, _, _}, name2), do: name1 == name2

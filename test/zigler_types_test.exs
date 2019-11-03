@@ -1,16 +1,16 @@
 defmodule ZiglerTest.ZiglerTypesTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   defmodule ZeroArity do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("zeroarity")
+    @nif("zeroarity");
     fn zeroarity() i64 {
       return 47;
     }
 
-    @nif("zeroarity2")
+    @nif("zeroarity2");
     fn zeroarity2(env: beam.env) i64 {
       return 47;
     }
@@ -26,7 +26,7 @@ defmodule ZiglerTest.ZiglerTypesTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("compare")
+    @nif("compare");
     fn compare(left: i64, right: i64) bool {
       return left < right;
     }
@@ -42,7 +42,7 @@ defmodule ZiglerTest.ZiglerTypesTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("compare")
+    @nif("compare");
     fn compare(val: f64) bool {
       return val > 3.14;
     }
@@ -58,7 +58,7 @@ defmodule ZiglerTest.ZiglerTypesTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("string_in")
+    @nif("string_in");
     fn string_in(val: [*c]u8) c_int {
       return val[0];
     }
@@ -74,7 +74,7 @@ defmodule ZiglerTest.ZiglerTypesTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("slice_in")
+    @nif("slice_in");
     fn slice_in(env: ?*e.ErlNifEnv, val: []u8) e.ErlNifTerm {
 
       // build a tuple with the first letter and
@@ -99,7 +99,7 @@ defmodule ZiglerTest.ZiglerTypesTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("string_out")
+    @nif("string_out");
     fn string_out(val: c_int) [*c]u8 {
 
       const source = c"hello";
@@ -125,7 +125,7 @@ defmodule ZiglerTest.ZiglerTypesTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("slice_out")
+    @nif("slice_out");
     fn slice_out(val: c_int) []u8 {
 
       const source = "hello123456789";
@@ -150,7 +150,7 @@ defmodule ZiglerTest.ZiglerTypesTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("term_in")
+    @nif("term_in");
     fn term_in(env: ?*e.ErlNifEnv, msg: e.ErlNifTerm) c_int {
 
       // we can put an arbitrary term in there; in this case
@@ -176,7 +176,7 @@ defmodule ZiglerTest.ZiglerTypesTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("pid_in")
+    @nif("pid_in");
     fn pid_in(env: ?*e.ErlNifEnv, pid: e.ErlNifPid) c_int {
 
       // we can can also send pids directly
