@@ -2,6 +2,7 @@ defmodule Zigler.Compiler do
 
   require Logger
 
+  alias Zigler.Compiler.ErrorParser
   alias Zigler.Import
   alias Zigler.Zig
 
@@ -88,7 +89,11 @@ defmodule Zigler.Compiler do
     cmd_opts_text = Enum.join(cmd_opts, " ")
 
     Logger.info("compiling using command: `#{zig_cmd} #{cmd_opts_text}`")
-    System.cmd(zig_cmd, cmd_opts, cd: tmp_dir)
+    case System.cmd(zig_cmd, cmd_opts, cd: tmp_dir, stderr_to_stdout: true) do
+      {_, 0} -> :ok
+      {err, _} ->
+        raise ErrorParser.parse(err, code_dir, tmp_dir)
+    end
 
     # move the dynamic library out of the temporary directory and into the priv directory.
 

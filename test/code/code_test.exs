@@ -20,7 +20,6 @@ defmodule ZiglerTest.CodeTest do
       assert code == IO.iodata_to_binary(new_code)
     end
 
-    @tag :one
     test "identify more complex nif headers" do
       code = """
         /// nif: double_atom/1
