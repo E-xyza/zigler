@@ -6,7 +6,7 @@ defmodule ZiglerTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("compare")
+    /// nif: compare/2
     fn compare(val1: c_int, val2: c_int) c_int {
       var result: c_int = 0;
 
@@ -32,7 +32,7 @@ defmodule ZiglerTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("compare")
+    /// nif: compare/2
     fn compare(env: ?*e.ErlNifEnv, val1: c_int, val2: c_int) e.ErlNifTerm {
       var result: [*]const u8 = c"eq";
 

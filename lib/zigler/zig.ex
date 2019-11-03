@@ -4,121 +4,27 @@ defmodule Zigler.Zig do
 
   @type primitives :: :i64 | :u64 | :i8 | :u8 | :f64 | :erl_nif_env
 
-  @spec code_spec(String.t | [zig_token]) :: keyword({[atom], atom})
-  def code_spec(code) when is_binary(code), do: code_spec(tokens(code))
-  def code_spec([{:comment, txt}, "@", "nif", ["\"", nif_name, "\""] | rest]) do
-    [{:doc, {String.to_atom(nif_name), txt}} | code_spec(["@", "nif", ["\"", nif_name, "\""] | rest])]
-  end
-  def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, nif_type, :block | rest]) do
-    [{String.to_atom(nif_name), {params(nif_params), String.to_atom(nif_type)}} | code_spec(rest)]
-  end
-  def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, "[", "]", "const", "u8", :block | rest]) do
-    [{String.to_atom(nif_name), {params(nif_params), :"[]const u8"}} | code_spec(rest)]
-  end
-  def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, "[", "*", "c", "]", "u8", :block | rest]) do
-    [{String.to_atom(nif_name), {params(nif_params), :"[*c]u8"}} | code_spec(rest)]
-  end
-  def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, "[", "]", "u8", :block | rest]) do
-    [{String.to_atom(nif_name), {params(nif_params), :"[]u8"}} | code_spec(rest)]
-  end
-  def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, "[", "]", "i64", :block | rest]) do
-    [{String.to_atom(nif_name), {params(nif_params), :"[]i64"}} | code_spec(rest)]
-  end
-  def code_spec(["@", "nif", ["\"", nif_name, "\""], "fn", nif_name, nif_params, "[", "]", "f64", :block | rest]) do
-    [{String.to_atom(nif_name), {params(nif_params), :"[]f64"}} | code_spec(rest)]
-  end
-  def code_spec([_ | rest]), do: code_spec(rest)
-  def code_spec([]), do: []
-
-  @type zig_token :: String.t | :block | [zig_token]
-  @spec tokens(String.t) :: [zig_token]
-  def tokens(code) do
-    code
-    |> String.split("\n")
-    |> Enum.reduce([], &Parser.find_comments/2)
-    |> Parser.stitch_strings
-    |> Enum.flat_map(&tokens(&1, [], ""))
-  end
-
-  @spec tokens(binary, [zig_token], String.t | non_neg_integer) :: [zig_token]
-  def tokens(c = {:comment, _}, _, _), do: [c]
-  def tokens(<<a::binary-size(1)>> <> rest, tokens_list, token_so_far) do
-    cond do
-      is_integer(token_so_far) && a == "{" ->
-        tokens(rest, tokens_list, token_so_far + 1)
-      token_so_far == "" && a == "{" ->
-        tokens(rest, tokens_list, 1)
-      a == "{" ->
-        tokens(rest, tokens_list ++ [token_so_far], 1)
-
-      token_so_far == 1 && a == "}" ->
-        tokens(rest, tokens_list ++ [:block], "")
-      is_integer(token_so_far) && a == "}" ->
-        tokens(rest, tokens_list, token_so_far - 1)
-      a == "}" -> throw "invalid zig syntax"
-      is_integer(token_so_far) ->
-        tokens(rest, tokens_list, token_so_far)
-
-      token_so_far == "" && a =~ ~r/\s/ ->
-        tokens(rest, tokens_list, "")
-      a =~ ~r/\s/ ->
-        tokens(rest, tokens_list ++ [token_so_far], "")
-      a == "(" && token_so_far == "" ->
-        [bef, aft] = String.split(rest, ")", parts: 2)
-        tokens(aft, tokens_list ++ [tokens(bef)], "")
-      a == "(" ->
-        [bef, aft] = String.split(rest, ")", parts: 2)
-        tokens(aft, tokens_list ++ [token_so_far, tokens(bef)], "")
-      a =~ ~r/[[:alnum:]_\.]/ ->
-        tokens(rest, tokens_list, token_so_far <> a)
-
-      token_so_far == "" ->
-        tokens(rest, tokens_list ++ [a], "")
-      true ->
-        tokens(rest, tokens_list ++ [token_so_far, a], "")
-    end
-  end
-  def tokens("", tokens_list, ""), do: tokens_list
-  def tokens("", tokens_list, any) when is_binary(any), do: tokens_list ++ [any]
-  def tokens("", tokens_list, any) when is_integer(any), do: tokens_list ++ [:block]
-
-  @spec params([String.t]) :: [atom]
-  def params([]), do: []
-  def params([_, ":", type]), do: [String.to_atom(type)]
-  def params([_, ":", "?", "*", "e.ErlNifEnv"]), do: [:"?*e.ErlNifEnv"]
-  def params([_, ":", "[", "*", "c", "]", "u8"]), do: [:"[*c]u8"]
-  def params([_, ":", "[", "]", "u8"]), do: [:"[]u8"]
-  def params([_, ":", "[", "]", "i64"]), do: [:"[]i64"]
-  def params([_, ":", "[", "]", "f64"]), do: [:"[]f64"]
-  def params([_, ":", type, "," | rest]), do: [String.to_atom(type) | params(rest)]
-  def params([_, ":", "?", "*", "e.ErlNifEnv", "," | rest]), do: [:"?*e.ErlNifEnv" | params(rest)]
-  def params([_, ":", "beam.env", "," | rest]), do: [:"beam.env" | params(rest)]
-  def params([_, ":", "[", "*", "c", "]", "u8", "," | rest]), do: [:"[*c]u8" | params(rest)]
-  def params([_, ":", "[", "]", "u8", "," | rest]), do: [:"[]u8" | params(rest)]
-  def params([_, ":", "[", "]", "i64", "," | rest]), do: [:"[]i64" | params(rest)]
-  def params([_, ":", "[", "]", "f64", "," | rest]), do: [:"[]f64" | params(rest)]
-  def params(_), do: raise "invalid zig syntax"
-
   @nif_adapter File.read!("assets/nif_adapter.zig.eex")
   @nif_adapter_guarded File.read!("assets/nif_adapter.guarded.zig.eex")
 
-  @guarded_types [:i8, :i16, :i32, :i64, :f16, :f32, :f64, :"[]u8", :"[*c]u8", :"[]i64", :"[]f64",
-  :"e.ErlNifPid", :"beam.pid", :c_int]
+  @guarded_types ["i8", "i16", "i32", "i64", "f16", "f32", "f64", "[]u8", "[*c]u8", "[]i64", "[]f64",
+  "e.ErlNifPid", "beam.pid", "c_int"]
   defp needs_guard?(params) do
     Enum.any?(params, &(&1 in @guarded_types))
   end
 
   @spec nif_adapter({atom, {[atom], atom}}) :: iodata
   def nif_adapter({func, {params, type}}) do
-    has_env = match?([:"?*e.ErlNifEnv" | _], params) || match?([:"beam.env" | _], params)
+    has_env = match?(["?*e.ErlNifEnv" | _], params) || match?(["beam.env" | _], params)
 
     adapter = if needs_guard?(params), do: @nif_adapter_guarded, else: @nif_adapter
 
     EEx.eval_string(adapter, func: func, params: adjust_params(params), type: type, has_env: has_env)
   end
 
+  # TODO: dry this up.
   def adjust_params(params) do
-    Enum.reject(params, &(&1 in [:"?*e.ErlNifEnv" , :"beam.env"]))
+    Enum.reject(params, &(&1 in ["?*e.ErlNifEnv" , "beam.env"]))
   end
 
   # TODO: move these to an "ASSEMBLER" module.
@@ -141,22 +47,22 @@ defmodule Zigler.Zig do
     EEx.eval_string(@nif_exports, funcs: funcs)
   end
 
-  def getfor(:c_int, idx), do: """
+  def getfor("c_int", idx), do: """
     arg#{idx} = try beam.get_c_int(env, argv[#{idx}]);
   """
-  def getfor(:i64, idx), do: """
+  def getfor("i64", idx), do: """
     arg#{idx} = try beam.get_i64(env, argv[#{idx}]);
   """
-  def getfor(:f64, idx), do: """
+  def getfor("f64", idx), do: """
     arg#{idx} = try beam.get_f64(env, argv[#{idx}]);
   """
-  def getfor(:"[*c]u8", idx), do: """
+  def getfor("[*c]u8", idx), do: """
     arg#{idx} = try beam.get_c_string(env, argv[#{idx}]);
   """
-  def getfor(:"[]u8", idx), do: """
+  def getfor("[]u8", idx), do: """
     arg#{idx} = try beam.get_char_slice(env, argv[#{idx}]);
   """
-  def getfor(:"[]i64", idx), do: """
+  def getfor("[]i64", idx), do: """
     var head#{idx}: e.ErlNifTerm = undefined;
     var list#{idx} = argv[#{idx}];
     var idx#{idx}: usize = 0;
@@ -175,7 +81,7 @@ defmodule Zigler.Zig do
       idx#{idx} += 1;
     }
   """
-  def getfor(:"[]f64", idx), do: """
+  def getfor("[]f64", idx), do: """
     var head#{idx}: e.ErlNifTerm = undefined;
     var list#{idx} = argv[#{idx}];
     var idx#{idx}: usize = 0;
@@ -194,18 +100,18 @@ defmodule Zigler.Zig do
       idx#{idx} += 1;
     }
   """
-  def getfor(:"e.ErlNifTerm", idx), do: "arg#{idx} = argv[#{idx}];"
-  def getfor(:"e.ErlNifPid", idx), do: """
+  def getfor("e.ErlNifTerm", idx), do: "arg#{idx} = argv[#{idx}];"
+  def getfor("e.ErlNifPid", idx), do: """
     arg#{idx} = try beam.get_pid(env, argv[#{idx}]);
   """
 
-  def makefor(:"beam.atom"), do: "return result;"
-  def makefor(:c_int), do: "return e.enif_make_int(env, result);"
-  def makefor(:i64), do: "return e.enif_make_int(env, @intCast(c_int, result));"
-  def makefor(:f64), do: "return e.enif_make_double(env, result);"
-  def makefor(:"e.ErlNifTerm"), do: "return result;"
-  def makefor(:bool), do: ~S/return if (result) e.enif_make_atom(env, c"true") else e.enif_make_atom(env, c"false");/
-  def makefor(:"[*c]u8"), do: """
+  def makefor("beam.atom"), do: "return result;"
+  def makefor("c_int"), do: "return e.enif_make_int(env, result);"
+  def makefor("i64"), do: "return e.enif_make_int(env, @intCast(c_int, result));"
+  def makefor("f64"), do: "return e.enif_make_double(env, result);"
+  def makefor("e.ErlNifTerm"), do: "return result;"
+  def makefor("bool"), do: ~S/return if (result) e.enif_make_atom(env, c"true") else e.enif_make_atom(env, c"false");/
+  def makefor("[*c]u8"), do: """
   var result_term: e.ErlNifTerm = undefined;
 
   var i: usize = 0;
@@ -219,7 +125,7 @@ defmodule Zigler.Zig do
 
   return result_term;
   """
-  def makefor(:"[]u8"), do: """
+  def makefor("[]u8"), do: """
   var result_term: e.ErlNifTerm = undefined;
 
   var bin: [*]u8 = @ptrCast([*]u8, e.enif_make_new_binary(env, result.len, &result_term));
@@ -230,7 +136,7 @@ defmodule Zigler.Zig do
 
   return result_term;
   """
-  def makefor(:"[]i64"), do: """
+  def makefor("[]i64"), do: """
   var term_slice = beam.allocator.alloc(e.ErlNifTerm, result.len)
     catch beam.enomem(env);
   defer beam.allocator.free(term_slice);
@@ -243,7 +149,7 @@ defmodule Zigler.Zig do
   // return the term
   return result_term;
   """
-  def makefor(:"[]f64"), do: """
+  def makefor("[]f64"), do: """
   var term_slice = beam.allocator.alloc(e.ErlNifTerm, result.len)
     catch beam.enomem(env);
   defer beam.allocator.free(term_slice);
@@ -256,9 +162,5 @@ defmodule Zigler.Zig do
   // return the term
   return result_term;
   """
-
-  def strip_nif(code) do
-    String.replace(code, ~r/\@nif\(.*\)/U, "")
-  end
 
 end

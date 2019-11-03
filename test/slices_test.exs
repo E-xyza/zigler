@@ -5,7 +5,7 @@ defmodule ZiglerTest.SlicesTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("sum")
+    /// nif: sum/1
     fn sum(slice: []i64) i64 {
       var total: i64 = 0;
       var index: usize = 0;
@@ -30,7 +30,7 @@ defmodule ZiglerTest.SlicesTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("make")
+    /// nif: make/1
     fn make(length: i64) []i64 {
 
       // presume that the user has been able to put some slice
@@ -61,7 +61,7 @@ defmodule ZiglerTest.SlicesTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("sum")
+    /// nif: sum/1
     fn sum(slice: []f64) f64 {
       var total: f64 = 0;
       var index: usize = 0;
@@ -86,7 +86,7 @@ defmodule ZiglerTest.SlicesTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("make")
+    /// nif: make/1
     fn make(length: i64) []f64 {
 
       // presume that the user has been able to put some slice

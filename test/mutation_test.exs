@@ -5,7 +5,7 @@ defmodule ZigTest.MutationTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("mutate")
+    /// nif: mutate/1
     fn mutate(val: []u8) c_int {
       val[0] = 109; // set it to ascii letter 'm'
 

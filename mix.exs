@@ -18,7 +18,11 @@ defmodule Zigler.MixProject do
   end
 
   def deps do
-    # we need this for mix zigler.get_zig mix task.
-    [{:mojito, "~> 0.5.0", only: :dev, runtime: :false}]
+    [
+      # zigler's parsing is done using nimble_parsec
+      {:nimble_parsec, "~> 0.5", runtime: :false},
+      # we need this for mix zigler.get_zig mix task.
+      {:mojito, "~> 0.5.0", only: :dev, runtime: :false}
+    ]
   end
 end

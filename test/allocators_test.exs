@@ -5,7 +5,7 @@ defmodule ZigTest.AllocatorsTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("alloctest")
+    /// nif: alloctest/1
     fn alloctest(env: ?*e.ErlNifEnv, length: i64) e.ErlNifTerm {
       var usize_length = @intCast(usize, length);
 
@@ -20,7 +20,7 @@ defmodule ZigTest.AllocatorsTest do
       return e.enif_make_atom_len(env, slice.ptr, slice.len);
     }
 
-    @nif("realloctest")
+    /// nif: realloctest/1
     fn realloctest(env: ?*e.ErlNifEnv, length: i64) e.ErlNifTerm {
       var usize_length = @intCast(usize, length);
 
@@ -57,7 +57,7 @@ defmodule ZigTest.AllocatorsTest do
     var global_nothing = [_]u8{};
     var global_slice = global_nothing[0..0];
 
-    @nif("allocate")
+    /// nif: allocate/1
     fn allocate(env: ?*e.ErlNifEnv, length: i64) bool {
 
       var usize_length = @intCast(usize, length);
@@ -74,7 +74,7 @@ defmodule ZigTest.AllocatorsTest do
       return true;
     }
 
-    @nif("fetch")
+    /// nif: fetch/1
     fn fetch(env: ?*e.ErlNifEnv, dummy: i64) e.ErlNifTerm {
       return e.enif_make_atom_len(env, global_slice.ptr, global_slice.len);
     }
@@ -96,7 +96,7 @@ defmodule ZigTest.AllocatorsTest do
     var global_nothing = [_]u8{};
     var global_slice = global_nothing[0..0];
 
-    @nif("allocate")
+    /// nif: allocate/1
     fn allocate(env: ?*e.ErlNifEnv, length: i64) bool {
 
       var usize_length = @intCast(usize, length);
@@ -112,7 +112,7 @@ defmodule ZigTest.AllocatorsTest do
       return true;
     }
 
-    @nif("fetch")
+    /// nif: fetch/1
     fn fetch(env: ?*e.ErlNifEnv, dummy: i64) e.ErlNifTerm {
       return e.enif_make_atom_len(env, global_slice.ptr, global_slice.len);
     }

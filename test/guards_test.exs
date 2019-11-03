@@ -6,12 +6,12 @@ defmodule ZiglerTest.GuardsTest do
     use Zigler, app: :zigler
 
     ~Z"""
-    @nif("many_types")
+    /// nif: many_types/2
     fn many_types(integer: i64, binary: []u8) i64 {
       return @intCast(i64, binary[@intCast(usize, integer)]);
     }
 
-    @nif("first_int")
+    /// nif: first_int/1
     fn first_int(list: []i64) i64 {
       return list[0];
     }
