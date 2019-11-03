@@ -3,14 +3,14 @@ defmodule ZiglerTest.ZigdocTest do
   use ExUnit.Case, async: true
 
   test "gets the docs" do
-    [{AllTheDocs, beam}] = Code.compile_file("test/support/all_the_docs.exs")
+    [{AllTheDocs, beam}] = Code.compile_file("test/assets/all_the_docs.exs")
     File.write!("/tmp/.elixir-nifs/allthedocs.beam", beam)
     {:docs_v1, 2, :elixir, "text/markdown", :none, %{}, lst}
       = Code.fetch_docs("/tmp/.elixir-nifs/allthedocs.beam")
 
     positive_control = lst
     |> Enum.find(&doc_for(&1, :positive_control))
-    |> Tuple.to_list |> Enum.at(3)
+    |> elem(3)
 
     assert %{"en" => """
     positive_control
@@ -18,13 +18,13 @@ defmodule ZiglerTest.ZigdocTest do
 
     zeroarity_doc = lst
     |> Enum.find(&doc_for(&1, :zeroarity))
-    |> Tuple.to_list |> Enum.at(3)
+    |> elem(3)
 
     assert %{"en" => "a zero-arity function which returns 47.\n"} = zeroarity_doc
 
     twoliner = lst
     |> Enum.find(&doc_for(&1, :twoliner))
-    |> Tuple.to_list |> Enum.at(3)
+    |> elem(3)
 
     assert %{"en" => "this function\nhas two lines of document.\n"} = twoliner
   end

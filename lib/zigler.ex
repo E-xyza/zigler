@@ -42,6 +42,7 @@ defmodule Zigler do
 
       Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
       Module.register_attribute(__MODULE__, :zig_code, accumulate: true)
+      Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
 
       @before_compile Zigler.Compiler
     end
@@ -62,7 +63,7 @@ defmodule Zigler do
       if nif.doc do
         [{:@,
            [context: Elixir, import: Kernel],
-           [{:doc, [context: Elixir], [nif.doc]}]}]
+           [{:doc, [context: Elixir], [IO.iodata_to_binary(nif.doc)]}]}]
       else
         []
       end

@@ -16,8 +16,8 @@ defmodule Zigler.Parser do
 
   # TODO: consider moving these out into their own module.
 
-  defp store_docstring(_rest, content = ["\n", text | _], context = %{docstring: content}, _line, _offset) do
-    {content, %{context | docstring: [content, String.trim(text), "\n"]}}
+  defp store_docstring(_rest, content = ["\n", text | _], context = %{docstring: prev}, _line, _offset) do
+    {content, %{context | docstring: [prev, String.trim(text), "\n"]}}
   end
   defp store_docstring(_rest, content = ["\n", text | _], context, _line, _offset) do
     {content, Map.put(context, :docstring, [String.trim(text), "\n"])}
@@ -211,13 +211,19 @@ defmodule Zigler.Parser do
 
   defparsec :zig_by_line, by_line
 
-  @spec parse(String.t, Path.t, non_neg_integer) :: {iodata, [Zigler.Nif.t]}
+  @spec parse(String.t, Path.t, non_neg_integer) :: %{code: iodata, nifs: [Zigler.Nif.t]}
   def parse(code, file, line) do
     # store the file and line in the process dictionary as a side channel.
     # we'll use these later in adding comments to the function headers.
     Process.put(:file, file)
     Process.put(:line, line)
     {:ok, new_code, _, _, _, _} = zig_by_line(code)
-    Enum.split_with(new_code, &(not match?(%Zigler.Nif{}, &1)))
+
+    Enum.reduce(new_code, %{code: "", nifs: [], imports: []}, fn
+      res = %Zigler.Nif{}, acc = %{nifs: nifs} ->
+        %{acc | nifs: [res | nifs]}
+      any, acc = %{code: code} ->
+        %{acc | code: [code, any]}
+    end)
   end
 end

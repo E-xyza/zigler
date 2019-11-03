@@ -62,7 +62,6 @@ defmodule ZiglerTest.ReadmeTest do
     """
   end
 
-  @tag :one
   test "allocations" do
     assert :foofoo == Allocations.double_atom("foo")
   end

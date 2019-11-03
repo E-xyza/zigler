@@ -9,6 +9,7 @@ defmodule Zigler.Code do
     code block.
   - `:file` - elixir `.ex` or `.exs` file associated with this code block.
   - `:line` - line in the above file where the sigil_Z code starts.
+  - `:imports` - a recursively generated list of files to be imported.
 
   """
 
@@ -26,13 +27,13 @@ defmodule Zigler.Code do
 
   @spec from_string(code::String.t, file::Path.t, line::non_neg_integer) :: t
   def from_string(code, file, line) do
-    {new_code, nifs} = Parser.parse(code, file, line)
+    parsed = Parser.parse(code, file, line)
 
     %__MODULE__{
-      code: new_code,
+      code: parsed.code,
       file: file,
       line: line,
-      nifs: nifs
+      nifs: parsed.nifs
     }
   end
 end

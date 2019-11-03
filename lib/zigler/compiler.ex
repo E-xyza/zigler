@@ -1,8 +1,9 @@
 defmodule Zigler.Compiler do
 
-  alias Zigler.Zig
-  alias Zigler.Parser
   require Logger
+
+  alias Zigler.Import
+  alias Zigler.Zig
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
   @erl_nif_zig_h Path.join(@zig_dir_path, "include/erl_nif_zig.h")
@@ -30,27 +31,6 @@ defmodule Zigler.Compiler do
   def release_mode_text(:safe), do: ["--release-safe"]
   def release_mode_text(:small), do: ["--release-small"]
   def release_mode_text(:debug), do: []
-
-  alias Zigler.Parser
-  alias Zigler.Code
-
-  def find_imports_recursively(code, code_dir) do
-    Parser.tokenize(1, code)
-    |> Code.imports
-    |> Enum.flat_map(fn file_path ->
-      full_file_path = Path.join(code_dir, file_path)
-      new_code_dir = Path.dirname(file_path)
-
-      if File.exists?(full_file_path) do
-        [code | (full_file_path
-        |> File.read!
-        |> find_imports_recursively(Path.join(code_dir, new_code_dir))
-        |> Enum.map(&Path.join(new_code_dir, &1)))]
-      else
-        []
-      end
-    end)
-  end
 
   defmacro __before_compile__(context) do
     app = Module.get_attribute(context.module, :zigler_app)
@@ -93,8 +73,8 @@ defmodule Zigler.Compiler do
 
     # now put the zig import dependencies into the directory, too.
     zig_code
-    |> :erlang.iolist_to_binary
-    |> find_imports_recursively(code_dir)
+    |> IO.iodata_to_binary
+    |> Import.recursive_find(code_dir)
     |> copy_files(code_dir, tmp_dir)
 
     # now use zig to build the library in the temporary directory.
@@ -135,15 +115,6 @@ defmodule Zigler.Compiler do
 
         # copy the file.
         File.cp!(src_file_path, dst_file_path)
-        # now that we've copied this file, we need to recursively enter it
-        # and make sure that its dependencies are OK.
-        new_src_path = Path.dirname(src_file_path)
-        new_dst_path = Path.dirname(dst_file_path)
-
-        src_file_path
-        |> File.read!
-        |> Parser.imports
-        |> copy_files(new_src_path, new_dst_path)
       end
     end)
   end
