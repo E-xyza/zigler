@@ -1,8 +1,10 @@
 defmodule Zigler.Zig do
 
-  alias Zigler.Parser
+  @moduledoc """
+  contains all parts of the Zigler library which is involved in generating zig code.
+  """
 
-  @type primitives :: :i64 | :u64 | :i8 | :u8 | :f64 | :erl_nif_env
+  alias Zigler.Parser
 
   @nif_adapter File.read!("assets/nif_adapter.zig.eex")
   @nif_adapter_guarded File.read!("assets/nif_adapter.guarded.zig.eex")
@@ -10,7 +12,7 @@ defmodule Zigler.Zig do
   @guarded_types ["i8", "i16", "i32", "i64", "f16", "f32", "f64", "[]u8", "[*c]u8", "[]i64", "[]f64",
   "e.ErlNifPid", "beam.pid", "c_int"]
   defp needs_guard?(params) do
-    Enum.any?(params, &(&1 in @guarded_types))
+    Enum.any?(params, &(&1 in @guarded_types || match?({:slice, _}, &1)))
   end
 
   @spec nif_adapter({atom, {[atom], atom}}) :: iodata
@@ -19,15 +21,16 @@ defmodule Zigler.Zig do
 
     adapter = if needs_guard?(params), do: @nif_adapter_guarded, else: @nif_adapter
 
-    EEx.eval_string(adapter, func: func, params: adjust_params(params), type: type, has_env: has_env)
+    EEx.eval_string(adapter,
+      func: func,
+      params: adjust_params(params),
+      type: type,
+      has_env: has_env)
   end
 
-  # TODO: dry this up.
   def adjust_params(params) do
     Enum.reject(params, &(&1 in ["?*e.ErlNifEnv" , "beam.env"]))
   end
-
-  # TODO: move these to an "ASSEMBLER" module.
 
   @nif_header File.read!("assets/nif_header.zig")
   @spec nif_header() :: iodata
@@ -111,6 +114,7 @@ defmodule Zigler.Zig do
   def makefor("f64"), do: "return e.enif_make_double(env, result);"
   def makefor("e.ErlNifTerm"), do: "return result;"
   def makefor("bool"), do: ~S/return if (result) e.enif_make_atom(env, c"true") else e.enif_make_atom(env, c"false");/
+  def makefor("void"), do: ~S/return e.enif_make_atom(env, c"nil");/
   def makefor("[*c]u8"), do: """
   var result_term: e.ErlNifTerm = undefined;
 

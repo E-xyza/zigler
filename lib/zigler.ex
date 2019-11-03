@@ -14,27 +14,28 @@ defmodule Zigler do
       raise "non-unix systems not currently supported."
     end
 
-    mod_name = __CALLER__.module |> Atom.to_string |> String.downcase
-    nif_dir = Application.app_dir(opts[:app], "priv/nifs")
+    mod_path =  opts[:app]
+    |> Application.app_dir("priv/nifs")
+    |> Path.join(Macro.underscore(__CALLER__.module))
+
     zig_version = opts[:version] || @latest_zig_version
 
-    File.mkdir_p!(nif_dir)
+    File.mkdir_p!(Path.dirname(mod_path))
 
     quote do
       import Zigler
 
       @release_mode unquote(mode)
 
+      # needs to be persisted so that we can store the version for tests.
+      Module.register_attribute(__MODULE__, :zig_version, persist: true)
+
       @on_load :__load_nifs__
       @zigler_app unquote(opts[:app])
       @zig_version unquote(zig_version)
 
       def __load_nifs__ do
-        nif_dir = unquote(nif_dir)
-        mod_name = unquote(mod_name)
-
-        nif_dir
-        |> Path.join(mod_name)
+        unquote(mod_path)
         |> String.to_charlist()
         |> :erlang.load_nif(0)
       end
@@ -91,6 +92,22 @@ defmodule Zigler do
          ["#{func} not defined"]}
       ]
     ]}
+  end
+
+  def make_tests_funcs(code) do
+    code
+    |> String.split("\n")
+    |> Enum.map(fn line ->
+      cond do
+        line =~ ~r/test(\s*)\".*\"(\s*){/ ->
+          """
+          @nif("__test0");
+          fn __test0() void {
+          """
+        true -> line
+      end
+    end)
+    |> Enum.join("\n")
   end
 
 end

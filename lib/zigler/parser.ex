@@ -1,5 +1,4 @@
 defmodule Zigler.Parser do
-
   @moduledoc """
   contains all code involved in parsing zig code.
   """

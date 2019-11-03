@@ -1,5 +1,5 @@
 defmodule ZigTest.AllocatorsTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   defmodule BasicAllocator do
     use Zigler, app: :zigler

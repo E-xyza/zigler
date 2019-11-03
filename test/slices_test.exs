@@ -1,5 +1,5 @@
 defmodule ZiglerTest.SlicesTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   defmodule Int64SliceIn do
     use Zigler, app: :zigler

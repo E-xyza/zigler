@@ -1,5 +1,5 @@
 defmodule ZigTest.MutationTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   defmodule BinaryMutator do
     use Zigler, app: :zigler

@@ -35,5 +35,4 @@ defmodule Zigler.Code do
       nifs: nifs
     }
   end
-
 end

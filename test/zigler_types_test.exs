@@ -1,5 +1,5 @@
 defmodule ZiglerTest.ZiglerTypesTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   defmodule ZeroArity do
     use Zigler, app: :zigler
