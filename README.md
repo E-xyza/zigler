@@ -1,6 +1,6 @@
 # Zigler
 
-**Zig Nifs made easy**
+## Zig Nifs made easy
 
 Wouldn't it be nice if you could make NIFs as easily as you can use the `asm`
 keyword in C?
@@ -12,11 +12,7 @@ defmodule ExampleZig do
   use Zigler, app: :my_app
 
   ~Z"""
-<<<<<<< HEAD
   /// nif: example_fun/2
-=======
-  @nif("example_fun");
->>>>>>> master
   fn example_fun(value1: f64, value2: f64) bool {
     return value1 > value2;
   }
@@ -38,20 +34,12 @@ It will also convert trickier types into types you care about, for example:
 defmodule ZigCollections do
   use Zigler, app: :my_app
   ~Z"""
-<<<<<<< HEAD
   /// nif: string_count/1
-=======
-  @nif("string_count");
->>>>>>> master
   fn string_count(string: []u8) i64 {
     return @intCast(i64, string.len);
   }
 
-<<<<<<< HEAD
   /// nif: list_sum/1
-=======
-  @nif("list_sum");
->>>>>>> master
   fn list_sum(array: []f64) f64 {
     var sum: f64 = 0.0;
     for(array) | item | {
@@ -75,11 +63,7 @@ so any zig code you import will play nice with the BEAM.
 defmodule Allocations do
   use Zigler, app: :my_app
   ~Z"""
-<<<<<<< HEAD
   /// nif: double_atom/1
-=======
-  @nif("double_atom");
->>>>>>> master
   fn double_atom(env: beam.env, string: []u8) beam.atom {
     var double_string = beam.allocator.alloc(u8, string.len * 2)
       catch beam.enomem(env);
@@ -109,11 +93,7 @@ defmodule AllTheDocs do
   use Zigler, app: :zigler
   ~Z"""
   /// a zero-arity function which returns 47.
-<<<<<<< HEAD
   /// nif: zero_arity/0
-=======
-  @nif("zeroarity");
->>>>>>> master
   fn zeroarity() i64 {
     return 47;
   }
