@@ -2,7 +2,7 @@ defmodule ZigTest.ZigTestModule do
   use Zigler, app: :zigler
 
   ~Z"""
-  const assert = @import("std").debug.assert;
+  const assert = beam.assert;
 
   /// nif: one/0
   fn one() i64 {
@@ -10,7 +10,7 @@ defmodule ZigTest.ZigTestModule do
   }
 
   test "the truth" {
-    assert(one() + 1 == 2);
+    try assert(one() + 1 == 2);
   }
   """
 end

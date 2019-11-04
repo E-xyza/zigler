@@ -28,20 +28,15 @@ defmodule Zigler do
       @release_mode unquote(mode)
 
       # needs to be persisted so that we can store the version for tests.
+      Module.register_attribute(__MODULE__, :zigler_app, persist: true)
       Module.register_attribute(__MODULE__, :zig_version, persist: true)
 
       @on_load :__load_nifs__
       @zigler_app unquote(opts[:app])
       @zig_version unquote(zig_version)
 
-      def __load_nifs__ do
-        unquote(mod_path)
-        |> String.to_charlist()
-        |> :erlang.load_nif(0)
-      end
-
       Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
-      Module.register_attribute(__MODULE__, :zig_code, accumulate: true)
+      Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
       Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
 
       @before_compile Zigler.Compiler
@@ -78,13 +73,13 @@ defmodule Zigler do
     end
   end
 
-  defp empty_function(func, 0) do
+  def empty_function(func, 0) do
     quote do
       def unquote(func)(), do: throw unquote("#{func} not defined")
     end
   end
 
-  defp empty_function(func, arity) do
+  def empty_function(func, arity) do
     {:def, [context: Elixir, import: Kernel],
     [
       {func, [context: Elixir], for _ <- 1..arity do {:_, [], Elixir} end},

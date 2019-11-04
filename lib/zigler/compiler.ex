@@ -101,7 +101,16 @@ defmodule Zigler.Compiler do
     # worse than having the module fail to build (which will not stop tests).
     File.cp(Path.join(tmp_dir, "libzig_nif.so.0.0.0"), Path.join(nif_dir, mod_name <> ".so"))
 
+    mod_path = app
+    |> Application.app_dir("priv/nifs")
+    |> Path.join(Macro.underscore(__CALLER__.module))
+
     quote do
+      def __load_nifs__ do
+        unquote(mod_path)
+        |> String.to_charlist()
+        |> :erlang.load_nif(0)
+      end
     end
   end
 

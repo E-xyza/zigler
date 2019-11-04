@@ -221,6 +221,9 @@ defmodule Zigler.Parser do
   def parse(code, file, line) do
     # store the file and line in the process dictionary as a side channel.
     # we'll use these later in adding comments to the function headers.
+
+    # this is necessary to know if we're going to be exporting "test"s.
+
     {:ok, new_code, _, _, _, _} = zig_by_line(code, line: line, context: %{file: file})
 
     Enum.reduce(new_code, %{code: "", nifs: [], imports: []}, fn

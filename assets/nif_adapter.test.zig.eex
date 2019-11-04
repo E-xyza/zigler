@@ -1,0 +1,14 @@
+// this adapter is specially designed for tests.
+
+extern fn __<%= func %>(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+  const stacktrace_ptr : type = *builtin.StackTrace;
+  const res = <%= func %>() catch | err | {
+
+      //const trace : stacktrace_ptr = (@errorReturnTrace() orelse return beam.throw_assertion_error(env));
+      //const trace_str : []u8 = beam.stacktrace_to_string(trace);
+
+      return beam.throw_assertion_error(env);
+  };
+
+  return beam.make_atom(env, "ok");
+}

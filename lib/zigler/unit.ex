@@ -1,62 +1,109 @@
-# we should figure out a better way to do this.
 defmodule Zigler.Unit do
 
-  alias Zigler.Compiler
+  @moduledoc """
+  traverses the network of a particular
+  """
+
+  defstruct [:title, :name]
+
+  @type t :: %__MODULE__{title: String.t, }
+
+  alias Zigler.Unit.Parser
+
+  def string_to_hash(str) do
+    hash = :md5
+    |> :crypto.hash(str)
+    |> Base.encode16
+
+    "test_" <> hash
+  end
+
+  defmacro __using__(_) do
+    quote do
+      # tests are always going to be released in safe mode.
+      @release_mode :safe
+      # needs to be persisted so that we can store the version for tests.
+      Module.register_attribute(__MODULE__, :zig_version, persist: true)
+
+      @on_load :__load_nifs__
+
+      Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
+      Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
+      Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
+
+      @before_compile Zigler.Compiler
+
+      import Zigler.Unit
+    end
+  end
 
   # a littlee bit stolen from doctest
   defmacro zigtest(mod) do
 
     module = Macro.expand(mod, __CALLER__)
 
-    requirement = quote do require unquote(module) end
+    code = module.__info__(:attributes)[:zig_code]
+    |> IO.iodata_to_binary
+    |> Parser.get_tests
+
+    [zigler_app] = module.__info__(:attributes)[:zigler_app]
+
+    [zig_version] = module.__info__(:attributes)[:zig_version]
+
+    code_spec = Enum.map(code.tests, &{&1.name, {[], "void"}})
+
+    empty_functions = Enum.map(code.tests, &Zigler.empty_function(String.to_atom(&1.name), 0))
+
+    compilation = quote do
+      @zigler_app unquote(zigler_app)
+      @zig_version unquote(zig_version)
+
+      @zig_code unquote(code.code)
+      @zig_specs unquote(code_spec)
+      unquote_splicing(empty_functions)
+    end
 
     file = __CALLER__.file
-    line = __CALLER__.line
 
-    tests =
-      quote bind_quoted: [module: module, file: file, line: line] do
-        env = __ENV__
-        file = ExUnit.DocTest.__file__(module)
-
-        for {name, test} <- Zigler.Unit.__zigtests__(module, file, line) do
-          @file file
-          doc = ExUnit.Case.register_test(env, :zigtest, name, [])
-          def unquote(doc)(_), do: unquote(test)
-        end
+    test_list = Enum.map(code.tests, &{&1.title, &1.name})
+    exdoc = quote bind_quoted: [module: __CALLER__.module, tests: test_list, file: file] do
+      # register our tests.
+      env = __ENV__
+      for {name, test} <- Zigler.Unit.__zigtests__(module, tests) do
+        @file file
+        doc = ExUnit.Case.register_test(env, :zigtest, name, [])
+        def unquote(doc)(_), do: unquote(test)
       end
-
-    [requirement, tests]
+    end
+    [compilation, exdoc]
   end
 
-  def __zigtests__(module, file, line) do
-    location = [line: line, file: file]
-    [{test_name(module), test_content(module, location)}]
+  def __zigtests__(module, tests) do
+    Enum.map(tests, fn
+      {title, name} -> {title, test_content(module, name)}
+    end)
   end
 
-  defp test_name(module) do
-    "nif in module #{inspect(module)}"
-  end
-
-  @zig_dir_path Path.expand("../../../zig", __ENV__.file)
-
-  defp test_content(module, location) do
-    # TODO: dry up some of these things against compiler.
-    version = module.__info__(:attributes)[:zig_version]
-    zig_tree = Path.join(@zig_dir_path, Compiler.basename(version))
-    zig_cmd = Path.join(zig_tree, "zig")
-    mod_name = Macro.underscore(module)
-    tmp_dir = Path.join("/tmp/.elixir-nifs", mod_name)
-    stack = Macro.escape([{module, :__MODULE__, 0, location}])
+  defp test_content(module, name) do
+    atom_name = String.to_atom(name)
     quote do
-      #case System.cmd(unquote(zig_cmd), ["test", "zig_nif.zig"], cd: unquote(tmp_dir), stderr_to_stdout: true) do
-      #  {_, 0} -> :ok
-      #  {msg, _} ->
-      #    error = [
-      #      message: "zigtest failed with message #{msg}",
-      #    ]
-      #    reraise ExUnit.AssertionError, error, unquote(stack)
-      #end
-      :ok
+      try do
+        apply(unquote(module), unquote(atom_name), [])
+        :ok
+      rescue
+        e in ErlangError ->
+
+          error = [
+            message: "Zig test failed",
+            doctest: ExUnit.AssertionError.no_value(),
+            expr: ExUnit.AssertionError.no_value(),
+            left: ExUnit.AssertionError.no_value(),
+            right: ExUnit.AssertionError.no_value()
+          ]
+
+          reraise ExUnit.AssertionError, error, __STACKTRACE__
+
+      end
     end
   end
 

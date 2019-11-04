@@ -134,9 +134,6 @@ def deps do
 end
 ```
 
-You'll also want to grab the latest zig binary and cache it with zigler.
-You can do this by executing:
-
 Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
 and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
 be found at [https://hexdocs.pm/zigler](https://hexdocs.pm/zigler).

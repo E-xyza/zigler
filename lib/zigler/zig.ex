@@ -4,10 +4,9 @@ defmodule Zigler.Zig do
   contains all parts of the Zigler library which is involved in generating zig code.
   """
 
-  alias Zigler.Parser
-
   @nif_adapter File.read!("assets/nif_adapter.zig.eex")
   @nif_adapter_guarded File.read!("assets/nif_adapter.guarded.zig.eex")
+  @nif_adapter_test File.read!("assets/nif_adapter.test.zig.eex")
 
   @guarded_types ["i8", "i16", "i32", "i64", "f16", "f32", "f64", "[]u8", "[*c]u8", "[]i64", "[]f64",
   "e.ErlNifPid", "beam.pid", "c_int"]
@@ -15,11 +14,15 @@ defmodule Zigler.Zig do
     Enum.any?(params, &(&1 in @guarded_types || match?({:slice, _}, &1)))
   end
 
-  @spec nif_adapter({atom, {[atom], atom}}) :: iodata
+  @spec nif_adapter({atom, {[String.t], String.t}}) :: iodata
   def nif_adapter({func, {params, type}}) do
     has_env = match?(["?*e.ErlNifEnv" | _], params) || match?(["beam.env" | _], params)
 
-    adapter = if needs_guard?(params), do: @nif_adapter_guarded, else: @nif_adapter
+    adapter = cond do
+      match?("test_" <> <<_::binary-size(32)>>, func) -> @nif_adapter_test
+      needs_guard?(params) -> @nif_adapter_guarded
+      true -> @nif_adapter
+    end
 
     EEx.eval_string(adapter,
       func: func,
