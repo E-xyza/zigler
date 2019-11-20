@@ -1,6 +1,6 @@
 defmodule ZiglerTest.ReadmeTest do
   # validates all of the claims in the readme.
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   defmodule ExampleZig do
     use Zigler, app: :zigler

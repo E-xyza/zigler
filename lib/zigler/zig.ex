@@ -43,7 +43,17 @@ defmodule Zigler.Zig do
 
   @spec nif_footer(module, list) :: iodata
   def nif_footer(module, list) do
-    EEx.eval_string(@nif_footer, nif_module: module, funcs: list)
+    [major, minor] = :nif_version
+    |> :erlang.system_info
+    |> List.to_string
+    |> String.split(".")
+    |> Enum.map(&String.to_integer/1)
+
+    EEx.eval_string(@nif_footer,
+      nif_module: module,
+      funcs: list,
+      nif_major: major,
+      nif_minor: minor)
   end
 
   @nif_exports File.read!("assets/nif_exports.zig.eex")

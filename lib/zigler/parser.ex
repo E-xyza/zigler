@@ -76,9 +76,6 @@ defmodule Zigler.Parser do
         line: code_line,
         description: "mismatch of arity declaration, expected #{arity}, got #{found_arity}"
     end
-    # retrieve the file name and the context from the process dictionary,
-    # then generate the line number comment.
-    comment = " // #{context.file} line: #{code_line}"
 
     # build the nif struct that we're going to send back with the code.
     res = %Nif{name: String.to_atom(nif.name),
@@ -87,10 +84,7 @@ defmodule Zigler.Parser do
                doc: doc,
                retval: retval}
 
-    # append the line number conmment to the major portion of the
-    ["\n" | no_eol_content] = content
-    text = IO.iodata_to_binary([Enum.reverse(no_eol_content), comment, "\n"])
-    {[res, text], context}
+    {[res | content], context}
   end
   # if it's a plain old function, just ignore all the hullabaloo about nifs.
   defp save_if_nif(_rest, content, context, _, _), do: {content, context}
@@ -219,14 +213,12 @@ defmodule Zigler.Parser do
 
   @spec parse(String.t, Path.t, non_neg_integer) :: %{code: iodata, nifs: [Zigler.Nif.t]}
   def parse(code, file, line) do
-    # store the file and line in the process dictionary as a side channel.
-    # we'll use these later in adding comments to the function headers.
-
-    # this is necessary to know if we're going to be exporting "test"s.
+    # prepend a comment saving the file and line metadata.
+    marker_comment = "// #{file} line: #{line}\n"
 
     {:ok, new_code, _, _, _, _} = zig_by_line(code, line: line, context: %{file: file})
 
-    Enum.reduce(new_code, %{code: "", nifs: [], imports: []}, fn
+    Enum.reduce(new_code, %{code: marker_comment, nifs: [], imports: []}, fn
       res = %Zigler.Nif{}, acc = %{nifs: nifs} ->
         %{acc | nifs: [res | nifs]}
       any, acc = %{code: code} ->

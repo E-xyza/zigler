@@ -50,9 +50,8 @@ defmodule Zigler do
     # perform code analysis
     code = Zigler.Code.from_string(zig_code, file, line)
 
+    # add a dialyzer typespec to the head of the function.
     code_spec = Enum.map(code.nifs, &{&1.name, {&1.params, &1.retval}})
-
-    Enum.map(code.nifs, &(&1.name))
 
     empty_functions = Enum.flat_map(code.nifs, fn nif ->
       if nif.doc do

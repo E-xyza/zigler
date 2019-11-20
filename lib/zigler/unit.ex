@@ -66,7 +66,7 @@ defmodule Zigler.Unit do
     file = __CALLER__.file
 
     test_list = Enum.map(code.tests, &{&1.title, &1.name})
-    exdoc = quote bind_quoted: [module: __CALLER__.module, tests: test_list, file: file] do
+    test = quote bind_quoted: [module: __CALLER__.module, tests: test_list, file: file] do
       # register our tests.
       env = __ENV__
       for {name, test} <- Zigler.Unit.__zigtests__(module, tests) do
@@ -75,7 +75,7 @@ defmodule Zigler.Unit do
         def unquote(doc)(_), do: unquote(test)
       end
     end
-    [compilation, exdoc]
+    [compilation, test]
   end
 
   def __zigtests__(module, tests) do
