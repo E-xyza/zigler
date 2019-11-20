@@ -27,14 +27,13 @@ defmodule Zigler do
 
       @release_mode unquote(mode)
 
-      # needs to be persisted so that we can store the version for tests.
-      Module.register_attribute(__MODULE__, :zigler_app, persist: true)
-      Module.register_attribute(__MODULE__, :zig_version, persist: true)
-
       @on_load :__load_nifs__
       @zigler_app unquote(opts[:app])
       @zig_version unquote(zig_version)
 
+      # needs to be persisted so that we can store the version for tests.
+      Module.register_attribute(__MODULE__, :zigler_app, persist: true)
+      Module.register_attribute(__MODULE__, :zig_version, persist: true)
       Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
       Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
       Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)

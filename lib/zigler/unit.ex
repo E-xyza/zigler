@@ -22,11 +22,9 @@ defmodule Zigler.Unit do
     quote do
       # tests are always going to be released in safe mode.
       @release_mode :safe
-      # needs to be persisted so that we can store the version for tests.
-      Module.register_attribute(__MODULE__, :zig_version, persist: true)
-
       @on_load :__load_nifs__
 
+      # don't persist the app or the version, we are going to get that from the parent.
       Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
       Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
       Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
@@ -47,7 +45,6 @@ defmodule Zigler.Unit do
     |> Parser.get_tests
 
     [zigler_app] = module.__info__(:attributes)[:zigler_app]
-
     [zig_version] = module.__info__(:attributes)[:zig_version]
 
     code_spec = Enum.map(code.tests, &{&1.name, {[], "void"}})
@@ -63,19 +60,35 @@ defmodule Zigler.Unit do
       unquote_splicing(empty_functions)
     end
 
-    file = __CALLER__.file
-
     test_list = Enum.map(code.tests, &{&1.title, &1.name})
-    test = quote bind_quoted: [module: __CALLER__.module, tests: test_list, file: file] do
+
+    in_ex_unit = Application.started_applications
+    |> Enum.any?(fn {app, _, _} -> app == :ex_unit end)
+
+    test = make_code(__CALLER__.module, __CALLER__.file, test_list , in_ex_unit)
+
+    [compilation, test]
+  end
+
+  defp make_code(module, file, tests, true) do
+    quote bind_quoted: [module: module, file: file, tests: tests] do
       # register our tests.
       env = __ENV__
       for {name, test} <- Zigler.Unit.__zigtests__(module, tests) do
         @file file
-        doc = ExUnit.Case.register_test(env, :zigtest, name, [])
-        def unquote(doc)(_), do: unquote(test)
+        test_name = ExUnit.Case.register_test(env, :zigtest, name, [])
+        def unquote(test_name)(_), do: unquote(test)
       end
     end
-    [compilation, test]
+  end
+  defp make_code(module, _, tests, false) do
+    quote bind_quoted: [module: module, tests: tests] do
+      # register our tests.
+      for {name, test} <- Zigler.Unit.__zigtests__(module, tests) do
+        test_name = name |> string_to_hash |> String.to_atom
+        def unquote(test_name)(_), do: unquote(test)
+      end
+    end
   end
 
   def __zigtests__(module, tests) do
