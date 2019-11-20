@@ -1,4 +1,4 @@
-defmodule ZigTest.ZigTestModule do
+defmodule ZiglerTest.ZigTestModule do
   use Zigler, app: :zigler
 
   ~Z"""

@@ -1,4 +1,4 @@
-defmodule ZigTest.MutationTest do
+defmodule ZiglerTest.MutationTest do
   use ExUnit.Case, async: true
 
   defmodule BinaryMutator do

@@ -99,7 +99,6 @@ defmodule Zigler.Compiler do
     case System.cmd(zig_cmd, cmd_opts, cd: tmp_dir, stderr_to_stdout: true) do
       {_, 0} -> :ok
       {err, _} ->
-        err |> IO.inspect(label: "95")
         raise ErrorParser.parse(err, code_dir, tmp_dir)
     end
 

@@ -67,8 +67,23 @@ defmodule ZiglerTest.CodeTest do
       }
       """
 
-      Zigler.Code.from_string(code, "my_file.ex", 12)
+      assert %Zigler.Code{
+        code: new_code,
+        nifs: [%Zigler.Nif{}, %Zigler.Nif{}]
+      } = Zigler.Code.from_string(code, "my_file.ex", 12)
 
+      assert """
+      // my_file.ex line: 12
+      /// nif: test_nif_1/1
+      fn test_nif_1(val: i8) i8 {
+        return val + 1;
+      }
+
+      /// nif: test_nif_2/0
+      fn test_nif_2() i8 {
+        return 47;
+      }
+      """ == IO.iodata_to_binary(new_code)
     end
   end
 

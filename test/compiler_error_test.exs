@@ -1,4 +1,4 @@
-defmodule ZigTest.CompilerErrorTest do
+defmodule ZiglerTest.CompilerErrorTest do
 
   use ExUnit.Case, async: true
 
