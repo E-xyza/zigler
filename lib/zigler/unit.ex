@@ -18,7 +18,7 @@ defmodule Zigler.Unit do
         env = __ENV__
         file = ExUnit.DocTest.__file__(module)
 
-        for {name, test} <- Zigler.Unit.__zigtests__(module, file, line) do
+        for {name, test} <- Zigler.Unit.__zigtests__(module, file, line) |> IO.inspect(label: "21") do
           @file file
           doc = ExUnit.Case.register_test(env, :zigtest, name, [])
           def unquote(doc)(_), do: unquote(test)

@@ -10,7 +10,8 @@ defmodule ZigTest.ZigTestModule do
   }
 
   test "the truth" {
-    assert(one() + 1 == 2);
+    assert(1 == 2);
+    // assert(one() + 1 == 2);
   }
   """
 end

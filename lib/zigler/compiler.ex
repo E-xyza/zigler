@@ -48,6 +48,13 @@ defmodule Zigler.Compiler do
     zig_specs = Module.get_attribute(context.module, :zig_specs)
     |> Enum.flat_map(&(&1))
 
+    if [] == zig_specs do
+      raise CompileError,
+        file: __CALLER__.file,
+        line: __CALLER__.line,
+        description: "use Zigler called without defining any nifs"
+    end
+
     full_code = [Zig.nif_header(),
       zig_code,
       Enum.map(zig_specs, &Zig.nif_adapter/1),
@@ -92,6 +99,7 @@ defmodule Zigler.Compiler do
     case System.cmd(zig_cmd, cmd_opts, cd: tmp_dir, stderr_to_stdout: true) do
       {_, 0} -> :ok
       {err, _} ->
+        err |> IO.inspect(label: "95")
         raise ErrorParser.parse(err, code_dir, tmp_dir)
     end
 
