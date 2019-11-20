@@ -10,6 +10,8 @@ defmodule ZiglerTest.CodeTest do
       }
       """
 
+      code_with_file_line = "// my_file.ex line: 15\n" <> code
+
       assert %Zigler.Code{
         code: new_code,
         file: "my_file.ex",
@@ -17,7 +19,7 @@ defmodule ZiglerTest.CodeTest do
         nifs: []
       } = Zigler.Code.from_string(code, "my_file.ex", 15)
 
-      assert code == IO.iodata_to_binary(new_code)
+      assert code_with_file_line == IO.iodata_to_binary(new_code)
     end
 
     test "identify more complex nif headers" do
@@ -44,8 +46,9 @@ defmodule ZiglerTest.CodeTest do
       } = Zigler.Code.from_string(code, "my_file.ex", 15)
 
       assert """
+      // my_file.ex line: 15
       /// nif: test_nif/1
-      fn test_nif(val:i8) i8 { // my_file.ex line: 17
+      fn test_nif(val:i8) i8 {
         return 47;
       }
       """ == IO.iodata_to_binary(new_code)
