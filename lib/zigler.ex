@@ -22,6 +22,8 @@ defmodule Zigler do
 
     File.mkdir_p!(Path.dirname(mod_path))
 
+    src_dir = Path.dirname(__CALLER__.file)
+
     quote do
       import Zigler
 
@@ -37,6 +39,9 @@ defmodule Zigler do
       Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
       Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
       Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
+      Module.register_attribute(__MODULE__, :zig_src_dir, persist: true)
+
+      @zig_src_dir unquote(src_dir)
 
       @before_compile Zigler.Compiler
     end
@@ -73,7 +78,7 @@ defmodule Zigler do
 
   def empty_function(func, 0) do
     quote do
-      def unquote(func)(), do: throw unquote("#{func} not defined")
+      def unquote(func)(), do: throw unquote("#{func}/0 not defined")
     end
   end
 
@@ -83,25 +88,8 @@ defmodule Zigler do
       {func, [context: Elixir], for _ <- 1..arity do {:_, [], Elixir} end},
       [
         do: {:throw, [context: Elixir, import: Kernel],
-         ["#{func} not defined"]}
+         ["#{func}/#{arity} not defined"]}
       ]
     ]}
   end
-
-  def make_tests_funcs(code) do
-    code
-    |> String.split("\n")
-    |> Enum.map(fn line ->
-      cond do
-        line =~ ~r/test(\s*)\".*\"(\s*){/ ->
-          """
-          @nif("__test0");
-          fn __test0() void {
-          """
-        true -> line
-      end
-    end)
-    |> Enum.join("\n")
-  end
-
 end

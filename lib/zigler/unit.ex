@@ -28,6 +28,10 @@ defmodule Zigler.Unit do
       Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
       Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
       Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
+      Module.register_attribute(__MODULE__, :zig_src_dir, persist: true)
+      Module.register_attribute(__MODULE__, :zig_test, persist: true)
+
+      @zig_test true
 
       @before_compile Zigler.Compiler
 
@@ -38,18 +42,25 @@ defmodule Zigler.Unit do
   # a littlee bit stolen from doctest
   defmacro zigtest(mod) do
 
+    Process.sleep(5000)
+
     module = Macro.expand(mod, __CALLER__)
+
+    source_file = module.__info__(:compile)[:source]
+    src_dir = Path.dirname(source_file)
 
     code = module.__info__(:attributes)[:zig_code]
     |> IO.iodata_to_binary
-    |> Parser.get_tests
+    |> Parser.get_tests(source_file)
 
     [zigler_app] = module.__info__(:attributes)[:zigler_app]
     [zig_version] = module.__info__(:attributes)[:zig_version]
 
     code_spec = Enum.map(code.tests, &{&1.name, {[], "void"}})
 
-    empty_functions = Enum.map(code.tests, &Zigler.empty_function(String.to_atom(&1.name), 0))
+    empty_functions = code.tests
+    |> Enum.map(&%{&1 | name: &1.name |> String.split(".") |> List.last})
+    |> Enum.map(&Zigler.empty_function(String.to_atom(&1.name), 0))
 
     compilation = quote do
       @zigler_app unquote(zigler_app)
@@ -57,6 +68,8 @@ defmodule Zigler.Unit do
 
       @zig_code unquote(code.code)
       @zig_specs unquote(code_spec)
+      @zig_src_dir unquote(src_dir)
+
       unquote_splicing(empty_functions)
     end
 
@@ -81,6 +94,7 @@ defmodule Zigler.Unit do
       end
     end
   end
+  # for testing purposes only:
   defp make_code(module, _, tests, false) do
     quote bind_quoted: [module: module, tests: tests] do
       # register our tests.
@@ -98,14 +112,17 @@ defmodule Zigler.Unit do
   end
 
   defp test_content(module, name) do
-    atom_name = String.to_atom(name)
+    atom_name = name
+    |> String.split(".")
+    |> List.last
+    |> String.to_atom
+
     quote do
       try do
         apply(unquote(module), unquote(atom_name), [])
         :ok
       rescue
         e in ErlangError ->
-
           error = [
             message: "Zig test failed",
             doctest: ExUnit.AssertionError.no_value(),
@@ -113,9 +130,7 @@ defmodule Zigler.Unit do
             left: ExUnit.AssertionError.no_value(),
             right: ExUnit.AssertionError.no_value()
           ]
-
           reraise ExUnit.AssertionError, error, __STACKTRACE__
-
       end
     end
   end

@@ -10,7 +10,7 @@ defmodule ZiglerTest.ZigTestModule do
   }
 
   test "the truth" {
-    try assert(one() + 1 == 2);
+    assert(one() + 1 == 2);
   }
   """
 end

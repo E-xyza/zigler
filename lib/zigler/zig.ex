@@ -4,9 +4,11 @@ defmodule Zigler.Zig do
   contains all parts of the Zigler library which is involved in generating zig code.
   """
 
-  @nif_adapter File.read!("assets/nif_adapter.zig.eex")
-  @nif_adapter_guarded File.read!("assets/nif_adapter.guarded.zig.eex")
-  @nif_adapter_test File.read!("assets/nif_adapter.test.zig.eex")
+  require EEx
+
+  EEx.function_from_file(:def, :nif_adapter_unguarded, "assets/nif_adapter.zig.eex", [:assigns])
+  EEx.function_from_file(:def, :nif_adapter_guarded, "assets/nif_adapter.guarded.zig.eex", [:assigns])
+  EEx.function_from_file(:def, :nif_adapter_test, "assets/nif_adapter.test.zig.eex", [:assigns])
 
   @guarded_types ["i8", "i16", "i32", "i64", "f16", "f32", "f64", "[]u8", "[*c]u8", "[]i64", "[]f64",
   "e.ErlNifPid", "beam.pid", "c_int"]
@@ -14,23 +16,26 @@ defmodule Zigler.Zig do
     Enum.any?(params, &(&1 in @guarded_types || match?({:slice, _}, &1)))
   end
 
+  @test_regex ~r/test_[0-9A-F]{32}/
+
   @spec nif_adapter({atom, {[String.t], String.t}}) :: iodata
   def nif_adapter({func, {params, type}}) do
     has_env = match?(["?*e.ErlNifEnv" | _], params) || match?(["beam.env" | _], params)
 
-    adapter = cond do
-      match?("test_" <> <<_::binary-size(32)>>, func) -> @nif_adapter_test
-      needs_guard?(params) -> @nif_adapter_guarded
-      true -> @nif_adapter
+    # TODO: make nif_adapter not be variadic with some calls having func() be atom
+    # and other calls having func() be a binary.
+    cond do
+      is_binary(func) && func =~ @test_regex ->
+        new_func = func |> String.split(".") |> List.last |> String.to_atom
+        nif_adapter_test(func: new_func, func_call: func, params: adjust_params(params))
+      needs_guard?(params) ->
+        nif_adapter_guarded(func: func, params: adjust_params(params), type: type, has_env: has_env)
+      true ->
+        nif_adapter_unguarded(func: func, params: adjust_params(params), type: type, has_env: has_env)
     end
-
-    EEx.eval_string(adapter,
-      func: func,
-      params: adjust_params(params),
-      type: type,
-      has_env: has_env)
   end
 
+  @spec adjust_params(any) :: [any]
   def adjust_params(params) do
     Enum.reject(params, &(&1 in ["?*e.ErlNifEnv" , "beam.env"]))
   end
@@ -42,7 +47,7 @@ defmodule Zigler.Zig do
   @nif_footer File.read!("assets/nif_footer.zig.eex")
 
   @spec nif_footer(module, list) :: iodata
-  def nif_footer(module, list) do
+  def nif_footer(module, funcs) do
     [major, minor] = :nif_version
     |> :erlang.system_info
     |> List.to_string
@@ -51,7 +56,7 @@ defmodule Zigler.Zig do
 
     EEx.eval_string(@nif_footer,
       nif_module: module,
-      funcs: list,
+      funcs: funcs,
       nif_major: major,
       nif_minor: minor)
   end
@@ -60,7 +65,15 @@ defmodule Zigler.Zig do
 
   @spec nif_exports(list) :: iodata
   def nif_exports(funcs) do
-    EEx.eval_string(@nif_exports, funcs: funcs)
+    # TODO consider only triggering this if we're in tests.
+    adjusted_funcs = Enum.map(funcs, fn
+      {test, spec} when is_binary(test) ->
+        new_test = test |> String.split(".") |> List.last
+        {new_test, spec}
+      any -> any
+    end)
+
+    EEx.eval_string(@nif_exports, funcs: adjusted_funcs)
   end
 
   def getfor("c_int", idx), do: """

@@ -10,11 +10,10 @@ defmodule ZiglerTest.ZigFailingTestModule do
   }
 
   test "a lie" {
-    try assert(one() == 2);
+    assert(one() == 2);
   }
   """
 end
-
 
 defmodule ZiglerTest.ZigFailingTestShim do
   use Zigler.Unit

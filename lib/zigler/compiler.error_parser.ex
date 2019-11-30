@@ -95,7 +95,7 @@ defmodule Zigler.Compiler.ErrorParser do
   end
 
   # read our instrumented comments to try to find the location of the error.
-  defp parse_line_comments(txt) do
+  def parse_line_comments(txt) do
     {:ok, parsed, _, _, _, _} = by_line_comments(txt)
 
     parsed

@@ -10,7 +10,6 @@ end
 # we've precompiled ZigFailingTestShim, in test/support.
 # this is a module that uses Zigler.Unit and ExUnit.Case,
 # but is basically hidden from the rest because it's precompiled.
-
 defmodule ZiglerTest.ZigFailingTest do
 
   use ExUnit.Case, async: true
@@ -30,11 +29,20 @@ defmodule ZiglerTest.ZigFailingTest do
 
 end
 
-#Code.compile_file("test/assets/zig_deep_test_module.exs")
-#
-#defmodule ZiglerTest.ZigDeepTest do
-#  use ExUnit.Case, async: true
-#  import Zigler.Unit
-#
-#  ZiglerTest ZiglerTest.ZigDeepTestModule
-#end
+Code.compile_file("test/assets/zig_deep_test_module.exs")
+
+defmodule ZiglerTest.ZigDeepTest do
+  use ExUnit.Case
+  use Zigler.Unit
+
+  zigtest ZiglerTest.ZigDeepTestModule
+end
+
+Code.compile_file("test/assets/zig_indirect_test_module.exs")
+
+defmodule ZiglerTest.ZigIndirectTest do
+  use ExUnit.Case
+  use Zigler.Unit
+
+  zigtest ZiglerTest.ZigIndirectTestModule
+end
