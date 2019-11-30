@@ -1,8 +1,8 @@
-defmodule ZigTest.ZigTestModule do
+defmodule ZiglerTest.ZigTestModule do
   use Zigler, app: :zigler
 
   ~Z"""
-  const assert = @import("std").debug.assert;
+  const assert = beam.assert;
 
   /// nif: one/0
   fn one() i64 {

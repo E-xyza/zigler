@@ -26,6 +26,7 @@ erl_crash.dump
 zigler-*.tar
 
 /.elixir_ls/
+/.vscode/
 
 # ignore zig version downloads
 /zig/zig-*

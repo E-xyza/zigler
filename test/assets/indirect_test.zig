@@ -1,0 +1,1 @@
+const tester = @import("test.zig");

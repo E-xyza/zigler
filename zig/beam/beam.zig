@@ -1,5 +1,6 @@
 const e = @import("erl_nif.zig").c;
 const std = @import("std");
+const builtin = @import("builtin");
 
 const Allocator = std.mem.Allocator;
 
@@ -10,11 +11,11 @@ var allocator_state = Allocator{
   .reallocFn = beam_realloc,
   .shrinkFn = beam_shrink
 };
-  
-fn beam_realloc(self: *Allocator, 
-                old_mem: []u8, 
-                old_align: u29, 
-                new_size: usize, 
+
+fn beam_realloc(self: *Allocator,
+                old_mem: []u8,
+                old_align: u29,
+                new_size: usize,
                 new_align: u29) ![]u8 {
   if (old_mem.len == 0) {
     // if we're creating a new memory space, use alloc.
@@ -27,12 +28,12 @@ fn beam_realloc(self: *Allocator,
     return @ptrCast([*]u8, buf)[0..new_size];
   }
 }
-  
+
 var nothing = [_]u8 {};
-fn beam_shrink(self: *Allocator, 
-               old_mem: []u8, 
-               old_align: u29, 
-               new_size: usize, 
+fn beam_shrink(self: *Allocator,
+               old_mem: []u8,
+               old_align: u29,
+               new_size: usize,
                new_align: u29) []u8 {
   if (new_size == 0) {
     e.enif_free(@ptrCast(*c_void, old_mem.ptr));
@@ -53,7 +54,11 @@ fn beam_shrink(self: *Allocator,
 ///////////////////////////////////////////////////////////////////////////////////
 
 pub const Error = error {
-    FunctionClauseError
+  FunctionClauseError
+};
+
+pub const AssertionError = error {
+  AssertionError
 };
 
 // env
@@ -153,7 +158,7 @@ pub fn make_atom(erl_env: env, atom_str: []const u8) term {
 // pids
 pub const pid = e.ErlNifPid;
 pub fn get_pid(erl_env: env, src_term: term) !pid {
-  var res :pid = undefined; 
+  var res :pid = undefined;
   if (0 != e.enif_get_local_pid(erl_env, src_term, &res)) {
     return res;
   } else { return Error.FunctionClauseError; }
@@ -177,3 +182,34 @@ const f_c_e_slice = "function_clause"[0..];
 pub fn throw_function_clause_error(erl_env: env) term {
   return e.enif_raise_exception(erl_env, make_atom(erl_env, f_c_e_slice));
 }
+
+// implementation for throw_assertion_error;
+const assert_slice = "assertion_error"[0..];
+pub fn throw_assertion_error(erl_env: env) term {
+  return e.enif_raise_exception(erl_env, make_atom(erl_env, assert_slice));
+}
+
+/// This function sends an error value when assertions fail.
+/// You should use this instead of `std.debug.assert` because
+/// that function will cause the BEAM VM to panic and die.
+pub fn assert(ok: bool) !void {
+    if (!ok) return AssertionError.AssertionError; // assertion failure
+}
+
+//pub fn stacktrace_to_string(stacktrace : *builtin.StackTrace) []u8 {
+//  //var buff : std.Buffer = std.Buffer.initNull(allocator);
+//  //var buffio : std.io.BufferOutStream = std.io.BufferOutStream.init(&buff);
+//  var empty : [1024]u8 = undefined;
+//  var stream = std.io.SliceOutStream.init(empty[0..]);
+//
+//  const debug_info : *std.debug.DebugInfo = std.debug.getSelfDebugInfo() catch return "";
+//
+//  const res = std.debug.writeStackTrace(
+//    stacktrace.*,
+//    stream,
+//    allocator,
+//    debug_info,
+//    false) catch return "";
+//
+//  return std.io.Buffer.toSlice(*buffio.buffer);
+//}

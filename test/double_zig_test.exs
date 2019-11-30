@@ -1,4 +1,4 @@
-defmodule ZigTest.DoubleZigTest do
+defmodule ZiglerTest.DoubleZigTest do
   use ExUnit.Case, async: true
 
   defmodule DoubleZig1 do

@@ -1,20 +1,20 @@
 // this adapter is unguarded as none of the terms declared by the user require guarding.
 
-extern fn __<%= func %>(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+extern fn __<%= @func %>(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
 
-  <%= for {param, idx} <- Enum.with_index(params) do %>
+  <%= for {param, idx} <- Enum.with_index(@params) do %>
   var arg<%= idx %>: <%= param %> = undefined;<% end %>
 
-  <%= for {param, idx} <- Enum.with_index(params) do 
+  <%= for {param, idx} <- Enum.with_index(@params) do 
     Zigler.Zig.getfor(param, idx) <> "\n"
   end %>
 
-  var result: <%= type %> = <%= func %>(<%= if has_env, do: "env, ", else: "" %><%=
-    if params == [] do
+  var result: <%= @type %> = <%= @func %>(<%= if @has_env, do: "env, ", else: "" %><%=
+    if @params == [] do
       "" 
     else
-      0..Enum.count(params) - 1 |> Enum.map(&"arg#{&1}") |> Enum.join(", ") 
+      0..Enum.count(@params) - 1 |> Enum.map(&"arg#{&1}") |> Enum.join(", ") 
     end
   %>);
-  <%= Zigler.Zig.makefor(type) %>
+  <%= Zigler.Zig.makefor(@type) %>
 }

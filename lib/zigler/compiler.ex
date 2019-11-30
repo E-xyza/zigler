@@ -33,34 +33,59 @@ defmodule Zigler.Compiler do
   def release_mode_text(:small), do: ["--release-small"]
   def release_mode_text(:debug), do: []
 
-  defmacro __before_compile__(context) do
-    app = Module.get_attribute(context.module, :zigler_app)
-    version = Module.get_attribute(context.module, :zig_version)
-    release_mode = Module.get_attribute(context.module, :release_mode)
+  # TODO:  REORGANIZE THIS CRAZINESS.
 
-    code_dir = Path.dirname(__CALLER__.file)
+  defmacro __before_compile__(context) do
+    [app, version, release_mode, src_dir, zig_code, in_test?] =
+      Enum.map([:zigler_app, :zig_version, :release_mode, :zig_src_dir, :zig_code, :zig_test],
+        &Module.get_attribute(context.module, &1))
 
     zig_tree = Path.join(@zig_dir_path, basename(version))
     # check to see if the zig version has been downloaded.
-    unless File.dir?(zig_tree), do: raise "zig hasn't been downloaded.  Run mix zigler.get_zig #{version}"
+    unless File.dir?(zig_tree) do
+      raise CompileError,
+        file: context.file,
+        line: context.line,
+        description: "zig hasn't been downloaded.  Run mix zigler.get_zig #{version}"
+    end
 
-    zig_code = Module.get_attribute(context.module, :zig_code)
-    zig_specs = Module.get_attribute(context.module, :zig_specs)
+    zig_specs = context.module
+    |> Module.get_attribute(:zig_specs)
     |> Enum.flat_map(&(&1))
 
-    full_code = [Zig.nif_header(),
+    if [] == zig_specs do
+      raise CompileError,
+        file: __CALLER__.file,
+        line: __CALLER__.line,
+        description: "use Zigler called without defining any nifs"
+    end
+
+    mod_name = Macro.underscore(context.module)
+    tmp_dir = Path.join("/tmp/.elixir-nifs", mod_name)
+    zig_nif_file = Path.join(tmp_dir, "zig_nif.zig")
+
+    zig_header = Zig.nif_header()
+
+    # TODO: refactor, we can do better than this, we're taking
+    # iodata content and converting it to a string to do the
+    # newline analysis.  Instead, we should do a recursive depth
+    # search of the iodata tree.
+
+    # count newlines in the header and the code:
+    newlines = count_newlines([zig_header, zig_code]) + 2
+
+    full_code = [zig_header,
       zig_code,
+      "// #{zig_nif_file} line: #{newlines}\n",  #drop in a comment back
       Enum.map(zig_specs, &Zig.nif_adapter/1),
       Zig.nif_exports(zig_specs),
       Zig.nif_footer(context.module, zig_specs)]
 
-    mod_name = Macro.underscore(context.module)
-    tmp_dir = Path.join("/tmp/.elixir-nifs", mod_name)
     nif_dir = Application.app_dir(app, "priv/nifs")
 
     File.mkdir_p!(tmp_dir)
 
-    Enum.into(full_code, File.stream!(Path.join(tmp_dir, "zig_nif.zig")))
+    Enum.into(full_code, File.stream!(zig_nif_file))
 
     # put the erl_nif.zig adapter into the path.
     erl_nif_zig_path = Path.join(tmp_dir, "erl_nif.zig")
@@ -75,8 +100,8 @@ defmodule Zigler.Compiler do
     # now put the zig import dependencies into the directory, too.
     zig_code
     |> IO.iodata_to_binary
-    |> Import.recursive_find(code_dir)
-    |> copy_files(code_dir, tmp_dir)
+    |> Import.recursive_find(src_dir)
+    |> copy_files(src_dir, tmp_dir, in_test?)
 
     # now use zig to build the library in the temporary directory.
     # also add in lib search paths that correspond to where we've downloaded
@@ -92,7 +117,7 @@ defmodule Zigler.Compiler do
     case System.cmd(zig_cmd, cmd_opts, cd: tmp_dir, stderr_to_stdout: true) do
       {_, 0} -> :ok
       {err, _} ->
-        raise ErrorParser.parse(err, code_dir, tmp_dir)
+        raise ErrorParser.parse(err, src_dir, tmp_dir)
     end
 
     # move the dynamic library out of the temporary directory and into the priv directory.
@@ -101,11 +126,20 @@ defmodule Zigler.Compiler do
     # worse than having the module fail to build (which will not stop tests).
     File.cp(Path.join(tmp_dir, "libzig_nif.so.0.0.0"), Path.join(nif_dir, mod_name <> ".so"))
 
+    mod_path = app
+    |> Application.app_dir("priv/nifs")
+    |> Path.join(Macro.underscore(__CALLER__.module))
+
     quote do
+      def __load_nifs__ do
+        unquote(mod_path)
+        |> String.to_charlist()
+        |> :erlang.load_nif(0)
+      end
     end
   end
 
-  defp copy_files(files, src_dir, dst_dir) do
+  defp copy_files(files, src_dir, dst_dir, in_test?) do
     Enum.each(files, fn file_path ->
       src_file_path = Path.join(src_dir, file_path) |> Path.expand()
       dst_file_path = Path.join(dst_dir, file_path)
@@ -118,9 +152,35 @@ defmodule Zigler.Compiler do
         |> Path.dirname
         |> File.mkdir_p!
 
-        # copy the file.
-        File.cp!(src_file_path, dst_file_path)
+        if in_test? do
+          copy_test(src_file_path, dst_file_path)
+        else
+          # copy the file.
+          File.cp!(src_file_path, dst_file_path)
+        end
       end
     end)
   end
+
+  alias Zigler.Unit
+
+  defp copy_test(src_file_path, dst_file_path) do
+    modified_content = src_file_path
+    |> File.read!
+    |> Unit.Parser.modify_file(src_file_path)
+
+    File.write!(dst_file_path, modified_content)
+  end
+
+  defp count_newlines([]), do: 0
+  defp count_newlines([a | b]) do
+    count_newlines(a) + count_newlines(b)
+  end
+  defp count_newlines(str) when is_binary(str) do
+    str |> String.to_charlist |> Enum.count(&(&1 == ?\n))
+  end
+  defp count_newlines(x) do
+    if x == ?\n, do: 1, else: 0
+  end
+
 end

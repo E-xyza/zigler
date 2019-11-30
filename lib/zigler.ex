@@ -22,27 +22,26 @@ defmodule Zigler do
 
     File.mkdir_p!(Path.dirname(mod_path))
 
+    src_dir = Path.dirname(__CALLER__.file)
+
     quote do
       import Zigler
 
       @release_mode unquote(mode)
 
-      # needs to be persisted so that we can store the version for tests.
-      Module.register_attribute(__MODULE__, :zig_version, persist: true)
-
       @on_load :__load_nifs__
       @zigler_app unquote(opts[:app])
       @zig_version unquote(zig_version)
 
-      def __load_nifs__ do
-        unquote(mod_path)
-        |> String.to_charlist()
-        |> :erlang.load_nif(0)
-      end
-
+      # needs to be persisted so that we can store the version for tests.
+      Module.register_attribute(__MODULE__, :zigler_app, persist: true)
+      Module.register_attribute(__MODULE__, :zig_version, persist: true)
       Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
-      Module.register_attribute(__MODULE__, :zig_code, accumulate: true)
+      Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
       Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
+      Module.register_attribute(__MODULE__, :zig_src_dir, persist: true)
+
+      @zig_src_dir unquote(src_dir)
 
       @before_compile Zigler.Compiler
     end
@@ -55,9 +54,8 @@ defmodule Zigler do
     # perform code analysis
     code = Zigler.Code.from_string(zig_code, file, line)
 
+    # add a dialyzer typespec to the head of the function.
     code_spec = Enum.map(code.nifs, &{&1.name, {&1.params, &1.retval}})
-
-    Enum.map(code.nifs, &(&1.name))
 
     empty_functions = Enum.flat_map(code.nifs, fn nif ->
       if nif.doc do
@@ -78,37 +76,20 @@ defmodule Zigler do
     end
   end
 
-  defp empty_function(func, 0) do
+  def empty_function(func, 0) do
     quote do
-      def unquote(func)(), do: throw unquote("#{func} not defined")
+      def unquote(func)(), do: throw unquote("#{func}/0 not defined")
     end
   end
 
-  defp empty_function(func, arity) do
+  def empty_function(func, arity) do
     {:def, [context: Elixir, import: Kernel],
     [
       {func, [context: Elixir], for _ <- 1..arity do {:_, [], Elixir} end},
       [
         do: {:throw, [context: Elixir, import: Kernel],
-         ["#{func} not defined"]}
+         ["#{func}/#{arity} not defined"]}
       ]
     ]}
   end
-
-  def make_tests_funcs(code) do
-    code
-    |> String.split("\n")
-    |> Enum.map(fn line ->
-      cond do
-        line =~ ~r/test(\s*)\".*\"(\s*){/ ->
-          """
-          @nif("__test0");
-          fn __test0() void {
-          """
-        true -> line
-      end
-    end)
-    |> Enum.join("\n")
-  end
-
 end

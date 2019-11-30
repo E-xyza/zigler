@@ -4,32 +4,40 @@ defmodule Zigler.Compiler.ErrorParser do
   @numbers [?0..?9]
 
   errormsg =
-    ascii_string([not: ?:], min: 1)
+    ignore(repeat(ascii_char([?\s])))
+    |> ascii_string([not: ?:], min: 1)
     |> ignore(string(":"))
     |> ascii_string(@numbers, min: 1)
     |> ignore(string(":"))
     |> ascii_string(@numbers, min: 1)
     |> ignore(string(":"))
-    |> ascii_string([0..255], min: 1)
+    |> ascii_string([not: ?\n], min: 1)
+    |> ignore(string("\n"))
 
-  defparsec :parse_error, errormsg
+  defparsec :parse_error, times(errormsg, min: 1)
+
+  defp backreference(path, str_line) do
+    line = String.to_integer(str_line)
+    file_content = File.read!(path)
+
+    {offset, true_file, original_line} = file_content
+    |> parse_line_comments
+    |> Enum.filter(fn {a, _, _} -> a <= line end)
+    |> List.last
+
+    true_line = line - offset + original_line
+    {true_file, true_line}
+  end
 
   def parse(msg, code_dir, tmp_dir) do
-    {:ok, [path, line, _col, msg], _, _, _, _} = parse_error(msg)
+    {:ok, [path, line, _col, msg | _rest], _, _, _, _} = parse_error(msg)
 
-    file_line = String.to_integer(line)
+    #TODO: figure out if we want to do something with "other information lines" later.
 
     # check if we need full translation or just file translation.
     if Path.basename(path) == "zig_nif.zig" do
       # read the actual path file
-      file_content = File.read!(path)
-
-      {offset, true_file, original_line} = file_content
-      |> parse_line_comments
-      |> Enum.filter(fn {a, _, _} -> a <= file_line end)
-      |> List.last
-
-      true_line = file_line - offset + original_line
+      {true_file, true_line} = backreference(path, line)
 
       %CompileError{
         file: true_file,
@@ -87,7 +95,7 @@ defmodule Zigler.Compiler.ErrorParser do
   end
 
   # read our instrumented comments to try to find the location of the error.
-  defp parse_line_comments(txt) do
+  def parse_line_comments(txt) do
     {:ok, parsed, _, _, _, _} = by_line_comments(txt)
 
     parsed

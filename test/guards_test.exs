@@ -1,5 +1,5 @@
 defmodule ZiglerTest.GuardsTest do
-  use ExUnit.Case
+  use ExUnit.Case, async: true
 
   defmodule GuardedFn do
     # tests more than one zig in the same sigil Z

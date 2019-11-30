@@ -1,6 +1,6 @@
 const entry = e.ErlNifEntry{
-    .major = 2,
-    .minor = 15,
+    .major = <%= nif_major %>,
+    .minor = <%= nif_minor %>,
     .name = c"<%= nif_module %>",
     .num_of_funcs = <%= Enum.count(funcs) %>,
     .funcs = &(exported_nifs[0]),

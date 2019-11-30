@@ -1,4 +1,4 @@
-defmodule ZigTest.AllocatorsTest do
+defmodule ZiglerTest.AllocatorsTest do
   use ExUnit.Case, async: true
 
   defmodule BasicAllocator do
