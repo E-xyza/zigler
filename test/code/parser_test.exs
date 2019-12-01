@@ -33,7 +33,7 @@ defmodule ZiglerTest.ParserTest do
     test "can identify nifs" do
       code = """
         /// nif: my_function/1
-        fn my_function(val:i8) i8 {
+        fn my_function(val:i64) i64 {
           return val + 1;
         }
       """
@@ -44,7 +44,7 @@ defmodule ZiglerTest.ParserTest do
   describe "the function header parser" do
     test "can identify zero-arity function headers" do
       code = """
-        fn zero_arity_func() i8 {
+        fn zero_arity_func() i64 {
         }
       """
       assert {:ok, _, _, _, _, _} = Parser.parse_function_header(code)
@@ -52,7 +52,7 @@ defmodule ZiglerTest.ParserTest do
 
     test "can identify one-arity function headers" do
       code = """
-        fn one_arity_func(val : i8) i8 {
+        fn one_arity_func(val : i64) i64 {
         }
       """
       assert {:ok, _, _, _, _, _} = Parser.parse_function_header(code)
@@ -60,7 +60,7 @@ defmodule ZiglerTest.ParserTest do
 
     test "can identify two-arity function headers" do
       code = """
-        fn two_arity_func(val : i8, val2 : i8) i8 {
+        fn two_arity_func(val : i64, val2 : i64) i64 {
         }
       """
       assert {:ok, _, _, _, _, _} = Parser.parse_function_header(code)
@@ -68,7 +68,7 @@ defmodule ZiglerTest.ParserTest do
 
     test "can identify bool function headers" do
       code = """
-        fn two_arity_func(val : i8, val2 : i8) bool {
+        fn two_arity_func(val : i64, val2 : i64) bool {
         }
       """
       assert {:ok, _, _, _, _, _} = Parser.parse_function_header(code)

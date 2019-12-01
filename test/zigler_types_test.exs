@@ -192,4 +192,45 @@ defmodule ZiglerTest.ZiglerTypesTest do
     assert 47 == PidIn.pid_in(self())
     assert_receive :ok
   end
+
+  defmodule AtomToString do
+    use Zigler, app: :zigler
+
+    ~Z"""
+    /// nif: to_string1/1
+    fn to_string1(env: beam.env, atom: beam.term) []u8 {
+      return beam.get_atom_slice(env, atom) catch "";
+    }
+
+    /// nif: to_string2/1
+    fn to_string2(env: beam.env, atom: beam.atom) []u8 {
+      return beam.get_atom_slice(env, atom) catch "";
+    }
+    """
+  end
+
+  test "atoms to binary works" do
+    assert "foo" = AtomToString.to_string1(:foo)
+    assert "quux" = AtomToString.to_string2(:quux)
+  end
+
+  defmodule Boolean do
+    use Zigler, app: :zigler
+
+    ~Z"""
+    /// nif: to_int/1
+    fn to_int(env: beam.env, value: bool) i32 {
+      if (value) {
+        return 1;
+      } else {
+        return 0;
+      }
+    }
+    """
+  end
+
+  test "boolean inputs work" do
+    assert 1 == Boolean.to_int(true)
+    #assert 0 == Boolean.to_int(false)
+  end
 end

@@ -9,7 +9,10 @@ defmodule ZiglerTest.AllocatorsTest do
     fn alloctest(env: ?*e.ErlNifEnv, length: i64) e.ErlNifTerm {
       var usize_length = @intCast(usize, length);
 
-      var slice = beam.allocator.alloc(u8, usize_length) catch beam.enomem(env);
+      var slice = beam.allocator.alloc(u8, usize_length) catch {
+        return beam.throw_enomem(env);
+      };
+
       defer beam.allocator.free(slice);
 
       // fill the slice with letters
@@ -24,10 +27,15 @@ defmodule ZiglerTest.AllocatorsTest do
     fn realloctest(env: ?*e.ErlNifEnv, length: i64) e.ErlNifTerm {
       var usize_length = @intCast(usize, length);
 
-      var slice = beam.allocator.alloc(u8, usize_length) catch beam.enomem(env);
+      var slice = beam.allocator.alloc(u8, usize_length) catch {
+        return beam.throw_enomem(env);
+      };
+
       defer beam.allocator.free(slice);
 
-      var slice2 = beam.allocator.realloc(slice, usize_length * 2) catch beam.enomem(env);
+      var slice2 = beam.allocator.realloc(slice, usize_length * 2) catch {
+        return beam.throw_enomem(env);
+      };
 
       // fill the slice with letters
       for (slice2) | _char, i | {
@@ -51,7 +59,8 @@ defmodule ZiglerTest.AllocatorsTest do
     use Zigler, app: :zigler
 
     # proves that you can do something crazy, like keep memory around.
-    # don't do this in real code.
+    # don't do this in real code.  There are probably better ways of
+    # safely doing this with a zig nif (for example, resources).
 
     ~Z"""
     var global_nothing = [_]u8{};
@@ -62,7 +71,10 @@ defmodule ZiglerTest.AllocatorsTest do
 
       var usize_length = @intCast(usize, length);
 
-      global_slice = beam.allocator.alloc(u8, usize_length) catch beam.enomem(env);
+      global_slice = beam.allocator.alloc(u8, usize_length) catch {
+        // don't do this in real life!
+        unreachable;
+      };
 
       // don't defer a free here (don't do this in real life!!!)
 
@@ -84,38 +96,5 @@ defmodule ZiglerTest.AllocatorsTest do
   test "elixir persistent memory works" do
     assert true == PersistentMemory.allocate(2);
     assert :ab == PersistentMemory.fetch(0);
-  end
-
-  defmodule TagResource do
-    use Zigler, app: :zigler
-
-    # a better version of the above code.  Generates some memory, passes back
-    # a resource, and then accesses it safely.
-
-    ~Z"""
-    var global_nothing = [_]u8{};
-    var global_slice = global_nothing[0..0];
-
-    /// nif: allocate/1
-    fn allocate(env: ?*e.ErlNifEnv, length: i64) bool {
-
-      var usize_length = @intCast(usize, length);
-
-      global_slice = beam.allocator.alloc(u8, usize_length) catch beam.enomem(env);
-      // don't defer a free here (don't do this in real life!!!)
-
-      // fill the slice with letters
-      for (global_slice) | _char, i | {
-        global_slice[i] = 97 + @intCast(u8, i);
-      }
-
-      return true;
-    }
-
-    /// nif: fetch/1
-    fn fetch(env: ?*e.ErlNifEnv, dummy: i64) e.ErlNifTerm {
-      return e.enif_make_atom_len(env, global_slice.ptr, global_slice.len);
-    }
-    """
   end
 end
