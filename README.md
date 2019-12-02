@@ -1,5 +1,7 @@
 # Zigler
 
+![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI/badge.svg)
+
 ## Zig Nifs made easy
 
 Wouldn't it be nice if you could make NIFs as easily as you can use the `asm`
