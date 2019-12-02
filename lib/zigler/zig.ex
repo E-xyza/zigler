@@ -13,7 +13,8 @@ defmodule Zigler.Zig do
   @guarded_types ~w(
     u8 c_int c_long isize usize i32 i64 f16 f32 f64 bool
     []u8 [*c]u8 []i32 []i64 []f16 []f32 []f64
-    beam.atom e.ErlNifPid beam.pid)
+    beam.atom e.ErlNifPid beam.pid e.ErlNifBinary beam.binary
+    e.ErlNifReference beam.ref)
 
   defp needs_guard?(params) do
     Enum.any?(params, &(&1 in @guarded_types || match?({:slice, _}, &1)))
@@ -126,6 +127,12 @@ defmodule Zigler.Zig do
   """
   def getfor("[]u8", idx), do: """
     arg#{idx} = try beam.get_char_slice(env, argv[#{idx}]);
+  """
+  def getfor("beam.binary", idx), do: """
+    arg#{idx} = try beam.get_binary(env, argv[#{idx}]);
+  """
+  def getfor("e.ErlNifBinary", idx), do: """
+    arg#{idx} = try beam.get_binary(env, argv[#{idx}]);
   """
   def getfor("[]i32", idx), do: """
     arg#{idx} = try beam.get_slice_of(i32, env, argv[#{idx}]);

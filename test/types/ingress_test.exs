@@ -43,7 +43,7 @@ defmodule ZiglerTest.Types.IngressTest do
 
   /// nif: atom_in/1
   fn atom_in(env: beam.env, val: beam.atom) []u8 {
-    // NB this is bad code because it incurs a memory leak!
+    // NB this is generally bad code because it incurs a memory leak!
     return beam.get_atom_slice(env, val) catch unreachable;
   }
 
@@ -56,6 +56,16 @@ defmodule ZiglerTest.Types.IngressTest do
   fn binary_into_c_string(val: [*c]u8) []u8 {
     // NB this is generally a bad function since it could incur a segfault.
     return val[0..2];
+  }
+
+  /// nif: binary_into_binary/1
+  fn binary_into_binary(env: beam.env, bin: beam.binary) i64 {
+    return @intCast(i64, bin.size);
+  }
+
+  /// nif: binary_into_erl_nif_binary/1
+  fn binary_into_erl_nif_binary(env: beam.env, bin: e.ErlNifBinary) i64 {
+    return @intCast(i64, bin.size);
   }
 
   /// nif: pid_in_with_beam/1
@@ -234,6 +244,28 @@ defmodule ZiglerTest.Types.IngressTest do
     test "and are guarded for invalid values" do
       assert_raise FunctionClauseError, fn -> binary_into_c_string(47) end
       assert_raise FunctionClauseError, fn -> binary_into_c_string(:foo) end
+    end
+  end
+
+  describe "binaries can be ingressed as binary structs" do
+    test "correctly" do
+      assert 3 == binary_into_binary("foo")
+    end
+
+    test "and are guarded for invalid values" do
+      assert_raise FunctionClauseError, fn -> binary_into_binary(47) end
+      assert_raise FunctionClauseError, fn -> binary_into_binary(:foo) end
+    end
+  end
+
+  describe "binaries can be ingressed as binary structs via e.ErlNifBinary" do
+    test "correctly" do
+      assert 3 == binary_into_erl_nif_binary("foo")
+    end
+
+    test "and are guarded for invalid values" do
+      assert_raise FunctionClauseError, fn -> binary_into_erl_nif_binary(47) end
+      assert_raise FunctionClauseError, fn -> binary_into_erl_nif_binary(:foo) end
     end
   end
 
