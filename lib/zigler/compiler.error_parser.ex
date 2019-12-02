@@ -31,7 +31,6 @@ defmodule Zigler.Compiler.ErrorParser do
 
   def parse(msg, code_dir, tmp_dir) do
     {:ok, [path, line, _col, msg | _rest], _, _, _, _} = parse_error(msg)
-
     #TODO: figure out if we want to do something with "other information lines" later.
 
     # check if we need full translation or just file translation.
@@ -85,13 +84,13 @@ defmodule Zigler.Compiler.ErrorParser do
 
   defparsec :by_line_comments, by_line
 
-  defp parse_group(_rest, content, context, {line, _}, _) do
+  defp parse_group(_rest, content, context, {ctx_line, _}, _) do
     kw = Enum.flat_map(content, fn
       {:file, [file]} -> [{:file, file}]
       {:line, [line]} -> [{:line, String.to_integer(line)}]
       _ -> []
     end)
-    {[{:group, {line, kw[:file], kw[:line]}}], context}
+    {[{:group, {ctx_line, kw[:file], kw[:line]}}], context}
   end
 
   # read our instrumented comments to try to find the location of the error.
