@@ -52,6 +52,10 @@ typedef enum {
     ERL_NIF_PHASH2 = 2
 } ErlNifHash;
 
+typedef enum {
+    ERL_NIF_LATIN1
+} ErlNifCharEncoding;
+
 // NIF Functions: memory management
 extern void *enif_alloc(size_t size);
 extern void enif_free(void* ptr);
@@ -84,12 +88,14 @@ extern int enif_get_int(ErlNifEnv *, ErlNifTerm, int * ip);
 extern int enif_get_uint(ErlNifEnv*, ErlNifTerm, unsigned* ip);
 extern int enif_get_long(ErlNifEnv*, ErlNifTerm, long* ip);
 extern int enif_get_ulong(ErlNifEnv *, ErlNifTerm, unsigned long * ip);
+extern int enif_get_int64(ErlNifEnv *, ErlNifTerm, long * ip);
 extern int enif_get_double(ErlNifEnv *, ErlNifTerm, double * dp);
 extern int enif_get_list_cell(ErlNifEnv *, ErlNifTerm, ErlNifTerm *head, ErlNifTerm *tail);
 extern int enif_get_list_length(ErlNifEnv*, ErlNifTerm, unsigned* len);
 extern int enif_get_tuple(ErlNifEnv *, ErlNifTerm, int* arity, const ErlNifTerm **array);
-extern int enif_get_string(ErlNifEnv*, ErlNifTerm list, char* buf, unsigned len, ErlNifCharEncoding);
-extern int enif_get_atom(ErlNifEnv*, ErlNifTerm atom, char* buf, unsigned len, ErlNifCharEncoding);
+extern int enif_get_string(ErlNifEnv*, ErlNifTerm, char* buf, unsigned len, ErlNifCharEncoding);
+extern int enif_get_atom_length(ErlNifEnv*, ErlNifTerm, unsigned* buf, ErlNifCharEncoding);
+extern int enif_get_atom(ErlNifEnv*, ErlNifTerm, char* buf, unsigned len, ErlNifCharEncoding);
 
 // NIF Functions: make values
 extern ErlNifTerm enif_make_binary(ErlNifEnv *, ErlNifBinary *);
@@ -99,7 +105,7 @@ extern ErlNifTerm enif_make_ulong(ErlNifEnv *, unsigned long);
 extern ErlNifTerm enif_make_double(ErlNifEnv *, double);
 extern ErlNifTerm enif_make_atom(ErlNifEnv *, const char*);
 extern ErlNifTerm enif_make_atom_len(ErlNifEnv*, const char*, size_t);
-extern int enif_make_exisiting_atom(ErlNifEnv *, const char*, ErlNifTerm *atom, ErlNifCharEncoding);
+extern int enif_make_existing_atom(ErlNifEnv *, const char*, ErlNifTerm *atom, ErlNifCharEncoding);
 extern ErlNifTerm enif_make_tuple(ErlNifEnv *, unsigned cnt, ...);
 extern ErlNifTerm enif_make_list(ErlNifEnv *, unsigned cnt, ...);
 extern ErlNifTerm enif_make_list_cell(ErlNifEnv *, ErlNifTerm car, ErlNifTerm cdr);
