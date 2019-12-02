@@ -10,8 +10,12 @@ defmodule Zigler.Zig do
   EEx.function_from_file(:def, :nif_adapter_guarded, "assets/nif_adapter.guarded.zig.eex", [:assigns])
   EEx.function_from_file(:def, :nif_adapter_test, "assets/nif_adapter.test.zig.eex", [:assigns])
 
-  @guarded_types ["i8", "i16", "i32", "i64", "f16", "f32", "f64", "[]u8", "[*c]u8", "[]i64", "[]f64",
-  "e.ErlNifPid", "beam.pid", "c_int"]
+  @guarded_types ~w(
+    u8 c_int c_long isize usize i32 i64 f16 f32 f64 bool
+    []u8 [*c]u8 []i32 []i64 []f16 []f32 []f64
+    beam.atom e.ErlNifPid beam.pid e.ErlNifBinary beam.binary
+    e.ErlNifReference beam.ref)
+
   defp needs_guard?(params) do
     Enum.any?(params, &(&1 in @guarded_types || match?({:slice, _}, &1)))
   end
@@ -76,8 +80,26 @@ defmodule Zigler.Zig do
     EEx.eval_string(@nif_exports, funcs: adjusted_funcs)
   end
 
+  def getfor("beam.term", idx), do: """
+    arg#{idx} = argv[#{idx}];
+  """
+  def getfor("u8", idx), do: """
+    arg#{idx} = try beam.get_u8(env, argv[#{idx}]);
+  """
   def getfor("c_int", idx), do: """
     arg#{idx} = try beam.get_c_int(env, argv[#{idx}]);
+  """
+  def getfor("c_long", idx), do: """
+    arg#{idx} = try beam.get_c_long(env, argv[#{idx}]);
+  """
+  def getfor("usize", idx), do: """
+    arg#{idx} = try beam.get_usize(env, argv[#{idx}]);
+  """
+  def getfor("isize", idx), do: """
+    arg#{idx} = try beam.get_isize(env, argv[#{idx}]);
+  """
+  def getfor("i32", idx), do: """
+    arg#{idx} = try beam.get_i32(env, argv[#{idx}]);
   """
   def getfor("i64", idx), do: """
     arg#{idx} = try beam.get_i64(env, argv[#{idx}]);
@@ -85,63 +107,77 @@ defmodule Zigler.Zig do
   def getfor("f64", idx), do: """
     arg#{idx} = try beam.get_f64(env, argv[#{idx}]);
   """
+  def getfor("bool", idx), do: """
+    arg#{idx} = try beam.get_bool(env, argv[#{idx}]);
+  """
+  def getfor("beam.atom", idx), do: """
+    arg#{idx} = argv[#{idx}];
+    if (0 == e.enif_is_atom(env, arg#{idx})) {
+      return beam.Error.FunctionClauseError;
+    }
+  """
+  def getfor("beam.pid", idx), do: """
+    arg#{idx} = try beam.get_pid(env, argv[#{idx}]);
+  """
+  def getfor("e.ErlNifPid", idx), do: """
+    arg#{idx} = try beam.get_pid(env, argv[#{idx}]);
+  """
   def getfor("[*c]u8", idx), do: """
     arg#{idx} = try beam.get_c_string(env, argv[#{idx}]);
   """
   def getfor("[]u8", idx), do: """
     arg#{idx} = try beam.get_char_slice(env, argv[#{idx}]);
   """
-  def getfor("[]i64", idx), do: """
-    var head#{idx}: e.ErlNifTerm = undefined;
-    var list#{idx} = argv[#{idx}];
-    var idx#{idx}: usize = 0;
-
-    const size#{idx} = try beam.get_list_length(env, argv[#{idx}]);
-
-    // but first we have to allocate memory.
-    arg#{idx} = try beam.allocator.alloc(i64, size#{idx});
-    // free it after we're done with the entire function.
+  def getfor("beam.binary", idx), do: """
+    arg#{idx} = try beam.get_binary(env, argv[#{idx}]);
+  """
+  def getfor("e.ErlNifBinary", idx), do: """
+    arg#{idx} = try beam.get_binary(env, argv[#{idx}]);
+  """
+  def getfor("[]i32", idx), do: """
+    arg#{idx} = try beam.get_slice_of(i32, env, argv[#{idx}]);
     defer beam.allocator.free(arg#{idx});
-
-    // unmarshall the list using a for loop.
-    while (idx#{idx} < size#{idx}){
-      head#{idx} = try beam.get_head_and_iter(env, &list#{idx});
-      arg#{idx}[idx#{idx}] = try beam.get_i64(env, head#{idx});
-      idx#{idx} += 1;
-    }
+  """
+  def getfor("[]i64", idx), do: """
+    arg#{idx} = try beam.get_slice_of(i64, env, argv[#{idx}]);
+    defer beam.allocator.free(arg#{idx});
+  """
+  def getfor("[]f16", idx), do: """
+    arg#{idx} = try beam.get_slice_of(f16, env, argv[#{idx}]);
+    defer beam.allocator.free(arg#{idx});
+  """
+  def getfor("[]f32", idx), do: """
+    arg#{idx} = try beam.get_slice_of(f32, env, argv[#{idx}]);
+    defer beam.allocator.free(arg#{idx});
   """
   def getfor("[]f64", idx), do: """
-    var head#{idx}: e.ErlNifTerm = undefined;
-    var list#{idx} = argv[#{idx}];
-    var idx#{idx}: usize = 0;
-
-    const size#{idx} = try beam.get_list_length(env, argv[#{idx}]);
-
-    // but first we have to allocate memory.
-    arg#{idx} = try beam.allocator.alloc(f64, size#{idx});
-    // free it after we're done with the entire function.
+    arg#{idx} = try beam.get_slice_of(f64, env, argv[#{idx}]);
     defer beam.allocator.free(arg#{idx});
-
-    // unmarshall the list using a for loop.
-    while (idx#{idx} < size#{idx}){
-      head#{idx} = try beam.get_head_and_iter(env, &list#{idx});
-      arg#{idx}[idx#{idx}] = try beam.get_f64(env, head#{idx});
-      idx#{idx} += 1;
-    }
   """
   def getfor("e.ErlNifTerm", idx), do: "arg#{idx} = argv[#{idx}];"
-  def getfor("e.ErlNifPid", idx), do: """
-    arg#{idx} = try beam.get_pid(env, argv[#{idx}]);
-  """
 
-  def makefor("beam.atom"), do: "return result;"
-  def makefor("c_int"), do: "return e.enif_make_int(env, result);"
-  def makefor("i64"), do: "return e.enif_make_int(env, @intCast(c_int, result));"
-  def makefor("f64"), do: "return e.enif_make_double(env, result);"
+  def makefor("beam.atom"),    do: "return result;"
+  def makefor("u8"),           do: "return beam.make_u8(env, result);"
+  def makefor("c_int"),        do: "return beam.make_c_int(env, result);"
+  def makefor("c_long"),       do: "return beam.make_c_long(env, result);"
+  def makefor("i32"),          do: "return beam.make_i32(env, result);"
+  def makefor("i64"),          do: "return beam.make_i64(env, result);"
+  def makefor("f16"),          do: "return beam.make_f16(env, result);"
+  def makefor("f32"),          do: "return beam.make_f32(env, result);"
+  def makefor("f64"),          do: "return beam.make_f64(env, result);"
+  def makefor("[]beam.term"),  do: "return beam.make_term_list(env, result);"
+  def makefor("[]c_int"),      do: "return beam.make_c_int_list(env, result) catch { return beam.throw_enomem(env); };"
+  def makefor("[]c_long"),     do: "return beam.make_c_long_list(env, result) catch { return beam.throw_enomem(env); };"
+  def makefor("[]i32"),        do: "return beam.make_i32_list(env, result) catch { return beam.throw_enomem(env); };"
+  def makefor("[]i64"),        do: "return beam.make_i64_list(env, result) catch { return beam.throw_enomem(env); };"
+  def makefor("[]f16"),        do: "return beam.make_f16_list(env, result) catch { return beam.throw_enomem(env); };"
+  def makefor("[]f32"),        do: "return beam.make_f32_list(env, result) catch { return beam.throw_enomem(env); };"
+  def makefor("[]f64"),        do: "return beam.make_f64_list(env, result) catch { return beam.throw_enomem(env); };"
   def makefor("e.ErlNifTerm"), do: "return result;"
-  def makefor("bool"), do: ~S/return if (result) e.enif_make_atom(env, c"true") else e.enif_make_atom(env, c"false");/
-  def makefor("void"), do: ~S/return e.enif_make_atom(env, c"nil");/
-  def makefor("[*c]u8"), do: """
+  def makefor("beam.term"),    do: "return result;"
+  def makefor("bool"),         do: ~S/return if (result) e.enif_make_atom(env, c"true") else e.enif_make_atom(env, c"false");/
+  def makefor("void"),         do: ~S/return e.enif_make_atom(env, c"nil");/
+  def makefor("[*c]u8"),       do: """
   var result_term: e.ErlNifTerm = undefined;
 
   var i: usize = 0;
@@ -164,32 +200,6 @@ defmodule Zigler.Zig do
     bin[i] = result[i];
   }
 
-  return result_term;
-  """
-  def makefor("[]i64"), do: """
-  var term_slice = beam.allocator.alloc(e.ErlNifTerm, result.len)
-    catch beam.enomem(env);
-  defer beam.allocator.free(term_slice);
-
-  for (term_slice) | _term, i | {
-    term_slice[i] = e.enif_make_int(env, @intCast(c_int, result[i]));
-  }
-  var result_term = e.enif_make_list_from_array(env, term_slice.ptr, @intCast(c_uint, result.len));
-
-  // return the term
-  return result_term;
-  """
-  def makefor("[]f64"), do: """
-  var term_slice = beam.allocator.alloc(e.ErlNifTerm, result.len)
-    catch beam.enomem(env);
-  defer beam.allocator.free(term_slice);
-
-  for (term_slice) | _term, i | {
-    term_slice[i] = e.enif_make_double(env, result[i]);
-  }
-  var result_term = e.enif_make_list_from_array(env, term_slice.ptr, @intCast(c_uint, result.len));
-
-  // return the term
   return result_term;
   """
 

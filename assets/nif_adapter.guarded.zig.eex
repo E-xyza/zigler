@@ -17,8 +17,6 @@ fn ___<%= @func %>(env: beam.env, argc: c_int, argv: [*c] const beam.term) !beam
   <%= Zigler.Zig.makefor(@type) %>
 }
 
-// all of the error handling should go here.
-
 extern fn __<%= @func %>(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
   var res: beam.term = ___<%= @func %>(env, argc, argv) catch | err | {
     if (err == beam.Error.FunctionClauseError) {

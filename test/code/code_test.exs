@@ -5,7 +5,7 @@ defmodule ZiglerTest.CodeTest do
     test "return plain code with no nifs, and assign files and lines correctly" do
 
       code = """
-      pub fn test_fn(val:i8) i8 {
+      pub fn test_fn(val:i64) i64 {
         return val + 1;
       }
       """
@@ -35,7 +35,7 @@ defmodule ZiglerTest.CodeTest do
     test "find a nif and correctly assign it, adding line numbers" do
       code = """
       /// nif: test_nif/1
-      fn test_nif(val:i8) i8 {
+      fn test_nif(val:i64) i64 {
         return 47;
       }
       """
@@ -48,7 +48,7 @@ defmodule ZiglerTest.CodeTest do
       assert """
       // my_file.ex line: 15
       /// nif: test_nif/1
-      fn test_nif(val:i8) i8 {
+      fn test_nif(val:i64) i64 {
         return 47;
       }
       """ == IO.iodata_to_binary(new_code)
@@ -57,12 +57,12 @@ defmodule ZiglerTest.CodeTest do
     test "do the correct thing with multiple functions" do
       code = """
       /// nif: test_nif_1/1
-      fn test_nif_1(val: i8) i8 {
+      fn test_nif_1(val: i64) i64 {
         return val + 1;
       }
 
       /// nif: test_nif_2/0
-      fn test_nif_2() i8 {
+      fn test_nif_2() i64 {
         return 47;
       }
       """
@@ -75,12 +75,12 @@ defmodule ZiglerTest.CodeTest do
       assert """
       // my_file.ex line: 12
       /// nif: test_nif_1/1
-      fn test_nif_1(val: i8) i8 {
+      fn test_nif_1(val: i64) i64 {
         return val + 1;
       }
 
       /// nif: test_nif_2/0
-      fn test_nif_2() i8 {
+      fn test_nif_2() i64 {
         return 47;
       }
       """ == IO.iodata_to_binary(new_code)
