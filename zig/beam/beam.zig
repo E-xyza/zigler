@@ -320,16 +320,17 @@ pub fn get_bool(environment: env, val: term) !bool {
 ///////////////////////////////////////////////////////////////////////////////
 
 // generic
-pub fn make(comptime T: term, environment: env, val: T) term {
-  switch (t) {
-    u8     => make_char(environment, val),
-    c_int  => make_c_int(environment, val),
-    c_long => make_c_long(environment, val),
-    i32    => make_i32(environment, val),
-    i64    => make_i64(environment, val),
-    f16    => make_f16(environment, val),
-    f32    => make_f32(environment, val),
-    f64    => make_f64(environment, val),
+pub fn make(comptime T: type, environment: env, val: T) term {
+  switch (T) {
+    u8     => return make_u8(environment, val),
+    c_int  => return make_c_int(environment, val),
+    c_long => return make_c_long(environment, val),
+    i32    => return make_i32(environment, val),
+    i64    => return make_i64(environment, val),
+    f16    => return make_f16(environment, val),
+    f32    => return make_f32(environment, val),
+    f64    => return make_f64(environment, val),
+    else   => unreachable
   }
 }
 
@@ -366,7 +367,7 @@ pub fn make_f32(environment: env, val: f32) term {
 }
 
 pub fn make_f64(environment: env, val: f64) term {
-  return e.enif_make_long(environment, val);
+  return e.enif_make_double(environment, val);
 }
 
 // atoms
@@ -418,7 +419,7 @@ pub fn make_tuple(environment: env, val: []term) term {
 // lists
 
 pub fn make_term_list(environment: env, val: []term) term {
-  return e.enif_make_list_from_array(environment, val, val.len);
+  return e.enif_make_list_from_array(environment, @ptrCast([*c]term, &val[0]), @intCast(c_uint, val.len));
 }
 
 pub fn make_charlist(environment: env, val: []u8) term {
@@ -431,43 +432,43 @@ pub fn make_cstring_charlist(environment: env, val: [*c]u8) term {
 
 // list-generic
 
-pub fn make_list(comptime T: term, environment, env, val: []T) term {
-  var term_slice: []term = allocator.alloc(term, val.len);
+pub fn make_list(comptime T: type, environment: env, val: []T) !term {
+  var term_slice: []term = try allocator.alloc(term, val.len);
   defer allocator.free(term_slice);
 
   for (val) | item, idx | {
     term_slice[idx] = make(T, environment, item);
   }
 
-  return e.enif_make_list_from_array(environment, term_slice, val.len);
+  return e.enif_make_list_from_array(environment, @ptrCast([*c]term, &term_slice[0]), @intCast(c_uint, val.len));
 }
 
-pub fn make_c_int_list(environment: env, val: []c_int) term {
-  return make_list(c_int, environment, val);
+pub fn make_c_int_list(environment: env, val: []c_int) !term {
+  return try make_list(c_int, environment, val);
 }
 
-pub fn make_c_long_list(environment: env, val: []c_long) term {
-  return make_list(c_long, environment, val);
+pub fn make_c_long_list(environment: env, val: []c_long) !term {
+  return try make_list(c_long, environment, val);
 }
 
-pub fn make_i32_list(environment: env, val: []i32) term {
-  return make_list(i32, environment, val);
+pub fn make_i32_list(environment: env, val: []i32) !term {
+  return try make_list(i32, environment, val);
 }
 
-pub fn make_i64_list(environment: env, val: []i64) term {
-  return make_list(i64, environment, val);
+pub fn make_i64_list(environment: env, val: []i64) !term {
+  return try make_list(i64, environment, val);
 }
 
-pub fn make_f16_list(environment: env, val: []f16) term {
-  return make_list(i64, environment, val);
+pub fn make_f16_list(environment: env, val: []f16) !term {
+  return try make_list(f16, environment, val);
 }
 
-pub fn make_f32_list(environment: env, val: []f32) term {
-  return make_list(i64, environment, val);
+pub fn make_f32_list(environment: env, val: []f32) !term {
+  return try make_list(f32, environment, val);
 }
 
-pub fn make_f64_list(environment: env, val: []f64) term {
-  return make_list(i64, environment, val);
+pub fn make_f64_list(environment: env, val: []f64) !term {
+  return try make_list(f64, environment, val);
 }
 
 pub fn make_bool(environment: env, val: bool) term {

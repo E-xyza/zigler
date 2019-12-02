@@ -143,15 +143,28 @@ defmodule Zigler.Zig do
   """
   def getfor("e.ErlNifTerm", idx), do: "arg#{idx} = argv[#{idx}];"
 
-  def makefor("beam.atom"), do: "return result;"
-  def makefor("c_int"), do: "return e.enif_make_int(env, result);"
-  def makefor("i32"), do: "return e.enif_make_int(env, @intCast(c_int, result));"
-  def makefor("i64"), do: "return e.enif_make_int(env, @intCast(c_int, result));"
-  def makefor("f64"), do: "return e.enif_make_double(env, result);"
+  def makefor("beam.atom"),    do: "return result;"
+  def makefor("u8"),           do: "return beam.make_u8(env, result);"
+  def makefor("c_int"),        do: "return beam.make_c_int(env, result);"
+  def makefor("c_long"),       do: "return beam.make_c_long(env, result);"
+  def makefor("i32"),          do: "return beam.make_i32(env, result);"
+  def makefor("i64"),          do: "return beam.make_i64(env, result);"
+  def makefor("f16"),          do: "return beam.make_f16(env, result);"
+  def makefor("f32"),          do: "return beam.make_f32(env, result);"
+  def makefor("f64"),          do: "return beam.make_f64(env, result);"
+  def makefor("[]beam.term"),  do: "return beam.make_term_list(env, result);"
+  def makefor("[]c_int"),      do: "return beam.make_c_int_list(env, result) catch { return beam.throw_enomem(env); };"
+  def makefor("[]c_long"),     do: "return beam.make_c_long_list(env, result) catch { return beam.throw_enomem(env); };"
+  def makefor("[]i32"),        do: "return beam.make_i32_list(env, result) catch { return beam.throw_enomem(env); };"
+  def makefor("[]i64"),        do: "return beam.make_i64_list(env, result) catch { return beam.throw_enomem(env); };"
+  def makefor("[]f16"),        do: "return beam.make_f16_list(env, result) catch { return beam.throw_enomem(env); };"
+  def makefor("[]f32"),        do: "return beam.make_f32_list(env, result) catch { return beam.throw_enomem(env); };"
+  def makefor("[]f64"),        do: "return beam.make_f64_list(env, result) catch { return beam.throw_enomem(env); };"
   def makefor("e.ErlNifTerm"), do: "return result;"
-  def makefor("bool"), do: ~S/return if (result) e.enif_make_atom(env, c"true") else e.enif_make_atom(env, c"false");/
-  def makefor("void"), do: ~S/return e.enif_make_atom(env, c"nil");/
-  def makefor("[*c]u8"), do: """
+  def makefor("beam.term"),    do: "return result;"
+  def makefor("bool"),         do: ~S/return if (result) e.enif_make_atom(env, c"true") else e.enif_make_atom(env, c"false");/
+  def makefor("void"),         do: ~S/return e.enif_make_atom(env, c"nil");/
+  def makefor("[*c]u8"),       do: """
   var result_term: e.ErlNifTerm = undefined;
 
   var i: usize = 0;
@@ -174,36 +187,6 @@ defmodule Zigler.Zig do
     bin[i] = result[i];
   }
 
-  return result_term;
-  """
-  def makefor("[]i64"), do: """
-  var term_slice = beam.allocator.alloc(e.ErlNifTerm, result.len) catch {
-    return beam.throw_enomem(env);
-  };
-
-  defer beam.allocator.free(term_slice);
-
-  for (term_slice) | _term, i | {
-    term_slice[i] = e.enif_make_int(env, @intCast(c_int, result[i]));
-  }
-  var result_term = e.enif_make_list_from_array(env, term_slice.ptr, @intCast(c_uint, result.len));
-
-  // return the term
-  return result_term;
-  """
-  def makefor("[]f64"), do: """
-  var term_slice = beam.allocator.alloc(e.ErlNifTerm, result.len) catch {
-    return beam.throw_enomem(env);
-  };
-
-  defer beam.allocator.free(term_slice);
-
-  for (term_slice) | _term, i | {
-    term_slice[i] = e.enif_make_double(env, result[i]);
-  }
-  var result_term = e.enif_make_list_from_array(env, term_slice.ptr, @intCast(c_uint, result.len));
-
-  // return the term
   return result_term;
   """
 

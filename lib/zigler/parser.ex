@@ -100,7 +100,7 @@ defmodule Zigler.Parser do
 
   float_literals = Enum.map(~w(f16 f32 f64), &string/1)
   int_literals = Enum.map(~w(u8 i32 i64 c_int c_long), &string/1)
-  array_literals = Enum.map(~w(u8 i32 i64 f16 f32 f64), &string/1)
+  array_literals = Enum.map(~w(u8 c_int c_long i32 i64 f16 f32 f64 beam.term), &string/1)
   erlang_literals = Enum.map(~w(?*e.ErlNifEnv e.ErlNifTerm e.ErlNifPid), &string/1)
 
   type_literals = Enum.map(~w(bool beam.env beam.pid beam.atom beam.term), &string/1)
