@@ -11,7 +11,7 @@ defmodule Zigler.Zig do
   EEx.function_from_file(:def, :nif_adapter_test, "assets/nif_adapter.test.zig.eex", [:assigns])
 
   @guarded_types ~w(
-    u8 c_int c_long i32 i64 f16 f32 f64 bool
+    u8 c_int c_long isize usize i32 i64 f16 f32 f64 bool
     []u8 [*c]u8 []i32 []i64 []f16 []f32 []f64
     beam.atom e.ErlNifPid beam.pid)
 
@@ -90,6 +90,12 @@ defmodule Zigler.Zig do
   """
   def getfor("c_long", idx), do: """
     arg#{idx} = try beam.get_c_long(env, argv[#{idx}]);
+  """
+  def getfor("usize", idx), do: """
+    arg#{idx} = try beam.get_usize(env, argv[#{idx}]);
+  """
+  def getfor("isize", idx), do: """
+    arg#{idx} = try beam.get_isize(env, argv[#{idx}]);
   """
   def getfor("i32", idx), do: """
     arg#{idx} = try beam.get_i32(env, argv[#{idx}]);

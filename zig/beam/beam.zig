@@ -114,6 +114,23 @@ pub fn get_c_long(environment: env, src_term: term) !c_long {
   } else { return Error.FunctionClauseError; }
 }
 
+/// takes a beam int term and returns a `isize` value.  Typically an isize value
+/// is used for C interop.
+pub fn get_isize(environment: env, src_term: term) !isize {
+  var res: i64 = undefined;
+  if (0 != e.enif_get_long(environment, src_term, @ptrCast(*c_long, &res))) {
+    return @intCast(isize, res);
+  } else { return Error.FunctionClauseError; }
+}
+
+/// takes a beam int term and returns a `usize` value.
+pub fn get_usize(environment: env, src_term: term) !usize {
+  var res: i64 = undefined;
+  if (0 != e.enif_get_long(environment, src_term, @ptrCast(*c_long, &res))) {
+    return @intCast(usize, res);
+  } else { return Error.FunctionClauseError; }
+}
+
 /// takes a beam int term and returns a `u8` value.  Note that this conversion
 /// function checks to make sure it's in range.
 pub fn get_u8(environment: env, src_term: term) !u8 {

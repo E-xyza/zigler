@@ -21,6 +21,16 @@ defmodule ZiglerTest.Types.IngressTest do
     return @intCast(i64, val);
   }
 
+  /// nif: usize_in/1
+  fn usize_in(val: usize) i64 {
+    return @intCast(i64, val);
+  }
+
+  /// nif: isize_in/1
+  fn isize_in(val: isize) i64 {
+    return @intCast(i64, val);
+  }
+
   /// nif: i32_in/1
   fn i32_in(val: i32) i64 {
     return @intCast(i64, val);
@@ -146,6 +156,28 @@ defmodule ZiglerTest.Types.IngressTest do
     test "and are guarded for invalid values" do
       assert_raise FunctionClauseError, fn -> c_long_in(:atom) end
       assert_raise FunctionClauseError, fn -> c_long_in(0.47) end
+    end
+  end
+
+  describe "usize can be ingressed" do
+    test "correctly" do
+      assert 47 == usize_in(47)
+    end
+
+    test "and are guarded for invalid values" do
+      assert_raise FunctionClauseError, fn -> usize_in(:atom) end
+      assert_raise FunctionClauseError, fn -> usize_in(0.47) end
+    end
+  end
+
+  describe "isize can be ingressed" do
+    test "correctly" do
+      assert 47 == isize_in(47)
+    end
+
+    test "and are guarded for invalid values" do
+      assert_raise FunctionClauseError, fn -> isize_in(:atom) end
+      assert_raise FunctionClauseError, fn -> isize_in(0.47) end
     end
   end
 
