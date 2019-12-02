@@ -46,6 +46,8 @@ defmodule Mix.Tasks.Zigler.GetZig do
     Application.ensure_all_started(:mojito)
 
     tarfile = Compiler.basename(version) <> ".tar.xz"
+    # make sure the zig directory path exists and is ready.
+    File.mkdir_p!(@zig_dir_path)
     zig_download_path = Path.join(@zig_dir_path, tarfile)
 
     unless File.exists?(zig_download_path) do
