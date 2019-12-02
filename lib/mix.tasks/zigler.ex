@@ -1,6 +1,9 @@
 if Mix.env() == :dev do
 
 defmodule Mix.Tasks.Zigler.GetZig do
+
+  use Mix.Task
+
   @moduledoc """
   gets a zig version and puts it into the zigler directory under
   the subdirectory zig.
@@ -15,14 +18,15 @@ defmodule Mix.Tasks.Zigler.GetZig do
   @shortdoc "caches a version of zig."
 
   require Logger
-  
-  alias Zigler.Compiler
 
   alias Zigler.Compiler
 
-  @zig_dir_path Path.expand("../../../zig", __ENV__.file)
+  alias Zigler.Compiler
+
+  @zig_dir_path Path.expand("../../zig", Path.dirname(__ENV__.file))
   @latest_version Application.get_env(:zigler, :latest_zig_version)
 
+  @impl true
   def run(["latest"]), do: run([@latest_version])
   def run([version]) do
 
@@ -50,8 +54,6 @@ defmodule Mix.Tasks.Zigler.GetZig do
 
       download_zig_tarball(zig_download_path, download_location)
     end
-
-    # TODO: check the shasum.
 
     # untar the zig directory.
     zig_version_cache = Path.join(@zig_dir_path, "zig-linux-x86_64-#{version}")
