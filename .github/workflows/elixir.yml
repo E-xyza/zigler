@@ -12,6 +12,9 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
+    - name: Install XZ
+      run: |
+        sudo apt-get install xz-utils
     - name: Install Dependencies
       run: |
         mix local.rebar --force
