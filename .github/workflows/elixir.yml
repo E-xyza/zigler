@@ -7,6 +7,7 @@ jobs:
 
     runs-on: ubuntu-latest
 
+    # updated from elixir 1.9.1  TODO: make this a sophisticated matrix later
     container:
       image: elixir:1.9.4-slim
 
