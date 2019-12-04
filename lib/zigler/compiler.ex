@@ -1,5 +1,10 @@
 defmodule Zigler.Compiler do
 
+  @moduledoc """
+  functions relating to the compilation of zig code via the zig command line
+  live here.
+  """
+
   require Logger
 
   alias Zigler.Compiler.ErrorParser
@@ -10,6 +15,7 @@ defmodule Zigler.Compiler do
   @erl_nif_zig_h Path.join(@zig_dir_path, "include/erl_nif_zig.h")
   @erl_nif_zig_eex File.read!("zig/beam/erl_nif.zig")
 
+  @doc false
   def basename(version) do
     os = case :os.type do
       {:unix, :linux} ->
@@ -27,11 +33,11 @@ defmodule Zigler.Compiler do
     "zig-#{os}-x86_64-#{version}"
   end
 
-  # TODO: make this a map!
-  def release_mode_text(:fast), do: ["--release-fast"]
-  def release_mode_text(:safe), do: ["--release-safe"]
-  def release_mode_text(:small), do: ["--release-small"]
-  def release_mode_text(:debug), do: []
+  # TODO: make this a map?
+  defp release_mode_text(:fast), do: ["--release-fast"]
+  defp release_mode_text(:safe), do: ["--release-safe"]
+  defp release_mode_text(:small), do: ["--release-small"]
+  defp release_mode_text(:debug), do: []
 
   # TODO:  REORGANIZE THIS CRAZINESS.
 

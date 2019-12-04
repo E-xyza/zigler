@@ -1,4 +1,11 @@
 defmodule Zigler.Compiler.ErrorParser do
+
+  @moduledoc """
+  tools for parsing the error messages emitted by the Zig compiler live here.
+
+  This module is mostly backed by `NimbleParsec`.
+  """
+
   import NimbleParsec
 
   @numbers [?0..?9]
@@ -16,7 +23,14 @@ defmodule Zigler.Compiler.ErrorParser do
 
   defparsec :parse_error, times(errormsg, min: 1)
 
-  defp backreference(path, str_line) do
+  @spec backreference(Path.t, non_neg_integer) :: {Path.t, non_neg_integer}
+  @doc """
+  given a code file path and a line number, calculates the file and line number
+  of the source document from which it came.  Strongly depends on having
+  fencing comments of the form `// <file> line: <line>` in order to backtrack
+  this information.
+  """
+  def backreference(path, str_line) do
     line = String.to_integer(str_line)
     file_content = File.read!(path)
 
@@ -29,6 +43,14 @@ defmodule Zigler.Compiler.ErrorParser do
     {true_file, true_line}
   end
 
+  @doc """
+  given a zig compiler error message, a directory for the code file, and the temporary
+  directory where code assembly is taking place, return an appropriate `CompileError`
+  struct which can be raised to emit a sensible compiler error message.
+
+  The temporary directory is stripped (when reasonable) in favor of a "true" source file
+  and any filename substitutions are performed as well.
+  """
   def parse(msg, code_dir, tmp_dir) do
     {:ok, [path, line, _col, msg | _rest], _, _, _, _} = parse_error(msg)
     #TODO: figure out if we want to do something with "other information lines" later.
@@ -94,7 +116,7 @@ defmodule Zigler.Compiler.ErrorParser do
   end
 
   # read our instrumented comments to try to find the location of the error.
-  def parse_line_comments(txt) do
+  defp parse_line_comments(txt) do
     {:ok, parsed, _, _, _, _} = by_line_comments(txt)
 
     parsed

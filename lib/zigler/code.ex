@@ -9,8 +9,6 @@ defmodule Zigler.Code do
     code block.
   - `:file` - elixir `.ex` or `.exs` file associated with this code block.
   - `:line` - line in the above file where the sigil_Z code starts.
-  - `:imports` - a recursively generated list of files to be imported.
-
   """
 
   @enforce_keys [:file, :line]
