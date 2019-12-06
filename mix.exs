@@ -9,7 +9,8 @@ defmodule Zigler.MixProject do
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      aliases: [doc: "zig_doc"]
     ]
   end
 

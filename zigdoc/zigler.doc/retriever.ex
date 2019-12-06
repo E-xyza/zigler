@@ -10,7 +10,7 @@ defmodule Zigler.Doc.Retriever do
       # project.
       __ENV__.file
       |> Path.dirname
-      |> Path.join("../../../zig/beam")
+      |> Path.join("../../zig/beam")
       |> Path.expand
     else
       nil # for now, we'll figure this out later.
