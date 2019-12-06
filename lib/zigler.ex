@@ -1,7 +1,8 @@
 defmodule Zigler do
 
   @moduledoc """
-  ## Inline NIF support for [Zig](https://ziglang.org)
+
+  Inline NIF support for [Zig](https://ziglang.org)
 
   ### Motivation
 
