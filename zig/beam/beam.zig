@@ -1,3 +1,9 @@
+/// this struct derives from `zig/beam/beam.zig` 
+///
+/// this struct contains syntactic sugar to make using the beam within zig
+/// easier.
+///
+
 const e = @import("erl_nif.zig").c;
 const std = @import("std");
 const builtin = @import("builtin");
@@ -10,6 +16,8 @@ const Allocator = std.mem.Allocator;
 
 // basic allocator
 
+/// !value
+/// provides a beam allocator
 pub const allocator = &allocator_state;
 var allocator_state = Allocator{
   .reallocFn = beam_realloc,
@@ -54,20 +62,24 @@ fn beam_shrink(self: *Allocator,
 // syntactic sugar: important elixir terms
 ///////////////////////////////////////////////////////////////////////////////
  
-/// Translates to elixir FunctionClauseError
+/// Translates to elixir `FunctionClauseError`
 pub const Error = error {
   FunctionClauseError
 };
 
-/// Translates to AssertionError, for zigtest unit tests
+/// Translates to `ExUnit.AssertionError`, for zigtest unit tests
 pub const AssertionError = error {
   AssertionError
 };
 
 // env
+/// syntactic sugar for the BEAM environment.  Note that the `env` type 
+/// encapsulates the pointer, since you will almost always be passing this
+/// pointer to an opaque struct around without accessing it.
 pub const env = ?*e.ErlNifEnv;
 
 // terms
+/// syntactic sugar for the erlang term
 pub const term = e.ErlNifTerm;
 
 ///////////////////////////////////////////////////////////////////////////////
