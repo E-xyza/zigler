@@ -74,6 +74,12 @@ defmodule Zigler.Doc do
   }
   ```
 
+  ## Scope
+
+  This module will generate documentation from all Zig code that resides in the
+  same code directory as the base module (or overridden directory, if applicable).
+  Zig code in subdirectories will not be subjected to document generation.
+
   """
 
   @doc false

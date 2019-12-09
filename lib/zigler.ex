@@ -35,7 +35,8 @@ defmodule Zigler do
 
   In the BEAM, you can define a NIF by consulting the following [document](
   https://erlang.org/doc/man/erl_nif.html) and implementing the appropriate
-  DLL callbacks.  However, Zigler will take care of all of this for you.
+  shared object/DLL callbacks.  However, Zigler will take care of all of
+  this for you.
 
   Simply `use Zigler` in your module, providing the app atom in the property
   list.
