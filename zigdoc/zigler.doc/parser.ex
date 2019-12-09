@@ -82,7 +82,25 @@ defmodule Zigler.Doc.Parser do
     |> lookahead_not(string("error"))
     |> concat(ascii_string([not: ?;], min: 1))
     |> ignore(string(";"))
+    |> ignore(ascii_string([not: ?\n], min: 1))
+    |> ignore(string("\n"))
     |> tag(:type)
+
+  val_head =
+    optional(whitespace)
+    |> ignore(
+      string("pub")
+      |> concat(whitespace)
+      |> string("var")
+      |> concat(whitespace))
+    |> concat(identifier)
+    |> ignore(
+      optional(whitespace)
+      |> string("=")
+      |> optional(whitespace))
+    |> ignore(ascii_string([not: ?\n], min: 1))
+    |> ignore(string("\n"))
+    |> tag(:val)
 
   error_head =
     optional(whitespace)
@@ -216,6 +234,24 @@ defmodule Zigler.Doc.Parser do
         type: :type
       }
     {[], %{context | typespecs: [this_type | context.typespecs]}}
+  end
+
+  defp typed_docstring(_rest, [{:val, [name | _]}, doc], context, _line, _offset) do
+    this_value =
+      %ExDoc.FunctionNode{
+        annotations: "mutable",
+        arity: 0,
+        doc: doc,
+        doc_line: 113,
+        group: "Values",
+        id: "#{name}",
+        name: String.to_atom(name),
+        signature: "#{name}",
+        source_path: context.source_path,
+        specs: [],
+        type: :function
+      }
+    {[], %{context | docs: [this_value | context.docs]}}
   end
 
   defp typed_docstring(_rest, [{:fn, [name, defn]}, doc], context, _line, _offset) do

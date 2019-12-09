@@ -1,5 +1,17 @@
-/// this struct derives from `zig/beam/beam.zig`, and contains syntactic sugar
-/// to make using BEAM constructs within Zig easier.
+/// This struct contains adapters designed to facilitate interfacing the 
+/// BEAM's c-style helpers for NIFs with a more idiomatic Zig-style of
+/// programming, for example, the use of slices instead of null-terminated
+/// arrays as strings.
+///
+/// This struct derives from `zig/beam/beam.zig`, and you may import it into
+/// your module's zig code by calling:
+///
+/// ```
+/// const beam = @import("beam.zig")
+/// ```
+///
+/// This is done automatically for you inside your `~Z` forms, so do NOT
+/// use this import statement with inline Zig.
 ///
 /// ## Features
 ///
@@ -14,10 +26,10 @@
 ///
 /// #### Example (slice generation)
 ///
-/// ```zig
+/// ```
 /// beam = @import("beam.zig");
 ///
-/// fn make_a_slice_of_floats() !f32 {
+/// fn make_a_slice_of_floats() ![]f32 {
 ///   return beam.allocator.alloc(f32, 100);
 /// }
 /// ```
@@ -43,7 +55,7 @@
 ///
 /// #### Examples
 ///
-/// ```zig
+/// ```
 /// const beam = @import("beam.zig");
 ///
 /// fn double_value(env: beam.env, value: beam.term) !f64 {
@@ -51,7 +63,9 @@
 /// }
 /// 
 /// fn sum_float_list(env: beam.env, list: beam.term) !f64 {
-///   zig_list: []f64 = try beam.get_list_of(f64, env, list);
+///   zig_list: []f64 = try beam.get_slice_of(f64, env, list);
+///   defer beam.allocator.free(zig_list);  // don't forget to clean up!
+///
 ///   result: f64 = 0;
 ///   for (list) |item| { result += item; }
 ///   return result;
@@ -68,8 +82,8 @@
 /// 
 /// #### Example
 ///
-/// ```zig
-/// cont beam = @import("beam.zig");
+/// ```
+/// const beam = @import("beam.zig");
 /// 
 /// const ok_slice="ok"[0..];
 /// fn to_ok_tuple(env: beam.env, value: i64) !beam.term {
@@ -107,7 +121,7 @@ const Allocator = std.mem.Allocator;
 /// 
 /// The following code will return ten bytes of new memory.
 /// 
-/// ```zig
+/// ```
 /// const beam = @import("beam.zig");
 /// 
 /// fn give_me_ten_bytes() ![]u8 {
@@ -158,26 +172,26 @@ fn beam_shrink(self: *Allocator,
 // syntactic sugar: important elixir terms
 ///////////////////////////////////////////////////////////////////////////////
  
-/// Translates to Elixir `FunctionClauseError`.
-///
-/// This is the default mechanism for reporting that a Zigler nif function has
-/// been incorrectly passed a value from the Elixir BEAM runtime.  This is very
-/// important, as Zig is statically typed.
-///
-/// support for users to be able to throw this value in their own Zig functions
-/// is forthcoming.
 pub const Error = error {
+  /// Translates to Elixir `FunctionClauseError`.
+  ///
+  /// This is the default mechanism for reporting that a Zigler nif function has
+  /// been incorrectly passed a value from the Elixir BEAM runtime.  This is very
+  /// important, as Zig is statically typed.
+  ///
+  /// support for users to be able to throw this value in their own Zig functions
+  /// is forthcoming.
   FunctionClauseError
 };
 
-/// Translates to `ExUnit.AssertionError`.  Mostly used in Zig unit tests.
-/// 
-/// All test clauses in the directories of your Zig-enabled modules are
-/// converted to Zig functions with the inferred type `!void`.  The
-/// `beam.assert/1` function can throw this error as its error type.
-///
-/// Zigler converts assert statements in test blocks to `try beam.assert(...);`
 pub const AssertionError = error {
+  /// Translates to `ExUnit.AssertionError`.  Mostly used in Zig unit tests.
+  /// 
+  /// All test clauses in the directories of your Zig-enabled modules are
+  /// converted to Zig functions with the inferred type `!void`.  The
+  /// `beam.assert/1` function can throw this error as its error type.
+  ///
+  /// Zigler converts assert statements in test blocks to `try beam.assert(...);`
   AssertionError
 };
 
@@ -188,7 +202,7 @@ pub const AssertionError = error {
 pub const env = ?*e.ErlNifEnv;
 
 // terms
-/// syntactic sugar for the BEAM term struct (`e.ErlNifBinary`)
+/// syntactic sugar for the BEAM term struct (`e.ErlNifTerm`)
 pub const term = e.ErlNifTerm;
 
 ///////////////////////////////////////////////////////////////////////////////

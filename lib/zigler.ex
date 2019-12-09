@@ -106,7 +106,9 @@ defmodule Zigler do
   front of the nif declaration, it will wind up in the correct place in your
   elixir documentation.
 
-  See `Zigler.Doc` for more information.
+  See `Zigler.Doc` for more information on how to document in zig and what to
+  document.  See `Mix.Tasks.ZigDoc` for information on how to get your Elixir
+  project to incorporate zig documentation.
 
   ### Tests
 
