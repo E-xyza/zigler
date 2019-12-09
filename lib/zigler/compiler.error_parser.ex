@@ -1,10 +1,6 @@
 defmodule Zigler.Compiler.ErrorParser do
 
-  @moduledoc """
-  tools for parsing the error messages emitted by the Zig compiler live here.
-
-  This module is mostly backed by `NimbleParsec`.
-  """
+  @moduledoc false
 
   import NimbleParsec
 

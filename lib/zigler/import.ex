@@ -1,5 +1,7 @@
 defmodule Zigler.Import do
 
+  @moduledoc false
+
   import NimbleParsec
 
   whitespace = ascii_string([?\s, ?\n], min: 1)

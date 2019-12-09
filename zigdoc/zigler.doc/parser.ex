@@ -1,4 +1,7 @@
 defmodule Zigler.Doc.Parser do
+
+  @moduledoc false
+
   def docs_from_dir(dir) do
     dir
     |> File.ls!
@@ -33,7 +36,10 @@ defmodule Zigler.Doc.Parser do
       parsed_module.typespecs,
       &(match?(%ExDoc.TypeNode{}, &1)))
 
-    [%{parsed_module | typespecs: types} | exceptions]
+    [%{parsed_module |
+        docs: Enum.reverse(parsed_module.docs),
+        typespecs: Enum.reverse(types)}
+    | exceptions]
   end
 
   import NimbleParsec
@@ -134,13 +140,16 @@ defmodule Zigler.Doc.Parser do
 
   defparsec(:file_parser, file_parser)
 
+  defp trim_slashes("/// " <> rest), do: rest
+  defp trim_slashes("///" <> rest), do: rest
+
   defp strip_docline(line) do
     line
-    |> Enum.map(fn line ->
-      "///" <> rest = String.trim(line)
-      String.trim(rest)
+    |> Enum.map(fn
+      str = "///" <> _ -> trim_slashes(str)
+      any -> any |> String.trim_leading |> trim_slashes
     end)
-    |> Enum.join("\n")
+    |> Enum.join
   end
 
   defp initialize(_rest, content, _context, _line , _offset) do

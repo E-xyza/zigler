@@ -1,9 +1,6 @@
 defmodule Zigler.Compiler do
 
-  @moduledoc """
-  functions relating to the compilation of zig code via the zig command line
-  live here.
-  """
+  @moduledoc false
 
   require Logger
 

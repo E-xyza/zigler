@@ -1,5 +1,7 @@
 defmodule Zigler.Doc.Retriever do
 
+  @moduledoc false
+
   require ExDoc.FunctionNode
 
   def docs_from_dir(source_beam, config) do
