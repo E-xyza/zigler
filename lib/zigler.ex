@@ -128,28 +128,6 @@ defmodule Zigler do
 
   """
 
-  @doc """
-  queries the zig website to obtain the latest version of zig.  Only performed at compile time.
-  """
-  defmacro latest_version() do
-    Application.ensure_all_started(:ssl)
-    # find the latest version by querying the download index
-    case Mojito.get("https://ziglang.org/download/index.json",[], pool: false, timeout: 100_000) do
-      {:ok, %{status_code: 200, body: json}} ->
-        json
-        |> Jason.decode!
-        |> Map.keys
-        |> Enum.reject(&(&1 == "master"))
-        |> Enum.map(&String.split(&1, "."))
-        |> Enum.map(&List.to_tuple/1)
-        |> Enum.sort
-        |> List.last
-        |> Tuple.to_list
-        |> Enum.join(".")
-      _ -> Mix.raise("failed to ascertain the latest version of zig.")
-    end
-  end
-
   # default release modes.
   # you can override these in your `use Zigler` statement.
   @default_release_modes %{prod: :safe, dev: :debug, test: :debug}
@@ -171,7 +149,7 @@ defmodule Zigler do
     |> Application.app_dir("priv/nifs")
     |> Path.join(Macro.underscore(__CALLER__.module))
 
-    zig_version = opts[:version] || latest_version()
+    zig_version = opts[:version] || latest_cached_version()
 
     File.mkdir_p!(Path.dirname(mod_path))
 
@@ -287,6 +265,32 @@ defmodule Zigler do
   def type_for(" " <> val), do: type_for(val)
   def type_for(zig_type) do
     [{@type_for[zig_type], [], Elixir}]
+  end
+
+  @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
+
+  defp latest_cached_version() do
+    @zig_dir_path
+    |> File.ls!
+    |> Enum.filter(&match?("zig" <> _, &1))
+    |> Enum.filter(&File.dir?(Path.join(@zig_dir_path, &1)))
+    |> Enum.map(&String.split(&1, "-"))
+    |> Enum.map(fn ["zig", _os, _arch, ver] -> ver end)
+    |> Enum.map(&String.split(&1, "."))
+    |> Enum.map(&List.to_tuple/1)
+    |> case do
+      [] ->
+        raise CompileError, message: "no zig binaries found, run `mix zigler.get_zig latest`"
+      lst ->
+        lst
+        |> Enum.sort
+        |> List.last
+        |> Tuple.to_list
+        |> Enum.join(".")
+    end
+  rescue
+    _err in FileError ->
+      raise CompileError, message: "zig directory path doesn't exist, run `mix zigler.get_zig latest`"
   end
 
 end

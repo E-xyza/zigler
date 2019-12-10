@@ -24,13 +24,14 @@ defmodule Mix.Tasks.Zigler.GetZig do
 
   @impl true
   def run(["latest"]) do
-    run([Zigler.latest_version()])
+    run([latest_version()])
   end
   def run([version]) do
 
-    unless {:unix, :linux} == :os.type() do
+    # make sure that we're in the correct operating system.
+    if match?({:win32, _}, :os.type()) do
       Mix.raise("""
-      non-linux systems not currently supported.
+      non-unix systems not currently supported.
 
       If you think you can help, please help out!  There's no
       reason why zigler can't run on MacOS, butI have no
@@ -68,6 +69,28 @@ defmodule Mix.Tasks.Zigler.GetZig do
       {:ok, download = %{status_code: 200}} ->
         File.write!(zig_download_path, download.body)
       _ -> Mix.raise("failed to download the appropriate zig binary.")
+    end
+  end
+
+  @doc """
+  queries the zig website to obtain the latest version of zig.  Only performed at compile time.
+  """
+  def latest_version() do
+    Application.ensure_all_started(:ssl)
+    # find the latest version by querying the download index
+    case Mojito.get("https://ziglang.org/download/index.json",[], pool: false, timeout: 100_000) do
+      {:ok, %{status_code: 200, body: json}} ->
+        json
+        |> Jason.decode!
+        |> Map.keys
+        |> Enum.reject(&(&1 == "master"))
+        |> Enum.map(&String.split(&1, "."))
+        |> Enum.map(&List.to_tuple/1)
+        |> Enum.sort
+        |> List.last
+        |> Tuple.to_list
+        |> Enum.join(".")
+      _ -> Mix.raise("failed to ascertain the latest version of zig.")
     end
   end
 
