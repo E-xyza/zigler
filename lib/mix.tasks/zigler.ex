@@ -1,5 +1,3 @@
-if Mix.env() == :dev do
-
 defmodule Mix.Tasks.Zigler.GetZig do
 
   use Mix.Task
@@ -71,7 +69,5 @@ defmodule Mix.Tasks.Zigler.GetZig do
       _ -> Mix.raise("failed to download the appropriate zig binary.")
     end
   end
-
-end
 
 end
