@@ -128,7 +128,29 @@ defmodule Zigler do
 
   """
 
-  @latest_zig_version Application.get_env(:zigler, :latest_zig_version)
+  @doc """
+  queries the zig website to obtain the latest version of zig.  Only performed at compile time.
+  """
+  defmacro latest_version() do
+    Application.ensure_all_started(:ssl)
+    # find the latest version by querying the download index
+    case Mojito.get("https://ziglang.org/download/index.json",[], pool: false, timeout: 100_000) do
+      {:ok, %{status_code: 200, body: json}} ->
+        latest = json
+        |> Jason.decode!
+        |> Map.keys
+        |> Enum.reject(&(&1 == "master"))
+        |> Enum.map(&String.split(&1, "."))
+        |> Enum.map(&List.to_tuple/1)
+        |> Enum.sort
+        |> List.last
+        |> Tuple.to_list
+        |> Enum.join(".")
+
+        run([latest])
+      _ -> Mix.raise("failed to ascertain the latest version of zig.")
+    end
+  end
 
   defmacro __using__(opts) do
     unless opts[:app] do
@@ -146,7 +168,7 @@ defmodule Zigler do
     |> Application.app_dir("priv/nifs")
     |> Path.join(Macro.underscore(__CALLER__.module))
 
-    zig_version = opts[:version] || @latest_zig_version
+    zig_version = opts[:version] || latest_version()
 
     File.mkdir_p!(Path.dirname(mod_path))
 
