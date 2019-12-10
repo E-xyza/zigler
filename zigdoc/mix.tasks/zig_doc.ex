@@ -3,7 +3,7 @@ defmodule Mix.Tasks.ZigDoc do
 
   @shortdoc "Generate documentation with zig files"
 
-  @moduledoc ~S"""
+  @moduledoc """
   """
 
   @doc false

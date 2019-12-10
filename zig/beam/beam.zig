@@ -887,27 +887,36 @@ pub fn make_bool(environment: env, val: bool) term {
 // create a global enomem string, then throw it.
 const enomem_slice = "enomem"[0..];
 
+/// This function is used to communicate `:enomem` back to the BEAM as an
+/// exception.
+///
 /// The BEAM is potentially OOM-safe, and Zig lets you leverage that.
-/// this communicates back to the BEAM that you've attempted to allocate more
-/// memory than is available via an allocation event.
+/// OOM errors from `beam.allocator` can be converted to a generic erlang term
+/// that represents an exception.  Returning this from your NIF results in
+/// a BEAM throw event.
 pub fn throw_enomem(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, enomem_slice));
 }
 
 const f_c_e_slice = "function_clause"[0..];
 
-/// A function to declare that you've passed a horrible value to one of your 
-/// nif functions.  By default Zigler will do parameter input checking on value
-/// ingress from the dynamic BEAM runtime to the static Zig runtime.  This
-/// communicates back to the BEAM that this has happened.
+/// This function is used to communicate `:function_clause` back to the BEAM as an
+/// exception.
+///
+/// By default Zigler will do parameter input checking on value
+/// ingress from the dynamic BEAM runtime to the static Zig runtime.
+/// You can also use this function to communicate a similar error by returning the
+/// resulting term from your NIF.
 pub fn throw_function_clause_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, f_c_e_slice));
 }
 
 const assert_slice = "assertion_error"[0..];
 
-/// when running Zigtests, a `beam.AssertionError.AssertionError` value gets trapped
-/// using this function, which communicates it back to the BEAM as an exception.
+/// This function is used to communicate `:assertion_error` back to the BEAM as an 
+/// exception.
+///
+/// Used when running Zigtests, when trapping `beam.AssertionError.AssertionError`.
 pub fn throw_assertion_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, assert_slice));
 }
@@ -915,10 +924,16 @@ pub fn throw_assertion_error(environment: env) term {
 ///////////////////////////////////////////////////////////////////////////////
 // assertation for tests
 
-/// When building Zigtests, `assert(...)` calls get lexically converted to 
-/// `beam.assert(...)` calls.  Zig's std.assert() will panic the Zig runtime and
-/// therefore the entire BEAM VM, which makes it incompatible with Elixir's Unit
-/// tests.
+/// A function used to return assertion errors to a zigtest.
+///
+/// Zig's std.assert() will panic the Zig runtime and therefore the entire 
+/// BEAM VM, making it incompatible with Elixir's Unit tests.  As the VM is
+/// required for certain functionality (like `e.enif_alloc`), a BEAM-compatible
+/// assert is necessary.
+///
+/// When building zigtests, `assert(...)` calls get lexically converted to 
+/// `try beam.assert(...)` calls.  
+
 pub fn assert(ok: bool) !void {
     if (!ok) return AssertionError.AssertionError; // assertion failure
 }
