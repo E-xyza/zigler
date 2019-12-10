@@ -16,8 +16,7 @@ defmodule Mix.Tasks.Zigler.GetZig do
   @shortdoc "caches a version of zig."
 
   require Logger
-
-  alias Zigler.Compiler
+  require Zigler
 
   alias Zigler.Compiler
 
