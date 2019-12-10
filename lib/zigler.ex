@@ -153,7 +153,7 @@ defmodule Zigler do
   # default release modes.
   # you can override these in your `use Zigler` statement.
   @default_release_modes %{prod: :safe, dev: :debug, test: :debug}
-  @default_release_mode @default_release_mode[Mix.env()]
+  @default_release_mode @default_release_modes[Mix.env()]
 
   defmacro __using__(opts) do
     unless opts[:app] do
