@@ -136,7 +136,7 @@ defmodule Zigler do
     # find the latest version by querying the download index
     case Mojito.get("https://ziglang.org/download/index.json",[], pool: false, timeout: 100_000) do
       {:ok, %{status_code: 200, body: json}} ->
-        latest = json
+        json
         |> Jason.decode!
         |> Map.keys
         |> Enum.reject(&(&1 == "master"))
@@ -146,8 +146,6 @@ defmodule Zigler do
         |> List.last
         |> Tuple.to_list
         |> Enum.join(".")
-
-        run([latest])
       _ -> Mix.raise("failed to ascertain the latest version of zig.")
     end
   end
