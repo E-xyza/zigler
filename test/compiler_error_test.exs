@@ -9,7 +9,7 @@ defmodule ZiglerTest.CompilerErrorTest do
       Code.compile_file(test_file)
     end
 
-    assert %CompileError{file: file, line: 14} = ce
+    assert %CompileError{file: file, line: 15} = ce
     assert file =~ test_file
   end
 
