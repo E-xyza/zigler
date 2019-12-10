@@ -25,6 +25,7 @@ defmodule Mix.Tasks.Zigler.GetZig do
 
   @impl true
   def run(["latest"]) do
+    Application.ensure_all_started(:ssl)
     # find the latest version by querying the download index
     case Mojito.get("https://ziglang.org/download/index.json",[], pool: false, timeout: 100_000) |> IO.inspect(label: "29") do
       {:ok, %{status_code: 200, body: json}} ->
