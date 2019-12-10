@@ -1,6 +1,11 @@
 # Zigler
 
+Library test status:
 ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI/badge.svg)
+
+Dependent package test status:
+![](https://github.com/ityonemo/zigler_test/workflows/Elixir%20CI/badge.svg)
+
 
 ## Zig Nifs made easy
 
