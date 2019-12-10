@@ -43,7 +43,10 @@ defmodule Zigler.Compiler do
       Enum.map([:zigler_app, :zig_version, :release_mode, :zig_src_dir, :zig_code, :zig_test],
         &Module.get_attribute(context.module, &1))
 
-    zig_tree = Path.join(@zig_dir_path, basename(version))
+    zig_tree = @zig_dir_path
+    |> Path.expand
+    |> Path.join(basename(version))
+
     # check to see if the zig version has been downloaded.
     unless File.dir?(zig_tree) do
       raise CompileError,
