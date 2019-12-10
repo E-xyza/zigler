@@ -187,7 +187,7 @@ defmodule Zigler do
     # perform code analysis
     code = Zigler.Code.from_string(zig_code, file, line)
 
-    # add a dialyzer typespec to the head of the function.
+    # add a specs list to be retrieved by the compiler.
     code_spec = Enum.map(code.nifs, &{&1.name, {&1.params, &1.retval}})
 
     empty_functions = Enum.flat_map(code.nifs, fn nif ->
@@ -199,7 +199,10 @@ defmodule Zigler do
         []
       end
       ++
-      [empty_function(nif.name, nif.arity)]
+      [
+        typespec_for(nif),
+        empty_function(nif.name, nif.arity),
+      ]
     end)
 
     quote do
@@ -226,4 +229,39 @@ defmodule Zigler do
       ]
     ]}
   end
+
+  @type_for %{
+    "c_int" => :integer, "c_long" => :integer, "isize" => :integer,
+    "usize" => :integer, "u8" => :integer, "i32" => :integer, "i64" => :integer,
+    "f16" => :float, "f32" => :float, "f64" => :float,
+    "beam.term" => :term, "e.ErlNifTerm" => :term,
+    "beam.pid" => :pid, "e.ErlNifPid" => :pid,
+    "beam.binary" => :binary, "e.ErlNifBinary" => :binary,
+    "[]u8" => :binary
+  }
+
+  @doc false
+  def typespec_for(%{name: name, params: params, retval: retval}) do
+    [ret_tag] = type_for(retval)
+    {:@, [context: Elixir, import: Kernel], [
+      {:spec, [context: Elixir],
+       [
+         {:"::", [],
+          [
+            {name, [], Enum.flat_map(params, &type_for/1)},
+            ret_tag
+          ]}
+       ]}
+    ]}
+  end
+
+  @doc false
+  def type_for("?*e.ErlNifEnv"), do: []
+  def type_for("beam.env"), do: []
+  def type_for("[]" <> val) when val != "u8", do: [type_for(val)]
+  def type_for(" " <> val), do: type_for(val)
+  def type_for(zig_type) do
+    [{@type_for[zig_type], [], Elixir}]
+  end
+
 end
