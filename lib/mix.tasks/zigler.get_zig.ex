@@ -22,10 +22,27 @@ defmodule Mix.Tasks.Zigler.GetZig do
   alias Zigler.Compiler
 
   @zig_dir_path Path.expand("../../zig", Path.dirname(__ENV__.file))
-  @latest_version Application.get_env(:zigler, :latest_zig_version)
 
   @impl true
-  def run(["latest"]), do: run([@latest_version])
+  def run(["latest"]) do
+    # find the latest version by querying the download index
+    case Mojito.get("https://ziglang.org/download/index.json",[], pool: false, timeout: 100_000) do
+      {:ok, download = %{status_code: 200, body: json}} ->
+        latest = json
+        |> Jason.decode!
+        |> Map.keys
+        |> Enum.reject(&(&1 == "master"))
+        |> Enum.map(&String.split(&1, "."))
+        |> Enum.map(&List.to_tuple/1)
+        |> Enum.sort
+        |> List.last
+        |> Tuple.to_list
+        |> Enum.join(".")
+
+        run(latest)
+      _ -> Mix.raise("failed to ascertain the latest version of zig.")
+    end
+  end
   def run([version]) do
 
     unless {:unix, :linux} == :os.type() do
@@ -63,7 +80,7 @@ defmodule Mix.Tasks.Zigler.GetZig do
   end
 
   def download_zig_tarball(zig_download_path, download_location) do
-    case Mojito.get(download_location, [], pool: false, timeout: 100_000) |> IO.inspect(label: "66") do
+    case Mojito.get(download_location, [], pool: false, timeout: 100_000) do
       {:ok, download = %{status_code: 200}} ->
         File.write!(zig_download_path, download.body)
       _ -> Mix.raise("failed to download the appropriate zig binary.")
