@@ -1,8 +1,14 @@
 defmodule Zigler.Unit.Import do
+
+  @moduledoc false
+
   defstruct [:identifier, :path]
 end
 
 defmodule Zigler.Unit.Parser do
+
+  @moduledoc false
+
   import NimbleParsec
 
   alias Zigler.Unit

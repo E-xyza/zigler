@@ -1,5 +1,133 @@
 defmodule Zigler do
 
+  @moduledoc """
+
+  Inline NIF support for [Zig](https://ziglang.org)
+
+  ### Motivation
+
+  > Zig is a general-purpose programming language designed for robustness,
+  > optimality, and maintainability.
+
+  The programming philosophy of Zig matches up nicely with the programming
+  philosophy of the BEAM VM and in particular its emphasis on simplicity and
+  structure should very appealing to the practitioners of Elixir.
+
+  The following features make Zig extremely amenable to inline language
+  support in a BEAM language:
+
+  - simplicity.  Zig's syntax is definable in a simple YACC document and
+    Zig takes a stance against making its featureset more complex (though
+    it may evolve somewhat en route to 1.0)
+  - Composability.  Zig is unopinionated about how to go about memory
+    allocations.  Its allocator interface is very easily able to be backed
+    by the BEAM's, which means that you have access to generic memory
+    allocation *strategies* through its composable allocator scheme.
+  - C integration.  It's very easy to design C-interop between Zig and C.
+    In fact, Zig is likely to be an easier glue language for C ABIs than
+    C.
+  - OOM safety and sanity.  Zig makes it easy to defer memory destruction,
+    meaning you often don't have to worry about memory leaks.  By design,
+    `alloc` should be failable (as is the BEAM's `alloc`) so it offers
+    an extra layer of protection for you BEAM VM against an OOM situation.
+
+  ### Basic usage
+
+  In the BEAM, you can define a NIF by consulting the following [document](
+  https://erlang.org/doc/man/erl_nif.html) and implementing the appropriate
+  shared object/DLL callbacks.  However, Zigler will take care of all of
+  this for you.
+
+  Simply `use Zigler` in your module, providing the app atom in the property
+  list.
+
+  Then, use the `sigil_Z/2` macro and write zig code.  Any nifs you define
+  should be preceded with the `/// nif: function_name/arity` zig docstring.
+
+  #### Example
+  ```
+  defmodule MyModule do
+    use Zigler, app: :my_app
+
+    ~Z\"""
+    /// nif: my_func/1
+    fn my_func(val: i64) i64 {
+      return val + 1;
+    }
+    \"""
+
+  end
+  ```
+
+  Zigler will *automatically* fill out the appropriate NIF C template, compile
+  the shared object, and bind it into the module pre-compilation. In the case
+  of the example, there will be a `MyModule.my_func/1` function call found in
+  the module.
+
+  Zigler will also make sure that your statically-typed Zig data are guarded
+  when you marshal it from the dynamically-typed BEAM world.  However, you may
+  only pass in and return certain types (though the generic `beam.term` type)
+  is supported.
+
+  ### Compilation assistance
+
+  If something should go wrong, Zigler will translate the Zig compiler error
+  into an Elixir compiler error, and let you know exactly which line in the
+  `~Z` block it came from.
+
+  ### Syntactic Sugar
+
+  Some of the erlang nif terms can get unwieldy, especially in Zig, which
+  prefers terseness.  Each of the basic BEAM types is shadowed by a Zig type
+  in the `beam` module.  The `beam` struct is always imported into the header
+  of the zig file used, so all zig code in the same directory as the module
+  should have access to the `beam` struct if they `@import("beam.zig")`
+
+  ### Importing files
+
+  If you need to write code outside of the basic module (you will, for anything
+  non-trivial), just place it in the same directory as your module.
+
+  #### Example
+
+  ```
+  ~Z\"""
+  extra_code = @import("extra_code.zig");
+
+  /// nif: use_extra_code/1
+  fn use_extra_code(val: i64) i64 {
+    return extra_code.extra_fn(val);
+  }
+  \"""
+  ```
+
+  ### Documentation
+
+  Use the builtin zig `///` docstring to write your documentation.  If it's in
+  front of the nif declaration, it will wind up in the correct place in your
+  elixir documentation.
+
+  See `Zigler.Doc` for more information on how to document in zig and what to
+  document.  See `Mix.Tasks.ZigDoc` for information on how to get your Elixir
+  project to incorporate zig documentation.
+
+  ### Tests
+
+  Use the builtin zig `test` keyword to write your internal zig unit tests.
+  These can be imported into an ExUnit module by following this example:
+
+  ```
+  defmodule MyTest do
+    use ExUnit.Case
+    use Zigler.Unit
+    zigtest ModuleWithZigCode
+  end
+  ```
+
+  See `Zigler.Unit` for more information.
+
+  """
+
   @latest_zig_version Application.get_env(:zigler, :latest_zig_version)
 
   defmacro __using__(opts) do
@@ -47,6 +175,11 @@ defmodule Zigler do
     end
   end
 
+  @doc """
+  Analyzes Zig code inline, then assembles a series of code files, stashes them in a
+  temporary directory, compiles it with NIF adapters, and then binds it into the current
+  module.  You may have multiple sigil_Z blocks in a single Elixir module if you wish.
+  """
   defmacro sigil_Z({:<<>>, meta, [zig_code]}, []) do
     file = __CALLER__.file
     line = meta[:line]
@@ -76,6 +209,7 @@ defmodule Zigler do
     end
   end
 
+  @doc false
   def empty_function(func, 0) do
     quote do
       def unquote(func)(), do: throw unquote("#{func}/0 not defined")

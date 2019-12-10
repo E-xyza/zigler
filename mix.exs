@@ -9,7 +9,8 @@ defmodule Zigler.MixProject do
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
-      deps: deps()
+      deps: deps(),
+      aliases: [doc: "zig_doc"]
     ]
   end
 
@@ -19,15 +20,19 @@ defmodule Zigler.MixProject do
     ]
   end
 
+  defp elixirc_paths(:dev), do: ["lib", "zigdoc"]
+  defp elixirc_paths(:doc), do: ["lib", "zigdoc"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
   def deps do
     [
       # zigler's parsing is done using nimble_parsec
-      {:nimble_parsec, "~> 0.5", runtime: :false},
+      {:nimble_parsec, "~> 0.5", runtime: false},
       # we need this for mix zigler.get_zig mix task.
-      {:mojito, "~> 0.5.0", only: :dev, runtime: :false}
+      {:mojito, "~> 0.5.0", only: :dev, runtime: false},
+      # documentation
+      {:ex_doc, "~> 0.21", only: [:dev, :doc], runtime: false},
     ]
   end
 end

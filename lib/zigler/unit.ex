@@ -1,15 +1,69 @@
 defmodule Zigler.Unit do
 
   @moduledoc """
-  traverses the network of a particular
+  Hooks your zig code into ExUnit, by converting zig tests into ExUnit tests.
+
+  ### Usage
+
+  #### Example
+
+  Inside your zig code (`dependent.zig`):
+  ```
+  const beam = @import("beam.zig");
+  const assert = beam.assert;
+
+  fn one() i64 {
+    return 1;
+  }
+
+  test "the one function returns one" {
+    assert(one() == 1);
+  }
+  ```
+
+  Inside your elixir code:
+
+  ```
+  defmodule MyZigModule do
+    use Zigler, app: :my_app
+
+    ~Z\"""
+    const dependent = @import("dependent.zig");
+
+    /// nif: some_nif_fn/1
+    ...
+    \"""
+  end
+  ```
+
+  Inside your test module:
+
+  ```
+  defmodule MyZigTest do
+    use ExUnit.Case, async: true
+    use Zigler.Unit
+
+    zigtest MyZigModule
+  end
+  ```
+
+  ### Scope
+
+  This module will run tests in all zig code that resides in the same code
+  directory as the base module (or overridden directory, if applicable).  Zig
+  code in subdirectories will not be subjected to test conversion, so if you
+  would like to run a subset of tests using the Zig test facility (and without
+  the support of a BEAM VM), you should put them in subdirectories.
   """
 
   defstruct [:title, :name]
 
+  @typedoc false
   @type t :: %__MODULE__{title: String.t, }
 
   alias Zigler.Unit.Parser
 
+  @doc false
   def string_to_hash(str) do
     hash = :md5
     |> :crypto.hash(str)
@@ -39,7 +93,12 @@ defmodule Zigler.Unit do
     end
   end
 
-  # a littlee bit stolen from doctest
+  @doc """
+  loads a module that wraps a zigler NIF, consults the corresponding zig code,
+  generating the corresponding zig tests.
+
+  Must be called from within a module that has run `use ExUnit.Case`.
+  """
   defmacro zigtest(mod) do
 
     Process.sleep(5000)

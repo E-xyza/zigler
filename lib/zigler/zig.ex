@@ -1,8 +1,8 @@
 defmodule Zigler.Zig do
 
-  @moduledoc """
-  contains all parts of the Zigler library which is involved in generating zig code.
-  """
+  @moduledoc false
+
+  # contains all parts of the Zigler library which is involved in generating zig code.
 
   require EEx
 
