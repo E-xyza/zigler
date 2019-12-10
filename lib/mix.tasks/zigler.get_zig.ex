@@ -57,7 +57,7 @@ defmodule Mix.Tasks.Zigler.GetZig do
     end
 
     # untar the zig directory.
-    zig_version_cache = Path.join(@zig_dir_path, "zig-linux-x86_64-#{version}")
+    zig_version_cache = Path.join(@zig_dir_path, Compiler.basename(version))
     unless File.dir?(zig_version_cache) do
       System.cmd("tar", ["xvf", tarfile], cd: @zig_dir_path)
     end

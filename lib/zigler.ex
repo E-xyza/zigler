@@ -280,7 +280,7 @@ defmodule Zigler do
     |> Enum.map(&List.to_tuple/1)
     |> case do
       [] ->
-        raise CompileError, message: "no zig binaries found, run `mix zigler.get_zig latest`"
+        raise CompileError, description: "no zig binaries found, run `mix zigler.get_zig latest`"
       lst ->
         lst
         |> Enum.sort
@@ -290,7 +290,7 @@ defmodule Zigler do
     end
   rescue
     _err in FileError ->
-      raise CompileError, message: "zig directory path doesn't exist, run `mix zigler.get_zig latest`"
+      raise CompileError, description: "zig directory path doesn't exist, run `mix zigler.get_zig latest`"
   end
 
 end
