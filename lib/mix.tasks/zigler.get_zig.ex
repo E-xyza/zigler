@@ -27,7 +27,7 @@ defmodule Mix.Tasks.Zigler.GetZig do
   def run(["latest"]) do
     Application.ensure_all_started(:ssl)
     # find the latest version by querying the download index
-    case Mojito.get("https://ziglang.org/download/index.json",[], pool: false, timeout: 100_000) |> IO.inspect(label: "29") do
+    case Mojito.get("https://ziglang.org/download/index.json",[], pool: false, timeout: 100_000) do
       {:ok, %{status_code: 200, body: json}} ->
         latest = json
         |> Jason.decode!
@@ -40,7 +40,7 @@ defmodule Mix.Tasks.Zigler.GetZig do
         |> Tuple.to_list
         |> Enum.join(".")
 
-        run(latest)
+        run([latest])
       _ -> Mix.raise("failed to ascertain the latest version of zig.")
     end
   end
