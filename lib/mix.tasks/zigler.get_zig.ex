@@ -63,7 +63,7 @@ defmodule Mix.Tasks.Zigler.GetZig do
   end
 
   def download_zig_tarball(zig_download_path, download_location) do
-    case Mojito.get(download_location, [], pool: false, timeout: 100_000) do
+    case Mojito.get(download_location, [], pool: false, timeout: 100_000) |> IO.inspect(label: "66") do
       {:ok, download = %{status_code: 200}} ->
         File.write!(zig_download_path, download.body)
       _ -> Mix.raise("failed to download the appropriate zig binary.")
