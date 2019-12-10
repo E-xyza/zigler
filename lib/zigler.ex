@@ -150,12 +150,17 @@ defmodule Zigler do
     end
   end
 
+  # default release modes.
+  # you can override these in your `use Zigler` statement.
+  @default_release_modes %{prod: :safe, dev: :debug, test: :debug}
+  @default_release_mode @default_release_mode[Mix.env()]
+
   defmacro __using__(opts) do
     unless opts[:app] do
       raise ArgumentError, "you must provide the application"
     end
 
-    mode = opts[:release_mode] || Application.get_env(:zigler, :release_mode)
+    mode = opts[:release_mode] || @default_release_mode
 
     # make sure that we're in the correct operating system.
     if match?({:win32, _}, :os.type()) do
