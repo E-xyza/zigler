@@ -30,9 +30,11 @@ defmodule Zigler.MixProject do
       # zigler's parsing is done using nimble_parsec
       {:nimble_parsec, "~> 0.5", runtime: false},
       # we need this for mix zigler.get_zig mix task.
-      {:mojito, "~> 0.5.0", only: :dev, runtime: false},
+      {:mojito, "~> 0.6.0", runtime: false},
+      # to parse the zig JSON
+      {:jason, "~> 1.1", runtime: false},
       # documentation
-      {:ex_doc, "~> 0.21", only: [:dev, :doc], runtime: false},
+      {:ex_doc, "~> 0.21", runtime: false},
     ]
   end
 end

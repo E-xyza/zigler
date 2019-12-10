@@ -128,14 +128,17 @@ defmodule Zigler do
 
   """
 
-  @latest_zig_version Application.get_env(:zigler, :latest_zig_version)
+  # default release modes.
+  # you can override these in your `use Zigler` statement.
+  @default_release_modes %{prod: :safe, dev: :debug, test: :debug}
+  @default_release_mode @default_release_modes[Mix.env()]
 
   defmacro __using__(opts) do
     unless opts[:app] do
       raise ArgumentError, "you must provide the application"
     end
 
-    mode = opts[:release_mode] || Application.get_env(:zigler, :release_mode)
+    mode = opts[:release_mode] || @default_release_mode
 
     # make sure that we're in the correct operating system.
     if match?({:win32, _}, :os.type()) do
@@ -146,7 +149,7 @@ defmodule Zigler do
     |> Application.app_dir("priv/nifs")
     |> Path.join(Macro.underscore(__CALLER__.module))
 
-    zig_version = opts[:version] || @latest_zig_version
+    zig_version = opts[:version] || latest_cached_version()
 
     File.mkdir_p!(Path.dirname(mod_path))
 
@@ -262,6 +265,32 @@ defmodule Zigler do
   def type_for(" " <> val), do: type_for(val)
   def type_for(zig_type) do
     [{@type_for[zig_type], [], Elixir}]
+  end
+
+  @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
+
+  defp latest_cached_version() do
+    @zig_dir_path
+    |> File.ls!
+    |> Enum.filter(&match?("zig" <> _, &1))
+    |> Enum.filter(&File.dir?(Path.join(@zig_dir_path, &1)))
+    |> Enum.map(&String.split(&1, "-"))
+    |> Enum.map(fn ["zig", _os, _arch, ver] -> ver end)
+    |> Enum.map(&String.split(&1, "."))
+    |> Enum.map(&List.to_tuple/1)
+    |> case do
+      [] ->
+        raise CompileError, description: "no zig binaries found, run `mix zigler.get_zig latest`"
+      lst ->
+        lst
+        |> Enum.sort
+        |> List.last
+        |> Tuple.to_list
+        |> Enum.join(".")
+    end
+  rescue
+    _err in FileError ->
+      raise CompileError, description: "zig directory path doesn't exist, run `mix zigler.get_zig latest`"
   end
 
 end

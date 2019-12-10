@@ -35,7 +35,7 @@ defmodule Zigler.Compiler.ErrorParser do
     |> Enum.filter(fn {a, _, _} -> a <= line end)
     |> List.last
 
-    true_line = line - offset + original_line
+    true_line = line - offset + original_line + 1
     {true_file, true_line}
   end
 

@@ -11,7 +11,7 @@ defmodule ZigSyntaxErrorModule do
   ~Z"""
   /// nif: one/0
   fn one() i64 {
-    return 1  // <-- syntax error here, line 14.
-  }
+    return 1
+  }  // <-- syntax error here, line 15.
   """
 end
