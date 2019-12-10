@@ -44,8 +44,8 @@ defmodule Zigler.Compiler do
         &Module.get_attribute(context.module, &1))
 
     zig_tree = @zig_dir_path
-    |> Path.expand
     |> Path.join(basename(version))
+    |> IO.inspect(label: "48")
 
     # check to see if the zig version has been downloaded.
     unless File.dir?(zig_tree) do
