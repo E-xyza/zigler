@@ -84,12 +84,10 @@ defmodule Zigler do
 
     ~Z\"""
     /// nif: my_func_with_env/1
-    fn my_func_with_env(env: beam.env, pid: beam.env) i64 {
-      var sendable_term: []u64 = "ping"[0..]
-
-      e.enif_send()
-
-
+    fn my_func_with_env(env: beam.env, pid: beam.pid) void {
+      var sendable_term: []u64 = "ping"[0..];
+      var msg = beam.make_slice(env, sendable_term);
+      var res = e.enif_send(env, pid, env, msg);
     }
     \"""
   end
