@@ -15,7 +15,14 @@ defmodule Zigler.Doc.Retriever do
       |> Path.join("../../zig/beam")
       |> Path.expand
     else
-      nil # for now, we'll figure this out later.
+      :erlang.loaded()
+      |> Enum.filter(&function_exported?(&1, :__info__, 1))
+      |> Enum.flat_map(fn mod ->
+        src_dir = mod.__info__(:attributes)[:zig_src_dir]
+        if src_dir, do: [src_dir], else: []
+      end)
+      |> IO.inspect(label: "24")
+      nil # for now, we'lllo figure this out later.
     end
 
     elixir_docs = ExDoc.Retriever.docs_from_dir(source_beam, config)
