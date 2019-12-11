@@ -10,7 +10,15 @@ defmodule Zigler.MixProject do
       elixirc_paths: elixirc_paths(Mix.env()),
       start_permanent: Mix.env() == :prod,
       deps: deps(),
-      aliases: [docs: "zig_doc"]
+      aliases: [docs: "zig_doc"],
+      package: [
+        description: "Zig nif library",
+        licenses: ["MIT"],
+        files: ~w(lib .formatter.exs mix.exs README* LICENSE* VERSIONS* assets zig/beam zig/include),
+        links: %{"GitHub" => "https://github.com/ityonemo/zigler", "Zig" => "https://ziglang.org/"}
+      ],
+      source_url: "https://github.com/ityonemo/zigler/",
+      docs: [main: "StateServer", extras: ["README.md"]]
     ]
   end
 

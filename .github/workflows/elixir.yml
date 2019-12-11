@@ -23,5 +23,6 @@ jobs:
         mix local.hex --force
         mix deps.get
         mix zigler.get_zig latest
+        mix docs
     - name: Run Tests
       run: mix test
