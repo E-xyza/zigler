@@ -64,6 +64,8 @@ defmodule Zigler.Compiler do
         description: "use Zigler called without defining any nifs"
     end
 
+    zig_libs = Module.get_attribute(context.module, :zig_libs) || []
+
     mod_name = Macro.underscore(context.module)
     tmp_dir = Path.join("/tmp/.elixir-nifs", mod_name)
     zig_nif_file = Path.join(tmp_dir, "zig_nif.zig")
@@ -112,8 +114,10 @@ defmodule Zigler.Compiler do
     # our zig cache
     zig_cmd = Path.join(zig_tree, "zig")
     zig_rpath = Path.join(zig_tree, "lib/zig")
-    cmd_opts = ~w(build-lib zig_nif.zig -dynamic --disable-gen-h --override-lib-dir) ++ [
-      zig_rpath | release_mode_text(release_mode)]
+    cmd_opts = ~w(build-lib zig_nif.zig -dynamic --disable-gen-h --override-lib-dir) ++
+      [zig_rpath] ++
+      Enum.flat_map(zig_libs, &(["--library", &1])) ++
+      release_mode_text(release_mode)
 
     cmd_opts_text = Enum.join(cmd_opts, " ")
 
