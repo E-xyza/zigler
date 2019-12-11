@@ -1,0 +1,6 @@
+# 0.1.0
+
+- zig compilation and automatic nif generation
+- safety checks on ingress and egress data
+- documentation of zig code through ExDoc
+- unit test integration

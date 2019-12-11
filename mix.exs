@@ -18,7 +18,7 @@ defmodule Zigler.MixProject do
         links: %{"GitHub" => "https://github.com/ityonemo/zigler", "Zig" => "https://ziglang.org/"}
       ],
       source_url: "https://github.com/ityonemo/zigler/",
-      docs: [main: "StateServer", extras: ["README.md"]]
+      docs: [main: "Zigler", extras: ["README.md"]]
     ]
   end
 
