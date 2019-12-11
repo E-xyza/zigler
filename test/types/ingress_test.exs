@@ -41,6 +41,21 @@ defmodule ZiglerTest.Types.IngressTest do
     return val - 5;
   }
 
+  /// nif: f16_in/1
+  fn f16_in(val: f16) f16 {
+    return val - 0.5;
+  }
+
+  /// nif: f32_in/1
+  fn f32_in(val: f32) f32 {
+    return val - 0.5;
+  }
+
+  /// nif: f64_in/1
+  fn f64_in(val: f64) f64 {
+    return val - 0.5;
+  }
+
   /// nif: atom_in/1
   fn atom_in(env: beam.env, val: beam.atom) []u8 {
     // NB this is generally bad code because it incurs a memory leak!
@@ -210,6 +225,39 @@ defmodule ZiglerTest.Types.IngressTest do
     test "and are guarded for invalid values" do
       assert_raise FunctionClauseError, fn -> i64_in(:atom) end
       assert_raise FunctionClauseError, fn -> i64_in(0.47) end
+    end
+  end
+
+  describe "16-bit floats can be ingressed" do
+    test "correctly" do
+      assert 0.5 == f16_in(1.0)
+    end
+
+    test "and are guarded for invalid values" do
+      assert_raise FunctionClauseError, fn -> f16_in(:atom) end
+      assert_raise FunctionClauseError, fn -> f16_in(2) end
+    end
+  end
+
+  describe "32-bit floats can be ingressed" do
+    test "correctly" do
+      assert 0.5 == f32_in(1.0)
+    end
+
+    test "and are guarded for invalid values" do
+      assert_raise FunctionClauseError, fn -> f32_in(:atom) end
+      assert_raise FunctionClauseError, fn -> f32_in(2) end
+    end
+  end
+
+  describe "64-bit floats can be ingressed" do
+    test "correctly" do
+      assert 0.5 == f64_in(1.0)
+    end
+
+    test "and are guarded for invalid values" do
+      assert_raise FunctionClauseError, fn -> f64_in(:atom) end
+      assert_raise FunctionClauseError, fn -> f64_in(2) end
     end
   end
 
