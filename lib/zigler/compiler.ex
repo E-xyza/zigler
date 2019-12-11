@@ -66,6 +66,8 @@ defmodule Zigler.Compiler do
 
     zig_libs = Module.get_attribute(context.module, :zig_libs) || []
 
+    Enum.each(zig_libs, &verify_if_shared/1)
+
     mod_name = Macro.underscore(context.module)
     tmp_dir = Path.join("/tmp/.elixir-nifs", mod_name)
     zig_nif_file = Path.join(tmp_dir, "zig_nif.zig")
@@ -96,9 +98,11 @@ defmodule Zigler.Compiler do
     # put the erl_nif.zig adapter into the path.
     erl_nif_zig_path = Path.join(tmp_dir, "erl_nif.zig")
     File.write!(erl_nif_zig_path, EEx.eval_string(@erl_nif_zig_eex, erl_nif_zig_h: @erl_nif_zig_h))
+
     # now put the beam.zig file into the temporary directory too.
     beam_zig_src = Path.join(@zig_dir_path, "beam/beam.zig")
     File.cp!(beam_zig_src, Path.join(tmp_dir, "beam.zig"))
+
     # now put the erl_nif.h file into the temporary directory.
     erl_nif_zig_h_path = Path.join(@zig_dir_path, "include/erl_nif_zig.h")
     File.cp!(erl_nif_zig_h_path, Path.join(tmp_dir, "erl_nif_zig.h"))
@@ -189,6 +193,12 @@ defmodule Zigler.Compiler do
   end
   defp count_newlines(x) do
     if x == ?\n, do: 1, else: 0
+  end
+
+  defp verify_if_shared(lib) do
+    if String.ends_with?(lib, ".so") do
+      File.exists?(lib) || raise CompileError, description: "shared object library #{lib} not found"
+    end
   end
 
 end

@@ -5,7 +5,7 @@ defmodule Zigler.LibraryTest do
 
   use ExUnit.Case, async: true
 
-  #guard against this library not existing.
+  # guard against this library not existing.
 
   if File.exists?("/usr/lib/x86_64-linux-gnu/blas/libblas.so") do
 

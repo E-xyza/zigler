@@ -95,6 +95,26 @@ defmodule Zigler do
   end
   ```
 
+  ### External Libraries
+
+  If you need to bind static (`*.a`) or dynamic (`*.so`) libraries into your
+  module, you may link them with the `:libs` parameter.
+
+  Note that for shared libraries, a library with an identical path must exist
+  in the target release environment.
+
+  #### Example
+
+  ```
+  defmodule Blas do
+    use Zigler, app: :my_app, libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"]
+
+    ~Z\"""
+    const blas = @cImport({
+      @cInclude("/usr/include/x86_64-linux-gnu/cblas.h");
+    ...
+  ```
+
   ### Compilation assistance
 
   If something should go wrong, Zigler will translate the Zig compiler error
