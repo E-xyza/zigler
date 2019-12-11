@@ -69,6 +69,52 @@ defmodule Zigler do
   only pass in and return certain types (though the generic `beam.term` type)
   is supported.
 
+  ### Environment
+
+  Sometimes, you will need to pass the BEAM environment (which is the code
+  execution context, including process info, etc.) into the NIF function.  In
+  this case, you should pass it as the first parameter, as a `beam.env` type
+  value.
+
+  #### Example
+
+  ```
+  defmodule MyModule do
+    use Zigler, app: :my_app
+
+    ~Z\"""
+    /// nif: my_func_with_env/1
+    fn my_func_with_env(env: beam.env, pid: beam.env) i64 {
+      var sendable_term: []u64 = "ping"[0..]
+
+      e.enif_send()
+
+
+    }
+    \"""
+  end
+  ```
+
+  ### External Libraries
+
+  If you need to bind static (`*.a`) or dynamic (`*.so`) libraries into your
+  module, you may link them with the `:libs` parameter.
+
+  Note that for shared libraries, a library with an identical path must exist
+  in the target release environment.
+
+  #### Example
+
+  ```
+  defmodule Blas do
+    use Zigler, app: :my_app, libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"]
+
+    ~Z\"""
+    const blas = @cImport({
+      @cInclude("/usr/include/x86_64-linux-gnu/cblas.h");
+    ...
+  ```
+
   ### Compilation assistance
 
   If something should go wrong, Zigler will translate the Zig compiler error
@@ -145,11 +191,19 @@ defmodule Zigler do
       raise "non-unix systems not currently supported."
     end
 
+    ###########################################################################
+    # Required options:
+
     mod_path =  opts[:app]
     |> Application.app_dir("priv/nifs")
     |> Path.join(Macro.underscore(__CALLER__.module))
 
+    ###########################################################################
+    # Optional options:
+
     zig_version = opts[:version] || latest_cached_version()
+
+    libs = opts[:libs]
 
     File.mkdir_p!(Path.dirname(mod_path))
 
@@ -158,21 +212,24 @@ defmodule Zigler do
     quote do
       import Zigler
 
-      @release_mode unquote(mode)
-
       @on_load :__load_nifs__
+
+      # persisted values
       @zigler_app unquote(opts[:app])
       @zig_version unquote(zig_version)
+      @zig_src_dir unquote(src_dir)
+
+      # free values
+      @release_mode unquote(mode)
+      @zig_libs unquote(libs)
 
       # needs to be persisted so that we can store the version for tests.
       Module.register_attribute(__MODULE__, :zigler_app, persist: true)
       Module.register_attribute(__MODULE__, :zig_version, persist: true)
+      Module.register_attribute(__MODULE__, :zig_src_dir, persist: true)
       Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
       Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
       Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
-      Module.register_attribute(__MODULE__, :zig_src_dir, persist: true)
-
-      @zig_src_dir unquote(src_dir)
 
       @before_compile Zigler.Compiler
     end

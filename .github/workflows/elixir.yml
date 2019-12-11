@@ -13,10 +13,10 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - name: Install XZ
+    - name: Install XZ and blas
       run: |
         apt-get update
-        apt-get install -y --no-install-recommends xz-utils
+        apt-get install -y --no-install-recommends xz-utils libblas-dev liblapack-dev
     - name: Install Dependencies
       run: |
         mix local.rebar --force

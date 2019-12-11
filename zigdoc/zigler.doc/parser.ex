@@ -140,7 +140,7 @@ defmodule Zigler.Doc.Parser do
 
   typed_docstring =
     docstring
-    |> choice([type_head, error_head, fn_head])
+    |> choice([type_head, error_head, val_head, fn_head])
     |> post_traverse(:typed_docstring)
 
   file_parser =
