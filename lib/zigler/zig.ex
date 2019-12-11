@@ -184,8 +184,6 @@ defmodule Zigler.Zig do
   def makefor("[]f32"),        do: "return beam.make_f32_list(env, result) catch { return beam.throw_enomem(env); };"
   def makefor("[]f64"),        do: "return beam.make_f64_list(env, result) catch { return beam.throw_enomem(env); };"
   def makefor("e.ErlNifTerm"), do: "return result;"
-  def makefor("e.ErlNifPid"),  do: "return beam.make_pid(env, result);"
-  def makefor("beam.pid"),     do: "return beam.make_pid(env, result);"
   def makefor("beam.term"),    do: "return result;"
   def makefor("bool"),         do: ~S/return if (result) e.enif_make_atom(env, c"true") else e.enif_make_atom(env, c"false");/
   def makefor("void"),         do: ~S/return e.enif_make_atom(env, c"nil");/

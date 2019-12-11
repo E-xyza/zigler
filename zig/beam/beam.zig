@@ -755,14 +755,6 @@ pub fn make_c_string(environment: env, val: [*c]u8) term{
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// pids
-
-/// converts a `pid` struct into a BEAM `t:Kernel.pid/0`.
-pub fn make_pid(environment: env, val: pid) term {
-  return val;
-}
-
-///////////////////////////////////////////////////////////////////////////////
 // tuples
 
 /// converts a slice of `term`s into a BEAM `t:tuple/0`.

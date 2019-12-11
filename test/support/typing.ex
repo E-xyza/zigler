@@ -76,16 +76,6 @@ defmodule ZiglerTest.Typing do
     return a;
   }
 
-  /// nif: pid_identity_a/1
-  fn pid_identity_a(a: beam.pid) beam.pid {
-    return a;
-  }
-
-  /// nif: pid_identity_b/1
-  fn pid_identity_b(a: e.ErlNifPid) e.ErlNifPid {
-    return a;
-  }
-
   /// nif: c_string_identity/1
   fn c_string_identity(a: [*c]u8) [*c]u8 {
     return a;

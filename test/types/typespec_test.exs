@@ -42,8 +42,6 @@ defmodule ZigTest.TypespecTest do
 
       assert typespec_for(:term_identity_a, 1, [:term], :term) in types
       assert typespec_for(:term_identity_b, 1, [:term], :term) in types
-      assert typespec_for(:pid_identity_a, 1, [:pid], :pid) in types
-      assert typespec_for(:pid_identity_b, 1, [:pid], :pid) in types
     end
 
     test "for strings" do
