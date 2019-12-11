@@ -4,6 +4,8 @@ defmodule Zigler.Doc.Retriever do
 
   require ExDoc.FunctionNode
 
+  @odd_modules [:elixir_bootstrap]
+
   def docs_from_dir(source_beam, config) do
 
     source_dirs = if config.project == "zigler" do
@@ -17,6 +19,7 @@ defmodule Zigler.Doc.Retriever do
     else
       :erlang.loaded()
       |> Enum.filter(&function_exported?(&1, :__info__, 1))
+      |> Enum.reject(&(&1 in @odd_modules))
       |> Enum.flat_map(&(&1.__info__(:attributes)[:zig_src_dir] || []))
       |> Enum.uniq
     end
