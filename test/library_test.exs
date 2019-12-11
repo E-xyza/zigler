@@ -1,3 +1,6 @@
+#guard against this cblas.h not existing (a situation).
+if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") do
+
 defmodule Zigler.LibraryTest do
 
   use ExUnit.Case, async: true
@@ -68,5 +71,7 @@ defmodule Zigler.LibraryTest do
       assert [11.0, 18.0] == BlasStatic.blas_axpy(3.0, [2.0, 4.0], [5.0, 6.0])
     end
   end
+
+end
 
 end
