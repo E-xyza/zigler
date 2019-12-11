@@ -80,7 +80,7 @@ defmodule Zigler.Compiler do
     # search of the iodata tree.
 
     # count newlines in the header and the code:
-    newlines = count_newlines([zig_header, zig_code]) + 2
+    newlines = count_newlines([zig_header, zig_code]) + 1
 
     full_code = [zig_header,
       zig_code,

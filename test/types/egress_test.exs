@@ -229,5 +229,4 @@ defmodule ZiglerTest.Types.EgressTest do
       refute false_out()
     end
   end
-
 end

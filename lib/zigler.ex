@@ -293,11 +293,11 @@ defmodule Zigler do
   @type_for %{
     "c_int" => :integer, "c_long" => :integer, "isize" => :integer,
     "usize" => :integer, "u8" => :integer, "i32" => :integer, "i64" => :integer,
-    "f16" => :float, "f32" => :float, "f64" => :float,
+    "f16" => :float, "f32" => :float, "f64" => :float, "bool" => :boolean,
     "beam.term" => :term, "e.ErlNifTerm" => :term,
     "beam.pid" => :pid, "e.ErlNifPid" => :pid,
     "beam.binary" => :binary, "e.ErlNifBinary" => :binary,
-    "[]u8" => :binary
+    "[]u8" => :binary, "[*c]u8" => :binary
   }
 
   @doc false
@@ -318,6 +318,7 @@ defmodule Zigler do
   @doc false
   def type_for("?*e.ErlNifEnv"), do: []
   def type_for("beam.env"), do: []
+  def type_for("void"), do: [nil]
   def type_for("[]" <> val) when val != "u8", do: [type_for(val)]
   def type_for(" " <> val), do: type_for(val)
   def type_for(zig_type) do

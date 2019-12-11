@@ -83,6 +83,9 @@ defmodule Zigler.Zig do
   def getfor("beam.term", idx), do: """
     arg#{idx} = argv[#{idx}];
   """
+  def getfor("e.ErlNifTerm", idx), do: """
+    arg#{idx} = argv[#{idx}];
+  """
   def getfor("u8", idx), do: """
     arg#{idx} = try beam.get_u8(env, argv[#{idx}]);
   """
@@ -103,6 +106,12 @@ defmodule Zigler.Zig do
   """
   def getfor("i64", idx), do: """
     arg#{idx} = try beam.get_i64(env, argv[#{idx}]);
+  """
+  def getfor("f16", idx), do: """
+    arg#{idx} = try beam.get_f16(env, argv[#{idx}]);
+  """
+  def getfor("f32", idx), do: """
+    arg#{idx} = try beam.get_f32(env, argv[#{idx}]);
   """
   def getfor("f64", idx), do: """
     arg#{idx} = try beam.get_f64(env, argv[#{idx}]);
@@ -154,12 +163,13 @@ defmodule Zigler.Zig do
     arg#{idx} = try beam.get_slice_of(f64, env, argv[#{idx}]);
     defer beam.allocator.free(arg#{idx});
   """
-  def getfor("e.ErlNifTerm", idx), do: "arg#{idx} = argv[#{idx}];"
 
   def makefor("beam.atom"),    do: "return result;"
   def makefor("u8"),           do: "return beam.make_u8(env, result);"
   def makefor("c_int"),        do: "return beam.make_c_int(env, result);"
   def makefor("c_long"),       do: "return beam.make_c_long(env, result);"
+  def makefor("isize"),        do: "return beam.make_c_int(env, @intCast(c_int, result));"
+  def makefor("usize"),        do: "return beam.make_c_int(env, @intCast(c_int, result));"
   def makefor("i32"),          do: "return beam.make_i32(env, result);"
   def makefor("i64"),          do: "return beam.make_i64(env, result);"
   def makefor("f16"),          do: "return beam.make_f16(env, result);"

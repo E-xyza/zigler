@@ -1,4 +1,4 @@
-/// This struct contains adapters designed to facilitate interfacing the 
+/// This struct contains adapters designed to facilitate interfacing the
 /// BEAM's c-style helpers for NIFs with a more idiomatic Zig-style of
 /// programming, for example, the use of slices instead of null-terminated
 /// arrays as strings.
@@ -41,12 +41,12 @@
 ///
 /// Erlang's NIF interface provides a comprehensive set of methods to retrieve
 /// data out of BEAM terms.  However, this set of methods presents an error
-/// handling scheme that is designed for C and inconsistent with the idiomatic 
+/// handling scheme that is designed for C and inconsistent with the idiomatic
 /// scheme used for Zig best practices.
 ///
 /// A series of get functions is provided, implementing these methods in
 /// accordance to best practices.  These include `get/3`, which is the generic
-/// method for getting scalar values, `get_X`, which are typed methods for 
+/// method for getting scalar values, `get_X`, which are typed methods for
 /// retrieving scalar values, and `get_slice_of/3`, which is the generic method
 /// for retrieving a Zig slice from a BEAM list.
 ///
@@ -61,7 +61,7 @@
 /// fn double_value(env: beam.env, value: beam.term) !f64 {
 ///   return (try beam.get_f64(env, value)) * 2;
 /// }
-/// 
+///
 /// fn sum_float_list(env: beam.env, list: beam.term) !f64 {
 ///   zig_list: []f64 = try beam.get_slice_of(f64, env, list);
 ///   defer beam.allocator.free(zig_list);  // don't forget to clean up!
@@ -72,23 +72,23 @@
 /// }
 /// ```
 ///
-/// ### Makers 
+/// ### Makers
 ///
 /// A series of "make" functions is provided which allow for easy export of
 /// Zig values back to the BEAM.  Typically, these functions are used in the
 /// automatic type marshalling performed by Zigler, however, you may want to
 /// be able to use them yourself to assemble BEAM datatypes not directly
 /// supported by Zig.  For example, a custom tuple value.
-/// 
+///
 /// #### Example
 ///
 /// ```
 /// const beam = @import("beam.zig");
-/// 
+///
 /// const ok_slice="ok"[0..];
 /// fn to_ok_tuple(env: beam.env, value: i64) !beam.term {
 ///   tuple_slice: []term = try beam.allocator.alloc(beam.term, 2);
-///   
+///
 ///   tuple_slice[0] = beam.make_atom(env, ok_slice);
 ///   tuple_slice[1] = beam.make_i64(env, value);
 ///
@@ -114,16 +114,16 @@ const Allocator = std.mem.Allocator;
 /// allocate memory efficiently, and use `beam.allocator.free` to release that
 /// memory.
 ///
-/// Note this does not make the allocated memory *garbage collected* by the 
+/// Note this does not make the allocated memory *garbage collected* by the
 /// BEAM.  Stategies for handing over GC'able memory are forthcoming
-/// 
+///
 /// ### Example
-/// 
+///
 /// The following code will return ten bytes of new memory.
-/// 
+///
 /// ```
 /// const beam = @import("beam.zig");
-/// 
+///
 /// fn give_me_ten_bytes() ![]u8 {
 ///   return beam.allocator.alloc(u8, 10);
 /// }
@@ -171,7 +171,7 @@ fn beam_shrink(self: *Allocator,
 ///////////////////////////////////////////////////////////////////////////////
 // syntactic sugar: important elixir terms
 ///////////////////////////////////////////////////////////////////////////////
- 
+
 pub const Error = error {
   /// Translates to Elixir `FunctionClauseError`.
   ///
@@ -186,7 +186,7 @@ pub const Error = error {
 
 pub const AssertionError = error {
   /// Translates to `ExUnit.AssertionError`.  Mostly used in Zig unit tests.
-  /// 
+  ///
   /// All test clauses in the directories of your Zig-enabled modules are
   /// converted to Zig functions with the inferred type `!void`.  The
   /// `beam.assert/1` function can throw this error as its error type.
@@ -196,7 +196,7 @@ pub const AssertionError = error {
 };
 
 // env
-/// syntactic sugar for the BEAM environment.  Note that the `env` type 
+/// syntactic sugar for the BEAM environment.  Note that the `env` type
 /// encapsulates the pointer, since you will almost always be passing this
 /// pointer to an opaque struct around without accessing it.
 pub const env = ?*e.ErlNifEnv;
@@ -212,8 +212,8 @@ pub const term = e.ErlNifTerm;
 ///////////////////////////////////////////////////////////////////////////////
 // generics
 
-/// A helper for marshalling values from the BEAM runtime into Zig.  Use this 
-/// function if you need support for Zig generics.  
+/// A helper for marshalling values from the BEAM runtime into Zig.  Use this
+/// function if you need support for Zig generics.
 ///
 /// Used internally to typcheck values coming into Zig slice.
 ///
@@ -247,8 +247,8 @@ pub fn get(comptime T: type, environment: env, value: term) !T {
 ///////////////////////////////////////////////////////////////////////////////
 // ints
 
-/// Takes a BEAM int term and returns a `c_int` value.  Should only be used for 
-/// C interop with Zig functions.  
+/// Takes a BEAM int term and returns a `c_int` value.  Should only be used for
+/// C interop with Zig functions.
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
 pub fn get_c_int(environment: env, src_term: term) !c_int {
@@ -258,7 +258,7 @@ pub fn get_c_int(environment: env, src_term: term) !c_int {
   } else { return Error.FunctionClauseError; }
 }
 
-/// Takes a BEAM int term and returns a `c_long` value.  Should only be used 
+/// Takes a BEAM int term and returns a `c_long` value.  Should only be used
 /// for C interop with Zig functions.
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
@@ -280,7 +280,7 @@ pub fn get_isize(environment: env, src_term: term) !isize {
   } else { return Error.FunctionClauseError; }
 }
 
-/// Takes a BEAM int term and returns a `usize` value.  Zig idiomatically uses 
+/// Takes a BEAM int term and returns a `usize` value.  Zig idiomatically uses
 /// `usize` for its size values, so typically you should be using this function.
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
@@ -291,7 +291,7 @@ pub fn get_usize(environment: env, src_term: term) !usize {
   } else { return Error.FunctionClauseError; }
 }
 
-/// Takes a BEAM int term and returns a `u8` value.  
+/// Takes a BEAM int term and returns a `u8` value.
 ///
 /// Note that this conversion function checks to make sure it's in range
 /// (`0..255`).
@@ -300,13 +300,13 @@ pub fn get_usize(environment: env, src_term: term) !usize {
 pub fn get_u8(environment: env, src_term: term) !u8 {
   var res: c_int = undefined;
   if (0 != e.enif_get_int(environment, src_term, &res)) {
-    if ((res >= 0) and (res <= 255)) { 
+    if ((res >= 0) and (res <= 255)) {
       return @intCast(u8, res);
-    } else { return Error.FunctionClauseError; } 
+    } else { return Error.FunctionClauseError; }
   } else { return Error.FunctionClauseError; }
 }
 
-/// Takes a BEAM int term and returns an `i32` value.  
+/// Takes a BEAM int term and returns an `i32` value.
 ///
 /// Note that this conversion function does not currently do range checking.
 ///
@@ -318,7 +318,7 @@ pub fn get_i32(environment: env, src_term: term) !i32 {
   } else { return Error.FunctionClauseError; }
 }
 
-/// Takes a BEAM int term and returns an `i64` value.  
+/// Takes a BEAM int term and returns an `i64` value.
 ///
 /// Note that this conversion function does not currently do range checking.
 ///
@@ -333,7 +333,7 @@ pub fn get_i64(environment: env, src_term: term) !i64 {
 ///////////////////////////////////////////////////////////////////////////////
 // floats
 
-/// Takes a BEAM float term and returns an `f16` value.  
+/// Takes a BEAM float term and returns an `f16` value.
 ///
 /// Note that this conversion function does not currently do range checking.
 ///
@@ -345,7 +345,7 @@ pub fn get_f16(environment: env, src_term: term) !f16 {
   } else { return Error.FunctionClauseError; }
 }
 
-/// Takes a BEAM float term and returns an `f32` value.  
+/// Takes a BEAM float term and returns an `f32` value.
 ///
 /// Note that this conversion function does not currently do range checking.
 ///
@@ -388,7 +388,7 @@ pub fn get_atom_slice(environment: env, src_term: atom) ![]u8 {
   return get_atom_slice_alloc(allocator, environment, src_term);
 }
 
-/// Takes a BEAM atom term and retrieves it as a slice `[]u8` value, with 
+/// Takes a BEAM atom term and retrieves it as a slice `[]u8` value, with
 /// any allocator.
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:atom/0`
@@ -412,11 +412,11 @@ pub fn get_atom_slice_alloc(a: *Allocator, environment: env, src_term: atom) ![]
 /// shorthand for `e.ErlNifBinary`.
 pub const binary = e.ErlNifBinary;
 
-/// Takes an BEAM `t:Kernel.binary/0` term and retrieves a pointer to the 
-/// binary data as a Zig c-string (`[*c]u8`).  No memory is allocated for 
-/// this operation. 
+/// Takes an BEAM `t:Kernel.binary/0` term and retrieves a pointer to the
+/// binary data as a Zig c-string (`[*c]u8`).  No memory is allocated for
+/// this operation.
 ///
-/// Should only be used for c interop functions.  
+/// Should only be used for c interop functions.
 ///
 /// *Note*: this function could have unexpected results if your BEAM binary
 /// contains any zero byte values.  Always use `get_char_slice/2` when
@@ -443,7 +443,7 @@ pub fn get_char_slice(environment: env, src_term: term) ![]u8 {
   } else { return Error.FunctionClauseError; }
 }
 
-/// Takes an BEAM `t:Kernel.binary/0` term and returns the corresponding 
+/// Takes an BEAM `t:Kernel.binary/0` term and returns the corresponding
 /// `binary` struct.
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.binary/0`
@@ -461,9 +461,9 @@ pub fn get_binary(environment: env, src_term: term) !binary {
 pub const pid = e.ErlNifPid;
 
 /// Takes an BEAM `t:Kernel.pid/0` term and returns the corresponding `pid`
-/// struct.  
+/// struct.
 ///
-/// Note that this is a fairly opaque struct and you're on your 
+/// Note that this is a fairly opaque struct and you're on your
 /// own as to what you can do with this (for now), except as a parameter
 /// for the `e.ErlNifSend` function.
 ///
@@ -503,7 +503,7 @@ pub fn get_list_length(environment: env, list: term) !usize {
   } else { return Error.FunctionClauseError; }
 }
 
-/// Iterates over a BEAM `t:list/0`.  
+/// Iterates over a BEAM `t:list/0`.
 ///
 /// In this function, the `list` value will be modified to the `tl` of the
 /// BEAM list, and the return value will be the BEAM term.
@@ -516,9 +516,9 @@ pub fn get_head_and_iter(environment: env, list: *term) !term {
   } else { return Error.FunctionClauseError; }
 }
 
-/// A generic function which lets you convert a BEAM `t:list/0` of 
-/// homogeous type into a Zig slice. 
-/// 
+/// A generic function which lets you convert a BEAM `t:list/0` of
+/// homogeous type into a Zig slice.
+///
 /// The resulting slice will be allocated using the beam allocator, with
 /// ownership passed to the caller.  If you need to use a different allocator,
 /// use `get_slice_of_alloc/4`
@@ -542,7 +542,7 @@ pub fn get_slice_of(comptime T: type, environment: env, list: term) ![]T {
   return get_slice_of_alloc(T, allocator, environment, list);
 }
 
-/// Converts an BEAM `t:list/0` of homogenous type into a Zig slice, but 
+/// Converts an BEAM `t:list/0` of homogenous type into a Zig slice, but
 /// using any allocator you wish.
 ///
 /// ownership is passed to the caller.
@@ -623,8 +623,8 @@ pub fn get_bool(environment: env, val: term) !bool {
 ///////////////////////////////////////////////////////////////////////////////
 // generic
 
-/// A helper for marshalling values from Zig back into the runtime.  Use this 
-/// function if you need support for Zig generics.  
+/// A helper for marshalling values from Zig back into the runtime.  Use this
+/// function if you need support for Zig generics.
 ///
 /// supported types:
 /// - `c_int`
@@ -734,7 +734,7 @@ pub fn make_slice(environment: env, val: []u8) term {
   return res;
 }
 
-/// converts an c string (`[*c]u8`) into a BEAM `t:binary/0`. Mostly used for 
+/// converts an c string (`[*c]u8`) into a BEAM `t:binary/0`. Mostly used for
 /// c interop.
 ///
 /// no memory allocation inside of Zig is performed and the BEAM environment
@@ -752,14 +752,6 @@ pub fn make_c_string(environment: env, val: [*c]u8) term{
 
   // punt to the slicing function.
   return make_slice(environment, val[0..len + 1]);
-}
-
-///////////////////////////////////////////////////////////////////////////////
-// pids
-
-/// converts a `pid` struct into a BEAM `t:Kernel.pid/0`.
-pub fn make_pid(environment: env, val: pid) term {
-  return e.enif_make_pid(environment, &pid);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -913,7 +905,7 @@ pub fn throw_function_clause_error(environment: env) term {
 
 const assert_slice = "assertion_error"[0..];
 
-/// This function is used to communicate `:assertion_error` back to the BEAM as an 
+/// This function is used to communicate `:assertion_error` back to the BEAM as an
 /// exception.
 ///
 /// Used when running Zigtests, when trapping `beam.AssertionError.AssertionError`.
@@ -926,13 +918,13 @@ pub fn throw_assertion_error(environment: env) term {
 
 /// A function used to return assertion errors to a zigtest.
 ///
-/// Zig's std.assert() will panic the Zig runtime and therefore the entire 
+/// Zig's std.assert() will panic the Zig runtime and therefore the entire
 /// BEAM VM, making it incompatible with Elixir's Unit tests.  As the VM is
 /// required for certain functionality (like `e.enif_alloc`), a BEAM-compatible
 /// assert is necessary.
 ///
-/// When building zigtests, `assert(...)` calls get lexically converted to 
-/// `try beam.assert(...)` calls.  
+/// When building zigtests, `assert(...)` calls get lexically converted to
+/// `try beam.assert(...)` calls.
 
 pub fn assert(ok: bool) !void {
     if (!ok) return AssertionError.AssertionError; // assertion failure
