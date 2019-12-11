@@ -203,6 +203,12 @@ defmodule Zigler.Doc.Parser do
 
   defparsec(:head_parser, head_parser)
 
+  # unsure of why this hack is necessary.
+  defp typed_docstring(str, [{type, ["\n" | rest1]}, rest2], context, line, offset)
+      when is_atom(type) do
+    typed_docstring(str, [{type, rest1}, rest2], context, line, offset)
+  end
+
   defp typed_docstring(_rest, [{:type, [name, _]}, "!value" <> doc], context, _line, _offset) do
     this_value =
       %ExDoc.FunctionNode{
