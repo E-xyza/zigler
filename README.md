@@ -93,6 +93,40 @@ iex> Allocations.double_atom("foo")
 
 ```
 
+It is a goal for Zigler to make using *it* to bind C libraries easier
+than using C to bind C libraries.  Here is an example:
+
+```elixir
+defmodule BlasDynamic do
+  use Zigler, app: :zigler, libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"]
+
+  ~Z"""
+  const blas = @cImport({
+    @cInclude("/usr/include/x86_64-linux-gnu/cblas.h");
+  });
+
+  /// nif: blas_axpy/3
+  fn blas_axpy(env: beam.env, a: f64, x: []f64, y: []f64) beam.term {
+
+  if (x.len != y.len) {
+    return beam.throw_function_clause_error(env);
+  }
+
+  blas.cblas_daxpy(@intCast(c_int, x.len), a, &x[0], 1, &y[0], 1);
+
+    return beam.make_f64_list(env, y) catch {
+      return beam.throw_function_clause_error(env);
+    };
+  }
+  """
+end
+
+test "we can use dynamically-linked blas" do
+  # returns aX+Y
+  assert [11.0, 18.0] == BlasDynamic.blas_axpy(3.0, [2.0, 4.0], [5.0, 6.0])
+end
+```
+
 Zigler even has support for zig docstrings.
 
 ```elixir
@@ -115,15 +149,6 @@ iex> h AllTheDocs.zeroarity
 a zero-arity function which returns 47.
 ```
 
-## Installation
-
-```elixir
-def deps do
-  [
-    {:zigler, git: "https://github.com/ityonemo/zigler.git"}
-  ]
-end
-```
 
 once you have this dependency, you should cache the zig build tools by running the following:
 

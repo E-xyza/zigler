@@ -8,7 +8,6 @@ defmodule Zigler.MixProject do
       elixir: "~> 1.9",
       start_permanent: Mix.env() == :prod,
       elixirc_paths: elixirc_paths(Mix.env()),
-      start_permanent: Mix.env() == :prod,
       deps: deps(),
       aliases: [docs: "zig_doc"],
       package: [
