@@ -6,6 +6,26 @@ Library test status:
 Dependent package test status:
 ![](https://github.com/ityonemo/zigler_test/workflows/Elixir%20CI/badge.svg)
 
+## Installation
+
+Zigler is [available in Hex](https://hex.pm/zigler), and the package can be installed
+by adding `zigler` to your list of dependencies in `mix.exs`:
+
+```elixir
+def deps do
+  [
+    {:zigler, "~> 0.1.0", runtime: false}
+  ]
+end
+```
+
+Documentation
+be found at [https://hexdocs.pm/zigler](https://hexdocs.pm/zigler).
+
+
+once you have this dependency, you should cache the zig build tools by running the following:
+
+`mix zigler.get_zig latest`
 
 ## Zig Nifs made easy
 
@@ -149,24 +169,3 @@ iex> h AllTheDocs.zeroarity
 a zero-arity function which returns 47.
 ```
 
-
-once you have this dependency, you should cache the zig build tools by running the following:
-
-`mix zigler.get_zig latest`
-
-## Future installation
-
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `zigler` to your list of dependencies in `mix.exs`:
-
-```elixir
-def deps do
-  [
-    {:zigler, "~> 0.1.0"}
-  ]
-end
-```
-
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/zigler](https://hexdocs.pm/zigler).
