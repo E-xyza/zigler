@@ -17,12 +17,11 @@ defmodule Zigler.Compiler do
     os = case :os.type do
       {:unix, :linux} ->
         "linux"
+      {:unix, :freebsd} ->
+        "freebsd"
       {:unix, :darwin} ->
         Logger.warn("macos support is experimental")
         "macos"
-      {:unix, :freebsd} ->
-        Logger.error("freebsd is not supported.")
-        "freebsd"
       {:win32, _} ->
         Logger.error("windows is definitely not supported.")
         "windows"
