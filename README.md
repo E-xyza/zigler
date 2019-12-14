@@ -14,7 +14,7 @@ by adding `zigler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:zigler, "~> 0.1.0", runtime: false}
+    {:zigler, "~> 0.1.1", runtime: false}
   ]
 end
 ```
@@ -22,10 +22,15 @@ end
 Documentation
 be found at [https://hexdocs.pm/zigler](https://hexdocs.pm/zigler).
 
-
 once you have this dependency, you should cache the zig build tools by running the following:
 
 `mix zigler.get_zig latest`
+
+## Currently supported platforms
+
+- Linux
+- FreeBSD (tested, but not subjected to CI)
+- MacOS (I believe it works but is still offically untested)
 
 ## Zig Nifs made easy
 
