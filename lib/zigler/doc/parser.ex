@@ -2,18 +2,24 @@ defmodule Zigler.Doc.Parser do
 
   @moduledoc false
 
-  def docs_from_dir(dir) do
+  def docs_from_dir(dir, config) do
     dir
     |> File.ls!
     |> Enum.filter(&Regex.match?(~r/\.zig$/, &1))  # only read .zig files
-    |> Enum.flat_map(&moduledocs_from_file(dir, &1))
+    |> Enum.flat_map(&moduledocs_from_file(dir, &1, config))
   end
 
-  def moduledocs_from_file(dir, file) do
+  defp interpolate_source_url(pattern, path, line) do
+    pattern
+    |> String.replace(~r/\%\{path\}/, path)
+    |> String.replace(~r/\%\{line\}/, "#{line}")
+  end
+
+  def moduledocs_from_file(dir, file, config) do
     file_path = Path.join(dir, file)
     base = Path.basename(file_path, ".zig")
     rel_path = Path.relative_to(file_path, File.cwd!)
-
+    source_url_pattern = config.source_url_pattern
     init_mod =  %ExDoc.ModuleNode{
       doc_line: 1,
       function_groups: ["Functions", "Values"],
@@ -22,6 +28,7 @@ defmodule Zigler.Doc.Parser do
       id: base,
       module: String.to_atom(base),
       source_path: rel_path,
+      source_url: interpolate_source_url(source_url_pattern, rel_path, 1),
       title: base
     }
 

@@ -25,7 +25,7 @@ defmodule Zigler.Doc.Retriever do
     end
 
     elixir_docs = ExDoc.Retriever.docs_from_dir(source_beam, config)
-    zig_docs = Enum.flat_map(source_dirs, &Zigler.Doc.Parser.docs_from_dir/1)
+    zig_docs = Enum.flat_map(source_dirs, &Zigler.Doc.Parser.docs_from_dir(&1, config))
 
     elixir_docs ++ zig_docs
   end
