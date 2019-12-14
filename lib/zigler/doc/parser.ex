@@ -15,6 +15,13 @@ defmodule Zigler.Doc.Parser do
     |> String.replace(~r/\%\{line\}/, "#{line}")
   end
 
+  defp interpolate_line(line) do
+    # hacky retrieval of pattern and path values.
+    patt = Process.get(:"$url_patt")
+    path = Process.get(:"$rel_path")
+    interpolate_source_url(patt, path, line)
+  end
+
   def moduledocs_from_file(dir, file, config) do
     file_path = Path.join(dir, file)
     base = Path.basename(file_path, ".zig")
@@ -35,6 +42,8 @@ defmodule Zigler.Doc.Parser do
     # a hacky way of sneaking information into the nimble_parsec
     # parser.
     Process.put(:"$init_mod", init_mod)
+    Process.put(:"$rel_path", rel_path)
+    Process.put(:"$url_patt", source_url_pattern)
 
     {:ok, _, _, parsed_module, _, _} = file_parser(File.read!(file_path))
 
@@ -216,58 +225,61 @@ defmodule Zigler.Doc.Parser do
     typed_docstring(str, [{type, rest1}, rest2], context, line, offset)
   end
 
-  defp typed_docstring(_rest, [{:type, [name, _]}, "!value" <> doc], context, _line, _offset) do
+  defp typed_docstring(_rest, [{:type, [name, _]}, "!value" <> doc], context, {line, _}, _offset) do
     this_value =
       %ExDoc.FunctionNode{
         arity: 0,
         doc: String.trim(doc),
-        doc_line: 113,
+        doc_line: line,
         group: "Values",
         id: "#{name}",
         name: String.to_atom(name),
         signature: "#{name}",
         source_path: context.source_path,
         specs: [],
+        source_url: interpolate_line(line),
         type: :function
       }
     {[], %{context | docs: [this_value | context.docs]}}
   end
 
-  defp typed_docstring(_rest, [{:type, [name, defn]}, doc], context, _line, _offset) do
+  defp typed_docstring(_rest, [{:type, [name, defn]}, doc], context, {line, _}, _offset) do
     this_type =
       %ExDoc.TypeNode{
         arity: 0,
         doc: doc,
-        doc_line: 9,
+        doc_line: line,
         id: "#{name}/0",
         name: String.to_atom(name),
         signature: name,
         source_path: context.source_path,
+        source_url: interpolate_line(line),
         spec: defn,
         type: :type
       }
     {[], %{context | typespecs: [this_type | context.typespecs]}}
   end
 
-  defp typed_docstring(_rest, [{:val, [name | _]}, doc], context, _line, _offset) do
+  defp typed_docstring(_rest, [{:val, [name | _]}, doc], context, {line, _}, _offset) do
     this_value =
       %ExDoc.FunctionNode{
         annotations: "mutable",
         arity: 0,
         doc: doc,
-        doc_line: 113,
+        doc_line: line,
         group: "Values",
         id: "#{name}",
         name: String.to_atom(name),
         signature: "#{name}",
         source_path: context.source_path,
+        source_url: interpolate_line(line),
         specs: [],
         type: :function
       }
     {[], %{context | docs: [this_value | context.docs]}}
   end
 
-  defp typed_docstring(_rest, [{:fn, [name, defn]}, doc], context, _line, _offset) do
+  defp typed_docstring(_rest, [{:fn, [name, defn]}, doc], context, {line, _}, _offset) do
     {:ok, types, _, _, _, _} = head_parser(defn)
     arity = div(Enum.count(types), 2)
     comptime = Enum.any?(types, &match?({:comptime, _}, &1))
@@ -277,19 +289,20 @@ defmodule Zigler.Doc.Parser do
         annotations: (if comptime, do: ["comptime"], else: []),
         arity: arity,
         doc: doc,
-        doc_line: 113,
+        doc_line: line,
         group: "Functions",
         id: "#{name}/#{arity}",
         name: String.to_atom(name),
         signature: "#{name}#{defn}",
         source_path: context.source_path,
+        source_url: interpolate_line(line),
         specs: [],
         type: :function
       }
     {[], %{context | docs: [this_fn | context.docs]}}
   end
 
-  defp typed_docstring(_rest, [{:err, [group | errors]}, doc], context, _line, _offset) do
+  defp typed_docstring(_rest, [{:err, [group | errors]}, doc], context, {line, _}, _offset) do
     exceptions = Enum.map(errors, fn error ->
       errname = "#{context.id}.#{group}.#{error}"
       %ExDoc.ModuleNode{
@@ -301,6 +314,7 @@ defmodule Zigler.Doc.Parser do
         id: errname,
         module: String.to_atom(errname),
         source_path: context.source_path,
+        source_url: interpolate_line(line),
         title: errname}
     end)
 
