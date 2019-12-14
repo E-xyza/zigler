@@ -10,3 +10,4 @@
 Thanks to Dave Cottlehuber @dch for testing.
 
 - freebsd tested and unsupported Logger error removed.
+- zig documentation is now correctly linked.
