@@ -123,21 +123,23 @@ than using C to bind C libraries.  Here is an example:
 
 ```elixir
 defmodule BlasDynamic do
-  use Zigler, app: :zigler, libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"]
+  use Zigler, 
+    app: :zigler, 
+    libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
+    include: ["/usr/include/x86_64-linux-gnu"]
 
   ~Z"""
   const blas = @cImport({
-    @cInclude("/usr/include/x86_64-linux-gnu/cblas.h");
+    @cInclude("cblas.h");
   });
 
   /// nif: blas_axpy/3
   fn blas_axpy(env: beam.env, a: f64, x: []f64, y: []f64) beam.term {
+    if (x.len != y.len) {
+      return beam.throw_function_clause_error(env);
+    }
 
-  if (x.len != y.len) {
-    return beam.throw_function_clause_error(env);
-  }
-
-  blas.cblas_daxpy(@intCast(c_int, x.len), a, &x[0], 1, &y[0], 1);
+    blas.cblas_daxpy(@intCast(c_int, x.len), a, &x[0], 1, &y[0], 1);
 
     return beam.make_f64_list(env, y) catch {
       return beam.throw_function_clause_error(env);
