@@ -585,7 +585,7 @@ pub fn get_slice_of_alloc(comptime T: type, a: *Allocator, environment: env, lis
 ///////////////////////////////////////////////////////////////////////////////
 // booleans
 
-fn str_cmp(comptime ref: []const u8, str: []u8) bool {
+fn str_cmp(comptime ref: []const u8, str: []const u8) bool {
   if (str.len != ref.len) { return false; }
   for (str) |item, idx| {
     if (item != ref[idx]) {
@@ -722,12 +722,12 @@ pub fn make_atom(environment: env, atom_str: []const u8) term {
 /// no memory allocation inside of Zig is performed and the BEAM environment
 /// is responsible for the resulting binary.  You are responsible for managing
 /// the allocation of the slice.
-pub fn make_slice(environment: env, val: []u8) term {
+pub fn make_slice(environment: env, val: []const u8) term {
   var res: e.ErlNifTerm = undefined;
 
   var bin: [*]u8 = @ptrCast([*]u8, e.enif_make_new_binary(environment, val.len, &res));
 
-  for (result) | _chr, i | {
+  for (val) | _chr, i | {
     bin[i] = val[i];
   }
 
@@ -740,7 +740,7 @@ pub fn make_slice(environment: env, val: []u8) term {
 /// no memory allocation inside of Zig is performed and the BEAM environment
 /// is responsible for the resulting binary.  You are responsible for managing
 /// the allocation of the slice.
-pub fn make_c_string(environment: env, val: [*c]u8) term{
+pub fn make_c_string(environment: env, val: [*c] const u8) term{
   var res: e.ErlNifTerm = undefined;
   var len: usize = 0;
 
@@ -771,12 +771,12 @@ pub fn make_term_list(environment: env, val: []term) term {
 }
 
 /// converts a Zig char slice (`[]u8`) into a BEAM `t:charlist/0`.
-pub fn make_charlist(environment: env, val: []u8) term {
+pub fn make_charlist(environment: env, val: [] const u8) term {
   return e.enif_make_string_len(environment, val, val.len, __latin1);
 }
 
 /// converts a c string (`[*c]u8`) into a BEAM `t:charlist/0`.
-pub fn make_cstring_charlist(environment: env, val: [*c]u8) term {
+pub fn make_cstring_charlist(environment: env, val: [*c] const u8) term {
   return e.enif_make_string(environment, val, __latin1);
 }
 
@@ -896,6 +896,11 @@ pub fn make_ok_tuple(comptime T: type, environment: env, val: T) term {
   return make_ok_term(environment, make(T, environment, val));
 }
 
+/// A helper to make `{:ok, binary}` terms from slices
+pub fn make_ok_binary(environment: env, val: [] const u8) term {
+  return make_ok_term(environment, make_slice(environment, val));
+}
+
 /// A helper to make `{:ok, atom}` terms from slices
 pub fn make_ok_atom(environment: env, val: [] const u8) term {
   return make_ok_term(environment, make_atom(environment, val));
@@ -930,6 +935,11 @@ pub fn make_error_tuple(comptime T: type, environment: env, val: T) term {
 /// A helper to make `{:error, atom}` terms from slices
 pub fn make_error_atom(environment: env, val: [] const u8) term {
   return make_error_term(environment, make_atom(environment, val));
+}
+
+/// A helper to make `{:error, binary}` terms from slices
+pub fn make_error_binary(environment: env, val: [] const u8) term {
+  return make_error_term(environment, make_slice(environment, val));
 }
 
 /// A helper to make `{:error, term}` terms in general
