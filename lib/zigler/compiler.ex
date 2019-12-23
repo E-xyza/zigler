@@ -10,7 +10,7 @@ defmodule Zigler.Compiler do
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
   @erl_nif_zig_h Path.join(@zig_dir_path, "include/erl_nif_zig.h")
-  @erl_nif_zig_eex File.read!("zig/beam/erl_nif.zig")
+  @erl_nif_zig Path.join(@zig_dir_path, "beam/erl_nif.zig")
 
   @doc false
   def basename(version) do
@@ -95,16 +95,29 @@ defmodule Zigler.Compiler do
     Enum.into(full_code, File.stream!(zig_nif_file))
 
     # put the erl_nif.zig adapter into the path.
-    erl_nif_zig_path = Path.join(tmp_dir, "erl_nif.zig")
-    File.write!(erl_nif_zig_path, EEx.eval_string(@erl_nif_zig_eex, erl_nif_zig_h: @erl_nif_zig_h))
+    File.cp!(@erl_nif_zig, Path.join(tmp_dir, "erl_nif.zig"))
 
     # now put the beam.zig file into the temporary directory too.
     beam_zig_src = Path.join(@zig_dir_path, "beam/beam.zig")
     File.cp!(beam_zig_src, Path.join(tmp_dir, "beam.zig"))
 
-    # now put the erl_nif.h file into the temporary directory.
-    erl_nif_zig_h_path = Path.join(@zig_dir_path, "include/erl_nif_zig.h")
-    File.cp!(erl_nif_zig_h_path, Path.join(tmp_dir, "erl_nif_zig.h"))
+    # included header file operations.
+    src_include_dir = Path.join(src_dir, "include") # NB: this might not exist.
+    dst_include_dir = Path.join(tmp_dir, "include")
+    File.mkdir_p!(dst_include_dir)
+
+    # make sure that erl_nif_zig.h is in the include directory
+    File.cp!(@erl_nif_zig_h, Path.join(dst_include_dir, "erl_nif_zig.h"))
+
+    if File.dir?(src_include_dir) do
+      src_include_dir
+      |> File.ls!
+      |> Enum.map(fn file ->
+        src_include_dir
+        |> Path.join(file)
+        |> File.cp!(Path.join(dst_include_dir, file))
+      end)
+    end
 
     # now put the zig import dependencies into the directory, too.
     zig_code
@@ -118,7 +131,7 @@ defmodule Zigler.Compiler do
     zig_cmd = Path.join(zig_tree, "zig")
     zig_rpath = Path.join(zig_tree, "lib/zig")
     cmd_opts = ~w(build-lib zig_nif.zig -dynamic --disable-gen-h --override-lib-dir) ++
-      [zig_rpath] ++
+      [zig_rpath, "-isystem", dst_include_dir] ++
       Enum.flat_map(zig_libs, &(["--library", &1])) ++
       release_mode_text(release_mode)
 

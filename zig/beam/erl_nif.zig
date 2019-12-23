@@ -24,5 +24,5 @@
 
 
 pub const c = @cImport({
-  @cInclude("<%= erl_nif_zig_h %>");
+  @cInclude("erl_nif_zig.h");
 });
