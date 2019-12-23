@@ -870,7 +870,66 @@ pub fn make_f64_list(environment: env, val: []f64) !term {
 
 /// converts a `bool` value into a `t:Kernel.boolean/0` value.
 pub fn make_bool(environment: env, val: bool) term {
-  return if (val) e.enif_make_atom(env, c"true") else e.enif_make_atom(env, c"false");
+  return if (val) e.enif_make_atom(environment, c"true") else e.enif_make_atom(environment, c"false");
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// ok and error tuples
+
+/// A helper to make `{:ok, term}` terms from arbitrarily-typed values.  
+///
+/// supported types:
+/// - `c_int`
+/// - `c_long`
+/// - `isize`
+/// - `usize`
+/// - `u8`
+/// - `i32`
+/// - `i64`
+/// - `f16`
+/// - `f32`
+/// - `f64`
+///
+/// Use `make_ok_tuple_atom/2` to make atom terms from slices.
+pub fn make_ok_tuple(comptime T: type, environment: env, val: T) term {
+  return e.enif_make_tuple(environment, 2, 
+    e.enif_make_atom(environment, c"ok"), 
+    make(T, environment, val));
+}
+
+/// A helper to make `{:ok, atom}` terms from slices
+pub fn make_ok_tuple_atom(environment: env, val: []u8) term {
+  return e.enif_make_tuple(environment, 2, 
+    e.enif_make_atom(environment, c"ok"), 
+    make_atom(environment, val));
+}
+
+/// A helper to make `{:error, term}` terms from arbitrarily-typed values.  
+///
+/// supported types:
+/// - `c_int`
+/// - `c_long`
+/// - `isize`
+/// - `usize`
+/// - `u8`
+/// - `i32`
+/// - `i64`
+/// - `f16`
+/// - `f32`
+/// - `f64`
+///
+/// Use `make_error_tuple_atom/2` to make atom errors from slices.
+pub fn make_error_tuple(comptime T: type, environment: env, val: T) term {
+  return e.enif_make_tuple(environment, 2, 
+    e.enif_make_atom(environment, c"error"), 
+    make(T, environment, val));
+}
+
+/// A helper to make `{:error, atom}` terms from slices
+pub fn make_error_tuple_atom(environment: env, val: []u8) term {
+  return e.enif_make_tuple(environment, 2, 
+    e.enif_make_atom(environment, c"error"), 
+    make_atom(environment, val));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
