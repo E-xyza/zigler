@@ -64,6 +64,7 @@ defmodule Zigler.Compiler do
     end
 
     zig_libs = Module.get_attribute(context.module, :zig_libs) || []
+    c_includes = Module.get_attribute(context.module, :c_includes) || []
 
     Enum.each(zig_libs, &verify_if_shared/1)
 
@@ -125,14 +126,18 @@ defmodule Zigler.Compiler do
     |> Import.recursive_find(src_dir)
     |> copy_files(src_dir, tmp_dir, in_test?)
 
+    include_opts = Enum.flat_map([dst_include_dir] ++ c_includes, &["-isystem", &1])
+    lib_opts = Enum.flat_map(zig_libs, &["--library", &1])
+
     # now use zig to build the library in the temporary directory.
     # also add in lib search paths that correspond to where we've downloaded
     # our zig cache
     zig_cmd = Path.join(zig_tree, "zig")
     zig_rpath = Path.join(zig_tree, "lib/zig")
     cmd_opts = ~w(build-lib zig_nif.zig -dynamic --disable-gen-h --override-lib-dir) ++
-      [zig_rpath, "-isystem", dst_include_dir] ++
-      Enum.flat_map(zig_libs, &(["--library", &1])) ++
+      [zig_rpath] ++
+      include_opts ++
+      lib_opts ++
       release_mode_text(release_mode)
 
     cmd_opts_text = Enum.join(cmd_opts, " ")

@@ -105,11 +105,14 @@ defmodule Zigler do
 
   ```
   defmodule Blas do
-    use Zigler, app: :my_app, libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"]
+    use Zigler,
+      app: :my_app,
+      libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
+      include: ["/usr/include/x86_64-linux-gnu"]
 
     ~Z\"""
     const blas = @cImport({
-      @cInclude("/usr/include/x86_64-linux-gnu/cblas.h");
+      @cInclude("cblas.h");
     ...
   ```
 
@@ -136,12 +139,27 @@ defmodule Zigler do
 
   ```
   ~Z\"""
-  extra_code = @import("extra_code.zig");
+  const extra_code = @import("extra_code.zig");
 
   /// nif: use_extra_code/1
   fn use_extra_code(val: i64) i64 {
     return extra_code.extra_fn(val);
   }
+  \"""
+  ```
+
+  If you would like to include a custom c header file, create an `include/`
+  directory inside your path tree and it will be available to zig as a default
+  search path as follows:
+
+  ```
+  ~Z\"""
+  const c = @cImport({
+    @cInclude("my_c_header.h");
+  });
+
+  // nif: my_nif/1
+  ...
   \"""
   ```
 
@@ -200,6 +218,7 @@ defmodule Zigler do
     # Optional options:
 
     zig_version = opts[:version] || latest_cached_version()
+    c_includes = opts[:include]
 
     libs = opts[:libs]
 
@@ -220,6 +239,7 @@ defmodule Zigler do
       # free values
       @release_mode unquote(mode)
       @zig_libs unquote(libs)
+      @c_includes unquote(c_includes)
 
       # needs to be persisted so that we can store the version for tests.
       Module.register_attribute(__MODULE__, :zigler_app, persist: true)
