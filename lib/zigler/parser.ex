@@ -38,6 +38,20 @@ defmodule Zigler.Parser do
     {content, Map.put(context, :nif, %{name: name, arity: arity})}
   end
 
+  defp report_param_type(_, [bad_param | _], context = %{nif: %{name: nif_name}}, {line, _}, _) do
+    raise CompileError,
+      file: context.file,
+      line: line,
+      description: ~s/nif "#{nif_name}" has unsupported parameter type #{String.trim bad_param}/
+  end
+
+  defp report_retval_type(_, [bad_retval | _], context = %{nif: %{name: nif_name}}, {line, _}, _) do
+    raise CompileError,
+      file: context.file,
+      line: line,
+      description: ~s/nif "#{nif_name}" has unsupported retval type #{String.trim bad_retval}/
+  end
+
   defp match_function_if_nif(_rest, content = [name | _], context = %{nif: %{name: name}}, _line, _offset) do
     {content, context}
   end
@@ -74,7 +88,7 @@ defmodule Zigler.Parser do
       raise CompileError,
         file: context.file,
         line: code_line,
-        description: "mismatch of arity declaration, expected #{arity}, got #{found_arity}"
+        description: "mismatched arity declaration, expected #{arity}, got #{found_arity}"
     end
 
     # build the nif struct that we're going to send back with the code.
@@ -84,12 +98,21 @@ defmodule Zigler.Parser do
                doc: doc,
                retval: retval}
 
-    {[res | content], context}
+    {[res | content], Map.delete(context, :nif)}
   end
   # if it's a plain old function, just ignore all the hullabaloo about nifs.
   defp save_if_nif(_rest, content, context, _, _), do: {content, context}
 
-  defp clear_data(_rest, content, context, _line, _offset) do
+  defp clear_data(_rest, content, context, {code_line, _}, _offset) do
+    nif = context[:nif]
+
+    if nif do
+      raise CompileError,
+        file: context.file,
+        line: code_line - 1,
+        description: "missing function header for nif #{nif.name}"
+    end
+
     {content, Map.drop(context, [:nif, :docstring, :params, :retval])}
   end
 
@@ -126,13 +149,17 @@ defmodule Zigler.Parser do
 
   typeinfo = choice(type_literals ++ [c_string, array_or_string])
 
+  unsupported_param_type =
+    ascii_string([not: ?,, not: ?)], min: 1)
+
   parameter =
     optional(whitespace)
     |> ascii_string(@alphanumeric, min: 1)  # identifier
     |> optional(whitespace)
     |> string(":")
     |> optional(whitespace)
-    |> concat(typeinfo)
+    |> concat(choice([typeinfo,
+                     unsupported_param_type |> post_traverse(:report_param_type)]))
     |> optional(whitespace)
     |> post_traverse(:store_parameter)
 
@@ -143,6 +170,9 @@ defmodule Zigler.Parser do
       |> optional(whitespace)
       |> concat(parameter))
 
+  unsupported_retval_type =
+    ascii_string([not: ?{], min: 1)
+
   function_header =
     repeat(ascii_char([?\s]))
     |> string("fn")
@@ -152,7 +182,8 @@ defmodule Zigler.Parser do
     |> optional(param_list)
     |> string(")")
     |> optional(whitespace)
-    |> concat(typeinfo |> post_traverse(:store_retval))
+    |> concat(choice([typeinfo |> post_traverse(:store_retval),
+                      unsupported_retval_type |> post_traverse(:report_retval_type)]))
     |> repeat(ascii_char(not: ?\n))
     |> string("\n")
     |> post_traverse(:save_if_nif)

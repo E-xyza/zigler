@@ -50,21 +50,26 @@ defmodule Zigler.Import do
     recursive_find(find(code), [], root)
   end
   def recursive_find([file | rest], files_so_far, root) do
-    new_files = root
-    |> Path.join(file)
-    |> File.read!
-    |> find
+    file_path = Path.join(root, file)
 
-    # re-home the file to the new directory.
-    rehomed_files = Enum.map(new_files, fn new_file ->
-      file
-      |> Path.dirname
-      |> Path.join(new_file)
-    end)
+    if File.exists?(file_path) do
+      new_files = file_path
+      |> File.read!
+      |> find
 
-    append_files = rehomed_files -- files_so_far
+      # re-home the file to the new directory.
+      rehomed_files = Enum.map(new_files, fn new_file ->
+        file
+        |> Path.dirname
+        |> Path.join(new_file)
+      end)
 
-    recursive_find(rest ++ append_files, [file | files_so_far], root)
+      append_files = rehomed_files -- files_so_far
+
+      recursive_find(rest ++ append_files, [file | files_so_far], root)
+    else
+      recursive_find(rest, files_so_far, root)
+    end
   end
   def recursive_find([], files_so_far, _), do: files_so_far
 
