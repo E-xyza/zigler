@@ -27,9 +27,13 @@ defmodule ZiglerTest.CompilerErrorTest do
   test "compiler error catches mismatched nif" do
     test_file = "test/assets/mismatched_nif.exs"
 
-    assert_raise CompileError, fn ->
+    ce = assert_raise CompileError, fn ->
       Code.compile_file(test_file)
     end
+
+    assert %CompileError{file: file, line: 5} = ce
+    assert file =~ test_file
+    assert ce.description =~ "nif docstring expecting \"oops\" not adjacent to function (next to \"two\")"
   end
 
   test "compiler error catches mismatched arity" do
@@ -39,7 +43,42 @@ defmodule ZiglerTest.CompilerErrorTest do
       Code.compile_file(test_file)
     end
 
-    assert ce.description =~ "mismatch of arity"
+    assert %CompileError{file: file, line: 6} = ce
+    assert file =~ test_file
+    assert ce.description =~ "mismatched arity"
+  end
+
+  test "compiler error catches missing nif" do
+    test_file = "test/assets/missing_nif.exs"
+
+    ce = assert_raise CompileError, fn ->
+      Code.compile_file(test_file)
+    end
+
+    assert %CompileError{file: file, line: 5} = ce
+    assert ce.description =~ "missing function header for nif missing_nif"
+  end
+
+  test "compiler error catches bad parameter type" do
+    test_file = "test/assets/bad_parameter_type.exs"
+
+    ce = assert_raise CompileError, fn ->
+      Code.compile_file(test_file)
+    end
+
+    assert %CompileError{file: file, line: 5} = ce
+    assert ce.description =~ "nif \"bad_param\" has unsupported parameter type u64"
+  end
+
+  test "compiler error catches bad retval type" do
+    test_file = "test/assets/bad_retval_type.exs"
+
+    ce = assert_raise CompileError, fn ->
+      Code.compile_file(test_file)
+    end
+
+    assert %CompileError{file: file, line: 5} = ce
+    assert ce.description =~ "nif \"bad_retval\" has unsupported retval type u64"
   end
 
 end
