@@ -16,6 +16,8 @@ defmodule Zigler.MixProject do
         files: ~w(lib mix.exs README* LICENSE* VERSIONS* assets zig/beam zig/include),
         links: %{"GitHub" => "https://github.com/ityonemo/zigler", "Zig" => "https://ziglang.org/"}
       ],
+      test_coverage: [tool: ExCoveralls],
+      preferred_cli_env: [coveralls: :test, "coveralls.detail": :test, "coveralls.post": :test, "coveralls.html": :test]
       source_url: "https://github.com/ityonemo/zigler/",
       docs: [main: "Zigler", extras: ["README.md"]]
     ]
@@ -34,6 +36,10 @@ defmodule Zigler.MixProject do
 
   def deps do
     [
+      # credo
+      {:credo, "~> 1.1.0", only: [:dev, :test], runtime: false},
+      # coverage testing
+      {:excoveralls, "~> 0.12", only: :test},
       # zigler's parsing is done using nimble_parsec
       {:nimble_parsec, "~> 0.5", runtime: false},
       # we need this for mix zigler.get_zig mix task.
