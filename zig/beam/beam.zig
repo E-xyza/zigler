@@ -897,7 +897,7 @@ pub fn make_ok_tuple(comptime T: type, environment: env, val: T) term {
 }
 
 /// A helper to make `{:ok, atom}` terms from slices
-pub fn make_ok_atom(environment: env, val: []u8) term {
+pub fn make_ok_atom(environment: env, val: [] const u8) term {
   return make_ok_term(environment, make_atom(environment, val));
 }
 
@@ -928,7 +928,7 @@ pub fn make_error_tuple(comptime T: type, environment: env, val: T) term {
 }
 
 /// A helper to make `{:error, atom}` terms from slices
-pub fn make_error_atom(environment: env, val: []u8) term {
+pub fn make_error_atom(environment: env, val: [] const u8) term {
   return make_error_term(environment, make_atom(environment, val));
 }
 

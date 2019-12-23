@@ -44,6 +44,7 @@ defmodule Zigler.Parser do
       line: line,
       description: ~s/nif "#{nif_name}" has unsupported parameter type #{String.trim bad_param}/
   end
+  defp report_param_type(_, content, context, _, _), do: {content, context}
 
   defp report_retval_type(_, [bad_retval | _], context = %{nif: %{name: nif_name}}, {line, _}, _) do
     raise CompileError,
