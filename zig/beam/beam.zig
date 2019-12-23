@@ -893,16 +893,12 @@ pub fn make_bool(environment: env, val: bool) term {
 /// Use `make_ok_term/2` to make ok tuples from generic terms.
 /// Use `make_ok_atom/2` to make ok tuples with atom terms from slices.
 pub fn make_ok_tuple(comptime T: type, environment: env, val: T) term {
-  return e.enif_make_tuple(environment, 2, 
-    e.enif_make_atom(environment, c"ok"), 
-    make(T, environment, val));
+  return make_ok_term(environment, make(T, environment, val));
 }
 
 /// A helper to make `{:ok, atom}` terms from slices
 pub fn make_ok_atom(environment: env, val: []u8) term {
-  return e.enif_make_tuple(environment, 2, 
-    e.enif_make_atom(environment, c"ok"), 
-    make_atom(environment, val));
+  return make_ok_term(environment, make_atom(environment, val));
 }
 
 /// A helper to make `{:ok, term}` terms in general
@@ -928,16 +924,12 @@ pub fn make_ok_term(environment: env, val: term) term {
 /// Use `make_error_term/2` to make error tuples from generic terms.
 /// Use `make_error_atom/2` to make atom errors from slices.
 pub fn make_error_tuple(comptime T: type, environment: env, val: T) term {
-  return e.enif_make_tuple(environment, 2, 
-    e.enif_make_atom(environment, c"error"), 
-    make(T, environment, val));
+  return make_error_term(environment, make(T, environment, val));
 }
 
 /// A helper to make `{:error, atom}` terms from slices
 pub fn make_error_atom(environment: env, val: []u8) term {
-  return e.enif_make_tuple(environment, 2, 
-    e.enif_make_atom(environment, c"error"), 
-    make_atom(environment, val));
+  return make_error_term(environment, make_atom(environment, val));
 }
 
 /// A helper to make `{:error, term}` terms in general
