@@ -1,4 +1,7 @@
 defmodule ZiglerTest.ZigFailingTestModule do
+
+  @moduledoc false
+
   use Zigler, app: :zigler
 
   ~Z"""
@@ -16,6 +19,9 @@ defmodule ZiglerTest.ZigFailingTestModule do
 end
 
 defmodule ZiglerTest.ZigFailingTestShim do
+
+  @moduledoc false
+
   use Zigler.Unit
 
   zigtest ZiglerTest.ZigFailingTestModule

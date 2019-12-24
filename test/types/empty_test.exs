@@ -24,5 +24,4 @@ defmodule ZiglerTest.Types.EmptyTest do
     end
   end
 
-
 end

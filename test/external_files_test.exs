@@ -42,4 +42,9 @@ defmodule ZiglerTest.ExternalFilesTest do
   test "a recursive external file can be called" do
     assert 3 == RecursiveCall.add_one(2)
   end
+
+  test "we can use custom include files" do
+    test_file = "test/assets/cinclude.exs"
+    Code.compile_file(test_file)
+  end
 end

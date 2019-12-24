@@ -14,8 +14,6 @@ defmodule Zigler.Parser do
   #############################################################################
   ## post-traversal functions
 
-  # TODO: consider moving these out into their own module.
-
   defp store_docstring(_rest, content = ["\n", text | _], context = %{docstring: prev}, _line, _offset) do
     {content, %{context | docstring: [prev, String.trim(text), "\n"]}}
   end
@@ -44,6 +42,7 @@ defmodule Zigler.Parser do
       line: line,
       description: ~s/nif "#{nif_name}" has unsupported parameter type #{String.trim bad_param}/
   end
+  defp report_param_type(_, content, context, _, _), do: {content, context}
 
   defp report_retval_type(_, [bad_retval | _], context = %{nif: %{name: nif_name}}, {line, _}, _) do
     raise CompileError,
@@ -214,7 +213,6 @@ defmodule Zigler.Parser do
 
   # make intermediate parsing steps testable
   if Mix.env == :test do
-    # TODO: tests on parameters
     defparsec :parse_docstring_line, docstring_line
     defparsec :parse_docstring, docstring
     defparsec :parse_nif_line, nif_line

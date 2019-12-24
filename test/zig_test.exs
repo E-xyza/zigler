@@ -46,4 +46,3 @@ defmodule ZiglerTest.ZigIndirectTest do
 
   zigtest ZiglerTest.ZigIndirectTestModule
 end
-

@@ -10,11 +10,14 @@ defmodule Zigler.LibraryTest do
   if File.exists?("/usr/lib/x86_64-linux-gnu/blas/libblas.so") do
 
     defmodule BlasDynamic do
-      use Zigler, app: :zigler, libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"]
+      use Zigler,
+        app: :zigler,
+        libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
+        include: ["/usr/include/x86_64-linux-gnu"]
 
       ~Z"""
       const blas = @cImport({
-        @cInclude("/usr/include/x86_64-linux-gnu/cblas.h");
+        @cInclude("cblas.h");
       });
 
       /// nif: blas_axpy/3
@@ -43,11 +46,14 @@ defmodule Zigler.LibraryTest do
   if File.exists?("/usr/lib/x86_64-linux-gnu/blas/libblas.a") do
 
     defmodule BlasStatic do
-      use Zigler, app: :zigler, libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.a"]
+      use Zigler,
+        app: :zigler,
+        libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.a"],
+        include: ["/usr/include/x86_64-linux-gnu"]
 
       ~Z"""
       const blas = @cImport({
-        @cInclude("/usr/include/x86_64-linux-gnu/cblas.h");
+        @cInclude("cblas.h");
       });
 
       /// nif: blas_axpy/3

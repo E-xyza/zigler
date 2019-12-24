@@ -24,8 +24,10 @@ defmodule Mix.Tasks.ZigDoc do
   ```
   """
 
+  alias Mix.Tasks.Docs
+
   @doc false
   def run(args, config \\ Mix.Project.config(), generator \\ &Zigler.Doc.generate_docs/3) do
-    Mix.Tasks.Docs.run(args, config, generator)
+    Docs.run(args, config, generator)
   end
 end

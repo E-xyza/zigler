@@ -10,7 +10,7 @@ defmodule Zigler.Compiler do
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
   @erl_nif_zig_h Path.join(@zig_dir_path, "include/erl_nif_zig.h")
-  @erl_nif_zig_eex File.read!("zig/beam/erl_nif.zig")
+  @erl_nif_zig Path.join(@zig_dir_path, "beam/erl_nif.zig")
 
   @doc false
   def basename(version) do
@@ -29,13 +29,12 @@ defmodule Zigler.Compiler do
     "zig-#{os}-x86_64-#{version}"
   end
 
-  # TODO: make this a map?
-  defp release_mode_text(:fast), do: ["--release-fast"]
-  defp release_mode_text(:safe), do: ["--release-safe"]
-  defp release_mode_text(:small), do: ["--release-small"]
-  defp release_mode_text(:debug), do: []
-
-  # TODO:  REORGANIZE THIS CRAZINESS.
+  @release_mode %{
+    fast:  ["--release-fast"],
+    safe:  ["--release-safe"],
+    small: ["--release-small"],
+    debug: []
+  }
 
   defmacro __before_compile__(context) do
     [app, version, release_mode, src_dir, zig_code, in_test?] =
@@ -64,6 +63,7 @@ defmodule Zigler.Compiler do
     end
 
     zig_libs = Module.get_attribute(context.module, :zig_libs) || []
+    c_includes = Module.get_attribute(context.module, :c_includes) || []
 
     Enum.each(zig_libs, &verify_if_shared/1)
 
@@ -72,11 +72,6 @@ defmodule Zigler.Compiler do
     zig_nif_file = Path.join(tmp_dir, "zig_nif.zig")
 
     zig_header = Zig.nif_header()
-
-    # TODO: refactor, we can do better than this, we're taking
-    # iodata content and converting it to a string to do the
-    # newline analysis.  Instead, we should do a recursive depth
-    # search of the iodata tree.
 
     # count newlines in the header and the code:
     newlines = count_newlines([zig_header, zig_code]) + 1
@@ -92,25 +87,41 @@ defmodule Zigler.Compiler do
 
     File.mkdir_p!(tmp_dir)
 
-    Enum.into(full_code, File.stream!(zig_nif_file))
+    _ = Enum.into(full_code, File.stream!(zig_nif_file))
 
     # put the erl_nif.zig adapter into the path.
-    erl_nif_zig_path = Path.join(tmp_dir, "erl_nif.zig")
-    File.write!(erl_nif_zig_path, EEx.eval_string(@erl_nif_zig_eex, erl_nif_zig_h: @erl_nif_zig_h))
+    File.cp!(@erl_nif_zig, Path.join(tmp_dir, "erl_nif.zig"))
 
     # now put the beam.zig file into the temporary directory too.
     beam_zig_src = Path.join(@zig_dir_path, "beam/beam.zig")
     File.cp!(beam_zig_src, Path.join(tmp_dir, "beam.zig"))
 
-    # now put the erl_nif.h file into the temporary directory.
-    erl_nif_zig_h_path = Path.join(@zig_dir_path, "include/erl_nif_zig.h")
-    File.cp!(erl_nif_zig_h_path, Path.join(tmp_dir, "erl_nif_zig.h"))
+    # included header file operations.
+    src_include_dir = Path.join(src_dir, "include") # NB: this might not exist.
+    dst_include_dir = Path.join(tmp_dir, "include")
+    File.mkdir_p!(dst_include_dir)
+
+    # make sure that erl_nif_zig.h is in the include directory
+    File.cp!(@erl_nif_zig_h, Path.join(dst_include_dir, "erl_nif_zig.h"))
+
+    if File.dir?(src_include_dir) do
+      src_include_dir
+      |> File.ls!
+      |> Enum.each(fn file ->
+        src_include_dir
+        |> Path.join(file)
+        |> File.cp!(Path.join(dst_include_dir, file))
+      end)
+    end
 
     # now put the zig import dependencies into the directory, too.
     zig_code
     |> IO.iodata_to_binary
     |> Import.recursive_find(src_dir)
     |> copy_files(src_dir, tmp_dir, in_test?)
+
+    include_opts = Enum.flat_map([dst_include_dir] ++ c_includes, &["-isystem", &1])
+    lib_opts = Enum.flat_map(zig_libs, &["--library", &1])
 
     # now use zig to build the library in the temporary directory.
     # also add in lib search paths that correspond to where we've downloaded
@@ -119,8 +130,9 @@ defmodule Zigler.Compiler do
     zig_rpath = Path.join(zig_tree, "lib/zig")
     cmd_opts = ~w(build-lib zig_nif.zig -dynamic --disable-gen-h --override-lib-dir) ++
       [zig_rpath] ++
-      Enum.flat_map(zig_libs, &(["--library", &1])) ++
-      release_mode_text(release_mode)
+      include_opts ++
+      lib_opts ++
+      @release_mode[release_mode]
 
     cmd_opts_text = Enum.join(cmd_opts, " ")
 
@@ -151,6 +163,9 @@ defmodule Zigler.Compiler do
   end
 
   defp copy_files(files, src_dir, dst_dir, in_test?) do
+
+    copy_fn = if in_test?, do: &copy_test/2, else: &File.cp!/2
+
     Enum.each(files, fn file_path ->
       src_file_path = Path.join(src_dir, file_path) |> Path.expand()
       dst_file_path = Path.join(dst_dir, file_path)
@@ -163,12 +178,7 @@ defmodule Zigler.Compiler do
         |> Path.dirname
         |> File.mkdir_p!
 
-        if in_test? do
-          copy_test(src_file_path, dst_file_path)
-        else
-          # copy the file.
-          File.cp!(src_file_path, dst_file_path)
-        end
+        copy_fn.(src_file_path, dst_file_path)
       end
     end)
   end
