@@ -20,3 +20,10 @@ Thanks to Dave Cottlehuber @dch for testing.
 - fixed compilation so that importing zig stdlib doesn't error
 - added better compilation failures for bad types in params and retvals
 - added `beam` struct support for ok and error tuples
+
+## 0.1.3
+
+- fixed error reporting for the `/// nif:` directive
+- added ok/error tuple with string
+- added c header path support
+- restored documentation for exceptions
