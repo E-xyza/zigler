@@ -135,12 +135,17 @@ defmodule Zigler.Doc.Parser do
       |> string("{"))
     |> repeat(
       ignore(optional(whitespace))
+      |> optional(repeat(docstring) |> tag(:doc) |> ignore(optional(whitespace)))
       |> concat(identifier)
       |> ignore(optional(whitespace |> string(","))))
     |> ignore(
       optional(whitespace)
       |> string("}"))
     |> tag(:err)
+
+  if Mix.env == :test do
+    defparsec(:error_head, error_head)
+  end
 
   fn_head =
     optional(whitespace)
@@ -302,22 +307,37 @@ defmodule Zigler.Doc.Parser do
     {[], %{context | docs: [this_fn | context.docs]}}
   end
 
-  defp typed_docstring(_rest, [{:err, [group | errors]}, doc], context, {line, _}, _offset) do
-    exceptions = Enum.map(errors, fn error ->
-      errname = "#{context.id}.#{group}.#{error}"
-      %ExDoc.ModuleNode{
-        doc: doc,
-        doc_line: 1,
-        function_groups: [],
-        group: "Zig Errors",
-        type: :exception,
-        id: errname,
-        module: String.to_atom(errname),
-        source_path: context.source_path,
-        source_url: interpolate_line(line),
-        title: errname}
-    end)
-
+  defp typed_docstring(_rest, [{:err, [group | errors]}, _doc], context, {line, _}, _offset) do
+    exceptions = exceptions_from(errors, group, context, line)
     {[], %{context | typespecs: exceptions ++ context.typespecs}}
+  end
+
+  defp exceptions_from([], _, _, _), do: []
+  defp exceptions_from([{:doc, doc}, error | rest], group, context, line) do
+    errname = "#{context.id}.#{group}.#{error}"
+    [%ExDoc.ModuleNode{
+      doc: IO.iodata_to_binary(doc),
+      doc_line: 1,
+      function_groups: [],
+      group: "Zig Errors",
+      type: :exception,
+      id: errname,
+      module: String.to_atom(errname),
+      source_path: context.source_path,
+      source_url: interpolate_line(line),
+      title: errname} | exceptions_from(rest, group, context, line)]
+  end
+  defp exceptions_from([error | rest], group, context, line) do
+    errname = "#{context.id}.#{group}.#{error}"
+    [%ExDoc.ModuleNode{
+      doc_line: 1,
+      function_groups: [],
+      group: "Zig Errors",
+      type: :exception,
+      id: errname,
+      module: String.to_atom(errname),
+      source_path: context.source_path,
+      source_url: interpolate_line(line),
+      title: errname} | exceptions_from(rest, group, context, line)]
   end
 end

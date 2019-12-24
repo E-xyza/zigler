@@ -172,6 +172,7 @@ fn beam_shrink(self: *Allocator,
 // syntactic sugar: important elixir terms
 ///////////////////////////////////////////////////////////////////////////////
 
+/// errors for nif translation
 pub const Error = error {
   /// Translates to Elixir `FunctionClauseError`.
   ///
@@ -184,6 +185,7 @@ pub const Error = error {
   FunctionClauseError
 };
 
+/// errors for testing
 pub const AssertionError = error {
   /// Translates to `ExUnit.AssertionError`.  Mostly used in Zig unit tests.
   ///

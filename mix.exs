@@ -16,8 +16,14 @@ defmodule Zigler.MixProject do
         files: ~w(lib mix.exs README* LICENSE* VERSIONS* assets zig/beam zig/include),
         links: %{"GitHub" => "https://github.com/ityonemo/zigler", "Zig" => "https://ziglang.org/"}
       ],
+      dialyzer: [plt_add_deps: :transitive],
       test_coverage: [tool: ExCoveralls],
-      preferred_cli_env: [coveralls: :test, "coveralls.detail": :test, "coveralls.post": :test, "coveralls.html": :test],
+      preferred_cli_env: [
+        coveralls: :test,
+        "coveralls.detail": :test,
+        "coveralls.post": :test,
+        "coveralls.html": :test,
+        dialyzer: :dev],
       source_url: "https://github.com/ityonemo/zigler/",
       docs: [main: "Zigler", extras: ["README.md"]]
     ]
@@ -38,6 +44,8 @@ defmodule Zigler.MixProject do
     [
       # credo
       {:credo, "~> 1.1.0", only: [:dev, :test], runtime: false},
+      # dialyzer
+      {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       # coverage testing
       {:excoveralls, "~> 0.12", only: :test},
       # zigler's parsing is done using nimble_parsec
