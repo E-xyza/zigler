@@ -4,6 +4,8 @@ defmodule Zigler.Doc.Retriever do
 
   require ExDoc.FunctionNode
 
+  alias Zigler.Doc.Parser
+
   @odd_modules [:elixir_bootstrap]
 
   def docs_from_dir(source_beam, config) do
@@ -25,7 +27,7 @@ defmodule Zigler.Doc.Retriever do
     end
 
     elixir_docs = ExDoc.Retriever.docs_from_dir(source_beam, config)
-    zig_docs = Enum.flat_map(source_dirs, &Zigler.Doc.Parser.docs_from_dir(&1, config))
+    zig_docs = Enum.flat_map(source_dirs, &Parser.docs_from_dir(&1, config))
 
     elixir_docs ++ zig_docs
   end

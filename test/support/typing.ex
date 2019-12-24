@@ -1,4 +1,7 @@
 defmodule ZiglerTest.Typing do
+
+  @moduledoc false
+
   use Zigler, app: :zigler
 
   ~Z"""

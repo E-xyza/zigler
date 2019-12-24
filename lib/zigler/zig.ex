@@ -25,9 +25,6 @@ defmodule Zigler.Zig do
   @spec nif_adapter({atom, {[String.t], String.t}}) :: iodata
   def nif_adapter({func, {params, type}}) do
     has_env = match?(["?*e.ErlNifEnv" | _], params) || match?(["beam.env" | _], params)
-
-    # TODO: make nif_adapter not be variadic with some calls having func() be atom
-    # and other calls having func() be a binary.
     cond do
       is_binary(func) && func =~ @test_regex ->
         new_func = func |> String.split(".") |> List.last |> String.to_atom
@@ -69,7 +66,6 @@ defmodule Zigler.Zig do
 
   @spec nif_exports(list) :: iodata
   def nif_exports(funcs) do
-    # TODO consider only triggering this if we're in tests.
     adjusted_funcs = Enum.map(funcs, fn
       {test, spec} when is_binary(test) ->
         new_test = test |> String.split(".") |> List.last

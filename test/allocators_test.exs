@@ -94,7 +94,7 @@ defmodule ZiglerTest.AllocatorsTest do
   end
 
   test "elixir persistent memory works" do
-    assert true == PersistentMemory.allocate(2);
-    assert :ab == PersistentMemory.fetch(0);
+    assert true == PersistentMemory.allocate(2)
+    assert :ab == PersistentMemory.fetch(0)
   end
 end

@@ -1,8 +1,8 @@
 defmodule ZiglerTest.UnitParserTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.Unit.Parser
   alias Zigler.Unit.Import
+  alias Zigler.Unit.Parser
 
   describe "the test header parser" do
     test "can identify test headers" do

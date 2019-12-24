@@ -111,7 +111,6 @@ defmodule Zigler.Unit.Parser do
 
   defparsec :test_by_line, by_line
 
-  # TODO: test this function to make sure it's outputting reasonable results.
   def get_tests(code, code_file) do
     {:ok, parsed, _, _, _, _} = test_by_line(code)
 
@@ -120,7 +119,6 @@ defmodule Zigler.Unit.Parser do
       _ -> true
     end)
 
-    # TODO: Keep track of multiply imported filse so we don't double import them.
     tests = tests_and_imports
     |> Enum.flat_map(fn
       u = %Unit{} -> [u]

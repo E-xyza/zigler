@@ -29,13 +29,12 @@ defmodule Zigler.Compiler do
     "zig-#{os}-x86_64-#{version}"
   end
 
-  # TODO: make this a map?
-  defp release_mode_text(:fast), do: ["--release-fast"]
-  defp release_mode_text(:safe), do: ["--release-safe"]
-  defp release_mode_text(:small), do: ["--release-small"]
-  defp release_mode_text(:debug), do: []
-
-  # TODO:  REORGANIZE THIS CRAZINESS.
+  @release_mode %{
+    fast:  ["--release-fast"],
+    safe:  ["--release-safe"],
+    small: ["--release-small"],
+    debug: []
+  }
 
   defmacro __before_compile__(context) do
     [app, version, release_mode, src_dir, zig_code, in_test?] =
@@ -74,11 +73,6 @@ defmodule Zigler.Compiler do
 
     zig_header = Zig.nif_header()
 
-    # TODO: refactor, we can do better than this, we're taking
-    # iodata content and converting it to a string to do the
-    # newline analysis.  Instead, we should do a recursive depth
-    # search of the iodata tree.
-
     # count newlines in the header and the code:
     newlines = count_newlines([zig_header, zig_code]) + 1
 
@@ -93,7 +87,7 @@ defmodule Zigler.Compiler do
 
     File.mkdir_p!(tmp_dir)
 
-    Enum.into(full_code, File.stream!(zig_nif_file))
+    _ = Enum.into(full_code, File.stream!(zig_nif_file))
 
     # put the erl_nif.zig adapter into the path.
     File.cp!(@erl_nif_zig, Path.join(tmp_dir, "erl_nif.zig"))
@@ -113,7 +107,7 @@ defmodule Zigler.Compiler do
     if File.dir?(src_include_dir) do
       src_include_dir
       |> File.ls!
-      |> Enum.map(fn file ->
+      |> Enum.each(fn file ->
         src_include_dir
         |> Path.join(file)
         |> File.cp!(Path.join(dst_include_dir, file))
@@ -138,7 +132,7 @@ defmodule Zigler.Compiler do
       [zig_rpath] ++
       include_opts ++
       lib_opts ++
-      release_mode_text(release_mode)
+      @release_mode[release_mode]
 
     cmd_opts_text = Enum.join(cmd_opts, " ")
 
@@ -169,6 +163,9 @@ defmodule Zigler.Compiler do
   end
 
   defp copy_files(files, src_dir, dst_dir, in_test?) do
+
+    copy_fn = if in_test?, do: &copy_test/2, else: &File.cp!/2
+
     Enum.each(files, fn file_path ->
       src_file_path = Path.join(src_dir, file_path) |> Path.expand()
       dst_file_path = Path.join(dst_dir, file_path)
@@ -181,12 +178,7 @@ defmodule Zigler.Compiler do
         |> Path.dirname
         |> File.mkdir_p!
 
-        if in_test? do
-          copy_test(src_file_path, dst_file_path)
-        else
-          # copy the file.
-          File.cp!(src_file_path, dst_file_path)
-        end
+        copy_fn.(src_file_path, dst_file_path)
       end
     end)
   end

@@ -31,7 +31,6 @@ defmodule ZiglerTest.CodeTest do
       assert %Zigler.Code{nifs: [%Zigler.Nif{}]} = Zigler.Code.from_string(code, "my_file.ex", 15)
     end
 
-
     test "find a nif and correctly assign it, adding line numbers" do
       code = """
       /// nif: test_nif/1

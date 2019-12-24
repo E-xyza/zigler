@@ -345,7 +345,7 @@ defmodule Zigler do
 
   @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
 
-  defp latest_cached_version() do
+  defp latest_cached_version do
     @zig_dir_path
     |> File.ls!
     |> Enum.filter(&match?("zig" <> _, &1))
@@ -366,7 +366,7 @@ defmodule Zigler do
     end
   rescue
     _err in FileError ->
-      raise CompileError, description: "zig directory path doesn't exist, run `mix zigler.get_zig latest`"
+      reraise CompileError, description: "zig directory path doesn't exist, run `mix zigler.get_zig latest`"
   end
 
 end

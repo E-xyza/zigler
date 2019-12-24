@@ -75,10 +75,10 @@ defmodule Mix.Tasks.Zigler.GetZig do
   @doc """
   queries the zig website to obtain the latest version of zig.  Only performed at compile time.
   """
-  def latest_version() do
+  def latest_version do
     Application.ensure_all_started(:ssl)
     # find the latest version by querying the download index
-    case Mojito.get("https://ziglang.org/download/index.json",[], pool: false, timeout: 100_000) do
+    case Mojito.get("https://ziglang.org/download/index.json", [], pool: false, timeout: 100_000) do
       {:ok, %{status_code: 200, body: json}} ->
         json
         |> Jason.decode!

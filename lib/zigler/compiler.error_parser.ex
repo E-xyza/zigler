@@ -49,7 +49,6 @@ defmodule Zigler.Compiler.ErrorParser do
   """
   def parse(msg, code_dir, tmp_dir) do
     {:ok, [path, line, _col, msg | _rest], _, _, _, _} = parse_error(msg)
-    #TODO: figure out if we want to do something with "other information lines" later.
 
     # check if we need full translation or just file translation.
     if Path.basename(path) == "zig_nif.zig" do
@@ -83,7 +82,6 @@ defmodule Zigler.Compiler.ErrorParser do
     |> post_traverse(:parse_group)
 
   if Mix.env == :test do
-    # TODO: tests on parameters
     defparsec :parse_line_comment, line_comment
   end
 
@@ -121,6 +119,5 @@ defmodule Zigler.Compiler.ErrorParser do
       _ -> []
     end)
   end
-
 
 end

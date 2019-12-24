@@ -1,4 +1,4 @@
-defmodule ZigTest.TypespecTest do
+defmodule ZiglerTest.TypespecTest do
   use ExUnit.Case, async: true
 
   @moduletag :one
@@ -72,9 +72,9 @@ defmodule ZigTest.TypespecTest do
 
     {{name, arity},
     [
-      {:type, 4, :fun,
+      {:type, 7, :fun,
        [
-         {:type, 4, :product, termlist},
+         {:type, 7, :product, termlist},
          type_for(return_type)
        ]}
     ]}
@@ -82,6 +82,6 @@ defmodule ZigTest.TypespecTest do
 
   defp type_for(nil), do: {:atom, 0, nil}
   defp type_for([type]), do: {:type, 0, :list, [type_for(type)]}
-  defp type_for(type), do: {:type, 4, type, []}
+  defp type_for(type), do: {:type, 7, type, []}
 
 end

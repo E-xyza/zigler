@@ -14,8 +14,6 @@ defmodule Zigler.Parser do
   #############################################################################
   ## post-traversal functions
 
-  # TODO: consider moving these out into their own module.
-
   defp store_docstring(_rest, content = ["\n", text | _], context = %{docstring: prev}, _line, _offset) do
     {content, %{context | docstring: [prev, String.trim(text), "\n"]}}
   end
@@ -215,7 +213,6 @@ defmodule Zigler.Parser do
 
   # make intermediate parsing steps testable
   if Mix.env == :test do
-    # TODO: tests on parameters
     defparsec :parse_docstring_line, docstring_line
     defparsec :parse_docstring, docstring
     defparsec :parse_nif_line, nif_line

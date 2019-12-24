@@ -24,5 +24,7 @@ jobs:
         mix deps.get
         mix zigler.get_zig latest
         mix docs
+    - name: Run Linting
+      run: mix credo --strict
     - name: Run Tests
       run: mix test
