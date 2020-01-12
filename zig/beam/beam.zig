@@ -970,9 +970,12 @@ pub fn make_error_term(environment: env, val: term) term {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.pid/0`
 pub fn make_ref(environment: env) !term {
-  if (0 != e.enif_make_ref(environment)) {
-    return res;
-  } else { return Error.FunctionClauseError; }
+  var res = e.enif_make_ref(environment);
+  if (0 != res) { return res; } else { return Error.FunctionClauseError; }
+}
+
+pub fn raise(environment: env, exception: atom) term {
+  return e.enif_raise_exception(environment, exception);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
