@@ -4,18 +4,24 @@ defmodule ZiglerTest.AsyncTest do
   use Zigler, app: :zigler
 
   ~Z"""
+  const std = @import("std");
 
-  fn task_function() i64 {
-    return 47;
+  // global shared memory, literally the worst, but we'll fix this.
+  var global_result: i64 = 0;
+
+  fn task_function(context: void) void {
+    global_result = 47;
   }
 
   /// nif: async_tester/0
   fn async_tester() i64 {
-    return task_function();
+    const thread = std.Thread.spawn({}, task_function) catch |_| return -1;
+    thread.wait();
+    return global_result;
   }
   """
 
-  # STAGE 0: (should definitely work), can we call out to a function?
+  # STAGE 1: can we do a naive async operation?
 
   @tag :one
   test "we can trigger the function" do
