@@ -134,7 +134,7 @@ var allocator_state = Allocator{
   .shrinkFn = beam_shrink
 };
 
-fn beam_realloc(self: *Allocator,
+fn beam_realloc(_self: *Allocator,
                 old_mem: []u8,
                 old_align: u29,
                 new_size: usize,
@@ -152,7 +152,7 @@ fn beam_realloc(self: *Allocator,
 }
 
 var nothing = [_]u8 {};
-fn beam_shrink(self: *Allocator,
+fn beam_shrink(_self: *Allocator,
                old_mem: []u8,
                old_align: u29,
                new_size: usize,
@@ -197,13 +197,11 @@ pub const AssertionError = error {
   AssertionError
 };
 
-// env
 /// syntactic sugar for the BEAM environment.  Note that the `env` type
 /// encapsulates the pointer, since you will almost always be passing this
 /// pointer to an opaque struct around without accessing it.
 pub const env = ?*e.ErlNifEnv;
 
-// terms
 /// syntactic sugar for the BEAM term struct (`e.ErlNifTerm`)
 pub const term = e.ErlNifTerm;
 
@@ -467,7 +465,7 @@ pub const pid = e.ErlNifPid;
 ///
 /// Note that this is a fairly opaque struct and you're on your
 /// own as to what you can do with this (for now), except as a parameter
-/// for the `e.ErlNifSend` function.
+/// for the `e.enif_send` function.
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.pid/0`
 pub fn get_pid(environment: env, src_term: term) !pid {
@@ -475,6 +473,19 @@ pub fn get_pid(environment: env, src_term: term) !pid {
   if (0 != e.enif_get_local_pid(environment, src_term, &res)) {
     return res;
   } else { return Error.FunctionClauseError; }
+}
+
+/// shortcut for `e.enif_self`, marshalling into zig error style.
+///
+/// returns the pid value if it's env is a process-bound environment, otherwise
+/// returns `beam.Error.FunctionClauseError`.
+pub fn self(environment: env) !pid {
+  var p: pid = undefined;
+  if (e.enif_self(environment, @ptrCast([*c] pid, &p))) |self_val| {
+    return self_val.*;
+  } else {
+    return Error.FunctionClauseError;
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -587,6 +598,7 @@ pub fn get_slice_of_alloc(comptime T: type, a: *Allocator, environment: env, lis
 ///////////////////////////////////////////////////////////////////////////////
 // booleans
 
+/// private helper string comparison function
 fn str_cmp(comptime ref: []const u8, str: []const u8) bool {
   if (str.len != ref.len) { return false; }
   for (str) |item, idx| {
@@ -948,6 +960,19 @@ pub fn make_error_binary(environment: env, val: [] const u8) term {
 pub fn make_error_term(environment: env, val: term) term {
   return e.enif_make_tuple(environment, 2, 
     e.enif_make_atom(environment, c"error"), val);
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// refs
+
+/// Encapsulates `e.enif_make_ref` and allows it to return a 
+/// FunctionClauseError.
+///
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.pid/0`
+pub fn make_ref(environment: env) !term {
+  if (0 != e.enif_make_ref(environment)) {
+    return res;
+  } else { return Error.FunctionClauseError; }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
