@@ -22,8 +22,8 @@ defmodule ZiglerTest.ResourceTest do
   //}
   """
 
-  #test "a resource can be passed between function calls" do
-  #  resource = make_int_resource(47)
-  #  #assert 47 == fetch_int_resource(resource)
-  #end
+  test "a resource can be passed between function calls" do
+    resource = make_int_resource(47)
+    #assert 47 == fetch_int_resource(resource)
+  end
 end
