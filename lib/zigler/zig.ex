@@ -47,19 +47,25 @@ defmodule Zigler.Zig do
 
   @nif_footer File.read!("assets/nif_footer.zig.eex")
 
-  @spec nif_footer(module, list) :: iodata
-  def nif_footer(module, funcs) do
+  @spec nif_footer(module, list, [atom]) :: iodata
+  def nif_footer(module, funcs, resources) do
     [major, minor] = :nif_version
     |> :erlang.system_info
     |> List.to_string
     |> String.split(".")
     |> Enum.map(&String.to_integer/1)
 
+    loader = case resources do
+      [] -> "null"
+      _ -> "nif_load"
+    end
+
     EEx.eval_string(@nif_footer,
       nif_module: module,
       funcs: funcs,
       nif_major: major,
-      nif_minor: minor)
+      nif_minor: minor,
+      nif_loader: loader)
   end
 
   @nif_exports File.read!("assets/nif_exports.zig.eex")
@@ -74,6 +80,37 @@ defmodule Zigler.Zig do
     end)
 
     EEx.eval_string(@nif_exports, funcs: adjusted_funcs)
+  end
+
+  @spec nif_resources([atom]) :: iodata
+  def nif_resources(list) do
+    resource_defs = Enum.map(list, fn atom -> """
+      var #{atom}: ?*e.ErlNifResourceType = undefined;
+      fn init_#{atom}_resource_#{:erlang.phash2 atom}(env: beam.env) ?*e.ErlNifResourceType {
+        return e.enif_open_resource_type(
+          env,
+          null,
+          c"#{atom}",
+          destroy_#{atom},
+          @intToEnum(e.ErlNifResourceFlags, 3),
+          null);
+      }
+      """
+    end)
+
+    initializers = Enum.map(list, fn atom -> """
+    #{atom} = init_#{atom}_resource_#{:erlang.phash2 atom}(env);
+    """
+    end)
+
+    module_init = """
+    extern fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
+      #{initializers}
+       return 0;
+    }
+    """
+
+    [resource_defs, module_init]
   end
 
   def getfor("beam.term", idx), do: """

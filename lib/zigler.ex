@@ -221,6 +221,7 @@ defmodule Zigler do
     c_includes = opts[:include]
 
     libs = opts[:libs]
+    resources = opts[:resources] || []
 
     File.mkdir_p!(Path.dirname(mod_path))
 
@@ -235,6 +236,7 @@ defmodule Zigler do
       @zigler_app unquote(opts[:app])
       @zig_version unquote(zig_version)
       @zig_src_dir unquote(src_dir)
+      @zig_resources unquote(resources)
 
       # free values
       @release_mode unquote(mode)
@@ -245,6 +247,7 @@ defmodule Zigler do
       Module.register_attribute(__MODULE__, :zigler_app, persist: true)
       Module.register_attribute(__MODULE__, :zig_version, persist: true)
       Module.register_attribute(__MODULE__, :zig_src_dir, persist: true)
+      Module.register_attribute(__MODULE__, :zig_resources, persist: true)
       Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
       Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
       Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)

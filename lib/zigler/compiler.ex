@@ -36,10 +36,11 @@ defmodule Zigler.Compiler do
     debug: []
   }
 
+  @parameters ~w(zigler_app zig_version release_mode zig_src_dir zig_code zig_test zig_resources)a
+
   defmacro __before_compile__(context) do
-    [app, version, release_mode, src_dir, zig_code, in_test?] =
-      Enum.map([:zigler_app, :zig_version, :release_mode, :zig_src_dir, :zig_code, :zig_test],
-        &Module.get_attribute(context.module, &1))
+    [app, version, release_mode, src_dir, zig_code, in_test?, resources] =
+      Enum.map(@parameters, &Module.get_attribute(context.module, &1))
 
     zig_tree = Path.join(@zig_dir_path, basename(version))
 
@@ -81,7 +82,8 @@ defmodule Zigler.Compiler do
       "// #{zig_nif_file} line: #{newlines}\n",  #drop in a comment back
       Enum.map(zig_specs, &Zig.nif_adapter/1),
       Zig.nif_exports(zig_specs),
-      Zig.nif_footer(context.module, zig_specs)]
+      Zig.nif_resources(resources),
+      Zig.nif_footer(context.module, zig_specs, resources)]
 
     nif_dir = Application.app_dir(app, "priv/nifs")
 
