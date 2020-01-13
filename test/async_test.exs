@@ -1,7 +1,7 @@
 defmodule ZiglerTest.AsyncTest do
   use ExUnit.Case
 
-  use Zigler, app: :zigler
+  use Zigler, app: :zigler, resources: [:async_add_resource]
 
   ~Z"""
   const std = @import("std");
@@ -10,9 +10,9 @@ defmodule ZiglerTest.AsyncTest do
     env: beam.env,
     self: beam.pid,
     ref: beam.term,
+    res: beam.term,
     left: i64,
     right: i64,
-    result: *i64,
   };
 
   fn async_add_task(left: i64, right: i64) i64 {
@@ -24,22 +24,20 @@ defmodule ZiglerTest.AsyncTest do
   /// wraps the async add trigger.  Gains ownership of the cache
   /// function.
   fn async_add_wrapper(cache: acp) void {
-    cache.result.* = async_add_task(cache.left, cache.right);
+    var result = async_add_task(cache.left, cache.right);
+
+    // drop the result value into the resource.
+    beam.resource.update(i64, cache.env, async_add_resource, cache.res, result)
+      catch |err| return;
+
     var res = e.enif_send(null, &cache.self, cache.env, cache.ref);
+
     // it's our responsibility to destroy the cache.
     beam.allocator.destroy(cache);
   }
 
-  /// once again, do something terrible here.  We'll replace it with
-  /// something else in another stage.
-  var global_result: *i64 = undefined;
-
   /// nif: async_add/2
   fn async_add(env: beam.env, left: i64, right: i64) beam.term {
-
-    global_result = beam.allocator.create(i64) catch |_| {
-      return beam.raise(env, beam.make_atom(env, "error"[0..]));
-    };
 
     //ownership of this cache will be passed to the wrapper function.
     var cache = beam.allocator.create(AsyncAdd) catch |_| {
@@ -56,32 +54,51 @@ defmodule ZiglerTest.AsyncTest do
       beam.allocator.destroy(cache);
       return beam.raise(env, beam.make_atom(env, "error"[0..]));
     };
+    cache.res = beam.resource.create(i64, env, async_add_resource, undefined) catch |_| {
+      beam.allocator.destroy(cache);
+      return beam.raise(env, beam.make_atom(env, "error"[0..]));
+    };
 
     cache.left = left;
     cache.right = right;
-    cache.result = global_result;
 
     const thread = std.Thread.spawn(cache, async_add_wrapper) catch |_| {
       beam.allocator.destroy(cache);
       return beam.raise(env, beam.make_atom(env, "error"[0..]));
     };
 
-    return cache.ref;
+    return e.enif_make_tuple(env, 2, cache.ref, cache.res);
   }
 
-  /// nif: async_fetch/0
-  fn async_fetch() i64 {
-    return global_result.*;
+  /// nif: async_fetch/1
+  fn async_fetch(env: beam.env, resource: beam.term) beam.term {
+    var result = beam.resource.fetch(i64, env, async_add_resource, resource)
+      catch |err| return beam.raise(env, beam.make_atom(env, "resource error"[0..]));
+
+    // release the resource.
+    beam.resource.release(env, async_add_resource, resource);
+
+    return beam.make_i64(env, result);
+  }
+
+  /// destructor: async_add_resource
+  extern fn destroy_async_add_resource(env: beam.env, obj: ?*c_void) void {
+    // nothing needs to happen since this object is a single int64
   }
   """
 
-  # STAGE 5: reduce the surface area of interaction.
+  defp add_harness(left, right) do
+    {ref, res} = async_add(left, right)
+    receive do ^ref -> :ok end
+    async_fetch(res)
+  end
+
+  # STAGE 6: use a resource to correctly fetch the result in a threadsafe
+  # manner.
 
   @tag :one
   test "we can trigger the function" do
-    ref = async_add(40, 7)
-    receive do ^ref -> :ok end
-    assert 47 = async_fetch()
+    assert 47 == add_harness(40, 7)
   end
 
 end
