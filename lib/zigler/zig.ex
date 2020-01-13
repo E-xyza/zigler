@@ -76,11 +76,33 @@ defmodule Zigler.Zig do
     EEx.eval_string(@nif_exports, funcs: adjusted_funcs)
   end
 
+#ErlNifResourceType*
+#xor8_filter_resource_type(ErlNifEnv* env)
+#{
+#   return enif_open_resource_type(
+#      env,
+#      NULL,
+#      "xor8_filter_resource",
+#      destroy_xor8_filter_resource,
+#      ERL_NIF_RT_CREATE | ERL_NIF_RT_TAKEOVER,
+#      NULL
+#   );
+#}
+
   @spec nif_resources([atom]) :: iodata
   def nif_resources(list) do
     list |> Enum.map(fn atom ->
       """
       var #{atom}: *e.ErlNifResourceType = undefined;
+      fn init_#{atom}_resource_#{:erlang.phash2 atom}(env: beam.env) ?*e.ErlNifResourceType {
+        return e.enif_open_resource_type(
+          env,
+          null,
+          "#{atom}",
+          destroy_#{atom},
+          e.ERL_NIF_RT_CREATE | e.ERL_NIF_RT_TAKEOVER,
+          null);
+      }
       """
     end)
   end

@@ -984,7 +984,6 @@ pub fn raise(environment: env, exception: atom) term {
 pub const res = *e.ErlNifResourceType;
 
 pub const resource = struct {
-  /// val must have been allocated with beam.allocator.
   pub fn create(comptime T : type, environment: env, resource_type: res, val : T) !term {
     var ptr : ?*c_void = e.enif_alloc_resource(resource_type, @sizeOf(T));
     var obj : *T = undefined;
