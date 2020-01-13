@@ -12,7 +12,9 @@ defmodule ZiglerTest.ResourceTest do
 
   /// nif: make_int_resource/1
   fn make_int_resource(env: beam.env, val: i64) beam.term {
-    beam.resource.create(i64, env, async_test, val);
+    var new_val : *i64 = beam.allocator.create(i64) catch return beam.throw_enomem(env);
+    new_val.* = val;
+    return beam.resource.create(i64, env, async_test, new_val) catch |err| return beam.throw_enomem(env);
   }
 
   // nif: fetch_int_resource/1

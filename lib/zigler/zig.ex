@@ -76,6 +76,15 @@ defmodule Zigler.Zig do
     EEx.eval_string(@nif_exports, funcs: adjusted_funcs)
   end
 
+  @spec nif_resources([atom]) :: iodata
+  def nif_resources(list) do
+    list |> Enum.map(fn atom ->
+      """
+      var #{atom}: *e.ErlNifResourceType = undefined;
+      """
+    end)
+  end
+
   def getfor("beam.term", idx), do: """
     arg#{idx} = argv[#{idx}];
   """

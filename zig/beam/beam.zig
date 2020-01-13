@@ -984,23 +984,19 @@ pub fn raise(environment: env, exception: atom) term {
 pub const res = *e.ErlNifResourceType;
 
 pub const resource = struct {
-  pub fn create(comptime T : type, environment: env, resource_type: res, val : T) term {
-    var obj = @ptrCast(*T, 
-      e.enif_alloc_resource(result, @sizeOf(T)));
+  /// val must have been allocated with beam.allocator.
+  pub fn create(comptime T : type, environment: env, resource_type: res, val : *T) !term {
+    var ptr : ?*c_void = e.enif_alloc_resource(resource_type, @sizeOf(*T));
+    var obj : **T = undefined;
 
-    // initialize T.
-    obj.* = val;
-    return e.enif_make_resource(environment, @ptrCast([*c] void, obj));
-  }
-  
-  pub fn alloc(comptime T, environment: env, val: []T) term {
-    var obj = @ptrCast([]T, 
-      e.enif_alloc_resource(resource_type, @sizeOf(T) * len(val)));
-    
-    // intialize the T slice.
-    std.mem.copy(T, obj, val);
+    if (ptr == null) {
+      return error.enomem;
+    } else {
+      obj = @ptrCast(**T, @alignCast(@alignOf(**T), ptr));
+      obj.* = val;
+    }
 
-    return e.enif_make_resource(environment, @ptrCast([*c] void, obj));
+    return e.enif_make_resource(environment, ptr);
   }
 
   pub fn release(environment: env, result: term) void {

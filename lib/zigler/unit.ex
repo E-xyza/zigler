@@ -114,6 +114,7 @@ defmodule Zigler.Unit do
 
     [zigler_app] = module.__info__(:attributes)[:zigler_app]
     [zig_version] = module.__info__(:attributes)[:zig_version]
+    zig_resources = module.__info__(:attributes)[:zig_resources]
 
     code_spec = Enum.map(code.tests, &{&1.name, {[], "void"}})
 
@@ -124,6 +125,7 @@ defmodule Zigler.Unit do
     compilation = quote do
       @zigler_app unquote(zigler_app)
       @zig_version unquote(zig_version)
+      @zig_resources unquote(zig_resources)
 
       @zig_code unquote(code.code)
       @zig_specs unquote(code_spec)
