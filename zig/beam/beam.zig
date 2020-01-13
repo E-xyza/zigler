@@ -984,8 +984,14 @@ pub fn raise(environment: env, exception: atom) term {
 pub const res = ?*e.ErlNifResourceType;
 
 pub const resource = struct {
-  pub fn create(comptime T : type, environment: env, resource_type: res, val : T) !term {
-    var ptr : ?*c_void = e.enif_alloc_resource(resource_type, @sizeOf(T));
+  // fix this V V V 
+  pub const Err = error {
+    /// something has gone wrong while trying to fetch a resource.
+    ResourceError
+  };
+
+  pub fn create(comptime T : type, environment: env, res_typ: res, val : T) !term {
+    var ptr : ?*c_void = e.enif_alloc_resource(res_typ, @sizeOf(T));
     var obj : *T = undefined;
 
     if (ptr == null) {
@@ -998,11 +1004,29 @@ pub const resource = struct {
     return e.enif_make_resource(environment, ptr);
   }
 
-  pub fn release(environment: env, result: term) void {
-    var obj : *void;
-    var result = e.enif_get_resource(environment, result, resource_type, &obj);
-    return e.enif_release_resource(obj);
+  pub fn fetch(comptime T : type, environment: env, res_typ: res, res_trm: term) !T {
+    var obj : ?*c_void = undefined;
+
+    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) { 
+      return resource.Err.ResourceError; 
+    }
+
+    // according to the erlang documentation:
+    // the pointer received in *objp is guaranteed to be valid at least as long as the 
+    // resource handle term is valid.
+
+    if (obj == null) { unreachable; }
+    
+    var val : *T = @ptrCast(*T, @alignCast(@alignOf(*T), obj));
+
+    return val.*;
   }
+
+  //pub fn release(environment: env, result: term) void {
+  //  var obj : *void;
+  //  var result = e.enif_get_resource(environment, result, resource_type, &obj);
+  //  return e.enif_release_resource(obj);
+  //}
 };
 
 ///////////////////////////////////////////////////////////////////////////////

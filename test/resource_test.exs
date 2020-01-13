@@ -16,14 +16,15 @@ defmodule ZiglerTest.ResourceTest do
       catch |err| return beam.throw_enomem(env);
   }
 
-  // nif: fetch_int_resource/1
-  //fn fetch_int_resource(env: beam.env, resource: beam.res) i64 {
-  //  var result = beam.resource.fetch(env, resource);
-  //}
+  /// nif: fetch_int_resource/1
+  fn fetch_int_resource(env: beam.env, resource: beam.term) i64 {
+    return beam.resource.fetch(i64, env, resource_test, resource)
+      catch |err| return -1;
+  }
   """
 
   test "a resource can be passed between function calls" do
     resource = make_int_resource(47)
-    #assert 47 == fetch_int_resource(resource)
+    assert 47 == fetch_int_resource(resource)
   end
 end
