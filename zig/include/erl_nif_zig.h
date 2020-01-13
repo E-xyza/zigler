@@ -67,7 +67,8 @@ typedef struct enif_resource_type_t ErlNifResourceType;
 typedef void ErlNifResourceDtor(ErlNifEnv*, void*);
 typedef enum {
     ERL_NIF_RT_CREATE = 1,
-    ERL_NIF_RT_TAKEOVER = 2
+    ERL_NIF_RT_TAKEOVER = 2,
+    ERL_NIF_BOTH = 3
 } ErlNifResourceFlags;
 
 extern void *enif_alloc_resource(ErlNifResourceType*, size_t);

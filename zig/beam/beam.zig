@@ -981,7 +981,7 @@ pub fn raise(environment: env, exception: atom) term {
 ///////////////////////////////////////////////////////////////////////////////
 // resources
 
-pub const res = *e.ErlNifResourceType;
+pub const res = ?*e.ErlNifResourceType;
 
 pub const resource = struct {
   pub fn create(comptime T : type, environment: env, resource_type: res, val : T) !term {

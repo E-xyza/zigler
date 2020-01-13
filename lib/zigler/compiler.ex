@@ -83,7 +83,7 @@ defmodule Zigler.Compiler do
       Enum.map(zig_specs, &Zig.nif_adapter/1),
       Zig.nif_exports(zig_specs),
       Zig.nif_resources(resources),
-      Zig.nif_footer(context.module, zig_specs)]
+      Zig.nif_footer(context.module, zig_specs, resources)]
 
     nif_dir = Application.app_dir(app, "priv/nifs")
 

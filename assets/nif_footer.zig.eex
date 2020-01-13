@@ -4,7 +4,7 @@ const entry = e.ErlNifEntry{
     .name = c"<%= nif_module %>",
     .num_of_funcs = <%= Enum.count(funcs) %>,
     .funcs = &(exported_nifs[0]),
-    .load = null,
+    .load = <%= nif_loader %>,
     .reload = null,
     .upgrade = null,
     .unload = null,
