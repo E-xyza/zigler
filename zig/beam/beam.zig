@@ -252,9 +252,9 @@ pub fn get(comptime T: type, environment: env, value: term) !T {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
 pub fn get_c_int(environment: env, src_term: term) !c_int {
-  var res: c_int = undefined;
-  if (0 != e.enif_get_int(environment, src_term, &res)) {
-    return res;
+  var result: c_int = undefined;
+  if (0 != e.enif_get_int(environment, src_term, &result)) {
+    return result;
   } else { return Error.FunctionClauseError; }
 }
 
@@ -263,9 +263,9 @@ pub fn get_c_int(environment: env, src_term: term) !c_int {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
 pub fn get_c_long(environment: env, src_term: term) !c_long {
-  var res: c_long = undefined;
-  if (0 != e.enif_get_long(environment, src_term, &res)) {
-    return res;
+  var result: c_long = undefined;
+  if (0 != e.enif_get_long(environment, src_term, &result)) {
+    return result;
   } else { return Error.FunctionClauseError; }
 }
 
@@ -274,9 +274,9 @@ pub fn get_c_long(environment: env, src_term: term) !c_long {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
 pub fn get_isize(environment: env, src_term: term) !isize {
-  var res: i64 = undefined;
-  if (0 != e.enif_get_long(environment, src_term, @ptrCast(*c_long, &res))) {
-    return @intCast(isize, res);
+  var result: i64 = undefined;
+  if (0 != e.enif_get_long(environment, src_term, @ptrCast(*c_long, &result))) {
+    return @intCast(isize, result);
   } else { return Error.FunctionClauseError; }
 }
 
@@ -285,9 +285,9 @@ pub fn get_isize(environment: env, src_term: term) !isize {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
 pub fn get_usize(environment: env, src_term: term) !usize {
-  var res: i64 = undefined;
-  if (0 != e.enif_get_long(environment, src_term, @ptrCast(*c_long, &res))) {
-    return @intCast(usize, res);
+  var result: i64 = undefined;
+  if (0 != e.enif_get_long(environment, src_term, @ptrCast(*c_long, &result))) {
+    return @intCast(usize, result);
   } else { return Error.FunctionClauseError; }
 }
 
@@ -298,10 +298,10 @@ pub fn get_usize(environment: env, src_term: term) !usize {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
 pub fn get_u8(environment: env, src_term: term) !u8 {
-  var res: c_int = undefined;
-  if (0 != e.enif_get_int(environment, src_term, &res)) {
-    if ((res >= 0) and (res <= 255)) {
-      return @intCast(u8, res);
+  var result: c_int = undefined;
+  if (0 != e.enif_get_int(environment, src_term, &result)) {
+    if ((result >= 0) and (result <= 255)) {
+      return @intCast(u8, result);
     } else { return Error.FunctionClauseError; }
   } else { return Error.FunctionClauseError; }
 }
@@ -312,9 +312,9 @@ pub fn get_u8(environment: env, src_term: term) !u8 {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
 pub fn get_i32(environment: env, src_term: term) !i32 {
-  var res: c_int = undefined;
-  if (0 != e.enif_get_int(environment, src_term, &res)) {
-    return @intCast(i32, res);
+  var result: c_int = undefined;
+  if (0 != e.enif_get_int(environment, src_term, &result)) {
+    return @intCast(i32, result);
   } else { return Error.FunctionClauseError; }
 }
 
@@ -324,9 +324,9 @@ pub fn get_i32(environment: env, src_term: term) !i32 {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
 pub fn get_i64(environment: env, src_term: term) !i64 {
-  var res: i64 = undefined;
-  if (0 != e.enif_get_long(environment, src_term, @ptrCast(*c_long, &res))) {
-    return res;
+  var result: i64 = undefined;
+  if (0 != e.enif_get_long(environment, src_term, @ptrCast(*c_long, &result))) {
+    return result;
   } else { return Error.FunctionClauseError; }
 }
 
@@ -339,9 +339,9 @@ pub fn get_i64(environment: env, src_term: term) !i64 {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:float/0`
 pub fn get_f16(environment: env, src_term: term) !f16 {
-  var res: f64 = undefined;
-  if (0 != e.enif_get_double(environment, src_term, &res)) {
-    return @floatCast(f16, res);
+  var result: f64 = undefined;
+  if (0 != e.enif_get_double(environment, src_term, &result)) {
+    return @floatCast(f16, result);
   } else { return Error.FunctionClauseError; }
 }
 
@@ -351,9 +351,9 @@ pub fn get_f16(environment: env, src_term: term) !f16 {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:float/0`
 pub fn get_f32(environment: env, src_term: term) !f32 {
-  var res: f64 = undefined;
-  if (0 != e.enif_get_double(environment, src_term, &res)) {
-    return @floatCast(f32, res);
+  var result: f64 = undefined;
+  if (0 != e.enif_get_double(environment, src_term, &result)) {
+    return @floatCast(f32, result);
   } else { return Error.FunctionClauseError; }
 }
 
@@ -361,9 +361,9 @@ pub fn get_f32(environment: env, src_term: term) !f32 {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:float/0`
 pub fn get_f64(environment: env, src_term: term) !f64 {
-  var res: f64 = undefined;
-  if (0 != e.enif_get_double(environment, src_term, &res)) {
-    return res;
+  var result: f64 = undefined;
+  if (0 != e.enif_get_double(environment, src_term, &result)) {
+    return result;
   } else { return Error.FunctionClauseError; }
 }
 
@@ -394,14 +394,14 @@ pub fn get_atom_slice(environment: env, src_term: atom) ![]u8 {
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:atom/0`
 pub fn get_atom_slice_alloc(a: *Allocator, environment: env, src_term: atom) ![]u8 {
   var len: c_uint = undefined;
-  var res: []u8 = undefined;
+  var result: []u8 = undefined;
   if (0 != e.enif_get_atom_length(environment, src_term, @ptrCast([*c]c_uint, &len), __latin1)) {
-    res = try a.alloc(u8, len + 1);
+    result = try a.alloc(u8, len + 1);
 
     // pull the value from the beam.
-    if (0 != e.enif_get_atom(environment, src_term, @ptrCast([*c]u8, &res[0]), len + 1, __latin1)) {
+    if (0 != e.enif_get_atom(environment, src_term, @ptrCast([*c]u8, &result[0]), len + 1, __latin1)) {
       // trim the slice, it's the caller's responsibility to free it.
-      return res[0..len];
+      return result[0..len];
     } else { unreachable; }
   } else { return Error.FunctionClauseError; }
 }
@@ -436,7 +436,7 @@ pub fn get_c_string(environment: env, src_term: term) ![*c]u8 {
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.binary/0`
 pub fn get_char_slice(environment: env, src_term: term) ![]u8 {
   var bin: binary = undefined;
-  var res: []u8 = undefined;
+  var result: []u8 = undefined;
 
   if (0 != e.enif_inspect_binary(environment, src_term, &bin)) {
     return bin.data[0..bin.size];
@@ -469,9 +469,9 @@ pub const pid = e.ErlNifPid;
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.pid/0`
 pub fn get_pid(environment: env, src_term: term) !pid {
-  var res: pid = undefined;
-  if (0 != e.enif_get_local_pid(environment, src_term, &res)) {
-    return res;
+  var result: pid = undefined;
+  if (0 != e.enif_get_local_pid(environment, src_term, &result)) {
+    return result;
   } else { return Error.FunctionClauseError; }
 }
 
@@ -510,9 +510,9 @@ pub fn get_tuple(environment: env, src_term: term) ![]term {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:list/0`
 pub fn get_list_length(environment: env, list: term) !usize {
-  var res: c_uint = undefined;
-  if (0 != e.enif_get_list_length(environment, list, &res)) {
-    return @intCast(usize, res);
+  var result: c_uint = undefined;
+  if (0 != e.enif_get_list_length(environment, list, &result)) {
+    return @intCast(usize, result);
   } else { return Error.FunctionClauseError; }
 }
 
@@ -582,17 +582,17 @@ pub fn get_slice_of_alloc(comptime T: type, a: *Allocator, environment: env, lis
   var head: term = undefined;
 
   // allocate memory for the Zig list.
-  var res = try a.alloc(T, size);
+  var result = try a.alloc(T, size);
   var movable_list = list;
 
   while (idx < size){
     head = try get_head_and_iter(environment, &movable_list);
-    res[idx] = try get(T, environment, head);
+    result[idx] = try get(T, environment, head);
     idx += 1;
   }
-  errdefer a.free(res);
+  errdefer a.free(result);
 
-  return res;
+  return result;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -737,15 +737,15 @@ pub fn make_atom(environment: env, atom_str: []const u8) term {
 /// is responsible for the resulting binary.  You are responsible for managing
 /// the allocation of the slice.
 pub fn make_slice(environment: env, val: []const u8) term {
-  var res: e.ErlNifTerm = undefined;
+  var result: e.ErlNifTerm = undefined;
 
-  var bin: [*]u8 = @ptrCast([*]u8, e.enif_make_new_binary(environment, val.len, &res));
+  var bin: [*]u8 = @ptrCast([*]u8, e.enif_make_new_binary(environment, val.len, &result));
 
   for (val) | _chr, i | {
     bin[i] = val[i];
   }
 
-  return res;
+  return result;
 }
 
 /// converts an c string (`[*c]u8`) into a BEAM `t:binary/0`. Mostly used for
@@ -755,7 +755,7 @@ pub fn make_slice(environment: env, val: []const u8) term {
 /// is responsible for the resulting binary.  You are responsible for managing
 /// the allocation of the slice.
 pub fn make_c_string(environment: env, val: [*c] const u8) term{
-  var res: e.ErlNifTerm = undefined;
+  var result: e.ErlNifTerm = undefined;
   var len: usize = 0;
 
   // first get the length of the c string.
@@ -970,13 +970,45 @@ pub fn make_error_term(environment: env, val: term) term {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.pid/0`
 pub fn make_ref(environment: env) !term {
-  var res = e.enif_make_ref(environment);
-  if (0 != res) { return res; } else { return Error.FunctionClauseError; }
+  var result = e.enif_make_ref(environment);
+  if (0 != result) { return result; } else { return Error.FunctionClauseError; }
 }
 
 pub fn raise(environment: env, exception: atom) term {
   return e.enif_raise_exception(environment, exception);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// resources
+
+pub const res = *e.ErlNifResourceType;
+
+pub const resource = struct {
+  pub fn create(comptime T : type, environment: env, resource_type: res, val : T) term {
+    var obj = @ptrCast(*T, 
+      e.enif_alloc_resource(result, @sizeOf(T)));
+
+    // initialize T.
+    obj.* = val;
+    return e.enif_make_resource(environment, @ptrCast([*c] void, obj));
+  }
+  
+  pub fn alloc(comptime T, environment: env, val: []T) term {
+    var obj = @ptrCast([]T, 
+      e.enif_alloc_resource(resource_type, @sizeOf(T) * len(val)));
+    
+    // intialize the T slice.
+    std.mem.copy(T, obj, val);
+
+    return e.enif_make_resource(environment, @ptrCast([*c] void, obj));
+  }
+
+  pub fn release(environment: env, result: term) void {
+    var obj : *void;
+    var result = e.enif_get_resource(environment, result, resource_type, &obj);
+    return e.enif_release_resource(obj);
+  }
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 // implementation for :enomem

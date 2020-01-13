@@ -61,6 +61,28 @@ extern void *enif_alloc(size_t size);
 extern void enif_free(void* ptr);
 extern void *enif_realloc(void* ptr, size_t size);
 
+// NIF Functions: resource management
+
+typedef struct enif_resource_type_t ErlNifResourceType;
+typedef void ErlNifResourceDtor(ErlNifEnv*, void*);
+typedef enum {
+    ERL_NIF_RT_CREATE = 1,
+    ERL_NIF_RT_TAKEOVER = 2
+} ErlNifResourceFlags;
+
+extern void *enif_alloc_resource(ErlNifResourceType*, size_t);
+extern ErlNifTerm enif_make_resource(ErlNifEnv *, void *);
+extern int enif_get_resource(ErlNifEnv*, ErlNifTerm, ErlNifResourceType*, void**);
+extern int enif_keep_resource(void *);
+
+extern ErlNifResourceType *enif_open_resource_type(
+    ErlNifEnv*, 
+    const char*, 
+    const char*, 
+    ErlNifResourceDtor*, 
+    ErlNifResourceFlags, 
+    ErlNifResourceFlags*);
+
 // NIF Functions: guards
 extern int enif_is_atom(ErlNifEnv*, ErlNifTerm);
 extern int enif_is_binary(ErlNifEnv*, ErlNifTerm);
@@ -142,8 +164,6 @@ extern int enif_make_map_put(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, Erl
 extern int enif_get_map_value(ErlNifEnv *, ErlNifTerm map, ErlNifTerm key, ErlNifTerm *value);
 extern int enif_make_map_update(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, ErlNifTerm value, ErlNifTerm *map_out);
 extern int enif_make_map_remove(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, ErlNifTerm *map_out);
-
-typedef struct enif_resource_type_t ErlNifResourceType;
 
 typedef struct enif_entry_t
 {
