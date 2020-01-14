@@ -30,6 +30,7 @@ defmodule ZiglerTest.ParserTest do
   end
 
   describe "the nif parser" do
+    @describetag :one
     test "can identify nifs" do
       code = """
         /// nif: my_function/1
@@ -37,7 +38,17 @@ defmodule ZiglerTest.ParserTest do
           return val + 1;
         }
       """
-      assert {:ok, _, _, _, _, _} = Parser.parse_nif_line(code)
+      assert {:ok, _, _, %{nif: %{arity: 1, name: "my_function", opts: []}}, _, _} = Parser.parse_nif_line(code)
+    end
+
+    test "can identify long nifs" do
+      code = """
+        /// nif: my_long_function/1 long
+        fn my_long_function(val:i64) i64 {
+          return val + 1;
+        }
+      """
+      assert {:ok, _, _, %{nif: %{arity: 1, name: "my_long_function", opts: [:long]}}, _, _} = Parser.parse_nif_line(code)
     end
   end
 

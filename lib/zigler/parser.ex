@@ -21,19 +21,24 @@ defmodule Zigler.Parser do
     {content, Map.put(context, :docstring, [String.trim(text), "\n"])}
   end
 
+  @nif_options ["long"]
+
   # NB: nimble_parsec data is operated on in reverse order.
   defp find_nif_info([arity, "/", name, "/// nif: " | _]) do
-    {name, String.to_integer(arity)}
+    {name, String.to_integer(arity), []}
   end
   defp find_nif_info(["\n" | rest]), do: find_nif_info(rest)
-  defp find_nif_info([?\s | rest]), do: find_nif_info(rest)
+  defp find_nif_info([option | rest]) when option in @nif_options do
+    {name, arity, opts} = find_nif_info(rest)
+    {name, arity, [String.to_atom(option) | opts]}
+  end
   defp find_nif_info(content) do
     raise("parser error #{Enum.reverse(content)}")
   end
 
   defp store_nif_line_info(_rest, content, context, _line, _offset) do
-    {name, arity} = find_nif_info(content)
-    {content, Map.put(context, :nif, %{name: name, arity: arity})}
+    {name, arity, opts} = find_nif_info(content)
+    {content, Map.put(context, :nif, %{name: name, arity: arity, opts: opts})}
   end
 
   defp report_param_type(_, [bad_param | _], context = %{nif: %{name: nif_name}}, {line, _}, _) do
@@ -119,6 +124,7 @@ defmodule Zigler.Parser do
   ## nimble_parsec routines
 
   whitespace = ascii_string([?\s, ?\n], min: 1)
+  space = ascii_string([?\s], min: 1)
 
   float_literals = Enum.map(~w(f16 f32 f64), &string/1)
   int_literals = Enum.map(~w(u8 i32 i64 c_int c_long isize usize), &string/1)
@@ -193,7 +199,10 @@ defmodule Zigler.Parser do
     |> ascii_string(@alphanumeric, min: 1)
     |> string("/")
     |> ascii_string(@number, min: 1)
-    |> repeat(ascii_char([?\s]))
+    |> repeat(ignore(ascii_char([?\s])))
+    |> optional(
+      ascii_string(@alphanumeric, min: 1)
+      |> repeat(ignore(ascii_char([?\s]))))
     |> string("\n")
     |> post_traverse(:store_nif_line_info)
     |> reduce({Enum, :join, []})
