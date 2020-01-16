@@ -329,7 +329,7 @@ defmodule Zigler do
 
   def launch_function(func, arity) do
     launch_func = launch_func_name(func)
-    {:def, [context: Elixir, import: Kernel],
+    {:defp, [context: Elixir, import: Kernel],
       [
         {launch_func, [context: Elixir], for idx <- 1..arity do {:_, [], Elixir} end},
         [do: {:throw, [context: Elixir, import: Kernel],
@@ -338,6 +338,7 @@ defmodule Zigler do
   end
 
   def long_function(func, arity) do
+
     long_fn_block = quote do
       {ref, res} = unquote(launch_call(func, arity))
       receive do ^ref -> :ok end
@@ -354,18 +355,15 @@ defmodule Zigler do
         [do: long_fn_block]]}
     end
 
-
     fetch_func_msg = "#{fetch_func_name(func)}/0 not defined"
-    q = quote do
+
+    quote do
       unquote(launch_function(func, arity))
       defp unquote(fetch_func_name(func))() do
         throw unquote(fetch_func_msg)
       end
       unquote(main_call)
     end
-    IO.puts("")
-    q |> Macro.to_string |> IO.puts
-    q
   end
 
   def empty_function(func, 0) do
