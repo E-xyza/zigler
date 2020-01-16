@@ -15,14 +15,15 @@ defmodule Zigler.Nif do
   # - retval: (`t:String.t/0`) the type of the return value
 
   @enforce_keys [:name, :arity]
-  defstruct @enforce_keys ++ [doc: nil, params: [], retval: nil]
+  defstruct @enforce_keys ++ [doc: nil, params: [], retval: nil, opts: []]
 
   @type t :: %__MODULE__{
     name:   atom,
     arity:  non_neg_integer,
     doc:    iodata | nil,
     params: [String.t],
-    retval: String.t
+    retval: String.t,
+    opts:   [atom]
   }
 
 end

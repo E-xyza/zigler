@@ -21,7 +21,7 @@ defmodule Zigler.Parser do
     {content, Map.put(context, :docstring, [String.trim(text), "\n"])}
   end
 
-  @nif_options ["long"]
+  @nif_options ["long", "dirty"]
 
   # NB: nimble_parsec data is operated on in reverse order.
   defp find_nif_info([arity, "/", name, "/// nif: " | _]) do
@@ -85,22 +85,22 @@ defmodule Zigler.Parser do
     params = Map.get(context, :params, [])
     doc = Map.get(context, :docstring, nil)
     retval = context.retval
-    arity = nif.arity
     found_arity = Enum.count(Zig.adjust_params(params))
     # perform the arity checkt.
-    unless arity == found_arity do
+    unless nif.arity == found_arity do
       raise CompileError,
         file: context.file,
         line: code_line,
-        description: "mismatched arity declaration, expected #{arity}, got #{found_arity}"
+        description: "mismatched arity declaration, expected #{nif.arity}, got #{found_arity}"
     end
 
     # build the nif struct that we're going to send back with the code.
     res = %Nif{name: String.to_atom(nif.name),
-               arity: arity,
+               arity: nif.arity,
                params: params,
                doc: doc,
-               retval: retval}
+               retval: retval,
+               opts: nif.opts}
 
     {[res | content], Map.delete(context, :nif)}
   end
@@ -124,7 +124,6 @@ defmodule Zigler.Parser do
   ## nimble_parsec routines
 
   whitespace = ascii_string([?\s, ?\n], min: 1)
-  space = ascii_string([?\s], min: 1)
 
   float_literals = Enum.map(~w(f16 f32 f64), &string/1)
   int_literals = Enum.map(~w(u8 i32 i64 c_int c_long isize usize), &string/1)

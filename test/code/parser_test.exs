@@ -50,6 +50,16 @@ defmodule ZiglerTest.ParserTest do
       """
       assert {:ok, _, _, %{nif: %{arity: 1, name: "my_long_function", opts: [:long]}}, _, _} = Parser.parse_nif_line(code)
     end
+
+    test "can identify dirty nifs" do
+      code = """
+        /// nif: my_dirty_function/1 dirty
+        fn my_dirty_function(val:i64) i64 {
+          return val + 1;
+        }
+      """
+      assert {:ok, _, _, %{nif: %{arity: 1, name: "my_dirty_function", opts: [:dirty]}}, _, _} = Parser.parse_nif_line(code)
+    end
   end
 
   describe "the function header parser" do

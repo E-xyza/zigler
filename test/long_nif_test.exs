@@ -86,7 +86,7 @@ defmodule ZiglerTest.AsyncTest do
     // nothing needs to happen since this object is a single int64
   }
 
-  /// long nif: add
+  /// nif: add/2 long
   fn add(left: i64, right: i64) i64 {
     return left + right;
   }
@@ -101,14 +101,13 @@ defmodule ZiglerTest.AsyncTest do
   # STAGE 6: use a resource to correctly fetch the result in a threadsafe
   # manner.
 
-  @tag :one
-  test "we can trigger the function" do
-    assert 47 == add_harness(40, 7)
-  end
-
-  #@tag :one
-  #test "basic function with long_nif works" do
-  #  assert 47 == add(40, 7)
+  #test "we can trigger the function" do
+  #  assert 47 == add_harness(40, 7)
   #end
+
+  @tag :long
+  test "basic function with long_nif works" do
+    assert 47 == add(40, 7)
+  end
 
 end

@@ -282,7 +282,7 @@ defmodule Zigler do
       ++
       [
         typespec_for(nif),
-        empty_function(nif.name, nif.arity),
+        basic_function(nif.name, nif.arity, nif.opts),
       ]
     end)
 
@@ -294,6 +294,80 @@ defmodule Zigler do
   end
 
   @doc false
+  def basic_function(func, arity, opts) do
+    if :long in opts do
+      long_function(func, arity)
+    else
+      empty_function(func, arity)
+    end
+  end
+
+  @spec dunderize(String.t | integer) :: atom
+  defp dunderize(string), do: String.to_atom("__#{string}__")
+
+  @spec launch_func_name(atom) :: atom
+  defp launch_func_name(func) do
+    func
+    |> Atom.to_string
+    |> Kernel.<>("_launch")
+    |> dunderize
+  end
+
+  @spec fetch_func_name(atom) :: atom
+  defp fetch_func_name(func) do
+    func
+    |> Atom.to_string
+    |> Kernel.<>("_fetch")
+    |> dunderize
+  end
+
+  defp launch_call(func, arity) do
+    {launch_func_name(func), [], for idx <- 1..arity do
+      {dunderize(idx), [], Elixir}
+    end}
+  end
+
+  def launch_function(func, arity) do
+    launch_func = launch_func_name(func)
+    {:def, [context: Elixir, import: Kernel],
+      [
+        {launch_func, [context: Elixir], for idx <- 1..arity do {:_, [], Elixir} end},
+        [do: {:throw, [context: Elixir, import: Kernel],
+        ["#{launch_func}/#{arity} not defined"]}]
+      ]}
+  end
+
+  def long_function(func, arity) do
+    long_fn_block = quote do
+      {ref, res} = unquote(launch_call(func, arity))
+      receive do ^ref -> :ok end
+      unquote({fetch_func_name(func), [], []})
+    end
+
+    main_call = if arity == 0 do
+      {:def, [context: Elixir, import: Kernel], [
+        {func, [context: Elixir], []},
+        [do: long_fn_block]]}
+    else
+      {:def, [context: Elixir, import: Kernel],[
+        {func, [context: Elixir], for idx <- 1..arity do {dunderize(idx), [], Elixir} end},
+        [do: long_fn_block]]}
+    end
+
+
+    fetch_func_msg = "#{fetch_func_name(func)}/0 not defined"
+    q = quote do
+      unquote(launch_function(func, arity))
+      defp unquote(fetch_func_name(func))() do
+        throw unquote(fetch_func_msg)
+      end
+      unquote(main_call)
+    end
+    IO.puts("")
+    q |> Macro.to_string |> IO.puts
+    q
+  end
+
   def empty_function(func, 0) do
     quote do
       def unquote(func)(), do: throw unquote("#{func}/0 not defined")
