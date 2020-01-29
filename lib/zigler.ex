@@ -249,6 +249,7 @@ defmodule Zigler do
       Module.register_attribute(__MODULE__, :zig_src_dir, persist: true)
       Module.register_attribute(__MODULE__, :zig_resources, persist: true)
       Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
+      Module.register_attribute(__MODULE__, :zig_longs, accumulate: true)
       Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
       Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
 
@@ -298,9 +299,18 @@ defmodule Zigler do
       ]
     end)
 
+    long_adapters = Enum.flat_map(code.nifs, fn nif ->
+      if :long in nif.opts do
+        LongRunning.adapters(nif)
+      else
+        []
+      end
+    end)
+
     quote do
       @zig_code unquote(code.code)
       @zig_specs unquote(code_spec)
+      @zig_longs unquote(long_adapters)
       unquote_splicing(empty_functions)
     end
   end
@@ -343,7 +353,7 @@ defmodule Zigler do
     launch_func = launch_func_name(func)
     {:defp, [context: Elixir, import: Kernel],
       [
-        {launch_func, [context: Elixir], for idx <- 1..arity do {:_, [], Elixir} end},
+        {launch_func, [context: Elixir], for _idx <- 1..arity do {:_, [], Elixir} end},
         [do: {:throw, [context: Elixir, import: Kernel],
         ["#{launch_func}/#{arity} not defined"]}]
       ]}
@@ -367,13 +377,11 @@ defmodule Zigler do
         [do: long_fn_block]]}
     end
 
-    fetch_func_msg = "#{fetch_func_name(func)}/0 not defined"
+    fetch_func_msg = "#{fetch_func_name(func)}/1 not defined"
 
     q = quote do
       #unquote(launch_function(func, arity))
-      #defp unquote(fetch_func_name(func))() do
-      #  throw unquote(fetch_func_msg)
-      #end
+      defp unquote(fetch_func_name(func))(_), do: throw unquote(fetch_func_msg)
       unquote(main_call)
     end
     q |> Macro.to_string |> IO.puts

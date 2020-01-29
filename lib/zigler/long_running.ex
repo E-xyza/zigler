@@ -30,12 +30,12 @@ defmodule Zigler.LongRunning do
     zig code generators for long-running functions.
     """
 
-    defp resource(fn_name), do: "#{fn_name}_resource"
-    defp cache(fn_name), do: "__#{fn_name}_cache__"
-    defp packer(fn_name), do: "__#{fn_name}_packer__"
-    defp launcher(fn_name), do: "__launch_#{fn_name}__"
-    defp harness(fn_name), do: "__#{fn_name}_harness__"
-    defp fetcher(fn_name), do: "__fetch_#{fn_name}__"
+    def resource(fn_name), do: "#{fn_name}_resource"
+    def cache(fn_name), do: "__#{fn_name}_cache__"
+    def packer(fn_name), do: "__#{fn_name}_packer__"
+    def launcher(fn_name), do: "__#{fn_name}_launch__"
+    def harness(fn_name), do: "__#{fn_name}_harness__"
+    def fetcher(fn_name), do: "__#{fn_name}_fetch__"
 
     def cache_struct(nif) do
       extra_lines = nif.params
@@ -151,6 +151,21 @@ defmodule Zigler.LongRunning do
   end
 
   def functions(nif) do
-    []
+    [{Zig.fetcher(nif.name), {["beam.env", "beam.term"], "beam.term"}}]
+  end
+
+  def adapters(nif) do
+    [
+      Zig.fetch_fn(nif)
+    ]
   end
 end
+
+#36: %Zigler.Nif{
+#  arity: 2,
+#  doc: nil,
+#  name: :add,
+#  opts: [:long],
+#  params: ["i64", "i64"],
+#  retval: "i64"
+#}

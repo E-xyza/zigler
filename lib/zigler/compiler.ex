@@ -65,6 +65,7 @@ defmodule Zigler.Compiler do
 
     zig_libs = Module.get_attribute(context.module, :zig_libs) || []
     c_includes = Module.get_attribute(context.module, :c_includes) || []
+    zig_longs = Module.get_attribute(context.module, :zig_longs) || []
 
     Enum.each(zig_libs, &verify_if_shared/1)
 
@@ -81,6 +82,7 @@ defmodule Zigler.Compiler do
       zig_code,
       "// #{zig_nif_file} line: #{newlines}\n",  #drop in a comment back
       Enum.map(zig_specs, &Zig.nif_adapter/1),
+      zig_longs,
       Zig.nif_exports(zig_specs),
       Zig.nif_resources(resources),
       Zig.nif_footer(context.module, zig_specs, resources)]
