@@ -354,7 +354,7 @@ defmodule Zigler do
     long_fn_block = quote do
       {ref, res} = unquote(launch_call(func, arity))
       receive do ^ref -> :ok end
-      unquote({fetch_func_name(func), [], []})
+      unquote(fetch_func_name(func))(res)
     end
 
     main_call = if arity == 0 do
@@ -369,13 +369,15 @@ defmodule Zigler do
 
     fetch_func_msg = "#{fetch_func_name(func)}/0 not defined"
 
-    quote do
-      unquote(launch_function(func, arity))
-      defp unquote(fetch_func_name(func))() do
-        throw unquote(fetch_func_msg)
-      end
+    q = quote do
+      #unquote(launch_function(func, arity))
+      #defp unquote(fetch_func_name(func))() do
+      #  throw unquote(fetch_func_msg)
+      #end
       unquote(main_call)
     end
+    q |> Macro.to_string |> IO.puts
+    q
   end
 
   def empty_function(func, 0) do

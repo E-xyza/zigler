@@ -49,8 +49,8 @@ defmodule ZiglerTest.LongNifTest do
     var res = e.enif_send(null, &cache.self, cache.env, cache.ref);
   }
 
-  /// nif: __launch_add__/2
-  fn __launch_add__(env: beam.env, left: i64, right: i64) beam.term {
+  /// nif: __add_launch__/2
+  fn __add_launch__(env: beam.env, left: i64, right: i64) beam.term {
     var cache: *__add_cache__ = undefined;
 
     __add_packer__(&cache, env, left, right) catch {
@@ -60,8 +60,8 @@ defmodule ZiglerTest.LongNifTest do
     return e.enif_make_tuple(env, 2, cache.ref, cache.res);
   }
 
-  /// nif: __fetch_add__/1
-  fn __fetch_add__(env: beam.env, resource: beam.term) beam.term {
+  /// nif: __add_fetch__/1
+  fn __add_fetch__(env: beam.env, resource: beam.term) beam.term {
     var result = beam.resource.fetch(i64, env, add_resource, resource)
       catch |err| return beam.raise(env, beam.make_atom(env, "resource error"[0..]));
 

@@ -151,7 +151,6 @@ defmodule Zigler.LongRunning do
   end
 
   def functions(nif) do
-    nif |> IO.inspect(label: "36")
     []
   end
 end
