@@ -79,6 +79,7 @@ defmodule ZiglerTest.LongNifTest do
 
   # stage 7.  Test an "add function" that uses the //long directive.
 
+  @tag :long
   test "we can trigger the function" do
     assert 47 == add(40, 7)
   end
