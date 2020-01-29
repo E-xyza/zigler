@@ -55,6 +55,7 @@ defmodule Zigler.Parser do
       line: line,
       description: ~s/nif "#{nif_name}" has unsupported retval type #{String.trim bad_retval}/
   end
+  defp report_retval_type(_, content, context, _, _), do: {content, context}
 
   defp match_function_if_nif(_rest, content = [name | _], context = %{nif: %{name: name}}, _line, _offset) do
     {content, context}

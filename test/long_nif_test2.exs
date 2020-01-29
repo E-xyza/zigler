@@ -1,4 +1,4 @@
-defmodule ZiglerTest.AsyncTest do
+defmodule ZiglerTest.LongNifTest do
   use ExUnit.Case
 
   use Zigler, app: :zigler, resources: [:add_resource]
@@ -33,6 +33,7 @@ defmodule ZiglerTest.AsyncTest do
     cache_ret.* = cache;
   }
 
+  /// nif: add/2 long
   fn add(left: i64, right: i64) i64 {
     return left + right;
   }
@@ -76,14 +77,10 @@ defmodule ZiglerTest.AsyncTest do
   }
   """
 
-  defp add_harness(left, right) do
-    {ref, res} = __launch_add__(left, right)
-    receive do ^ref -> :ok end
-    __fetch_add__(res)
-  end
+  # stage 7.  Test an "add function" that uses the //long directive.
 
   test "we can trigger the function" do
-    assert 47 == add_harness(40, 7)
+    assert 47 == add(40, 7)
   end
 
 end

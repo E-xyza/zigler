@@ -256,6 +256,18 @@ defmodule Zigler do
     end
   end
 
+  alias Zigler.LongRunning
+
+  defp nif_to_spec(nif) do
+    cond do
+      # make alternative specs for long-running nif functions.
+      :long in nif.opts ->
+        LongRunning.functions(nif)
+      true ->
+        [{nif.name, {nif.params, nif.retval}}]
+    end
+  end
+
   @doc """
   Analyzes Zig code inline, then assembles a series of code files, stashes them in a
   temporary directory, compiles it with NIF adapters, and then binds it into the current
@@ -269,7 +281,7 @@ defmodule Zigler do
     code = Zigler.Code.from_string(zig_code, file, line)
 
     # add a specs list to be retrieved by the compiler.
-    code_spec = Enum.map(code.nifs, &{&1.name, {&1.params, &1.retval}})
+    code_spec = Enum.flat_map(code.nifs, &nif_to_spec/1)
 
     empty_functions = Enum.flat_map(code.nifs, fn nif ->
       if nif.doc do
