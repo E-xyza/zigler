@@ -60,24 +60,13 @@ defmodule ZiglerTest.LongNifTest do
     return e.enif_make_tuple(env, 2, cache.ref, cache.res);
   }
 
-  /// nif: __add_fetch__/1
-  fn __add_fetch__(env: beam.env, resource: beam.term) beam.term {
-    var result = beam.resource.fetch(i64, env, add_resource, resource)
-      catch |err| return beam.raise(env, beam.make_atom(env, "resource error"[0..]));
-
-    // release the resource.
-    beam.resource.release(env, add_resource, resource);
-
-    return beam.make_i64(env, result);
-  }
-
   /// destructor: async_add_resource
   extern fn destroy_add_resource(env: beam.env, obj: ?*c_void) void {
     // nothing needs to happen since this object is a single int64
   }
   """
 
-  # stage 7.  Test an "add function" that uses the //long directive.
+  # stage 8.  Decouple the fetch function.
 
   @tag :long
   test "we can trigger the function" do
