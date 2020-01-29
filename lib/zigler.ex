@@ -379,13 +379,11 @@ defmodule Zigler do
 
     fetch_func_msg = "#{fetch_func_name(func)}/1 not defined"
 
-    q = quote do
-      #unquote(launch_function(func, arity))
+    quote do
+      unquote(launch_function(func,arity))
       defp unquote(fetch_func_name(func))(_), do: throw unquote(fetch_func_msg)
       unquote(main_call)
     end
-    q |> Macro.to_string |> IO.puts
-    q
   end
 
   def empty_function(func, 0) do

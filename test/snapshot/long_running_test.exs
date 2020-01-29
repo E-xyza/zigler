@@ -90,7 +90,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
   describe "launch_fn/1 generates a zig function" do
     test "for a 0-arity function" do
       assert """
-      fn __launch_foo__(env: beam.env) beam.term {
+      fn __foo_launch__(env: beam.env) beam.term {
         var cache: *__foo_cache__ = undefined;
 
         __foo_packer__(&cache, env) catch {
@@ -104,7 +104,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
 
     test "for a 2-arity function" do
       assert """
-      fn __launch_foo__(env: beam.env, v0: i64, v1: f64) beam.term {
+      fn __foo_launch__(env: beam.env, v0: i64, v1: f64) beam.term {
         var cache: *__foo_cache__ = undefined;
 
         __foo_packer__(&cache, env, v0, v1) catch {
@@ -152,7 +152,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
   describe "fetch_fn/1 generates a zig function" do
     test "for a 0-arity function" do
       assert """
-      fn __fetch_foo__(env: beam.env, resource: beam.term) beam.term {
+      fn __foo_fetch__(env: beam.env, resource: beam.term) beam.term {
         var result = beam.resource.fetch(i64, env, add_resource, resource)
           catch |err| return beam.raise(env, beam.make_atom(env, "resource error"[0..]));
 

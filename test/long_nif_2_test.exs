@@ -49,24 +49,13 @@ defmodule ZiglerTest.LongNifTest do
     var res = e.enif_send(null, &cache.self, cache.env, cache.ref);
   }
 
-  /// nif: __add_launch__/2
-  fn __add_launch__(env: beam.env, left: i64, right: i64) beam.term {
-    var cache: *__add_cache__ = undefined;
-
-    __add_packer__(&cache, env, left, right) catch {
-      return beam.raise(env, beam.make_atom(env, "error"[0..]));
-    };
-
-    return e.enif_make_tuple(env, 2, cache.ref, cache.res);
-  }
-
   /// destructor: async_add_resource
   extern fn destroy_add_resource(env: beam.env, obj: ?*c_void) void {
     // nothing needs to happen since this object is a single int64
   }
   """
 
-  # stage 8.  Decouple the fetch function.
+  # stage 8.  Decouple the launch function.
 
   @tag :long
   test "we can trigger the function" do
