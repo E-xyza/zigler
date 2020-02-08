@@ -44,7 +44,7 @@ defmodule ZiglerTest.ExternalFilesTest do
   end
 
   test "we can use custom include files" do
-    test_file = "test/assets/cinclude.exs"
+    test_file = "test/integration/assets/cinclude.exs"
     Code.compile_file(test_file)
   end
 end

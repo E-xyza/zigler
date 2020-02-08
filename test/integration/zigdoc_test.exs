@@ -3,7 +3,7 @@ defmodule ZiglerTest.ZigdocTest do
   use ExUnit.Case, async: true
 
   test "gets the docs" do
-    [{AllTheDocs, beam}] = Code.compile_file("test/assets/all_the_docs.exs")
+    [{AllTheDocs, beam}] = Code.compile_file("test/integration/assets/all_the_docs.exs")
     File.write!("/tmp/.elixir-nifs/allthedocs.beam", beam)
     {:docs_v1, 2, :elixir, "text/markdown", :none, %{}, lst}
       = Code.fetch_docs("/tmp/.elixir-nifs/allthedocs.beam")
