@@ -46,15 +46,18 @@ defmodule ZiglerTest.ParserTest do
   end
 
   describe "the zig code parser" do
+
+    @empty_module %Zigler.Module{file: ""}
+
     test "can correctly parse a zig block with a single nif function" do
-      assert %Parser{global: [nif]} = Parser.parse("""
+      assert %Zigler.Module{nifs: [nif]} = Parser.parse("""
 
       /// nif: foo/0
       fn foo() i64 {
         return 47;
       }
 
-      """)
+      """, @empty_module)
 
       assert %Function{arity: 0, name: :foo, params: [], retval: "i64"} = nif
     end
@@ -67,9 +70,9 @@ defmodule ZiglerTest.ParserTest do
         return 47;
       }
 
-      """)
+      """, @empty_module)
 
-      assert %Parser{global: nifs} = Parser.parse("""
+      assert %Zigler.Module{nifs: nifs} = Parser.parse("""
       const bar = struct {
         baz: i64,
         quux: i64

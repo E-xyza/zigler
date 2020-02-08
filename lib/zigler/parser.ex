@@ -320,52 +320,29 @@ defmodule Zigler.Parser do
   #############################################################################
   ## API
 
-  def parse(code, previous_context \\ %__MODULE__{}) do
-    case parse_zig_block(code, context: Map.from_struct(previous_context)) do
-      {:ok, [], "", parser, _, _} -> parser
+  def parse(code, old_module) do
+    case parse_zig_block(code, context: Map.from_struct(old_module)) do
+      {:ok, [], "", parser, _, _} ->
+        append(old_module, parser)
       {:error, msg, _context, {line, _}, _} ->
         raise CompileError,
-          file: previous_context.file,
+          file: old_module.file,
           line: line,
           description: msg
       err ->
         raise CompileError,
-          file: previous_context.file,
+          file: old_module.file,
           line: 1,
           description: "unknown parsing error #{inspect err}"
     end
   end
 
-  #line =
-  #  utf8_string([not: ?\n], min: 1)
-  #  |> string("\n")
-  #  |> post_traverse(:clear_data)
-  #  |> reduce({Enum, :join, []})
-#
-  #empty_line = string("\n")
-#
-  #by_line =
-  #  repeat(choice([
-  #    docstring,
-  #    function_header,
-  #    line,
-  #    empty_line
-  #  ]))
-#
-  #defparsec :zig_by_line, by_line
-#
-  #@spec parse(String.t, Path.t, non_neg_integer) :: %{code: iodata, nifs: [Zigler.Nif.t]}
-  #def parse(code, file, line) do
-  #  # prepend a comment saving the file and line metadata.
-  #  marker_comment = "// #{file} line: #{line}\n"
-#
-  #  {:ok, new_code, _, _, _, _} = zig_by_line(code, line: line, context: %{file: file})
-#
-  #  Enum.reduce(new_code, %{code: marker_comment, nifs: [], imports: []}, fn
-  #    res = %Zigler.Nif{}, acc = %{nifs: nifs} ->
-  #      %{acc | nifs: [res | nifs]}
-  #    any, acc = %{code: code} ->
-  #      %{acc | code: [code, any]}
-  #  end)
-  #end
+  #############################################################################
+  ## helpers
+
+  defp append(old_module, new_content) do
+    new_nifs = Enum.filter(new_content.global, &match?(%Function{}, &1))
+    %{old_module |
+      nifs: old_module.nifs ++ new_nifs}
+  end
 end
