@@ -30,7 +30,6 @@ defmodule ZiglerTest.ParserTest do
   end
 
   describe "the nif parser" do
-    @describetag :one
     test "can identify nifs" do
       code = """
         /// nif: my_function/1

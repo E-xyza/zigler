@@ -3,6 +3,8 @@ defmodule Zigler.Parser do
 
   # all functions that parse zig code
 
+  defstruct [:global, :local]
+
   import NimbleParsec
 
   alias Zigler.Nif
@@ -124,7 +126,10 @@ defmodule Zigler.Parser do
   #############################################################################
   ## nimble_parsec routines
 
+
   whitespace = ascii_string([?\s, ?\n], min: 1)
+  blankspace = ignore(ascii_string([?\s], min: 1))
+  # note that tabs are forbidden by zig.
 
   float_literals = Enum.map(~w(f16 f32 f64), &string/1)
   int_literals = Enum.map(~w(u8 i32 i64 c_int c_long isize usize), &string/1)
@@ -207,29 +212,58 @@ defmodule Zigler.Parser do
     |> post_traverse(:store_nif_line_info)
     |> reduce({Enum, :join, []})
 
-  docstring_line =
-    repeat(ascii_char([?\s]))
-    |> string("///")
-    |> lookahead_not(string(" nif:"))
-    |> utf8_string([not: ?\n], min: 1)
-    |> string("\n")                    # it will be a hard requirement that
-    |> post_traverse(:store_docstring) # docstrings end in \n, since zig will
-    |> reduce({Enum, :join, []})       # enforce limits on docstring location.
+  #############################################################################
+  ## INITIALIZATION
+  ##
+  ## used to initialize nimble_parsec with a struct instead of a generic map.
+  ## should be prepended to most things which are turned into parsecs.  You
+  ## can also pass information into a parsec function to preseed the context.
 
-  docstring =
-    times(choice([docstring_line, nif_line]), min: 1)
-    |> reduce({Enum, :join, []})
+  initialize = post_traverse(empty(), :initializer)
 
-  # make intermediate parsing steps testable
+  defp initializer(_, _, context, _, _), do: {[], struct(__MODULE__, context)}
+
   if Mix.env == :test do
-    defparsec :parse_docstring_line, docstring_line
-    defparsec :parse_docstring, docstring
-    defparsec :parse_nif_line, nif_line
-    defparsec :parse_function_header, function_header
+    defparsec :parser_initializer, initialize
   end
 
-  # NB: zig does not allow windows-style crlf line breaks.  However, you can
-  # input it and make it go through zig fmt.
+  #############################################################################
+  ## DOCSTRING PARSING
+
+  docstring_line =
+    optional(blankspace)
+    |> ignore(string("///"))
+    |> optional(blankspace)
+    |> lookahead_not(string("nif:"))
+    |> optional(utf8_string([not: ?\n], min: 1))
+    |> ignore(string("\n"))
+    |> post_traverse(:register_docstring_line)
+
+  # empty docstring line.
+  defp register_docstring_line(_rest, [], context = %{local: {:doc, doc}}, _, _) do
+    {[], %{context | local: {:doc, [doc, ?\n]}}}
+  end
+  defp register_docstring_line(_rest, [], context, _, _) do
+    {[], %{context | local: nil}}
+  end
+  defp register_docstring_line(_rest, [content], context = %{local: {:doc, doc}}, _, _) do
+    {[], %{context | local: {:doc, [doc, ?\n | String.trim(content)]}}}
+  end
+  defp register_docstring_line(_rest, [content], context, _, _) do
+    {[], %{context | local: {:doc, String.trim(content)}}}
+  end
+
+  docstring = repeat(docstring_line)
+
+  if Mix.env == :test do
+    defparsec :parse_docstring_line, concat(initialize, docstring_line)
+    defparsec :parse_docstring,      concat(initialize, docstring)
+  end
+
+  #defparsec :parse_nif_line, nif_line
+  #defparsec :parse_function_header, function_header
+
+  # NB: zig does not allow windows-style crlf line breaks.
 
   line =
     utf8_string([not: ?\n], min: 1)
