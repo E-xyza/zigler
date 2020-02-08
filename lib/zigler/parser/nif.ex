@@ -1,4 +1,4 @@
-defmodule Zigler.Parser.Function do
+defmodule Zigler.Parser.Nif do
 
   @moduledoc """
   This datastructure represents structured information about a single nif

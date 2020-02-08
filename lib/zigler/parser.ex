@@ -7,10 +7,7 @@ defmodule Zigler.Parser do
 
   import NimbleParsec
 
-  alias Zigler.Nif
-  alias Zigler.Zig
-
-  alias Zigler.Parser.Function
+  alias Zigler.Parser.Nif
 
   @alphanumeric [?a..?z, ?A..?Z, ?0..?9, ?_]
   @number [?0..?9]
@@ -163,9 +160,9 @@ defmodule Zigler.Parser do
   defp register_nif_declaration(["dirty_cpu" | rest], context, opts) do
     register_nif_declaration(rest, context, opts ++ [dirty: :cpu])
   end
-  defp register_nif_declaration([arity, function], context, opts) do
-    local = struct(Function,
-      name:  String.to_atom(function),
+  defp register_nif_declaration([arity, name], context, opts) do
+    local = struct(Nif,
+      name:  String.to_atom(name),
       arity: String.to_integer(arity),
       doc:   opts[:doc],
       opts:  Keyword.take(opts, [:long, :dirty]))
@@ -210,7 +207,7 @@ defmodule Zigler.Parser do
     |> ignore(
       repeat(ascii_char(not: ?\n))
       |> string("\n"))
-    |> post_traverse(:register_function_header)
+    |> post_traverse(:register_nif_header)
 
   # test harness
 
@@ -222,7 +219,7 @@ defmodule Zigler.Parser do
 
   # validations
 
-  defp validate_nif_declaration(_rest, [nif_name], context = %{local: %Function{name: name}}, {line, _}, _) do
+  defp validate_nif_declaration(_rest, [nif_name], context = %{local: %Nif{name: name}}, {line, _}, _) do
     unless nif_name == Atom.to_string(name) do
       raise CompileError,
         file: context.file,
@@ -235,7 +232,7 @@ defmodule Zigler.Parser do
 
   @beam_envs ["beam.env", "?*e.ErlNifEnv"]
 
-  defp validate_arity(_rest, params, context = %{local: %Function{arity: arity}}, {line, _}, _) do
+  defp validate_arity(_rest, params, context = %{local: %Nif{}}, {line, _}, _) do
     {params, validate_arity(Enum.reverse(params), context, line)}
   end
   defp validate_arity(_rest, _, context, _, _), do: {[], context}
@@ -255,7 +252,7 @@ defmodule Zigler.Parser do
 
   # validate_params/5 : trampolines to validate_params/3
   # ignore parameter validation if we're not in a segment specified by a nif.
-  defp validate_params(_rest, content, context = %{local: %Function{}}, {line, _}, _) do
+  defp validate_params(_rest, content, context = %{local: %Nif{}}, {line, _}, _) do
     validate_params(content, context, line)
     {content, context} # since it's a validator, ignore the result of validate_params/3
   end
@@ -274,11 +271,11 @@ defmodule Zigler.Parser do
 
   @valid_retvals ["i64"]
 
-  defp validate_retval(_rest, content = [retval | _], context = %{local: %Function{}}, _, _)
+  defp validate_retval(_rest, content = [retval | _], context = %{local: %Nif{}}, _, _)
     when retval in @valid_retvals do
     {content, context}
   end
-  defp validate_retval(_rest, content = [retval | _], context = %{local: %Function{}}, {line, _}, _) do
+  defp validate_retval(_rest, content = [retval | _], context = %{local: %Nif{}}, {line, _}, _) do
     raise CompileError,
       file: context.file,
       line: line,
@@ -289,11 +286,11 @@ defmodule Zigler.Parser do
 
   # registrations
 
-  defp register_function_header(_, [retval | params], context = %{local: function = %Function{}}, _, _) do
-    final_function = %{function | retval: retval, params: Enum.reverse(params)}
-    {[], %{context | global: [final_function | context.global], local: nil}}
+  defp register_nif_header(_, [retval | params], context = %{local: nif = %Nif{}}, _, _) do
+    final_nif = %{nif | retval: retval, params: Enum.reverse(params)}
+    {[], %{context | global: [final_nif | context.global], local: nil}}
   end
-  defp register_function_header(_, _, context, _, _), do: {[], context}
+  defp register_nif_header(_, _, context, _, _), do: {[], context}
 
   #############################################################################
   ## FULL PARSER
@@ -313,7 +310,7 @@ defmodule Zigler.Parser do
 
   defparsec :parse_zig_block, zig_block
 
-  defp clear(rest, content, context, _, _) do
+  defp clear(_rest, _content, context, _, _) do
     {[], context}
   end
 
@@ -341,7 +338,7 @@ defmodule Zigler.Parser do
   ## helpers
 
   defp append(old_module, new_content) do
-    new_nifs = Enum.filter(new_content.global, &match?(%Function{}, &1))
+    new_nifs = Enum.filter(new_content.global, &match?(%Nif{}, &1))
     %{old_module |
       nifs: old_module.nifs ++ new_nifs}
   end

@@ -3,7 +3,7 @@ defmodule ZiglerTest.Parser.DocstringTest do
   use ExUnit.Case, async: true
 
   alias Zigler.Parser
-  alias Zigler.Parser.Function
+  alias Zigler.Parser.Nif
 
   @moduletag :parser
   @moduletag :docstring
@@ -57,21 +57,21 @@ defmodule ZiglerTest.Parser.DocstringTest do
       assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_nif_declaration("""
       /// nif: foo/0
       """)
-      assert %Function{name: :foo, arity: 0} = local
+      assert %Nif{name: :foo, arity: 0} = local
     end
 
     test "adds in contextual documentation" do
       assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_nif_declaration("""
       /// nif: foo/0
       """, context: %{local: {:doc, "doc"}})
-      assert %Function{doc: "doc"} = local
+      assert %Nif{doc: "doc"} = local
     end
 
     test "adds in a long option" do
       assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_nif_declaration("""
       /// nif: foo/0 long
       """)
-      assert %Function{opts: opts} = local
+      assert %Nif{opts: opts} = local
       assert {:long, true} in opts
     end
 
@@ -79,7 +79,7 @@ defmodule ZiglerTest.Parser.DocstringTest do
       assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_nif_declaration("""
       /// nif: foo/0 dirty_io
       """)
-      assert %Function{opts: opts} = local
+      assert %Nif{opts: opts} = local
       assert {:dirty, :io} in opts
     end
 
@@ -87,7 +87,7 @@ defmodule ZiglerTest.Parser.DocstringTest do
       assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_nif_declaration("""
       /// nif: foo/0 dirty_cpu
       """)
-      assert %Function{opts: opts} = local
+      assert %Nif{opts: opts} = local
       assert {:dirty, :cpu} in opts
     end
   end
@@ -132,7 +132,7 @@ defmodule ZiglerTest.Parser.DocstringTest do
       assert_raise CompileError, fn ->
         Parser.parse_docstring("""
         /// foo
-        """, context: %{local: %Function{name: :foo, arity: 0}})
+        """, context: %{local: %Nif{name: :foo, arity: 0}})
       end
     end
 
@@ -141,7 +141,7 @@ defmodule ZiglerTest.Parser.DocstringTest do
       /// foo
       /// nif: foo/0
       """)
-      assert %Function{name: :foo, arity: 0, doc: "foo"} = local
+      assert %Nif{name: :foo, arity: 0, doc: "foo"} = local
     end
   end
 end

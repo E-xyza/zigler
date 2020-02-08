@@ -3,7 +3,7 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
   use ExUnit.Case, async: true
 
   alias Zigler.Parser
-  alias Zigler.Parser.Function
+  alias Zigler.Parser.Nif
 
   @moduletag :parser
   @moduletag :function
@@ -44,55 +44,55 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
     test "correctly obtains the retval" do
       assert {:ok, _, _, context, _, _} = Parser.parse_function_header("""
         fn foo() i64 {
-      """, context: %{local: %Function{name: :foo, arity: 0}})
+      """, context: %{local: %Nif{name: :foo, arity: 0}})
 
       assert %Parser{global: [function], local: nil} = context
-      assert %Function{name: :foo, arity: 0, retval: "i64"} = function
+      assert %Nif{name: :foo, arity: 0, retval: "i64"} = function
     end
 
     test "correctly obtains zero parameters" do
       assert {:ok, _, _, context, _, _} = Parser.parse_function_header("""
         fn foo() i64 {
-      """, context: %{local: %Function{name: :foo, arity: 0}})
+      """, context: %{local: %Nif{name: :foo, arity: 0}})
 
       assert %Parser{global: [function], local: nil} = context
-      assert %Function{name: :foo, arity: 0, params: []} = function
+      assert %Nif{name: :foo, arity: 0, params: []} = function
     end
 
     test "correctly obtains one parameters" do
       assert {:ok, _, _, context, _, _} = Parser.parse_function_header("""
         fn foo(bar: i64) i64 {
-      """, context: %{local: %Function{name: :foo, arity: 1}})
+      """, context: %{local: %Nif{name: :foo, arity: 1}})
 
       assert %Parser{global: [function], local: nil} = context
-      assert %Function{name: :foo, arity: 1, params: ["i64"]} = function
+      assert %Nif{name: :foo, arity: 1, params: ["i64"]} = function
     end
 
     test "raises compile error if the names mismatch" do
       assert_raise CompileError, fn -> Parser.parse_function_header("""
           fn bar() i64 {
-        """, context: %{local: %Function{name: :foo, arity: 0}})
+        """, context: %{local: %Nif{name: :foo, arity: 0}})
       end
     end
 
     test "raises compile error if the arities mismatch" do
       assert_raise CompileError, fn -> Parser.parse_function_header("""
           fn foo() i64 {
-        """, context: %{local: %Function{name: :foo, arity: 1}})
+        """, context: %{local: %Nif{name: :foo, arity: 1}})
       end
     end
 
     test "raises compile error if the arities mismatch, with a beam.env parameter" do
       assert_raise CompileError, fn -> Parser.parse_function_header("""
           fn foo(env: beam.env) i64 {
-        """, context: %{local: %Function{name: :foo, arity: 1}})
+        """, context: %{local: %Nif{name: :foo, arity: 1}})
       end
     end
 
     test "raises compile error if the arities mismatch, with a ErlNifEnv parameter" do
       assert_raise CompileError, fn -> Parser.parse_function_header("""
           fn foo(env: ?*e.ErlNifEnv) i64 {
-        """, context: %{local: %Function{name: :foo, arity: 1}})
+        """, context: %{local: %Nif{name: :foo, arity: 1}})
       end
     end
 
@@ -104,7 +104,7 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
 
       assert_raise CompileError, fn -> Parser.parse_function_header("""
           fn foo() !i64 {
-        """, context: %{local: %Function{name: :foo, arity: 0}})
+        """, context: %{local: %Nif{name: :foo, arity: 0}})
       end
     end
 
@@ -117,7 +117,7 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
       assert_raise CompileError, fn ->
         Parser.parse_function_header("""
           fn foo(bar: strange.type) i64 {
-        """, context: %{local: %Function{name: :foo, arity: 1}})
+        """, context: %{local: %Nif{name: :foo, arity: 1}})
       end
     end
   end
