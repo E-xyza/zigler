@@ -9,11 +9,20 @@ defmodule Zigler.Parser do
 
   alias Zigler.Parser.Nif
 
+  @type t :: %__MODULE__{
+    local: Nif.t | {:doc, iodata},
+    file: Path.t,
+    global: [Nif.t]
+  }
+
+  @type line_info :: {non_neg_integer, non_neg_integer}
+  @type parsec_retval :: {[String.t], t}
+
   @alphanumeric [?a..?z, ?A..?Z, ?0..?9, ?_]
   @number [?0..?9]
 
   #############################################################################
-  ## nimble_parsec routines
+  ## GENERIC NIMBLE_PARSEC PARSERS
 
   whitespace = ascii_string([?\s, ?\n], min: 1)
   blankspace = ignore(ascii_string([?\s], min: 1))
@@ -36,7 +45,6 @@ defmodule Zigler.Parser do
     optional(string("?") |> ignore(optional(whitespace)))
     |> string("*")
 
-  # TODO: sentinel terminated arrays
   array_decorator = string("[")
     |> ignore(optional(whitespace))
     |> optional(string("*c") |> optional(whitespace))
@@ -61,6 +69,9 @@ defmodule Zigler.Parser do
   ## can also pass information into a parsec function to preseed the context.
 
   initialize = post_traverse(empty(), :initializer)
+
+  @spec initializer(String.t, [String.t], t, line_info, non_neg_integer)
+    :: parsec_retval
 
   defp initializer(_, _, context, _, _), do: {[], struct(__MODULE__, context)}
 
@@ -123,6 +134,9 @@ defmodule Zigler.Parser do
 
   # registrations
 
+  @spec register_docstring_line(String.t, [String.t], t, line_info, non_neg_integer)
+    :: parsec_retval
+
   # empty docstring line.
   defp register_docstring_line(_rest, [], context = %{local: {:doc, doc}}, _, _) do
     {[], %{context | local: {:doc, [doc, ?\n]}}}
@@ -144,10 +158,14 @@ defmodule Zigler.Parser do
   end
 
   # register_nif_declaration/5: trampolines into register_nif_declaration/3
+  @spec register_nif_declaration(String.t, [String.t], t, line_info, non_neg_integer)
+    :: parsec_retval
   defp register_nif_declaration(_rest, content, context, _, _) do
     register_nif_declaration(content, context, [])
   end
   # register_nif_declaration/3
+  @spec register_nif_declaration([String.t], t, keyword)
+    :: parsec_retval
   defp register_nif_declaration(content, context = %{local: {:doc, doc}}, opts) do
     register_nif_declaration(content, %{context | local: nil}, opts ++ [doc: doc])
   end
@@ -219,6 +237,8 @@ defmodule Zigler.Parser do
 
   # validations
 
+  @spec validate_nif_declaration(String.t, [String.t], t, line_info, non_neg_integer)
+    :: parsec_retval | no_return
   defp validate_nif_declaration(_rest, [nif_name], context = %{local: %Nif{name: name}}, {line, _}, _) do
     unless nif_name == Atom.to_string(name) do
       raise CompileError,
@@ -232,10 +252,19 @@ defmodule Zigler.Parser do
 
   @beam_envs ["beam.env", "?*e.ErlNifEnv"]
 
+  # validate_arity/5: trampolines into validate_arity/3
+  @spec validate_arity(String.t, [String.t], t, line_info, non_neg_integer)
+    :: parsec_retval | no_return
+
   defp validate_arity(_rest, params, context = %{local: %Nif{}}, {line, _}, _) do
-    {params, validate_arity(Enum.reverse(params), context, line)}
+    validate_arity(Enum.reverse(params), context, line)
+    {params, context}
   end
   defp validate_arity(_rest, _, context, _, _), do: {[], context}
+
+  # validate_arity/3: checks to make sure the arity of nif declaration matches the function
+  @spec validate_arity([String.t], t, non_neg_integer)
+    :: :ok | no_return
 
   defp validate_arity([env | rest], context, line) when env in @beam_envs do
     validate_arity(rest, context, line)
@@ -246,18 +275,24 @@ defmodule Zigler.Parser do
       line: line,
       description: "nif declaration arity (#{arity}) doesn't match the expected function arity #{length(rest)}"
   end
-  defp validate_arity(_, context, _), do: context
+  defp validate_arity(_content, _context, _line), do: :ok
 
   @valid_params ["i64", "f64"]
 
   # validate_params/5 : trampolines to validate_params/3
   # ignore parameter validation if we're not in a segment specified by a nif.
+  @spec validate_params(String.t, [String.t], t, line_info, non_neg_integer)
+    :: parsec_retval | no_return
+
   defp validate_params(_rest, content, context = %{local: %Nif{}}, {line, _}, _) do
     validate_params(content, context, line)
     {content, context} # since it's a validator, ignore the result of validate_params/3
   end
   defp validate_params(_, content, context, _, _), do: {content, context}
-  # validate_params/2 : raises if an invalid parameter type is sent to to the function
+
+  # validate_params/3 : raises if an invalid parameter type is sent to to the function
+  @spec validate_arity([String.t], t, non_neg_integer)
+    :: :ok | no_return
   defp validate_params([], _context, _line), do: :ok
   defp validate_params([params | rest], context, line) when params in @valid_params do
     validate_params(rest, context, line)
@@ -270,6 +305,11 @@ defmodule Zigler.Parser do
   end
 
   @valid_retvals ["i64"]
+
+  # validate_retval/5 : trampolines to validate_params/3
+  # ignore parameter validation if we're not in a segment specified by a nif.
+  @spec validate_retval(String.t, [String.t], t, line_info, non_neg_integer)
+    :: parsec_retval | no_return
 
   defp validate_retval(_rest, content = [retval | _], context = %{local: %Nif{}}, _, _)
     when retval in @valid_retvals do
@@ -285,6 +325,9 @@ defmodule Zigler.Parser do
   defp validate_retval(_, _, context, _, _), do: {[], context}
 
   # registrations
+
+  @spec register_nif_header(String.t, [String.t], t, line_info, non_neg_integer)
+    :: parsec_retval
 
   defp register_nif_header(_, [retval | params], context = %{local: nif = %Nif{}}, _, _) do
     final_nif = %{nif | retval: retval, params: Enum.reverse(params)}
@@ -310,6 +353,8 @@ defmodule Zigler.Parser do
 
   defparsec :parse_zig_block, zig_block
 
+  @spec clear(String.t, [String.t], t, line_info, non_neg_integer) :: parsec_retval
+
   defp clear(_rest, _content, context, _, _) do
     {[], context}
   end
@@ -317,6 +362,7 @@ defmodule Zigler.Parser do
   #############################################################################
   ## API
 
+  @spec parse(String.t, Nif.t) :: Nif.t
   def parse(code, old_module) do
     case parse_zig_block(code, context: Map.from_struct(old_module)) do
       {:ok, [], "", parser, _, _} ->
