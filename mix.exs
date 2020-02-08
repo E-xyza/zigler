@@ -2,14 +2,19 @@ defmodule Zigler.MixProject do
   use Mix.Project
 
   def project do
+    env = Mix.env()
+    if Mix.env == :unit do
+      Mix.env(:test)
+    end
+
     [
       app: :zigler,
       version: "0.1.3",
       elixir: "~> 1.9",
-      start_permanent: Mix.env() == :prod,
-      elixirc_paths: elixirc_paths(Mix.env()),
+      start_permanent: env == :prod,
+      elixirc_paths: elixirc_paths(env),
       deps: deps(),
-      aliases: [docs: "zig_doc"],
+      aliases: [docs: "zig_doc", "test.unit": "test"],
       package: [
         description: "Zig nif library",
         licenses: ["MIT"],
@@ -19,11 +24,13 @@ defmodule Zigler.MixProject do
       dialyzer: [plt_add_deps: :transitive],
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
+        "test.unit": :unit,
         coveralls: :test,
         "coveralls.detail": :test,
         "coveralls.post": :test,
         "coveralls.html": :test,
         dialyzer: :dev],
+      test_paths: test_paths(env),
       source_url: "https://github.com/ityonemo/zigler/",
       docs: [main: "Zigler", extras: ["README.md"]]
     ]
@@ -36,9 +43,12 @@ defmodule Zigler.MixProject do
   end
 
   defp elixirc_paths(:dev), do: ["lib", "zigdoc"]
-  defp elixirc_paths(:doc), do: ["lib", "zigdoc"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
+
+  defp test_paths(:test), do: ["test/integration", "test/unit"]
+  defp test_paths(:unit), do: ["test/unit"]
+  defp test_paths(_), do: []
 
   def deps do
     [
