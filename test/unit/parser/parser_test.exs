@@ -88,5 +88,37 @@ defmodule ZiglerTest.ParserTest do
       assert Enum.any?(nifs, &match?(%Nif{arity: 0, name: :foo, params: [], retval: "i64"}, &1))
       assert Enum.any?(nifs, &match?(%Nif{arity: 2, name: :oof, params: ["i64", "f64"], retval: "i64"}, &1))
     end
+
+    test "correctly puts content into the code parameter" do
+      code1 = """
+
+      /// nif: foo/0
+      fn foo() i64 {
+        return 47;
+      }
+
+      """
+
+      code2 = """
+      const bar = struct {
+        baz: i64,
+        quux: i64
+      };
+
+      /// nif: oof/2
+      fn oof(rab: i64, zab: f64) i64 {
+        return rab + 1;
+      }
+
+      """
+
+      first_parse = Parser.parse(code1, @empty_module)
+      assert %Zigler.Module{code: code} = Parser.parse(code2, first_parse)
+
+      code_binary = IO.iodata_to_binary(code)
+
+      assert code_binary =~ code1
+      assert code_binary =~ code2
+    end
   end
 end

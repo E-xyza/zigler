@@ -376,7 +376,7 @@ defmodule Zigler.Parser do
   def parse(code, old_module) do
     case parse_zig_block(code, context: Map.from_struct(old_module)) do
       {:ok, [], "", parser, _, _} ->
-        append(old_module, parser)
+        append(old_module, parser, code)
       {:error, msg, _context, {line, _}, _} ->
         raise CompileError,
           file: old_module.file,
@@ -393,9 +393,10 @@ defmodule Zigler.Parser do
   #############################################################################
   ## helpers
 
-  defp append(old_module, new_content) do
+  defp append(old_module, new_content, code) do
     new_nifs = Enum.filter(new_content.global, &match?(%Nif{}, &1))
     %{old_module |
-      nifs: old_module.nifs ++ new_nifs}
+      nifs: old_module.nifs ++ new_nifs,
+      code: [old_module.code | code]}
   end
 end
