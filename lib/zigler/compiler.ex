@@ -175,12 +175,21 @@ defmodule Zigler.Compiler do
     end
   end
 
-  def function_skeleton(_) do
-    quote do
-      def zeroarity do
-        raise "nif for function zeroarity not bound"
-      end
+  def function_skeleton(%{arity: arity, name: name}) do
+
+    text = "nif for function #{name}/#{arity} not bound"
+
+    params = if arity == 0 do
+      []
+    else
+      for _ <- 1..arity, do: {:_, [], Elixir}
     end
+
+    {:def, [context: Elixir, import: Kernel],
+      [
+        {name, [context: Elixir], params},
+        [do: {:raise, [context: Elixir, import: Kernel], [text]}]
+      ]}
   end
 
 

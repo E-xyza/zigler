@@ -18,13 +18,36 @@ defmodule ZiglerTest.DryRunTest do
   # except for running the zigler compiler
 
   test "the zeroarity function exists" do
-    Code.ensure_compiled(BasicZeroArity)
-
     assert [module = %Zigler.Module{}] = BasicZeroArity.__info__(:attributes)[:zigler]
 
     assert module.dry_run
     assert Enum.any?(module.nifs, &match?(%{name: :zeroarity, arity: 0}, &1))
 
     assert function_exported?(BasicZeroArity, :zeroarity, 0)
+
+    # make sure it crashes if we try to run it
+    assert_raise RuntimeError, fn -> BasicZeroArity.zeroarity end
+  end
+
+  defmodule BasicFortySeven do
+    use Zigler, dry_run: true
+
+    ~Z"""
+    /// nif: fortyseven/1
+    fn fortyseven(foo: i64) i64 {
+      return foo + 47;
+    }
+    """
+  end
+
+  test "the fortyseven function exists" do
+    assert [module = %Zigler.Module{}] = BasicFortySeven.__info__(:attributes)[:zigler]
+
+    assert module.dry_run
+    assert Enum.any?(module.nifs, &match?(%{name: :fortyseven, arity: 1}, &1))
+
+    assert function_exported?(BasicFortySeven, :fortyseven, 1)
+
+    assert_raise RuntimeError, fn -> BasicFortySeven.fortyseven(2) end
   end
 end
