@@ -248,15 +248,13 @@ defmodule Zigler.Zig do
 
   alias Zigler.Module
 
-  def generate(%Module{code: code}), do: """
-  pub const e = @cImport({
-    @cInclude("erl_nif_zig.h");
-  });
+  def generate(module = %Module{}), do: """
+  #{c_imports module.c_includes}
   const beam = @import("beam.zig");
   const builtin = @import("builtin");
   const std = @import("std");
 
-  #{code}
+  #{module.code}
   fn __foo_adapter__(env: beam.nev, argc: c_int, argv: [*c] const beam.term) beam.term {
     var result: c_int = foo();
     return beam.make_c_int(env, result);
@@ -308,4 +306,47 @@ defmodule Zigler.Zig do
       return &entry;
   }
   """
+
+  #############################################################################
+  ## C IMPORT HANDLING
+
+  @spec c_imports(keyword(String.t | [String.t])) :: iodata
+  def c_imports(c_includes) do
+    c_includes
+    |> aggregate_imports
+    |> Enum.map(fn
+      {tgt, includes} -> """
+      pub const #{tgt} = @cImport({
+      #{c_imports_for includes}
+      });
+      """
+    end)
+  end
+
+  @spec aggregate_imports(keyword(String.t | [String.t])) :: keyword([String.t])
+  def aggregate_imports(c_includes) do
+    c_includes
+    |> Keyword.keys
+    |> Enum.uniq
+    |> Enum.map(fn key ->
+      {key,
+        c_includes
+        |> Enum.filter(fn {k, _} -> k == key end)
+        |> Enum.flat_map(fn
+          {_, v} when is_binary(v) -> [v]
+          {_, v} when is_list(v) -> v
+        end)}
+    end)
+  end
+
+  defp c_imports_for(include) when is_binary(include), do: ~s/  @cInclude("#{include}");/
+  defp c_imports_for(includes) when is_list(includes) do
+    includes
+    |> Enum.map(&c_imports_for/1)
+    |> Enum.join("\n")
+  end
+
+  def zig_imports(%Module{imports: lst}) do
+
+  end
 end

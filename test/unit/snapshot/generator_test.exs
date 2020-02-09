@@ -22,6 +22,7 @@ defmodule ZiglerTest.GeneratorTest do
       pub const e = @cImport({
         @cInclude("erl_nif_zig.h");
       });
+
       const beam = @import("beam.zig");
       const builtin = @import("builtin");
       const std = @import("std");
