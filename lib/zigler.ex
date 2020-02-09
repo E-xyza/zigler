@@ -218,7 +218,7 @@ defmodule Zigler do
     quote do
       import Zigler
 
-      #@on_load :__load_nifs__
+      @on_load :__load_nifs__
 
       @before_compile Zigler.Compiler
     end

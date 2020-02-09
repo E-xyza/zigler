@@ -163,11 +163,27 @@ defmodule Zigler.Compiler do
     #    |> :erlang.load_nif(0)
     #  end
     #end
+
+    nif_functions = Enum.map(module.nifs, &function_skeleton/1)
+
     quote do
+      unquote_splicing(nif_functions)
+
       def __load_nifs__ do
+        :ok
       end
     end
   end
+
+  def function_skeleton(_) do
+    quote do
+      def zeroarity do
+        raise "nif for function zeroarity not bound"
+      end
+    end
+  end
+
+
 
   defp copy_files(files, src_dir, dst_dir, in_test?) do
 
