@@ -49,21 +49,6 @@ defmodule Zigler.Compiler do
         description: "zig hasn't been downloaded.  Run mix zigler.get_zig #{module.zig_version}"
     end
 
-    #zig_specs = context.module
-    #|> Module.get_attribute(:zig_specs)
-    #|> Enum.flat_map(&(&1))
-#
-    #if [] == zig_specs do
-    #  raise CompileError,
-    #    file: __CALLER__.file,
-    #    line: __CALLER__.line,
-    #    description: "use Zigler called without defining any nifs"
-    #end
-#
-    #zig_libs = Module.get_attribute(context.module, :zig_libs) || []
-    #c_includes = Module.get_attribute(context.module, :c_includes) || []
-    #zig_longs = Module.get_attribute(context.module, :zig_longs) || []
-#
     #Enum.each(zig_libs, &verify_if_shared/1)
 #
     #mod_name = Macro.underscore(context.module)
