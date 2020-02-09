@@ -36,8 +36,6 @@ defmodule Zigler.Compiler do
     debug: []
   }
 
-  @parameters ~w(zigler_app zig_version release_mode zig_src_dir zig_code zig_test zig_resources)a
-
   defmacro __before_compile__(context) do
     module = Module.get_attribute(context.module, :zigler)
 

@@ -372,20 +372,20 @@ defmodule Zigler.Parser do
   #############################################################################
   ## API
 
-  @spec parse(String.t, Nif.t) :: Nif.t
-  def parse(code, old_module) do
+  @spec parse(String.t, Zigler.Module.t, non_neg_integer) :: Zigler.Module.t
+  def parse(code, old_module, line) do
     case parse_zig_block(code, context: Map.from_struct(old_module)) do
       {:ok, [], "", parser, _, _} ->
-        append(old_module, parser, code)
-      {:error, msg, _context, {line, _}, _} ->
+        append(old_module, parser, code, line)
+      {:error, msg, _context, {ctx_line, _}, _} ->
         raise CompileError,
           file: old_module.file,
-          line: line,
+          line: ctx_line,
           description: msg
       err ->
         raise CompileError,
           file: old_module.file,
-          line: 1,
+          line: line,
           description: "unknown parsing error #{inspect err}"
     end
   end
@@ -393,8 +393,15 @@ defmodule Zigler.Parser do
   #############################################################################
   ## helpers
 
-  defp append(old_module, new_content, code) do
-    new_nifs = Enum.filter(new_content.global, &match?(%Nif{}, &1))
+  defp append(old_module, new_content = %{global: global}, code, line) do
+    unless Enum.any?(global, &match?(%Nif{}, &1)) do
+      raise CompileError,
+        file: old_module.file,
+        line: line,
+        description: "sigil Z doesn't contain any nifs"
+    end
+
+    new_nifs = Enum.filter(global, &match?(%Nif{}, &1))
     %{old_module |
       nifs: old_module.nifs ++ new_nifs,
       code: [old_module.code | code]}

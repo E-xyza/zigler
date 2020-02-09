@@ -57,7 +57,7 @@ defmodule ZiglerTest.ParserTest do
         return 47;
       }
 
-      """, @empty_module)
+      """, @empty_module, 1)
 
       assert %Nif{arity: 0, name: :foo, params: [], retval: "i64"} = nif
     end
@@ -70,7 +70,7 @@ defmodule ZiglerTest.ParserTest do
         return 47;
       }
 
-      """, @empty_module)
+      """, @empty_module, 1)
 
       assert %Zigler.Module{nifs: nifs} = Parser.parse("""
       const bar = struct {
@@ -83,7 +83,7 @@ defmodule ZiglerTest.ParserTest do
         return rab + 1;
       }
 
-      """, first_parse)
+      """, first_parse, 1)
 
       assert Enum.any?(nifs, &match?(%Nif{arity: 0, name: :foo, params: [], retval: "i64"}, &1))
       assert Enum.any?(nifs, &match?(%Nif{arity: 2, name: :oof, params: ["i64", "f64"], retval: "i64"}, &1))
@@ -112,13 +112,23 @@ defmodule ZiglerTest.ParserTest do
 
       """
 
-      first_parse = Parser.parse(code1, @empty_module)
-      assert %Zigler.Module{code: code} = Parser.parse(code2, first_parse)
+      first_parse = Parser.parse(code1, @empty_module, 1)
+      assert %Zigler.Module{code: code} = Parser.parse(code2, first_parse, 1)
 
       code_binary = IO.iodata_to_binary(code)
 
       assert code_binary =~ code1
       assert code_binary =~ code2
+    end
+
+    test "errors out if there are no nif definitions" do
+      code = """
+      fn foo(x : i64) i64 {
+        return x + 47;
+      }
+      """
+
+      assert_raise CompileError, fn -> Parser.parse(code, @empty_module, 1) end
     end
   end
 end

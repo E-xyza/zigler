@@ -242,14 +242,13 @@ defmodule Zigler do
   `Zigler.Compiler__before_compile__/1` directive.
   """
   defmacro sigil_Z({:<<>>, meta, zig_code}, []) do
-    file = __CALLER__.file
     line = meta[:line]
 
     zigler = Module.get_attribute(__CALLER__.module, :zigler)
 
     new_zigler = zig_code
     |> IO.iodata_to_binary
-    |> Parser.parse(zigler)
+    |> Parser.parse(zigler, line)
 
     Module.put_attribute(__CALLER__.module, :zigler, new_zigler)
     quote do end
