@@ -49,6 +49,10 @@ defmodule Zigler.Compiler do
         description: "zig hasn't been downloaded.  Run mix zigler.get_zig #{module.zig_version}"
     end
 
+    unless module.dry_run do
+      compile(module)
+    end
+
     #Enum.each(zig_libs, &verify_if_shared/1)
 #
     #mod_name = Macro.underscore(context.module)
@@ -175,54 +179,57 @@ defmodule Zigler.Compiler do
       ]}
   end
 
+  @spec compile(Zigler.Module.t) :: :ok | no_return
+  defp compile(module) do
 
-
-  defp copy_files(files, src_dir, dst_dir, in_test?) do
-
-    copy_fn = if in_test?, do: &copy_test/2, else: &File.cp!/2
-
-    Enum.each(files, fn file_path ->
-      src_file_path = Path.join(src_dir, file_path) |> Path.expand()
-      dst_file_path = Path.join(dst_dir, file_path)
-      # we might be trying to import something which doesn't exist as
-      # a relative file (e.g. `std`); in that case just don't complain,
-      # but also don't copy.
-      if File.exists?(src_file_path) do
-        # make sure our target directory exists.
-        dst_file_path
-        |> Path.dirname
-        |> File.mkdir_p!
-
-        copy_fn.(src_file_path, dst_file_path)
-      end
-    end)
   end
 
-  alias Zigler.Unit
-
-  defp copy_test(src_file_path, dst_file_path) do
-    modified_content = src_file_path
-    |> File.read!
-    |> Unit.Parser.modify_file(src_file_path)
-
-    File.write!(dst_file_path, modified_content)
-  end
-
-  defp count_newlines([]), do: 0
-  defp count_newlines([a | b]) do
-    count_newlines(a) + count_newlines(b)
-  end
-  defp count_newlines(str) when is_binary(str) do
-    str |> String.to_charlist |> Enum.count(&(&1 == ?\n))
-  end
-  defp count_newlines(x) do
-    if x == ?\n, do: 1, else: 0
-  end
-
-  defp verify_if_shared(lib) do
-    if String.ends_with?(lib, ".so") do
-      File.exists?(lib) || raise CompileError, description: "shared object library #{lib} not found"
-    end
-  end
-
+#  defp copy_files(files, src_dir, dst_dir, in_test?) do
+#
+#    copy_fn = if in_test?, do: &copy_test/2, else: &File.cp!/2
+#
+#    Enum.each(files, fn file_path ->
+#      src_file_path = Path.join(src_dir, file_path) |> Path.expand()
+#      dst_file_path = Path.join(dst_dir, file_path)
+#      # we might be trying to import something which doesn't exist as
+#      # a relative file (e.g. `std`); in that case just don't complain,
+#      # but also don't copy.
+#      if File.exists?(src_file_path) do
+#        # make sure our target directory exists.
+#        dst_file_path
+#        |> Path.dirname
+#        |> File.mkdir_p!
+#
+#        copy_fn.(src_file_path, dst_file_path)
+#      end
+#    end)
+#  end
+#
+#  alias Zigler.Unit
+#
+#  defp copy_test(src_file_path, dst_file_path) do
+#    modified_content = src_file_path
+#    |> File.read!
+#    |> Unit.Parser.modify_file(src_file_path)
+#
+#    File.write!(dst_file_path, modified_content)
+#  end
+#
+#  defp count_newlines([]), do: 0
+#  defp count_newlines([a | b]) do
+#    count_newlines(a) + count_newlines(b)
+#  end
+#  defp count_newlines(str) when is_binary(str) do
+#    str |> String.to_charlist |> Enum.count(&(&1 == ?\n))
+#  end
+#  defp count_newlines(x) do
+#    if x == ?\n, do: 1, else: 0
+#  end
+#
+#  defp verify_if_shared(lib) do
+#    if String.ends_with?(lib, ".so") do
+#      File.exists?(lib) || raise CompileError, description: "shared object library #{lib} not found"
+#    end
+#  end
+#
 end
