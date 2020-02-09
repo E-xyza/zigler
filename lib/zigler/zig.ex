@@ -257,8 +257,13 @@ defmodule Zigler.Zig do
   const std = @import("std");
 
   #{code}
+  fn __foo_adapter__(env: beam.nev, argc: c_int, argv: [*c] const beam.term) beam.term {
+    var result: c_int = foo();
+    return beam.make_c_int(env, result);
+  }
+
   extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-    var res: beam.term = ___async_add(env, argc, argv) catch | err | {
+    var res: beam.term = __foo_adapter__(env, argc, argv) catch | err | {
       if (err == beam.Error.FunctionClauseError) {
         return beam.throw_function_clause_error(env);
       } else if (err == error.OutOfMemory) {
@@ -287,7 +292,7 @@ defmodule Zigler.Zig do
       .major = 2,
       .minor = 15,
       .name = c"Elixir.Foo",
-      .num_of_funcs = 2,
+      .num_of_funcs = 1,
       .funcs = &(exported_nifs[0]),
       .load = nif_load,
       .reload = null,
