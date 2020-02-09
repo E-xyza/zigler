@@ -12,7 +12,8 @@ defmodule Zigler.Module do
     imports:     "",
     zig_version: Zigler.latest_cached_zig_version(),
     imports:     [std: "std", beam: "beam.zig"],
-    c_includes:  [e: "erl_nif_zig.h"]
+    c_includes:  [e: "erl_nif_zig.h"],
+    dry_run:     false
   ]
 
   @type t :: %__MODULE__{
@@ -21,6 +22,7 @@ defmodule Zigler.Module do
     zig_version: String.t,
     imports:     keyword(Path.t),
     c_includes:  keyword(Path.t),
+    dry_run:     boolean
   }
 
 end

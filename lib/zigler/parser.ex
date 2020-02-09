@@ -29,7 +29,7 @@ defmodule Zigler.Parser do
   @enif_params  ~w(e.ErlNifTerm e.ErlNifPid)
   @scalar_types @float_types ++ @int_types ++ @bool ++ @char ++ @beam_params ++ @enif_params
   @void         ["void"]
-  @env          ["?*e.ErlNifEnv"]
+  @env          ~w(?*e.ErlNifEnv beam.env)
   @array_types  Enum.flat_map(@scalar_types, &["[]#{&1}", "[*c]#{&1}", "[_]#{&1}"])
 
   @valid_params  @scalar_types ++ @array_types ++ @env

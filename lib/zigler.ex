@@ -205,7 +205,7 @@ defmodule Zigler do
       raise "non-unix systems not currently supported."
     end
 
-    user_opts = Keyword.take(opts, [:libs, :resources])
+    user_opts = Keyword.take(opts, [:libs, :resources, :dry_run])
 
     zigler = Zigler.Module
     |> struct([
@@ -218,7 +218,7 @@ defmodule Zigler do
     quote do
       import Zigler
 
-      @on_load :__load_nifs__
+      #@on_load :__load_nifs__
 
       @before_compile Zigler.Compiler
     end
