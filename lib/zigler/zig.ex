@@ -246,4 +246,6 @@ defmodule Zigler.Zig do
   return result_term;
   """
 
+  def generate(_), do: ""
+
 end

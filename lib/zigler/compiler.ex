@@ -2,6 +2,17 @@ defmodule Zigler.Compiler do
 
   @moduledoc false
 
+  @enforce_keys [:staging_dir, :code_file, :module_spec]
+
+  # contains critical information for the compilation.
+  defstruct @enforce_keys
+
+  @type t :: %__MODULE__{
+    staging_dir: Path.t,
+    code_file:   Path.t,
+    module_spec: Zigler.Module.t
+  }
+
   require Logger
 
   alias Zigler.Compiler.ErrorParser
@@ -49,9 +60,13 @@ defmodule Zigler.Compiler do
         description: "zig hasn't been downloaded.  Run mix zigler.get_zig #{module.zig_version}"
     end
 
+    compiler = precompile(module)
+
     unless module.dry_run do
-      compile(module)
+      compile(compiler)
     end
+
+    cleanup(compiler)
 
     #Enum.each(zig_libs, &verify_if_shared/1)
 #
@@ -179,9 +194,37 @@ defmodule Zigler.Compiler do
       ]}
   end
 
-  @spec compile(Zigler.Module.t) :: :ok | no_return
-  defp compile(module) do
+  @staging_root Application.get_env(:zigler, :staging_root, "/tmp/zigler_compiler")
 
+  @spec precompile(Zigler.Module.t) :: t | no_return
+  def precompile(module) do
+
+    # build the staging directory.
+    random_stamp = DateTime.utc_now |> :erlang.phash2 |> Integer.to_string(16)
+    staging_dir = Path.join(@staging_root, "#{module.module}-#{random_stamp}")
+    File.mkdir_p(staging_dir)
+
+    # define the code file and build it.
+    code_file = Path.join(staging_dir, "#{module.module}.zig")
+    File.write!(code_file, Zig.generate(module))
+
+    # assemble the module struct
+    %__MODULE__{
+      staging_dir: staging_dir,
+      code_file:   code_file,
+      module_spec: module
+    }
+  end
+
+  @spec compile(t) :: :ok | no_return
+  defp compile(compiler) do
+    # first move everything into the staging directory.
+    :ok
+  end
+
+  @spec cleanup(t) :: :ok | no_return
+  defp cleanup(compiler) do
+    :ok
   end
 
 #  defp copy_files(files, src_dir, dst_dir, in_test?) do

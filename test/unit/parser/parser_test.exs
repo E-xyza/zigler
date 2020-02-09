@@ -47,7 +47,7 @@ defmodule ZiglerTest.ParserTest do
 
   describe "the zig code parser" do
 
-    @empty_module %Zigler.Module{file: ""}
+    @empty_module %Zigler.Module{file: "", module: __MODULE__}
 
     test "can correctly parse a zig block with a single nif function" do
       assert %Zigler.Module{nifs: [nif]} = Parser.parse("""
