@@ -19,7 +19,7 @@ defmodule ZiglerTest.GeneratorTest do
       """
 
       assert """
-      pub const e = @cImport({
+      const e = @cImport({
         @cInclude("erl_nif_zig.h");
       });
 

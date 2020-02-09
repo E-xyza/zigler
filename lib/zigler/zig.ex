@@ -316,7 +316,7 @@ defmodule Zigler.Zig do
     |> aggregate_imports
     |> Enum.map(fn
       {tgt, includes} -> """
-      pub const #{tgt} = @cImport({
+      const #{tgt} = @cImport({
       #{c_imports_for includes}
       });
       """

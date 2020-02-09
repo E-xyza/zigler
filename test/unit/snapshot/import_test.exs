@@ -4,7 +4,7 @@ defmodule ZiglerTest.Snapshot.ImportsTest do
   describe "c_imports" do
     test "generates the default correctly" do
       assert ["""
-      pub const e = @cImport({
+      const e = @cImport({
         @cInclude("erl_nif_zig.h");
       });
       """] == Zigler.Zig.c_imports([e: "erl_nif_zig.h"])
@@ -12,7 +12,7 @@ defmodule ZiglerTest.Snapshot.ImportsTest do
 
     test "generates arbitrary content correctly" do
       assert ["""
-      pub const foo = @cImport({
+      const foo = @cImport({
         @cInclude("bar.h");
       });
       """] == Zigler.Zig.c_imports([foo: "bar.h"])
@@ -20,7 +20,7 @@ defmodule ZiglerTest.Snapshot.ImportsTest do
 
     test "generates multiple includes in the same namespace correctly" do
       assert ["""
-      pub const foo = @cImport({
+      const foo = @cImport({
         @cInclude("bar.h");
         @cInclude("baz.h");
       });
@@ -29,7 +29,7 @@ defmodule ZiglerTest.Snapshot.ImportsTest do
 
     test "generates multiple includes in the same namespace, specified separately, correctly" do
       assert ["""
-      pub const foo = @cImport({
+      const foo = @cImport({
         @cInclude("bar.h");
         @cInclude("baz.h");
       });
@@ -38,10 +38,10 @@ defmodule ZiglerTest.Snapshot.ImportsTest do
 
     test "can generate multiple namespaces" do
       assert """
-      pub const foo = @cImport({
+      const foo = @cImport({
         @cInclude("bar.h");
       });
-      pub const baz = @cImport({
+      const baz = @cImport({
         @cInclude("quux.h");
       });
       """ == Zigler.Zig.c_imports([foo: "bar.h", baz: "quux.h"]) |> IO.iodata_to_binary
