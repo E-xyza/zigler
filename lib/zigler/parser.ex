@@ -21,6 +21,20 @@ defmodule Zigler.Parser do
   @alphanumeric [?a..?z, ?A..?Z, ?0..?9, ?_]
   @number [?0..?9]
 
+  @float_types  ~w(f16 f32 f64)
+  @int_types    ~w(i16 u16 i32 u32 i64 u64 c_int c_long isize usize)
+  @bool         ["bool"]
+  @char         ["u8"]
+  @beam_params  ~w(beam.term beam.atom beam.pid)
+  @enif_params  ~w(e.ErlNifTerm e.ErlNifPid)
+  @scalar_types @float_types ++ @int_types ++ @bool ++ @char ++ @beam_params ++ @enif_params
+  @void         ["void"]
+  @env          ["?*e.ErlNifEnv"]
+  @array_types  Enum.flat_map(@scalar_types, &["[]#{&1}", "[*c]#{&1}", "[_]#{&1}"])
+
+  @valid_params  @scalar_types ++ @array_types ++ @env
+  @valid_retvals @scalar_types ++ @array_types ++ @void
+
   #############################################################################
   ## GENERIC NIMBLE_PARSEC PARSERS
 
@@ -277,8 +291,6 @@ defmodule Zigler.Parser do
   end
   defp validate_arity(_content, _context, _line), do: :ok
 
-  @valid_params ["i64", "f64"]
-
   # validate_params/5 : trampolines to validate_params/3
   # ignore parameter validation if we're not in a segment specified by a nif.
   @spec validate_params(String.t, [String.t], t, line_info, non_neg_integer)
@@ -303,8 +315,6 @@ defmodule Zigler.Parser do
       line: line,
       description: "nif function #{context.local.name} demands an invalid parameter type #{invalid_type}"
   end
-
-  @valid_retvals ["i64"]
 
   # validate_retval/5 : trampolines to validate_params/3
   # ignore parameter validation if we're not in a segment specified by a nif.

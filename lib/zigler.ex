@@ -190,16 +190,14 @@ defmodule Zigler do
 
   """
 
+  alias Zigler.Parser
+
   # default release modes.
   # you can override these in your `use Zigler` statement.
   @default_release_modes %{prod: :safe, dev: :debug, test: :debug}
   @default_release_mode @default_release_modes[Mix.env()]
 
   defmacro __using__(opts) do
-    unless opts[:app] do
-      raise ArgumentError, "you must provide the application"
-    end
-
     mode = opts[:release_mode] || @default_release_mode
 
     # make sure that we're in the correct operating system.
@@ -207,51 +205,20 @@ defmodule Zigler do
       raise "non-unix systems not currently supported."
     end
 
-    ###########################################################################
-    # Required options:
+    user_opts = Keyword.take(opts, [:libs, :resources])
 
-    mod_path =  opts[:app]
-    |> Application.app_dir("priv/nifs")
-    |> Path.join(Macro.underscore(__CALLER__.module))
+    zigler = Zigler.Module
+    |> struct([
+      file:        __CALLER__.file
+    ] ++ user_opts)
 
-    ###########################################################################
-    # Optional options:
-
-    zig_version = opts[:version] || latest_cached_version()
-    c_includes = opts[:include]
-
-    libs = opts[:libs]
-    resources = opts[:resources] || []
-
-    File.mkdir_p!(Path.dirname(mod_path))
-
-    src_dir = Path.dirname(__CALLER__.file)
+    Module.register_attribute(__CALLER__.module, :zigler, persist: true)
+    Module.put_attribute(__CALLER__.module, :zigler, zigler)
 
     quote do
       import Zigler
 
       @on_load :__load_nifs__
-
-      # persisted values
-      @zigler_app unquote(opts[:app])
-      @zig_version unquote(zig_version)
-      @zig_src_dir unquote(src_dir)
-      @zig_resources unquote(resources)
-
-      # free values
-      @release_mode unquote(mode)
-      @zig_libs unquote(libs)
-      @c_includes unquote(c_includes)
-
-      # needs to be persisted so that we can store the version for tests.
-      Module.register_attribute(__MODULE__, :zigler_app, persist: true)
-      Module.register_attribute(__MODULE__, :zig_version, persist: true)
-      Module.register_attribute(__MODULE__, :zig_src_dir, persist: true)
-      Module.register_attribute(__MODULE__, :zig_resources, persist: true)
-      Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
-      Module.register_attribute(__MODULE__, :zig_longs, accumulate: true)
-      Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
-      Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
 
       @before_compile Zigler.Compiler
     end
@@ -270,49 +237,22 @@ defmodule Zigler do
   end
 
   @doc """
-  Analyzes Zig code inline, then assembles a series of code files, stashes them in a
-  temporary directory, compiles it with NIF adapters, and then binds it into the current
-  module.  You may have multiple sigil_Z blocks in a single Elixir module if you wish.
+  Parses zig code and then accumulates it into the module's :zigler attribute.
+  Doesn't actually write any code, since it can all be taken care of in the
+  `Zigler.Compiler__before_compile__/1` directive.
   """
-  defmacro sigil_Z({:<<>>, meta, [zig_code]}, []) do
+  defmacro sigil_Z({:<<>>, meta, zig_code}, []) do
     file = __CALLER__.file
     line = meta[:line]
 
-    # perform code analysis
-    code = Zigler.Code.from_string(zig_code, file, line)
+    zigler = Module.get_attribute(__CALLER__.module, :zigler)
 
-    # add a specs list to be retrieved by the compiler.
-    code_spec = Enum.flat_map(code.nifs, &nif_to_spec/1)
+    new_zigler = zig_code
+    |> IO.iodata_to_binary
+    |> Parser.parse(zigler)
 
-    empty_functions = Enum.flat_map(code.nifs, fn nif ->
-      if nif.doc do
-        [{:@,
-           [context: Elixir, import: Kernel],
-           [{:doc, [context: Elixir], [IO.iodata_to_binary(nif.doc)]}]}]
-      else
-        []
-      end
-      ++
-      [
-        typespec_for(nif),
-        basic_function(nif.name, nif.arity, nif.opts),
-      ]
-    end)
-
-    long_adapters = Enum.flat_map(code.nifs, fn nif ->
-      if :long in nif.opts do
-        LongRunning.adapters(nif)
-      else
-        []
-      end
-    end)
-
-    quote do
-      @zig_code unquote(code.code)
-      @zig_specs unquote(code_spec)
-      @zig_longs unquote(long_adapters)
-      unquote_splicing(empty_functions)
-    end
+    Module.put_attribute(__CALLER__.module, :zigler, new_zigler)
+    quote do end
   end
 
   @doc false
@@ -440,7 +380,7 @@ defmodule Zigler do
 
   @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
 
-  defp latest_cached_version do
+  def latest_cached_zig_version do
     @zig_dir_path
     |> File.ls!
     |> Enum.filter(&match?("zig" <> _, &1))
