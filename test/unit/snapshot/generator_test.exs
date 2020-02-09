@@ -23,9 +23,9 @@ defmodule ZiglerTest.GeneratorTest do
         @cInclude("erl_nif_zig.h");
       });
 
-      const beam = @import("beam.zig");
       const builtin = @import("builtin");
       const std = @import("std");
+      const beam = @import("beam.zig");
 
       // foo.exs line: 3
 

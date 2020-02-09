@@ -250,10 +250,7 @@ defmodule Zigler.Zig do
 
   def generate(module = %Module{}), do: """
   #{c_imports module.c_includes}
-  const beam = @import("beam.zig");
-  const builtin = @import("builtin");
-  const std = @import("std");
-
+  #{zig_imports module.imports}
   #{module.code}
   fn __foo_adapter__(env: beam.nev, argc: c_int, argv: [*c] const beam.term) beam.term {
     var result: c_int = foo();
@@ -317,7 +314,7 @@ defmodule Zigler.Zig do
     |> Enum.map(fn
       {tgt, includes} -> """
       const #{tgt} = @cImport({
-      #{c_imports_for includes}
+      #{c_includes includes}
       });
       """
     end)
@@ -339,14 +336,17 @@ defmodule Zigler.Zig do
     end)
   end
 
-  defp c_imports_for(include) when is_binary(include), do: ~s/  @cInclude("#{include}");/
-  defp c_imports_for(includes) when is_list(includes) do
+  @spec c_includes(String.t | [String.t]) :: String.t
+  defp c_includes(include) when is_binary(include), do: ~s/  @cInclude("#{include}");/
+  defp c_includes(includes) when is_list(includes) do
     includes
-    |> Enum.map(&c_imports_for/1)
+    |> Enum.map(&c_includes/1)
     |> Enum.join("\n")
   end
 
-  def zig_imports(%Module{imports: lst}) do
-
+  def zig_imports(imports) do
+    Enum.map(imports, fn {k, v} ->
+      ~s/const #{k} = @import("#{v}");\n/
+    end)
   end
 end

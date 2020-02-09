@@ -9,7 +9,7 @@ defmodule Zigler.Module do
   defstruct @enforce_keys ++ [
     nifs:        [],
     zig_version: "0.5.0",
-    imports:     [std: "std", beam: "beam.zig"],
+    imports:     [builtin: "builtin", std: "std", beam: "beam.zig"],
     c_includes:  [e: "erl_nif_zig.h"],
     dry_run:     false,
     code:        []
