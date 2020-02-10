@@ -54,10 +54,10 @@ defmodule ZiglerTest.GeneratorTest do
 
       var exported_nifs = [1] e.ErlNifFunc{
         e.ErlNifFunc{
-            .name = c"foo",
-            .arity = 0,
-            .fptr = __foo_shim__,
-            .flags = 0,
+          .name = c"foo",
+          .arity = 0,
+          .fptr = __foo_shim__,
+          .flags = 0,
         },
       };
 
@@ -66,19 +66,19 @@ defmodule ZiglerTest.GeneratorTest do
       }
 
       const entry = e.ErlNifEntry{
-          .major = #{major},
-          .minor = #{minor},
-          .name = c"Elixir.Foo",
-          .num_of_funcs = 1,
-          .funcs = &(exported_nifs[0]),
-          .load = nif_load,
-          .reload = null,
-          .upgrade = null,
-          .unload = null,
-          .vm_variant = c"beam.vanilla",
-          .options = 1,
-          .sizeof_ErlNifResourceTypeInit = 24,
-          .min_erts = c"erts-#{:erlang.system_info(:version)}"
+        .major = #{major},
+        .minor = #{minor},
+        .name = c"Elixir.Foo",
+        .num_of_funcs = 1,
+        .funcs = &(exported_nifs[0]),
+        .load = nif_load,
+        .reload = null,
+        .upgrade = null,
+        .unload = null,
+        .vm_variant = c"beam.vanilla",
+        .options = 1,
+        .sizeof_ErlNifResourceTypeInit = 24,
+        .min_erts = c"erts-#{:erlang.system_info(:version)}"
       };
 
       export fn nif_init() *const e.ErlNifEntry{

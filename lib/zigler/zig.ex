@@ -4,6 +4,8 @@ defmodule Zigler.Zig do
 
   # contains all parts of the Zigler library which is involved in generating zig code.
 
+  alias Zigler.Parser.Nif
+
   require EEx
 
   EEx.function_from_file(:def, :nif_adapter_unguarded, "assets/nif_adapter.zig.eex", [:assigns])
@@ -268,15 +270,6 @@ defmodule Zigler.Zig do
       };
       return res;
     }
-
-    var exported_nifs = [1] e.ErlNifFunc{
-      e.ErlNifFunc{
-          .name = c"foo",
-          .arity = 0,
-          .fptr = __foo_shim__,
-          .flags = 0,
-      },
-    };
     """
 
     [header, "\n", module.code, "\n", adapter, "\n", footer(module)]
@@ -338,24 +331,27 @@ defmodule Zigler.Zig do
     [major, minor] = nif_major_minor()
     funcs_count = Enum.count(module.nifs)
     """
+    var exported_nifs = [#{funcs_count}] e.ErlNifFunc{
+    #{Enum.map(module.nifs, &nif_struct/1)}};
+
     export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
       return 0;
     }
 
     const entry = e.ErlNifEntry{
-        .major = #{major},
-        .minor = #{minor},
-        .name = c"#{module.module}",
-        .num_of_funcs = #{funcs_count},
-        .funcs = &(exported_nifs[0]),
-        .load = nif_load,
-        .reload = null,
-        .upgrade = null,
-        .unload = null,
-        .vm_variant = c"beam.vanilla",
-        .options = 1,
-        .sizeof_ErlNifResourceTypeInit = 24,
-        .min_erts = c"erts-#{:erlang.system_info(:version)}"
+      .major = #{major},
+      .minor = #{minor},
+      .name = c"#{module.module}",
+      .num_of_funcs = #{funcs_count},
+      .funcs = &(exported_nifs[0]),
+      .load = nif_load,
+      .reload = null,
+      .upgrade = null,
+      .unload = null,
+      .vm_variant = c"beam.vanilla",
+      .options = 1,
+      .sizeof_ErlNifResourceTypeInit = 24,
+      .min_erts = c"erts-#{:erlang.system_info(:version)}"
     };
 
     export fn nif_init() *const e.ErlNifEntry{
@@ -370,6 +366,17 @@ defmodule Zigler.Zig do
     |> :erlang.system_info
     |> List.to_string
     |> String.split(".")
+  end
+
+  defp nif_struct(%Nif{name: name, arity: arity}) do
+    """
+      e.ErlNifFunc{
+        .name = c"#{name}",
+        .arity = #{arity},
+        .fptr = __#{name}_shim__,
+        .flags = 0,
+      },
+    """
   end
 
   #############################################################################
