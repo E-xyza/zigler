@@ -2,9 +2,10 @@ defmodule Zigler.Code do
   @moduledoc """
   all code responsible for generating zig code lives in this module.
   """
+  alias Zigler.{Module, Types}
   alias Zigler.Parser.Nif
 
-  def generate_main(module = %Zigler.Module{}) do
+  def generate_main(module = %Module{}) do
     [
       c_imports(module.c_includes), "\n",
       zig_imports(module.imports), "\n",
@@ -67,8 +68,7 @@ defmodule Zigler.Code do
   ## ADAPTER GENERATION
 
   def adapter(nif = %Zigler.Parser.Nif{}) do
-
-    retval_module = Module.concat(Zigler.Types, Macro.camelize(nif.retval))
+    retval_module = Types.module_for(nif.retval)
 
     result_var = "__#{nif.name}_result__"
     function_call = "#{nif.name}()"
@@ -85,7 +85,7 @@ defmodule Zigler.Code do
   #############################################################################
   ## FOOTER GENERATION
 
-  def footer(module = %Zigler.Module{}) do
+  def footer(module = %Module{}) do
     [major, minor] = nif_major_minor()
     funcs_count = Enum.count(module.nifs)
     """
