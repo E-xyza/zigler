@@ -2,11 +2,9 @@ defmodule Zigler.Code do
   @moduledoc """
   all code responsible for generating zig code lives in this module.
   """
-
-  alias Zigler.Module
   alias Zigler.Parser.Nif
 
-  def generate_main(module = %Module{}) do
+  def generate_main(module = %Zigler.Module{}) do
     [
       c_imports(module.c_includes), "\n",
       zig_imports(module.imports), "\n",
@@ -69,10 +67,16 @@ defmodule Zigler.Code do
   ## ADAPTER GENERATION
 
   def adapter(nif = %Zigler.Parser.Nif{}) do
+
+    retval_module = Module.concat(Zigler.Types, Macro.camelize(nif.retval))
+
+    result_var = "__#{nif.name}_result__"
+    function_call = "#{nif.name}()"
+
     """
     extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-      var __#{nif.name}_result__: c_long = #{nif.name}();
-      return beam.make_c_long(env, __#{nif.name}_result__);
+      var #{result_var} = #{function_call};
+      return #{retval_module.to_beam result_var};
     }
 
     """
