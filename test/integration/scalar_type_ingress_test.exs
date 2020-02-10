@@ -72,7 +72,7 @@ defmodule ZiglerTest.Integration.ScalarTypeIngressTest do
   }
 
   /// nif: ingress_c_long/1
-  fn ingress_c_long(val: c_ulong) c_long {
+  fn ingress_c_long(val: c_long) c_long {
     return val;
   }
 

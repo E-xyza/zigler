@@ -235,6 +235,9 @@ pub fn get(comptime T: type, environment: env, value: term) !T {
     isize  => return get_isize(environment, value),
     usize  => return get_usize(environment, value),
     u8     => return get_u8(environment, value),
+    u16    => return get_u16(environment, value),
+    u32    => return get_u32(environment, value),
+    u64    => return get_u64(environment, value),
     i32    => return get_i32(environment, value),
     i64    => return get_i64(environment, value),
     f16    => return get_f16(environment, value),
@@ -258,6 +261,17 @@ pub fn get_c_int(environment: env, src_term: term) !c_int {
   } else { return Error.FunctionClauseError; }
 }
 
+/// Takes a BEAM int term and returns a `c_uint` value.  Should only be used for
+/// C interop with Zig functions.
+///
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
+pub fn get_c_uint(environment: env, src_term: term) !c_uint {
+  var result: c_uint = undefined;
+  if (0 != e.enif_get_uint(environment, src_term, &result)) {
+    return result;
+  } else { return Error.FunctionClauseError; }
+}
+
 /// Takes a BEAM int term and returns a `c_long` value.  Should only be used
 /// for C interop with Zig functions.
 ///
@@ -265,6 +279,17 @@ pub fn get_c_int(environment: env, src_term: term) !c_int {
 pub fn get_c_long(environment: env, src_term: term) !c_long {
   var result: c_long = undefined;
   if (0 != e.enif_get_long(environment, src_term, &result)) {
+    return result;
+  } else { return Error.FunctionClauseError; }
+}
+
+/// Takes a BEAM int term and returns a `c_ulong` value.  Should only be used
+/// for C interop with Zig functions.
+///
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
+pub fn get_c_ulong(environment: env, src_term: term) !c_ulong {
+  var result: c_ulong = undefined;
+  if (0 != e.enif_get_ulong(environment, src_term, &result)) {
     return result;
   } else { return Error.FunctionClauseError; }
 }
@@ -300,9 +325,44 @@ pub fn get_usize(environment: env, src_term: term) !usize {
 pub fn get_u8(environment: env, src_term: term) !u8 {
   var result: c_int = undefined;
   if (0 != e.enif_get_int(environment, src_term, &result)) {
-    if ((result >= 0) and (result <= 255)) {
+    if ((result >= 0) and (result <= 0xFF)) {
       return @intCast(u8, result);
     } else { return Error.FunctionClauseError; }
+  } else { return Error.FunctionClauseError; }
+}
+
+/// Takes a BEAM int term and returns a `u16` value.
+///
+/// Note that this conversion function checks to make sure it's in range
+/// (`0..65535`).
+///
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
+pub fn get_u16(environment: env, src_term: term) !u16 {
+  var result: c_int = undefined;
+  if (0 != e.enif_get_int(environment, src_term, &result)) {
+    if ((result >= 0) and (result <= 0xFFFF)) {
+      return @intCast(u16, result);
+    } else { return Error.FunctionClauseError; }
+  } else { return Error.FunctionClauseError; }
+}
+
+/// Takes a BEAM int term and returns a `u32` value.
+///
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
+pub fn get_u32(environment: env, src_term: term) !u32 {
+  var result: c_uint = undefined;
+  if (0 != e.enif_get_uint(environment, src_term, &result)) {
+    return @intCast(u32, result);
+  } else { return Error.FunctionClauseError; }
+}
+
+/// Takes a BEAM int term and returns a `u64` value.
+///
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
+pub fn get_u64(environment: env, src_term: term) !u64 {
+  var result: c_ulong = undefined;
+  if (0 != e.enif_get_ulong(environment, src_term, &result)) {
+    return @intCast(u64, result);
   } else { return Error.FunctionClauseError; }
 }
 
