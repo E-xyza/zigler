@@ -22,7 +22,7 @@ defmodule Zigler.Parser do
   @number [?0..?9]
 
   @float_types  ~w(f16 f32 f64)
-  @int_types    ~w(i16 u16 i32 u32 i64 u64 c_int c_long isize usize)
+  @int_types    ~w(u16 i32 u32 i64 u64 c_int c_uint c_long c_ulong isize usize)
   @bool         ["bool"]
   @char         ["u8"]
   @beam_params  ~w(beam.term beam.atom beam.pid)

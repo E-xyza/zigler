@@ -276,6 +276,7 @@ defmodule Zigler.Zig do
     case System.cmd(zig_executable, cmd_opts, opts) do
       {_, 0} -> :ok
       {err, _} ->
+        err |> IO.inspect(label: "279")
         raise "error"
         #ErrorParser.parse(err, src_dir, tmp_dir)
     end

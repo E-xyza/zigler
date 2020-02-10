@@ -654,22 +654,42 @@ pub fn get_bool(environment: env, val: term) !bool {
 pub fn make(comptime T: type, environment: env, val: T) term {
   switch (T) {
     u8     => return make_u8(environment, val),
-    c_int  => return make_c_int(environment, val),
-    c_long => return make_c_long(environment, val),
-    isize  => return make_isize(environment, val),
-    usize  => return make_usize(environment, val),
-    i32    => return make_i32(environment, val),
-    i64    => return make_i64(environment, val),
-    f16    => return make_f16(environment, val),
-    f32    => return make_f32(environment, val),
-    f64    => return make_f64(environment, val),
-    else   => unreachable
+    u16    => return make_u16(environment, val),
+    u32    => return make_u32(environment, val),
+    u64     => return make_u64(environment, val),
+    c_int   => return make_c_int(environment, val),
+    c_uint  => return make_c_uint(environment, val),
+    c_long  => return make_c_long(environment, val),
+    c_ulong => return make_c_ulong(environment, val),
+    isize   => return make_isize(environment, val),
+    usize   => return make_usize(environment, val),
+    i32     => return make_i32(environment, val),
+    i64     => return make_i64(environment, val),
+    f16     => return make_f16(environment, val),
+    f32     => return make_f32(environment, val),
+    f64     => return make_f64(environment, val),
+    else    => unreachable
   }
 }
 
 /// converts a char (`u8`) value into a BEAM `t:integer/0`.
 pub fn make_u8(environment: env, chr: u8) term {
-  return e.enif_make_int(environment, @intCast(c_int, chr));
+  return e.enif_make_uint(environment, @intCast(c_uint, chr));
+}
+
+/// converts a unsigned (`u16`) value into a BEAM `t:integer/0`.
+pub fn make_u16(environment: env, val: u16) term {
+  return e.enif_make_uint(environment, @intCast(c_uint, val));
+}
+
+/// converts a unsigned (`u32`) value into a BEAM `t:integer/0`.
+pub fn make_u32(environment: env, val: u32) term {
+  return e.enif_make_uint(environment, @intCast(c_uint, val));
+}
+
+/// converts a unsigned (`u64`) value into a BEAM `t:integer/0`.
+pub fn make_u64(environment: env, val: u64) term {
+  return e.enif_make_ulong(environment, @intCast(c_ulong, val));
 }
 
 /// converts a `c_int` value into a BEAM `t:integer/0`.
@@ -677,9 +697,19 @@ pub fn make_c_int(environment: env, val: c_int) term {
   return e.enif_make_int(environment, val);
 }
 
+/// converts a `c_uint` value into a BEAM `t:integer/0`.
+pub fn make_c_uint(environment: env, val: c_uint) term {
+  return e.enif_make_uint(environment, val);
+}
+
 /// converts a `c_long` value into a BEAM `t:integer/0`.
 pub fn make_c_long(environment: env, val: c_long) term {
   return e.enif_make_long(environment, val);
+}
+
+/// converts a `c_ulong` value into a BEAM `t:integer/0`.
+pub fn make_c_ulong(environment: env, val: c_ulong) term {
+  return e.enif_make_ulong(environment, val);
 }
 
 /// converts an `isize` value into a BEAM `t:integer/0`.
