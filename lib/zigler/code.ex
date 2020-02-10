@@ -72,8 +72,6 @@ defmodule Zigler.Code do
   ## ADAPTER GENERATION
 
   def adapter(nif = %Zigler.Parser.Nif{}) do
-    retval_module = Types.module_for(nif.retval)
-
     args = args(nif)
 
     get_clauses = get_clauses(nif)
@@ -85,7 +83,7 @@ defmodule Zigler.Code do
     result = """
       var #{result_var} = #{function_call};
 
-      return #{retval_module.to_beam result_var};
+      return beam.make_#{nif.retval}(env, #{result_var});
     }
     """
     [head, "\n", get_clauses, result, "\n"]
