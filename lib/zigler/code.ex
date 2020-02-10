@@ -74,15 +74,42 @@ defmodule Zigler.Code do
   def adapter(nif = %Zigler.Parser.Nif{}) do
     retval_module = Types.module_for(nif.retval)
 
-    result_var = "__#{nif.name}_result__"
-    function_call = "#{nif.name}()"
+    args = args(nif)
 
-    """
-    extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+    get_clauses = get_clauses(nif)
+
+    result_var = "__#{nif.name}_result__"
+    function_call = "#{nif.name}(#{args})"
+
+    head = "extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
+    result = """
       var #{result_var} = #{function_call};
+
       return #{retval_module.to_beam result_var};
     }
+    """
+    [head, "\n", get_clauses, result, "\n"]
+  end
 
+  defp args(%{arity: 0}), do: ""
+  defp args(nif) do
+    0..(nif.arity - 1)
+    |> Enum.map(&"__#{nif.name}_arg#{&1}__")
+    |> Enum.join(", ")
+  end
+
+  defp get_clauses(%{arity: 0}), do: ""
+  defp get_clauses(nif) do
+    [nif.params
+    |> Enum.with_index
+    |> Enum.map(&get_clause(&1, nif.name)),
+    "\n"]
+  end
+
+  defp get_clause({type, index}, function) do
+    """
+      var __#{function}_arg#{index}__ = beam.get_#{type}(env, argv[#{index}])
+        catch return beam.raise_function_clause_error(env);
     """
   end
 

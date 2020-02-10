@@ -98,7 +98,7 @@ defmodule Allocations do
   /// nif: double_atom/1
   fn double_atom(env: beam.env, string: []u8) beam.atom {
     var double_string = beam.allocator.alloc(u8, string.len * 2) catch {
-      return beam.throw_enomem(env);
+      return beam.raise_enomem(env);
     };
 
     defer beam.allocator.free(double_string);
@@ -136,13 +136,13 @@ defmodule BlasDynamic do
   /// nif: blas_axpy/3
   fn blas_axpy(env: beam.env, a: f64, x: []f64, y: []f64) beam.term {
     if (x.len != y.len) {
-      return beam.throw_function_clause_error(env);
+      return beam.raise_function_clause_error(env);
     }
 
     blas.cblas_daxpy(@intCast(c_int, x.len), a, &x[0], 1, &y[0], 1);
 
     return beam.make_f64_list(env, y) catch {
-      return beam.throw_function_clause_error(env);
+      return beam.raise_function_clause_error(env);
     };
   }
   """

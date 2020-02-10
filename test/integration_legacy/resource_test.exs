@@ -13,7 +13,7 @@ defmodule ZiglerTest.ResourceTest do
   /// nif: make_int_resource/1
   fn make_int_resource(env: beam.env, val: i64) beam.term {
     return beam.resource.create(i64, env, resource_test, val)
-      catch |err| return beam.throw_enomem(env);
+      catch |err| return beam.raise_enomem(env);
   }
 
   /// nif: fetch_int_resource/1

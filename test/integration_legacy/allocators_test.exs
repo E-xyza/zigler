@@ -10,7 +10,7 @@ defmodule ZiglerTest.AllocatorsTest do
       var usize_length = @intCast(usize, length);
 
       var slice = beam.allocator.alloc(u8, usize_length) catch {
-        return beam.throw_enomem(env);
+        return beam.raise_enomem(env);
       };
 
       defer beam.allocator.free(slice);
@@ -28,13 +28,13 @@ defmodule ZiglerTest.AllocatorsTest do
       var usize_length = @intCast(usize, length);
 
       var slice = beam.allocator.alloc(u8, usize_length) catch {
-        return beam.throw_enomem(env);
+        return beam.raise_enomem(env);
       };
 
       defer beam.allocator.free(slice);
 
       var slice2 = beam.allocator.realloc(slice, usize_length * 2) catch {
-        return beam.throw_enomem(env);
+        return beam.raise_enomem(env);
       };
 
       // fill the slice with letters

@@ -24,13 +24,13 @@ defmodule Zigler.LibraryTest do
       fn blas_axpy(env: beam.env, a: f64, x: []f64, y: []f64) beam.term {
 
         if (x.len != y.len) {
-          return beam.throw_function_clause_error(env);
+          return beam.raise_function_clause_error(env);
         }
 
         blas.cblas_daxpy(@intCast(c_int, x.len), a, &x[0], 1, &y[0], 1);
 
         return beam.make_f64_list(env, y) catch {
-          return beam.throw_function_clause_error(env);
+          return beam.raise_function_clause_error(env);
         };
       }
       """
@@ -60,13 +60,13 @@ defmodule Zigler.LibraryTest do
       fn blas_axpy(env: beam.env, a: f64, x: []f64, y: []f64) beam.term {
 
         if (x.len != y.len) {
-          return beam.throw_function_clause_error(env);
+          return beam.raise_function_clause_error(env);
         }
 
         blas.cblas_daxpy(@intCast(c_int, x.len), a, &x[0], 1, &y[0], 1);
 
         return beam.make_f64_list(env, y) catch {
-          return beam.throw_function_clause_error(env);
+          return beam.raise_function_clause_error(env);
         };
       }
       """

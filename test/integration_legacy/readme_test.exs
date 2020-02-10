@@ -48,7 +48,7 @@ defmodule ZiglerTest.ReadmeTest do
     fn double_atom(env: beam.env, string: []u8) beam.atom {
 
       var double_string = beam.allocator.alloc(u8, string.len * 2) catch {
-        return beam.throw_enomem(env);
+        return beam.raise_enomem(env);
       };
 
       defer beam.allocator.free(double_string);

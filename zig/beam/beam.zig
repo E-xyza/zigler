@@ -1087,7 +1087,7 @@ const enomem_slice = "enomem"[0..];
 /// OOM errors from `beam.allocator` can be converted to a generic erlang term
 /// that represents an exception.  Returning this from your NIF results in
 /// a BEAM throw event.
-pub fn throw_enomem(environment: env) term {
+pub fn raise_enomem(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, enomem_slice));
 }
 
@@ -1100,7 +1100,7 @@ const f_c_e_slice = "function_clause"[0..];
 /// ingress from the dynamic BEAM runtime to the static Zig runtime.
 /// You can also use this function to communicate a similar error by returning the
 /// resulting term from your NIF.
-pub fn throw_function_clause_error(environment: env) term {
+pub fn raise_function_clause_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, f_c_e_slice));
 }
 
@@ -1110,7 +1110,7 @@ const assert_slice = "assertion_error"[0..];
 /// exception.
 ///
 /// Used when running Zigtests, when trapping `beam.AssertionError.AssertionError`.
-pub fn throw_assertion_error(environment: env) term {
+pub fn raise_assertion_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, assert_slice));
 }
 
