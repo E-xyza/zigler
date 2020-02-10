@@ -974,10 +974,6 @@ pub fn make_ref(environment: env) !term {
   if (0 != result) { return result; } else { return Error.FunctionClauseError; }
 }
 
-pub fn raise(environment: env, exception: atom) term {
-  return e.enif_raise_exception(environment, exception);
-}
-
 ///////////////////////////////////////////////////////////////////////////////
 // resources
 
@@ -1004,6 +1000,21 @@ pub const resource = struct {
     return e.enif_make_resource(environment, ptr);
   }
 
+  
+  pub fn update(comptime T : type, environment: env, res_typ: res, res_trm: term, new_val: T) !void {
+    var obj : ?*c_void = undefined;
+
+    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) { 
+      return resource.Err.ResourceError; 
+    }
+
+    if (obj == null) { unreachable; }
+
+    var val : *T = @ptrCast(*T, @alignCast(@alignOf(*T), obj));
+
+    val.* = new_val;
+  }
+
   pub fn fetch(comptime T : type, environment: env, res_typ: res, res_trm: term) !T {
     var obj : ?*c_void = undefined;
 
@@ -1022,15 +1033,19 @@ pub const resource = struct {
     return val.*;
   }
 
-  //pub fn release(environment: env, result: term) void {
-  //  var obj : *void;
-  //  var result = e.enif_get_resource(environment, result, resource_type, &obj);
-  //  return e.enif_release_resource(obj);
-  //}
+  pub fn release(environment: env, res_typ: res, res_trm: term) void {
+    var obj : ?*c_void = undefined;
+    var _rsrc = e.enif_get_resource(environment, res_trm, res_typ, &obj);
+    return e.enif_release_resource(obj);
+  }
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-// implementation for :enomem
+// errors, etc.
+
+pub fn raise(environment: env, exception: atom) term {
+  return e.enif_raise_exception(environment, exception);
+}
 
 // create a global enomem string, then throw it.
 const enomem_slice = "enomem"[0..];

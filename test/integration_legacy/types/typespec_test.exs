@@ -1,8 +1,6 @@
 defmodule ZiglerTest.TypespecTest do
   use ExUnit.Case, async: true
 
-  @moduletag :one
-
   describe "zigler correctly creates typespecs" do
     test "for degenerate" do
       {:ok, types} = Code.Typespec.fetch_specs(ZiglerTest.Typing)

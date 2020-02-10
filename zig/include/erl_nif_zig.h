@@ -75,6 +75,7 @@ extern void *enif_alloc_resource(ErlNifResourceType*, size_t);
 extern ErlNifTerm enif_make_resource(ErlNifEnv *, void *);
 extern int enif_get_resource(ErlNifEnv*, ErlNifTerm, ErlNifResourceType*, void**);
 extern int enif_keep_resource(void *);
+extern void enif_release_resource(void *);
 
 extern ErlNifResourceType *enif_open_resource_type(
     ErlNifEnv*, 
