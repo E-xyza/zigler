@@ -1,4 +1,4 @@
-defmodule ZiglerTest.FunctionSkeletonTest do
+defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
   use ExUnit.Case, async: true
 
   test "an arity zero function is produced correctly" do

@@ -1,4 +1,4 @@
-defmodule ZiglerTest.GeneratorTest do
+defmodule ZiglerTest.Snapshot.GeneratorTest do
   use ExUnit.Case, async: true
 
   # tests to make sure that the compiler makse the correct code.
