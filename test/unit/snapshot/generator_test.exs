@@ -34,22 +34,9 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return 47;
       }
 
-      fn __foo_adapter__(env: beam.nev, argc: c_int, argv: [*c] const beam.term) beam.term {
-        var result: c_int = foo();
-        return beam.make_c_int(env, result);
-      }
-
       extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-        var res: beam.term = __foo_adapter__(env, argc, argv) catch | err | {
-          if (err == beam.Error.FunctionClauseError) {
-            return beam.throw_function_clause_error(env);
-          } else if (err == error.OutOfMemory) {
-            return beam.throw_enomem(env);
-          } else {
-            return e.enif_make_badarg(env);
-          }
-        };
-        return res;
+        var __foo_result__: c_int = foo();
+        return beam.make_c_int(env, __foo_result__);
       }
 
       var exported_nifs = [1] e.ErlNifFunc{

@@ -7,28 +7,13 @@ defmodule Zigler.Code do
   alias Zigler.Parser.Nif
 
   def generate(module = %Module{}) do
-    header = [c_imports(module.c_includes), "\n", zig_imports(module.imports)]
-    adapter = """
-    fn __foo_adapter__(env: beam.nev, argc: c_int, argv: [*c] const beam.term) beam.term {
-      var result: c_int = foo();
-      return beam.make_c_int(env, result);
-    }
-
-    extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-      var res: beam.term = __foo_adapter__(env, argc, argv) catch | err | {
-        if (err == beam.Error.FunctionClauseError) {
-          return beam.throw_function_clause_error(env);
-        } else if (err == error.OutOfMemory) {
-          return beam.throw_enomem(env);
-        } else {
-          return e.enif_make_badarg(env);
-        }
-      };
-      return res;
-    }
-    """
-
-    [header, "\n", module.code, "\n", adapter, "\n", footer(module)]
+    [
+      c_imports(module.c_includes), "\n",
+      zig_imports(module.imports), "\n",
+      module.code, "\n",
+      Enum.map(module.nifs, &adapter/1),
+      footer(module)
+    ]
   end
 
   #############################################################################
@@ -78,6 +63,19 @@ defmodule Zigler.Code do
     Enum.map(imports, fn {k, v} ->
       ~s/const #{k} = @import("#{v}");\n/
     end)
+  end
+
+  #############################################################################
+  ## ADAPTER GENERATION
+
+  def adapter(nif = %Zigler.Parser.Nif{}) do
+    """
+    extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      var __#{nif.name}_result__: c_int = #{nif.name}();
+      return beam.make_c_int(env, __#{nif.name}_result__);
+    }
+
+    """
   end
 
   #############################################################################
