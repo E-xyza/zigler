@@ -9,7 +9,6 @@ defmodule ZiglerTest.GeneratorTest do
 
   describe "the generator creates a reasonable shim" do
     test "for a single, zero arity function" do
-
       code = """
       // foo.exs line: 3
 
@@ -17,6 +16,8 @@ defmodule ZiglerTest.GeneratorTest do
         return 47;
       }
       """
+
+      [major, minor] = Zigler.Zig.nif_major_minor
 
       assert """
       const e = @cImport({
@@ -60,13 +61,13 @@ defmodule ZiglerTest.GeneratorTest do
         },
       };
 
-      extern fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
-         return 0;
+      export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
+        return 0;
       }
 
       const entry = e.ErlNifEntry{
-          .major = 2,
-          .minor = 15,
+          .major = #{major},
+          .minor = #{minor},
           .name = c"Elixir.Foo",
           .num_of_funcs = 1,
           .funcs = &(exported_nifs[0]),
@@ -77,13 +78,15 @@ defmodule ZiglerTest.GeneratorTest do
           .vm_variant = c"beam.vanilla",
           .options = 1,
           .sizeof_ErlNifResourceTypeInit = 24,
-          .min_erts = c"erts-10.4"
+          .min_erts = c"erts-#{:erlang.system_info(:version)}"
       };
 
       export fn nif_init() *const e.ErlNifEntry{
-          return &entry;
+        return &entry;
       }
-      """ = Zig.generate(%Module{nifs: [@zeroarity], code: code, file: "foo.exs", module: Foo})
+      """ == %Module{nifs: [@zeroarity], code: code, file: "foo.exs", module: Foo}
+             |> Zig.generate
+             |> IO.iodata_to_binary
     end
   end
 end
