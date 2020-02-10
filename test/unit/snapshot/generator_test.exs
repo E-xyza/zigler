@@ -3,7 +3,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
   # tests to make sure that the compiler makse the correct code.
 
-  alias Zigler.{Module, Zig, Parser.Nif}
+  alias Zigler.{Module, Code, Parser.Nif}
 
   @zeroarity %Nif{name: :foo, arity: 0, params: [], retval: "i64"}
 
@@ -17,7 +17,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       }
       """
 
-      [major, minor] = Zigler.Zig.nif_major_minor
+      [major, minor] = Code.nif_major_minor
 
       assert """
       const e = @cImport({
@@ -85,7 +85,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return &entry;
       }
       """ == %Module{nifs: [@zeroarity], code: code, file: "foo.exs", module: Foo}
-             |> Zig.generate
+             |> Code.generate
              |> IO.iodata_to_binary
     end
   end

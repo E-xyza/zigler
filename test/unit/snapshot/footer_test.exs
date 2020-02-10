@@ -1,12 +1,12 @@
 defmodule ZiglerTest.Snapshot.FooterTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.{Module, Parser.Nif, Zig}
+  alias Zigler.{Module, Parser.Nif, Code}
 
   describe "the zigler compiler footer generates" do
     test "works for a single function" do
 
-      [major, minor] = Zig.nif_major_minor()
+      [major, minor] = Code.nif_major_minor()
 
       assert """
       var exported_nifs = [1] e.ErlNifFunc{
@@ -42,13 +42,13 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         return &entry;
       }
       """ == %Module{nifs: [%Nif{name: :foo, arity: 0}], file: "foo.exs", module: Foo}
-      |> Zig.footer
+      |> Code.footer
       |> IO.iodata_to_binary
     end
 
     test "works for multiple functions" do
 
-      [major, minor] = Zig.nif_major_minor()
+      [major, minor] = Code.nif_major_minor()
 
       assert """
       var exported_nifs = [2] e.ErlNifFunc{
@@ -93,7 +93,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
                %Nif{name: :foo, arity: 0},
                %Nif{name: :bar, arity: 1}],
              file: "foo.exs", module: Baz}
-      |> Zig.footer
+      |> Code.footer
       |> IO.iodata_to_binary
     end
   end
