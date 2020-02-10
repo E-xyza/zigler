@@ -50,4 +50,5 @@ defmodule ZiglerTest.DryRunTest do
 
     assert_raise RuntimeError, fn -> BasicFortySeven.fortyseven(2) end
   end
+
 end

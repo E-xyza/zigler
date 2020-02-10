@@ -63,7 +63,7 @@ defmodule Zigler.Compiler do
     compiler = precompile(module)
 
     unless module.dry_run do
-      compile(compiler)
+      compile(compiler, zig_tree)
     end
 
     cleanup(compiler)
@@ -131,22 +131,6 @@ defmodule Zigler.Compiler do
     ## now use zig to build the library in the temporary directory.
     ## also add in lib search paths that correspond to where we've downloaded
     ## our zig cache
-    #zig_cmd = Path.join(zig_tree, "zig")
-    #zig_rpath = Path.join(zig_tree, "lib/zig")
-    #cmd_opts = ~w(build-lib zig_nif.zig -dynamic --disable-gen-h --override-lib-dir) ++
-    #  [zig_rpath] ++
-    #  include_opts ++
-    #  lib_opts ++
-    #  @release_mode[release_mode]
-#
-    #cmd_opts_text = Enum.join(cmd_opts, " ")
-#
-    #Logger.info("compiling using command: `#{zig_cmd} #{cmd_opts_text}`")
-    #case System.cmd(zig_cmd, cmd_opts, cd: tmp_dir, stderr_to_stdout: true) do
-    #  {_, 0} -> :ok
-    #  {err, _} ->
-    #    raise ErrorParser.parse(err, src_dir, tmp_dir)
-    #end
 #
     ## move the dynamic library out of the temporary directory and into the priv directory.
 #
@@ -168,11 +152,23 @@ defmodule Zigler.Compiler do
 
     nif_functions = Enum.map(module.nifs, &function_skeleton/1)
 
-    quote do
-      unquote_splicing(nif_functions)
+    mod_path = module.app
+    |> Zigler.nif_dir
+    |> Path.join(Zigler.nif_name(module, false))
 
-      def __load_nifs__ do
-        :ok
+    if module.dry_run do
+      quote do
+        unquote_splicing(nif_functions)
+        def __load_nifs__, do: :ok
+      end
+    else
+      quote do
+        unquote_splicing(nif_functions)
+        def __load_nifs__ do
+          unquote(mod_path)
+          |> String.to_charlist()
+          |> :erlang.load_nif(0)
+        end
       end
     end
   end
@@ -198,7 +194,6 @@ defmodule Zigler.Compiler do
 
   @spec precompile(Zigler.Module.t) :: t | no_return
   def precompile(module) do
-
     # build the staging directory.
     random_stamp = DateTime.utc_now |> :erlang.phash2 |> Integer.to_string(16)
     staging_dir = Path.join(@staging_root, "#{module.module}-#{random_stamp}")
@@ -208,6 +203,14 @@ defmodule Zigler.Compiler do
     code_file = Path.join(staging_dir, "#{module.module}.zig")
     File.write!(code_file, Zigler.Code.generate_main(module))
 
+    # copy in beam.zig
+    File.cp!("zig/beam/beam.zig", Path.join(staging_dir, "beam.zig"))
+    # copy in erl_nif.zig
+    File.cp!("zig/beam/erl_nif.zig", Path.join(staging_dir, "erl_nif.zig"))
+    # copy in erl_nif_zig.h
+    File.mkdir_p!(Path.join(staging_dir, "include"))
+    File.cp!("zig/include/erl_nif_zig.h", Path.join(staging_dir, "include/erl_nif_zig.h"))
+
     # assemble the module struct
     %__MODULE__{
       staging_dir: staging_dir,
@@ -216,14 +219,16 @@ defmodule Zigler.Compiler do
     }
   end
 
-  @spec compile(t) :: :ok | no_return
-  defp compile(compiler) do
+  @spec compile(t, Path.t) :: :ok | no_return
+  defp compile(compiler, zig_tree) do
     # first move everything into the staging directory.
+    Zig.compile(compiler, zig_tree)
     :ok
   end
 
   @spec cleanup(t) :: :ok | no_return
   defp cleanup(compiler) do
+    File.rm_rf!(compiler.staging_dir)
     :ok
   end
 

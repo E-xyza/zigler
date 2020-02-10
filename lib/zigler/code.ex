@@ -6,8 +6,11 @@ defmodule Zigler.Code do
   alias Zigler.Parser.Nif
 
   def generate_main(module = %Module{}) do
-    [
-      c_imports(module.c_includes), "\n",
+    case module.c_includes do
+      [] -> []
+      includes -> c_imports(includes) + ["\n"]
+    end
+    ++ [
       zig_imports(module.imports), "\n",
       module.code, "\n",
       Enum.map(module.nifs, &adapter/1),
@@ -59,9 +62,10 @@ defmodule Zigler.Code do
   ## ZIG IMPORT HANDLING
 
   def zig_imports(imports) do
-    Enum.map(imports, fn {k, v} ->
-      ~s/const #{k} = @import("#{v}");\n/
-    end)
+    [~s/const e = @import("erl_nif.zig").c;\n/,
+      Enum.map(imports, fn {k, v} ->
+        ~s/const #{k} = @import("#{v}");\n/
+      end)]
   end
 
   #############################################################################

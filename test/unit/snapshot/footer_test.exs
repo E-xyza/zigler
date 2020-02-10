@@ -41,7 +41,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       export fn nif_init() *const e.ErlNifEntry{
         return &entry;
       }
-      """ == %Module{nifs: [%Nif{name: :foo, arity: 0}], file: "foo.exs", module: Foo}
+      """ == %Module{nifs: [%Nif{name: :foo, arity: 0}], file: "foo.exs", module: Foo, app: :zigler}
       |> Code.footer
       |> IO.iodata_to_binary
     end
@@ -92,7 +92,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       """ == %Module{nifs: [
                %Nif{name: :foo, arity: 0},
                %Nif{name: :bar, arity: 1}],
-             file: "foo.exs", module: Baz}
+             file: "foo.exs", module: Baz, app: :zigler}
       |> Code.footer
       |> IO.iodata_to_binary
     end

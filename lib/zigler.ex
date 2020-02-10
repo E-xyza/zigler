@@ -207,10 +207,11 @@ defmodule Zigler do
 
     user_opts = Keyword.take(opts, [:libs, :resources, :dry_run])
 
-    zigler = Zigler.Module
-    |> struct([
-      file:        __CALLER__.file
-    ] ++ user_opts)
+    zigler = struct(%Zigler.Module{
+      file:   __CALLER__.file,
+      module: __CALLER__.module,
+      semver: get_semver(),
+      app:    get_app()}, user_opts)
 
     Module.register_attribute(__CALLER__.module, :zigler, persist: true)
     Module.put_attribute(__CALLER__.module, :zigler, zigler)
@@ -401,6 +402,34 @@ defmodule Zigler do
   rescue
     _err in FileError ->
       reraise CompileError, description: "zig directory path doesn't exist, run `mix zigler.get_zig latest`"
+  end
+
+  defp get_semver do
+    Mix.Project.get
+    |> apply(:project, [])
+    |> Keyword.get(:version)
+    |> String.split(".")
+  end
+
+  defp get_app do
+    Mix.Project.get
+    |> apply(:project, [])
+    |> Keyword.get(:app)
+  end
+
+  def nif_dir(app \\ get_app()) do
+    app
+    |> :code.lib_dir
+    |> Path.join("nif")
+  end
+
+  def nif_name(module, use_suffixes \\ true) do
+    if use_suffixes do
+      [major, minor, patch] = module.semver
+      "lib#{module.module}.so.#{major}.#{minor}.#{patch}"
+    else
+      "lib#{module.module}"
+    end
   end
 
 end

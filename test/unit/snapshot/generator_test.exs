@@ -20,10 +20,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       [major, minor] = Code.nif_major_minor
 
       assert """
-      const e = @cImport({
-        @cInclude("erl_nif_zig.h");
-      });
-
+      const e = @import("erl_nif.zig").c;
       const builtin = @import("builtin");
       const std = @import("std");
       const beam = @import("beam.zig");
@@ -71,7 +68,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       export fn nif_init() *const e.ErlNifEntry{
         return &entry;
       }
-      """ == %Module{nifs: [@zeroarity], code: code, file: "foo.exs", module: Foo}
+      """ == %Module{nifs: [@zeroarity], code: code, file: "foo.exs", module: Foo, app: :zigler}
              |> Code.generate_main
              |> IO.iodata_to_binary
     end
