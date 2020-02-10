@@ -289,12 +289,17 @@ defmodule Zigler.Zig do
     |> File.cp!(Path.join(Zigler.nif_dir(), library_filename))
 
     # link the compiled library to be unversioned.
-    Zigler.nif_dir()
-    |> Path.join(library_filename)
-    |> File.ln_s!(
-      Path.join(
-        Zigler.nif_dir(),
-        Zigler.nif_name(compiler.module_spec, false) <> ".so"))
+    symlink_filename = Zigler.nif_dir()
+    |> Path.join(Zigler.nif_name(compiler.module_spec, false))
+    |> Kernel.<>(".so")
+
+    unless File.exists?(symlink_filename) do
+      Zigler.nif_dir()
+      |> Path.join(library_filename)
+      |> File.ln_s!(symlink_filename)
+    end
+    :ok
   end
 
 end
+
