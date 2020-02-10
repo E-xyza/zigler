@@ -5,14 +5,14 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
   alias Zigler.{Module, Code, Parser.Nif}
 
-  @zeroarity %Nif{name: :foo, arity: 0, params: [], retval: "i64"}
+  @zeroarity %Nif{name: :foo, arity: 0, params: [], retval: "c_long"}
 
   describe "the generator creates a reasonable shim" do
     test "for a single, zero arity function" do
       code = """
       // foo.exs line: 3
 
-      fn foo() i64 {
+      fn foo() c_long {
         return 47;
       }
       """
@@ -30,13 +30,13 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
       // foo.exs line: 3
 
-      fn foo() i64 {
+      fn foo() c_long {
         return 47;
       }
 
       extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-        var __foo_result__: c_int = foo();
-        return beam.make_c_int(env, __foo_result__);
+        var __foo_result__: c_long = foo();
+        return beam.make_c_long(env, __foo_result__);
       }
 
       var exported_nifs = [1] e.ErlNifFunc{
@@ -72,7 +72,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return &entry;
       }
       """ == %Module{nifs: [@zeroarity], code: code, file: "foo.exs", module: Foo}
-             |> Code.generate
+             |> Code.generate_main
              |> IO.iodata_to_binary
     end
   end

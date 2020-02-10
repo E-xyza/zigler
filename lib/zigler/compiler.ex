@@ -206,7 +206,7 @@ defmodule Zigler.Compiler do
 
     # define the code file and build it.
     code_file = Path.join(staging_dir, "#{module.module}.zig")
-    File.write!(code_file, Zigler.Code.generate(module))
+    File.write!(code_file, Zigler.Code.generate_main(module))
 
     # assemble the module struct
     %__MODULE__{

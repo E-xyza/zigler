@@ -6,7 +6,7 @@ defmodule Zigler.Code do
   alias Zigler.Module
   alias Zigler.Parser.Nif
 
-  def generate(module = %Module{}) do
+  def generate_main(module = %Module{}) do
     [
       c_imports(module.c_includes), "\n",
       zig_imports(module.imports), "\n",
@@ -71,8 +71,8 @@ defmodule Zigler.Code do
   def adapter(nif = %Zigler.Parser.Nif{}) do
     """
     extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-      var __#{nif.name}_result__: c_int = #{nif.name}();
-      return beam.make_c_int(env, __#{nif.name}_result__);
+      var __#{nif.name}_result__: c_long = #{nif.name}();
+      return beam.make_c_long(env, __#{nif.name}_result__);
     }
 
     """
