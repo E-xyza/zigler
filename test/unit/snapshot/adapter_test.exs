@@ -76,6 +76,32 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
       |> Code.adapter
       |> IO.iodata_to_binary
     end
+
+    test "the shim function respects beam.term type" do
+      assert """
+      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        var __foo_arg0__ = argv[0];
+
+        return foo(__foo_arg0__);
+      }
+
+      """ == %Nif{name: :foo, arity: 1, params: ["beam.term"], retval: "beam.term"}
+      |> Code.adapter
+      |> IO.iodata_to_binary
+    end
+
+    test "the shim function respects e.ErlNifTerm type" do
+      assert """
+      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        var __foo_arg0__ = argv[0];
+
+        return foo(__foo_arg0__);
+      }
+
+      """ == %Nif{name: :foo, arity: 1, params: ["e.ErlNifTerm"], retval: "e.ErlNifTerm"}
+      |> Code.adapter
+      |> IO.iodata_to_binary
+    end
   end
 
   describe "for a one-arity function with a environment term" do

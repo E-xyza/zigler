@@ -80,12 +80,20 @@ defmodule Zigler.Code do
     function_call = "#{nif.name}(#{args})"
 
     head = "extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
-    result = """
-      var #{result_var} = #{function_call};
 
-      return beam.make_#{nif.retval}(env, #{result_var});
-    }
-    """
+    result = if nif.retval in ["beam.term", "e.ErlNifTerm"] do
+      """
+        return #{function_call};
+      }
+      """
+    else
+      """
+        var #{result_var} = #{function_call};
+
+        return beam.make_#{nif.retval}(env, #{result_var});
+      }
+      """
+    end
     [head, "\n", get_clauses, result, "\n"]
   end
 
@@ -113,6 +121,9 @@ defmodule Zigler.Code do
     "\n"]
   end
 
+  defp get_clause({term, index}, function) when term in ["beam.term", "e.ErlNifTerm"] do
+    "  var __#{function}_arg#{index}__ = argv[#{index}];\n"
+  end
   defp get_clause({type, index}, function) do
     """
       var __#{function}_arg#{index}__ = beam.get_#{type}(env, argv[#{index}])
