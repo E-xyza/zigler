@@ -89,7 +89,12 @@ defmodule Zigler.Code do
     [head, "\n", get_clauses, result, "\n"]
   end
 
-  defp args(%{arity: 0}), do: ""
+  @env_types ["beam.env", "?*e.ErlNifEnv"]
+
+  defp args(%{arity: 0, params: p}), do: p
+  defp args(nif = %{params: [env | rest]}) when env in @env_types do
+    ["env, ", args(%{nif | params: rest})]
+  end
   defp args(nif) do
     0..(nif.arity - 1)
     |> Enum.map(&"__#{nif.name}_arg#{&1}__")
@@ -97,10 +102,13 @@ defmodule Zigler.Code do
   end
 
   defp get_clauses(%{arity: 0}), do: ""
-  defp get_clauses(nif) do
-    [nif.params
+  defp get_clauses(%{params: params, name: name}), do: get_clauses(params, name)
+
+  defp get_clauses([env | rest], name) when env in @env_types, do: get_clauses(rest, name)
+  defp get_clauses(params, name) do
+    [params
     |> Enum.with_index
-    |> Enum.map(&get_clause(&1, nif.name)),
+    |> Enum.map(&get_clause(&1, name)),
     "\n"]
   end
 
