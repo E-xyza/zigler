@@ -50,6 +50,34 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     end
   end
 
+  describe "for a zero-arity function with a environment term" do
+    test "that is beam.env the shim function passes the env term in" do
+      assert """
+      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        var __foo_result__ = foo(env);
+
+        return beam.make_i64(env, __foo_result__);
+      }
+
+      """ == %Nif{name: :foo, arity: 0, params: ["beam.env"], retval: "i64"}
+      |> Code.adapter
+      |> IO.iodata_to_binary
+    end
+
+    test "that is ?*e.ErlNifEnv the shim function passes the env term in" do
+      assert """
+      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        var __foo_result__ = foo(env);
+
+        return beam.make_i64(env, __foo_result__);
+      }
+
+      """ == %Nif{name: :foo, arity: 0, params: ["?*e.ErlNifEnv"], retval: "i64"}
+      |> Code.adapter
+      |> IO.iodata_to_binary
+    end
+  end
+
   describe "for a one-arity function with a environment term" do
     test "that is beam.env the shim function passes the env term in" do
       assert """

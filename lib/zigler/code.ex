@@ -91,7 +91,8 @@ defmodule Zigler.Code do
 
   @env_types ["beam.env", "?*e.ErlNifEnv"]
 
-  defp args(%{arity: 0, params: p}), do: p
+  defp args(%{arity: 0, params: [p]}) when p in @env_types, do: "env"
+  defp args(%{arity: 0}), do: ""
   defp args(nif = %{params: [env | rest]}) when env in @env_types do
     ["env, ", args(%{nif | params: rest})]
   end
