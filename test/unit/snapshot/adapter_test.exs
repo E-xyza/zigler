@@ -142,9 +142,9 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "the shim function respects integers" do
       assert """
       extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-        var __foo_arg0__ = beam.get_i32_slice(env, argv[0]) catch |err| switch (err) {
-          error.enomem => return beam.raise_enomem(env);
-          beam.Error.FunctionClause => return beam.raise_function_clause_error(env);
+        var __foo_arg0__ = beam.get_slice_of(i32, env, argv[0]) catch |err| switch (err) {
+          error.OutOfMemory => return beam.raise_enomem(env),
+          beam.Error.FunctionClauseError => return beam.raise_function_clause_error(env)
         };
 
         var __foo_result__ = foo(__foo_arg0__);
@@ -160,9 +160,9 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "the shim function respects floats" do
       assert """
       extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-        var __foo_arg0__ = beam.get_f64_slice(env, argv[0]) catch |err| switch (err) {
-          error.enomem => return beam.raise_enomem(env);
-          beam.Error.FunctionClause => return beam.raise_function_clause_error(env);
+        var __foo_arg0__ = beam.get_slice_of(f64, env, argv[0]) catch |err| switch (err) {
+          error.OutOfMemory => return beam.raise_enomem(env),
+          beam.Error.FunctionClauseError => return beam.raise_function_clause_error(env)
         };
 
         var __foo_result__ = foo(__foo_arg0__);

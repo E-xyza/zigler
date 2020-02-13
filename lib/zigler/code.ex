@@ -134,9 +134,9 @@ defmodule Zigler.Code do
   end
   defp get_clause({"[]" <> type, index}, function) do
     """
-      var __#{function}_arg#{index}__ = beam.get_#{short_name type}_slice(env, argv[#{index}]) catch |err| switch (err) {
-        error.enomem => return beam.raise_enomem(env);
-        beam.Error.FunctionClause => return beam.raise_function_clause_error(env);
+      var __#{function}_arg#{index}__ = beam.get_slice_of(#{short_name type}, env, argv[#{index}]) catch |err| switch (err) {
+        error.OutOfMemory => return beam.raise_enomem(env),
+        beam.Error.FunctionClauseError => return beam.raise_function_clause_error(env)
       };
     """
   end
