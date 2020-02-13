@@ -146,6 +146,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
           error.OutOfMemory => return beam.raise_enomem(env),
           beam.Error.FunctionClauseError => return beam.raise_function_clause_error(env)
         };
+        defer beam.allocator.free(__foo_arg0__);
 
         var __foo_result__ = foo(__foo_arg0__);
 
@@ -164,6 +165,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
           error.OutOfMemory => return beam.raise_enomem(env),
           beam.Error.FunctionClauseError => return beam.raise_function_clause_error(env)
         };
+        defer beam.allocator.free(__foo_arg0__);
 
         var __foo_result__ = foo(__foo_arg0__);
 
@@ -205,6 +207,25 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
       }
 
       """ == %Nif{name: :foo, arity: 1, params: ["?*e.ErlNifEnv", "i64"], retval: "i64"}
+      |> Code.adapter
+      |> IO.iodata_to_binary
+    end
+  end
+
+
+  describe "for a one-arity function being passed a u8 slice" do
+    test "the shim function assumes binary" do
+      assert """
+      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        var __foo_arg0__ = beam.get_char_slice(env, argv[0])
+          catch return beam.raise_function_clause_error(env);
+
+        var __foo_result__ = foo(__foo_arg0__);
+
+        return beam.make_slice(env, __foo_result__);
+      }
+
+      """ == %Nif{name: :foo, arity: 1, params: ["[]u8"], retval: "[]u8"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end

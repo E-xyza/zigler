@@ -848,7 +848,7 @@ pub fn make_slice(environment: env, val: []const u8) term {
 /// no memory allocation inside of Zig is performed and the BEAM environment
 /// is responsible for the resulting binary.  You are responsible for managing
 /// the allocation of the slice.
-pub fn make_c_string(environment: env, val: [*c] const u8) term{
+pub fn make_c_string(environment: env, val: [*c] const u8) term {
   var result: e.ErlNifTerm = undefined;
   var len: usize = 0;
 
