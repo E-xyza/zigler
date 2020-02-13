@@ -98,7 +98,7 @@ defmodule Zigler.Code do
         """
           var #{result_var} = #{function_call};
 
-          return beam.make_#{short_name nif.retval}(env, #{result_var});
+          return #{make_clause nif.retval, result_var};
         }
         """
     end
@@ -137,6 +137,13 @@ defmodule Zigler.Code do
       var __#{function}_arg#{index}__ = beam.get_#{short_name type}(env, argv[#{index}])
         catch return beam.raise_function_clause_error(env);
     """
+  end
+
+  defp make_clause("[]" <> type, var) do
+    "beam.make_#{type}_list(env, #{var}) catch return beam.raise_enomem(env)"
+  end
+  defp make_clause(type, var) do
+    "beam.make_#{short_name type}(env, #{var})"
   end
 
   defp short_name("beam.pid"), do: "pid"

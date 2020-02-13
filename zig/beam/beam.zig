@@ -1098,7 +1098,6 @@ pub const resource = struct {
 
     return e.enif_make_resource(environment, ptr);
   }
-
   
   pub fn update(comptime T : type, environment: env, res_typ: res, res_trm: term, new_val: T) !void {
     var obj : ?*c_void = undefined;
