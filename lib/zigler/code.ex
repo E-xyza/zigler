@@ -140,6 +140,7 @@ defmodule Zigler.Code do
   end
 
   defp short_name("beam.pid"), do: "pid"
+  defp short_name("e.ErlNifPid"), do: "pid"
   defp short_name(any), do: any
 
   #############################################################################

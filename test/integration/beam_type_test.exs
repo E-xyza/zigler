@@ -51,4 +51,22 @@ defmodule ZiglerTest.Integration.BeamTypeTest do
     end
   end
 
+  ~Z"""
+  /// nif: pass_erl_nif_pid/1
+  fn pass_erl_nif_pid(env: beam.env, val: e.ErlNifPid) void {
+    var res = beam.send(env, val, null, beam.make_i64(env, 47));
+  }
+  """
+
+  test "generic erl_nif_pid" do
+    pass_erl_nif_pid(self())
+    assert_receive 47
+    assert_raise FunctionClauseError, fn ->
+      pass_erl_nif_pid(:foo)
+    end
+    assert_raise FunctionClauseError, fn ->
+      pass_erl_nif_pid(47)
+    end
+  end
+
 end
