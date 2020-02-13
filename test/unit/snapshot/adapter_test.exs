@@ -76,7 +76,9 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
       |> Code.adapter
       |> IO.iodata_to_binary
     end
+  end
 
+  describe "for a one-arity function with a special type" do
     test "the shim function respects beam.term type" do
       assert """
       extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
@@ -131,6 +133,44 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
       }
 
       """ == %Nif{name: :foo, arity: 1, params: ["e.ErlNifPid"], retval: "void"}
+      |> Code.adapter
+      |> IO.iodata_to_binary
+    end
+  end
+
+  describe "for a one-arity function being passed a slice" do
+    test "the shim function respects integers" do
+      assert """
+      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        var __foo_arg0__ = beam.get_i32_slice(env, argv[0]) catch |err| switch (err) {
+          error.enomem => return beam.raise_enomem(env);
+          beam.Error.FunctionClause => return beam.raise_function_clause_error(env);
+        };
+
+        var __foo_result__ = foo(__foo_arg0__);
+
+        return beam.make_i32_list(env, __foo_result__) catch return beam.raise_enomem(env);
+      }
+
+      """ == %Nif{name: :foo, arity: 1, params: ["[]i32"], retval: "[]i32"}
+      |> Code.adapter
+      |> IO.iodata_to_binary
+    end
+
+    test "the shim function respects floats" do
+      assert """
+      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        var __foo_arg0__ = beam.get_f64_slice(env, argv[0]) catch |err| switch (err) {
+          error.enomem => return beam.raise_enomem(env);
+          beam.Error.FunctionClause => return beam.raise_function_clause_error(env);
+        };
+
+        var __foo_result__ = foo(__foo_arg0__);
+
+        return beam.make_f64_list(env, __foo_result__) catch return beam.raise_enomem(env);
+      }
+
+      """ == %Nif{name: :foo, arity: 1, params: ["[]f64"], retval: "[]f64"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end

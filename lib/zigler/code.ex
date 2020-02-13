@@ -132,6 +132,14 @@ defmodule Zigler.Code do
   defp get_clause({term, index}, function) when term in ["beam.term", "e.ErlNifTerm"] do
     "  var __#{function}_arg#{index}__ = argv[#{index}];\n"
   end
+  defp get_clause({"[]" <> type, index}, function) do
+    """
+      var __#{function}_arg#{index}__ = beam.get_#{short_name type}_slice(env, argv[#{index}]) catch |err| switch (err) {
+        error.enomem => return beam.raise_enomem(env);
+        beam.Error.FunctionClause => return beam.raise_function_clause_error(env);
+      };
+    """
+  end
   defp get_clause({type, index}, function) do
     """
       var __#{function}_arg#{index}__ = beam.get_#{short_name type}(env, argv[#{index}])
