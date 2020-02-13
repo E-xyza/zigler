@@ -81,18 +81,26 @@ defmodule Zigler.Code do
 
     head = "extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
 
-    result = if nif.retval in ["beam.term", "e.ErlNifTerm"] do
-      """
-        return #{function_call};
-      }
-      """
-    else
-      """
-        var #{result_var} = #{function_call};
+    result = cond do
+      nif.retval in ["beam.term", "e.ErlNifTerm"] ->
+        """
+          return #{function_call};
+        }
+        """
+      nif.retval == "void" ->
+        """
+          #{function_call};
 
-        return beam.make_#{short_name nif.retval}(env, #{result_var});
-      }
-      """
+          return beam.make_nil(env);
+        }
+        """
+      true ->
+        """
+          var #{result_var} = #{function_call};
+
+          return beam.make_#{short_name nif.retval}(env, #{result_var});
+        }
+        """
     end
     [head, "\n", get_clauses, result, "\n"]
   end

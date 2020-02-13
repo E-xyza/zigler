@@ -32,15 +32,17 @@ defmodule ZiglerTest.Integration.BeamTypeTest do
     assert self() == pass_e_erl_nif_term(self())
   end
 
+  # NB: there is no beam.make_pid!!
   ~Z"""
   /// nif: pass_beam_pid/1
-  fn pass_beam_pid(val: beam.pid) beam.pid {
-    return val;
+  fn pass_beam_pid(env: beam.env, val: beam.pid) void {
+    var res = beam.send(env, val, null, beam.make_i64(env, 47));
   }
   """
 
   test "generic pid" do
-    assert self() == pass_beam_pid(self())
+    pass_beam_pid(self())
+    assert_receive 47
     assert_raise FunctionClauseError, fn ->
       pass_beam_pid(:foo)
     end

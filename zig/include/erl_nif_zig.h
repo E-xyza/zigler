@@ -139,6 +139,7 @@ extern ErlNifTerm enif_make_uint(ErlNifEnv *, unsigned i);
 extern ErlNifTerm enif_make_long(ErlNifEnv *, long i);
 extern ErlNifTerm enif_make_tuple_from_array(ErlNifEnv*, const ErlNifTerm arr[], unsigned cnt);
 extern ErlNifTerm enif_make_list_from_array(ErlNifEnv*, const ErlNifTerm arr[], unsigned cnt);
+extern ErlNifTerm enif_make_pid(ErlNifEnv *, const ErlNifPid *);
 extern unsigned char* enif_make_new_binary(ErlNifEnv*, size_t size, ErlNifTerm* termp);
 
 // NIF Functions: etcetera

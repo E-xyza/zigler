@@ -548,6 +548,10 @@ pub fn self(environment: env) !pid {
   }
 }
 
+pub fn send(c_env: env, to_pid: pid, m_env: env, msg: term) bool {
+  return (e.enif_send(c_env, &to_pid, m_env, msg) == 1);
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // tuples
 
@@ -975,6 +979,11 @@ pub fn make_f64_list(environment: env, val: []f64) !term {
 /// converts a `bool` value into a `t:Kernel.boolean/0` value.
 pub fn make_bool(environment: env, val: bool) term {
   return if (val) e.enif_make_atom(environment, c"true") else e.enif_make_atom(environment, c"false");
+}
+
+/// creates a beam `nil` value.
+pub fn make_nil(environment: env) term {
+  return e.enif_make_atom(environment, c"nil");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
