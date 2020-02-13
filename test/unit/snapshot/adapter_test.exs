@@ -102,6 +102,22 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
       |> Code.adapter
       |> IO.iodata_to_binary
     end
+
+    test "the shim function respects beam.pid type" do
+      assert """
+      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        var __foo_arg0__ = beam.get_pid(env, argv[0])
+          catch return beam.raise_function_clause_error(env);
+
+        var __foo_result__ = foo(__foo_arg0__);
+
+        return beam.make_pid(env, __foo_result__);
+      }
+
+      """ == %Nif{name: :foo, arity: 1, params: ["beam.pid"], retval: "beam.pid"}
+      |> Code.adapter
+      |> IO.iodata_to_binary
+    end
   end
 
   describe "for a one-arity function with a environment term" do

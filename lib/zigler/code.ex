@@ -90,7 +90,7 @@ defmodule Zigler.Code do
       """
         var #{result_var} = #{function_call};
 
-        return beam.make_#{nif.retval}(env, #{result_var});
+        return beam.make_#{short_name nif.retval}(env, #{result_var});
       }
       """
     end
@@ -126,10 +126,13 @@ defmodule Zigler.Code do
   end
   defp get_clause({type, index}, function) do
     """
-      var __#{function}_arg#{index}__ = beam.get_#{type}(env, argv[#{index}])
+      var __#{function}_arg#{index}__ = beam.get_#{short_name type}(env, argv[#{index}])
         catch return beam.raise_function_clause_error(env);
     """
   end
+
+  defp short_name("beam.pid"), do: "pid"
+  defp short_name(any), do: any
 
   #############################################################################
   ## FOOTER GENERATION
