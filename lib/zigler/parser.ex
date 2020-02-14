@@ -107,7 +107,7 @@ defmodule Zigler.Parser do
     optional(blankspace)
     |> ignore(string("///"))
     |> optional(blankspace)
-    |> lookahead_not(string("nif:"))
+    |> lookahead_not(choice([string("nif:"), string("resource:")]))
     |> optional(utf8_string([not: ?\n], min: 1))
     |> ignore(string("\n"))
     |> post_traverse(:register_docstring_line)
@@ -131,13 +131,6 @@ defmodule Zigler.Parser do
     |> ignore(string("\n"))
     |> post_traverse(:register_nif_declaration)
 
-  docstring =
-    choice([
-      times(docstring_line, min: 1)
-      |> optional(nif_declaration),
-      nif_declaration
-    ])
-
   # resource declarations take the form:
   # /// resource: <resource_type>
   resource_declaration =
@@ -150,6 +143,14 @@ defmodule Zigler.Parser do
     |> optional(blankspace)
     |> ignore(string("\n"))
     |> post_traverse(:register_resource_declaration)
+
+  docstring =
+    choice([
+      times(docstring_line, min: 1)
+      |> optional(choice([nif_declaration, resource_declaration])),
+      nif_declaration,
+      resource_declaration
+    ])
 
   # test harness
 
@@ -266,12 +267,26 @@ defmodule Zigler.Parser do
       |> string("\n"))
     |> post_traverse(:register_nif_header)
 
+  resource_definition =
+    ignore(
+      optional(blankspace)
+      |> string("const")
+      |> concat(whitespace))
+    |> concat(identifier)
+    |> post_traverse(:validate_resource)
+    |> optional(blankspace)
+    |> ignore(
+      string("=")
+      |> repeat(ascii_char(not: ?\n))
+      |> string("\n"))
+    |> post_traverse(:register_resource_definition)
   # test harness
 
   if Mix.env == :test do
     defparsec :parse_parameter, concat(initialize, parameter)
     defparsec :parse_parameter_list, concat(initialize, parameter_list)
     defparsec :parse_function_header, concat(initialize, function_header)
+    defparsec :parse_resource_definition, concat(initialize, resource_definition)
   end
 
   # validations
@@ -359,6 +374,17 @@ defmodule Zigler.Parser do
   end
   defp validate_retval(_, _, context, _, _), do: {[], context}
 
+  defp validate_resource(_, [name], context = %{local: resource = %Resource{}}, {line, _}, _) do
+    unless Atom.to_string(resource.name) == name do
+      raise CompileError,
+        file: context.file,
+        line: line,
+        description: "resource declaration #{resource.name} doesn't match succeeding const identifier #{name}"
+    end
+    {[], context}
+  end
+  defp validate_resource(_, _, context, _, _), do: {[], context}
+
   # registrations
 
   @spec register_nif_header(String.t, [String.t], t, line_info, non_neg_integer)
@@ -368,7 +394,12 @@ defmodule Zigler.Parser do
     final_nif = %{nif | retval: retval, params: Enum.reverse(params)}
     {[], %{context | global: [final_nif | context.global], local: nil}}
   end
-  defp register_nif_header(_, _, context, _, _), do: {[], context}
+  defp register_nif_header(_, _, context, _, _), do: {[], %{context | local: nil}}
+
+  defp register_resource_definition(_, _, context = %{local: resource = %Resource{}}, _, _) do
+    {[], %{context | global: [resource | context.global], local: nil}}
+  end
+  defp register_resource_definition(_, _, context, _, _), do: {[], context}
 
   #############################################################################
   ## FULL PARSER
@@ -383,6 +414,7 @@ defmodule Zigler.Parser do
     |> repeat(choice([
       docstring,
       function_header,
+      resource_definition,
       ignored_line,
     ]))
 

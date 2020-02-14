@@ -8,4 +8,15 @@ defmodule ZiglerTest.Parser.ResourceTest do
   @moduletag :parser
   @moduletag :resource
 
+  describe "the resource definition parser" do
+    test "correctly matches on a resource" do
+      assert {:ok, _, _, context, _, _} = Parser.parse_resource_definition("""
+        const foo = i64;
+      """, context: %{local: %Resource{name: :foo}})
+
+      assert %Parser{global: [resource], local: nil} = context
+      assert %Resource{name: :foo} = resource
+    end
+  end
+
 end

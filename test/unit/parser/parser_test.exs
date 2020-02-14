@@ -2,7 +2,7 @@ defmodule ZiglerTest.ParserTest do
   use ExUnit.Case, async: true
 
   alias Zigler.Parser
-  alias Zigler.Parser.Nif
+  alias Zigler.Parser.{Nif, Resource}
 
   @moduletag :parser
 
@@ -42,6 +42,17 @@ defmodule ZiglerTest.ParserTest do
 
       assert Enum.any?(global, &match?(%Nif{arity: 0, name: :foo, params: [], retval: "i64"}, &1))
       assert Enum.any?(global, &match?(%Nif{arity: 2, name: :oof, params: ["i64", "f64"], retval: "i64"}, &1))
+    end
+
+    test "can correctly parse a zig block with a resource section" do
+      assert {:ok, [], "", %Parser{global: [global]}, _, _} = Parser.parse_zig_block("""
+
+      /// resource: foo
+      const foo = i64;
+
+      """)
+
+      assert %Resource{name: :foo} = global
     end
   end
 
