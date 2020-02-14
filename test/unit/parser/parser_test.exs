@@ -141,5 +141,21 @@ defmodule ZiglerTest.ParserTest do
 
       assert_raise CompileError, fn -> Parser.parse(code, @empty_module, 1) end
     end
+
+    test "can correctly parse a zig block with a resource declaration" do
+      assert %Zigler.Module{resources: [resource]} = Parser.parse("""
+
+      /// resource: bar
+      const bar = i64;
+
+      /// nif: foo/0
+      fn foo() i64 {
+        return 47;
+      }
+
+      """, @empty_module, 1)
+
+      assert %Resource{name: :bar} = resource
+    end
   end
 end

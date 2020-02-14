@@ -17,6 +17,13 @@ defmodule ZiglerTest.Parser.ResourceTest do
       assert %Parser{global: [resource], local: nil} = context
       assert %Resource{name: :foo} = resource
     end
+
+    test "raises if the values mismatch" do
+      assert_raise CompileError, fn -> Parser.parse_resource_definition("""
+          const bar = i64;
+        """, context: %{local: %Resource{name: :foo}})
+      end
+    end
   end
 
 end

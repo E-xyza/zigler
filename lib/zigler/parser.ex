@@ -459,8 +459,10 @@ defmodule Zigler.Parser do
     end
 
     new_nifs = Enum.filter(global, &match?(%Nif{}, &1))
+    new_resources = Enum.filter(global, &match?(%Resource{}, &1))
     %{old_module |
       nifs: old_module.nifs ++ new_nifs,
+      resources: old_module.resources ++ new_resources,
       code: [old_module.code | code]}
   end
 end

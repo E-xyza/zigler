@@ -8,6 +8,7 @@ defmodule Zigler.Module do
 
   defstruct @enforce_keys ++ [
     nifs:        [],
+    resources:   [],
     zig_version: "0.5.0",
     imports:     [builtin: "builtin", std: "std", beam: "beam.zig"],
     c_includes:  [],
@@ -21,6 +22,7 @@ defmodule Zigler.Module do
     module:      module,
     app:         atom,
     nifs:        [Zigler.Parser.Function.t],
+    resources:   [Zigler.Parser.Resource.t],
     zig_version: String.t,
     imports:     keyword(Path.t),
     c_includes:  keyword(Path.t),
