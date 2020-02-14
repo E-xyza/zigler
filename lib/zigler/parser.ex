@@ -7,7 +7,7 @@ defmodule Zigler.Parser do
 
   import NimbleParsec
 
-  alias Zigler.Parser.Nif
+  alias Zigler.Parser.{Nif, Resource}
 
   @type t :: %__MODULE__{
     local: Nif.t | {:doc, iodata},
@@ -138,12 +138,26 @@ defmodule Zigler.Parser do
       nif_declaration
     ])
 
+  # resource declarations take the form:
+  # /// resource: <resource_type>
+  resource_declaration =
+    optional(blankspace)
+    |> ignore(string("///"))
+    |> optional(blankspace)
+    |> ignore(string("resource:"))
+    |> concat(blankspace)
+    |> concat(identifier)
+    |> optional(blankspace)
+    |> ignore(string("\n"))
+    |> post_traverse(:register_resource_declaration)
+
   # test harness
 
   if Mix.env == :test do
-    defparsec :parse_docstring_line,  concat(initialize, docstring_line)
-    defparsec :parse_nif_declaration, concat(initialize, nif_declaration)
-    defparsec :parse_docstring,       concat(initialize, docstring)
+    defparsec :parse_docstring_line,       concat(initialize, docstring_line)
+    defparsec :parse_nif_declaration,      concat(initialize, nif_declaration)
+    defparsec :parse_resource_declaration, concat(initialize, resource_declaration)
+    defparsec :parse_docstring,            concat(initialize, docstring)
   end
 
   # registrations
@@ -199,6 +213,17 @@ defmodule Zigler.Parser do
       doc:   opts[:doc],
       opts:  Keyword.take(opts, [:long, :dirty]))
     {[], %{context | local: local}}
+  end
+
+  defp register_resource_declaration(_rest, [name], context, _, _) do
+    {[], %{context | local: resource_struct(name, context)}}
+  end
+
+  defp resource_struct(name, context = %{local: {:doc, doc}}) do
+    struct(resource_struct(name, %{context | local: nil}), doc: doc)
+  end
+  defp resource_struct(name, _context) do
+    struct(Resource, name: String.to_atom(name))
   end
 
   #############################################################################

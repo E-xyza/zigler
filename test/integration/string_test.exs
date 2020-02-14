@@ -27,4 +27,5 @@ defmodule ZiglerTest.Integration.StringTest do
     assert_raise FunctionClauseError, fn -> ingress_string('hello') end
     assert_raise FunctionClauseError, fn -> ingress_string(:hello) end
   end
+
 end

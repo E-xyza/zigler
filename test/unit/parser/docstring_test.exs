@@ -4,6 +4,7 @@ defmodule ZiglerTest.Parser.DocstringTest do
 
   alias Zigler.Parser
   alias Zigler.Parser.Nif
+  alias Zigler.Parser.Resource
 
   @moduletag :parser
   @moduletag :docstring
@@ -89,6 +90,23 @@ defmodule ZiglerTest.Parser.DocstringTest do
       """)
       assert %Nif{opts: opts} = local
       assert {:dirty, :cpu} in opts
+    end
+  end
+
+  describe "the resource parser" do
+    @describetag :resource
+    test "correctly assigns a resource declaration" do
+      assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_resource_declaration("""
+      /// resource: foo
+      """)
+      assert %Resource{name: :foo} = local
+    end
+
+    test "adds in contextual documentation" do
+      assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_resource_declaration("""
+      /// resource: foo
+      """, context: %{local: {:doc, "doc"}})
+      assert %Resource{doc: "doc"} = local
     end
   end
 
