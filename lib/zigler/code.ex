@@ -3,7 +3,7 @@ defmodule Zigler.Code do
   all code responsible for generating zig code lives in this module.
   """
   alias Zigler.{Module, Types}
-  alias Zigler.Parser.Nif
+  alias Zigler.Parser.{Nif, Resource}
 
   def generate_main(module = %Module{}) do
     case module.c_includes do
@@ -174,12 +174,14 @@ defmodule Zigler.Code do
   def footer(module = %Module{}) do
     [major, minor] = nif_major_minor()
     funcs_count = Enum.count(module.nifs)
+    resource_init_defs = Enum.map(module.resources, &resource_init_definition/1)
+    resource_inits = Enum.map(module.resources, &resource_initializer/1)
     """
     var exported_nifs = [#{funcs_count}] e.ErlNifFunc{
     #{Enum.map(module.nifs, &nif_struct/1)}};
-
+    #{resource_init_defs}
     export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
-      return 0;
+    #{resource_inits}  return 0;
     }
 
     const entry = e.ErlNifEntry{
@@ -220,6 +222,31 @@ defmodule Zigler.Code do
         .fptr = __#{name}_shim__,
         .flags = 0,
       },
+    """
+  end
+
+  defp resource_init_definition(%Resource{name: name}) do
+    """
+
+    var __#{name}_resource__: beam.resource_type = undefined;
+
+    fn __init_#{name}_resource__(env: beam.env) beam.resource_type {
+      return e.enif_open_resource_type(
+        env,
+        null,
+        c\"#{name}\",
+        __destroy_#{name}__,
+        @intToEnum(e.ErlNifResourceFlags, 3),
+        null);
+    }
+
+    fn __destroy_#{name}__(env: beam.env, obj: ?*c_void) void {}
+    """
+  end
+
+  defp resource_initializer(%Resource{name: name}) do
+    """
+      __#{name}_resource__ = __init_#{name}_resource__(env);
     """
   end
 
