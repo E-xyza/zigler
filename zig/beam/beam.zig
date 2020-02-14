@@ -1076,7 +1076,7 @@ pub fn make_ref(environment: env) !term {
 ///////////////////////////////////////////////////////////////////////////////
 // resources
 
-pub const res = ?*e.ErlNifResourceType;
+pub const resource_type = ?*e.ErlNifResourceType;
 
 pub const resource = struct {
   // fix this V V V 
@@ -1085,7 +1085,7 @@ pub const resource = struct {
     ResourceError
   };
 
-  pub fn create(comptime T : type, environment: env, res_typ: res, val : T) !term {
+  pub fn create(comptime T : type, environment: env, res_typ: resource_type, val : T) !term {
     var ptr : ?*c_void = e.enif_alloc_resource(res_typ, @sizeOf(T));
     var obj : *T = undefined;
 
@@ -1099,7 +1099,7 @@ pub const resource = struct {
     return e.enif_make_resource(environment, ptr);
   }
   
-  pub fn update(comptime T : type, environment: env, res_typ: res, res_trm: term, new_val: T) !void {
+  pub fn update(comptime T : type, environment: env, res_typ: resource_type, res_trm: term, new_val: T) !void {
     var obj : ?*c_void = undefined;
 
     if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) { 
@@ -1113,7 +1113,7 @@ pub const resource = struct {
     val.* = new_val;
   }
 
-  pub fn fetch(comptime T : type, environment: env, res_typ: res, res_trm: term) !T {
+  pub fn fetch(comptime T : type, environment: env, res_typ: resource_type, res_trm: term) !T {
     var obj : ?*c_void = undefined;
 
     if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) { 
@@ -1131,7 +1131,7 @@ pub const resource = struct {
     return val.*;
   }
 
-  pub fn release(environment: env, res_typ: res, res_trm: term) void {
+  pub fn release(environment: env, res_typ: resource_type, res_trm: term) void {
     var obj : ?*c_void = undefined;
     var _rsrc = e.enif_get_resource(environment, res_trm, res_typ, &obj);
     return e.enif_release_resource(obj);

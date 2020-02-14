@@ -9,7 +9,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
-      var exported_nifs = [1] e.ErlNifFunc{
+      var __exported_nifs__ = [1] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 0,
@@ -18,17 +18,13 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         },
       };
 
-      export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
-        return 0;
-      }
-
       const entry = e.ErlNifEntry{
         .major = #{major},
         .minor = #{minor},
         .name = c"Elixir.Foo",
         .num_of_funcs = 1,
-        .funcs = &(exported_nifs[0]),
-        .load = nif_load,
+        .funcs = &(__exported_nifs__[0]),
+        .load = null,
         .reload = null,
         .upgrade = null,
         .unload = null,
@@ -51,7 +47,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
-      var exported_nifs = [1] e.ErlNifFunc{
+      var __exported_nifs__ = [1] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 0,
@@ -72,9 +68,16 @@ defmodule ZiglerTest.Snapshot.FooterTest do
           null);
       }
 
-      fn __destroy_bar__(env: beam.env, obj: ?*c_void) void {}
+      extern fn __destroy_bar__(env: beam.env, obj: ?*c_void) void {}
 
-      export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
+      fn resource_type(comptime T : type) beam.resource_type {
+        switch (T) {
+          bar => return __bar_resource__,
+          else => unreachable
+        }
+      }
+
+      extern fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
         __bar_resource__ = __init_bar_resource__(env);
         return 0;
       }
@@ -84,7 +87,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         .minor = #{minor},
         .name = c"Elixir.Foo",
         .num_of_funcs = 1,
-        .funcs = &(exported_nifs[0]),
+        .funcs = &(__exported_nifs__[0]),
         .load = nif_load,
         .reload = null,
         .upgrade = null,
@@ -108,7 +111,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
-      var exported_nifs = [2] e.ErlNifFunc{
+      var __exported_nifs__ = [2] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 0,
@@ -123,17 +126,13 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         },
       };
 
-      export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
-        return 0;
-      }
-
       const entry = e.ErlNifEntry{
         .major = #{major},
         .minor = #{minor},
         .name = c"Elixir.Baz",
         .num_of_funcs = 2,
-        .funcs = &(exported_nifs[0]),
-        .load = nif_load,
+        .funcs = &(__exported_nifs__[0]),
+        .load = null,
         .reload = null,
         .upgrade = null,
         .unload = null,

@@ -37,7 +37,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return beam.make_i64(env, __foo_result__);
       }
 
-      var exported_nifs = [1] e.ErlNifFunc{
+      var __exported_nifs__ = [1] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 0,
@@ -46,17 +46,13 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         },
       };
 
-      export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
-        return 0;
-      }
-
       const entry = e.ErlNifEntry{
         .major = #{major},
         .minor = #{minor},
         .name = c"Elixir.Foo",
         .num_of_funcs = 1,
-        .funcs = &(exported_nifs[0]),
-        .load = nif_load,
+        .funcs = &(__exported_nifs__[0]),
+        .load = null,
         .reload = null,
         .upgrade = null,
         .unload = null,
@@ -108,7 +104,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return beam.make_i64(env, __foo_result__);
       }
 
-      var exported_nifs = [1] e.ErlNifFunc{
+      var __exported_nifs__ = [1] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 1,
@@ -117,17 +113,13 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         },
       };
 
-      export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
-        return 0;
-      }
-
       const entry = e.ErlNifEntry{
         .major = #{major},
         .minor = #{minor},
         .name = c"Elixir.Foo",
         .num_of_funcs = 1,
-        .funcs = &(exported_nifs[0]),
-        .load = nif_load,
+        .funcs = &(__exported_nifs__[0]),
+        .load = null,
         .reload = null,
         .upgrade = null,
         .unload = null,

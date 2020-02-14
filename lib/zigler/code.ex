@@ -171,26 +171,58 @@ defmodule Zigler.Code do
   #############################################################################
   ## FOOTER GENERATION
 
+  ## TODO: break this up!
+
   def footer(module = %Module{}) do
     [major, minor] = nif_major_minor()
     funcs_count = Enum.count(module.nifs)
+    exports = """
+    var __exported_nifs__ = [#{funcs_count}] e.ErlNifFunc{
+    #{Enum.map(module.nifs, &nif_struct/1)}};
+    """
     resource_init_defs = Enum.map(module.resources, &resource_init_definition/1)
     resource_inits = Enum.map(module.resources, &resource_initializer/1)
-    """
-    var exported_nifs = [#{funcs_count}] e.ErlNifFunc{
-    #{Enum.map(module.nifs, &nif_struct/1)}};
-    #{resource_init_defs}
-    export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
-    #{resource_inits}  return 0;
-    }
 
+    resource_map = module.resources
+    |> Enum.map(fn res -> "    #{res.name} => return __#{res.name}_resource__,\n" end)
+
+    resource_mapper = case module.resources do
+      [] -> ""
+      _ ->
+        """
+        fn resource_type(comptime T : type) beam.resource_type {
+          switch (T) {
+        #{resource_map}    else => unreachable
+          }
+        }
+
+        """
+    end
+
+    nif_loader = case module.resources do
+      [] -> ""
+      _ ->
+        """
+        extern fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
+        #{resource_inits}  return 0;
+        }
+
+        """
+    end
+
+    nif_load = case module.resources do
+      [] -> "null"
+      _ -> "nif_load"
+    end
+
+    [exports, resource_init_defs, "\n", resource_mapper, nif_loader, """
     const entry = e.ErlNifEntry{
       .major = #{major},
       .minor = #{minor},
       .name = c"#{module.module}",
       .num_of_funcs = #{funcs_count},
-      .funcs = &(exported_nifs[0]),
-      .load = nif_load,
+      .funcs = &(__exported_nifs__[0]),
+      .load = #{nif_load},
       .reload = null,
       .upgrade = null,
       .unload = null,
@@ -203,7 +235,7 @@ defmodule Zigler.Code do
     export fn nif_init() *const e.ErlNifEntry{
       return &entry;
     }
-    """
+    """]
   end
 
   @doc false
@@ -240,7 +272,7 @@ defmodule Zigler.Code do
         null);
     }
 
-    fn __destroy_#{name}__(env: beam.env, obj: ?*c_void) void {}
+    extern fn __destroy_#{name}__(env: beam.env, obj: ?*c_void) void {}
     """
   end
 

@@ -11,7 +11,8 @@ defmodule ZiglerTest.Integration.ResourceTest do
 
   /// nif: create_resource/1
   fn create_resource(env: beam.env, value: i64) beam.term {
-    return beam.resource.create(i64, resource(test_res), value);
+    return beam.resource.create(i64, env, resource_type(test_res), value)
+      catch beam.raise_function_clause_error(env);
   }
 
   /// nif: retrieve_resource/1
