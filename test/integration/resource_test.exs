@@ -15,6 +15,13 @@ defmodule ZiglerTest.Integration.ResourceTest do
       catch beam.raise_function_clause_error(env);
   }
 
+  /// nif: update_resource/2
+  fn update_resource(env: beam.env, resource: beam.term, new_value: i64) beam.term {
+    beam.resource.update(i64, env, __resource_type__(test_res), resource, new_value)
+      catch return beam.raise_function_clause_error(env);
+    return beam.make_atom(env, "ok");
+  }
+
   /// nif: retrieve_resource/1
   fn retrieve_resource(env: beam.env, value: beam.term) i64 {
     return beam.resource.fetch(i64, env, __resource_type__(test_res), value) catch 0;
@@ -24,6 +31,13 @@ defmodule ZiglerTest.Integration.ResourceTest do
   describe "using the basic resource form" do
     test "the resource lifecycle is accessible" do
       rsrc = create_resource(47)
+      assert 47 == retrieve_resource(rsrc)
+    end
+
+    test "and resources can be updated" do
+      rsrc = create_resource(42)
+      assert 42 == retrieve_resource(rsrc)
+      assert :ok == update_resource(rsrc, 47)
       assert 47 == retrieve_resource(rsrc)
     end
   end
@@ -38,15 +52,29 @@ defmodule ZiglerTest.Integration.ResourceTest do
       catch beam.raise_function_clause_error(env);
   }
 
+  /// nif: update_resource_alt/2
+  fn update_resource_alt(env: beam.env, resource: beam.term, new_value: i64) beam.term {
+    __resource__.update(test_res, env, resource, new_value)
+      catch return beam.raise_function_clause_error(env);
+    return beam.make_atom(env, "ok");
+  }
+
   /// nif: retrieve_resource_alt/1
   fn retrieve_resource_alt(env: beam.env, value: beam.term) i64 {
     return __resource__.fetch(test_res_alt, env, value) catch 0;
   }
   """
 
-  describe "using the special resource form" do
+  describe "using the special __resource__ form" do
     test "the resource lifecycle is accessible" do
       rsrc = create_resource_alt(47)
+      assert 47 == retrieve_resource_alt(rsrc)
+    end
+
+    test "and resources can be updated" do
+      rsrc = create_resource_alt(42)
+      assert 42 == retrieve_resource_alt(rsrc)
+      assert :ok == update_resource_alt(rsrc, 47)
       assert 47 == retrieve_resource_alt(rsrc)
     end
   end

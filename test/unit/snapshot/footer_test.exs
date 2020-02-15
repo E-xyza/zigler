@@ -82,7 +82,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
           return beam.resource.create(T, env, __resource_type__(T), value);
         }
 
-        fn update(comptime T: type, env: beam.env, res: beam.term, value: T) !beam.term {
+        fn update(comptime T: type, env: beam.env, res: beam.term, value: T) !void {
           return beam.resource.update(T, env, __resource_type__(T), res, value);
         }
 
