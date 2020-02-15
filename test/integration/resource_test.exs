@@ -11,19 +11,44 @@ defmodule ZiglerTest.Integration.ResourceTest do
 
   /// nif: create_resource/1
   fn create_resource(env: beam.env, value: i64) beam.term {
-    return beam.resource.create(i64, env, resource_type(test_res), value)
+    return beam.resource.create(i64, env, __resource_type__(test_res), value)
       catch beam.raise_function_clause_error(env);
   }
 
   /// nif: retrieve_resource/1
   fn retrieve_resource(env: beam.env, value: beam.term) i64 {
-    return beam.resource.fetch(i64, env, resource_type(test_res), value) catch 0;
+    return beam.resource.fetch(i64, env, __resource_type__(test_res), value) catch 0;
   }
   """
 
-  test "the resource lifecycle" do
-    rsrc = create_resource(47)
-    assert 47 == retrieve_resource(rsrc)
+  describe "using the basic resource form" do
+    test "the resource lifecycle is accessible" do
+      rsrc = create_resource(47)
+      assert 47 == retrieve_resource(rsrc)
+    end
+  end
+
+  ~Z"""
+  /// resource: test_res_alt definition
+  const test_res_alt = i64;
+
+  /// nif: create_resource_alt/1
+  fn create_resource_alt(env: beam.env, value: i64) beam.term {
+    return __resource__.create(test_res, env, value)
+      catch beam.raise_function_clause_error(env);
+  }
+
+  /// nif: retrieve_resource_alt/1
+  fn retrieve_resource_alt(env: beam.env, value: beam.term) i64 {
+    return __resource__.fetch(test_res_alt, env, value) catch 0;
+  }
+  """
+
+  describe "using the special resource form" do
+    test "the resource lifecycle is accessible" do
+      rsrc = create_resource_alt(47)
+      assert 47 == retrieve_resource_alt(rsrc)
+    end
   end
 
   #~Z"""

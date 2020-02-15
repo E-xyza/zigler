@@ -190,11 +190,29 @@ defmodule Zigler.Code do
       [] -> ""
       _ ->
         """
-        fn resource_type(comptime T : type) beam.resource_type {
+        fn __resource_type__(comptime T: type) beam.resource_type {
           switch (T) {
         #{resource_map}    else => unreachable
           }
         }
+
+        const __resource__ = struct {
+          fn create(comptime T: type, env: beam.env, value: T) !beam.term {
+            return beam.resource.create(T, env, __resource_type__(T), value);
+          }
+
+          fn update(comptime T: type, env: beam.env, res: beam.term, value: T) !beam.term {
+            return beam.resource.update(T, env, __resource_type__(T), res, value);
+          }
+
+          fn fetch(comptime T: type, env: beam.env, res: beam.term) !T {
+            return beam.resource.fetch(T, env, __resource_type__(T), res);
+          }
+
+          fn release(comptime T: type, env: beam.env, res: beam.term) void {
+            return beam.resource.release(T, env, __resource_type__(T), res);
+          }
+        };
 
         """
     end

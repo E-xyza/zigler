@@ -70,12 +70,30 @@ defmodule ZiglerTest.Snapshot.FooterTest do
 
       extern fn __destroy_bar__(env: beam.env, obj: ?*c_void) void {}
 
-      fn resource_type(comptime T : type) beam.resource_type {
+      fn __resource_type__(comptime T: type) beam.resource_type {
         switch (T) {
           bar => return __bar_resource__,
           else => unreachable
         }
       }
+
+      const __resource__ = struct {
+        fn create(comptime T: type, env: beam.env, value: T) !beam.term {
+          return beam.resource.create(T, env, __resource_type__(T), value);
+        }
+
+        fn update(comptime T: type, env: beam.env, res: beam.term, value: T) !beam.term {
+          return beam.resource.update(T, env, __resource_type__(T), res, value);
+        }
+
+        fn fetch(comptime T: type, env: beam.env, res: beam.term) !T {
+          return beam.resource.fetch(T, env, __resource_type__(T), res);
+        }
+
+        fn release(comptime T: type, env: beam.env, res: beam.term) void {
+          return beam.resource.release(T, env, __resource_type__(T), res);
+        }
+      };
 
       extern fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
         __bar_resource__ = __init_bar_resource__(env);
