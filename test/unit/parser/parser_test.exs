@@ -47,7 +47,7 @@ defmodule ZiglerTest.ParserTest do
     test "can correctly parse a zig block with a resource section" do
       assert {:ok, [], "", %Parser{global: [global]}, _, _} = Parser.parse_zig_block("""
 
-      /// resource: foo
+      /// resource: foo definition
       const foo = i64;
 
       """)
@@ -145,7 +145,7 @@ defmodule ZiglerTest.ParserTest do
     test "can correctly parse a zig block with a resource declaration" do
       assert %Zigler.Module{resources: [resource]} = Parser.parse("""
 
-      /// resource: bar
+      /// resource: bar definition
       const bar = i64;
 
       /// nif: foo/0

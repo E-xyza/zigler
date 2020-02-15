@@ -132,7 +132,9 @@ defmodule Zigler.Parser do
     |> post_traverse(:register_nif_declaration)
 
   # resource declarations take the form:
-  # /// resource: <resource_type>
+  # /// resource: <resource_type> <definition | cleanup>
+  resource_modifier = Enum.map(~w(definition cleanup), &string/1)
+
   resource_declaration =
     optional(blankspace)
     |> ignore(string("///"))
@@ -141,6 +143,7 @@ defmodule Zigler.Parser do
     |> concat(blankspace)
     |> concat(identifier)
     |> optional(blankspace)
+    |> choice(resource_modifier)
     |> ignore(string("\n"))
     |> post_traverse(:register_resource_declaration)
 
@@ -216,8 +219,11 @@ defmodule Zigler.Parser do
     {[], %{context | local: local}}
   end
 
-  defp register_resource_declaration(_rest, [name], context, _, _) do
+  defp register_resource_declaration(_rest, ["definition", name], context, _, _) do
     {[], %{context | local: resource_struct(name, context)}}
+  end
+  defp register_resource_declaration(_rest, ["cleanup", name], context, _, _) do
+    {[], %{context | local: resource_cleanup_struct(name, context)}}
   end
 
   defp resource_struct(name, context = %{local: {:doc, doc}}) do
@@ -225,6 +231,13 @@ defmodule Zigler.Parser do
   end
   defp resource_struct(name, _context) do
     struct(Resource, name: String.to_atom(name))
+  end
+
+  defp resource_cleanup_struct(name, context = %{local: {:doc, doc}}) do
+    struct(resource_cleanup_struct(name, %{context | local: nil}), doc: doc)
+  end
+  defp resource_cleanup_struct(name, _context) do
+    struct(ResourceCleanup, for: String.to_atom(name))
   end
 
   #############################################################################

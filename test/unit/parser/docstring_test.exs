@@ -97,14 +97,14 @@ defmodule ZiglerTest.Parser.DocstringTest do
     @describetag :resource
     test "correctly assigns a resource declaration" do
       assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_resource_declaration("""
-      /// resource: foo
+      /// resource: foo definition
       """)
       assert %Resource{name: :foo} = local
     end
 
     test "adds in contextual documentation" do
       assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_resource_declaration("""
-      /// resource: foo
+      /// resource: foo definition
       """, context: %{local: {:doc, "doc"}})
       assert %Resource{doc: "doc"} = local
     end

@@ -121,8 +121,7 @@ defmodule Zigler.Compiler do
   @spec precompile(Zigler.Module.t) :: t | no_return
   def precompile(module) do
     # build the staging directory.
-    random_stamp = DateTime.utc_now |> :erlang.phash2 |> Integer.to_string(16)
-    staging_dir = Path.join(@staging_root, "#{module.module}-#{random_stamp}")
+    staging_dir = Path.join([@staging_root, Atom.to_string(Mix.env()), "#{module.module}"])
     File.mkdir_p(staging_dir)
 
     # define the code file and build it.
@@ -154,7 +153,11 @@ defmodule Zigler.Compiler do
 
   @spec cleanup(t) :: :ok | no_return
   defp cleanup(compiler) do
-    File.rm_rf!(compiler.staging_dir)
+    # in dev and test we keep our code around for debugging purposes.
+    # TODO: make this configurable.
+    if Mix.env in [:dev, :prod] do
+      File.rm_rf!(compiler.staging_dir)
+    end
     :ok
   end
 end
