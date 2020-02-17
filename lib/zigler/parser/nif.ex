@@ -97,5 +97,10 @@ defmodule Zigler.Parser.Nif do
       description: "nif function #{context.local.name} returns an invalid type #{retval}"
   end
 
+  def register_function_header([retval | params], context) do
+    final_nif = %{context.local | retval: retval, params: Enum.reverse(params)}
+    %{context | global: [final_nif | context.global]}
+  end
+
 
 end

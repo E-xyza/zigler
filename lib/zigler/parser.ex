@@ -349,18 +349,13 @@ defmodule Zigler.Parser do
   @spec register_function_header(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval
 
-  defp register_function_header(_, [retval | params], context = %{local: nif = %Nif{}}, _, _) do
-    final_nif = %{nif | retval: retval, params: Enum.reverse(params)}
-    {[], %{context | global: [final_nif | context.global], local: nil}}
-  end
-  defp register_function_header(_, [_, _, _, name], context = %{local: cleanup = %ResourceCleanup{}}, _, _) do
-    final_cleanup = %{cleanup | name: String.to_atom(name)}
-    {[], %{context | global: [final_cleanup | context.global], local: nil}}
+  defp register_function_header(_, content, context = %{local: nif = %module{}}, _, _) do
+    {[], %{module.register_function_header(content, context) | local: nil}}
   end
   defp register_function_header(_, _, context, _, _), do: {[], %{context | local: nil}}
 
   defp register_resource_definition(_, _, context = %{local: resource = %Resource{}}, _, _) do
-    {[], %{context | global: [resource | context.global], local: nil}}
+    {[], %{Resource.register_resource_definition(context) | local: nil}}
   end
   defp register_resource_definition(_, _, context, _, _), do: {[], context}
 

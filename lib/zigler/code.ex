@@ -2,7 +2,7 @@ defmodule Zigler.Code do
   @moduledoc """
   all code responsible for generating zig code lives in this module.
   """
-  alias Zigler.{Module, Types}
+  alias Zigler.Module
   alias Zigler.Parser.{Nif, Resource}
 
   def generate_main(module = %Module{}) do
@@ -210,7 +210,7 @@ defmodule Zigler.Code do
           }
 
           fn release(comptime T: type, env: beam.env, res: beam.term) void {
-            return beam.resource.release(T, env, __resource_type__(T), res);
+            return beam.resource.release(env, __resource_type__(T), res);
           }
         };
 
@@ -275,7 +275,18 @@ defmodule Zigler.Code do
     """
   end
 
-  defp resource_init_definition(%Resource{name: name}) do
+  defp resource_init_definition(res = %Resource{name: name}) do
+    cleanup = if res.cleanup do
+      """
+
+        if (res) |__res__| {
+          #{res.cleanup}(env, @ptrCast(*#{name}, @alignCast(@alignOf(*#{name}), __res__)));
+        } else unreachable;
+      """
+    else
+      ""
+    end
+
     """
 
     var __#{name}_resource__: beam.resource_type = undefined;
@@ -290,7 +301,7 @@ defmodule Zigler.Code do
         null);
     }
 
-    extern fn __destroy_#{name}__(env: beam.env, obj: ?*c_void) void {}
+    extern fn __destroy_#{name}__(env: beam.env, res: ?*c_void) void {#{cleanup}}
     """
   end
 

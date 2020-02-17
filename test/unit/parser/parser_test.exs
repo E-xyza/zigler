@@ -54,6 +54,38 @@ defmodule ZiglerTest.ParserTest do
 
       assert %Resource{name: :foo} = global
     end
+
+    test "can correctly match up a zig block with resource cleanup after the resource definition" do
+      assert {:ok, [], "", %Parser{global: [global]}, _, _} = Parser.parse_zig_block("""
+
+      /// resource: foo definition
+      const foo = i64;
+
+      /// resource: foo cleanup
+      fn foo_cleanup(env: beam.env, foo_ptr: *foo) void {
+        // code that does something
+      }
+
+      """)
+
+      assert %Resource{name: :foo, cleanup: :foo_cleanup} = global
+    end
+
+    test "can correctly match up a zig block with resource cleanup before the resource definition" do
+      assert {:ok, [], "", %Parser{global: [global]}, _, _} = Parser.parse_zig_block("""
+
+      /// resource: foo cleanup
+      fn foo_cleanup(env: beam.env, foo_ptr: *foo) void {
+        // code that does something
+      }
+
+      /// resource: foo definition
+      const foo = i64;
+
+      """)
+
+      assert %Resource{name: :foo, cleanup: :foo_cleanup} = global
+    end
   end
 
   describe "the zig code parser" do

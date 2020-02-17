@@ -3,7 +3,7 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
   use ExUnit.Case, async: true
 
   alias Zigler.Parser
-  alias Zigler.Parser.{Nif, ResourceCleanup}
+  alias Zigler.Parser.{Nif, Resource, ResourceCleanup}
 
   @moduletag :parser
   @moduletag :function
@@ -128,8 +128,8 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
         fn bar(env: beam.env, res: *foo) void {
       """, context: %{local: %ResourceCleanup{for: :foo}})
 
-      assert %Parser{global: [function], local: nil} = context
-      assert %ResourceCleanup{for: :foo, name: :bar} = function
+      assert %Parser{global: [cleanup], local: nil} = context
+      assert %ResourceCleanup{for: :foo, name: :bar} = cleanup
     end
 
     test "correctly moves the resource cleanup struct to global context when ?*e.ErlNifEnv is used" do
@@ -137,8 +137,8 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
         fn bar(env: ?*e.ErlNifEnv, res: *foo) void {
       """, context: %{local: %ResourceCleanup{for: :foo}})
 
-      assert %Parser{global: [function], local: nil} = context
-      assert %ResourceCleanup{for: :foo, name: :bar} = function
+      assert %Parser{global: [cleanup], local: nil} = context
+      assert %ResourceCleanup{for: :foo, name: :bar} = cleanup
     end
 
     test "correctly moves the resource cleanup struct to global context even when there's a space in the pointer" do
@@ -146,8 +146,8 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
         fn bar(env: beam.env, res: * foo) void {
       """, context: %{local: %ResourceCleanup{for: :foo}})
 
-      assert %Parser{global: [function], local: nil} = context
-      assert %ResourceCleanup{for: :foo, name: :bar} = function
+      assert %Parser{global: [cleanup], local: nil} = context
+      assert %ResourceCleanup{for: :foo, name: :bar} = cleanup
     end
 
     test "raises CompileError if the parameters don't match beam.env or e.ErlNifEnv" do
@@ -183,6 +183,15 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
           fn bar(env: beam.env, res: *foo) i32 {
         """, context: %{local: %ResourceCleanup{for: :foo}})
       end
+    end
+
+    test "adds the cleanup struct into the actual resource if the resource definiton already exists" do
+      assert {:ok, _, _, context, _, _} = Parser.parse_function_header("""
+        fn bar(env: beam.env, res: *foo) void {
+      """, context: %{local: %ResourceCleanup{for: :foo}, global: [%Resource{name: :foo}]})
+
+      assert %Parser{global: [resource], local: nil} = context
+      assert %Resource{name: :foo, cleanup: :bar} = resource
     end
   end
 end

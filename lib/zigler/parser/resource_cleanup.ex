@@ -5,6 +5,8 @@ defmodule Zigler.Parser.ResourceCleanup do
 
   @beam_envs ["beam.env", "?*e.ErlNifEnv"]
 
+  alias Zigler.Parser.Resource
+
   # validate_arity/3: checks to make sure the arity of nif declaration matches the function
   @spec validate_arity([String.t], Parser.t, non_neg_integer)
     :: :ok | no_return
@@ -46,5 +48,25 @@ defmodule Zigler.Parser.ResourceCleanup do
       description: "resource cleanup function #{name} for resource #{context.local.for} must return `void` (currently returns `#{retval}`)"
   end
 
+  def register_function_header([_, _, _, name], context = %{local: %{for: res}}) do
+    # search through global for a resource that matches our for parameter.
+    # if it's found then update it.  If it's not found then merely append the
+    # cleanup promise to the global parser state.
+    if Enum.any?(context.global, &match?(%Resource{name: ^res}, &1)) do
+      new_global = bind_cleanup(context.global, res, String.to_atom(name))
+      %{context | global: new_global}
+    else
+      final_cleanup = %{context.local | name: String.to_atom(name)}
+      %{context | global: [final_cleanup | context.global]}
+    end
+  end
+
+  # no need for a null case because we know there must be at least one match.
+  defp bind_cleanup([r = %Resource{name: res} | rest], res, cleanup) do
+    [%{r | cleanup: cleanup} | rest]
+  end
+  defp bind_cleanup([_any | rest], res, cleanup) do
+    [rest | bind_cleanup(rest, res, cleanup)]
+  end
 end
 
