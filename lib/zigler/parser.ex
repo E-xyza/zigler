@@ -7,10 +7,10 @@ defmodule Zigler.Parser do
 
   import NimbleParsec
 
-  alias Zigler.Parser.{Nif, Resource}
+  alias Zigler.Parser.{Nif, Resource, ResourceCleanup}
 
   @type t :: %__MODULE__{
-    local: Nif.t | {:doc, iodata},
+    local: Nif.t | ResourceCleanup.t | {:doc, iodata},
     file: Path.t,
     global: [Nif.t]
   }
@@ -278,7 +278,7 @@ defmodule Zigler.Parser do
     |> ignore(
       repeat(ascii_char(not: ?\n))
       |> string("\n"))
-    |> post_traverse(:register_nif_header)
+    |> post_traverse(:register_function_header)
 
   resource_definition =
     ignore(
@@ -315,7 +315,7 @@ defmodule Zigler.Parser do
     end
     {[], context}
   end
-  defp validate_nif_declaration(_, _, context, _, _), do: {[], context}
+  defp validate_nif_declaration(_, content, context, _, _), do: {content, context}
 
   @beam_envs ["beam.env", "?*e.ErlNifEnv"]
 
@@ -327,7 +327,16 @@ defmodule Zigler.Parser do
     validate_arity(Enum.reverse(params), context, line)
     {params, context}
   end
-  defp validate_arity(_rest, _, context, _, _), do: {[], context}
+  defp validate_arity(_rest, params, context = %{local: %ResourceCleanup{}}, {line, _}, _) do
+    unless length(params) == 3 do
+      raise CompileError,
+        file: context.file,
+        line: line,
+        description: "resource cleanup function #{List.last params} must have 2 parameters."
+    end
+    {params, context}
+  end
+  defp validate_arity(_rest, content, context, _, _), do: {content, context}
 
   # validate_arity/3: checks to make sure the arity of nif declaration matches the function
   @spec validate_arity([String.t], t, non_neg_integer)
@@ -353,10 +362,26 @@ defmodule Zigler.Parser do
     validate_params(content, context, line)
     {content, context} # since it's a validator, ignore the result of validate_params/3
   end
+  defp validate_params(_rest, [ptype, env, name], context = %{local: %ResourceCleanup{}}, {line, _}, _)
+    when env in @beam_envs do
+    unless ptype == Atom.to_string(context.local.for) do
+      raise CompileError,
+        file: context.file,
+        line: line,
+        description: "resource cleanup function #{name} for #{context.local.for} must have second parameter be of type #{context.local.for}. (got #{ptype})"
+    end
+    {[name], context}
+  end
+  defp validate_params(_rest, [_, env, name], context = %{local: %ResourceCleanup{}}, {line, _}, _) do
+    raise CompileError,
+      file: context.file,
+      line: line,
+      description: "resource cleanup function #{name} for #{context.local.for} must have first parameter be of type `beam.env` or `?*e.ErlNifEnv`. (got #{env})"
+  end
   defp validate_params(_, content, context, _, _), do: {content, context}
 
   # validate_params/3 : raises if an invalid parameter type is sent to to the function
-  @spec validate_arity([String.t], t, non_neg_integer)
+  @spec validate_params([String.t], t, non_neg_integer)
     :: :ok | no_return
   defp validate_params([], _context, _line), do: :ok
   defp validate_params([params | rest], context, line) when params in @valid_params do
@@ -385,7 +410,17 @@ defmodule Zigler.Parser do
       description: "nif function #{context.local.name} returns an invalid type #{retval}"
     {content, context}
   end
-  defp validate_retval(_, _, context, _, _), do: {[], context}
+  defp validate_retval(_rest, [retval | rest], context = %{local: %ResourceCleanup{}}, _, _)
+    when retval == "void" do
+    {rest, context}
+  end
+  defp validate_retval(_rest, [retval, name], context = %{local: %ResourceCleanup{}}, {line, _}, _) do
+    raise CompileError,
+      file: context.file,
+      line: line,
+      description: "resource cleanup function #{name} for resource #{context.local.for} must return `void` (currently returns `#{retval}`)"
+  end
+  defp validate_retval(_, content, context, _, _), do: {content, context}
 
   defp validate_resource(_, [name], context = %{local: resource = %Resource{}}, {line, _}, _) do
     unless Atom.to_string(resource.name) == name do
@@ -400,14 +435,18 @@ defmodule Zigler.Parser do
 
   # registrations
 
-  @spec register_nif_header(String.t, [String.t], t, line_info, non_neg_integer)
+  @spec register_function_header(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval
 
-  defp register_nif_header(_, [retval | params], context = %{local: nif = %Nif{}}, _, _) do
+  defp register_function_header(_, [retval | params], context = %{local: nif = %Nif{}}, _, _) do
     final_nif = %{nif | retval: retval, params: Enum.reverse(params)}
     {[], %{context | global: [final_nif | context.global], local: nil}}
   end
-  defp register_nif_header(_, _, context, _, _), do: {[], %{context | local: nil}}
+  defp register_function_header(_, [name], context = %{local: cleanup = %ResourceCleanup{}}, _, _) do
+    final_cleanup = %{cleanup | name: String.to_atom(name)}
+    {[], %{context | global: [final_cleanup | context.global], local: nil}}
+  end
+  defp register_function_header(_, _, context, _, _), do: {[], %{context | local: nil}}
 
   defp register_resource_definition(_, _, context = %{local: resource = %Resource{}}, _, _) do
     {[], %{context | global: [resource | context.global], local: nil}}
