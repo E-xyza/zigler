@@ -134,13 +134,15 @@ defmodule Zigler.Compiler do
 
   defp long_main_fn(%{name: name, arity: arity}) do
     params = if arity == 0 do
-      Elixir
+      []
     else
       for idx <- 1..arity, do: {String.to_atom("arg#{idx}"), [], Elixir}
     end
 
+    launcher_call = {LongRunning.launcher(name), [], params}
+
     block = quote context: Elixir do
-      resource = unquote(LongRunning.launcher name)()
+      resource = unquote(launcher_call)
       receive do :finished -> :ok end
       unquote(LongRunning.fetcher name)(resource)
     end
@@ -156,7 +158,7 @@ defmodule Zigler.Compiler do
     text = "nif launcher for function #{name}/#{arity} not bound"
 
     params = if arity == 0 do
-      Elixir
+      []
     else
       for _ <- 1..arity, do: {:_, [], Elixir}
     end
