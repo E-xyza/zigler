@@ -99,12 +99,26 @@ defmodule Zigler.Compiler do
     end
   end
 
-  def function_skeleton(%{arity: arity, name: name}) do
+  #############################################################################
+  ## FUNCTION SKELETONS
 
+  def function_skeleton(nif = %{opts: opts}) do
+    if opts[:long] do
+      quote context: Elixir do
+        unquote(long_main_fn(nif))
+        unquote(long_launch_fn(nif))
+        unquote(long_fetch_fn(nif))
+      end
+    else
+      basic_fn(nif)
+    end
+  end
+
+  defp basic_fn(%{name: name, arity: arity}) do
     text = "nif for function #{name}/#{arity} not bound"
 
     params = if arity == 0 do
-      []
+      Elixir
     else
       for _ <- 1..arity, do: {:_, [], Elixir}
     end
@@ -115,6 +129,56 @@ defmodule Zigler.Compiler do
         [do: {:raise, [context: Elixir, import: Kernel], [text]}]
       ]}
   end
+
+  alias Zigler.Code.LongRunning
+
+  defp long_main_fn(%{name: name, arity: arity}) do
+    params = if arity == 0 do
+      Elixir
+    else
+      for idx <- 1..arity, do: {String.to_atom("arg#{idx}"), [], Elixir}
+    end
+
+    block = quote context: Elixir do
+      resource = __foo_launch__()
+      receive do :finished -> :ok end
+      __foo_fetch__(resource)
+    end
+
+    {:def, [context: Elixir, import: Kernel],
+      [
+        {name, [context: Elixir], params},
+        [do: block]
+      ]}
+  end
+
+  defp long_launch_fn(%{name: name, arity: arity}) do
+    text = "nif launcher for function #{name}/#{arity} not bound"
+
+    params = if arity == 0 do
+      Elixir
+    else
+      for _ <- 1..arity, do: {:_, [], Elixir}
+    end
+
+    {:def, [context: Elixir, import: Kernel],
+      [
+        {LongRunning.launcher(name), [context: Elixir], params},
+        [do: {:raise, [context: Elixir, import: Kernel], [text]}]
+      ]}
+  end
+
+  defp long_fetch_fn(%{name: name, arity: arity}) do
+    text = "nif fetcher for function #{name}/#{arity} not bound"
+    quote context: Elixir do
+      def unquote(LongRunning.fetcher name)(_) do
+        raise unquote(text)
+      end
+    end
+  end
+
+  #############################################################################
+  ## STEPS
 
   @staging_root Application.get_env(:zigler, :staging_root, "/tmp/zigler_compiler")
 

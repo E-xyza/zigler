@@ -46,7 +46,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
   describe "packer_fn/1 generates a zig function" do
     test "for a 0-arity function" do
       assert """
-      fn __foo_packer__(cache_ret: **__foo_cache__, env: beam.env) !void {
+      fn __foo_pack__(cache_ret: **__foo_cache__, env: beam.env) !void {
 
         var cache = try beam.allocator.create(__foo_cache__);
         errdefer { beam.allocator.destroy(cache); }
@@ -65,7 +65,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
 
     test "for a 2-arity function" do
       assert """
-      fn __foo_packer__(cache_ret: **__foo_cache__, env: beam.env, v0: i64, v1: f64) !void {
+      fn __foo_pack__(cache_ret: **__foo_cache__, env: beam.env, v0: i64, v1: f64) !void {
 
         var cache = try beam.allocator.create(__foo_cache__);
         errdefer { beam.allocator.destroy(cache); }
@@ -91,7 +91,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
       fn __foo_launch__(env: beam.env) beam.term {
         var cache: *__foo_cache__ = undefined;
 
-        __foo_packer__(&cache, env) catch {
+        __foo_pack__(&cache, env) catch {
           return beam.raise(env, beam.make_atom(env, "error"[0..]));
         };
 
@@ -105,7 +105,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
       fn __foo_launch__(env: beam.env, v0: i64, v1: f64) beam.term {
         var cache: *__foo_cache__ = undefined;
 
-        __foo_packer__(&cache, env, v0, v1) catch {
+        __foo_pack__(&cache, env, v0, v1) catch {
           return beam.raise(env, beam.make_atom(env, "error"[0..]));
         };
 

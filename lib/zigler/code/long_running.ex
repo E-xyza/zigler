@@ -31,12 +31,12 @@ defmodule Zigler.Code.LongRunning do
   resource object once the thread has completed its task.
   """
 
-  def resource(fn_name), do: "#{fn_name}_resource"
-  def cache(fn_name), do: "__#{fn_name}_cache__"
-  def packer(fn_name), do: "__#{fn_name}_packer__"
-  def launcher(fn_name), do: "__#{fn_name}_launch__"
-  def harness(fn_name), do: "__#{fn_name}_harness__"
-  def fetcher(fn_name), do: "__#{fn_name}_fetch__"
+  def resource(fn_name), do: String.to_atom("#{fn_name}_resource")
+  def cache(fn_name), do: String.to_atom("__#{fn_name}_cache__")
+  def packer(fn_name), do: String.to_atom("__#{fn_name}_pack__")
+  def launcher(fn_name), do: String.to_atom("__#{fn_name}_launch__")
+  def harness(fn_name), do: String.to_atom("__#{fn_name}_harness__")
+  def fetcher(fn_name), do: String.to_atom("__#{fn_name}_fetch__")
 
   def cache_struct(nif) do
     extra_lines = nif.params
