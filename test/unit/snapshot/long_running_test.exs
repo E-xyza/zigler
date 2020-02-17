@@ -2,8 +2,6 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
 
   use ExUnit.Case, async: true
 
-  # checking up on tests for long-running functions
-
   describe "resource_struct/1 generates a zig struct" do
     test "for a 0-arity function" do
       assert """
