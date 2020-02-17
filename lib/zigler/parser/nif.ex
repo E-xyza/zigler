@@ -41,4 +41,21 @@ defmodule Zigler.Parser.Nif do
     opts: [option]
   }
 
+  @beam_envs ["beam.env", "?*e.ErlNifEnv"]
+
+  # validate_arity/3: checks to make sure the arity of nif declaration matches the function
+  @spec validate_arity([String.t], Parser.t, non_neg_integer)
+    :: :ok | no_return
+
+  def validate_arity([env | rest], context, line) when env in @beam_envs do
+    validate_arity(rest, context, line)
+  end
+  def validate_arity(rest, context = %{local: %{arity: arity}}, line) when length(rest) != arity do
+    raise CompileError,
+      file: context.file,
+      line: line,
+      description: "nif declaration arity (#{arity}) doesn't match the expected function arity #{length(rest)}"
+  end
+  def validate_arity(_, _, _), do: :ok
+
 end

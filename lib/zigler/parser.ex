@@ -323,35 +323,11 @@ defmodule Zigler.Parser do
   @spec validate_arity(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval | no_return
 
-  defp validate_arity(_rest, params, context = %{local: %Nif{}}, {line, _}, _) do
-    validate_arity(Enum.reverse(params), context, line)
-    {params, context}
-  end
-  defp validate_arity(_rest, params, context = %{local: %ResourceCleanup{}}, {line, _}, _) do
-    unless length(params) == 3 do
-      raise CompileError,
-        file: context.file,
-        line: line,
-        description: "resource cleanup function #{List.last params} must have 2 parameters."
-    end
+  defp validate_arity(_rest, params, context = %{local: %module{}}, {line, _}, _) do
+    module.validate_arity(Enum.reverse(params), context, line)
     {params, context}
   end
   defp validate_arity(_rest, content, context, _, _), do: {content, context}
-
-  # validate_arity/3: checks to make sure the arity of nif declaration matches the function
-  @spec validate_arity([String.t], t, non_neg_integer)
-    :: :ok | no_return
-
-  defp validate_arity([env | rest], context, line) when env in @beam_envs do
-    validate_arity(rest, context, line)
-  end
-  defp validate_arity(rest, context = %{local: %{arity: arity}}, line) when length(rest) != arity do
-    raise CompileError,
-      file: context.file,
-      line: line,
-      description: "nif declaration arity (#{arity}) doesn't match the expected function arity #{length(rest)}"
-  end
-  defp validate_arity(_content, _context, _line), do: :ok
 
   # validate_params/5 : trampolines to validate_params/3
   # ignore parameter validation if we're not in a segment specified by a nif.
