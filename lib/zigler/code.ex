@@ -8,7 +8,7 @@ defmodule Zigler.Code do
   def generate_main(module = %Module{}) do
     case module.c_includes do
       [] -> []
-      includes -> c_imports(includes) + ["\n"]
+      includes -> c_imports(includes) ++ ["\n"]
     end
     ++ [
       zig_imports(module.imports), "\n",
@@ -175,7 +175,13 @@ defmodule Zigler.Code do
 
   def footer(module = %Module{}) do
     [major, minor] = nif_major_minor()
-    funcs_count = Enum.count(module.nifs)
+
+    funcs_count = module.nifs
+    |> Enum.map(fn %{opts: opts} ->
+      if opts[:long], do: 2, else: 1
+    end)
+    |> Enum.sum
+
     exports = """
     var __exported_nifs__ = [#{funcs_count}] e.ErlNifFunc{
     #{Enum.map(module.nifs, &nif_struct/1)}};
@@ -264,15 +270,34 @@ defmodule Zigler.Code do
     |> String.split(".")
   end
 
-  defp nif_struct(%Nif{name: name, arity: arity}) do
-    """
-      e.ErlNifFunc{
-        .name = c"#{name}",
-        .arity = #{arity},
-        .fptr = __#{name}_shim__,
-        .flags = 0,
-      },
-    """
+  defp nif_struct(%Nif{name: name, arity: arity, opts: opts}) do
+    alias Zigler.Code.LongRunning
+
+    if opts[:long] do
+      """
+        e.ErlNifFunc{
+          .name = c"#{LongRunning.launcher name}",
+          .arity = #{arity},
+          .fptr = #{LongRunning.launcher name},
+          .flags = 0,
+        },
+        e.ErlNifFunc{
+          .name = c"#{LongRunning.fetcher name}",
+          .arity = 0,
+          .fptr = #{LongRunning.fetcher name},
+          .flags = 0,
+        },
+      """
+    else
+      """
+        e.ErlNifFunc{
+          .name = c"#{name}",
+          .arity = #{arity},
+          .fptr = __#{name}_shim__,
+          .flags = 0,
+        },
+      """
+    end
   end
 
   defp resource_init_definition(res = %Resource{name: name}) do

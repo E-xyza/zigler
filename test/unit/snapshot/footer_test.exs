@@ -256,5 +256,49 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       |> Code.footer
       |> IO.iodata_to_binary
     end
+
+    test "works for a long nif" do
+      [major, minor] = Code.nif_major_minor()
+
+      assert """
+      var __exported_nifs__ = [2] e.ErlNifFunc{
+        e.ErlNifFunc{
+          .name = c"__foo_launch__",
+          .arity = 0,
+          .fptr = __foo_launch__,
+          .flags = 0,
+        },
+        e.ErlNifFunc{
+          .name = c"__foo_fetch__",
+          .arity = 0,
+          .fptr = __foo_fetch__,
+          .flags = 0,
+        },
+      };
+
+      const entry = e.ErlNifEntry{
+        .major = #{major},
+        .minor = #{minor},
+        .name = c"Elixir.Baz",
+        .num_of_funcs = 2,
+        .funcs = &(__exported_nifs__[0]),
+        .load = null,
+        .reload = null,
+        .upgrade = null,
+        .unload = null,
+        .vm_variant = c"beam.vanilla",
+        .options = 1,
+        .sizeof_ErlNifResourceTypeInit = 24,
+        .min_erts = c"erts-#{:erlang.system_info(:version)}"
+      };
+
+      export fn nif_init() *const e.ErlNifEntry{
+        return &entry;
+      }
+      """ == %Module{nifs: [%Nif{name: :foo, arity: 0, opts: [long: true]}],
+             file: "foo.exs", module: Baz, app: :zigler}
+      |> Code.footer
+      |> IO.iodata_to_binary
+    end
   end
 end
