@@ -20,11 +20,11 @@ defmodule Zigler.Parser.ResourceCleanup do
   @spec validate_params([String.t], Parser.t, non_neg_integer)
     :: :ok | no_return
   def validate_params([ptype, env, name], context, line) when env in @beam_envs do
-    unless ptype == Atom.to_string(context.local.for) do
+    unless ptype == "*" <> Atom.to_string(context.local.for) do
       raise CompileError,
         file: context.file,
         line: line,
-        description: "resource cleanup function #{name} for #{context.local.for} must have second parameter be of type #{context.local.for}. (got #{ptype})"
+        description: "resource cleanup function #{name} for #{context.local.for} must have second parameter be of type *#{context.local.for}. (got #{ptype})"
     end
     :ok
   end

@@ -125,7 +125,7 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
   describe "with a preloaded resource cleanup struct, the function header parser" do
     test "correctly moves the resource cleanup struct to global context" do
       assert {:ok, _, _, context, _, _} = Parser.parse_function_header("""
-        fn bar(env: beam.env, res: foo) void {
+        fn bar(env: beam.env, res: *foo) void {
       """, context: %{local: %ResourceCleanup{for: :foo}})
 
       assert %Parser{global: [function], local: nil} = context
@@ -134,7 +134,16 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
 
     test "correctly moves the resource cleanup struct to global context when ?*e.ErlNifEnv is used" do
       assert {:ok, _, _, context, _, _} = Parser.parse_function_header("""
-        fn bar(env: ?*e.ErlNifEnv, res: foo) void {
+        fn bar(env: ?*e.ErlNifEnv, res: *foo) void {
+      """, context: %{local: %ResourceCleanup{for: :foo}})
+
+      assert %Parser{global: [function], local: nil} = context
+      assert %ResourceCleanup{for: :foo, name: :bar} = function
+    end
+
+    test "correctly moves the resource cleanup struct to global context even when there's a space in the pointer" do
+      assert {:ok, _, _, context, _, _} = Parser.parse_function_header("""
+        fn bar(env: beam.env, res: * foo) void {
       """, context: %{local: %ResourceCleanup{for: :foo}})
 
       assert %Parser{global: [function], local: nil} = context
@@ -143,12 +152,19 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
 
     test "raises CompileError if the parameters don't match beam.env or e.ErlNifEnv" do
       assert_raise CompileError, fn -> Parser.parse_function_header("""
-          fn bar(qqq: oddtype, res: foo) void {
+          fn bar(qqq: oddtype, res: *foo) void {
         """, context: %{local: %ResourceCleanup{for: :foo}})
       end
     end
 
     test "raises CompileError if the parameter type doesn't match the resource type" do
+      assert_raise CompileError, fn -> Parser.parse_function_header("""
+          fn bar(env: beam.env, res: *bar) void {
+        """, context: %{local: %ResourceCleanup{for: :foo}})
+      end
+    end
+
+    test "raises CompileError if the parameter type is the same as the original type without pointer" do
       assert_raise CompileError, fn -> Parser.parse_function_header("""
           fn bar(env: beam.env, res: bar) void {
         """, context: %{local: %ResourceCleanup{for: :foo}})
@@ -157,14 +173,14 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
 
     test "raises CompileError if there are too many parameters" do
       assert_raise CompileError, fn -> Parser.parse_function_header("""
-          fn bar(env: beam.env, res: bar, extra: i64) void {
+          fn bar(env: beam.env, res: *bar, extra: i64) void {
         """, context: %{local: %ResourceCleanup{for: :foo}})
       end
     end
 
     test "raises CompileError if you try to have a non-void retval" do
       assert_raise CompileError, fn -> Parser.parse_function_header("""
-          fn bar(env: beam.env, res: foo) i32 {
+          fn bar(env: beam.env, res: *foo) i32 {
         """, context: %{local: %ResourceCleanup{for: :foo}})
       end
     end
