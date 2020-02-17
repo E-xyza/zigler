@@ -85,7 +85,7 @@ defmodule ZiglerTest.Integration.ResourceTest do
 
   /// resource: test_pid_res cleanup
   fn test_pid_res_cleanup(env: beam.env, pid: *test_pid_res) void {
-    var msg = beam.make_atom(env, "ok");
+    var msg = beam.make_atom(env, "done");
     var _res = beam.send(env, pid.*, null, msg);
   }
 
@@ -105,7 +105,28 @@ defmodule ZiglerTest.Integration.ResourceTest do
       pid = spawn(fn -> create_pid_resource(test_pid) end)
       Process.sleep(50)
       refute Process.alive?(pid)
-      assert_receive :ok
+      assert_receive :done
+    end
+
+    defp wait_200_millis(test_pid) do
+      # holds on to this object for 200 milliseconds
+      Process.sleep(200)
+    end
+
+    test "can be cleaned up properly in the more complex case" do
+      test_pid = self()
+      pid = spawn(fn ->
+        res = create_pid_resource(test_pid)
+        spawn(fn -> wait_200_millis(res) end)
+      end)
+      # wait 100 ms
+      Process.sleep(100)
+      # hasn't been destroyed yet.
+      refute_received :done
+      # wait another 100 ms to be sure that the spawned threads are ok.
+      Process.sleep(150)
+      # now the reference counters should be exhausted.
+      assert_receive :done
     end
   end
 
