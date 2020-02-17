@@ -140,9 +140,9 @@ defmodule Zigler.Compiler do
     end
 
     block = quote context: Elixir do
-      resource = __foo_launch__()
+      resource = unquote(LongRunning.launcher name)()
       receive do :finished -> :ok end
-      __foo_fetch__(resource)
+      unquote(LongRunning.fetcher name)(resource)
     end
 
     {:def, [context: Elixir, import: Kernel],
