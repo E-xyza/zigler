@@ -19,6 +19,19 @@ defmodule Zigler.Parser.Nif do
     - dirty: :io  -- if the nif should run in a dirty io scheduler.
   """
 
+  @float_types  ~w(f16 f32 f64)
+  @int_types    ~w(u16 i32 u32 i64 u64 c_int c_uint c_long c_ulong isize usize)
+  @bool         ["bool"]
+  @char         ["u8"]
+  @beam_params  ~w(beam.term beam.atom beam.pid)
+  @enif_params  ~w(e.ErlNifTerm e.ErlNifPid)
+  @scalar_types @float_types ++ @int_types ++ @bool ++ @char ++ @beam_params ++ @enif_params
+  @void         ["void"]
+  @env          ~w(?*e.ErlNifEnv beam.env)
+  @array_types  Enum.flat_map(@scalar_types, &["[]#{&1}", "[*c]#{&1}", "[_]#{&1}"])
+
+  @valid_params  @scalar_types ++ @array_types ++ @env
+
   @enforce_keys [:name, :arity]
 
   defstruct @enforce_keys ++ [
@@ -57,5 +70,21 @@ defmodule Zigler.Parser.Nif do
       description: "nif declaration arity (#{arity}) doesn't match the expected function arity #{length(rest)}"
   end
   def validate_arity(_, _, _), do: :ok
+
+  # validate_params/3 : raises if an invalid parameter type is sent to to the function
+  @spec validate_params([String.t], t, non_neg_integer)
+    :: :ok | no_return
+  def validate_params([], _context, _line), do: :ok
+  def validate_params([params | rest], context, line) when params in @valid_params do
+    validate_params(rest, context, line)
+  end
+  def validate_params([invalid_type | _], context, line) do
+    raise CompileError,
+      file: context.file,
+      line: line,
+      description: "nif function #{context.local.name} demands an invalid parameter type #{invalid_type}"
+  end
+  def validate_params(_, _, _), do: :ok
+
 
 end

@@ -32,7 +32,6 @@ defmodule Zigler.Parser do
   @env          ~w(?*e.ErlNifEnv beam.env)
   @array_types  Enum.flat_map(@scalar_types, &["[]#{&1}", "[*c]#{&1}", "[_]#{&1}"])
 
-  @valid_params  @scalar_types ++ @array_types ++ @env
   @valid_retvals @scalar_types ++ @array_types ++ @void
 
   #############################################################################
@@ -319,56 +318,24 @@ defmodule Zigler.Parser do
 
   @beam_envs ["beam.env", "?*e.ErlNifEnv"]
 
-  # validate_arity/5: trampolines into validate_arity/3
+  # validate_arity/5: trampolines into module.validate_arity/3
   @spec validate_arity(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval | no_return
-
   defp validate_arity(_rest, params, context = %{local: %module{}}, {line, _}, _) do
     module.validate_arity(Enum.reverse(params), context, line)
     {params, context}
   end
   defp validate_arity(_rest, content, context, _, _), do: {content, context}
 
-  # validate_params/5 : trampolines to validate_params/3
+  # validate_params/5 : trampolines to module.validate_params/3
   # ignore parameter validation if we're not in a segment specified by a nif.
   @spec validate_params(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval | no_return
-
-  defp validate_params(_rest, content, context = %{local: %Nif{}}, {line, _}, _) do
-    validate_params(content, context, line)
-    {content, context} # since it's a validator, ignore the result of validate_params/3
-  end
-  defp validate_params(_rest, [ptype, env, name], context = %{local: %ResourceCleanup{}}, {line, _}, _)
-    when env in @beam_envs do
-    unless ptype == Atom.to_string(context.local.for) do
-      raise CompileError,
-        file: context.file,
-        line: line,
-        description: "resource cleanup function #{name} for #{context.local.for} must have second parameter be of type #{context.local.for}. (got #{ptype})"
-    end
-    {[name], context}
-  end
-  defp validate_params(_rest, [_, env, name], context = %{local: %ResourceCleanup{}}, {line, _}, _) do
-    raise CompileError,
-      file: context.file,
-      line: line,
-      description: "resource cleanup function #{name} for #{context.local.for} must have first parameter be of type `beam.env` or `?*e.ErlNifEnv`. (got #{env})"
+  defp validate_params(_rest, content, context = %{local: %module{}}, {line, _}, _) do
+    module.validate_params(content, context, line)
+    {content, context}
   end
   defp validate_params(_, content, context, _, _), do: {content, context}
-
-  # validate_params/3 : raises if an invalid parameter type is sent to to the function
-  @spec validate_params([String.t], t, non_neg_integer)
-    :: :ok | no_return
-  defp validate_params([], _context, _line), do: :ok
-  defp validate_params([params | rest], context, line) when params in @valid_params do
-    validate_params(rest, context, line)
-  end
-  defp validate_params([invalid_type | _], context, line) do
-    raise CompileError,
-      file: context.file,
-      line: line,
-      description: "nif function #{context.local.name} demands an invalid parameter type #{invalid_type}"
-  end
 
   # validate_retval/5 : trampolines to validate_params/3
   # ignore parameter validation if we're not in a segment specified by a nif.
@@ -390,7 +357,7 @@ defmodule Zigler.Parser do
     when retval == "void" do
     {rest, context}
   end
-  defp validate_retval(_rest, [retval, name], context = %{local: %ResourceCleanup{}}, {line, _}, _) do
+  defp validate_retval(_rest, [retval, _, _, name], context = %{local: %ResourceCleanup{}}, {line, _}, _) do
     raise CompileError,
       file: context.file,
       line: line,
@@ -418,7 +385,7 @@ defmodule Zigler.Parser do
     final_nif = %{nif | retval: retval, params: Enum.reverse(params)}
     {[], %{context | global: [final_nif | context.global], local: nil}}
   end
-  defp register_function_header(_, [name], context = %{local: cleanup = %ResourceCleanup{}}, _, _) do
+  defp register_function_header(_, [_, _, name], context = %{local: cleanup = %ResourceCleanup{}}, _, _) do
     final_cleanup = %{cleanup | name: String.to_atom(name)}
     {[], %{context | global: [final_cleanup | context.global], local: nil}}
   end
