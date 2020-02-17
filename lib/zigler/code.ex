@@ -4,6 +4,7 @@ defmodule Zigler.Code do
   """
   alias Zigler.Module
   alias Zigler.Parser.{Nif, Resource}
+  alias Zigler.Code.LongRunning
 
   def generate_main(module = %Module{}) do
     case module.c_includes do
@@ -71,38 +72,42 @@ defmodule Zigler.Code do
   #############################################################################
   ## ADAPTER GENERATION
 
-  def adapter(nif = %Zigler.Parser.Nif{}) do
-    args = args(nif)
+  def adapter(nif = %Zigler.Parser.Nif{opts: opts}) do
+    if opts[:long] do
+      LongRunning.adapter(nif)
+    else
+      args = args(nif)
 
-    get_clauses = get_clauses(nif)
+      get_clauses = get_clauses(nif)
 
-    result_var = "__#{nif.name}_result__"
-    function_call = "#{nif.name}(#{args})"
+      result_var = "__#{nif.name}_result__"
+      function_call = "#{nif.name}(#{args})"
 
-    head = "extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
+      head = "extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
 
-    result = cond do
-      nif.retval in ["beam.term", "e.ErlNifTerm"] ->
-        """
-          return #{function_call};
-        }
-        """
-      nif.retval == "void" ->
-        """
-          #{function_call};
+      result = cond do
+        nif.retval in ["beam.term", "e.ErlNifTerm"] ->
+          """
+            return #{function_call};
+          }
+          """
+        nif.retval == "void" ->
+          """
+            #{function_call};
 
-          return beam.make_nil(env);
-        }
-        """
-      true ->
-        """
-          var #{result_var} = #{function_call};
+            return beam.make_nil(env);
+          }
+          """
+        true ->
+          """
+            var #{result_var} = #{function_call};
 
-          return #{make_clause nif.retval, result_var};
-        }
-        """
+            return #{make_clause nif.retval, result_var};
+          }
+          """
+      end
+      [head, "\n", get_clauses, result, "\n"]
     end
-    [head, "\n", get_clauses, result, "\n"]
   end
 
   @env_types ["beam.env", "?*e.ErlNifEnv"]
@@ -136,6 +141,7 @@ defmodule Zigler.Code do
     """
       var __#{function}_arg#{index}__ = beam.get_char_slice(env, argv[#{index}])
         catch return beam.raise_function_clause_error(env);
+      defer beam.allocator.free(__#{function}_arg#{index}__);
     """
   end
   defp get_clause({"[]" <> type, index}, function) do

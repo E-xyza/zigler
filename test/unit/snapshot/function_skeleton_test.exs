@@ -30,7 +30,7 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
     result = quote context: Elixir do
       def foo() do
         resource = __foo_launch__()
-        receive do :finished -> :ok end
+        receive do {:done, ^resource} -> :ok end
         __foo_fetch__(resource)
       end
 
@@ -52,7 +52,7 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
     result = quote context: Elixir do
       def foo(arg1) do
         resource = __foo_launch__(arg1)
-        receive do :finished -> :ok end
+        receive do {:done, ^resource} -> :ok end
         __foo_fetch__(resource)
       end
 

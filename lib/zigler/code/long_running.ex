@@ -33,6 +33,7 @@ defmodule Zigler.Code.LongRunning do
 
   def resource(fn_name), do: String.to_atom("#{fn_name}_resource")
   def cache(fn_name), do: String.to_atom("__#{fn_name}_cache__")
+  def cache_cleanup(fn_name), do: String.to_atom("__#{fn_name}_cache_cleanup__")
   def packer(fn_name), do: String.to_atom("__#{fn_name}_pack__")
   def launcher(fn_name), do: String.to_atom("__#{fn_name}_launch__")
   def harness(fn_name), do: String.to_atom("__#{fn_name}_harness__")
@@ -41,75 +42,46 @@ defmodule Zigler.Code.LongRunning do
   def cache_struct(nif) do
     extra_lines = nif.params
     |> Enum.with_index
-    |> Enum.map(fn {type, idx} -> "  v#{idx}: #{type},\n" end)
+    |> Enum.map(fn {type, idx} -> "  arg#{idx}: #{type},\n" end)
     |> Enum.join
 
     """
     const #{cache nif.name} = struct {
       env: beam.env,
       self: beam.pid,
-      ref: beam.term,
       thread: *std.Thread,
-    #{extra_lines}  res: beam.term
+      response: beam.term,
+    #{extra_lines}  result: #{nif.retval}
     };
-    """
-  end
 
-  def packer_fn(nif) do
-    variables = nif.params
-    |> Enum.with_index
-    |> Enum.map(fn {type, idx} -> ", v#{idx}: #{type}" end)
-    |> Enum.join()
-
-    cache_lines = if nif.params == [] do
-      ""
-    else
-      0..length(nif.params)-1
-      |> Enum.map(&"  cache.v#{&1} = v#{&1};\n")
-      |> Enum.join()
-    end
-
-    """
-    fn #{packer nif.name}(cache_ret: **#{cache nif.name}, env: beam.env#{variables}) !void {
-
-      var cache = try beam.allocator.create(#{cache nif.name});
-      errdefer { beam.allocator.destroy(cache); }
-
-      cache.env = env;
-      cache.self = try beam.self(env);
-      cache.ref = try beam.make_ref(env);
-      cache.res = try beam.resource.create(i64, env, #{resource nif.name}, undefined);
-
-    #{cache_lines}
-      cache.thread = try std.Thread.spawn(cache, #{harness nif.name});
-      cache_ret.* = cache;
-    }
+    fn #{cache_cleanup nif.name}(env: beam.env, cache: ?*c_void) void {};
     """
   end
 
   def launcher_fn(nif) do
-    params = nif.params
-    |> Enum.with_index
-    |> Enum.map(fn {type, idx} -> ", v#{idx}: #{type}" end)
-    |> Enum.join()
-
-    param_call = if nif.params == [] do
-      ""
-    else
-      0..length(nif.params)-1
-      |> Enum.map(&", v#{&1}")
-      |> Enum.join()
-    end
-
     """
-    fn #{launcher nif.name}(env: beam.env#{params}) beam.term {
-      var cache: *#{cache nif.name} = undefined;
+    extern fn #{launcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      return #{packer nif.name}(env, argv)
+        catch beam.raise(env, beam.make_atom(env, "error"));
+    }
+    """
+  end
 
-      #{packer nif.name}(&cache, env#{param_call}) catch {
-        return beam.raise(env, beam.make_atom(env, "error"[0..]));
-      };
+  def packer_fn(nif) do
+    """
+    fn #{packer nif.name}(env: beam.env, argv: [*c] const beam.term) !beam.term {
+      var resource = try beam.resource.create(#{cache nif.name}, env, #{cache_cleanup nif.name}, undefined);
+      errdefer beam.resource.release(env, #{cache_cleanup nif.name}, resource);
 
-      return e.enif_make_tuple(env, 2, cache.ref, cache.res);
+      var cache = try beam.resource.fetch(#{cache nif.name}, env, #{cache_cleanup nif.name});
+      var done_atom = try beam.make_atom(env, "done");
+
+      cache.env = env;
+      cache.self = try beam.self(env);
+      cache.response = e.enif_make_tuple(env, 2, done_atom, resource);
+
+    #{get_clauses nif}  cache.thread = try std.Thread.spawn(cache, #{harness nif.name});
+      return resource;
     }
     """
   end
@@ -119,35 +91,84 @@ defmodule Zigler.Code.LongRunning do
       ""
     else
       0..length(nif.params)-1
-      |> Enum.map(&"cache.v#{&1}")
+      |> Enum.map(&"cache.arg#{&1}")
       |> Enum.join(", ")
     end
     """
     fn #{harness nif.name}(cache: *#{cache nif.name}) void {
-      defer beam.allocator.destroy(cache);
-
-      var result = #{nif.name}(#{cache_params});
-
-      beam.resource.update(#{nif.retval}, cache.env, #{resource nif.name}, cache.res, result)
-        catch |err| return;
-
-      var res = e.enif_send(null, &cache.self, cache.env, cache.ref);
+      cache.result = #{nif.name}(#{cache_params});
+      beam.send(null, cache.self, cache.env, cache.response);
     }
     """
   end
 
-  def fetch_fn(nif) do
+  def fetcher_fn(nif) do
     """
-    fn #{fetcher nif.name}(env: beam.env, resource: beam.term) beam.term {
-      var result = beam.resource.fetch(#{nif.retval}, env, add_resource, resource)
-        catch |err| return beam.raise(env, beam.make_atom(env, "resource error"[0..]));
+    extern fn #{fetcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      var cache = beam.resource.fetch(#{cache nif.name}, env, #{cache_cleanup nif.name}, argv[0])
+        catch return beam.raise_function_clause_error(env);
+      defer beam.resource.release(env, #{cache_cleanup nif.name}, argv[0]);
 
-      // release the resource.
-      beam.resource.release(env, add_resource, resource);
-
-      return beam.make_i64(env, result);
+      return #{make_clause nif.retval, "cache.result"} catch beam.raise_function_clause_error(env);
     }
     """
   end
 
+  def adapter(nif) do
+    [cache_struct(nif), "\n",
+     launcher_fn(nif), "\n",
+     packer_fn(nif), "\n",
+     harness_fn(nif), "\n",
+     fetcher_fn(nif)]
+  end
+
+  @env_types ["beam.env", "?*e.ErlNifEnv"]
+
+  # TODO DRY THIS WITH the Code Module
+
+  defp get_clauses(%{arity: 0}), do: ""
+  defp get_clauses(%{params: params}), do: get_clauses(params)
+
+  defp get_clauses([env | rest]) when env in @env_types, do: get_clauses(rest)
+  defp get_clauses([]), do: []
+  defp get_clauses(params) do
+    [params
+    |> Enum.with_index
+    |> Enum.map(&get_clause/1), "\n"]
+  end
+
+  defp get_clause({term, index}) when term in ["beam.term", "e.ErlNifTerm"] do
+    """
+      cache.arg#{index} = argv[#{index}];
+    """
+  end
+  defp get_clause({"[]u8", index}) do
+    """
+      cache.arg#{index} = try beam.get_char_slice(env, argv[#{index}])
+    """
+  end
+  defp get_clause({"[]" <> type, index}) do
+    """
+      cache.arg#{index} = try beam.get_slice_of(#{short_name type}, env, argv[#{index}]);
+    """
+  end
+  defp get_clause({type, index}) do
+    """
+      cache.arg#{index} = try beam.get_#{short_name type}(env, argv[#{index}]);
+    """
+  end
+
+  defp short_name("beam.pid"), do: "pid"
+  defp short_name("e.ErlNifPid"), do: "pid"
+  defp short_name(any), do: any
+
+  defp make_clause("[]u8", var) do
+    "beam.make_slice(env, #{var})"
+  end
+  defp make_clause("[]" <> type, var) do
+    "beam.make_#{type}_list(env, #{var}) catch return beam.raise_enomem(env)"
+  end
+  defp make_clause(type, var) do
+    "beam.make_#{short_name type}(env, #{var})"
+  end
 end

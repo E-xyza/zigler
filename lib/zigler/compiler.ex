@@ -143,7 +143,7 @@ defmodule Zigler.Compiler do
 
     block = quote context: Elixir do
       resource = unquote(launcher_call)
-      receive do :finished -> :ok end
+      receive do {:done, ^resource} -> :ok end
       unquote(LongRunning.fetcher name)(resource)
     end
 

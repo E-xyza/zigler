@@ -8,10 +8,12 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
       const __foo_cache__ = struct {
         env: beam.env,
         self: beam.pid,
-        ref: beam.term,
         thread: *std.Thread,
-        res: beam.term
+        response: beam.term,
+        result: i64
       };
+
+      fn __foo_cache_cleanup__(env: beam.env, cache: ?*c_void) void {};
       """ == Zigler.Code.LongRunning.cache_struct(%{name: :foo, params: [], retval: "i64"})
     end
 
@@ -20,98 +22,94 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
       const __foo_cache__ = struct {
         env: beam.env,
         self: beam.pid,
-        ref: beam.term,
         thread: *std.Thread,
-        v0: i64,
-        res: beam.term
+        response: beam.term,
+        arg0: i64,
+        result: i64
       };
+
+      fn __foo_cache_cleanup__(env: beam.env, cache: ?*c_void) void {};
       """ == Zigler.Code.LongRunning.cache_struct(%{name: :foo, params: ["i64"], retval: "i64"})
     end
 
-    test "for a 2-arity function" do
+    test "for a 2-arity function, with a different name and retval" do
       assert """
-      const __foo_cache__ = struct {
+      const __bar_cache__ = struct {
         env: beam.env,
         self: beam.pid,
-        ref: beam.term,
         thread: *std.Thread,
-        v0: i64,
-        v1: f64,
-        res: beam.term
+        response: beam.term,
+        arg0: i64,
+        arg1: f64,
+        result: f64
       };
-      """ == Zigler.Code.LongRunning.cache_struct(%{name: :foo, params: ["i64", "f64"], retval: "i64"})
+
+      fn __bar_cache_cleanup__(env: beam.env, cache: ?*c_void) void {};
+      """ == Zigler.Code.LongRunning.cache_struct(%{name: :bar, params: ["i64", "f64"], retval: "f64"})
+    end
+  end
+
+
+  describe "launch_fn/1 generates a zig function" do
+    test "for a 0-arity function" do
+      assert """
+      extern fn __foo_launch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        return __foo_pack__(env, argv)
+          catch beam.raise(env, beam.make_atom(env, "error"));
+      }
+      """ == Zigler.Code.LongRunning.launcher_fn(%{name: :foo, params: [], retval: "i64"})
+    end
+
+    test "for function with a different name" do
+      assert """
+      extern fn __bar_launch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        return __bar_pack__(env, argv)
+          catch beam.raise(env, beam.make_atom(env, "error"));
+      }
+      """ == Zigler.Code.LongRunning.launcher_fn(%{name: :bar, params: ["i64"], retval: "i64"})
     end
   end
 
   describe "packer_fn/1 generates a zig function" do
     test "for a 0-arity function" do
       assert """
-      fn __foo_pack__(cache_ret: **__foo_cache__, env: beam.env) !void {
+      fn __foo_pack__(env: beam.env, argv: [*c] const beam.term) !beam.term {
+        var resource = try beam.resource.create(__foo_cache__, env, __foo_cache_cleanup__, undefined);
+        errdefer beam.resource.release(env, __foo_cache_cleanup__, resource);
 
-        var cache = try beam.allocator.create(__foo_cache__);
-        errdefer { beam.allocator.destroy(cache); }
+        var cache = try beam.resource.fetch(__foo_cache__, env, __foo_cache_cleanup__);
+        var done_atom = try beam.make_atom(env, "done");
 
         cache.env = env;
         cache.self = try beam.self(env);
-        cache.ref = try beam.make_ref(env);
-        cache.res = try beam.resource.create(i64, env, foo_resource, undefined);
-
+        cache.response = e.enif_make_tuple(env, 2, done_atom, resource);
 
         cache.thread = try std.Thread.spawn(cache, __foo_harness__);
-        cache_ret.* = cache;
+        return resource;
       }
       """ == Zigler.Code.LongRunning.packer_fn(%{name: :foo, params: [], retval: "i64"})
     end
 
-    test "for a 2-arity function" do
+    test "for a 2-arity function with a different name" do
       assert """
-      fn __foo_pack__(cache_ret: **__foo_cache__, env: beam.env, v0: i64, v1: f64) !void {
+      fn __foo_pack__(env: beam.env, argv: [*c] const beam.term) !beam.term {
+        var resource = try beam.resource.create(__foo_cache__, env, __foo_cache_cleanup__, undefined);
+        errdefer beam.resource.release(env, __foo_cache_cleanup__, resource);
 
-        var cache = try beam.allocator.create(__foo_cache__);
-        errdefer { beam.allocator.destroy(cache); }
+        var cache = try beam.resource.fetch(__foo_cache__, env, __foo_cache_cleanup__);
+        var done_atom = try beam.make_atom(env, "done");
 
         cache.env = env;
         cache.self = try beam.self(env);
-        cache.ref = try beam.make_ref(env);
-        cache.res = try beam.resource.create(i64, env, foo_resource, undefined);
+        cache.response = e.enif_make_tuple(env, 2, done_atom, resource);
 
-        cache.v0 = v0;
-        cache.v1 = v1;
+        cache.arg0 = try beam.get_i64(env, argv[0]);
+        cache.arg1 = try beam.get_f64(env, argv[1]);
 
         cache.thread = try std.Thread.spawn(cache, __foo_harness__);
-        cache_ret.* = cache;
+        return resource;
       }
       """  == Zigler.Code.LongRunning.packer_fn(%{name: :foo, params: ["i64", "f64"], retval: "i64"})
-    end
-  end
-
-  describe "launch_fn/1 generates a zig function" do
-    test "for a 0-arity function" do
-      assert """
-      fn __foo_launch__(env: beam.env) beam.term {
-        var cache: *__foo_cache__ = undefined;
-
-        __foo_pack__(&cache, env) catch {
-          return beam.raise(env, beam.make_atom(env, "error"[0..]));
-        };
-
-        return e.enif_make_tuple(env, 2, cache.ref, cache.res);
-      }
-      """ == Zigler.Code.LongRunning.launcher_fn(%{name: :foo, params: [], retval: "i64"})
-    end
-
-    test "for a 2-arity function" do
-      assert """
-      fn __foo_launch__(env: beam.env, v0: i64, v1: f64) beam.term {
-        var cache: *__foo_cache__ = undefined;
-
-        __foo_pack__(&cache, env, v0, v1) catch {
-          return beam.raise(env, beam.make_atom(env, "error"[0..]));
-        };
-
-        return e.enif_make_tuple(env, 2, cache.ref, cache.res);
-      }
-      """ == Zigler.Code.LongRunning.launcher_fn(%{name: :foo, params: ["i64", "f64"], retval: "i64"})
     end
   end
 
@@ -119,47 +117,33 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
     test "for a 0-arity function" do
       assert """
       fn __foo_harness__(cache: *__foo_cache__) void {
-        defer beam.allocator.destroy(cache);
-
-        var result = foo();
-
-        beam.resource.update(i64, cache.env, foo_resource, cache.res, result)
-          catch |err| return;
-
-        var res = e.enif_send(null, &cache.self, cache.env, cache.ref);
+        cache.result = foo();
+        beam.send(null, cache.self, cache.env, cache.response);
       }
       """ == Zigler.Code.LongRunning.harness_fn(%{name: :foo, params: [], retval: "i64"})
     end
 
-    test "for a 2-arity function" do
+    test "for a 2-arity function with a different name" do
       assert """
-      fn __foo_harness__(cache: *__foo_cache__) void {
-        defer beam.allocator.destroy(cache);
-
-        var result = foo(cache.v0, cache.v1);
-
-        beam.resource.update(i64, cache.env, foo_resource, cache.res, result)
-          catch |err| return;
-
-        var res = e.enif_send(null, &cache.self, cache.env, cache.ref);
+      fn __bar_harness__(cache: *__bar_cache__) void {
+        cache.result = bar(cache.arg0, cache.arg1);
+        beam.send(null, cache.self, cache.env, cache.response);
       }
-      """ == Zigler.Code.LongRunning.harness_fn(%{name: :foo, params: ["i64", "f64"], retval: "i64"})
+      """ == Zigler.Code.LongRunning.harness_fn(%{name: :bar, params: ["i64", "f64"], retval: "i64"})
     end
   end
 
-  describe "fetch_fn/1 generates a zig function" do
+  describe "fetcher_fn/1 generates a zig function" do
     test "for a 0-arity function" do
       assert """
-      fn __foo_fetch__(env: beam.env, resource: beam.term) beam.term {
-        var result = beam.resource.fetch(i64, env, add_resource, resource)
-          catch |err| return beam.raise(env, beam.make_atom(env, "resource error"[0..]));
+      extern fn __foo_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        var cache = beam.resource.fetch(__foo_cache__, env, __foo_cache_cleanup__, argv[0])
+          catch return beam.raise_function_clause_error(env);
+        defer beam.resource.release(env, __foo_cache_cleanup__, argv[0]);
 
-        // release the resource.
-        beam.resource.release(env, add_resource, resource);
-
-        return beam.make_i64(env, result);
+        return beam.make_i64(env, cache.result) catch beam.raise_function_clause_error(env);
       }
-      """ == Zigler.Code.LongRunning.fetch_fn(%{name: :foo, params: [], retval: "i64"})
+      """ == Zigler.Code.LongRunning.fetcher_fn(%{name: :foo, params: [], retval: "i64"})
     end
   end
 end
