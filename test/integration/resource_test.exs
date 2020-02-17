@@ -83,6 +83,11 @@ defmodule ZiglerTest.Integration.ResourceTest do
   /// resource: test_pid_res definition
   const test_pid_res = beam.pid;
 
+  /// instrument the custom cleanup handler so that instead of
+  /// cleaning anything up (we don't need to since it's a raw pid)
+  /// we send the pid a message.  That way we can track when
+  /// cleanup events have happened.
+  ///
   /// resource: test_pid_res cleanup
   fn test_pid_res_cleanup(env: beam.env, pid: *test_pid_res) void {
     var msg = beam.make_atom(env, "done");
@@ -92,7 +97,7 @@ defmodule ZiglerTest.Integration.ResourceTest do
   /// nif: create_pid_resource/1
   fn create_pid_resource(env: beam.env, value: beam.pid) beam.term {
     var res = __resource__.create(test_pid_res, env, value)
-      catch beam.raise_function_clause_error(env);
+      catch return beam.raise_function_clause_error(env);
     // release it so that it can be garbage collected.
     __resource__.release(test_pid_res, env, res);
     return res;
