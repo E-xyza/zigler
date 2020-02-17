@@ -31,6 +31,7 @@ defmodule Zigler.Parser.Nif do
   @array_types  Enum.flat_map(@scalar_types, &["[]#{&1}", "[*c]#{&1}", "[_]#{&1}"])
 
   @valid_params  @scalar_types ++ @array_types ++ @env
+  @valid_retvals @scalar_types ++ @array_types ++ @void
 
   @enforce_keys [:name, :arity]
 
@@ -72,7 +73,7 @@ defmodule Zigler.Parser.Nif do
   def validate_arity(_, _, _), do: :ok
 
   # validate_params/3 : raises if an invalid parameter type is sent to to the function
-  @spec validate_params([String.t], t, non_neg_integer)
+  @spec validate_params([String.t], Parser.t, non_neg_integer)
     :: :ok | no_return
   def validate_params([], _context, _line), do: :ok
   def validate_params([params | rest], context, line) when params in @valid_params do
@@ -85,6 +86,16 @@ defmodule Zigler.Parser.Nif do
       description: "nif function #{context.local.name} demands an invalid parameter type #{invalid_type}"
   end
   def validate_params(_, _, _), do: :ok
+
+  @spec validate_retval([String.t], Parser.t, non_neg_integer)
+    :: :ok | no_return
+  def validate_retval([retval | _], _context, _line) when retval in @valid_retvals, do: :ok
+  def validate_retval([retval | _], context, line) do
+    raise CompileError,
+      file: context.file,
+      line: line,
+      description: "nif function #{context.local.name} returns an invalid type #{retval}"
+  end
 
 
 end

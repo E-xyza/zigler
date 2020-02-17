@@ -21,19 +21,6 @@ defmodule Zigler.Parser do
   @alphanumeric [?a..?z, ?A..?Z, ?0..?9, ?_]
   @number [?0..?9]
 
-  @float_types  ~w(f16 f32 f64)
-  @int_types    ~w(u16 i32 u32 i64 u64 c_int c_uint c_long c_ulong isize usize)
-  @bool         ["bool"]
-  @char         ["u8"]
-  @beam_params  ~w(beam.term beam.atom beam.pid)
-  @enif_params  ~w(e.ErlNifTerm e.ErlNifPid)
-  @scalar_types @float_types ++ @int_types ++ @bool ++ @char ++ @beam_params ++ @enif_params
-  @void         ["void"]
-  @env          ~w(?*e.ErlNifEnv beam.env)
-  @array_types  Enum.flat_map(@scalar_types, &["[]#{&1}", "[*c]#{&1}", "[_]#{&1}"])
-
-  @valid_retvals @scalar_types ++ @array_types ++ @void
-
   #############################################################################
   ## GENERIC NIMBLE_PARSEC PARSERS
 
@@ -316,8 +303,6 @@ defmodule Zigler.Parser do
   end
   defp validate_nif_declaration(_, content, context, _, _), do: {content, context}
 
-  @beam_envs ["beam.env", "?*e.ErlNifEnv"]
-
   # validate_arity/5: trampolines into module.validate_arity/3
   @spec validate_arity(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval | no_return
@@ -337,34 +322,17 @@ defmodule Zigler.Parser do
   end
   defp validate_params(_, content, context, _, _), do: {content, context}
 
-  # validate_retval/5 : trampolines to validate_params/3
-  # ignore parameter validation if we're not in a segment specified by a nif.
+  # validate_retval/5 : trampolines to module.validate_params/3
   @spec validate_retval(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval | no_return
-
-  defp validate_retval(_rest, content = [retval | _], context = %{local: %Nif{}}, _, _)
-    when retval in @valid_retvals do
+  defp validate_retval(_rest, content, context = %{local: %module{}}, {line, _}, _) do
+    module.validate_retval(content, context, line)
     {content, context}
-  end
-  defp validate_retval(_rest, content = [retval | _], context = %{local: %Nif{}}, {line, _}, _) do
-    raise CompileError,
-      file: context.file,
-      line: line,
-      description: "nif function #{context.local.name} returns an invalid type #{retval}"
-    {content, context}
-  end
-  defp validate_retval(_rest, [retval | rest], context = %{local: %ResourceCleanup{}}, _, _)
-    when retval == "void" do
-    {rest, context}
-  end
-  defp validate_retval(_rest, [retval, _, _, name], context = %{local: %ResourceCleanup{}}, {line, _}, _) do
-    raise CompileError,
-      file: context.file,
-      line: line,
-      description: "resource cleanup function #{name} for resource #{context.local.for} must return `void` (currently returns `#{retval}`)"
   end
   defp validate_retval(_, content, context, _, _), do: {content, context}
 
+  @spec validate_resource(String.t, [String.t], t, line_info, non_neg_integer)
+    :: parsec_retval | no_return
   defp validate_resource(_, [name], context = %{local: resource = %Resource{}}, {line, _}, _) do
     unless Atom.to_string(resource.name) == name do
       raise CompileError,
@@ -385,7 +353,7 @@ defmodule Zigler.Parser do
     final_nif = %{nif | retval: retval, params: Enum.reverse(params)}
     {[], %{context | global: [final_nif | context.global], local: nil}}
   end
-  defp register_function_header(_, [_, _, name], context = %{local: cleanup = %ResourceCleanup{}}, _, _) do
+  defp register_function_header(_, [_, _, _, name], context = %{local: cleanup = %ResourceCleanup{}}, _, _) do
     final_cleanup = %{cleanup | name: String.to_atom(name)}
     {[], %{context | global: [final_cleanup | context.global], local: nil}}
   end
@@ -445,7 +413,7 @@ defmodule Zigler.Parser do
   #############################################################################
   ## helpers
 
-  defp append(old_module, new_content = %{global: global}, code, line) do
+  defp append(old_module, %{global: global}, code, line) do
     unless Enum.any?(global, &match?(%Nif{}, &1)) do
       raise CompileError,
         file: old_module.file,
