@@ -219,7 +219,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
       extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = beam.get_char_slice(env, argv[0])
           catch return beam.raise_function_clause_error(env);
-        defer beam.allocator.free(__foo_arg0__);
 
         var __foo_result__ = foo(__foo_arg0__);
 
@@ -233,7 +232,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
   end
 
   describe "for a long function" do
-    @tag :one
     test "the shim generates the correct shimming functions" do
       assert """
       const __foo_cache__ = struct {

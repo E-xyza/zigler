@@ -148,12 +148,10 @@ defmodule ZiglerTest.ParserTest do
 
     test "correctly puts content into the code parameter" do
       code1 = """
-
       /// nif: foo/0
       fn foo() i64 {
         return 47;
       }
-
       """
 
       code2 = """
@@ -166,7 +164,6 @@ defmodule ZiglerTest.ParserTest do
       fn oof(rab: i64, zab: f64) i64 {
         return rab + 1;
       }
-
       """
 
       first_parse = Parser.parse(code1, @empty_module, 1)

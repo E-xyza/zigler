@@ -416,11 +416,13 @@ defmodule Zigler.Parser do
         description: "sigil Z doesn't contain any nifs"
     end
 
+    spacer = if old_module.code == [], do: [], else: "\n"
+
     new_nifs = Enum.filter(global, &match?(%Nif{}, &1))
     new_resources = Enum.filter(global, &match?(%Resource{}, &1))
     %{old_module |
       nifs: old_module.nifs ++ new_nifs,
       resources: old_module.resources ++ new_resources,
-      code: [old_module.code | code]}
+      code: [[old_module.code, spacer | String.trim(code)], "\n"]}
   end
 end
