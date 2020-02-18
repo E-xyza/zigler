@@ -31,7 +31,7 @@ defmodule Zigler.Code.LongRunning do
   resource object once the thread has completed its task.
   """
 
-  def resource(fn_name), do: String.to_atom("#{fn_name}_resource")
+  def cache_ptr(fn_name), do: String.to_atom("__#{fn_name}_cache_ptr__")
   def cache(fn_name), do: String.to_atom("__#{fn_name}_cache__")
   def cache_cleanup(fn_name), do: String.to_atom("__#{fn_name}_cache_cleanup__")
   def packer(fn_name), do: String.to_atom("__#{fn_name}_pack__")
@@ -54,7 +54,15 @@ defmodule Zigler.Code.LongRunning do
     #{extra_lines}  result: #{nif.retval}
     };
 
-    fn #{cache_cleanup nif.name}(env: beam.env, cache: ?*c_void) void {};
+    /// resource: #{cache_ptr nif.name} definition
+    const #{cache_ptr nif.name} = ?*#{cache nif.name};
+
+    /// resource: #{cache_ptr nif.name} cleanup
+    fn #{cache_cleanup nif.name}(env: beam.env, cache_res_ptr: *#{cache_ptr nif.name}) void {
+      if (cache_res_ptr.*) | cache_ptr | {
+        beam.allocator.destroy(cache_ptr);
+      }
+    }
     """
   end
 
@@ -70,18 +78,21 @@ defmodule Zigler.Code.LongRunning do
   def packer_fn(nif) do
     """
     fn #{packer nif.name}(env: beam.env, argv: [*c] const beam.term) !beam.term {
-      var resource = try beam.resource.create(#{cache nif.name}, env, #{cache_cleanup nif.name}, undefined);
-      errdefer beam.resource.release(env, #{cache_cleanup nif.name}, resource);
+      var cache_term = try __resource__.create(#{cache_ptr nif.name}, env, null);
+      errdefer __resource__.release(#{cache_ptr nif.name}, env, cache_term);
 
-      var cache = try beam.resource.fetch(#{cache nif.name}, env, #{cache_cleanup nif.name});
-      var done_atom = try beam.make_atom(env, "done");
+      var cache = try beam.allocator.create(#{cache nif.name});
+      var _update = __resource__.update(#{cache_ptr nif.name}, env, cache_term, cache);
+
+      var done_atom = beam.make_atom(env, "done");
 
       cache.env = env;
       cache.self = try beam.self(env);
-      cache.response = e.enif_make_tuple(env, 2, done_atom, resource);
+      cache.response = e.enif_make_tuple(env, 2, done_atom, cache_term);
 
     #{get_clauses nif}  cache.thread = try std.Thread.spawn(cache, #{harness nif.name});
-      return resource;
+
+      return cache_term;
     }
     """
   end
@@ -97,7 +108,7 @@ defmodule Zigler.Code.LongRunning do
     """
     fn #{harness nif.name}(cache: *#{cache nif.name}) void {
       cache.result = #{nif.name}(#{cache_params});
-      beam.send(null, cache.self, cache.env, cache.response);
+      var sent = beam.send(null, cache.self, cache.env, cache.response);
     }
     """
   end
@@ -105,11 +116,15 @@ defmodule Zigler.Code.LongRunning do
   def fetcher_fn(nif) do
     """
     extern fn #{fetcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-      var cache = beam.resource.fetch(#{cache nif.name}, env, #{cache_cleanup nif.name}, argv[0])
+      var cache_q: ?*#{cache nif.name} = __resource__.fetch(#{cache_ptr nif.name}, env, argv[0])
         catch return beam.raise_function_clause_error(env);
-      defer beam.resource.release(env, #{cache_cleanup nif.name}, argv[0]);
+      defer __resource__.release(#{cache_ptr nif.name}, env, argv[0]);
 
-      return #{make_clause nif.retval, "cache.result"} catch beam.raise_function_clause_error(env);
+      if (cache_q) | cache | {
+        return #{make_clause nif.retval, "cache.result"};
+      } else {
+        return beam.raise_function_clause_error(env);
+      }
     }
     """
   end

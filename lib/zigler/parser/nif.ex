@@ -19,6 +19,9 @@ defmodule Zigler.Parser.Nif do
     - dirty: :io  -- if the nif should run in a dirty io scheduler.
   """
 
+  alias Zigler.Parser.Resource
+  alias Zigler.Code.LongRunning
+
   @float_types  ~w(f16 f32 f64)
   @int_types    ~w(u16 i32 u32 i64 u64 c_int c_uint c_long c_ulong isize usize)
   @bool         ["bool"]
@@ -99,7 +102,15 @@ defmodule Zigler.Parser.Nif do
 
   def register_function_header([retval | params], context) do
     final_nif = %{context.local | retval: retval, params: Enum.reverse(params)}
-    %{context | global: [final_nif | context.global]}
+    # long nifs require a resource
+    resource = if context.local.opts[:long] do
+      [%Resource{
+        name: LongRunning.cache_ptr(context.local.name),
+        cleanup: LongRunning.cache_cleanup(context.local.name)}]
+    else
+      []
+    end
+    %{context | global: resource ++ [final_nif | context.global]}
   end
 
 

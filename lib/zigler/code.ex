@@ -196,7 +196,7 @@ defmodule Zigler.Code do
     resource_inits = Enum.map(module.resources, &resource_initializer/1)
 
     resource_map = module.resources
-    |> Enum.map(fn res -> "    #{res.name} => return __#{res.name}_resource__,\n" end)
+    |> Enum.map(fn res -> "    #{res.name} => return __#{rename res.name}_resource__,\n" end)
 
     resource_mapper = case module.resources do
       [] -> ""
@@ -289,7 +289,7 @@ defmodule Zigler.Code do
         },
         e.ErlNifFunc{
           .name = c"#{LongRunning.fetcher name}",
-          .arity = 0,
+          .arity = 1,
           .fptr = #{LongRunning.fetcher name},
           .flags = 0,
         },
@@ -306,12 +306,14 @@ defmodule Zigler.Code do
     end
   end
 
-  defp resource_init_definition(res = %Resource{name: name}) do
+  defp resource_init_definition(res = %Resource{name: original_name}) do
+    name = rename(original_name)
+
     cleanup = if res.cleanup do
       """
 
         if (res) |__res__| {
-          #{res.cleanup}(env, @ptrCast(*#{name}, @alignCast(@alignOf(*#{name}), __res__)));
+          #{res.cleanup}(env, @ptrCast(*#{original_name}, @alignCast(@alignOf(*#{original_name}), __res__)));
         } else unreachable;
       """
     else
@@ -336,7 +338,8 @@ defmodule Zigler.Code do
     """
   end
 
-  defp resource_initializer(%Resource{name: name}) do
+  defp resource_initializer(%Resource{name: original_name}) do
+    name = rename(original_name)
     """
       __#{name}_resource__ = __init_#{name}_resource__(env);
     """
@@ -344,6 +347,17 @@ defmodule Zigler.Code do
 
   #############################################################################
   ## TOOLS
+
+  defp rename(name) do
+    strname = Atom.to_string(name)
+    if String.starts_with?(strname, "__") and String.ends_with?(strname, "__") do
+      strname
+      |> String.trim("__")
+      |> String.to_atom
+    else
+      name
+    end
+  end
 
   # counts how many lines there are in an iolist
   defp count_lines(str) when is_binary(str) do

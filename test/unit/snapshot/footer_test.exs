@@ -270,7 +270,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         },
         e.ErlNifFunc{
           .name = c"__foo_fetch__",
-          .arity = 0,
+          .arity = 1,
           .fptr = __foo_fetch__,
           .flags = 0,
         },

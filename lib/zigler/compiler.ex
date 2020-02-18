@@ -89,11 +89,17 @@ defmodule Zigler.Compiler do
       end
     else
       quote do
+        import Logger
         unquote_splicing(nif_functions)
         def __load_nifs__ do
           unquote(mod_path)
           |> String.to_charlist()
           |> :erlang.load_nif(0)
+          |> case do
+            :ok -> :ok
+            {:error, any} ->
+              Logger.error("problem loading module #{inspect any}")
+          end
         end
       end
     end
