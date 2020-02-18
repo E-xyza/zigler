@@ -31,6 +31,76 @@ defmodule Zigler.Code.LongRunning do
   resource object once the thread has completed its task.
   """
 
+  alias Zigler.Parser.Nif
+
+  #############################################################################
+  ## Elixir Metaprogramming for long functions
+
+  def function_skeleton(nif = %Nif{}) do
+    quote context: Elixir do
+      unquote(long_main_fn(nif))
+      unquote(long_launch_fn(nif))
+      unquote(long_fetch_fn(nif))
+    end
+  end
+
+  defp long_main_fn(%{name: name, arity: arity, retval: retval}) do
+    params = if arity == 0 do
+      []
+    else
+      for idx <- 1..arity, do: {String.to_atom("arg#{idx}"), [], Elixir}
+    end
+
+    launcher_call = {launcher(name), [], params}
+
+    block = if retval == "void" do
+      quote context: Elixir do
+        resource = unquote(launcher_call)
+        receive do {:done, ^resource} -> :ok end
+      end
+    else
+      quote context: Elixir do
+        resource = unquote(launcher_call)
+        receive do {:done, ^resource} -> :ok end
+        unquote(fetcher name)(resource)
+      end
+    end
+
+    {:def, [context: Elixir, import: Kernel],
+      [
+        {name, [context: Elixir], params},
+        [do: block]
+      ]}
+  end
+
+  defp long_launch_fn(%{name: name, arity: arity}) do
+    text = "nif launcher for function #{name}/#{arity} not bound"
+
+    params = if arity == 0 do
+      []
+    else
+      for _ <- 1..arity, do: {:_, [], Elixir}
+    end
+
+    {:def, [context: Elixir, import: Kernel],
+      [
+        {launcher(name), [context: Elixir], params},
+        [do: {:raise, [context: Elixir, import: Kernel], [text]}]
+      ]}
+  end
+
+  defp long_fetch_fn(%{name: name, arity: arity}) do
+    text = "nif fetcher for function #{name}/#{arity} not bound"
+    quote context: Elixir do
+      def unquote(fetcher name)(_) do
+        raise unquote(text)
+      end
+    end
+  end
+
+  #############################################################################
+  ## Zig metaprogramming
+
   def cache_ptr(fn_name), do: String.to_atom("__#{fn_name}_cache_ptr__")
   def cache(fn_name), do: String.to_atom("__#{fn_name}_cache__")
   def cache_cleanup(fn_name), do: String.to_atom("__#{fn_name}_cache_cleanup__")
@@ -45,14 +115,15 @@ defmodule Zigler.Code.LongRunning do
     |> Enum.map(fn {type, idx} -> "  arg#{idx}: #{type},\n" end)
     |> Enum.join
 
+    result = if nif.retval == "void", do: "", else: "  result: #{nif.retval}\n"
+
     """
     const #{cache nif.name} = struct {
       env: beam.env,
       self: beam.pid,
       thread: *std.Thread,
       response: beam.term,
-    #{extra_lines}  result: #{nif.retval}
-    };
+    #{extra_lines}#{result}};
 
     /// resource: #{cache_ptr nif.name} definition
     const #{cache_ptr nif.name} = ?*#{cache nif.name};
@@ -105,14 +176,24 @@ defmodule Zigler.Code.LongRunning do
       |> Enum.map(&"cache.arg#{&1}")
       |> Enum.join(", ")
     end
+    result = if nif.retval == "void", do: "", else: "cache.result = "
+
     """
     fn #{harness nif.name}(cache: *#{cache nif.name}) void {
-      cache.result = #{nif.name}(#{cache_params});
-      var sent = beam.send(null, cache.self, cache.env, cache.response);
+      #{result}#{nif.name}(#{cache_params});
+      var _sent = beam.send(null, cache.self, cache.env, cache.response);
     }
     """
   end
 
+  def fetcher_fn(nif = %{retval: "void"}) do
+    """
+    extern fn #{fetcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      __resource__.release(#{cache_ptr nif.name}, env, argv[0]);
+      return beam.make_atom(env, "nil");
+    }
+    """
+  end
   def fetcher_fn(nif) do
     """
     extern fn #{fetcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {

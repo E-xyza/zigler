@@ -147,7 +147,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
       assert """
       fn __foo_harness__(cache: *__foo_cache__) void {
         cache.result = foo();
-        var sent = beam.send(null, cache.self, cache.env, cache.response);
+        var _sent = beam.send(null, cache.self, cache.env, cache.response);
       }
       """ == Zigler.Code.LongRunning.harness_fn(%{name: :foo, params: [], retval: "i64"})
     end
@@ -156,14 +156,23 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
       assert """
       fn __bar_harness__(cache: *__bar_cache__) void {
         cache.result = bar(cache.arg0, cache.arg1);
-        var sent = beam.send(null, cache.self, cache.env, cache.response);
+        var _sent = beam.send(null, cache.self, cache.env, cache.response);
       }
       """ == Zigler.Code.LongRunning.harness_fn(%{name: :bar, params: ["i64", "f64"], retval: "i64"})
+    end
+
+    test "for a void retval function" do
+      assert """
+      fn __foo_harness__(cache: *__foo_cache__) void {
+        foo();
+        var _sent = beam.send(null, cache.self, cache.env, cache.response);
+      }
+      """ == Zigler.Code.LongRunning.harness_fn(%{name: :foo, params: [], retval: "void"})
     end
   end
 
   describe "fetcher_fn/1 generates a zig function" do
-    test "for a 0-arity function" do
+    test "for a function with a generic retval" do
       assert """
       extern fn __foo_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var cache_q: ?*__foo_cache__ = __resource__.fetch(__foo_cache_ptr__, env, argv[0])
@@ -177,6 +186,15 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
         }
       }
       """ == Zigler.Code.LongRunning.fetcher_fn(%{name: :foo, params: [], retval: "i64"})
+    end
+
+    test "for a function with void retval" do
+      assert """
+      extern fn __foo_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        __resource__.release(__foo_cache_ptr__, env, argv[0]);
+        return beam.make_atom(env, "nil");
+      }
+      """ == Zigler.Code.LongRunning.fetcher_fn(%{name: :foo, params: [], retval: "void"})
     end
   end
 end

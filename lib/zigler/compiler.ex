@@ -108,13 +108,11 @@ defmodule Zigler.Compiler do
   #############################################################################
   ## FUNCTION SKELETONS
 
+  alias Zigler.Code.LongRunning
+
   def function_skeleton(nif = %{opts: opts}) do
     if opts[:long] do
-      quote context: Elixir do
-        unquote(long_main_fn(nif))
-        unquote(long_launch_fn(nif))
-        unquote(long_fetch_fn(nif))
-      end
+      LongRunning.function_skeleton(nif)
     else
       basic_fn(nif)
     end
@@ -134,55 +132,6 @@ defmodule Zigler.Compiler do
         {name, [context: Elixir], params},
         [do: {:raise, [context: Elixir, import: Kernel], [text]}]
       ]}
-  end
-
-  alias Zigler.Code.LongRunning
-
-  defp long_main_fn(%{name: name, arity: arity}) do
-    params = if arity == 0 do
-      []
-    else
-      for idx <- 1..arity, do: {String.to_atom("arg#{idx}"), [], Elixir}
-    end
-
-    launcher_call = {LongRunning.launcher(name), [], params}
-
-    block = quote context: Elixir do
-      resource = unquote(launcher_call)
-      receive do {:done, ^resource} -> :ok end
-      unquote(LongRunning.fetcher name)(resource)
-    end
-
-    {:def, [context: Elixir, import: Kernel],
-      [
-        {name, [context: Elixir], params},
-        [do: block]
-      ]}
-  end
-
-  defp long_launch_fn(%{name: name, arity: arity}) do
-    text = "nif launcher for function #{name}/#{arity} not bound"
-
-    params = if arity == 0 do
-      []
-    else
-      for _ <- 1..arity, do: {:_, [], Elixir}
-    end
-
-    {:def, [context: Elixir, import: Kernel],
-      [
-        {LongRunning.launcher(name), [context: Elixir], params},
-        [do: {:raise, [context: Elixir, import: Kernel], [text]}]
-      ]}
-  end
-
-  defp long_fetch_fn(%{name: name, arity: arity}) do
-    text = "nif fetcher for function #{name}/#{arity} not bound"
-    quote context: Elixir do
-      def unquote(LongRunning.fetcher name)(_) do
-        raise unquote(text)
-      end
-    end
   end
 
   #############################################################################

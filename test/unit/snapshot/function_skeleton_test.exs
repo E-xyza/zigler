@@ -68,5 +68,4 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
     assert Zigler.Compiler.function_skeleton(
       %Nif{name: :foo, arity: 1, opts: [long: true]}) == result
   end
-
 end

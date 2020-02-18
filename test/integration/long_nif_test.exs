@@ -19,23 +19,23 @@ defmodule ZiglerTest.Integration.LongNifTest do
     assert elapsed >= 2 and elapsed < 4
   end
 
-#  ~Z"""
-#  /// nif: long_void/1 long
-#  fn long_void(pid: beam.pid) void {
-#    // sleep for 50 ms
-#    std.time.sleep(50000000);
-#  }
-#  """
-#
-#  test "long nifs can have a void return" do
-#    test_pid = self()
-#    spawn(fn ->
-#      long_void()
-#      send(test_pid, :done)
-#    end)
-#    refute_receive :done, 25
-#    assert_receive :done
-#  end
+  ~Z"""
+  /// nif: long_void/0 long
+  fn long_void() void {
+    // sleep for 50 ms
+    std.time.sleep(50000000);
+  }
+  """
+
+  test "long nifs can have a void return" do
+    test_pid = self()
+    spawn(fn ->
+      long_void()
+      send(test_pid, :done)
+    end)
+    refute_receive :done, 25
+    assert_receive :done
+  end
 
 end
 

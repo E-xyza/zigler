@@ -277,7 +277,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
 
       fn __foo_harness__(cache: *__foo_cache__) void {
         cache.result = foo();
-        var sent = beam.send(null, cache.self, cache.env, cache.response);
+        var _sent = beam.send(null, cache.self, cache.env, cache.response);
       }
 
       extern fn __foo_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
@@ -292,6 +292,62 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         }
       }
       """ == %Nif{name: :foo, arity: 0, params: [], retval: "i32", opts: [long: true]}
+      |> Code.adapter
+      |> IO.iodata_to_binary
+    end
+
+    test "the shim generates appropriate content for a void returning long function" do
+      assert """
+      const __bar_cache__ = struct {
+        env: beam.env,
+        self: beam.pid,
+        thread: *std.Thread,
+        response: beam.term,
+      };
+
+      /// resource: __bar_cache_ptr__ definition
+      const __bar_cache_ptr__ = ?*__bar_cache__;
+
+      /// resource: __bar_cache_ptr__ cleanup
+      fn __bar_cache_cleanup__(env: beam.env, cache_res_ptr: *__bar_cache_ptr__) void {
+        if (cache_res_ptr.*) | cache_ptr | {
+          beam.allocator.destroy(cache_ptr);
+        }
+      }
+
+      extern fn __bar_launch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        return __bar_pack__(env, argv)
+          catch beam.raise(env, beam.make_atom(env, "error"));
+      }
+
+      fn __bar_pack__(env: beam.env, argv: [*c] const beam.term) !beam.term {
+        var cache_term = try __resource__.create(__bar_cache_ptr__, env, null);
+        errdefer __resource__.release(__bar_cache_ptr__, env, cache_term);
+
+        var cache = try beam.allocator.create(__bar_cache__);
+        var _update = __resource__.update(__bar_cache_ptr__, env, cache_term, cache);
+
+        var done_atom = beam.make_atom(env, "done");
+
+        cache.env = env;
+        cache.self = try beam.self(env);
+        cache.response = e.enif_make_tuple(env, 2, done_atom, cache_term);
+
+        cache.thread = try std.Thread.spawn(cache, __bar_harness__);
+
+        return cache_term;
+      }
+
+      fn __bar_harness__(cache: *__bar_cache__) void {
+        bar();
+        var _sent = beam.send(null, cache.self, cache.env, cache.response);
+      }
+
+      extern fn __bar_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        __resource__.release(__bar_cache_ptr__, env, argv[0]);
+        return beam.make_atom(env, "nil");
+      }
+      """ == %Nif{name: :bar, arity: 0, params: [], retval: "void", opts: [long: true]}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
