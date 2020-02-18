@@ -240,7 +240,7 @@ defmodule Zigler.Code.LongRunning do
   end
   defp get_clause({"[]u8", index}) do
     """
-      cache.arg#{index} = try beam.get_char_slice(env, argv[#{index}])
+      cache.arg#{index} = try beam.get_char_slice(env, argv[#{index}]);
     """
   end
   defp get_clause({"[]" <> type, index}) do

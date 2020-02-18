@@ -37,5 +37,29 @@ defmodule ZiglerTest.Integration.LongNifTest do
     assert_receive :done
   end
 
+  ~Z"""
+  /// nif: long_sum/1 long
+  fn long_sum(list: []i64) i64 {
+    var result : i64 = 0;
+    for (list) | val | { result += val; }
+    return result;
+  }
+  """
+
+  test "long nifs can have an slice input" do
+    assert 5050 == 1..100 |> Enum.to_list |> long_sum
+  end
+
+  ~Z"""
+  /// nif: long_string/1 long
+  fn long_string(str: []u8) usize {
+    return str.len;
+  }
+  """
+
+  test "long nifs can have an string input" do
+    assert 6 = long_string("foobar")
+  end
+
 end
 

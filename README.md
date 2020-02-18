@@ -176,3 +176,10 @@ iex> h AllTheDocs.zeroarity
 a zero-arity function which returns 47.
 ```
 
+## Zigler Principles
+
+1. Make doing the right thing easy.
+2. Use magic, but sparingly.
+3. Let the user see behind the curtain.
+4. Let the user dial in magic as they choose.
+5. Magic shouldn't get in the way
