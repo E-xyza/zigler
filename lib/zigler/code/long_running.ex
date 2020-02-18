@@ -153,7 +153,7 @@ defmodule Zigler.Code.LongRunning do
       errdefer __resource__.release(#{cache_ptr nif.name}, env, cache_term);
 
       var cache = try beam.allocator.create(#{cache nif.name});
-      var _update = __resource__.update(#{cache_ptr nif.name}, env, cache_term, cache);
+      try __resource__.update(#{cache_ptr nif.name}, env, cache_term, cache);
 
       var done_atom = beam.make_atom(env, "done");
 
@@ -181,7 +181,7 @@ defmodule Zigler.Code.LongRunning do
     """
     fn #{harness nif.name}(cache: *#{cache nif.name}) void {
       #{result}#{nif.name}(#{cache_params});
-      var _sent = beam.send(null, cache.self, cache.env, cache.response);
+      var _sent = beam.send(null, cache.self, null, cache.response);
     }
     """
   end

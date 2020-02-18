@@ -101,7 +101,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
         errdefer __resource__.release(__foo_cache_ptr__, env, cache_term);
 
         var cache = try beam.allocator.create(__foo_cache__);
-        var _update = __resource__.update(__foo_cache_ptr__, env, cache_term, cache);
+        try __resource__.update(__foo_cache_ptr__, env, cache_term, cache);
 
         var done_atom = beam.make_atom(env, "done");
 
@@ -123,7 +123,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
         errdefer __resource__.release(__foo_cache_ptr__, env, cache_term);
 
         var cache = try beam.allocator.create(__foo_cache__);
-        var _update = __resource__.update(__foo_cache_ptr__, env, cache_term, cache);
+        try __resource__.update(__foo_cache_ptr__, env, cache_term, cache);
 
         var done_atom = beam.make_atom(env, "done");
 
@@ -147,7 +147,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
       assert """
       fn __foo_harness__(cache: *__foo_cache__) void {
         cache.result = foo();
-        var _sent = beam.send(null, cache.self, cache.env, cache.response);
+        var _sent = beam.send(null, cache.self, null, cache.response);
       }
       """ == Zigler.Code.LongRunning.harness_fn(%{name: :foo, params: [], retval: "i64"})
     end
@@ -156,7 +156,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
       assert """
       fn __bar_harness__(cache: *__bar_cache__) void {
         cache.result = bar(cache.arg0, cache.arg1);
-        var _sent = beam.send(null, cache.self, cache.env, cache.response);
+        var _sent = beam.send(null, cache.self, null, cache.response);
       }
       """ == Zigler.Code.LongRunning.harness_fn(%{name: :bar, params: ["i64", "f64"], retval: "i64"})
     end
@@ -165,7 +165,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
       assert """
       fn __foo_harness__(cache: *__foo_cache__) void {
         foo();
-        var _sent = beam.send(null, cache.self, cache.env, cache.response);
+        var _sent = beam.send(null, cache.self, null, cache.response);
       }
       """ == Zigler.Code.LongRunning.harness_fn(%{name: :foo, params: [], retval: "void"})
     end
