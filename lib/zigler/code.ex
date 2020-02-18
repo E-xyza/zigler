@@ -138,10 +138,10 @@ defmodule Zigler.Code do
     "  var __#{function}_arg#{index}__ = argv[#{index}];\n"
   end
   defp get_clause({"[]u8", index}, function) do
+    ## NB: we don't deallocate strings because the BEAM returns a pointer to memory space that it owns.
     """
       var __#{function}_arg#{index}__ = beam.get_char_slice(env, argv[#{index}])
         catch return beam.raise_function_clause_error(env);
-      defer beam.allocator.free(__#{function}_arg#{index}__);
     """
   end
   defp get_clause({"[]" <> type, index}, function) do
