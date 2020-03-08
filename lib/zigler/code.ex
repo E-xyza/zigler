@@ -189,7 +189,7 @@ defmodule Zigler.Code do
     |> Enum.sum
 
     exports = """
-    var __exported_nifs__ = [#{funcs_count}] e.ErlNifFunc{
+    var __exported_nifs__ = [_] e.ErlNifFunc{
     #{Enum.map(module.nifs, &nif_struct/1)}};
     """
     resource_init_defs = Enum.map(module.resources, &resource_init_definition/1)

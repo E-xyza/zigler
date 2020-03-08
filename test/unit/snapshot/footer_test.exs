@@ -9,7 +9,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
-      var __exported_nifs__ = [1] e.ErlNifFunc{
+      var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 0,
@@ -47,7 +47,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
-      var __exported_nifs__ = [1] e.ErlNifFunc{
+      var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 0,
@@ -129,7 +129,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
-      var __exported_nifs__ = [1] e.ErlNifFunc{
+      var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 0,
@@ -215,7 +215,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
-      var __exported_nifs__ = [2] e.ErlNifFunc{
+      var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 0,
@@ -261,7 +261,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
-      var __exported_nifs__ = [2] e.ErlNifFunc{
+      var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"__foo_launch__",
           .arity = 0,

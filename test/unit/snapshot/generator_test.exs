@@ -37,7 +37,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return beam.make_i64(env, __foo_result__);
       }
 
-      var __exported_nifs__ = [1] e.ErlNifFunc{
+      var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 0,
@@ -104,7 +104,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return beam.make_i64(env, __foo_result__);
       }
 
-      var __exported_nifs__ = [1] e.ErlNifFunc{
+      var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 1,

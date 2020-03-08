@@ -51,9 +51,8 @@ defmodule Zigler.MixProject do
   def application, do: [extra_applications: [:logger]]
 
   defp elixirc_paths(:dev), do: ["lib", "zigdoc"]
-  # integration tests will need the support directory, but the unit
-  # tests don't.
-  defp elixirc_paths(:test), do: ["lib"]#, "test/support"]
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:unit), do: ["lib", "test/support"]
   defp elixirc_paths(_), do: ["lib"]
 
   # running `mix test` executes both integration tests and unit tests.

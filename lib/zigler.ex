@@ -218,22 +218,11 @@ defmodule Zigler do
 
     quote do
       import Zigler
+      require Zigler.Compiler
 
       @on_load :__load_nifs__
 
       @before_compile Zigler.Compiler
-    end
-  end
-
-  alias Zigler.LongRunning
-
-  defp nif_to_spec(nif) do
-    cond do
-      # make alternative specs for long-running nif functions.
-      :long in nif.opts ->
-        LongRunning.functions(nif)
-      true ->
-        [{nif.name, {nif.params, nif.retval}}]
     end
   end
 
@@ -253,15 +242,6 @@ defmodule Zigler do
 
     Module.put_attribute(__CALLER__.module, :zigler, new_zigler)
     quote do end
-  end
-
-  @doc false
-  def basic_function(func, arity, opts) do
-    if :long in opts do
-      long_function(func, arity)
-    else
-      empty_function(func, arity)
-    end
   end
 
   @spec dunderize(String.t | integer) :: atom
@@ -299,33 +279,6 @@ defmodule Zigler do
       ]}
   end
 
-  def long_function(func, arity) do
-
-    long_fn_block = quote do
-      {ref, res} = unquote(launch_call(func, arity))
-      receive do ^ref -> :ok end
-      unquote(fetch_func_name(func))(res)
-    end
-
-    main_call = if arity == 0 do
-      {:def, [context: Elixir, import: Kernel], [
-        {func, [context: Elixir], []},
-        [do: long_fn_block]]}
-    else
-      {:def, [context: Elixir, import: Kernel],[
-        {func, [context: Elixir], for idx <- 1..arity do {dunderize(idx), [], Elixir} end},
-        [do: long_fn_block]]}
-    end
-
-    fetch_func_msg = "#{fetch_func_name(func)}/1 not defined"
-
-    quote do
-      unquote(launch_function(func,arity))
-      defp unquote(fetch_func_name(func))(_), do: throw unquote(fetch_func_msg)
-      unquote(main_call)
-    end
-  end
-
   def empty_function(func, 0) do
     quote do
       def unquote(func)(), do: throw unquote("#{func}/0 not defined")
@@ -341,41 +294,6 @@ defmodule Zigler do
          ["#{func}/#{arity} not defined"]}
       ]
     ]}
-  end
-
-  @type_for %{
-    "c_int" => :integer, "c_long" => :integer, "isize" => :integer,
-    "usize" => :integer, "u8" => :integer, "i32" => :integer, "i64" => :integer,
-    "f16" => :float, "f32" => :float, "f64" => :float, "bool" => :boolean,
-    "beam.term" => :term, "e.ErlNifTerm" => :term,
-    "beam.pid" => :pid, "e.ErlNifPid" => :pid,
-    "beam.binary" => :binary, "e.ErlNifBinary" => :binary,
-    "[]u8" => :binary, "[*c]u8" => :binary
-  }
-
-  @doc false
-  def typespec_for(%{name: name, params: params, retval: retval}) do
-    [ret_tag] = type_for(retval)
-    {:@, [context: Elixir, import: Kernel], [
-      {:spec, [context: Elixir],
-       [
-         {:"::", [],
-          [
-            {name, [], Enum.flat_map(params, &type_for/1)},
-            ret_tag
-          ]}
-       ]}
-    ]}
-  end
-
-  @doc false
-  def type_for("?*e.ErlNifEnv"), do: []
-  def type_for("beam.env"), do: []
-  def type_for("void"), do: [nil]
-  def type_for("[]" <> val) when val != "u8", do: [type_for(val)]
-  def type_for(" " <> val), do: type_for(val)
-  def type_for(zig_type) do
-    [{@type_for[zig_type], [], Elixir}]
   end
 
   @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
