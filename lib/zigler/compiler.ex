@@ -113,15 +113,18 @@ defmodule Zigler.Compiler do
   alias Zigler.Parser.Nif
 
   def function_skeleton(nif = %Nif{opts: opts}) do
-    typespec_part = Typespec.from_nif(nif)
-    function_part = if opts[:long] do
-      LongRunning.function_skeleton(nif)
+    typespec = Typespec.from_nif(nif)
+    if opts[:long] do
+      {:__block__, _, block_contents} = LongRunning.function_skeleton(nif)
+      quote do
+        unquote(typespec)
+        unquote_splicing(block_contents)
+      end
     else
-      basic_fn(nif)
-    end
-    quote do
-      unquote(typespec_part)
-      unquote(function_part)
+      quote do
+        unquote(typespec)
+        unquote(basic_fn(nif))
+      end
     end
   end
 

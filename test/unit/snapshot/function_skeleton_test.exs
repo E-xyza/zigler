@@ -6,6 +6,7 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
   test "an arity zero function is produced correctly" do
 
     result = quote context: Elixir do
+      @spec foo() :: nil
       def foo do
         raise "nif for function foo/0 not bound"
       end
@@ -17,6 +18,7 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
   test "an arity one function is produced correctly" do
 
     result = quote context: Elixir do
+      @spec foo() :: nil
       def foo(_) do
         raise "nif for function foo/1 not bound"
       end
@@ -28,6 +30,7 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
   test "a zero-arity long-running function is produced correctly" do
 
     result = quote context: Elixir do
+      @spec foo() :: nil
       def foo() do
         resource = __foo_launch__()
         receive do {:done, ^resource} -> :ok end
@@ -50,6 +53,7 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
   test "a one-arity long-running function is produced correctly" do
 
     result = quote context: Elixir do
+      @spec foo(integer) :: nil
       def foo(arg1) do
         resource = __foo_launch__(arg1)
         receive do {:done, ^resource} -> :ok end
@@ -66,6 +70,6 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
     end
 
     assert Zigler.Compiler.function_skeleton(
-      %Nif{name: :foo, arity: 1, opts: [long: true]}) == result
+      %Nif{name: :foo, arity: 1, opts: [long: true], params: ["i64"]}) == result
   end
 end
