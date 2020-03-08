@@ -1,4 +1,7 @@
 defmodule ZiglerTest.Types do
+
+  @moduledoc false
+
   use Zigler, dry_run: true
 
   @spec dummy_integer(integer) :: integer

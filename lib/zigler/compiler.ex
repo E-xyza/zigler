@@ -109,8 +109,8 @@ defmodule Zigler.Compiler do
   ## FUNCTION SKELETONS
 
   alias Zigler.Code.LongRunning
-  alias Zigler.Typespec
   alias Zigler.Parser.Nif
+  alias Zigler.Typespec
 
   def function_skeleton(nif = %Nif{opts: opts}) do
     typespec = Typespec.from_nif(nif)
@@ -185,8 +185,7 @@ defmodule Zigler.Compiler do
   @spec cleanup(t) :: :ok | no_return
   defp cleanup(compiler) do
     # in dev and test we keep our code around for debugging purposes.
-    # TODO: make this configurable.
-    if Mix.env in [:dev, :prod] do
+    unless Mix.env in [:dev, :test] do
       File.rm_rf!(compiler.staging_dir)
     end
     :ok

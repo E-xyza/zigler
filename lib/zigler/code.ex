@@ -2,9 +2,9 @@ defmodule Zigler.Code do
   @moduledoc """
   all code responsible for generating zig code lives in this module.
   """
+  alias Zigler.Code.LongRunning
   alias Zigler.Module
   alias Zigler.Parser.{Nif, Resource}
-  alias Zigler.Code.LongRunning
 
   def generate_main(module = %Module{}) do
     case module.c_includes do
@@ -176,8 +176,6 @@ defmodule Zigler.Code do
 
   #############################################################################
   ## FOOTER GENERATION
-
-  ## TODO: break this up!
 
   def footer(module = %Module{}) do
     [major, minor] = nif_major_minor()

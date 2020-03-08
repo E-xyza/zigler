@@ -172,7 +172,7 @@ defmodule Zigler.Code.LongRunning do
     cache_params = if nif.params == [] do
       ""
     else
-      0..length(nif.params)-1
+      0..(length(nif.params) - 1)
       |> Enum.map(&"cache.arg#{&1}")
       |> Enum.join(", ")
     end
@@ -219,8 +219,6 @@ defmodule Zigler.Code.LongRunning do
   end
 
   @env_types ["beam.env", "?*e.ErlNifEnv"]
-
-  # TODO DRY THIS WITH the Code Module
 
   defp get_clauses(%{arity: 0}), do: ""
   defp get_clauses(%{params: params}), do: get_clauses(params)

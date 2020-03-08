@@ -44,7 +44,6 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
     assert :abcdef == realloctest(3)
   end
 
-
   # proves that you can do something crazy, like keep memory around in global
   # var state.  don't do this in real code.  There are probably better ways of
   # safely doing this with a zig nif (for example, resources).

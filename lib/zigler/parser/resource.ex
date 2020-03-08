@@ -1,4 +1,9 @@
 defmodule Zigler.Parser.Resource do
+
+  @moduledoc """
+  resource parser object
+  """
+
   @enforce_keys [:name]
   defstruct @enforce_keys ++ [:doc, :cleanup]
 
@@ -20,7 +25,6 @@ defmodule Zigler.Parser.Resource do
   defp replace_cleanup([%ResourceCleanup{for: res, name: cleanup} | rest], r = %{name: res}) do
     [%{r | cleanup: cleanup} | rest]
   end
-  defp replace_cleanup([any | rest]), do: [any | replace_cleanup(rest)]
-
+  defp replace_cleanup([any | rest], res), do: [any | replace_cleanup(rest, res)]
 
 end

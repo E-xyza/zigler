@@ -1,5 +1,9 @@
 defmodule Zigler.Parser.ResourceCleanup do
 
+  @moduledoc """
+  resource cleanup struct
+  """
+
   @enforce_keys [:for]
   defstruct @enforce_keys ++ [:name, :doc]
 
@@ -69,4 +73,3 @@ defmodule Zigler.Parser.ResourceCleanup do
     [rest | bind_cleanup(rest, res, cleanup)]
   end
 end
-

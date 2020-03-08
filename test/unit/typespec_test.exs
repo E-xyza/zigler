@@ -420,4 +420,3 @@ defmodule ZiglerTest.TypespecTest do
   end
 
 end
-

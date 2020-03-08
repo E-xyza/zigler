@@ -212,7 +212,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     end
   end
 
-
   describe "for a one-arity function being passed a u8 slice" do
     test "the shim function assumes binary" do
       assert """

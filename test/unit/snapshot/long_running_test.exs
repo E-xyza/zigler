@@ -2,6 +2,8 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
 
   use ExUnit.Case, async: true
 
+  alias Zigler.Code.LongRunning
+
   describe "resource_struct/1 generates a zig struct" do
     test "for a 0-arity function" do
       assert """
@@ -22,7 +24,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
           beam.allocator.destroy(cache_ptr);
         }
       }
-      """ == Zigler.Code.LongRunning.cache_struct(%{name: :foo, params: [], retval: "i64"})
+      """ == LongRunning.cache_struct(%{name: :foo, params: [], retval: "i64"})
     end
 
     test "for a 1-arity function" do
@@ -45,7 +47,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
           beam.allocator.destroy(cache_ptr);
         }
       }
-      """ == Zigler.Code.LongRunning.cache_struct(%{name: :foo, params: ["i64"], retval: "i64"})
+      """ == LongRunning.cache_struct(%{name: :foo, params: ["i64"], retval: "i64"})
     end
 
     test "for a 2-arity function, with a different name and retval" do
@@ -69,7 +71,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
           beam.allocator.destroy(cache_ptr);
         }
       }
-      """ == Zigler.Code.LongRunning.cache_struct(%{name: :bar, params: ["i64", "f64"], retval: "f64"})
+      """ == LongRunning.cache_struct(%{name: :bar, params: ["i64", "f64"], retval: "f64"})
     end
   end
 
@@ -80,7 +82,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
         return __foo_pack__(env, argv)
           catch beam.raise(env, beam.make_atom(env, "error"));
       }
-      """ == Zigler.Code.LongRunning.launcher_fn(%{name: :foo, params: [], retval: "i64"})
+      """ == LongRunning.launcher_fn(%{name: :foo, params: [], retval: "i64"})
     end
 
     test "for function with a different name" do
@@ -89,7 +91,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
         return __bar_pack__(env, argv)
           catch beam.raise(env, beam.make_atom(env, "error"));
       }
-      """ == Zigler.Code.LongRunning.launcher_fn(%{name: :bar, params: ["i64"], retval: "i64"})
+      """ == LongRunning.launcher_fn(%{name: :bar, params: ["i64"], retval: "i64"})
     end
   end
 
@@ -113,7 +115,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
 
         return cache_term;
       }
-      """ == Zigler.Code.LongRunning.packer_fn(%{name: :foo, params: [], retval: "i64"})
+      """ == LongRunning.packer_fn(%{name: :foo, params: [], retval: "i64"})
     end
 
     test "for a 2-arity function with a different name" do
@@ -138,7 +140,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
 
         return cache_term;
       }
-      """  == Zigler.Code.LongRunning.packer_fn(%{name: :foo, params: ["i64", "f64"], retval: "i64"})
+      """  == LongRunning.packer_fn(%{name: :foo, params: ["i64", "f64"], retval: "i64"})
     end
   end
 
@@ -149,7 +151,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
         cache.result = foo();
         var _sent = beam.send(null, cache.self, null, cache.response);
       }
-      """ == Zigler.Code.LongRunning.harness_fn(%{name: :foo, params: [], retval: "i64"})
+      """ == LongRunning.harness_fn(%{name: :foo, params: [], retval: "i64"})
     end
 
     test "for a 2-arity function with a different name" do
@@ -158,7 +160,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
         cache.result = bar(cache.arg0, cache.arg1);
         var _sent = beam.send(null, cache.self, null, cache.response);
       }
-      """ == Zigler.Code.LongRunning.harness_fn(%{name: :bar, params: ["i64", "f64"], retval: "i64"})
+      """ == LongRunning.harness_fn(%{name: :bar, params: ["i64", "f64"], retval: "i64"})
     end
 
     test "for a void retval function" do
@@ -167,7 +169,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
         foo();
         var _sent = beam.send(null, cache.self, null, cache.response);
       }
-      """ == Zigler.Code.LongRunning.harness_fn(%{name: :foo, params: [], retval: "void"})
+      """ == LongRunning.harness_fn(%{name: :foo, params: [], retval: "void"})
     end
   end
 
@@ -185,7 +187,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
           return beam.raise_function_clause_error(env);
         }
       }
-      """ == Zigler.Code.LongRunning.fetcher_fn(%{name: :foo, params: [], retval: "i64"})
+      """ == LongRunning.fetcher_fn(%{name: :foo, params: [], retval: "i64"})
     end
 
     test "for a function with void retval" do
@@ -194,7 +196,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
         __resource__.release(__foo_cache_ptr__, env, argv[0]);
         return beam.make_atom(env, "nil");
       }
-      """ == Zigler.Code.LongRunning.fetcher_fn(%{name: :foo, params: [], retval: "void"})
+      """ == LongRunning.fetcher_fn(%{name: :foo, params: [], retval: "void"})
     end
   end
 end

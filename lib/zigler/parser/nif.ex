@@ -19,8 +19,8 @@ defmodule Zigler.Parser.Nif do
     - dirty: :io  -- if the nif should run in a dirty io scheduler.
   """
 
-  alias Zigler.Parser.Resource
   alias Zigler.Code.LongRunning
+  alias Zigler.Parser.Resource
 
   @float_types  ~w(f16 f32 f64)
   @int_types    ~w(u16 i32 u32 i64 u64 c_int c_uint c_long c_ulong isize usize)
@@ -112,6 +112,5 @@ defmodule Zigler.Parser.Nif do
     end
     %{context | global: resource ++ [final_nif | context.global]}
   end
-
 
 end

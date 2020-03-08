@@ -1,14 +1,6 @@
 defmodule Zigler.Typespec do
 
-  #@type_for %{
-  #  "c_int" => :integer, "c_long" => :integer, "isize" => :integer,
-  #  "usize" => :integer, "u8" => :integer, "i32" => :integer, "i64" => :integer,
-  #  "f16" => :float, "f32" => :float, "f64" => :float, "bool" => :boolean,
-  #  "beam.term" => :term, "e.ErlNifTerm" => :term,
-  #  "beam.pid" => :pid, "e.ErlNifPid" => :pid,
-  #  "beam.binary" => :binary, "e.ErlNifBinary" => :binary,
-  #  "[]u8" => :binary, "[*c]u8" => :binary
-  #}
+  @moduledoc false
 
   alias Zigler.Parser.Nif
 
@@ -18,7 +10,7 @@ defmodule Zigler.Typespec do
     "u16"          => quote [context: Elixir] do 0..0xFFFF end,
     "u32"          => quote [context: Elixir] do 0..0xFFFF_FFFF end,
     "u64"          => quote [context: Elixir] do non_neg_integer end,
-    "i32"          => quote [context: Elixir] do -2_147_483_648..2_147_483_647 end,
+    "i32"          => quote [context: Elixir] do (-2_147_483_648)..2_147_483_647 end,
     "i64"          => quote [context: Elixir] do integer end,
     "c_uint"       => quote [context: Elixir] do non_neg_integer end,
     "c_int"        => quote [context: Elixir] do integer end,

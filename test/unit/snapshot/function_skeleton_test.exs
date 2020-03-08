@@ -31,13 +31,13 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
 
     result = quote context: Elixir do
       @spec foo() :: nil
-      def foo() do
+      def foo do
         resource = __foo_launch__()
         receive do {:done, ^resource} -> :ok end
         __foo_fetch__(resource)
       end
 
-      def __foo_launch__() do
+      def __foo_launch__ do
         raise "nif launcher for function foo/0 not bound"
       end
 

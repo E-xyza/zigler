@@ -62,4 +62,3 @@ defmodule ZiglerTest.Integration.LongNifTest do
   end
 
 end
-

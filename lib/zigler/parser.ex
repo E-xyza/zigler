@@ -307,7 +307,9 @@ defmodule Zigler.Parser do
   @spec validate_arity(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval | no_return
   defp validate_arity(_rest, params, context = %{local: %module{}}, {line, _}, _) do
-    module.validate_arity(Enum.reverse(params), context, line)
+    params
+    |> Enum.reverse
+    |> module.validate_arity(context, line)
     {params, context}
   end
   defp validate_arity(_rest, content, context, _, _), do: {content, context}
