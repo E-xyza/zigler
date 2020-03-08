@@ -45,13 +45,18 @@ defmodule Zigler.Code.LongRunning do
   end
 
   defp long_main_fn(%{name: name, arity: arity, retval: retval}) do
+    # note that the "define function" params should not take parentheses
+    # but the "call" params must take parentheses.
     params = if arity == 0 do
-      []
+      Elixir
     else
       for idx <- 1..arity, do: {String.to_atom("arg#{idx}"), [], Elixir}
     end
-
-    launcher_call = {launcher(name), [], params}
+    launcher_call = if arity == 0 do
+      {launcher(name), [], []}
+    else
+      {launcher(name), [], params}
+    end
 
     block = if retval == "void" do
       quote context: Elixir do
@@ -77,7 +82,7 @@ defmodule Zigler.Code.LongRunning do
     text = "nif launcher for function #{name}/#{arity} not bound"
 
     params = if arity == 0 do
-      []
+      Elixir
     else
       for _ <- 1..arity, do: {:_, [], Elixir}
     end
