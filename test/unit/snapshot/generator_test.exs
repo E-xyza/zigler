@@ -3,7 +3,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
   # tests to make sure that the compiler makse the correct code.
 
-  alias Zigler.{Module, Code, Parser.Nif}
+  alias Zigler.{Code, Module, Parser.Nif}
 
   @zeroarity %Nif{name: :foo, arity: 0, params: [], retval: "i64"}
 
@@ -37,7 +37,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return beam.make_i64(env, __foo_result__);
       }
 
-      var __exported_nifs__ = [1] e.ErlNifFunc{
+      var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 0,
@@ -104,7 +104,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return beam.make_i64(env, __foo_result__);
       }
 
-      var __exported_nifs__ = [1] e.ErlNifFunc{
+      var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
           .arity = 1,

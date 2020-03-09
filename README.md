@@ -139,7 +139,7 @@ defmodule BlasDynamic do
       return beam.raise_function_clause_error(env);
     }
 
-    blas.cblas_daxpy(@intCast(c_int, x.len), a, &x[0], 1, &y[0], 1);
+    blas.cblas_daxpy(@intCast(c_int, x.len), a, x.ptr, 1, y.ptr, 1);
 
     return beam.make_f64_list(env, y) catch {
       return beam.raise_function_clause_error(env);
@@ -176,3 +176,10 @@ iex> h AllTheDocs.zeroarity
 a zero-arity function which returns 47.
 ```
 
+## Zigler Principles
+
+1. Make doing the right thing easy.
+2. Use magic, but sparingly.
+3. Let the user see behind the curtain.
+4. Let the user dial in magic as they choose.
+5. Magic shouldn't get in the way

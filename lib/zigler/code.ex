@@ -2,13 +2,14 @@ defmodule Zigler.Code do
   @moduledoc """
   all code responsible for generating zig code lives in this module.
   """
+  alias Zigler.Code.LongRunning
   alias Zigler.Module
   alias Zigler.Parser.{Nif, Resource}
 
   def generate_main(module = %Module{}) do
     case module.c_includes do
       [] -> []
-      includes -> c_imports(includes) + ["\n"]
+      includes -> c_imports(includes) ++ ["\n"]
     end
     ++ [
       zig_imports(module.imports), "\n",
@@ -71,38 +72,42 @@ defmodule Zigler.Code do
   #############################################################################
   ## ADAPTER GENERATION
 
-  def adapter(nif = %Zigler.Parser.Nif{}) do
-    args = args(nif)
+  def adapter(nif = %Zigler.Parser.Nif{opts: opts}) do
+    if opts[:long] do
+      LongRunning.adapter(nif)
+    else
+      args = args(nif)
 
-    get_clauses = get_clauses(nif)
+      get_clauses = get_clauses(nif)
 
-    result_var = "__#{nif.name}_result__"
-    function_call = "#{nif.name}(#{args})"
+      result_var = "__#{nif.name}_result__"
+      function_call = "#{nif.name}(#{args})"
 
-    head = "extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
+      head = "extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
 
-    result = cond do
-      nif.retval in ["beam.term", "e.ErlNifTerm"] ->
-        """
-          return #{function_call};
-        }
-        """
-      nif.retval == "void" ->
-        """
-          #{function_call};
+      result = cond do
+        nif.retval in ["beam.term", "e.ErlNifTerm"] ->
+          """
+            return #{function_call};
+          }
+          """
+        nif.retval == "void" ->
+          """
+            #{function_call};
 
-          return beam.make_nil(env);
-        }
-        """
-      true ->
-        """
-          var #{result_var} = #{function_call};
+            return beam.make_nil(env);
+          }
+          """
+        true ->
+          """
+            var #{result_var} = #{function_call};
 
-          return #{make_clause nif.retval, result_var};
-        }
-        """
+            return #{make_clause nif.retval, result_var};
+          }
+          """
+      end
+      [head, "\n", get_clauses, result, "\n"]
     end
-    [head, "\n", get_clauses, result, "\n"]
   end
 
   @env_types ["beam.env", "?*e.ErlNifEnv"]
@@ -133,6 +138,7 @@ defmodule Zigler.Code do
     "  var __#{function}_arg#{index}__ = argv[#{index}];\n"
   end
   defp get_clause({"[]u8", index}, function) do
+    ## NB: we don't deallocate strings because the BEAM returns a pointer to memory space that it owns.
     """
       var __#{function}_arg#{index}__ = beam.get_char_slice(env, argv[#{index}])
         catch return beam.raise_function_clause_error(env);
@@ -171,20 +177,24 @@ defmodule Zigler.Code do
   #############################################################################
   ## FOOTER GENERATION
 
-  ## TODO: break this up!
-
   def footer(module = %Module{}) do
     [major, minor] = nif_major_minor()
-    funcs_count = Enum.count(module.nifs)
+
+    funcs_count = module.nifs
+    |> Enum.map(fn %{opts: opts} ->
+      if opts[:long], do: 2, else: 1
+    end)
+    |> Enum.sum
+
     exports = """
-    var __exported_nifs__ = [#{funcs_count}] e.ErlNifFunc{
+    var __exported_nifs__ = [_] e.ErlNifFunc{
     #{Enum.map(module.nifs, &nif_struct/1)}};
     """
     resource_init_defs = Enum.map(module.resources, &resource_init_definition/1)
     resource_inits = Enum.map(module.resources, &resource_initializer/1)
 
     resource_map = module.resources
-    |> Enum.map(fn res -> "    #{res.name} => return __#{res.name}_resource__,\n" end)
+    |> Enum.map(fn res -> "    #{res.name} => return __#{rename res.name}_resource__,\n" end)
 
     resource_mapper = case module.resources do
       [] -> ""
@@ -264,23 +274,44 @@ defmodule Zigler.Code do
     |> String.split(".")
   end
 
-  defp nif_struct(%Nif{name: name, arity: arity}) do
-    """
-      e.ErlNifFunc{
-        .name = c"#{name}",
-        .arity = #{arity},
-        .fptr = __#{name}_shim__,
-        .flags = 0,
-      },
-    """
+  defp nif_struct(%Nif{name: name, arity: arity, opts: opts}) do
+    alias Zigler.Code.LongRunning
+
+    if opts[:long] do
+      """
+        e.ErlNifFunc{
+          .name = c"#{LongRunning.launcher name}",
+          .arity = #{arity},
+          .fptr = #{LongRunning.launcher name},
+          .flags = 0,
+        },
+        e.ErlNifFunc{
+          .name = c"#{LongRunning.fetcher name}",
+          .arity = 1,
+          .fptr = #{LongRunning.fetcher name},
+          .flags = 0,
+        },
+      """
+    else
+      """
+        e.ErlNifFunc{
+          .name = c"#{name}",
+          .arity = #{arity},
+          .fptr = __#{name}_shim__,
+          .flags = 0,
+        },
+      """
+    end
   end
 
-  defp resource_init_definition(res = %Resource{name: name}) do
+  defp resource_init_definition(res = %Resource{name: original_name}) do
+    name = rename(original_name)
+
     cleanup = if res.cleanup do
       """
 
         if (res) |__res__| {
-          #{res.cleanup}(env, @ptrCast(*#{name}, @alignCast(@alignOf(*#{name}), __res__)));
+          #{res.cleanup}(env, @ptrCast(*#{original_name}, @alignCast(@alignOf(*#{original_name}), __res__)));
         } else unreachable;
       """
     else
@@ -305,7 +336,8 @@ defmodule Zigler.Code do
     """
   end
 
-  defp resource_initializer(%Resource{name: name}) do
+  defp resource_initializer(%Resource{name: original_name}) do
+    name = rename(original_name)
     """
       __#{name}_resource__ = __init_#{name}_resource__(env);
     """
@@ -314,11 +346,14 @@ defmodule Zigler.Code do
   #############################################################################
   ## TOOLS
 
-  # counts how many lines there are in an iolist
-  defp count_lines(str) when is_binary(str) do
-    str
-    |> String.codepoints
-    |> Enum.count(&(&1 == ?\n))
+  defp rename(name) do
+    strname = Atom.to_string(name)
+    if String.starts_with?(strname, "__") and String.ends_with?(strname, "__") do
+      strname
+      |> String.trim("__")
+      |> String.to_atom
+    else
+      name
+    end
   end
-  defp count_lines([a | b]), do: count_lines(a) + count_lines(b)
 end

@@ -15,13 +15,9 @@ defmodule Zigler.Compiler do
 
   require Logger
 
-  alias Zigler.Compiler.ErrorParser
-  alias Zigler.Import
   alias Zigler.Zig
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
-  @erl_nif_zig_h Path.join(@zig_dir_path, "include/erl_nif_zig.h")
-  @erl_nif_zig Path.join(@zig_dir_path, "beam/erl_nif.zig")
 
   @doc false
   def basename(version) do
@@ -40,12 +36,12 @@ defmodule Zigler.Compiler do
     "zig-#{os}-x86_64-#{version}"
   end
 
-  @release_mode %{
-    fast:  ["--release-fast"],
-    safe:  ["--release-safe"],
-    small: ["--release-small"],
-    debug: []
-  }
+  #@release_mode %{
+  #  fast:  ["--release-fast"],
+  #  safe:  ["--release-safe"],
+  #  small: ["--release-small"],
+  #  debug: []
+  #}
 
   defmacro __before_compile__(context) do
 
@@ -89,22 +85,50 @@ defmodule Zigler.Compiler do
       end
     else
       quote do
+        import Logger
         unquote_splicing(nif_functions)
         def __load_nifs__ do
           unquote(mod_path)
           |> String.to_charlist()
           |> :erlang.load_nif(0)
+          |> case do
+            :ok -> :ok
+            {:error, any} ->
+              Logger.error("problem loading module #{inspect any}")
+          end
         end
       end
     end
   end
 
-  def function_skeleton(%{arity: arity, name: name}) do
+  #############################################################################
+  ## FUNCTION SKELETONS
 
+  alias Zigler.Code.LongRunning
+  alias Zigler.Parser.Nif
+  alias Zigler.Typespec
+
+  def function_skeleton(nif = %Nif{opts: opts}) do
+    typespec = Typespec.from_nif(nif)
+    if opts[:long] do
+      {:__block__, _, block_contents} = LongRunning.function_skeleton(nif)
+      quote do
+        unquote(typespec)
+        unquote_splicing(block_contents)
+      end
+    else
+      quote do
+        unquote(typespec)
+        unquote(basic_fn(nif))
+      end
+    end
+  end
+
+  defp basic_fn(%{name: name, arity: arity}) do
     text = "nif for function #{name}/#{arity} not bound"
 
     params = if arity == 0 do
-      []
+      Elixir
     else
       for _ <- 1..arity, do: {:_, [], Elixir}
     end
@@ -115,6 +139,9 @@ defmodule Zigler.Compiler do
         [do: {:raise, [context: Elixir, import: Kernel], [text]}]
       ]}
   end
+
+  #############################################################################
+  ## STEPS
 
   @staging_root Application.get_env(:zigler, :staging_root, "/tmp/zigler_compiler")
 
@@ -154,8 +181,7 @@ defmodule Zigler.Compiler do
   @spec cleanup(t) :: :ok | no_return
   defp cleanup(compiler) do
     # in dev and test we keep our code around for debugging purposes.
-    # TODO: make this configurable.
-    if Mix.env in [:dev, :prod] do
+    unless Mix.env in [:dev, :test] do
       File.rm_rf!(compiler.staging_dir)
     end
     :ok

@@ -2,11 +2,8 @@ defmodule Zigler.Zig do
 
   @moduledoc false
 
-  # contains all parts of the Zigler library which is involved in generating zig code.
-
-  alias Zigler.Parser.Nif
-
-  require EEx
+  # contains all parts of the Zigler library which is involved in calling the
+  # zig compiler toolchain.
 
   #############################################################################
   ## API
@@ -35,8 +32,7 @@ defmodule Zigler.Zig do
 
     case System.cmd(zig_executable, cmd_opts, opts) do
       {_, 0} -> :ok
-      {err, _} ->
-        err |> IO.inspect(label: "279")
+      {_err, _} ->
         raise "error"
         #ErrorParser.parse(err, src_dir, tmp_dir)
     end
@@ -63,4 +59,3 @@ defmodule Zigler.Zig do
   end
 
 end
-

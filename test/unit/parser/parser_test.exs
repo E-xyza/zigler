@@ -86,6 +86,20 @@ defmodule ZiglerTest.ParserTest do
 
       assert %Resource{name: :foo, cleanup: :foo_cleanup} = global
     end
+
+    test "will generate a resource struct for a long nif" do
+      assert {:ok, [], "", %Parser{global: global}, _, _} = Parser.parse_zig_block("""
+
+      /// nif: foo/0 long
+      fn foo() i64 {
+        return 47;
+      }
+
+      """)
+
+      assert Enum.any?(global, &match?(%Resource{name: :__foo_cache_ptr__, cleanup: :__foo_cache_cleanup__}, &1))
+      assert Enum.any?(global, &match?(%Nif{name: :foo, opts: [long: true]}, &1))
+    end
   end
 
   describe "the zig code parser" do
@@ -134,12 +148,10 @@ defmodule ZiglerTest.ParserTest do
 
     test "correctly puts content into the code parameter" do
       code1 = """
-
       /// nif: foo/0
       fn foo() i64 {
         return 47;
       }
-
       """
 
       code2 = """
@@ -152,7 +164,6 @@ defmodule ZiglerTest.ParserTest do
       fn oof(rab: i64, zab: f64) i64 {
         return rab + 1;
       }
-
       """
 
       first_parse = Parser.parse(code1, @empty_module, 1)

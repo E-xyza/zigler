@@ -307,7 +307,9 @@ defmodule Zigler.Parser do
   @spec validate_arity(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval | no_return
   defp validate_arity(_rest, params, context = %{local: %module{}}, {line, _}, _) do
-    module.validate_arity(Enum.reverse(params), context, line)
+    params
+    |> Enum.reverse
+    |> module.validate_arity(context, line)
     {params, context}
   end
   defp validate_arity(_rest, content, context, _, _), do: {content, context}
@@ -349,12 +351,12 @@ defmodule Zigler.Parser do
   @spec register_function_header(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval
 
-  defp register_function_header(_, content, context = %{local: nif = %module{}}, _, _) do
+  defp register_function_header(_, content, context = %{local: %module{}}, _, _) do
     {[], %{module.register_function_header(content, context) | local: nil}}
   end
   defp register_function_header(_, _, context, _, _), do: {[], %{context | local: nil}}
 
-  defp register_resource_definition(_, _, context = %{local: resource = %Resource{}}, _, _) do
+  defp register_resource_definition(_, _, context = %{local: %Resource{}}, _, _) do
     {[], %{Resource.register_resource_definition(context) | local: nil}}
   end
   defp register_resource_definition(_, _, context, _, _), do: {[], context}
@@ -416,11 +418,13 @@ defmodule Zigler.Parser do
         description: "sigil Z doesn't contain any nifs"
     end
 
+    spacer = if old_module.code == [], do: [], else: "\n"
+
     new_nifs = Enum.filter(global, &match?(%Nif{}, &1))
     new_resources = Enum.filter(global, &match?(%Resource{}, &1))
     %{old_module |
       nifs: old_module.nifs ++ new_nifs,
       resources: old_module.resources ++ new_resources,
-      code: [old_module.code | code]}
+      code: [[old_module.code, spacer | String.trim(code)], "\n"]}
   end
 end
