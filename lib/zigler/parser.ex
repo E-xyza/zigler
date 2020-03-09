@@ -3,7 +3,7 @@ defmodule Zigler.Parser do
 
   # all functions that parse zig code
 
-  defstruct [:local, :file, global: []]
+  defstruct [:local, file: "", zig_block_line: 0, global: []]
 
   import NimbleParsec
 
@@ -12,6 +12,7 @@ defmodule Zigler.Parser do
   @type t :: %__MODULE__{
     local: Nif.t | ResourceCleanup.t | {:doc, iodata},
     file: Path.t,
+    zig_block_line: non_neg_integer,
     global: [Nif.t]
   }
 
@@ -169,9 +170,9 @@ defmodule Zigler.Parser do
     {[], %{context | local: {:doc, String.trim(content)}}}
   end
   defp register_docstring_line(_rest, [_content], context, {line, _}, _) do
-    raise CompileError,
+    raise SyntaxError,
       file: context.file,
-      line: line,
+      line: line + context.zig_block_line,
       description: "docstring found in an inappropriate context"
   end
 
@@ -294,9 +295,9 @@ defmodule Zigler.Parser do
     :: parsec_retval | no_return
   defp validate_nif_declaration(_rest, [nif_name], context = %{local: %Nif{name: name}}, {line, _}, _) do
     unless nif_name == Atom.to_string(name) do
-      raise CompileError,
+      raise SyntaxError,
         file: context.file,
-        line: line,
+        line: line + context.zig_block_line - 1,
         description: "nif declaration name #{name} doesn't match function name #{nif_name}"
     end
     {[], context}
@@ -337,9 +338,9 @@ defmodule Zigler.Parser do
     :: parsec_retval | no_return
   defp validate_resource(_, [name], context = %{local: resource = %Resource{}}, {line, _}, _) do
     unless Atom.to_string(resource.name) == name do
-      raise CompileError,
+      raise SyntaxError,
         file: context.file,
-        line: line,
+        line: line + context.zig_block_line - 1,
         description: "resource declaration #{resource.name} doesn't match succeeding const identifier #{name}"
     end
     {[], context}
@@ -389,20 +390,24 @@ defmodule Zigler.Parser do
   #############################################################################
   ## API
 
-  @spec parse(String.t, Zigler.Module.t, non_neg_integer) :: Zigler.Module.t
-  def parse(code, old_module, line) do
-    case parse_zig_block(code, context: Map.from_struct(old_module)) do
+  @spec parse(String.t, Zigler.Module.t, Path.t, non_neg_integer) :: Zigler.Module.t
+  def parse(code, old_module, file, line) do
+    context = old_module
+    |> Map.from_struct
+    |> Map.put(:zig_block_line, line)
+
+    case parse_zig_block(code, context: context) do
       {:ok, [], "", parser, _, _} ->
-        append(old_module, parser, code, line)
-      {:error, msg, _context, {ctx_line, _}, _} ->
-        raise CompileError,
+        append(old_module, parser, code, file, line)
+      {:error, msg, _context, _, {ctx_line, _}, _} ->
+        raise SyntaxError,
           file: old_module.file,
-          line: ctx_line,
+          line: ctx_line + context.zig_block_line,
           description: msg
       err ->
-        raise CompileError,
+        raise SyntaxError,
           file: old_module.file,
-          line: line,
+          line: line + context.zig_block_line,
           description: "unknown parsing error #{inspect err}"
     end
   end
@@ -410,21 +415,22 @@ defmodule Zigler.Parser do
   #############################################################################
   ## helpers
 
-  defp append(old_module, %{global: global}, code, line) do
+  defp append(old_module, %{global: global}, code, file, line) do
     unless Enum.any?(global, &match?(%Nif{}, &1)) do
-      raise CompileError,
+      raise SyntaxError,
         file: old_module.file,
         line: line,
         description: "sigil Z doesn't contain any nifs"
     end
 
     spacer = if old_module.code == [], do: [], else: "\n"
+    anchor = "// ref: #{file} line: #{line}\n"
 
     new_nifs = Enum.filter(global, &match?(%Nif{}, &1))
     new_resources = Enum.filter(global, &match?(%Resource{}, &1))
     %{old_module |
       nifs: old_module.nifs ++ new_nifs,
       resources: old_module.resources ++ new_resources,
-      code: [[old_module.code, spacer | String.trim(code)], "\n"]}
+      code: [old_module.code, spacer, anchor, String.trim(code), "\n"]}
   end
 end

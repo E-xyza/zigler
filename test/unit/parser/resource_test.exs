@@ -19,7 +19,7 @@ defmodule ZiglerTest.Parser.ResourceTest do
     end
 
     test "raises if the values mismatch" do
-      assert_raise CompileError, fn -> Parser.parse_resource_definition("""
+      assert_raise SyntaxError, fn -> Parser.parse_resource_definition("""
           const bar = i64;
         """, context: %{local: %Resource{name: :foo}})
       end

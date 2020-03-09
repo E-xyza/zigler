@@ -68,9 +68,9 @@ defmodule Zigler.Parser.Nif do
     validate_arity(rest, context, line)
   end
   def validate_arity(rest, context = %{local: %{arity: arity}}, line) when length(rest) != arity do
-    raise CompileError,
+    raise SyntaxError,
       file: context.file,
-      line: line,
+      line: line + context.zig_block_line - 1,
       description: "nif declaration arity (#{arity}) doesn't match the expected function arity #{length(rest)}"
   end
   def validate_arity(_, _, _), do: :ok
@@ -83,9 +83,9 @@ defmodule Zigler.Parser.Nif do
     validate_params(rest, context, line)
   end
   def validate_params([invalid_type | _], context, line) do
-    raise CompileError,
+    raise SyntaxError,
       file: context.file,
-      line: line,
+      line: line + context.zig_block_line,
       description: "nif function #{context.local.name} demands an invalid parameter type #{invalid_type}"
   end
   def validate_params(_, _, _), do: :ok
@@ -94,9 +94,9 @@ defmodule Zigler.Parser.Nif do
     :: :ok | no_return
   def validate_retval([retval | _], _context, _line) when retval in @valid_retvals, do: :ok
   def validate_retval([retval | _], context, line) do
-    raise CompileError,
+    raise SyntaxError,
       file: context.file,
-      line: line,
+      line: line + context.zig_block_line,
       description: "nif function #{context.local.name} returns an invalid type #{retval}"
   end
 

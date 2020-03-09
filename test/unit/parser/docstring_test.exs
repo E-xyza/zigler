@@ -147,7 +147,7 @@ defmodule ZiglerTest.Parser.DocstringTest do
     end
 
     test "should error if in the local context of a function" do
-      assert_raise CompileError, fn ->
+      assert_raise SyntaxError, fn ->
         Parser.parse_docstring("""
         /// foo
         """, context: %{local: %Nif{name: :foo, arity: 0}})

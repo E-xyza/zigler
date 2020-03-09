@@ -69,28 +69,28 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
     end
 
     test "raises compile error if the names mismatch" do
-      assert_raise CompileError, fn -> Parser.parse_function_header("""
+      assert_raise SyntaxError, fn -> Parser.parse_function_header("""
           fn bar() i64 {
         """, context: %{local: %Nif{name: :foo, arity: 0}})
       end
     end
 
     test "raises compile error if the arities mismatch" do
-      assert_raise CompileError, fn -> Parser.parse_function_header("""
+      assert_raise SyntaxError, fn -> Parser.parse_function_header("""
           fn foo() i64 {
         """, context: %{local: %Nif{name: :foo, arity: 1}})
       end
     end
 
     test "raises compile error if the arities mismatch, with a beam.env parameter" do
-      assert_raise CompileError, fn -> Parser.parse_function_header("""
+      assert_raise SyntaxError, fn -> Parser.parse_function_header("""
           fn foo(env: beam.env) i64 {
         """, context: %{local: %Nif{name: :foo, arity: 1}})
       end
     end
 
     test "raises compile error if the arities mismatch, with a ErlNifEnv parameter" do
-      assert_raise CompileError, fn -> Parser.parse_function_header("""
+      assert_raise SyntaxError, fn -> Parser.parse_function_header("""
           fn foo(env: ?*e.ErlNifEnv) i64 {
         """, context: %{local: %Nif{name: :foo, arity: 1}})
       end
@@ -102,7 +102,7 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
         fn foo() !i64 {
       """)
 
-      assert_raise CompileError, fn -> Parser.parse_function_header("""
+      assert_raise SyntaxError, fn -> Parser.parse_function_header("""
           fn foo() !i64 {
         """, context: %{local: %Nif{name: :foo, arity: 0}})
       end
@@ -114,7 +114,7 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
         fn foo(bar: strange.type) i64 {
       """)
 
-      assert_raise CompileError, fn ->
+      assert_raise SyntaxError, fn ->
         Parser.parse_function_header("""
           fn foo(bar: strange.type) i64 {
         """, context: %{local: %Nif{name: :foo, arity: 1}})
@@ -150,36 +150,37 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
       assert %ResourceCleanup{for: :foo, name: :bar} = cleanup
     end
 
-    test "raises CompileError if the parameters don't match beam.env or e.ErlNifEnv" do
-      assert_raise CompileError, fn -> Parser.parse_function_header("""
+    @tag :one
+    test "raises SyntaxError if the parameters don't match beam.env or e.ErlNifEnv" do
+      assert_raise SyntaxError, fn -> Parser.parse_function_header("""
           fn bar(qqq: oddtype, res: *foo) void {
         """, context: %{local: %ResourceCleanup{for: :foo}})
       end
     end
 
-    test "raises CompileError if the parameter type doesn't match the resource type" do
-      assert_raise CompileError, fn -> Parser.parse_function_header("""
+    test "raises SyntaxError if the parameter type doesn't match the resource type" do
+      assert_raise SyntaxError, fn -> Parser.parse_function_header("""
           fn bar(env: beam.env, res: *bar) void {
         """, context: %{local: %ResourceCleanup{for: :foo}})
       end
     end
 
-    test "raises CompileError if the parameter type is the same as the original type without pointer" do
-      assert_raise CompileError, fn -> Parser.parse_function_header("""
+    test "raises SyntaxError if the parameter type is the same as the original type without pointer" do
+      assert_raise SyntaxError, fn -> Parser.parse_function_header("""
           fn bar(env: beam.env, res: bar) void {
         """, context: %{local: %ResourceCleanup{for: :foo}})
       end
     end
 
-    test "raises CompileError if there are too many parameters" do
-      assert_raise CompileError, fn -> Parser.parse_function_header("""
+    test "raises SyntaxError if there are too many parameters" do
+      assert_raise SyntaxError, fn -> Parser.parse_function_header("""
           fn bar(env: beam.env, res: *bar, extra: i64) void {
         """, context: %{local: %ResourceCleanup{for: :foo}})
       end
     end
 
-    test "raises CompileError if you try to have a non-void retval" do
-      assert_raise CompileError, fn -> Parser.parse_function_header("""
+    test "raises SyntaxError if you try to have a non-void retval" do
+      assert_raise SyntaxError, fn -> Parser.parse_function_header("""
           fn bar(env: beam.env, res: *foo) i32 {
         """, context: %{local: %ResourceCleanup{for: :foo}})
       end

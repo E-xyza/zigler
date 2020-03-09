@@ -31,11 +31,17 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return 47;
       }
 
+      // ref: foo.zig line: 12
+
+      // adapters for Elixir.Foo in foo.exs:
+
       extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_result__ = foo();
 
         return beam.make_i64(env, __foo_result__);
       }
+
+      // footer for Elixir.Foo in foo.exs:
 
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
@@ -65,7 +71,8 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       export fn nif_init() *const e.ErlNifEntry{
         return &entry;
       }
-      """ == %Module{nifs: [@zeroarity], code: code, file: "foo.exs", module: Foo, app: :zigler}
+      """ == %Module{nifs: [@zeroarity], code: code, zig_file: "foo.zig",
+                     file: "foo.exs", module: Foo, app: :zigler}
              |> Code.generate_main
              |> IO.iodata_to_binary
     end
@@ -95,6 +102,10 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return bar;
       }
 
+      // ref: foo.zig line: 12
+
+      // adapters for Elixir.Foo in foo.exs:
+
       extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = beam.get_i64(env, argv[0])
           catch return beam.raise_function_clause_error(env);
@@ -103,6 +114,8 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
         return beam.make_i64(env, __foo_result__);
       }
+
+      // footer for Elixir.Foo in foo.exs:
 
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
@@ -132,7 +145,8 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       export fn nif_init() *const e.ErlNifEntry{
         return &entry;
       }
-      """ == %Module{nifs: [@onearity], code: code, file: "foo.exs", module: Foo, app: :zigler}
+      """ == %Module{nifs: [@onearity], zig_file: "foo.zig", code: code,
+                     file: "foo.exs", module: Foo, app: :zigler}
              |> Code.generate_main
              |> IO.iodata_to_binary
     end

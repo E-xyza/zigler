@@ -153,7 +153,7 @@ defmodule Zigler.Compiler do
 
     # define the code file and build it.
     code_file = Path.join(staging_dir, "#{module.module}.zig")
-    File.write!(code_file, Zigler.Code.generate_main(module))
+    File.write!(code_file, Zigler.Code.generate_main(%{module | zig_file: code_file}))
 
     # copy in beam.zig
     File.cp!("zig/beam/beam.zig", Path.join(staging_dir, "beam.zig"))
