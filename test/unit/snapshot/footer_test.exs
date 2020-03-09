@@ -9,6 +9,8 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
+      // footer for Elixir.Foo in foo.exs:
+
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
@@ -47,6 +49,8 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
+      // footer for Elixir.Foo in foo.exs:
+
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
@@ -133,6 +137,8 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
+      // footer for Elixir.Foo in foo.exs:
+
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
@@ -223,6 +229,8 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
+      // footer for Elixir.Baz in foo.exs:
+
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"foo",
@@ -269,6 +277,8 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       [major, minor] = Code.nif_major_minor()
 
       assert """
+      // footer for Elixir.Baz in foo.exs:
+
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
           .name = c"__foo_launch__",

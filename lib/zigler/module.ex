@@ -7,6 +7,7 @@ defmodule Zigler.Module do
   @enforce_keys [:file, :module, :app]
 
   defstruct @enforce_keys ++ [
+    zig_file:    "",
     nifs:        [],
     resources:   [],
     zig_version: "0.5.0",
@@ -21,6 +22,7 @@ defmodule Zigler.Module do
     file:        Path.t,
     module:      module,
     app:         atom,
+    zig_file:    Path.t,
     nifs:        [Zigler.Parser.Function.t],
     resources:   [Zigler.Parser.Resource.t],
     zig_version: String.t,

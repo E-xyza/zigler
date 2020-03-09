@@ -238,7 +238,7 @@ defmodule Zigler do
 
     new_zigler = zig_code
     |> IO.iodata_to_binary
-    |> Parser.parse(zigler, line)
+    |> Parser.parse(zigler, __CALLER__.file, line)
 
     Module.put_attribute(__CALLER__.module, :zigler, new_zigler)
     quote do end

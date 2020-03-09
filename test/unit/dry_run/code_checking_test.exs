@@ -29,32 +29,11 @@ defmodule ZiglerTest.DryRun.CodeCheckingTest do
       return 47;
     }
 
+    // ref: #{__ENV__.file} line: 14
     /// nif: test2/0
     fn test2() i32 {
       return 42;
     }
-    """
-  end
-
-  ~Z"""
-
-
-
-  /// nif: test3/0
-  fn test3() i32 {
-    return 47;
-  }
-  """
-
-  test "extra lines are trimmed" do
-    [zigler] = __MODULE__.__info__(:attributes)[:zigler]
-
-    assert IO.iodata_to_binary(zigler.code) =~  """
-      return 42;
-    }
-
-    /// nif: test3/0
-    fn test3() i32 {
     """
   end
 end

@@ -23,26 +23,6 @@ defmodule Zigler.Parser.Error do
 
   defparsec :parse_error, times(errormsg, min: 1)
 
-  @spec backreference(Path.t, non_neg_integer) :: {Path.t, non_neg_integer}
-  @doc """
-  given a code file path and a line number, calculates the file and line number
-  of the source document from which it came.  Strongly depends on having
-  fencing comments of the form `// <file> line: <line>` in order to backtrack
-  this information.
-  """
-  def backreference(path, str_line) do
-    line = String.to_integer(str_line)
-    file_content = File.read!(path)
-
-    {offset, true_file, original_line} = file_content
-    |> parse_line_comments
-    |> Enum.filter(fn {a, _, _} -> a <= line end)
-    |> List.last
-
-    true_line = line - offset + original_line + 1
-    {true_file, true_line}
-  end
-
   @doc """
   given a zig compiler error message, a directory for the code file, and the temporary
   directory where code assembly is taking place, return an appropriate `CompileError`
@@ -54,59 +34,47 @@ defmodule Zigler.Parser.Error do
   def parse(msg) do#, code_dir, tmp_dir) do
     {:ok, [path, line, _col, msg | _rest], _, _, _, _} = parse_error(msg)
 
+    {path, line} = backreference(path, String.to_integer(line))
+
     raise CompileError,
       file: path,
-      line: String.to_integer(line),
+      line: line,
       description: msg
   end
 
-  line_comment =
-    repeat(ascii_char([0..255]) |> lookahead_not(string("//")))
-    |> ascii_char([0..255])
-    |> string("// ")
-    |> concat(ascii_string([not: ?\s], min: 1) |> tag(:file))
-    |> string(" line: ")
-    |> concat(ascii_string(@numbers, min: 1) |> tag(:line))
-    |> repeat(ascii_char([?\s]))
-    |> string("\n")
-    |> post_traverse(:parse_group)
-
-  if Mix.env == :test do
-    defparsec :parse_line_comment, line_comment
+  @spec backreference(Path.t, non_neg_integer) :: {Path.t, non_neg_integer}
+  @doc """
+  given a code file path and a line number, calculates the file and line number
+  of the source document from which it came.  Strongly depends on having
+  fencing comments of the form `// ref: <file> line: <line>` in order to backtrack
+  this information.
+  """
+  def backreference(path, line) do
+    path
+    |> File.stream!
+    |> Stream.map(&check_ref/1)
+    |> Stream.take(line)
+    |> Stream.with_index
+    |> Enum.reduce({path, line}, &trap_last_ref(&1, &2, line))
   end
 
-  line =
-    utf8_string([not: ?\n], min: 1)
-    |> string("\n")
-
-  empty_line = string("\n")
-
-  by_line =
-    repeat(choice([
-      line_comment,
-      line,
-      empty_line
-    ]))
-
-  defparsec :by_line_comments, by_line
-
-  defp parse_group(_rest, content, context, {ctx_line, _}, _) do
-    kw = Enum.flat_map(content, fn
-      {:file, [file]} -> [{:file, file}]
-      {:line, [line]} -> [{:line, String.to_integer(line)}]
-      _ -> []
-    end)
-    {[{:group, {ctx_line, kw[:file], kw[:line]}}], context}
+  # initialize the value of the last line to the existing line
+  defp trap_last_ref({{:ok, [path, line_number], _, _, _, _}, line_idx}, _, line) do
+    {path, line - line_idx + String.to_integer(line_number) - 1}
   end
+  defp trap_last_ref(_, prev, _), do: prev
 
-  # read our instrumented comments to try to find the location of the error.
-  defp parse_line_comments(txt) do
-    {:ok, parsed, _, _, _, _} = by_line_comments(txt)
+  path = ascii_string([not: ?\s, not: ?\t], min: 1)
 
-    parsed
-    |> Enum.flat_map(fn
-      {:group, data} -> [data]
-      _ -> []
-    end)
-  end
+  check_ref = ignore(
+    string("// ref:")
+    |> concat(whitespace))
+  |> concat(path)
+  |> ignore(
+    whitespace
+    |> string("line:")
+    |> concat(whitespace))
+  |> ascii_string(@numbers, min: 1)
+
+  defparsec :check_ref, check_ref
 end

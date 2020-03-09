@@ -7,13 +7,21 @@ defmodule Zigler.Code do
   alias Zigler.Parser.{Nif, Resource}
 
   def generate_main(module = %Module{}) do
-    case module.c_includes do
+    body = case module.c_includes do
       [] -> []
       includes -> c_imports(includes) ++ ["\n"]
     end
     ++ [
       zig_imports(module.imports), "\n",
-      module.code, "\n",
+      module.code, "\n"
+    ]
+
+    body_lines = count_lines(body)
+
+    [
+      body,
+      "// ref: #{module.zig_file} line: #{body_lines + 1}\n\n",
+      "// adapters for #{module.module} in #{module.file}:\n\n",
       Enum.map(module.nifs, &adapter/1),
       footer(module)
     ]
@@ -243,7 +251,8 @@ defmodule Zigler.Code do
       _ -> "nif_load"
     end
 
-    [exports, resource_init_defs, "\n", resource_mapper, nif_loader, """
+    ["// footer for #{module.module} in #{module.file}:\n\n",
+     exports, resource_init_defs, "\n", resource_mapper, nif_loader, """
     const entry = e.ErlNifEntry{
       .major = #{major},
       .minor = #{minor},
@@ -356,4 +365,13 @@ defmodule Zigler.Code do
       name
     end
   end
+
+  defp count_lines(iolist), do: count_lines(iolist, 0)
+  defp count_lines([first | rest], count_so_far) do
+    count_lines(rest, count_so_far + count_lines(first))
+  end
+  defp count_lines(<<?\n, rest::binary>>, count_so_far), do: count_lines(rest, count_so_far + 1)
+  defp count_lines(<<_, rest::binary>>, count_so_far), do: count_lines(rest, count_so_far)
+  defp count_lines(<<>>, count_so_far), do: count_so_far
+  defp count_lines([], count_so_far), do: count_so_far
 end

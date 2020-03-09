@@ -8,7 +8,6 @@ defmodule ZiglerTest.Integration.CompileErrorTest do
     |> Code.eval_file
   end
 
-  @tag :one
   test "zig compiler errors are bound to the correct line number" do
     file = "undeclared_identifier.exs"
     error = assert_raise CompileError, fn -> load(file) end

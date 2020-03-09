@@ -390,16 +390,16 @@ defmodule Zigler.Parser do
   #############################################################################
   ## API
 
-  @spec parse(String.t, Zigler.Module.t, non_neg_integer) :: Zigler.Module.t
-  def parse(code, old_module, line) do
+  @spec parse(String.t, Zigler.Module.t, Path.t, non_neg_integer) :: Zigler.Module.t
+  def parse(code, old_module, file, line) do
     context = old_module
     |> Map.from_struct
     |> Map.put(:zig_block_line, line)
 
     case parse_zig_block(code, context: context) do
       {:ok, [], "", parser, _, _} ->
-        append(old_module, parser, code, line)
-      {:error, msg, _context, {ctx_line, _}, _} ->
+        append(old_module, parser, code, file, line)
+      {:error, msg, _context, _, {ctx_line, _}, _} ->
         raise SyntaxError,
           file: old_module.file,
           line: ctx_line + context.zig_block_line,
@@ -415,7 +415,7 @@ defmodule Zigler.Parser do
   #############################################################################
   ## helpers
 
-  defp append(old_module, %{global: global}, code, line) do
+  defp append(old_module, %{global: global}, code, file, line) do
     unless Enum.any?(global, &match?(%Nif{}, &1)) do
       raise SyntaxError,
         file: old_module.file,
@@ -424,12 +424,13 @@ defmodule Zigler.Parser do
     end
 
     spacer = if old_module.code == [], do: [], else: "\n"
+    anchor = "// ref: #{file} line: #{line}\n"
 
     new_nifs = Enum.filter(global, &match?(%Nif{}, &1))
     new_resources = Enum.filter(global, &match?(%Resource{}, &1))
     %{old_module |
       nifs: old_module.nifs ++ new_nifs,
       resources: old_module.resources ++ new_resources,
-      code: [[old_module.code, spacer | String.trim(code)], "\n"]}
+      code: [old_module.code, spacer, anchor, String.trim(code), "\n"]}
   end
 end
