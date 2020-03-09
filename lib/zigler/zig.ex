@@ -32,9 +32,9 @@ defmodule Zigler.Zig do
 
     case System.cmd(zig_executable, cmd_opts, opts) do
       {_, 0} -> :ok
-      {_err, _} ->
-        raise "error"
-        #ErrorParser.parse(err, src_dir, tmp_dir)
+      {err, _} ->
+        alias Zigler.Parser.Error
+        Error.parse(err)
     end
 
     library_filename = Zigler.nif_name(compiler.module_spec)
