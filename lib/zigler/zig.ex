@@ -2,11 +2,8 @@ defmodule Zigler.Zig do
 
   @moduledoc false
 
-  # contains all parts of the Zigler library which is involved in generating zig code.
-
-  alias Zigler.Parser.Nif
-
-  require EEx
+  # contains all parts of the Zigler library which is involved in calling the
+  # zig compiler toolchain.
 
   #############################################################################
   ## API

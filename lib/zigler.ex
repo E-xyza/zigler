@@ -194,11 +194,11 @@ defmodule Zigler do
 
   # default release modes.
   # you can override these in your `use Zigler` statement.
-  @default_release_modes %{prod: :safe, dev: :debug, test: :debug}
-  @default_release_mode @default_release_modes[Mix.env()]
+  #@default_release_modes %{prod: :safe, dev: :debug, test: :debug}
+  #@default_release_mode @default_release_modes[Mix.env()]
 
   defmacro __using__(opts) do
-    mode = opts[:release_mode] || @default_release_mode
+    #mode = opts[:release_mode] || @default_release_mode
 
     # make sure that we're in the correct operating system.
     if match?({:win32, _}, :os.type()) do
@@ -242,41 +242,6 @@ defmodule Zigler do
 
     Module.put_attribute(__CALLER__.module, :zigler, new_zigler)
     quote do end
-  end
-
-  @spec dunderize(String.t | integer) :: atom
-  defp dunderize(string), do: String.to_atom("__#{string}__")
-
-  @spec launch_func_name(atom) :: atom
-  defp launch_func_name(func) do
-    func
-    |> Atom.to_string
-    |> Kernel.<>("_launch")
-    |> dunderize
-  end
-
-  @spec fetch_func_name(atom) :: atom
-  defp fetch_func_name(func) do
-    func
-    |> Atom.to_string
-    |> Kernel.<>("_fetch")
-    |> dunderize
-  end
-
-  defp launch_call(func, arity) do
-    {launch_func_name(func), [], for idx <- 1..arity do
-      {dunderize(idx), [], Elixir}
-    end}
-  end
-
-  def launch_function(func, arity) do
-    launch_func = launch_func_name(func)
-    {:defp, [context: Elixir, import: Kernel],
-      [
-        {launch_func, [context: Elixir], for _idx <- 1..arity do {:_, [], Elixir} end},
-        [do: {:throw, [context: Elixir, import: Kernel],
-        ["#{launch_func}/#{arity} not defined"]}]
-      ]}
   end
 
   def empty_function(func, 0) do

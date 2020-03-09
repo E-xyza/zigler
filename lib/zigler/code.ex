@@ -356,12 +356,4 @@ defmodule Zigler.Code do
       name
     end
   end
-
-  # counts how many lines there are in an iolist
-  defp count_lines(str) when is_binary(str) do
-    str
-    |> String.codepoints
-    |> Enum.count(&(&1 == ?\n))
-  end
-  defp count_lines([a | b]), do: count_lines(a) + count_lines(b)
 end

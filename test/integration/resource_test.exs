@@ -115,14 +115,17 @@ defmodule ZiglerTest.Integration.ResourceTest do
       assert_receive :done
     end
 
-    defp wait_200_millis(test_pid) do
+    defp wait_200_millis(res) do
       # holds on to this object for 200 milliseconds
       Process.sleep(200)
+      # we need to do something with it otherwise the compiler
+      # optimizes it out.
+      inspect(res)
     end
 
     test "can be cleaned up properly in the more complex case" do
       test_pid = self()
-      pid = spawn(fn ->
+      spawn(fn ->
         res = create_pid_resource(test_pid)
         spawn(fn -> wait_200_millis(res) end)
       end)

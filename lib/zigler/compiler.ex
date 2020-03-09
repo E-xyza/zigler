@@ -15,13 +15,9 @@ defmodule Zigler.Compiler do
 
   require Logger
 
-  alias Zigler.Compiler.ErrorParser
-  alias Zigler.Import
   alias Zigler.Zig
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
-  @erl_nif_zig_h Path.join(@zig_dir_path, "include/erl_nif_zig.h")
-  @erl_nif_zig Path.join(@zig_dir_path, "beam/erl_nif.zig")
 
   @doc false
   def basename(version) do
@@ -40,12 +36,12 @@ defmodule Zigler.Compiler do
     "zig-#{os}-x86_64-#{version}"
   end
 
-  @release_mode %{
-    fast:  ["--release-fast"],
-    safe:  ["--release-safe"],
-    small: ["--release-small"],
-    debug: []
-  }
+  #@release_mode %{
+  #  fast:  ["--release-fast"],
+  #  safe:  ["--release-safe"],
+  #  small: ["--release-small"],
+  #  debug: []
+  #}
 
   defmacro __before_compile__(context) do
 
