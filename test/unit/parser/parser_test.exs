@@ -182,7 +182,7 @@ defmodule ZiglerTest.ParserTest do
       }
       """
 
-      assert_raise CompileError, fn -> Parser.parse(code, @empty_module, 1) end
+      assert_raise SyntaxError, fn -> Parser.parse(code, @empty_module, 1) end
     end
 
     test "can correctly parse a zig block with a resource declaration" do
