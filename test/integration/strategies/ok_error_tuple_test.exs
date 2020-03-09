@@ -2,7 +2,7 @@ defmodule ZiglerTest.OkErrorTupleTest do
   # tests if the ok/error tuple constructors work
 
   use ExUnit.Case, async: true
-  use Zigler, app: :zigler
+  use Zigler
 
   ~Z"""
   /// nif: ok_int/1

@@ -5,13 +5,10 @@ defmodule Zigler.LibraryTest do
 
   use ExUnit.Case, async: true
 
-  # guard against this library not existing.
-
   if File.exists?("/usr/lib/x86_64-linux-gnu/blas/libblas.so") do
 
     defmodule BlasDynamic do
       use Zigler,
-        app: :zigler,
         libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
         include: ["/usr/include/x86_64-linux-gnu"]
 
