@@ -172,7 +172,7 @@ defmodule Zigler.Parser do
   defp register_docstring_line(_rest, [_content], context, {line, _}, _) do
     raise SyntaxError,
       file: context.file,
-      line: line,
+      line: line + context.zig_block_line,
       description: "docstring found in an inappropriate context"
   end
 
@@ -340,7 +340,7 @@ defmodule Zigler.Parser do
     unless Atom.to_string(resource.name) == name do
       raise SyntaxError,
         file: context.file,
-        line: line,
+        line: line + context.zig_block_line - 1,
         description: "resource declaration #{resource.name} doesn't match succeeding const identifier #{name}"
     end
     {[], context}
@@ -402,12 +402,12 @@ defmodule Zigler.Parser do
       {:error, msg, _context, {ctx_line, _}, _} ->
         raise SyntaxError,
           file: old_module.file,
-          line: ctx_line,
+          line: ctx_line + context.zig_block_line,
           description: msg
       err ->
         raise SyntaxError,
           file: old_module.file,
-          line: line,
+          line: line + context.zig_block_line,
           description: "unknown parsing error #{inspect err}"
     end
   end

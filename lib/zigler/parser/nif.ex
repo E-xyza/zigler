@@ -85,7 +85,7 @@ defmodule Zigler.Parser.Nif do
   def validate_params([invalid_type | _], context, line) do
     raise SyntaxError,
       file: context.file,
-      line: line,
+      line: line + context.zig_block_line,
       description: "nif function #{context.local.name} demands an invalid parameter type #{invalid_type}"
   end
   def validate_params(_, _, _), do: :ok
@@ -96,7 +96,7 @@ defmodule Zigler.Parser.Nif do
   def validate_retval([retval | _], context, line) do
     raise SyntaxError,
       file: context.file,
-      line: line,
+      line: line + context.zig_block_line,
       description: "nif function #{context.local.name} returns an invalid type #{retval}"
   end
 
