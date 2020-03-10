@@ -163,6 +163,9 @@ defmodule Zigler.Compiler do
     File.mkdir_p!(Path.join(staging_dir, "include"))
     File.cp!("zig/include/erl_nif_zig.h", Path.join(staging_dir, "include/erl_nif_zig.h"))
 
+    # copy imports into the relevant directory
+    transfer_imports_for(code_file, Path.dirname(module.file),  staging_dir)
+
     # assemble the module struct
     %__MODULE__{
       staging_dir: staging_dir,
@@ -186,4 +189,21 @@ defmodule Zigler.Compiler do
     end
     :ok
   end
+
+  defp transfer_imports_for(code_file, src_dir, staging_dir), do: transfer_imports_for(code_file, src_dir, staging_dir, [])
+
+  defp transfer_imports_for(code_file, src_dir, staging_dir, transferred_files) do
+    ((code_file
+    |> File.read!
+    |> Zigler.Parser.Imports.parse
+    |> Enum.map(&Path.join(src_dir, &1))
+    |> Enum.filter(&(Path.extname(&1) == ".zig"))
+    |> Enum.reject(&(Path.basename(&1) in ["beam.zig", "erl_nif.zig"])))
+    -- transferred_files)
+    |> Enum.each(fn path ->
+      rebasename = Path.relative_to(path, src_dir)
+      File.cp!(path, Path.join(staging_dir, rebasename))
+    end)
+  end
+
 end
