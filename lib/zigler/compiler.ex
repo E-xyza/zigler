@@ -65,7 +65,7 @@ defmodule Zigler.Compiler do
 
     compiler = precompile(module)
     unless module.dry_run do
-      compile(compiler, zig_tree)
+      Zig.compile(compiler, zig_tree)
     end
     cleanup(compiler)
 
@@ -174,25 +174,14 @@ defmodule Zigler.Compiler do
     }
   end
 
-  @spec compile(t, Path.t) :: :ok | no_return
-  defp compile(compiler, zig_tree) do
-    # first move everything into the staging directory.
-    Zig.compile(compiler, zig_tree)
-    :ok
+  defp transfer_imports_for(code_file, src_dir, staging_dir) do
+    transfer_imports_for(code_file, src_dir, staging_dir, [])
   end
-
-  @spec cleanup(t) :: :ok | no_return
-  defp cleanup(compiler) do
-    # in dev and test we keep our code around for debugging purposes.
-    unless Mix.env in [:dev, :test] do
-      File.rm_rf!(compiler.staging_dir)
-    end
-    :ok
-  end
-
-  defp transfer_imports_for(code_file, src_dir, staging_dir), do: transfer_imports_for(code_file, src_dir, staging_dir, [])
-
   defp transfer_imports_for(code_file, src_dir, staging_dir, transferred_files) do
+
+    # mechanism for identifying imported files recursively and moving them into
+    # the correct relative directory within the staging zone.
+
     imports = (code_file
     |> File.read!
     |> Zigler.Parser.Imports.parse
@@ -220,4 +209,12 @@ defmodule Zigler.Compiler do
     end)
   end
 
+  @spec cleanup(t) :: :ok | no_return
+  defp cleanup(compiler) do
+    # in dev and test we keep our code around for debugging purposes.
+    unless Mix.env in [:dev, :test] do
+      File.rm_rf!(compiler.staging_dir)
+    end
+    :ok
+  end
 end
