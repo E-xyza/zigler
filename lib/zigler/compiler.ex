@@ -164,7 +164,10 @@ defmodule Zigler.Compiler do
     File.cp!("zig/include/erl_nif_zig.h", Path.join(staging_dir, "include/erl_nif_zig.h"))
 
     # copy imports into the relevant directory
-    transfer_imports_for(code_file, Path.dirname(module.file),  staging_dir)
+    transfer_imports_for(code_file, Path.dirname(module.file), staging_dir)
+
+    # copy includes into the relevant directory
+    transfer_includes_for(Path.dirname(module.file), staging_dir)
 
     # assemble the module struct
     %__MODULE__{
@@ -207,6 +210,21 @@ defmodule Zigler.Compiler do
 
       File.cp!(path, stagingfile)
     end)
+  end
+
+  defp transfer_includes_for(src_dir, staging_dir) do
+    staging_include = Path.join(staging_dir, "include")
+    File.mkdir_p!(staging_include)
+
+    src_include = Path.join(src_dir, "include")
+    if File.dir?(src_include) do
+      File.ls!(src_include)
+      for file <- File.ls!(src_include) do
+        src_include
+        |> Path.join(file)
+        |> File.cp_r!(Path.join(staging_include, file))
+      end
+    end
   end
 
   @spec cleanup(t) :: :ok | no_return
