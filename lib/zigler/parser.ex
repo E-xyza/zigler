@@ -399,7 +399,7 @@ defmodule Zigler.Parser do
     case parse_zig_block(code, context: context) do
       {:ok, [], "", parser, _, _} ->
         append(old_module, parser, code, file, line)
-      {:error, msg, _context, _, {ctx_line, _}, _} ->
+      {:error, msg, _rest, _context, {ctx_line, _}, _} ->
         raise SyntaxError,
           file: old_module.file,
           line: ctx_line + context.zig_block_line,
