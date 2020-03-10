@@ -193,16 +193,30 @@ defmodule Zigler.Compiler do
   defp transfer_imports_for(code_file, src_dir, staging_dir), do: transfer_imports_for(code_file, src_dir, staging_dir, [])
 
   defp transfer_imports_for(code_file, src_dir, staging_dir, transferred_files) do
-    ((code_file
+    imports = (code_file
     |> File.read!
     |> Zigler.Parser.Imports.parse
     |> Enum.map(&Path.join(src_dir, &1))
     |> Enum.filter(&(Path.extname(&1) == ".zig"))
-    |> Enum.reject(&(Path.basename(&1) in ["beam.zig", "erl_nif.zig"])))
-    -- transferred_files)
-    |> Enum.each(fn path ->
+    |> Enum.reject(&(Path.basename(&1) in ["beam.zig", "erl_nif.zig"]))
+    |> Enum.uniq)
+    -- transferred_files
+
+    Enum.each(imports, fn path ->
       rebasename = Path.relative_to(path, src_dir)
-      File.cp!(path, Path.join(staging_dir, rebasename))
+      rebasedir = Path.dirname(rebasename)
+      stagingfile = Path.join(staging_dir, rebasename)
+      stagingfile_dir = Path.dirname(stagingfile)
+
+      File.mkdir_p!(stagingfile_dir)
+      # perform transitive imports
+      transfer_imports_for(
+        path,
+        Path.join(src_dir, rebasedir),
+        stagingfile_dir,
+        Enum.map(imports, &Path.relative_to(&1, rebasedir)))
+
+      File.cp!(path, stagingfile)
     end)
   end
 
