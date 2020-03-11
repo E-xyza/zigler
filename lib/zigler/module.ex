@@ -6,12 +6,14 @@ defmodule Zigler.Module do
 
   @enforce_keys [:file, :module, :app]
 
+  @default_imports [builtin: "builtin", std: "std", beam: "beam.zig"]
+
   defstruct @enforce_keys ++ [
     zig_file:    "",
     nifs:        [],
     resources:   [],
     zig_version: "0.5.0",
-    imports:     [builtin: "builtin", std: "std", beam: "beam.zig"],
+    imports:     @default_imports,
     c_includes:  [],
     dry_run:     false,
     code:        [],
@@ -32,5 +34,11 @@ defmodule Zigler.Module do
     code:        iodata,
     semver:      [String.t]
   }
+
+  # takes the zigler imports option and turns it into the imports keyword
+
+  def imports(nil), do: @default_imports
+  def imports([:defaults | rest]), do: @default_imports ++ rest
+  def imports(import_list), do: import_list
 
 end
