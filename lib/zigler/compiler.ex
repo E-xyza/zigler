@@ -65,7 +65,7 @@ defmodule Zigler.Compiler do
 
     compiler = precompile(module)
     unless module.dry_run do
-      compile(compiler, zig_tree)
+      Zig.compile(compiler, zig_tree)
     end
     cleanup(compiler)
 
@@ -163,6 +163,12 @@ defmodule Zigler.Compiler do
     File.mkdir_p!(Path.join(staging_dir, "include"))
     File.cp!("zig/include/erl_nif_zig.h", Path.join(staging_dir, "include/erl_nif_zig.h"))
 
+    # copy imports into the relevant directory
+    transfer_imports_for(code_file, Path.dirname(module.file), staging_dir)
+
+    # copy includes into the relevant directory
+    transfer_includes_for(Path.dirname(module.file), staging_dir)
+
     # assemble the module struct
     %__MODULE__{
       staging_dir: staging_dir,
@@ -171,11 +177,54 @@ defmodule Zigler.Compiler do
     }
   end
 
-  @spec compile(t, Path.t) :: :ok | no_return
-  defp compile(compiler, zig_tree) do
-    # first move everything into the staging directory.
-    Zig.compile(compiler, zig_tree)
-    :ok
+  defp transfer_imports_for(code_file, src_dir, staging_dir) do
+    transfer_imports_for(code_file, src_dir, staging_dir, [])
+  end
+  defp transfer_imports_for(code_file, src_dir, staging_dir, transferred_files) do
+
+    # mechanism for identifying imported files recursively and moving them into
+    # the correct relative directory within the staging zone.
+
+    imports = (code_file
+    |> File.read!
+    |> Zigler.Parser.Imports.parse
+    |> Enum.map(&Path.join(src_dir, &1))
+    |> Enum.filter(&(Path.extname(&1) == ".zig"))
+    |> Enum.reject(&(Path.basename(&1) in ["beam.zig", "erl_nif.zig"]))
+    |> Enum.uniq)
+    -- transferred_files
+
+    Enum.each(imports, fn path ->
+      rebasename = Path.relative_to(path, src_dir)
+      rebasedir = Path.dirname(rebasename)
+      stagingfile = Path.join(staging_dir, rebasename)
+      stagingfile_dir = Path.dirname(stagingfile)
+
+      File.mkdir_p!(stagingfile_dir)
+      # perform transitive imports
+      transfer_imports_for(
+        path,
+        Path.join(src_dir, rebasedir),
+        stagingfile_dir,
+        Enum.map(imports, &Path.relative_to(&1, rebasedir)))
+
+      File.cp!(path, stagingfile)
+    end)
+  end
+
+  defp transfer_includes_for(src_dir, staging_dir) do
+    staging_include = Path.join(staging_dir, "include")
+    File.mkdir_p!(staging_include)
+
+    src_include = Path.join(src_dir, "include")
+    if File.dir?(src_include) do
+      File.ls!(src_include)
+      for file <- File.ls!(src_include) do
+        src_include
+        |> Path.join(file)
+        |> File.cp_r!(Path.join(staging_include, file))
+      end
+    end
   end
 
   @spec cleanup(t) :: :ok | no_return

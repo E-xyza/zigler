@@ -205,13 +205,14 @@ defmodule Zigler do
       raise "non-unix systems not currently supported."
     end
 
-    user_opts = Keyword.take(opts, [:libs, :resources, :dry_run])
+    user_opts = Keyword.take(opts, [:libs, :resources, :dry_run, :c_includes])
 
     zigler = struct(%Zigler.Module{
-      file:   __CALLER__.file,
-      module: __CALLER__.module,
-      semver: get_semver(),
-      app:    get_app()}, user_opts)
+      file:    __CALLER__.file,
+      module:  __CALLER__.module,
+      imports: Zigler.Module.imports(opts[:imports]),
+      semver:  get_semver(),
+      app:     get_app()}, user_opts)
 
     Module.register_attribute(__CALLER__.module, :zigler, persist: true)
     Module.put_attribute(__CALLER__.module, :zigler, zigler)
