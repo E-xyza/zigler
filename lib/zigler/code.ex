@@ -31,9 +31,9 @@ defmodule Zigler.Code do
   ## C IMPORT HANDLING
 
   @spec c_imports(keyword(String.t | [String.t])) :: iodata
-  def c_imports(c_includes) do
-    c_includes
-    |> aggregate_imports
+  def c_imports(include_specs) do
+    include_specs
+    |> aggregate_includes
     |> Enum.map(fn
       {tgt, includes} -> """
       const #{tgt} = @cImport({
@@ -43,8 +43,8 @@ defmodule Zigler.Code do
     end)
   end
 
-  @spec aggregate_imports(keyword(String.t | [String.t])) :: keyword([String.t])
-  def aggregate_imports(c_includes) do
+  @spec aggregate_includes(keyword(String.t | [String.t])) :: keyword([String.t])
+  def aggregate_includes(c_includes) do
     c_includes
     |> Keyword.keys
     |> Enum.uniq
