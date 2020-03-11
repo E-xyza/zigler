@@ -56,7 +56,7 @@ defmodule ZiglerTest.DryRun.SyntaxErrorTest do
     test "contains an invalid argument" do
       file = "nif_invalid_argument.exs"
       error = assert_raise SyntaxError, fn -> load(file) end
-      assert error.description =~ "demands an invalid parameter type"
+      assert error.description =~ "demands an invalid argument type"
       assert error.line == 6
       assert Path.basename(error.file) == file
     end

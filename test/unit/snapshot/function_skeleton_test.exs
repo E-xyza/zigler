@@ -70,6 +70,6 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
     end
 
     assert Zigler.Compiler.function_skeleton(
-      %Nif{name: :foo, arity: 1, opts: [long: true], params: ["i64"]}) == result
+      %Nif{name: :foo, arity: 1, opts: [long: true], args: ["i64"]}) == result
   end
 end

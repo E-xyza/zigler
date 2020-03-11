@@ -13,7 +13,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return beam.make_c_long(env, __foo_result__);
       }
 
-      """ == %Nif{name: :foo, arity: 0, params: [], retval: "c_long"}
+      """ == %Nif{name: :foo, arity: 0, args: [], retval: "c_long"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -26,14 +26,14 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return beam.make_c_int(env, __foo_result__);
       }
 
-      """ == %Nif{name: :foo, arity: 0, params: [], retval: "c_int"}
+      """ == %Nif{name: :foo, arity: 0, args: [], retval: "c_int"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
   end
 
   describe "for a one-arity function" do
-    test "the shim function will correctly fill out parameters" do
+    test "the shim function will correctly fill out arguments" do
       assert """
       extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = beam.get_i64(env, argv[0])
@@ -44,7 +44,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return beam.make_i64(env, __foo_result__);
       }
 
-      """ == %Nif{name: :foo, arity: 1, params: ["i64"], retval: "i64"}
+      """ == %Nif{name: :foo, arity: 1, args: ["i64"], retval: "i64"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -59,7 +59,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return beam.make_i64(env, __foo_result__);
       }
 
-      """ == %Nif{name: :foo, arity: 0, params: ["beam.env"], retval: "i64"}
+      """ == %Nif{name: :foo, arity: 0, args: ["beam.env"], retval: "i64"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -72,7 +72,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return beam.make_i64(env, __foo_result__);
       }
 
-      """ == %Nif{name: :foo, arity: 0, params: ["?*e.ErlNifEnv"], retval: "i64"}
+      """ == %Nif{name: :foo, arity: 0, args: ["?*e.ErlNifEnv"], retval: "i64"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -87,7 +87,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return foo(__foo_arg0__);
       }
 
-      """ == %Nif{name: :foo, arity: 1, params: ["beam.term"], retval: "beam.term"}
+      """ == %Nif{name: :foo, arity: 1, args: ["beam.term"], retval: "beam.term"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -100,7 +100,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return foo(__foo_arg0__);
       }
 
-      """ == %Nif{name: :foo, arity: 1, params: ["e.ErlNifTerm"], retval: "e.ErlNifTerm"}
+      """ == %Nif{name: :foo, arity: 1, args: ["e.ErlNifTerm"], retval: "e.ErlNifTerm"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -116,7 +116,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return beam.make_nil(env);
       }
 
-      """ == %Nif{name: :foo, arity: 1, params: ["beam.pid"], retval: "void"}
+      """ == %Nif{name: :foo, arity: 1, args: ["beam.pid"], retval: "void"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -132,7 +132,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return beam.make_nil(env);
       }
 
-      """ == %Nif{name: :foo, arity: 1, params: ["e.ErlNifPid"], retval: "void"}
+      """ == %Nif{name: :foo, arity: 1, args: ["e.ErlNifPid"], retval: "void"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -153,7 +153,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return beam.make_i32_list(env, __foo_result__) catch return beam.raise_enomem(env);
       }
 
-      """ == %Nif{name: :foo, arity: 1, params: ["[]i32"], retval: "[]i32"}
+      """ == %Nif{name: :foo, arity: 1, args: ["[]i32"], retval: "[]i32"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -172,7 +172,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return beam.make_f64_list(env, __foo_result__) catch return beam.raise_enomem(env);
       }
 
-      """ == %Nif{name: :foo, arity: 1, params: ["[]f64"], retval: "[]f64"}
+      """ == %Nif{name: :foo, arity: 1, args: ["[]f64"], retval: "[]f64"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -190,7 +190,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return beam.make_i64(env, __foo_result__);
       }
 
-      """ == %Nif{name: :foo, arity: 1, params: ["beam.env", "i64"], retval: "i64"}
+      """ == %Nif{name: :foo, arity: 1, args: ["beam.env", "i64"], retval: "i64"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -206,7 +206,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return beam.make_i64(env, __foo_result__);
       }
 
-      """ == %Nif{name: :foo, arity: 1, params: ["?*e.ErlNifEnv", "i64"], retval: "i64"}
+      """ == %Nif{name: :foo, arity: 1, args: ["?*e.ErlNifEnv", "i64"], retval: "i64"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -224,7 +224,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         return beam.make_slice(env, __foo_result__);
       }
 
-      """ == %Nif{name: :foo, arity: 1, params: ["[]u8"], retval: "[]u8"}
+      """ == %Nif{name: :foo, arity: 1, args: ["[]u8"], retval: "[]u8"}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -290,7 +290,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
           return beam.raise_function_clause_error(env);
         }
       }
-      """ == %Nif{name: :foo, arity: 0, params: [], retval: "i32", opts: [long: true]}
+      """ == %Nif{name: :foo, arity: 0, args: [], retval: "i32", opts: [long: true]}
       |> Code.adapter
       |> IO.iodata_to_binary
     end
@@ -346,7 +346,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         __resource__.release(__bar_cache_ptr__, env, argv[0]);
         return beam.make_atom(env, "nil");
       }
-      """ == %Nif{name: :bar, arity: 0, params: [], retval: "void", opts: [long: true]}
+      """ == %Nif{name: :bar, arity: 0, args: [], retval: "void", opts: [long: true]}
       |> Code.adapter
       |> IO.iodata_to_binary
     end

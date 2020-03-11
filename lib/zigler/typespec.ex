@@ -33,11 +33,11 @@ defmodule Zigler.Typespec do
   @doc false
   def from_nif(nif = %Nif{}) do
     {nif.name, nif.arity}
-    argument_types = Enum.flat_map(nif.params, fn
+    argument_types = Enum.flat_map(nif.args, fn
       "beam.env" -> []
       "?*e.ErlNifEnv" -> []
-      param ->
-        [type_for(param)]
+      arg ->
+        [type_for(arg)]
     end)
 
     return_type = type_for(nif.retval)

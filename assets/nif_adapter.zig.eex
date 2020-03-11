@@ -2,18 +2,18 @@
 
 extern fn __<%= @func %>(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
 
-  <%= for {param, idx} <- Enum.with_index(@params) do %>
-  var arg<%= idx %>: <%= param %> = undefined;<% end %>
+  <%= for {arg, idx} <- Enum.with_index(@args) do %>
+  var arg<%= idx %>: <%= arg %> = undefined;<% end %>
 
-  <%= for {param, idx} <- Enum.with_index(@params) do 
-    Zigler.Zig.getfor(param, idx) <> "\n"
+  <%= for {arg, idx} <- Enum.with_index(@args) do 
+    Zigler.Zig.getfor(arg, idx) <> "\n"
   end %>
 
   var result: <%= @type %> = <%= @func %>(<%= if @has_env, do: "env, ", else: "" %><%=
-    if @params == [] do
+    if @args == [] do
       "" 
     else
-      0..Enum.count(@params) - 1 |> Enum.map(&"arg#{&1}") |> Enum.join(", ") 
+      0..Enum.count(@args) - 1 |> Enum.map(&"arg#{&1}") |> Enum.join(", ") 
     end
   %>);
   <%= Zigler.Zig.makefor(@type) %>

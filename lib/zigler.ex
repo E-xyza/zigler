@@ -73,7 +73,7 @@ defmodule Zigler do
 
   Sometimes, you will need to pass the BEAM environment (which is the code
   execution context, including process info, etc.) into the NIF function.  In
-  this case, you should pass it as the first parameter, as a `beam.env` type
+  this case, you should pass it as the first argument, as a `beam.env` type
   value.
 
   #### Example
@@ -96,7 +96,7 @@ defmodule Zigler do
   ### External Libraries
 
   If you need to bind static (`*.a`) or dynamic (`*.so`) libraries into your
-  module, you may link them with the `:libs` parameter.
+  module, you may link them with the `:libs` argument.
 
   Note that for shared libraries, a library with an identical path must exist
   in the target release environment.

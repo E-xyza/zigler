@@ -85,7 +85,7 @@ defmodule Zigler.Parser do
   #############################################################################
   ## DOCSTRING PARSING
   ##
-  ## certain zigler parameters are encoded in zig's /// docstrings.
+  ## certain zigler arguments are encoded in zig's /// docstrings.
   ## this includes definitions for nifs and destructors for resources.
 
   @nif_options Enum.map(~w(long dirty_io dirty_cpu), &string/1)
@@ -230,7 +230,7 @@ defmodule Zigler.Parser do
   #############################################################################
   ## FUNCTION HEADER PARSING
 
-  parameter =
+  argument =
     ignore(
       identifier
       |> optional(whitespace)
@@ -238,15 +238,15 @@ defmodule Zigler.Parser do
       |> optional(whitespace))
     |> concat(type)
 
-  parameter_list =
+  argument_list =
     ignore(optional(whitespace))
-    |> optional(parameter)
+    |> optional(argument)
     |> repeat(
       ignore(
         optional(whitespace)
         |> string(",")
         |> optional(whitespace))
-      |> concat(parameter))
+      |> concat(argument))
 
   function_header =
     ignore(
@@ -256,10 +256,10 @@ defmodule Zigler.Parser do
     |> concat(identifier)
     |> post_traverse(:validate_nif_declaration)
     |> ignore(optional(whitespace) |> string("("))
-    |> concat(parameter_list)
+    |> concat(argument_list)
     |> ignore(string(")") |> optional(whitespace))
     |> post_traverse(:validate_arity)
-    |> post_traverse(:validate_params)
+    |> post_traverse(:validate_args)
     |> concat(type)
     |> post_traverse(:validate_retval)
     |> ignore(
@@ -283,8 +283,8 @@ defmodule Zigler.Parser do
   # test harness
 
   if Mix.env == :test do
-    defparsec :parse_parameter, concat(initialize, parameter)
-    defparsec :parse_parameter_list, concat(initialize, parameter_list)
+    defparsec :parse_argument, concat(initialize, argument)
+    defparsec :parse_argument_list, concat(initialize, argument_list)
     defparsec :parse_function_header, concat(initialize, function_header)
     defparsec :parse_resource_definition, concat(initialize, resource_definition)
   end
@@ -307,25 +307,25 @@ defmodule Zigler.Parser do
   # validate_arity/5: trampolines into module.validate_arity/3
   @spec validate_arity(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval | no_return
-  defp validate_arity(_rest, params, context = %{local: %module{}}, {line, _}, _) do
-    params
+  defp validate_arity(_rest, args, context = %{local: %module{}}, {line, _}, _) do
+    args
     |> Enum.reverse
     |> module.validate_arity(context, line)
-    {params, context}
+    {args, context}
   end
   defp validate_arity(_rest, content, context, _, _), do: {content, context}
 
-  # validate_params/5 : trampolines to module.validate_params/3
-  # ignore parameter validation if we're not in a segment specified by a nif.
-  @spec validate_params(String.t, [String.t], t, line_info, non_neg_integer)
+  # validate_args/5 : trampolines to module.validate_args/3
+  # ignore argument validation if we're not in a segment specified by a nif.
+  @spec validate_args(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval | no_return
-  defp validate_params(_rest, content, context = %{local: %module{}}, {line, _}, _) do
-    module.validate_params(content, context, line)
+  defp validate_args(_rest, content, context = %{local: %module{}}, {line, _}, _) do
+    module.validate_args(content, context, line)
     {content, context}
   end
-  defp validate_params(_, content, context, _, _), do: {content, context}
+  defp validate_args(_, content, context, _, _), do: {content, context}
 
-  # validate_retval/5 : trampolines to module.validate_params/3
+  # validate_retval/5 : trampolines to module.validate_args/3
   @spec validate_retval(String.t, [String.t], t, line_info, non_neg_integer)
     :: parsec_retval | no_return
   defp validate_retval(_rest, content, context = %{local: %module{}}, {line, _}, _) do

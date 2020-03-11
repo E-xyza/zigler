@@ -4,13 +4,13 @@ defmodule Zigler.Code.LongRunning do
 
   long-running functions require several parts to get right.
 
-  0. a zig struct needs to be that holds parameters relvant to the
-  long-running nif, these parameters need to be cleaned up in a sane
+  0. a zig struct needs to be that holds arguments relvant to the
+  long-running nif, these arguments need to be cleaned up in a sane
   fashion once the nif has completed running. This struct is going to be
-  parametric on the nif parameters, and will be packed into a BEAM
+  argetric on the nif arguments, and will be packed into a BEAM
   resource.
 
-  1. a `packer` function which takes the beam parameters and shoves
+  1. a `packer` function which takes the beam arguments and shoves
   them into a zig struct to be stored in a BEAM resource, then launches
   the function, returning the resource.
 
@@ -45,9 +45,9 @@ defmodule Zigler.Code.LongRunning do
   end
 
   defp long_main_fn(%{name: name, arity: arity, retval: retval}) do
-    # note that the "define function" params should not take parentheses
-    # but the "call" params must take parentheses.
-    params = if arity == 0 do
+    # note that the "define function" args should not take parentheses
+    # but the "call" args must take parentheses.
+    args = if arity == 0 do
       Elixir
     else
       for idx <- 1..arity, do: {String.to_atom("arg#{idx}"), [], Elixir}
@@ -55,7 +55,7 @@ defmodule Zigler.Code.LongRunning do
     launcher_call = if arity == 0 do
       {launcher(name), [], []}
     else
-      {launcher(name), [], params}
+      {launcher(name), [], args}
     end
 
     block = if retval == "void" do
@@ -73,7 +73,7 @@ defmodule Zigler.Code.LongRunning do
 
     {:def, [context: Elixir, import: Kernel],
       [
-        {name, [context: Elixir], params},
+        {name, [context: Elixir], args},
         [do: block]
       ]}
   end
@@ -81,7 +81,7 @@ defmodule Zigler.Code.LongRunning do
   defp long_launch_fn(%{name: name, arity: arity}) do
     text = "nif launcher for function #{name}/#{arity} not bound"
 
-    params = if arity == 0 do
+    args = if arity == 0 do
       Elixir
     else
       for _ <- 1..arity, do: {:_, [], Elixir}
@@ -89,7 +89,7 @@ defmodule Zigler.Code.LongRunning do
 
     {:def, [context: Elixir, import: Kernel],
       [
-        {launcher(name), [context: Elixir], params},
+        {launcher(name), [context: Elixir], args},
         [do: {:raise, [context: Elixir, import: Kernel], [text]}]
       ]}
   end
@@ -115,7 +115,7 @@ defmodule Zigler.Code.LongRunning do
   def fetcher(fn_name), do: String.to_atom("__#{fn_name}_fetch__")
 
   def cache_struct(nif) do
-    extra_lines = nif.params
+    extra_lines = nif.args
     |> Enum.with_index
     |> Enum.map(fn {type, idx} -> "  arg#{idx}: #{type},\n" end)
     |> Enum.join
@@ -174,10 +174,10 @@ defmodule Zigler.Code.LongRunning do
   end
 
   def harness_fn(nif) do
-    cache_params = if nif.params == [] do
+    cache_args = if nif.args == [] do
       ""
     else
-      0..(length(nif.params) - 1)
+      0..(length(nif.args) - 1)
       |> Enum.map(&"cache.arg#{&1}")
       |> Enum.join(", ")
     end
@@ -185,7 +185,7 @@ defmodule Zigler.Code.LongRunning do
 
     """
     fn #{harness nif.name}(cache: *#{cache nif.name}) void {
-      #{result}#{nif.name}(#{cache_params});
+      #{result}#{nif.name}(#{cache_args});
       var _sent = beam.send(null, cache.self, null, cache.response);
     }
     """
@@ -226,12 +226,12 @@ defmodule Zigler.Code.LongRunning do
   @env_types ["beam.env", "?*e.ErlNifEnv"]
 
   defp get_clauses(%{arity: 0}), do: ""
-  defp get_clauses(%{params: params}), do: get_clauses(params)
+  defp get_clauses(%{args: args}), do: get_clauses(args)
 
   defp get_clauses([env | rest]) when env in @env_types, do: get_clauses(rest)
   defp get_clauses([]), do: []
-  defp get_clauses(params) do
-    [params
+  defp get_clauses(args) do
+    [args
     |> Enum.with_index
     |> Enum.map(&get_clause/1), "\n"]
   end

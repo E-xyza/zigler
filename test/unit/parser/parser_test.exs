@@ -17,7 +17,7 @@ defmodule ZiglerTest.ParserTest do
 
       """)
 
-      assert %Nif{arity: 0, name: :foo, params: [], retval: "i64"} = global
+      assert %Nif{arity: 0, name: :foo, args: [], retval: "i64"} = global
     end
 
     test "can correctly parse a zig block with a multiple nif function and junk" do
@@ -40,8 +40,8 @@ defmodule ZiglerTest.ParserTest do
 
       """)
 
-      assert Enum.any?(global, &match?(%Nif{arity: 0, name: :foo, params: [], retval: "i64"}, &1))
-      assert Enum.any?(global, &match?(%Nif{arity: 2, name: :oof, params: ["i64", "f64"], retval: "i64"}, &1))
+      assert Enum.any?(global, &match?(%Nif{arity: 0, name: :foo, args: [], retval: "i64"}, &1))
+      assert Enum.any?(global, &match?(%Nif{arity: 2, name: :oof, args: ["i64", "f64"], retval: "i64"}, &1))
     end
 
     test "can correctly parse a zig block with a resource section" do
@@ -116,7 +116,7 @@ defmodule ZiglerTest.ParserTest do
 
       """, @empty_module, "foo.ex", 1)
 
-      assert %Nif{arity: 0, name: :foo, params: [], retval: "i64"} = nif
+      assert %Nif{arity: 0, name: :foo, args: [], retval: "i64"} = nif
     end
 
     test "can correctly chain zig parsing events" do
@@ -142,11 +142,11 @@ defmodule ZiglerTest.ParserTest do
 
       """, first_parse, "foo.ex", 1)
 
-      assert Enum.any?(nifs, &match?(%Nif{arity: 0, name: :foo, params: [], retval: "i64"}, &1))
-      assert Enum.any?(nifs, &match?(%Nif{arity: 2, name: :oof, params: ["i64", "f64"], retval: "i64"}, &1))
+      assert Enum.any?(nifs, &match?(%Nif{arity: 0, name: :foo, args: [], retval: "i64"}, &1))
+      assert Enum.any?(nifs, &match?(%Nif{arity: 2, name: :oof, args: ["i64", "f64"], retval: "i64"}, &1))
     end
 
-    test "correctly puts content into the code parameter" do
+    test "correctly puts content into the code argument" do
       code1 = """
       /// nif: foo/0
       fn foo() i64 {

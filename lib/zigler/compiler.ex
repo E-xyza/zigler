@@ -127,7 +127,7 @@ defmodule Zigler.Compiler do
   defp basic_fn(%{name: name, arity: arity}) do
     text = "nif for function #{name}/#{arity} not bound"
 
-    params = if arity == 0 do
+    args = if arity == 0 do
       Elixir
     else
       for _ <- 1..arity, do: {:_, [], Elixir}
@@ -135,7 +135,7 @@ defmodule Zigler.Compiler do
 
     {:def, [context: Elixir, import: Kernel],
       [
-        {name, [context: Elixir], params},
+        {name, [context: Elixir], args},
         [do: {:raise, [context: Elixir, import: Kernel], [text]}]
       ]}
   end

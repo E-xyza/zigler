@@ -5,7 +5,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
   alias Zigler.{Code, Module, Parser.Nif}
 
-  @zeroarity %Nif{name: :foo, arity: 0, params: [], retval: "i64"}
+  @zeroarity %Nif{name: :foo, arity: 0, args: [], retval: "i64"}
 
   describe "the generator creates a reasonable shim" do
     test "for a single, zero arity function" do
@@ -77,7 +77,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
              |> IO.iodata_to_binary
     end
 
-    @onearity %Nif{name: :foo, arity: 1, params: ["i64"], retval: "i64"}
+    @onearity %Nif{name: :foo, arity: 1, args: ["i64"], retval: "i64"}
 
     test "for a single, arity one function" do
       code = """

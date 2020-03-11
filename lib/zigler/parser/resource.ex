@@ -10,7 +10,7 @@ defmodule Zigler.Parser.Resource do
   alias Zigler.Parser.ResourceCleanup
 
   def register_resource_definition(context = %{local: %{name: res}}) do
-    # search through global for a resource_cleanup that matches our name parameter.
+    # search through global for a resource_cleanup that matches our name argument.
     # if it's found it then update it.  If it's not found then merely append the
     # resource definition to the global parser state.
     if Enum.any?(context.global, &match?(%ResourceCleanup{for: ^res}, &1)) do

@@ -10,7 +10,7 @@ defmodule Zigler.Parser.Nif do
   - arity: (`t:arity/0`) the arity of the erlang function (the zig
     function may have a different arity).
   - doc: (`t:iodata/0`) zig docstrings which should be turned into elixir docs
-  - params: (`t:String.t/0`) a list of zig types which are the parameters for
+  - args: (`t:String.t/0`) a list of zig types which are the arguments for
     the function
   - retval: (`t:String.t/0`) the type of the return value
   - opts: (`t:keyword`) list of nif options.
@@ -26,21 +26,21 @@ defmodule Zigler.Parser.Nif do
   @int_types    ~w(u16 i32 u32 i64 u64 c_int c_uint c_long c_ulong isize usize)
   @bool         ["bool"]
   @char         ["u8"]
-  @beam_params  ~w(beam.term beam.atom beam.pid)
-  @enif_params  ~w(e.ErlNifTerm e.ErlNifPid)
-  @scalar_types @float_types ++ @int_types ++ @bool ++ @char ++ @beam_params ++ @enif_params
+  @beam_args  ~w(beam.term beam.atom beam.pid)
+  @enif_args  ~w(e.ErlNifTerm e.ErlNifPid)
+  @scalar_types @float_types ++ @int_types ++ @bool ++ @char ++ @beam_args ++ @enif_args
   @void         ["void"]
   @env          ~w(?*e.ErlNifEnv beam.env)
   @array_types  Enum.flat_map(@scalar_types, &["[]#{&1}", "[*c]#{&1}", "[_]#{&1}"])
 
-  @valid_params  @scalar_types ++ @array_types ++ @env
+  @valid_args  @scalar_types ++ @array_types ++ @env
   @valid_retvals @scalar_types ++ @array_types ++ @void
 
   @enforce_keys [:name, :arity]
 
   defstruct @enforce_keys ++ [
     doc:    nil,
-    params: [],
+    args: [],
     retval: nil,
     opts:   []
   ]
@@ -53,7 +53,7 @@ defmodule Zigler.Parser.Nif do
     name: String.t,
     arity: arity,
     doc:    iodata | nil,
-    params: [String.t],
+    args: [String.t],
     retval: String.t,
     opts: [option]
   }
@@ -75,20 +75,20 @@ defmodule Zigler.Parser.Nif do
   end
   def validate_arity(_, _, _), do: :ok
 
-  # validate_params/3 : raises if an invalid parameter type is sent to to the function
-  @spec validate_params([String.t], Parser.t, non_neg_integer)
+  # validate_args/3 : raises if an invalid argument type is sent to to the function
+  @spec validate_args([String.t], Parser.t, non_neg_integer)
     :: :ok | no_return
-  def validate_params([], _context, _line), do: :ok
-  def validate_params([params | rest], context, line) when params in @valid_params do
-    validate_params(rest, context, line)
+  def validate_args([], _context, _line), do: :ok
+  def validate_args([args | rest], context, line) when args in @valid_args do
+    validate_args(rest, context, line)
   end
-  def validate_params([invalid_type | _], context, line) do
+  def validate_args([invalid_type | _], context, line) do
     raise SyntaxError,
       file: context.file,
       line: line + context.zig_block_line,
-      description: "nif function #{context.local.name} demands an invalid parameter type #{invalid_type}"
+      description: "nif function #{context.local.name} demands an invalid argument type #{invalid_type}"
   end
-  def validate_params(_, _, _), do: :ok
+  def validate_args(_, _, _), do: :ok
 
   @spec validate_retval([String.t], Parser.t, non_neg_integer)
     :: :ok | no_return
@@ -100,8 +100,8 @@ defmodule Zigler.Parser.Nif do
       description: "nif function #{context.local.name} returns an invalid type #{retval}"
   end
 
-  def register_function_header([retval | params], context) do
-    final_nif = %{context.local | retval: retval, params: Enum.reverse(params)}
+  def register_function_header([retval | args], context) do
+    final_nif = %{context.local | retval: retval, args: Enum.reverse(args)}
     # long nifs require a resource
     resource = if context.local.opts[:long] do
       [%Resource{

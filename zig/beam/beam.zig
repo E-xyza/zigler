@@ -524,7 +524,7 @@ pub const pid = e.ErlNifPid;
 /// struct.
 ///
 /// Note that this is a fairly opaque struct and you're on your
-/// own as to what you can do with this (for now), except as a parameter
+/// own as to what you can do with this (for now), except as a argument
 /// for the `e.enif_send` function.
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.pid/0`
@@ -1164,7 +1164,7 @@ const f_c_e_slice = "function_clause"[0..];
 /// This function is used to communicate `:function_clause` back to the BEAM as an
 /// exception.
 ///
-/// By default Zigler will do parameter input checking on value
+/// By default Zigler will do argument input checking on value
 /// ingress from the dynamic BEAM runtime to the static Zig runtime.
 /// You can also use this function to communicate a similar error by returning the
 /// resulting term from your NIF.

@@ -18,11 +18,11 @@ defmodule ZiglerTest.Integration.EnvTest do
   }
   """
 
-  test "for a zero arity function env variables are valid first parameters" do
+  test "for a zero arity function env variables are valid first arguments" do
     assert 47 == zeroarity_with_env()
   end
 
-  test "for a zero arity function erlnifenv variables are valid first parameters" do
+  test "for a zero arity function erlnifenv variables are valid first arguments" do
     assert 47 == zeroarity_with_erlnifenv()
   end
 
@@ -38,11 +38,11 @@ defmodule ZiglerTest.Integration.EnvTest do
   }
   """
 
-  test "env variables are valid first parameters" do
+  test "env variables are valid first arguments" do
     assert 47 == int_with_env(47)
   end
 
-  test "erlnifenv variables are valid first parameters" do
+  test "erlnifenv variables are valid first arguments" do
     assert 47 == int_with_erlnifenv(47)
   end
 
