@@ -1,5 +1,5 @@
 defmodule ZigSyntaxErrorModule do
-  use Zigler, app: :zigler
+  use Zigler, otp_app: :zigler
 
   ~Z"""
   /// nif: two/0

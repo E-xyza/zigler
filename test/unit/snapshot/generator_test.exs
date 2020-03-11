@@ -72,7 +72,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return &entry;
       }
       """ == %Module{nifs: [@zeroarity], code: code, zig_file: "foo.zig",
-                     file: "foo.exs", module: Foo, app: :zigler}
+                     file: "foo.exs", module: Foo, otp_app: :zigler}
              |> Code.generate_main
              |> IO.iodata_to_binary
     end
@@ -146,7 +146,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         return &entry;
       }
       """ == %Module{nifs: [@onearity], zig_file: "foo.zig", code: code,
-                     file: "foo.exs", module: Foo, app: :zigler}
+                     file: "foo.exs", module: Foo, otp_app: :zigler}
              |> Code.generate_main
              |> IO.iodata_to_binary
     end

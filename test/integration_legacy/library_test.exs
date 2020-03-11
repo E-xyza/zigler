@@ -44,7 +44,7 @@ defmodule Zigler.LibraryTest do
 
     defmodule BlasStatic do
       use Zigler,
-        app: :zigler,
+        otp_app: :zigler,
         libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.a"],
         include: ["/usr/include/x86_64-linux-gnu"]
 

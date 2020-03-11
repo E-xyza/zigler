@@ -4,7 +4,7 @@ defmodule Zigler.Module do
   nif should have.  WIP.
   """
 
-  @enforce_keys [:file, :module, :app]
+  @enforce_keys [:file, :module, :otp_app]
 
   @default_imports [builtin: "builtin", std: "std", beam: "beam.zig"]
 
@@ -23,7 +23,7 @@ defmodule Zigler.Module do
   @type t :: %__MODULE__{
     file:        Path.t,
     module:      module,
-    app:         atom,
+    otp_app:         atom,
     zig_file:    Path.t,
     nifs:        [Zigler.Parser.Function.t],
     resources:   [Zigler.Parser.Resource.t],

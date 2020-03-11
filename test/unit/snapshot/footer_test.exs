@@ -39,7 +39,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       export fn nif_init() *const e.ErlNifEntry{
         return &entry;
       }
-      """ == %Module{nifs: [%Nif{name: :foo, arity: 0}], file: "foo.exs", module: Foo, app: :zigler}
+      """ == %Module{nifs: [%Nif{name: :foo, arity: 0}], file: "foo.exs", module: Foo, otp_app: :zigler}
       |> Code.footer
       |> IO.iodata_to_binary
     end
@@ -127,7 +127,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
                      resources: [%Resource{name: :bar}],
                      file: "foo.exs",
                      module: Foo,
-                     app: :zigler}
+                     otp_app: :zigler}
       |> Code.footer
       |> IO.iodata_to_binary
     end
@@ -219,7 +219,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
                      resources: [%Resource{name: :bar, cleanup: :baz}],
                      file: "foo.exs",
                      module: Foo,
-                     app: :zigler}
+                     otp_app: :zigler}
       |> Code.footer
       |> IO.iodata_to_binary
     end
@@ -268,7 +268,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       """ == %Module{nifs: [
                %Nif{name: :foo, arity: 0},
                %Nif{name: :bar, arity: 1}],
-             file: "foo.exs", module: Baz, app: :zigler}
+             file: "foo.exs", module: Baz, otp_app: :zigler}
       |> Code.footer
       |> IO.iodata_to_binary
     end
@@ -314,7 +314,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         return &entry;
       }
       """ == %Module{nifs: [%Nif{name: :foo, arity: 0, opts: [long: true]}],
-             file: "foo.exs", module: Baz, app: :zigler}
+             file: "foo.exs", module: Baz, otp_app: :zigler}
       |> Code.footer
       |> IO.iodata_to_binary
     end

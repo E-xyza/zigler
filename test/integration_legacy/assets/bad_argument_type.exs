@@ -1,5 +1,5 @@
 defmodule ZigTest.BadArgumentType do
-  use Zigler, app: :zigler
+  use Zigler, otp_app: :zigler
 
   ~Z"""
   /// nif: bad_arg/1

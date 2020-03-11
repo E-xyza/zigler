@@ -1,5 +1,5 @@
 defmodule ZiglerTest.ZigTestModule do
-  use Zigler, app: :zigler
+  use Zigler, otp_app: :zigler
 
   ~Z"""
   const assert = beam.assert;

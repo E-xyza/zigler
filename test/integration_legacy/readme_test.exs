@@ -3,7 +3,7 @@ defmodule ZiglerTest.ReadmeTest do
   use ExUnit.Case, async: true
 
   defmodule ExampleZig do
-    use Zigler, app: :zigler
+    use Zigler, otp_app: :zigler
     ~Z"""
     /// nif: example_fun/2
     fn example_fun(value1: f64, value2: f64) bool {
@@ -18,7 +18,7 @@ defmodule ZiglerTest.ReadmeTest do
   end
 
   defmodule ZigCollections do
-    use Zigler, app: :zigler
+    use Zigler, otp_app: :zigler
     ~Z"""
     /// nif: string_count/1
     fn string_count(string: []u8) i64 {
@@ -42,7 +42,7 @@ defmodule ZiglerTest.ReadmeTest do
   end
 
   defmodule Allocations do
-    use Zigler, app: :zigler
+    use Zigler, otp_app: :zigler
     ~Z"""
     /// nif: double_atom/1
     fn double_atom(env: beam.env, string: []u8) beam.atom {

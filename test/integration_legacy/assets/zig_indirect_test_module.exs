@@ -1,5 +1,5 @@
 defmodule ZiglerTest.ZigIndirectTestModule do
-  use Zigler, app: :zigler
+  use Zigler, otp_app: :zigler
 
   ~Z"""
   const my_test = @import("indirect_test.zig");

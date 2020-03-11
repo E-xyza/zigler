@@ -47,7 +47,7 @@ defmodule Zigler do
   #### Example
   ```
   defmodule MyModule do
-    use Zigler, app: :my_app
+    use Zigler, otp_app: :my_app
 
     ~Z\"""
     /// nif: my_func/1
@@ -80,7 +80,7 @@ defmodule Zigler do
 
   ```
   defmodule MyModule do
-    use Zigler, app: :my_app
+    use Zigler, otp_app: :my_app
 
     ~Z\"""
     /// nif: my_func_with_env/1
@@ -106,7 +106,7 @@ defmodule Zigler do
   ```
   defmodule Blas do
     use Zigler,
-      app: :my_app,
+      otp_app: :my_app,
       libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
       include: ["/usr/include/x86_64-linux-gnu"]
 
@@ -212,7 +212,7 @@ defmodule Zigler do
       module:  __CALLER__.module,
       imports: Zigler.Module.imports(opts[:imports]),
       semver:  get_semver(),
-      app:     get_app()}, user_opts)
+      otp_app:     get_app()}, user_opts)
 
     Module.register_attribute(__CALLER__.module, :zigler, persist: true)
     Module.put_attribute(__CALLER__.module, :zigler, zigler)

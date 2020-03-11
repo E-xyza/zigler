@@ -7,7 +7,7 @@ defmodule ZiglerTest.PrecompileTest do
 
   alias Zigler.Module
 
-  @module %Module{file: "foo.ex", module: Foo, app: :zigler}
+  @module %Module{file: "foo.ex", module: Foo, otp_app: :zigler}
 
   describe "when you run your precompile" do
     test "your staging directory is created" do

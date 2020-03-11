@@ -3,7 +3,7 @@ defmodule ZiglerTest.Cinclude do
   # tests to make sure we can have working cinclude files.
   #
 
-  use Zigler, app: :zigler
+  use Zigler, otp_app: :zigler
 
   ~Z"""
   const custom_h = @cImport({

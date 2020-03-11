@@ -1,5 +1,5 @@
 defmodule ZigSyntaxBadIncludeModule do
-  use Zigler, app: :zigler
+  use Zigler, otp_app: :zigler
 
   ~Z"""
   pub const add = @import("bad.zig");

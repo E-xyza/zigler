@@ -74,7 +74,7 @@ defmodule Zigler.Compiler do
 
     nif_functions = Enum.map(module.nifs, &function_skeleton/1)
 
-    mod_path = module.app
+    mod_path = module.otp_app
     |> Zigler.nif_dir
     |> Path.join(Zigler.nif_name(module, false))
 

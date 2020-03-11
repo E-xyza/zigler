@@ -25,7 +25,7 @@ defmodule Zigler.Unit do
 
   ```
   defmodule MyZigModule do
-    use Zigler, app: :my_app
+    use Zigler, otp_app: :my_app
 
     ~Z\"""
     const dependent = @import("dependent.zig");

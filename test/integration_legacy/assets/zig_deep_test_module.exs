@@ -1,5 +1,5 @@
 defmodule ZiglerTest.ZigDeepTestModule do
-  use Zigler, app: :zigler
+  use Zigler, otp_app: :zigler
 
   ~Z"""
   const my_test = @import("test.zig");

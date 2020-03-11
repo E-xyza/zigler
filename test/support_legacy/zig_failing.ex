@@ -2,7 +2,7 @@ defmodule ZiglerTest.ZigFailingTestModule do
 
   @moduledoc false
 
-  use Zigler, app: :zigler
+  use Zigler, otp_app: :zigler
 
   ~Z"""
   const assert = beam.assert;

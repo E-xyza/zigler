@@ -1,6 +1,6 @@
 
 defmodule AllTheDocs do
-  use Zigler, app: :zigler
+  use Zigler, otp_app: :zigler
   ~Z"""
   /// a zero-arity function which returns 47.
   /// nif: zeroarity/0
