@@ -38,7 +38,7 @@ const entry = e.ErlNifEntry{
     .unload = null,
     .vm_variant = c"beam.vanilla",
     .options = 1,
-    .sizeof_ErlNifResourceTypeInit = 24,
+    .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
     .min_erts = c"erts-10.4"
 };
 
