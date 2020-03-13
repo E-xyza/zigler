@@ -12,7 +12,10 @@ defmodule Zigler.Zig do
     zig_executable = Path.join(zig_tree, "zig")
     zig_rpath = Path.join(zig_tree, "lib/zig")
 
-    include_opts = ["-isystem", Path.join(compiler.staging_dir, "include")]
+    include_opts = ["-isystem", Path.join(compiler.staging_dir, "include")] ++
+      includes_from_module(compiler.module_spec)
+
+    lib_opts = libraries_from_module(compiler.module_spec)
 
     [major, minor, patch] = compiler.module_spec.semver
     module = compiler.module_spec.module
@@ -23,7 +26,7 @@ defmodule Zigler.Zig do
       [zig_rpath] ++
       include_opts ++
       ["--ver-major", major, "--ver-minor", minor, "--ver-patch", patch] ++
-      #lib_opts ++
+      lib_opts ++
       ["--name", "#{module}"] ++
       ["--release-safe"]
       #@release_mode[release_mode]
@@ -56,6 +59,36 @@ defmodule Zigler.Zig do
       |> File.ln_s!(symlink_filename)
     end
     :ok
+  end
+
+  #############################################################################
+  ## INCLUDES
+
+  @spec includes_from_module(Module.t) :: [Path.t]
+  defp includes_from_module(module) do
+    (module.c_includes
+    |> Keyword.values
+    |> Enum.flat_map(&include_directories/1))
+    ++
+    Enum.flat_map(module.include_dirs, &["-isystem", &1])
+  end
+
+  @spec include_directories([Path.t] | Path.t) :: [Path.t]
+  def include_directories(path) when is_binary(path) do
+    case Path.dirname(path) do
+      "." -> []
+      path -> ["-isystem", path]
+    end
+  end
+  def include_directories(paths) when is_list(paths) do
+    Enum.flat_map(paths, &include_directories/1)
+  end
+
+  #############################################################################
+  ## LIBRARIES
+
+  defp libraries_from_module(module) do
+    Enum.flat_map(module.libs, &["--library", &1])
   end
 
 end
