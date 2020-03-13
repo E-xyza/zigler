@@ -13,7 +13,7 @@ defmodule Zigler.Module do
     libs:         [],
     nifs:         [],
     resources:    [],
-    zig_version:  "0.5.0",
+    zig_version:  Version.parse!("0.5.0"),
     imports:      @default_imports,
     c_includes:   [],
     include_dirs: [],
@@ -30,13 +30,13 @@ defmodule Zigler.Module do
     libs:         [Path.t],
     nifs:         [Zigler.Parser.Function.t],
     resources:    [Zigler.Parser.Resource.t],
-    zig_version:  String.t,
+    zig_version:  Version.t,
     imports:      keyword(Path.t),
     c_includes:   keyword(Path.t | [Path.t]),
     include_dirs: [Path.t],
     dry_run:      boolean,
     code:         iodata,
-    version:      [String.t]
+    version:      Version.t
   }
 
   # takes the zigler imports option and turns it into the imports keyword
