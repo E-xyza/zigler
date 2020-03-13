@@ -200,40 +200,7 @@ defmodule Zigler.Code do
     """
     resource_init_defs = Enum.map(module.resources, &resource_init_definition/1)
     resource_inits = Enum.map(module.resources, &resource_initializer/1)
-
-    resource_map = module.resources
-    |> Enum.map(fn res -> "    #{res.name} => return __#{rename res.name}_resource__,\n" end)
-
-    resource_mapper = case module.resources do
-      [] -> ""
-      _ ->
-        """
-        fn __resource_type__(comptime T: type) beam.resource_type {
-          switch (T) {
-        #{resource_map}    else => unreachable
-          }
-        }
-
-        const __resource__ = struct {
-          fn create(comptime T: type, env: beam.env, value: T) !beam.term {
-            return beam.resource.create(T, env, __resource_type__(T), value);
-          }
-
-          fn update(comptime T: type, env: beam.env, res: beam.term, value: T) !void {
-            return beam.resource.update(T, env, __resource_type__(T), res, value);
-          }
-
-          fn fetch(comptime T: type, env: beam.env, res: beam.term) !T {
-            return beam.resource.fetch(T, env, __resource_type__(T), res);
-          }
-
-          fn release(comptime T: type, env: beam.env, res: beam.term) void {
-            return beam.resource.release(env, __resource_type__(T), res);
-          }
-        };
-
-        """
-    end
+    resource_manager = resource_manager(module.resources)
 
     nif_loader = case module.resources do
       [] -> ""
@@ -246,20 +213,20 @@ defmodule Zigler.Code do
         """
     end
 
-    nif_load = case module.resources do
+    nif_load_fn = case module.resources do
       [] -> "null"
       _ -> "nif_load"
     end
 
     ["// footer for #{module.module} in #{module.file}:\n\n",
-     exports, resource_init_defs, "\n", resource_mapper, nif_loader, """
+     exports, resource_init_defs, "\n", resource_manager, nif_loader, """
     const entry = e.ErlNifEntry{
       .major = #{major},
       .minor = #{minor},
       .name = c"#{module.module}",
       .num_of_funcs = #{funcs_count},
       .funcs = &(__exported_nifs__[0]),
-      .load = #{nif_load},
+      .load = #{nif_load_fn},
       .reload = null,
       .upgrade = null,
       .unload = null,
@@ -313,6 +280,9 @@ defmodule Zigler.Code do
     end
   end
 
+  #############################################################################
+  ## RESOURCES management
+
   defp resource_init_definition(res = %Resource{name: original_name}) do
     name = rename(original_name)
 
@@ -350,6 +320,42 @@ defmodule Zigler.Code do
     """
       __#{name}_resource__ = __init_#{name}_resource__(env);
     """
+  end
+
+  defp resource_manager(resources) do
+
+    resource_mapping = Enum.map(resources, &"    #{&1.name} => return __#{rename &1.name}_resource__,\n")
+
+    case resources do
+      [] -> ""
+      _ ->
+        """
+        fn __resource_type__(comptime T: type) beam.resource_type {
+          switch (T) {
+        #{resource_mapping}    else => unreachable
+          }
+        }
+
+        const __resource__ = struct {
+          fn create(comptime T: type, env: beam.env, value: T) !beam.term {
+            return beam.resource.create(T, env, __resource_type__(T), value);
+          }
+
+          fn update(comptime T: type, env: beam.env, res: beam.term, value: T) !void {
+            return beam.resource.update(T, env, __resource_type__(T), res, value);
+          }
+
+          fn fetch(comptime T: type, env: beam.env, res: beam.term) !T {
+            return beam.resource.fetch(T, env, __resource_type__(T), res);
+          }
+
+          fn release(comptime T: type, env: beam.env, res: beam.term) void {
+            return beam.resource.release(env, __resource_type__(T), res);
+          }
+        };
+
+        """
+    end
   end
 
   #############################################################################
