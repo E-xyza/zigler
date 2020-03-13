@@ -246,23 +246,6 @@ defmodule Zigler do
     quote do end
   end
 
-  def empty_function(func, 0) do
-    quote do
-      def unquote(func)(), do: throw unquote("#{func}/0 not defined")
-    end
-  end
-
-  def empty_function(func, arity) do
-    {:def, [context: Elixir, import: Kernel],
-    [
-      {func, [context: Elixir], for _ <- 1..arity do {:_, [], Elixir} end},
-      [
-        do: {:throw, [context: Elixir, import: Kernel],
-         ["#{func}/#{arity} not defined"]}
-      ]
-    ]}
-  end
-
   @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
 
   def latest_cached_zig_version do
