@@ -211,8 +211,9 @@ defmodule Zigler do
       file:    __CALLER__.file,
       module:  __CALLER__.module,
       imports: Zigler.Module.imports(opts[:imports]),
-      semver:  get_semver(),
-      otp_app:     get_app()}, user_opts)
+      version: get_project_version(),
+      otp_app: get_app()},
+      user_opts)
 
     Module.register_attribute(__CALLER__.module, :zigler, persist: true)
     Module.put_attribute(__CALLER__.module, :zigler, zigler)
@@ -288,11 +289,11 @@ defmodule Zigler do
       reraise CompileError, description: "zig directory path doesn't exist, run `mix zigler.get_zig latest`"
   end
 
-  defp get_semver do
+  defp get_project_version do
     Mix.Project.get
     |> apply(:project, [])
     |> Keyword.get(:version)
-    |> String.split(".")
+    |> Version.parse!
   end
 
   defp get_app do
@@ -307,10 +308,9 @@ defmodule Zigler do
     |> Path.join("nif")
   end
 
-  def nif_name(module, use_suffixes \\ true) do
+  def nif_name(module = %{version: version}, use_suffixes \\ true) do
     if use_suffixes do
-      [major, minor, patch] = module.semver
-      "lib#{module.module}.so.#{major}.#{minor}.#{patch}"
+      "lib#{module.module}.so.#{version.major}.#{version.minor}.#{version.patch}"
     else
       "lib#{module.module}"
     end

@@ -17,7 +17,7 @@ defmodule Zigler.Zig do
 
     lib_opts = libraries_from_module(compiler.module_spec)
 
-    [major, minor, patch] = compiler.module_spec.semver
+    version = compiler.module_spec.version
     module = compiler.module_spec.module
 
     src_file = Path.basename(compiler.code_file)
@@ -25,7 +25,9 @@ defmodule Zigler.Zig do
       ~w(-dynamic --disable-gen-h --override-lib-dir) ++
       [zig_rpath] ++
       include_opts ++
-      ["--ver-major", major, "--ver-minor", minor, "--ver-patch", patch] ++
+      ["--ver-major", "#{version.major}",
+       "--ver-minor", "#{version.minor}",
+       "--ver-patch", "#{version.patch}"] ++
       lib_opts ++
       ["--name", "#{module}"] ++
       ["--release-safe"]
