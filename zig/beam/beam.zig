@@ -110,12 +110,12 @@ const Allocator = std.mem.Allocator;
 // basic allocator
 
 /// !value
-/// provides a BEAM allocator.  Use `beam.allocator.alloc` everywhere to safely
-/// allocate memory efficiently, and use `beam.allocator.free` to release that
-/// memory.
+/// provides a default BEAM allocator.  Use `beam.allocator.alloc` everywhere 
+/// to safely allocate memory efficiently, and use `beam.allocator.free` to 
+/// release that memory.
 ///
 /// Note this does not make the allocated memory *garbage collected* by the
-/// BEAM.  Stategies for handing over GC'able memory are forthcoming
+/// BEAM.
 ///
 /// ### Example
 ///
@@ -128,8 +128,9 @@ const Allocator = std.mem.Allocator;
 ///   return beam.allocator.alloc(u8, 10);
 /// }
 /// ```
-pub const allocator = &allocator_state;
-var allocator_state = Allocator{
+pub threadlocal var allocator: *Allocator = &beam_allocator;
+
+var beam_allocator = Allocator{
   .reallocFn = beam_realloc,
   .shrinkFn = beam_shrink
 };
@@ -167,6 +168,126 @@ fn beam_shrink(_self: *Allocator,
     return @ptrCast([*]u8, buf)[0..new_size];
   }
 }
+
+/// creates a specialized auto-allocator which manages memory on behalf of
+/// the thread and can clean up after a thread, so that memory management is not
+/// necessary for this nif function call.
+pub const AutoAllocator = struct {
+  // members
+  allocator: *Allocator,
+  buffer_list: std.LinkedList([]u8),
+
+  const BufNode = std.LinkedList([]u8).Node;
+  pub fn init() AutoAllocator {
+    return AutoAllocator{
+      .allocator = Allocator{
+          .reallocFn = realloc,
+          .shrinkFn = shrink,
+      },
+      .buffer_list = std.LinkedList([]u8).init(),
+    };
+  }
+
+  pub fn deinit(self: *AutoAllocator) void {
+    var node_or_null = self.buffer_list.first;
+    while (node_or_null) |node| {
+      // this has to occur before the free because the free frees node
+      node_or_null = node.next;
+      allocator.free(node.data);
+      // destroy the node.
+      std.LinkedList.destroyNode(self.buffer_list, node, allocator);
+    }
+  }
+
+  fn realloc(self_generic: *Allocator, 
+             old_mem: []u8, 
+             old_align: u29, 
+             new_size: usize, 
+             new_align: u29) ![]u8 {
+
+    const self = @fieldParentPtr(ThreadAllocator, "allocator", self_generic);
+
+    if (old_mem.len == 0) {
+      // if we're creating a new memory space, use basic beam alloc.
+      const buf = e.enif_alloc(new_size) orelse return error.OutOfMemory;
+      // then prepend it to the linked list.
+      do_prepend(self, buf);
+
+      return @ptrCast([*]u8, buf)[0..new_size];
+    } else {
+      // if we're actually resizing a memory space, use realloc.
+      const old_ptr = @ptrCast(*c_void, old_mem.ptr);
+      const buf = e.enif_realloc(old_ptr, new_size) orelse return error.OutOfMemory;
+
+      // remove the old element of the buffer.
+      self.buffer_list.remove(old_mem);
+      // put the new buffer in there.
+      var new_buf = @ptrCast([*]u8, buf)[0..new_size];
+
+      do_prepend(self, new_buf);
+
+      // return the new slice.
+      return new_buf;
+    }
+  }
+
+  fn shrink(self_generic: *Allocator,
+               old_mem: []u8,
+               old_align: u29,
+               new_size: usize,
+               new_align: u29) []u8 {
+    const self = @fieldParentPtr(ThreadAllocator, "allocator", self_generic);
+    if (new_size == 0) {
+      // use the beam engine to free the memory slice.
+      e.enif_free(@ptrCast(*c_void, old_mem.ptr));
+  
+      // remove it from the linked list.
+      std.LinkedList.do_remove(self, old_mem);
+
+      // send back a generic empty slice.
+      return []u8{};
+    } else {
+      // if we're actually resizing a memory space, use realloc.
+      const old_ptr = @ptrCast(*c_void, old_mem.ptr);
+      const buf = e.enif_realloc(old_ptr, new_size) orelse return error.OutOfMemory;
+
+      // remove the old element of the buffer.
+      self.buffer_list.remove(old_mem);
+      // put the new buffer in there.
+      var new_buf = @ptrCast([*]u8, buf)[0..new_size];
+
+      do_prepend(self, new_buf);
+
+      // return the new slice.
+      return new_buf;
+    }
+  }
+  
+  fn do_prepend(self: *ThreadAllocator, buf: []u8) ![]u8 {
+    // use the beam allocator to allocate a new memory node.
+    var new_node = try std.LinkedList.allocateNode(self.buffer_list, allocator);
+    // store the buffer into the node
+    new_node.data = buf;
+    // append the buffer value to the node.
+    std.LinkedList.prepend(self.buffer_list, buf);
+    // return the newly allocated memory
+    return buf;
+  }
+
+  fn do_remove(self: *ThreadAllocator, buf: []u8) void {
+    // find the node where buf is.
+    var current_node: *std.LinkedList.Node = self.first 
+      orelse unreachable;
+    while (current_node.data != buf) {
+      current_node = current_node.next 
+        orelse unreachable;
+    }
+    // remove it.
+    std.LinkedList.remove(self.buffer_list, current_node);
+    // free the buffer node
+    std.LinkedList.destroyNode(self.buffer_list, current_node, allocator);
+  }
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 // syntactic sugar: important elixir terms
