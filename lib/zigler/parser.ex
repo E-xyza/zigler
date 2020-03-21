@@ -25,6 +25,7 @@ defmodule Zigler.Parser do
   #############################################################################
   ## GENERIC NIMBLE_PARSEC PARSERS
 
+  # TODO: make blankspace not be auto-ignored
   whitespace = ascii_string([?\s, ?\n], min: 1)
   blankspace = ignore(ascii_string([?\s], min: 1))
   # note that tabs are forbidden by zig.

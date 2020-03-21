@@ -40,9 +40,11 @@ defmodule Zigler.Parser.Nif do
 
   defstruct @enforce_keys ++ [
     doc:    nil,
-    args: [],
+    args:   [],
     retval: nil,
-    opts:   []
+    opts:   [],
+    test:   nil # only to be used for tests.  This is the string name
+                # of the test which is going to be bound in.
   ]
 
   @type option ::
@@ -50,12 +52,13 @@ defmodule Zigler.Parser.Nif do
     {:dirty, :cpu | :io}
 
   @type t :: %__MODULE__{
-    name: String.t,
-    arity: arity,
+    name:   String.t,
+    arity:  arity,
     doc:    iodata | nil,
-    args: [String.t],
+    args:   [String.t],
     retval: String.t,
-    opts: [option]
+    opts:   [option],
+    test:   String.t
   }
 
   @beam_envs ["beam.env", "?*e.ErlNifEnv"]
