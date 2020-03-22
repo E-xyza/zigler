@@ -92,7 +92,7 @@ defmodule Zigler.Unit do
     # also get the list of nifs.
     ref_zigler.code
     |> IO.iodata_to_binary
-    |> Zigler.Parser.Unit.unit_parser
+    |> Zigler.Parser.Unit.unit_parser(context: %{file: ref_zigler.file})
     |> case do
       {:ok, _code, _, %{tests: []}, _, _} ->
         raise CompileError, info ++ [description: "module #{module} has no zig tests"]

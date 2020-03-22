@@ -82,15 +82,15 @@ defmodule Zigler.Parser.Unit do
 
   defp parse_assert(_rest, content, context, {line, _char}, _offset) do
     test_content = content |> Enum.reverse |> IO.iodata_to_binary
-    rewritten = "assert(#{test_content}, \"#{context.file}\", #{line})"
+    rewritten = "try assert(#{test_content}, \"#{context.file}\", #{line})"
     {[rewritten], context}
   end
 
   alias Zigler.Parser.Nif
   defp new_nif(name) do
     %Nif{
-      name: "test_#{Zigler.Unit.name_to_hash name}",
-      test: name,
+      name: String.to_atom("test_#{Zigler.Unit.name_to_hash name}"),
+      test: String.to_atom(name),
       arity: 0,
       args: [],
       retval: "!void"

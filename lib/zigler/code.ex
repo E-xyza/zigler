@@ -80,7 +80,7 @@ defmodule Zigler.Code do
   #############################################################################
   ## ADAPTER GENERATION
 
-  def adapter(nif = %Zigler.Parser.Nif{opts: opts}) do
+  def adapter(nif = %Zigler.Parser.Nif{opts: opts, test: nil}) do
     if opts[:long] do
       LongRunning.adapter(nif)
     else
@@ -116,6 +116,16 @@ defmodule Zigler.Code do
       end
       [head, "\n", get_clauses, result, "\n"]
     end
+  end
+  def adapter(nif) do
+    # when it is a test:
+    """
+    extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      beam.test_env = env;
+      #{nif.name}() catch return beam.test_error();
+      return beam.make_atom(env, "ok");
+    }
+    """
   end
 
   @env_types ["beam.env", "?*e.ErlNifEnv"]
@@ -380,4 +390,6 @@ defmodule Zigler.Code do
   defp count_lines(<<_, rest::binary>>, count_so_far), do: count_lines(rest, count_so_far)
   defp count_lines(<<>>, count_so_far), do: count_so_far
   defp count_lines([], count_so_far), do: count_so_far
+  defp count_lines(10, count_so_far), do: count_so_far + 1
+  defp count_lines(n, count_so_far) when is_number(n), do: count_so_far
 end

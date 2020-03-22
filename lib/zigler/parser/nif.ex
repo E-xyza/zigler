@@ -52,13 +52,13 @@ defmodule Zigler.Parser.Nif do
     {:dirty, :cpu | :io}
 
   @type t :: %__MODULE__{
-    name:   String.t,
+    name:   atom,
     arity:  arity,
     doc:    iodata | nil,
     args:   [String.t],
     retval: String.t,
     opts:   [option],
-    test:   String.t
+    test:   atom
   }
 
   @beam_envs ["beam.env", "?*e.ErlNifEnv"]

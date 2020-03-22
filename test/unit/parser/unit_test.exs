@@ -2,6 +2,7 @@ defmodule ZiglerTest.Parser.UnitTest do
   use ExUnit.Case, async: true
 
   @test_name "forty seven returns forty seven"
+  @test_atom String.to_atom(@test_name)
 
   @core_doc """
   const assert = beam.assert;
@@ -22,7 +23,7 @@ defmodule ZiglerTest.Parser.UnitTest do
   test "a unit test header is properly detected" do
     hash = Zigler.Unit.name_to_hash("foobar")
     code = "fn test_#{hash}() !void"
-    assert {:ok, [^code], "", %{tests: [%Nif{test: "foobar"}]}, _, _} =
+    assert {:ok, [^code], "", %{tests: [%Nif{test: :foobar}]}, _, _} =
       Unit.test_decl_parser("test \"foobar\"", context: %{file: "foo.zig"})
   end
 
@@ -45,11 +46,11 @@ defmodule ZiglerTest.Parser.UnitTest do
   describe "asserts are properly detected and rewritten" do
     test "in the basic case" do
       assert {:ok, [rewritten], _, _, _, _} = Unit.test_assert_parser("assert(1 == 1)", context: %{file: "foo.zig"})
-      assert rewritten == "assert(1 == 1, \"foo.zig\", 1)"
+      assert rewritten == "try assert(1 == 1, \"foo.zig\", 1)"
     end
     test "with nested parentheticals" do
       assert {:ok, [rewritten], _, _, _, _} = Unit.test_assert_parser("assert(1 == bar())", context: %{file: "foo.zig"})
-      assert rewritten == "assert(1 == bar(), \"foo.zig\", 1)"
+      assert rewritten == "try assert(1 == bar(), \"foo.zig\", 1)"
     end
   end
 
@@ -57,7 +58,7 @@ defmodule ZiglerTest.Parser.UnitTest do
     {:ok, code, "", context, _, _} =
       Unit.unit_parser(@core_doc, context: %{file: "foo.zig"})
 
-    assert [%Nif{test: @test_name}] = context.tests
+    assert [%Nif{test: @test_atom}] = context.tests
 
     assert IO.iodata_to_binary(code) == """
     const assert = beam.assert;
@@ -68,7 +69,7 @@ defmodule ZiglerTest.Parser.UnitTest do
     }
 
     fn test_#{Zigler.Unit.name_to_hash @test_name}() !void {
-      assert(47 == forty_seven(), "foo.zig", 9);
+      try assert(47 == forty_seven(), "foo.zig", 9);
     }
     """
   end

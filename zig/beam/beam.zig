@@ -87,12 +87,13 @@
 ///
 /// const ok_slice="ok"[0..];
 /// fn to_ok_tuple(env: beam.env, value: i64) !beam.term {
-///   tuple_slice: []term = try beam.allocator.alloc(beam.term, 2);
+///   var tuple_slice: []term = try beam.allocator.alloc(beam.term, 2);
+///   defer beam.allocator.free(tuple_slice);
 ///
 ///   tuple_slice[0] = beam.make_atom(env, ok_slice);
 ///   tuple_slice[1] = beam.make_i64(env, value);
 ///
-///   return beam.make_tuple(tuple_slice);
+///   return beam.make_tuple(env, tuple_slice);
 /// }
 ///
 /// ```
@@ -988,7 +989,8 @@ pub fn make_c_string(environment: env, val: [*c] const u8) term {
 
 /// converts a slice of `term`s into a BEAM `t:tuple/0`.
 pub fn make_tuple(environment: env, val: []term) term {
-  return e.enif_make_tuple_from_array(environment, val, val.len);
+  return e.enif_make_tuple_from_array(
+    environment, @ptrCast([*c]term, val.ptr), @intCast(c_uint, val.len));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -996,7 +998,8 @@ pub fn make_tuple(environment: env, val: []term) term {
 
 /// converts a slice of `term`s into a BEAM `t:list/0`.
 pub fn make_term_list(environment: env, val: []term) term {
-  return e.enif_make_list_from_array(environment, @ptrCast([*c]term, &val[0]), @intCast(c_uint, val.len));
+  return e.enif_make_list_from_array(
+    environment, @ptrCast([*c]term, val.ptr), @intCast(c_uint, val.len));
 }
 
 /// converts a Zig char slice (`[]u8`) into a BEAM `t:charlist/0`.
@@ -1315,7 +1318,26 @@ pub fn raise_assertion_error(environment: env) term {
 ///
 /// When building zigtests, `assert(...)` calls get lexically converted to
 /// `try beam.assert(...)` calls.
+pub fn assert(ok: bool, file: []const u8, line: i64) !void {
+  if (!ok) {
+    error_file = file;
+    error_line = line;
+    return AssertionError.AssertionError; // assertion failure
+  }
+}
 
-pub fn assert(ok: bool) !void {
-    if (!ok) return AssertionError.AssertionError; // assertion failure
+/// !value
+/// you can use this value to access the BEAM environment of your unit test.
+pub threadlocal var test_env: env = undefined;
+pub threadlocal var error_file: []const u8 = undefined;
+pub threadlocal var error_line: i64 = 0;
+
+// private function which fetches the threadlocal cache.
+pub fn test_error() term {
+  var tuple_slice: []term = allocator.alloc(term, 3) catch unreachable;
+  defer allocator.free(tuple_slice);
+  tuple_slice[0] = make_atom(test_env, "error");
+  tuple_slice[1] = make_slice(test_env, error_file);
+  tuple_slice[2] = make_i64(test_env, error_line);
+  return make_tuple(test_env, tuple_slice);
 }

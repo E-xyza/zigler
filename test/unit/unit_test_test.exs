@@ -3,7 +3,6 @@ defmodule ZiglerTest.UnitTestTest do
 
   @this_file __ENV__.file
 
-  @tag :one
   test "`use Zigler.Unit` requires `use Zigler`" do
     assert_raise CompileError, fn ->
       @this_file
@@ -11,5 +10,18 @@ defmodule ZiglerTest.UnitTestTest do
       |> Path.join("assets/unit_error/no_zigler_error.exs")
       |> Code.compile_file
     end
+  end
+
+  alias Zigler.Parser.Nif
+  test "Zigler.Code.adapter/1 produces the correct adapter for a test" do
+    assert """
+    extern fn __test_foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      beam.test_env = env;
+      test_foo() catch return beam.test_error();
+      return beam.make_atom(env, "ok");
+    }
+    """ = %Nif{name: "test_foo", arity: 0, test: "tests foo"}
+    |> Zigler.Code.adapter
+    |> IO.iodata_to_binary
   end
 end
