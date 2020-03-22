@@ -132,7 +132,7 @@ defmodule Zigler.Unit do
         :ok -> :ok
         {:error, file, line} ->
           error = [
-            message: "Zig test \"#{unquote title}\" (line #{line}) failed",
+            message: "Zig test \"#{unquote title}\" (assert on line #{line} of #{file}) failed",
             doctest: ExUnit.AssertionError.no_value(),
             expr: ExUnit.AssertionError.no_value(),
             left: ExUnit.AssertionError.no_value(),

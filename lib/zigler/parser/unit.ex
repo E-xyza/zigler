@@ -3,7 +3,7 @@ defmodule Zigler.Parser.Unit do
   parses zig code and converts test blocks to test functions
   """
 
-  defstruct tests: [], file: nil
+  defstruct tests: [], file: nil, offset: 0
 
   import NimbleParsec
 
@@ -22,6 +22,14 @@ defmodule Zigler.Parser.Unit do
   init_context = empty()
   |> post_traverse(:init_context)
 
+  # file and line number declaration
+  file_line_decl = string("// ref: ")
+  |> ascii_string([not: ?\s], min: 1)
+  |> string(" line: ")
+  |> ascii_string([?0..?9], min: 1)
+  |> string("\n")
+  |> post_traverse(:parse_file_line_decl)
+
   # test declaration
   test_decl = ignore(
     string("test")
@@ -37,7 +45,7 @@ defmodule Zigler.Parser.Unit do
     parsec(:parenthetical),
     ascii_char(not: @close_paren)]))
   |> ignore(string(")"))
-  |> post_traverse(:parse_assert)
+  |> pre_traverse(:parse_assert)
 
   if Mix.env == :test do
     defparsec :test_parenthetical, parsec(:parenthetical)
@@ -61,6 +69,7 @@ defmodule Zigler.Parser.Unit do
 
   unit_code = init_context
   |> repeat(choice([
+    file_line_decl,
     test_line,
     normal_line]))
 
@@ -74,6 +83,11 @@ defmodule Zigler.Parser.Unit do
     {[], struct(__MODULE__, c)}
   end
 
+  defp parse_file_line_decl(_rest, l = [_, line_str | _], context, {line, _char}, _offset) do
+    this_line = String.to_integer(line_str)
+    {l, %{context | offset: this_line - line + 1}}
+  end
+
   defp parse_test_decl(_rest, [test_name], context, _line, _offset) do
     test_nif = new_nif(test_name)
     {["fn #{test_nif.name}() !void"],
@@ -82,7 +96,7 @@ defmodule Zigler.Parser.Unit do
 
   defp parse_assert(_rest, content, context, {line, _char}, _offset) do
     test_content = content |> Enum.reverse |> IO.iodata_to_binary
-    rewritten = "try assert(#{test_content}, \"#{context.file}\", #{line})"
+    rewritten = "try assert(#{test_content}, \"#{context.file}\", #{line + context.offset})"
     {[rewritten], context}
   end
 

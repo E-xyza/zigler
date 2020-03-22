@@ -150,7 +150,6 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
       assert %ResourceCleanup{for: :foo, name: :bar} = cleanup
     end
 
-    @tag :one
     test "raises SyntaxError if the arguments don't match beam.env or e.ErlNifEnv" do
       assert_raise SyntaxError, fn -> Parser.parse_function_header("""
           fn bar(qqq: oddtype, res: *foo) void {

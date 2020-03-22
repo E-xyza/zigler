@@ -19,4 +19,22 @@ defmodule ZiglerTest.ZigTest do
       =~ "forty_seven()"
   end
 
+  @this_file __ENV__.file
+
+  test "a test can fail, with the correct line number" do
+    @this_file
+    |> Path.dirname
+    |> Path.join("zig_test_fail_shim.exs")
+    |> Code.compile_file
+
+    assert {:error, _zig_file, 16} =
+      apply(ZiglerTest.FailShim, :"a lie", [])
+
+    assert {:error, _zig_file, 20} =
+      apply(ZiglerTest.FailShim, :"a multiline lie", [])
+
+    assert {:error, _zig_file, 27} =
+      apply(ZiglerTest.FailShim, :"a truth and a lie", [])
+  end
+
 end
