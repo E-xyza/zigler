@@ -1,4 +1,4 @@
-defmodule ZiglerTest.ZigTest do
+defmodule ZiglerTest.Integration.ZigTest do
   use ExUnit.Case
 
   use Zigler
@@ -8,7 +8,9 @@ defmodule ZiglerTest.ZigTest do
   @moduletag :zigtest
 
   # imports module support/passing_tests.exs into zigler.
-  zigtest ZiglerTest.PassingTests
+  # note that this should be precompiled as a result of being in
+  # test/support directory.
+  zigtest ZiglerTest.ZigTest.PassingTests
 
   # make sure the existing module recapitulates the code from the
   # tested module
@@ -21,20 +23,22 @@ defmodule ZiglerTest.ZigTest do
 
   @this_file __ENV__.file
 
+  alias ZiglerTest.Integration.ZigTest.FailShim
+
   test "a test can fail, with the correct line number" do
     @this_file
     |> Path.dirname
-    |> Path.join("zig_test_fail_shim.exs")
+    |> Path.join("fail_shim.exs")
     |> Code.compile_file
 
     assert {:error, _zig_file, 16} =
-      apply(ZiglerTest.FailShim, :"a lie", [])
+      apply(FailShim, :"a lie", [])
 
     assert {:error, _zig_file, 20} =
-      apply(ZiglerTest.FailShim, :"a multiline lie", [])
+      apply(FailShim, :"a multiline lie", [])
 
     assert {:error, _zig_file, 27} =
-      apply(ZiglerTest.FailShim, :"a truth and a lie", [])
+      apply(FailShim, :"a truth and a lie", [])
   end
 
 end

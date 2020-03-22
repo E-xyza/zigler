@@ -1,4 +1,4 @@
-defmodule ZiglerTest.PassingTests do
+defmodule ZiglerTest.ZigTest.PassingTests do
   use Zigler
 
   ~Z"""

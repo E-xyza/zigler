@@ -1,7 +1,7 @@
-#guard against this cblas.h not existing (a situation).
+#guard against this cblas.h not existing.
 if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") do
 
-defmodule Zigler.LibraryTest do
+defmodule ZiglerTest.LibraryTest do
 
   use ExUnit.Case, async: true
 

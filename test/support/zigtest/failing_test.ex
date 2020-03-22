@@ -1,4 +1,4 @@
-defmodule ZiglerTest.FailingTest do
+defmodule ZiglerTest.ZigTest.FailingTest do
 
   @moduledoc false
 
