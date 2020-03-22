@@ -24,4 +24,17 @@ defmodule ZiglerTest.UnitTestTest do
     |> Zigler.Code.adapter
     |> IO.iodata_to_binary
   end
+
+  test "Zigler.Code.nif_struct/1 produces the correct skeleton for a test" do
+    assert """
+      e.ErlNifFunc{
+        .name = c"tests foo",
+        .arity = 0,
+        .fptr = __test_foo_shim__,
+        .flags = 0,
+      },
+    """ = %Nif{name: "test_foo", arity: 0, test: "tests foo"}
+    |> Zigler.Code.nif_struct
+    |> IO.iodata_to_binary
+  end
 end

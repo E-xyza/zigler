@@ -260,7 +260,8 @@ defmodule Zigler.Code do
     |> String.split(".")
   end
 
-  defp nif_struct(%Nif{name: name, arity: arity, opts: opts}) do
+  @doc false
+  def nif_struct(%Nif{name: name, arity: arity, opts: opts, test: nil}) do
     alias Zigler.Code.LongRunning
 
     if opts[:long] do
@@ -288,6 +289,16 @@ defmodule Zigler.Code do
         },
       """
     end
+  end
+  def nif_struct(%Nif{name: name, test: test}) do
+    """
+      e.ErlNifFunc{
+        .name = c"#{test}",
+        .arity = 0,
+        .fptr = __#{name}_shim__,
+        .flags = 0,
+      },
+    """
   end
 
   #############################################################################

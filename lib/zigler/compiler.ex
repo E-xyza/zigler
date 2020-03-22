@@ -108,7 +108,7 @@ defmodule Zigler.Compiler do
   alias Zigler.Parser.Nif
   alias Zigler.Typespec
 
-  def function_skeleton(nif = %Nif{opts: opts}) do
+  def function_skeleton(nif = %Nif{opts: opts, test: nil}) do
     typespec = Typespec.from_nif(nif)
     if opts[:long] do
       {:__block__, _, block_contents} = LongRunning.function_skeleton(nif)
@@ -122,6 +122,17 @@ defmodule Zigler.Compiler do
         unquote(basic_fn(nif))
       end
     end
+  end
+  def function_skeleton(%Nif{test: test}) do
+    raise_msg = "nif for test #{test} not found"
+    raise_code = quote do
+      raise unquote(raise_msg)
+    end
+    {:def, [context: Elixir, import: Kernel],
+      [
+        {test, [context: Elixir], Elixir},
+        [do: raise_code]
+      ]}
   end
 
   defp basic_fn(%{name: name, arity: arity}) do

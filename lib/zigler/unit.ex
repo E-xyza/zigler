@@ -61,12 +61,12 @@ defmodule Zigler.Unit do
     Base.encode16(<<:erlang.phash2(str)::32>>)
   end
 
-#  @doc """
-#  loads a module that wraps a zigler NIF, consults the corresponding zig code,
-#  generating the corresponding zig tests.
-#
-#  Must be called from within a module that has run `use ExUnit.Case`.
-#  """
+  @doc """
+  loads a module that wraps a zigler NIF, consults the corresponding zig code,
+  generating the corresponding zig tests.
+
+  Must be called from within a module that has `use ExUnit.Case` and `use Zigler`
+  """
   defmacro zigtest(mod) do
 
     test_zigler = Module.get_attribute(__CALLER__.module, :zigler)
@@ -97,16 +97,51 @@ defmodule Zigler.Unit do
       {:ok, _code, _, %{tests: []}, _, _} ->
         raise CompileError, info ++ [description: "module #{module} has no zig tests"]
       {:ok, test_code,_, %{tests: tests}, _, _} ->
-        Module.put_attribute(
-          __CALLER__.module,
-          :zigler,
-          %{test_zigler | code: test_code, nifs: tests})
-
+        new_zigler =  %{test_zigler | code: test_code, nifs: tests}
+        Module.put_attribute(__CALLER__.module, :zigler, new_zigler)
+        new_zigler
       err ->
         raise CompileError, info ++ [description: "error parsing code in module #{module}: #{inspect err}"]
     end
-
-    quote do end
+    |> make_code
   end
+
+  defp make_code(%{module: module, file: file, nifs: nifs}) do
+    tests = Enum.map(nifs, &(&1.test))
+    quote bind_quoted: [module: module, file: file, tests: tests] do
+      # register our tests.
+      env = __ENV__
+      for {name, test_code} <- Zigler.Unit.__zigtests__(module, tests) do
+        @file file
+        test_name = ExUnit.Case.register_test(env, :zigtest, name, [])
+        def unquote(test_name)(_), do: unquote(test_code)
+      end
+    end
+  end
+
+  def __zigtests__(module, tests) do
+    Enum.map(tests, fn
+      title ->
+        {title, test_content(module, title)}
+    end)
+  end
+
+  defp test_content(module, title) do
+    quote do
+      case apply(unquote(module), unquote(title), []) do
+        :ok -> :ok
+        {:error, file, line} ->
+          error = [
+            message: "Zig test \"#{unquote title}\" (line #{line}) failed",
+            doctest: ExUnit.AssertionError.no_value(),
+            expr: ExUnit.AssertionError.no_value(),
+            left: ExUnit.AssertionError.no_value(),
+            right: ExUnit.AssertionError.no_value()
+          ]
+          raise ExUnit.AssertionError, error
+      end
+    end
+  end
+
 end
 
