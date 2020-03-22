@@ -83,7 +83,8 @@ defmodule Zigler.Unit do
     end
 
     ref_zigler = case module.__info__(:attributes)[:zigler] do
-      [zigler] -> zigler
+      [zigler] ->
+        zigler
       _ ->
         raise CompileError, info ++ [description: "zigtest called on a module that doesn't bind a zig nif"]
     end
@@ -97,7 +98,10 @@ defmodule Zigler.Unit do
       {:ok, _code, _, %{tests: []}, _, _} ->
         raise CompileError, info ++ [description: "module #{module} has no zig tests"]
       {:ok, test_code,_, %{tests: tests}, _, _} ->
-        new_zigler =  %{test_zigler | code: test_code, nifs: tests}
+        new_zigler = test_zigler
+        |> struct(code: test_code, nifs: tests)
+        |> struct(Map.take(ref_zigler, [:imports, :include_dirs, :c_includes, :libs]))
+
         Module.put_attribute(__CALLER__.module, :zigler, new_zigler)
         new_zigler
       err ->
