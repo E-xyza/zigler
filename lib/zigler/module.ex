@@ -19,7 +19,8 @@ defmodule Zigler.Module do
     include_dirs: [],
     dry_run:      false,
     code:         [],
-    version:      Version.parse!("0.0.0")
+    version:      Version.parse!("0.0.0"),
+    test_dirs:    nil,
   ]
 
   @type t :: %__MODULE__{
@@ -36,7 +37,8 @@ defmodule Zigler.Module do
     include_dirs: [Path.t],
     dry_run:      boolean,
     code:         iodata,
-    version:      Version.t
+    version:      Version.t,
+    test_dirs:    nil | [Path.t]
   }
 
   # takes the zigler imports option and turns it into the imports keyword

@@ -80,6 +80,8 @@ defmodule Zigler.Code do
   #############################################################################
   ## ADAPTER GENERATION
 
+  defp shim_name(nif_name), do: nif_name |> Atom.to_string |> String.split(".") |> List.last
+
   def adapter(nif = %Zigler.Parser.Nif{opts: opts, test: nil}) do
     if opts[:long] do
       LongRunning.adapter(nif)
@@ -120,7 +122,7 @@ defmodule Zigler.Code do
   def adapter(nif) do
     # when it is a test:
     """
-    extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+    extern fn __#{shim_name nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
       beam.test_env = env;
       #{nif.name}() catch return beam.test_error();
       return beam.make_atom(env, "ok");
@@ -295,7 +297,7 @@ defmodule Zigler.Code do
       e.ErlNifFunc{
         .name = c"#{test}",
         .arity = 0,
-        .fptr = __#{name}_shim__,
+        .fptr = __#{shim_name name}_shim__,
         .flags = 0,
       },
     """

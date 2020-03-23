@@ -5,9 +5,10 @@ defmodule Zigler.Parser.Imports do
 
   import NimbleParsec
 
-  defstruct imports: []
+  defstruct imports: [], identifier: nil
   @type t :: %__MODULE__{
-    imports: [Path.t]
+    imports: [Path.t],
+    identifier: atom
   }
 
   # designed to ninja in this struct as necessary.
@@ -20,13 +21,30 @@ defmodule Zigler.Parser.Imports do
 
   whitespace = ascii_string([?\s, ?\n], min: 1)
   filename = ascii_string([not: ?"], min: 1)
+  identifier = ascii_char([?a..?z, ?A..?Z, ?_])
+  |> optional(ascii_string([?a..?z, ?A..?Z, ?0..?9, ?_], min: 1))
+  |> reduce({IO, :iodata_to_binary, []})
 
-  import_line =
-    ignore(
-      repeat(
-        lookahead_not(string("@import"))
-        |> ascii_char(not: ?\n))
-      |> string("@import")
+  usingnamespace = string("usingnamespace")
+  |> ignore(whitespace)
+
+  import_const = ignore(
+    string("const")
+    |> concat(whitespace))
+  |> concat(identifier)
+  |> ignore(
+    optional(whitespace)
+    |> string("=")
+    |> optional(whitespace))
+
+  prefix = choice(
+    [usingnamespace, import_const])
+  |> post_traverse(:register_identifier)
+
+  import_stmt =
+    prefix
+    |> ignore(
+      string("@import")
       |> optional(whitespace)
       |> string("(")
       |> optional(whitespace)
@@ -38,24 +56,27 @@ defmodule Zigler.Parser.Imports do
       |> string(")"))
     |> post_traverse(:register_import)
 
-  defp register_import(_rest, [path], context = %{imports: imports}, _, _) do
-    {[], %{context | imports: [path | imports]}}
+  defp register_identifier(_rest, [identifier], context, _, _) do
+    {[], %{context | identifier: String.to_atom(identifier)}}
+  end
+
+  defp register_import(_rest, [path], context, _, _) do
+    {[],
+    %{context |
+      imports: [{context.identifier, path} | context.imports],
+      identifier: nil}}
   end
 
   if Mix.env == :test do
-    defparsec :parse_import_line, concat(initialize, import_line)
+    defparsec :parse_import_const, concat(initialize, import_const)
+    defparsec :parse_import_stmt, concat(initialize, import_stmt)
   end
-
-  ignored_line =
-    optional(utf8_string([not: ?\n], min: 1))
-    |> string("\n")
-    |> post_traverse(:clear)
 
   parse_imports =
     initialize
     |> repeat(choice([
-      import_line,
-      ignored_line
+      import_stmt,
+      ascii_char([0..255])
     ]))
 
   defparsec :parse_imports, parse_imports

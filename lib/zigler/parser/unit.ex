@@ -3,7 +3,7 @@ defmodule Zigler.Parser.Unit do
   parses zig code and converts test blocks to test functions
   """
 
-  defstruct tests: [], file: nil, offset: 0
+  defstruct tests: [], file: nil, offset: 0, test_dirs: ["./"]
 
   import NimbleParsec
 
@@ -79,17 +79,17 @@ defmodule Zigler.Parser.Unit do
   ## POST-TRAVERSAL IMPLEMENTATIONS
 
   # ninjas in a context module for the context map.
-  defp init_context(_, _, c = %{file: _}, _, _) do
-    {[], struct(__MODULE__, c)}
+  defp init_context(_, _, c, _, _) do
+    {[], struct(__MODULE__, Map.put_new(c, :line, 1))}
   end
 
-  defp parse_file_line_decl(_rest, l = [_, line_str | _], context, {line, _char}, _offset) do
+  defp parse_file_line_decl(_rest, l = [_, line_str, _, file | _], context, {line, _char}, _offset) do
     this_line = String.to_integer(line_str)
-    {l, %{context | offset: this_line - line + 1}}
+    {l, %{context | file: file, offset: this_line - line + 1}}
   end
 
   defp parse_test_decl(_rest, [test_name], context, _line, _offset) do
-    test_nif = new_nif(test_name)
+    test_nif = new_nif(test_name, context.file)
     {["fn #{test_nif.name}() !void"],
       %{context | tests: [test_nif | context.tests]}}
   end
@@ -101,14 +101,28 @@ defmodule Zigler.Parser.Unit do
   end
 
   alias Zigler.Parser.Nif
-  defp new_nif(name) do
+  defp new_nif(name, file) do
     %Nif{
-      name: String.to_atom("test_#{Zigler.Unit.name_to_hash name}"),
+      name: String.to_atom("test_#{Zigler.Unit.name_to_hash(name <> file)}"),
       test: String.to_atom(name),
       arity: 0,
       args: [],
       retval: "!void"
     }
+  end
+
+  #############################################################################
+  ## API
+
+  def parse(code, info) do
+    unless info[:file], do: raise "parser needs a file name!"
+    case unit_parser(code, context: info) do
+      {:ok, code, _, %{tests: tests}, _, _} ->
+        {tests, code}
+      err ->
+        raise CompileError, info ++
+          [description: "error parsing code in #{info[:file]}: #{inspect err}"]
+    end
   end
 
 end

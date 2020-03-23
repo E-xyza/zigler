@@ -3,7 +3,6 @@ defmodule ZiglerTest.ZigTest.ImportTest do
 
   ~Z"""
   const assert = beam.assert;
-
   const trans = @import("transitive.zig");
 
   /// nif: forty_seven/0

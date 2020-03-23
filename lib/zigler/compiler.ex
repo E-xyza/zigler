@@ -199,6 +199,7 @@ defmodule Zigler.Compiler do
     imports = (code_file
     |> File.read!
     |> Zigler.Parser.Imports.parse
+    |> Keyword.values
     |> Enum.map(&Path.join(src_dir, &1))
     |> Enum.filter(&(Path.extname(&1) == ".zig"))
     |> Enum.reject(&(Path.basename(&1) in ["beam.zig", "erl_nif.zig"]))

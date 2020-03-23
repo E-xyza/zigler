@@ -61,16 +61,15 @@ defmodule Zigler.Unit do
     Base.encode16(<<:erlang.phash2(str)::32>>)
   end
 
+  @transfer_params [:file, :libs, :resources, :zig_version, :imports, :c_includes, :include_dirs, :version]
+
   @doc """
   loads a module that wraps a zigler NIF, consults the corresponding zig code,
   generating the corresponding zig tests.
 
   Must be called from within a module that has `use ExUnit.Case` and `use Zigler`
   """
-  defmacro zigtest(mod) do
-
-    test_zigler = Module.get_attribute(__CALLER__.module, :zigler)
-
+  defmacro zigtest(mod, options \\ [test_dirs: ["./"]]) do
     module = Macro.expand(mod, __CALLER__)
     Code.ensure_loaded(module)
 
@@ -83,34 +82,64 @@ defmodule Zigler.Unit do
     end
 
     ref_zigler = case module.__info__(:attributes)[:zigler] do
-      [zigler] ->
-        zigler
-      _ ->
-        raise CompileError, info ++ [description: "zigtest called on a module that doesn't bind a zig nif"]
+      [zigler] -> zigler
+      _ -> raise CompileError, info ++ [description: "zigtest called on a module that doesn't bind a zig nif"]
     end
 
     # parse the zigler code to generate the zigcode test and
     # also get the list of nifs.
-    ref_zigler.code
-    |> IO.iodata_to_binary
-    |> Zigler.Parser.Unit.unit_parser(context: %{file: ref_zigler.file})
-    |> case do
-      {:ok, _code, _, %{tests: []}, _, _} ->
-        raise CompileError, info ++ [description: "module #{module} has no zig tests"]
-      {:ok, test_code,_, %{tests: tests}, _, _} ->
-        new_zigler = test_zigler
-        |> struct(code: test_code, nifs: tests)
-        |> struct(Map.take(ref_zigler, [:imports, :include_dirs, :c_includes, :libs]))
+    ref_code = IO.iodata_to_binary(ref_zigler.code)
 
-        Module.put_attribute(__CALLER__.module, :zigler, new_zigler)
-        new_zigler
-      err ->
-        raise CompileError, info ++ [description: "error parsing code in module #{module}: #{inspect err}"]
-    end
-    |> make_code
+    {tests, code} = Zigler.Parser.Unit.parse(ref_code, info)
+
+    __CALLER__.module
+    |> Module.get_attribute(:zigler)
+    |> struct(nifs: tests, code: code)
+    |> struct(Map.take(ref_zigler, @transfer_params))
+    |> append_import_tests(code, Path.dirname(ref_zigler.file))
+    |> update_zigler_struct(info)
+    |> make_test_fns
   end
 
-  defp make_code(%{module: module, file: file, nifs: nifs}) do
+  defp append_import_tests(zigler, code, dir) do
+    import_tests = code
+    |> IO.iodata_to_binary
+    |> Zigler.Parser.Imports.parse
+    |> Enum.flat_map(&recursive_find_imports(dir, &1))
+
+    %{zigler | nifs: import_tests ++ zigler.nifs}
+  end
+
+  defp recursive_find_imports(file_dir, {import_struct, file}) do
+    full_file_path = Path.join(file_dir, file)
+    code = File.read!(full_file_path)
+
+    {tests, _} = code
+    |> Zigler.Parser.Unit.parse(file: full_file_path)
+
+    imports = code
+    |> Zigler.Parser.Imports.parse
+    |> Enum.reject(fn {_, file} -> Path.basename(file) == "beam.zig" end)
+    |> IO.inspect(label: "125")
+
+    tests
+    |> Enum.map(fn nif ->
+      %{nif |
+        name: String.to_atom("#{import_struct}.#{nif.name}"),
+        test: String.to_atom("#{import_struct}: #{nif.test}")}
+    end)
+  end
+
+  defp update_zigler_struct(zigler, info) do
+    if zigler.nifs == [] do
+      raise CompileError,
+        info ++ [description: "zigtest declared for zigler module #{zigler.module} which has no tests"]
+    end
+    Module.put_attribute(zigler.module, :zigler, zigler)
+    zigler
+  end
+
+  defp make_test_fns(%{module: module, file: file, nifs: nifs}) do
     tests = Enum.map(nifs, &(&1.test))
     quote bind_quoted: [module: module, file: file, tests: tests] do
       # register our tests.
