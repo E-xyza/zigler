@@ -96,6 +96,7 @@ defmodule Zigler.Unit do
     |> Module.get_attribute(:zigler)
     |> struct(nifs: tests, code: code)
     |> struct(Map.take(ref_zigler, @transfer_params))
+    |> struct(options)
     |> append_import_tests(code, Path.dirname(ref_zigler.file))
     |> update_zigler_struct(info)
     |> make_test_fns
@@ -120,7 +121,6 @@ defmodule Zigler.Unit do
     imports = code
     |> Zigler.Parser.Imports.parse
     |> Enum.reject(fn {_, file} -> Path.basename(file) == "beam.zig" end)
-    |> IO.inspect(label: "125")
 
     tests
     |> Enum.map(fn nif ->

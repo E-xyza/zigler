@@ -2,15 +2,16 @@ defmodule Zigler.Compiler do
 
   @moduledoc false
 
-  @enforce_keys [:staging_dir, :code_file, :module_spec]
+  @enforce_keys [:staging_dir, :code_file, :code_dir, :original_dir, :module_spec]
 
   # contains critical information for the compilation.
-  defstruct @enforce_keys
+  defstruct @enforce_keys ++ [test_dirs: []]
 
   @type t :: %__MODULE__{
     staging_dir: Path.t,
     code_file:   Path.t,
-    module_spec: Zigler.Module.t
+    module_spec: Zigler.Module.t,
+    test_dirs:   [Path.t]
   }
 
   require Logger
@@ -62,7 +63,6 @@ defmodule Zigler.Compiler do
 
     ###########################################################################
     # COMPILATION STEPS
-
     compiler = precompile(module)
     unless module.dry_run do
       Zig.compile(compiler, zig_tree)
@@ -174,51 +174,61 @@ defmodule Zigler.Compiler do
     File.mkdir_p!(Path.join(staging_dir, "include"))
     File.cp!("zig/include/erl_nif_zig.h", Path.join(staging_dir, "include/erl_nif_zig.h"))
 
+    compiler = %__MODULE__{
+      staging_dir:  staging_dir,
+      code_file:    code_file,
+      code_dir:     Path.dirname(code_file),
+      original_dir: Path.dirname(code_file),
+      module_spec:  module,
+      test_dirs:    module.test_dirs || []
+    }
+
     # copy imports into the relevant directory
-    transfer_imports_for(code_file, Path.dirname(module.file), staging_dir)
+    transfer_imports_for(compiler)
 
     # copy includes into the relevant directory
     transfer_includes_for(Path.dirname(module.file), staging_dir)
 
     # assemble the module struct
-    %__MODULE__{
-      staging_dir: staging_dir,
-      code_file:   code_file,
-      module_spec: module
-    }
+    compiler
   end
 
-  defp transfer_imports_for(code_file, src_dir, staging_dir) do
-    transfer_imports_for(code_file, src_dir, staging_dir, [])
-  end
-  defp transfer_imports_for(code_file, src_dir, staging_dir, transferred_files) do
+  defp transfer_imports_for(compiler, transferred_files \\ []) do
 
     # mechanism for identifying imported files recursively and moving them into
     # the correct relative directory within the staging zone.
 
-    imports = (code_file
+    imports = (compiler.code_file
     |> File.read!
     |> Zigler.Parser.Imports.parse
     |> Keyword.values
-    |> Enum.map(&Path.join(src_dir, &1))
+    |> Enum.map(&Path.join(compiler.code_dir, &1))
     |> Enum.filter(&(Path.extname(&1) == ".zig"))
     |> Enum.reject(&(Path.basename(&1) in ["beam.zig", "erl_nif.zig"]))
     |> Enum.uniq)
     -- transferred_files
 
     Enum.each(imports, fn path ->
-      rebasename = Path.relative_to(path, src_dir)
+      path |> IO.inspect(label: "212")
+      rebasename = Path.relative_to(path, compiler.code_dir)
       rebasedir = Path.dirname(rebasename)
-      stagingfile = Path.join(staging_dir, rebasename)
+      stagingfile = Path.join(compiler.staging_dir, rebasename)
       stagingfile_dir = Path.dirname(stagingfile)
+
+      IO.puts("hi")
 
       File.mkdir_p!(stagingfile_dir)
       # perform transitive imports
+
+      IO.puts("yo")
+
       transfer_imports_for(
-        path,
-        Path.join(src_dir, rebasedir),
-        stagingfile_dir,
-        Enum.map(imports, &Path.relative_to(&1, rebasedir)))
+        struct(compiler,
+          code_file: path,
+          code_dir:  Path.join(compiler.code_dir, rebasedir),
+          staging_dir: stagingfile_dir))
+          
+      IO.puts("boo")
 
       File.cp!(path, stagingfile)
     end)
