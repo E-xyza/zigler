@@ -5,10 +5,13 @@ defmodule Zigler.Parser.Imports do
 
   import NimbleParsec
 
-  defstruct imports: [], identifier: nil
+  defstruct imports: [], identifier: nil, pub: false
+
+  @typep identifier_t :: :usingnamespace | String.t
   @type t :: %__MODULE__{
-    imports: [Path.t],
-    identifier: atom
+    imports: [{identifier_t, Path.t} | {:pub, identifier_t, Path.t}],
+    identifier: atom,
+    pub: boolean
   }
 
   # designed to ninja in this struct as necessary.
@@ -28,7 +31,10 @@ defmodule Zigler.Parser.Imports do
   usingnamespace = string("usingnamespace")
   |> ignore(whitespace)
 
-  import_const = ignore(
+  import_const = optional(
+    string("pub")
+    |> concat(ignore(whitespace)))
+  |> ignore(
     string("const")
     |> concat(whitespace))
   |> concat(identifier)
@@ -56,15 +62,30 @@ defmodule Zigler.Parser.Imports do
       |> string(")"))
     |> post_traverse(:register_import)
 
-  defp register_identifier(_rest, [identifier], context, _, _) do
-    {[], %{context | identifier: String.to_atom(identifier)}}
+  defp register_identifier(_rest, ["usingnamespace" | rest], context, _, _) do
+    {[], %{context | identifier: :usingnamespace, pub: pub?(rest)}}
   end
+  defp register_identifier(_rest, [identifier | rest], context, _, _) do
+    {[], %{context | identifier: identifier, pub: pub?(rest)}}
+  end
+
+  defp pub?([]), do: false
+  defp pub?(["pub"]), do: true
 
   defp register_import(_rest, [path], context, _, _) do
     {[],
     %{context |
-      imports: [{context.identifier, path} | context.imports],
-      identifier: nil}}
+      imports: [make_identifier(path, context) | context.imports],
+      identifier: nil,
+      pub: false}}
+  end
+
+  defp make_identifier(path, context) do
+    if context.pub do
+      {:pub, context.identifier, path}
+    else
+      {context.identifier, path}
+    end
   end
 
   if Mix.env == :test do
