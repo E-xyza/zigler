@@ -14,13 +14,16 @@ by adding `zigler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:zigler, "~> 0.1.3", runtime: false}
+    {:zigler, "~> 0.2.0", runtime: false}
   ]
 end
 ```
 
-Documentation
-be found at [https://hexdocs.pm/zigler](https://hexdocs.pm/zigler).
+## Warning: the 0.2.0 version is transitional and only supports Zig 0.5.0
+
+## Documentation
+
+Docs can be found at [https://hexdocs.pm/zigler](https://hexdocs.pm/zigler).
 
 once you have this dependency, you should cache the zig build tools by running the following:
 

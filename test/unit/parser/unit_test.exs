@@ -17,8 +17,8 @@ defmodule ZiglerTest.Parser.UnitTest do
   }
   """
 
-  alias Zigler.Parser.Unit
   alias Zigler.Parser.Nif
+  alias Zigler.Parser.Unit
 
   test "a unit test header is properly detected" do
     hash = Zigler.Unit.name_to_hash("foobar")
