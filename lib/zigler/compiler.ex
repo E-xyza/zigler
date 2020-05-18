@@ -63,6 +63,12 @@ defmodule Zigler.Compiler do
         description: "zig hasn't been downloaded.  Run mix zigler.get_zig #{module.zig_version}"
     end
 
+    if module.nifs == [] do
+      raise CompileError,
+        file: context.file,
+        description: "no nifs found in the module #{context.module}"
+    end
+
     ###########################################################################
     # COMPILATION STEPS
 

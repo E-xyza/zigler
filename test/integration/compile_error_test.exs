@@ -16,4 +16,18 @@ defmodule ZiglerTest.Integration.CompileErrorTest do
     assert Path.basename(error.file) == file
   end
 
+  test "zig compiler errors if there's no nif" do
+    file = "no_nif.exs"
+    error = assert_raise CompileError, fn -> load(file) end
+    assert error.description =~ "no nifs"
+    assert Path.basename(error.file) == file
+  end
+
+  test "zig compiler errors if there's no sigil z" do
+    file = "no_sigil_z.exs"
+    error = assert_raise CompileError, fn -> load(file) end
+    assert error.description =~ "no nifs"
+    assert Path.basename(error.file) == file
+  end
+
 end
