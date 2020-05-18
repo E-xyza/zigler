@@ -12,7 +12,7 @@ defmodule ZiglerTest.Parser.ImportTest do
 
   describe "the import line parser" do
     test "parses a valid import line" do
-      assert {:ok, _, _, %{imports: [foo: "foo.zig"]}, _, _} = Imports.parse_import_stmt("const foo = @import(\"foo.zig\");\n")
+      assert {:ok, _, _, %{imports: [{"foo", "foo.zig"}]}, _, _} = Imports.parse_import_stmt("const foo = @import(\"foo.zig\");\n")
     end
     test "parses a valid usingnamespace" do
       assert {:ok, _, _, %{imports: [usingnamespace: "foo.zig"]}, _, _} = Imports.parse_import_stmt("usingnamespace @import(\"foo.zig\");\n")

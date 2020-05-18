@@ -7,6 +7,8 @@ defmodule Zigler.Assembler do
   the relevant information.
   """
 
+  require Logger
+
   defstruct [:type, :source, :target, context: [], pub: false]
 
   @type file_type :: :zig | :cinclude
@@ -18,6 +20,37 @@ defmodule Zigler.Assembler do
     context: [String.t],
     pub: boolean
   }
+
+  @doc """
+  assembles the "core" part of the zig adapter code, these are parts for
+  shimming Zig libraries into the BEAM that are going to be @import'd into
+  the runtime by default.
+  """
+  def assemble_kernel!(assembly_dir) do
+    # copy in beam.zig
+    File.cp!("zig/beam/beam.zig", Path.join(assembly_dir, "beam.zig"))
+    # copy in erl_nif.zig
+    File.cp!("zig/beam/erl_nif.zig", Path.join(assembly_dir, "erl_nif.zig"))
+    # copy in erl_nif_zig.h
+    File.mkdir_p!(Path.join(assembly_dir, "include"))
+    File.cp!("zig/include/erl_nif_zig.h", Path.join(assembly_dir, "include/erl_nif_zig.h"))
+  end
+
+  @doc """
+  assembles zig assets, taking them from their source to and putting them into
+  the target directory.
+  """
+  def assemble_assets!(assembly) do
+    Enum.each(assembly, fn instruction ->
+      # make sure that the target directory path exists.
+      instruction.target
+      |> Path.dirname
+      |> File.mkdir_p!
+      # send the file in.
+      File.cp!(instruction.source, instruction.target)
+      Logger.debug("copied #{instruction.source} to #{instruction.target}")
+    end)
+  end
 
   def parse_file(file_path, options) do
     check_options!(options)
@@ -44,6 +77,7 @@ defmodule Zigler.Assembler do
   def parse_code(code, options) do
     check_options!(options)
     code
+    |> IO.iodata_to_binary
     |> Zigler.Parser.Imports.parse
     |> Enum.reverse
     |> Enum.flat_map(&import_to_assembler(&1, options))
@@ -73,7 +107,6 @@ defmodule Zigler.Assembler do
       pub: pub])
   end
 
-
   #############################################################################
   ## safety and debug features
 
@@ -83,6 +116,7 @@ defmodule Zigler.Assembler do
 
   defp check_options!(options) do
     requires!(options, :parent_dir, "parent directory")
+    File.dir?(options[:parent_dir]) or raise "parent directory #{options[:parent_dir]} doesn't exist"
     requires!(options, :target_dir, "target directory")
     requires!(options, :pub, "pub tag")
     requires!(options, :context, "context")

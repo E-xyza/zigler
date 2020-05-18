@@ -2,16 +2,18 @@ defmodule Zigler.Compiler do
 
   @moduledoc false
 
-  @enforce_keys [:staging_dir, :code_file, :code_dir, :original_dir, :module_spec]
+  @enforce_keys [:assembly_dir, :code_file, :assembly, :module_spec]
 
   # contains critical information for the compilation.
   defstruct @enforce_keys ++ [test_dirs: []]
 
+  alias Zigler.Assembler
+
   @type t :: %__MODULE__{
-    staging_dir: Path.t,
-    code_file:   Path.t,
-    module_spec: Zigler.Module.t,
-    test_dirs:   [Path.t]
+    assembly_dir: Path.t,
+    assembly:     [Assembler.t],
+    code_file:    Path.t,
+    module_spec:  Zigler.Module.t
   }
 
   require Logger
@@ -154,43 +156,37 @@ defmodule Zigler.Compiler do
   #############################################################################
   ## STEPS
 
-  @staging_root Application.get_env(:zigler, :staging_root, "/tmp/zigler_compiler")
-
   @spec precompile(Zigler.Module.t) :: t | no_return
   def precompile(module) do
     # build the staging directory.
-    staging_dir = Path.join([@staging_root, Atom.to_string(Mix.env()), "#{module.module}"])
-    File.mkdir_p(staging_dir)
+    assembly_dir = Path.join(System.tmp_dir!(),
+      ".zigler_compiler/#{Mix.env}/#{module.module}")
 
+    File.mkdir_p!(assembly_dir)
+
+    # create the main code file
+    code_file = Path.join(assembly_dir, "#{module.module}.zig")
+    code_content = Zigler.Code.generate_main(%{module | zig_file: code_file})
     # define the code file and build it.
-    code_file = Path.join(staging_dir, "#{module.module}.zig")
-    File.write!(code_file, Zigler.Code.generate_main(%{module | zig_file: code_file}))
+    File.write!(code_file, code_content)
 
-    # copy in beam.zig
-    File.cp!("zig/beam/beam.zig", Path.join(staging_dir, "beam.zig"))
-    # copy in erl_nif.zig
-    File.cp!("zig/beam/erl_nif.zig", Path.join(staging_dir, "erl_nif.zig"))
-    # copy in erl_nif_zig.h
-    File.mkdir_p!(Path.join(staging_dir, "include"))
-    File.cp!("zig/include/erl_nif_zig.h", Path.join(staging_dir, "include/erl_nif_zig.h"))
+    # parse the module code to generate the full list of assets
+    # that need to be brought in to the assembly directory
+    assembly = Assembler.parse_code(module.code,
+      parent_dir: Path.dirname(module.file),
+      target_dir: assembly_dir,
+      pub: true,
+      context: [])
 
-    compiler = %__MODULE__{
-      staging_dir:  staging_dir,
+    Assembler.assemble_kernel!(assembly_dir)
+    Assembler.assemble_assets!(assembly)
+
+    %__MODULE__{
+      assembly_dir: assembly_dir,
+      assembly:     assembly,
       code_file:    code_file,
-      code_dir:     Path.dirname(code_file),
-      original_dir: Path.dirname(code_file),
       module_spec:  module,
-      test_dirs:    module.test_dirs || []
     }
-
-    # copy imports into the relevant directory
-    transfer_imports_for(compiler)
-
-    # copy includes into the relevant directory
-    transfer_includes_for(Path.dirname(module.file), staging_dir)
-
-    # assemble the module struct
-    compiler
   end
 
   defp transfer_imports_for(compiler, transferred_files \\ []) do
@@ -209,33 +205,25 @@ defmodule Zigler.Compiler do
     -- transferred_files
 
     Enum.each(imports, fn path ->
-      path |> IO.inspect(label: "212")
       rebasename = Path.relative_to(path, compiler.code_dir)
       rebasedir = Path.dirname(rebasename)
-      stagingfile = Path.join(compiler.staging_dir, rebasename)
+      stagingfile = Path.join(compiler.assembly_dir, rebasename)
       stagingfile_dir = Path.dirname(stagingfile)
 
-      IO.puts("hi")
-
       File.mkdir_p!(stagingfile_dir)
-      # perform transitive imports
-
-      IO.puts("yo")
 
       transfer_imports_for(
         struct(compiler,
           code_file: path,
           code_dir:  Path.join(compiler.code_dir, rebasedir),
-          staging_dir: stagingfile_dir))
-          
-      IO.puts("boo")
+          assembly_dir: stagingfile_dir))
 
       File.cp!(path, stagingfile)
     end)
   end
 
-  defp transfer_includes_for(src_dir, staging_dir) do
-    staging_include = Path.join(staging_dir, "include")
+  defp transfer_includes_for(src_dir, assembly_dir) do
+    staging_include = Path.join(assembly_dir, "include")
     File.mkdir_p!(staging_include)
 
     src_include = Path.join(src_dir, "include")
@@ -253,7 +241,7 @@ defmodule Zigler.Compiler do
   defp cleanup(compiler) do
     # in dev and test we keep our code around for debugging purposes.
     unless Mix.env in [:dev, :test] do
-      File.rm_rf!(compiler.staging_dir)
+      File.rm_rf!(compiler.assembly_dir)
     end
     :ok
   end

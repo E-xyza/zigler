@@ -12,7 +12,7 @@ defmodule Zigler.Zig do
     zig_executable = Path.join(zig_tree, "zig")
     zig_rpath = Path.join(zig_tree, "lib/zig")
 
-    include_opts = ["-isystem", Path.join(compiler.staging_dir, "include")] ++
+    include_opts = ["-isystem", Path.join(compiler.assembly_dir, "include")] ++
       includes_from_module(compiler.module_spec)
 
     lib_opts = libraries_from_module(compiler.module_spec)
@@ -33,7 +33,7 @@ defmodule Zigler.Zig do
       ["--release-safe"]
       #@release_mode[release_mode]
 
-    opts = [cd: compiler.staging_dir, stderr_to_stdout: true]
+    opts = [cd: compiler.assembly_dir, stderr_to_stdout: true]
 
     case System.cmd(zig_executable, cmd_opts, opts) do
       {_, 0} -> :ok
@@ -46,7 +46,7 @@ defmodule Zigler.Zig do
 
     # copy the compiled library over to the lib/nif directory.
     File.mkdir_p!(Zigler.nif_dir())
-    compiler.staging_dir
+    compiler.assembly_dir
     |> Path.join(library_filename)
     |> File.cp!(Path.join(Zigler.nif_dir(), library_filename))
 
