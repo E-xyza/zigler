@@ -71,10 +71,12 @@ defmodule Zigler.Code do
   ## ZIG IMPORT HANDLING
 
   def zig_imports(imports) do
-    [~s/const e = @import("erl_nif.zig").c;\n/,
-      Enum.map(imports, fn {k, v} ->
+    Enum.map(imports, fn
+      {k, {v, q}} ->
+        ~s/const #{k} = @import("#{v}").#{q};\n/
+      {k, v} ->
         ~s/const #{k} = @import("#{v}");\n/
-      end)]
+    end)
   end
 
   #############################################################################

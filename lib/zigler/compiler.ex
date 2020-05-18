@@ -163,8 +163,6 @@ defmodule Zigler.Compiler do
   #############################################################################
   ## STEPS
 
-  alias Zigler.Parser.Imports
-
   @spec precompile(Zigler.Module.t) :: t | no_return
   def precompile(module) do
     # build the staging directory.
@@ -176,12 +174,13 @@ defmodule Zigler.Compiler do
     # create the main code file
     code_file = Path.join(assembly_dir, "#{module.module}.zig")
     code_content = Zigler.Code.generate_main(%{module | zig_file: code_file})
+
     # define the code file and build it.
     File.write!(code_file, code_content)
 
     # parse the module code to generate the full list of assets
     # that need to be brought in to the assembly directory
-    assembly = Assembler.parse_code(module.code,
+    assembly = Assembler.parse_code(code_content,
       parent_dir: Path.dirname(module.file),
       target_dir: assembly_dir,
       pub: true,

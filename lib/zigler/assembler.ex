@@ -74,15 +74,23 @@ defmodule Zigler.Assembler do
     ++ transitive_imports
   end
 
-  # TODO: refactor it so that the import parser itself outputs
-  # a datastructure which can be immediately turned around and used.
   def parse_code(code, options) do
     check_options!(options)
     code
     |> IO.iodata_to_binary
     |> Imports.parse
     |> Enum.reverse
+    |> Enum.reject(&standard_components/1)
     |> Enum.flat_map(&import_to_assembler(&1, options))
+  end
+
+  # allows filtering standard components.  These are either in the zig
+  # standard libraries or intended to be put into place by the zigler system.
+  defp standard_components({:pub, _, _}), do: false
+  defp standard_components({_, "erl_nif.zig"}), do: true
+  defp standard_components({_, "beam.zig"}), do: true
+  defp standard_components({_, maybe_standard}) do
+    Path.extname(maybe_standard) != ".zig"
   end
 
   defp import_to_assembler({:pub, context, file}, options) do
