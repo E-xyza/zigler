@@ -20,11 +20,11 @@ defmodule Zigler.Doc do
 
   functions have the following signature:
 
-  `pub fn <identifier>(<parameters>) <type> {`
+  `pub fn <identifier>(<arguments>) <type> {`
 
   and may have the property of being `comptime` which is due to either the
   function being itself a `comptime` function or it having a `comptime`
-  parameter.
+  argument.
 
   **NB** only `pub` functions are documented in Zigler, following the Elixir
   philosophy that only public functions should be documented.

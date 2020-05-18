@@ -47,7 +47,7 @@ defmodule Zigler do
   #### Example
   ```
   defmodule MyModule do
-    use Zigler, app: :my_app
+    use Zigler, otp_app: :my_app
 
     ~Z\"""
     /// nif: my_func/1
@@ -73,14 +73,14 @@ defmodule Zigler do
 
   Sometimes, you will need to pass the BEAM environment (which is the code
   execution context, including process info, etc.) into the NIF function.  In
-  this case, you should pass it as the first parameter, as a `beam.env` type
+  this case, you should pass it as the first argument, as a `beam.env` type
   value.
 
   #### Example
 
   ```
   defmodule MyModule do
-    use Zigler, app: :my_app
+    use Zigler, otp_app: :my_app
 
     ~Z\"""
     /// nif: my_func_with_env/1
@@ -96,7 +96,7 @@ defmodule Zigler do
   ### External Libraries
 
   If you need to bind static (`*.a`) or dynamic (`*.so`) libraries into your
-  module, you may link them with the `:libs` parameter.
+  module, you may link them with the `:libs` argument.
 
   Note that for shared libraries, a library with an identical path must exist
   in the target release environment.
@@ -106,7 +106,7 @@ defmodule Zigler do
   ```
   defmodule Blas do
     use Zigler,
-      app: :my_app,
+      otp_app: :my_app,
       libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
       include: ["/usr/include/x86_64-linux-gnu"]
 
@@ -194,46 +194,37 @@ defmodule Zigler do
 
   # default release modes.
   # you can override these in your `use Zigler` statement.
-  @default_release_modes %{prod: :safe, dev: :debug, test: :debug}
-  @default_release_mode @default_release_modes[Mix.env()]
+  #@default_release_modes %{prod: :safe, dev: :debug, test: :debug}
+  #@default_release_mode @default_release_modes[Mix.env()]
 
   defmacro __using__(opts) do
-    mode = opts[:release_mode] || @default_release_mode
+    #mode = opts[:release_mode] || @default_release_mode
 
     # make sure that we're in the correct operating system.
     if match?({:win32, _}, :os.type()) do
       raise "non-unix systems not currently supported."
     end
 
-    user_opts = Keyword.take(opts, [:libs, :resources, :dry_run])
+    user_opts = Keyword.take(opts, [:libs, :resources, :dry_run, :c_includes, :include_dirs])
 
     zigler = struct(%Zigler.Module{
-      file:   __CALLER__.file,
-      module: __CALLER__.module,
-      semver: get_semver(),
-      app:    get_app()}, user_opts)
+      file:    __CALLER__.file,
+      module:  __CALLER__.module,
+      imports: Zigler.Module.imports(opts[:imports]),
+      version: get_project_version(),
+      otp_app: get_app()},
+      user_opts)
 
     Module.register_attribute(__CALLER__.module, :zigler, persist: true)
     Module.put_attribute(__CALLER__.module, :zigler, zigler)
 
     quote do
       import Zigler
+      require Zigler.Compiler
 
       @on_load :__load_nifs__
 
       @before_compile Zigler.Compiler
-    end
-  end
-
-  alias Zigler.LongRunning
-
-  defp nif_to_spec(nif) do
-    cond do
-      # make alternative specs for long-running nif functions.
-      :long in nif.opts ->
-        LongRunning.functions(nif)
-      true ->
-        [{nif.name, {nif.params, nif.retval}}]
     end
   end
 
@@ -249,133 +240,10 @@ defmodule Zigler do
 
     new_zigler = zig_code
     |> IO.iodata_to_binary
-    |> Parser.parse(zigler, line)
+    |> Parser.parse(zigler, __CALLER__.file, line)
 
     Module.put_attribute(__CALLER__.module, :zigler, new_zigler)
     quote do end
-  end
-
-  @doc false
-  def basic_function(func, arity, opts) do
-    if :long in opts do
-      long_function(func, arity)
-    else
-      empty_function(func, arity)
-    end
-  end
-
-  @spec dunderize(String.t | integer) :: atom
-  defp dunderize(string), do: String.to_atom("__#{string}__")
-
-  @spec launch_func_name(atom) :: atom
-  defp launch_func_name(func) do
-    func
-    |> Atom.to_string
-    |> Kernel.<>("_launch")
-    |> dunderize
-  end
-
-  @spec fetch_func_name(atom) :: atom
-  defp fetch_func_name(func) do
-    func
-    |> Atom.to_string
-    |> Kernel.<>("_fetch")
-    |> dunderize
-  end
-
-  defp launch_call(func, arity) do
-    {launch_func_name(func), [], for idx <- 1..arity do
-      {dunderize(idx), [], Elixir}
-    end}
-  end
-
-  def launch_function(func, arity) do
-    launch_func = launch_func_name(func)
-    {:defp, [context: Elixir, import: Kernel],
-      [
-        {launch_func, [context: Elixir], for _idx <- 1..arity do {:_, [], Elixir} end},
-        [do: {:throw, [context: Elixir, import: Kernel],
-        ["#{launch_func}/#{arity} not defined"]}]
-      ]}
-  end
-
-  def long_function(func, arity) do
-
-    long_fn_block = quote do
-      {ref, res} = unquote(launch_call(func, arity))
-      receive do ^ref -> :ok end
-      unquote(fetch_func_name(func))(res)
-    end
-
-    main_call = if arity == 0 do
-      {:def, [context: Elixir, import: Kernel], [
-        {func, [context: Elixir], []},
-        [do: long_fn_block]]}
-    else
-      {:def, [context: Elixir, import: Kernel],[
-        {func, [context: Elixir], for idx <- 1..arity do {dunderize(idx), [], Elixir} end},
-        [do: long_fn_block]]}
-    end
-
-    fetch_func_msg = "#{fetch_func_name(func)}/1 not defined"
-
-    quote do
-      unquote(launch_function(func,arity))
-      defp unquote(fetch_func_name(func))(_), do: throw unquote(fetch_func_msg)
-      unquote(main_call)
-    end
-  end
-
-  def empty_function(func, 0) do
-    quote do
-      def unquote(func)(), do: throw unquote("#{func}/0 not defined")
-    end
-  end
-
-  def empty_function(func, arity) do
-    {:def, [context: Elixir, import: Kernel],
-    [
-      {func, [context: Elixir], for _ <- 1..arity do {:_, [], Elixir} end},
-      [
-        do: {:throw, [context: Elixir, import: Kernel],
-         ["#{func}/#{arity} not defined"]}
-      ]
-    ]}
-  end
-
-  @type_for %{
-    "c_int" => :integer, "c_long" => :integer, "isize" => :integer,
-    "usize" => :integer, "u8" => :integer, "i32" => :integer, "i64" => :integer,
-    "f16" => :float, "f32" => :float, "f64" => :float, "bool" => :boolean,
-    "beam.term" => :term, "e.ErlNifTerm" => :term,
-    "beam.pid" => :pid, "e.ErlNifPid" => :pid,
-    "beam.binary" => :binary, "e.ErlNifBinary" => :binary,
-    "[]u8" => :binary, "[*c]u8" => :binary
-  }
-
-  @doc false
-  def typespec_for(%{name: name, params: params, retval: retval}) do
-    [ret_tag] = type_for(retval)
-    {:@, [context: Elixir, import: Kernel], [
-      {:spec, [context: Elixir],
-       [
-         {:"::", [],
-          [
-            {name, [], Enum.flat_map(params, &type_for/1)},
-            ret_tag
-          ]}
-       ]}
-    ]}
-  end
-
-  @doc false
-  def type_for("?*e.ErlNifEnv"), do: []
-  def type_for("beam.env"), do: []
-  def type_for("void"), do: [nil]
-  def type_for("[]" <> val) when val != "u8", do: [type_for(val)]
-  def type_for(" " <> val), do: type_for(val)
-  def type_for(zig_type) do
-    [{@type_for[zig_type], [], Elixir}]
   end
 
   @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
@@ -404,11 +272,11 @@ defmodule Zigler do
       reraise CompileError, description: "zig directory path doesn't exist, run `mix zigler.get_zig latest`"
   end
 
-  defp get_semver do
+  defp get_project_version do
     Mix.Project.get
     |> apply(:project, [])
     |> Keyword.get(:version)
-    |> String.split(".")
+    |> Version.parse!
   end
 
   defp get_app do
@@ -423,10 +291,9 @@ defmodule Zigler do
     |> Path.join("nif")
   end
 
-  def nif_name(module, use_suffixes \\ true) do
+  def nif_name(module = %{version: version}, use_suffixes \\ true) do
     if use_suffixes do
-      [major, minor, patch] = module.semver
-      "lib#{module.module}.so.#{major}.#{minor}.#{patch}"
+      "lib#{module.module}.so.#{version.major}.#{version.minor}.#{version.patch}"
     else
       "lib#{module.module}"
     end

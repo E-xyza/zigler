@@ -2,7 +2,7 @@ defmodule ZiglerTest.ParserTest do
   use ExUnit.Case, async: true
 
   alias Zigler.Parser
-  alias Zigler.Parser.Nif
+  alias Zigler.Parser.{Nif, Resource}
 
   @moduletag :parser
 
@@ -17,7 +17,7 @@ defmodule ZiglerTest.ParserTest do
 
       """)
 
-      assert %Nif{arity: 0, name: :foo, params: [], retval: "i64"} = global
+      assert %Nif{arity: 0, name: :foo, args: [], retval: "i64"} = global
     end
 
     test "can correctly parse a zig block with a multiple nif function and junk" do
@@ -40,14 +40,71 @@ defmodule ZiglerTest.ParserTest do
 
       """)
 
-      assert Enum.any?(global, &match?(%Nif{arity: 0, name: :foo, params: [], retval: "i64"}, &1))
-      assert Enum.any?(global, &match?(%Nif{arity: 2, name: :oof, params: ["i64", "f64"], retval: "i64"}, &1))
+      assert Enum.any?(global, &match?(%Nif{arity: 0, name: :foo, args: [], retval: "i64"}, &1))
+      assert Enum.any?(global, &match?(%Nif{arity: 2, name: :oof, args: ["i64", "f64"], retval: "i64"}, &1))
+    end
+
+    test "can correctly parse a zig block with a resource section" do
+      assert {:ok, [], "", %Parser{global: [global]}, _, _} = Parser.parse_zig_block("""
+
+      /// resource: foo definition
+      const foo = i64;
+
+      """)
+
+      assert %Resource{name: :foo} = global
+    end
+
+    test "can correctly match up a zig block with resource cleanup after the resource definition" do
+      assert {:ok, [], "", %Parser{global: [global]}, _, _} = Parser.parse_zig_block("""
+
+      /// resource: foo definition
+      const foo = i64;
+
+      /// resource: foo cleanup
+      fn foo_cleanup(env: beam.env, foo_ptr: *foo) void {
+        // code that does something
+      }
+
+      """)
+
+      assert %Resource{name: :foo, cleanup: :foo_cleanup} = global
+    end
+
+    test "can correctly match up a zig block with resource cleanup before the resource definition" do
+      assert {:ok, [], "", %Parser{global: [global]}, _, _} = Parser.parse_zig_block("""
+
+      /// resource: foo cleanup
+      fn foo_cleanup(env: beam.env, foo_ptr: *foo) void {
+        // code that does something
+      }
+
+      /// resource: foo definition
+      const foo = i64;
+
+      """)
+
+      assert %Resource{name: :foo, cleanup: :foo_cleanup} = global
+    end
+
+    test "will generate a resource struct for a long nif" do
+      assert {:ok, [], "", %Parser{global: global}, _, _} = Parser.parse_zig_block("""
+
+      /// nif: foo/0 long
+      fn foo() i64 {
+        return 47;
+      }
+
+      """)
+
+      assert Enum.any?(global, &match?(%Resource{name: :__foo_cache_ptr__, cleanup: :__foo_cache_cleanup__}, &1))
+      assert Enum.any?(global, &match?(%Nif{name: :foo, opts: [long: true]}, &1))
     end
   end
 
   describe "the zig code parser" do
 
-    @empty_module %Zigler.Module{file: "", module: __MODULE__, app: :zigler}
+    @empty_module %Zigler.Module{file: "", module: __MODULE__, otp_app: :zigler}
 
     test "can correctly parse a zig block with a single nif function" do
       assert %Zigler.Module{nifs: [nif]} = Parser.parse("""
@@ -57,9 +114,9 @@ defmodule ZiglerTest.ParserTest do
         return 47;
       }
 
-      """, @empty_module, 1)
+      """, @empty_module, "foo.ex", 1)
 
-      assert %Nif{arity: 0, name: :foo, params: [], retval: "i64"} = nif
+      assert %Nif{arity: 0, name: :foo, args: [], retval: "i64"} = nif
     end
 
     test "can correctly chain zig parsing events" do
@@ -70,7 +127,7 @@ defmodule ZiglerTest.ParserTest do
         return 47;
       }
 
-      """, @empty_module, 1)
+      """, @empty_module, "foo.ex", 1)
 
       assert %Zigler.Module{nifs: nifs} = Parser.parse("""
       const bar = struct {
@@ -83,20 +140,18 @@ defmodule ZiglerTest.ParserTest do
         return rab + 1;
       }
 
-      """, first_parse, 1)
+      """, first_parse, "foo.ex", 1)
 
-      assert Enum.any?(nifs, &match?(%Nif{arity: 0, name: :foo, params: [], retval: "i64"}, &1))
-      assert Enum.any?(nifs, &match?(%Nif{arity: 2, name: :oof, params: ["i64", "f64"], retval: "i64"}, &1))
+      assert Enum.any?(nifs, &match?(%Nif{arity: 0, name: :foo, args: [], retval: "i64"}, &1))
+      assert Enum.any?(nifs, &match?(%Nif{arity: 2, name: :oof, args: ["i64", "f64"], retval: "i64"}, &1))
     end
 
-    test "correctly puts content into the code parameter" do
+    test "correctly puts content into the code argument" do
       code1 = """
-
       /// nif: foo/0
       fn foo() i64 {
         return 47;
       }
-
       """
 
       code2 = """
@@ -109,11 +164,10 @@ defmodule ZiglerTest.ParserTest do
       fn oof(rab: i64, zab: f64) i64 {
         return rab + 1;
       }
-
       """
 
-      first_parse = Parser.parse(code1, @empty_module, 1)
-      assert %Zigler.Module{code: code} = Parser.parse(code2, first_parse, 1)
+      first_parse = Parser.parse(code1, @empty_module, "foo.ex", 1)
+      assert %Zigler.Module{code: code} = Parser.parse(code2, first_parse, "foo.ex", 1)
 
       code_binary = IO.iodata_to_binary(code)
 
@@ -128,7 +182,23 @@ defmodule ZiglerTest.ParserTest do
       }
       """
 
-      assert_raise CompileError, fn -> Parser.parse(code, @empty_module, 1) end
+      assert_raise SyntaxError, fn -> Parser.parse(code, @empty_module, "foo.ex", 1) end
+    end
+
+    test "can correctly parse a zig block with a resource declaration" do
+      assert %Zigler.Module{resources: [resource]} = Parser.parse("""
+
+      /// resource: bar definition
+      const bar = i64;
+
+      /// nif: foo/0
+      fn foo() i64 {
+        return 47;
+      }
+
+      """, @empty_module, "foo.ex", 1)
+
+      assert %Resource{name: :bar} = resource
     end
   end
 end

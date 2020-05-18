@@ -4,6 +4,7 @@ defmodule ZiglerTest.Parser.DocstringTest do
 
   alias Zigler.Parser
   alias Zigler.Parser.Nif
+  alias Zigler.Parser.Resource
 
   @moduletag :parser
   @moduletag :docstring
@@ -92,6 +93,23 @@ defmodule ZiglerTest.Parser.DocstringTest do
     end
   end
 
+  describe "the resource parser" do
+    @describetag :resource
+    test "correctly assigns a resource declaration" do
+      assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_resource_declaration("""
+      /// resource: foo definition
+      """)
+      assert %Resource{name: :foo} = local
+    end
+
+    test "adds in contextual documentation" do
+      assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_resource_declaration("""
+      /// resource: foo definition
+      """, context: %{local: {:doc, "doc"}})
+      assert %Resource{doc: "doc"} = local
+    end
+  end
+
   describe "the docstring parser" do
     test "registers a single docstring line" do
       assert {:ok, [], _, %Parser{local: local}, _, _} = Parser.parse_docstring("""
@@ -129,7 +147,7 @@ defmodule ZiglerTest.Parser.DocstringTest do
     end
 
     test "should error if in the local context of a function" do
-      assert_raise CompileError, fn ->
+      assert_raise SyntaxError, fn ->
         Parser.parse_docstring("""
         /// foo
         """, context: %{local: %Nif{name: :foo, arity: 0}})

@@ -10,7 +10,7 @@ defmodule Zigler.MixProject do
 
   def project do
     env = Mix.env()
-    if Mix.env == :unit do
+    if Mix.env in [:unit, :isolated] do
       # elixir doesn't allow us to run tests in any environment besides `:test`.
       # so if we send ourselves into the unit tests, we'll have to ninja
       # ourselves back into the test environment.
@@ -24,7 +24,7 @@ defmodule Zigler.MixProject do
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
       deps: deps(),
-      aliases: [docs: "zig_doc", "test.unit": "test"],
+      aliases: [docs: "zig_doc", "test.unit": "test", "test.isolated": "test"],
       package: [
         description: "Zig nif library",
         licenses: ["MIT"],
@@ -37,6 +37,7 @@ defmodule Zigler.MixProject do
       test_coverage: [tool: ExCoveralls],
       preferred_cli_env: [
         "test.unit": :unit,
+        "test.isolated": :isolated,
         coveralls: :test,
         "coveralls.detail": :test,
         "coveralls.post": :test,
@@ -51,21 +52,23 @@ defmodule Zigler.MixProject do
   def application, do: [extra_applications: [:logger]]
 
   defp elixirc_paths(:dev), do: ["lib", "zigdoc"]
-  # integration tests will need the support directory, but the unit
-  # tests don't.
-  defp elixirc_paths(:test), do: ["lib"]#, "test/support"]
+  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:unit), do: ["lib", "test/support"]
+  defp elixirc_paths(:isolated), do: ["lib", "test/isolated/support"]
   defp elixirc_paths(_), do: ["lib"]
 
   # running `mix test` executes both integration tests and unit tests.
   # running `mix test.unit` executes just the unit tests.
+  # comment-twiddle next lines to run a single test in isolation
   defp test_paths(:test), do: ["test/integration", "test/unit"]
   defp test_paths(:unit), do: ["test/unit"]
+  defp test_paths(:isolated), do: ["test/isolated"]
   defp test_paths(_), do: []
 
   def deps do
     [
       # credo
-      {:credo, "~> 1.1.0", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.4.0", only: [:dev, :test], runtime: false},
       # dialyzer
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       # coverage testing

@@ -2,26 +2,25 @@ defmodule Zigler.Compiler do
 
   @moduledoc false
 
-  @enforce_keys [:staging_dir, :code_file, :module_spec]
+  @enforce_keys [:assembly_dir, :code_file, :assembly, :module_spec]
 
   # contains critical information for the compilation.
-  defstruct @enforce_keys
+  defstruct @enforce_keys ++ [test_dirs: []]
+
+  alias Zigler.Assembler
 
   @type t :: %__MODULE__{
-    staging_dir: Path.t,
-    code_file:   Path.t,
-    module_spec: Zigler.Module.t
+    assembly_dir: Path.t,
+    assembly:     [Assembler.t],
+    code_file:    Path.t,
+    module_spec:  Zigler.Module.t
   }
 
   require Logger
 
-  alias Zigler.Compiler.ErrorParser
-  alias Zigler.Import
   alias Zigler.Zig
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
-  @erl_nif_zig_h Path.join(@zig_dir_path, "include/erl_nif_zig.h")
-  @erl_nif_zig Path.join(@zig_dir_path, "beam/erl_nif.zig")
 
   @doc false
   def basename(version) do
@@ -40,14 +39,18 @@ defmodule Zigler.Compiler do
     "zig-#{os}-x86_64-#{version}"
   end
 
-  @release_mode %{
-    fast:  ["--release-fast"],
-    safe:  ["--release-safe"],
-    small: ["--release-small"],
-    debug: []
-  }
+  #@release_mode %{
+  #  fast:  ["--release-fast"],
+  #  safe:  ["--release-safe"],
+  #  small: ["--release-small"],
+  #  debug: []
+  #}
 
   defmacro __before_compile__(context) do
+
+    ###########################################################################
+    # VERIFICATION
+
     module = Module.get_attribute(context.module, :zigler)
 
     zig_tree = Path.join(@zig_dir_path, basename(module.zig_version))
@@ -60,99 +63,27 @@ defmodule Zigler.Compiler do
         description: "zig hasn't been downloaded.  Run mix zigler.get_zig #{module.zig_version}"
     end
 
-    compiler = precompile(module)
-
-    unless module.dry_run do
-      compile(compiler, zig_tree)
+    if module.nifs == [] do
+      raise CompileError,
+        file: context.file,
+        description: "no nifs found in the module #{context.module}"
     end
 
+    ###########################################################################
+    # COMPILATION STEPS
+
+    compiler = precompile(module)
+    unless module.dry_run do
+      Zig.compile(compiler, zig_tree)
+    end
     cleanup(compiler)
 
-    #Enum.each(zig_libs, &verify_if_shared/1)
-#
-    #mod_name = Macro.underscore(context.module)
-    #tmp_dir = Path.join("/tmp/.elixir-nifs", mod_name)
-    #zig_nif_file = Path.join(tmp_dir, "zig_nif.zig")
-#
-    #zig_header = Zig.nif_header()
-#
-    ## count newlines in the header and the code:
-    #newlines = count_newlines([zig_header, zig_code]) + 1
-#
-    #full_code = [zig_header,
-    #  zig_code,
-    #  "// #{zig_nif_file} line: #{newlines}\n",  #drop in a comment back
-    #  Enum.map(zig_specs, &Zig.nif_adapter/1),
-    #  zig_longs,
-    #  Zig.nif_exports(zig_specs),
-    #  Zig.nif_resources(resources),
-    #  Zig.nif_footer(context.module, zig_specs, resources)]
-#
-    #nif_dir = Application.app_dir(app, "priv/nifs")
-#
-    #File.mkdir_p!(tmp_dir)
-#
-    #_ = Enum.into(full_code, File.stream!(zig_nif_file))
-#
-    ## put the erl_nif.zig adapter into the path.
-    #File.cp!(@erl_nif_zig, Path.join(tmp_dir, "erl_nif.zig"))
-#
-    ## now put the beam.zig file into the temporary directory too.
-    #beam_zig_src = Path.join(@zig_dir_path, "beam/beam.zig")
-    #File.cp!(beam_zig_src, Path.join(tmp_dir, "beam.zig"))
-#
-    ## included header file operations.
-    #src_include_dir = Path.join(src_dir, "include") # NB: this might not exist.
-    #dst_include_dir = Path.join(tmp_dir, "include")
-    #File.mkdir_p!(dst_include_dir)
-#
-    ## make sure that erl_nif_zig.h is in the include directory
-    #File.cp!(@erl_nif_zig_h, Path.join(dst_include_dir, "erl_nif_zig.h"))
-#
-    #if File.dir?(src_include_dir) do
-    #  src_include_dir
-    #  |> File.ls!
-    #  |> Enum.each(fn file ->
-    #    src_include_dir
-    #    |> Path.join(file)
-    #    |> File.cp!(Path.join(dst_include_dir, file))
-    #  end)
-    #end
-#
-    ## now put the zig import dependencies into the directory, too.
-    #zig_code
-    #|> IO.iodata_to_binary
-    #|> Import.recursive_find(src_dir)
-    #|> copy_files(src_dir, tmp_dir, in_test?)
-#
-    #include_opts = Enum.flat_map([dst_include_dir] ++ c_includes, &["-isystem", &1])
-    #lib_opts = Enum.flat_map(zig_libs, &["--library", &1])
-#
-    ## now use zig to build the library in the temporary directory.
-    ## also add in lib search paths that correspond to where we've downloaded
-    ## our zig cache
-#
-    ## move the dynamic library out of the temporary directory and into the priv directory.
-#
-    ## normally we would make this cp! but having a compiler error here, e.g. stop tests is way
-    ## worse than having the module fail to build (which will not stop tests).
-    #File.cp(Path.join(tmp_dir, "libzig_nif.so.0.0.0"), Path.join(nif_dir, mod_name <> ".so"))
-#
-    #mod_path = app
-    #|> Application.app_dir("priv/nifs")
-    #|> Path.join(Macro.underscore(__CALLER__.module))
-#
-    #quote do
-    #  def __load_nifs__ do
-    #    unquote(mod_path)
-    #    |> String.to_charlist()
-    #    |> :erlang.load_nif(0)
-    #  end
-    #end
+    ###########################################################################
+    # MACRO SETPS
 
     nif_functions = Enum.map(module.nifs, &function_skeleton/1)
 
-    mod_path = module.app
+    mod_path = module.otp_app
     |> Zigler.nif_dir
     |> Path.join(Zigler.nif_name(module, false))
 
@@ -163,121 +94,115 @@ defmodule Zigler.Compiler do
       end
     else
       quote do
+        import Logger
         unquote_splicing(nif_functions)
         def __load_nifs__ do
           unquote(mod_path)
           |> String.to_charlist()
           |> :erlang.load_nif(0)
+          |> case do
+            :ok -> :ok
+            {:error, any} ->
+              Logger.error("problem loading module #{inspect any}")
+          end
         end
       end
     end
   end
 
-  def function_skeleton(%{arity: arity, name: name}) do
+  #############################################################################
+  ## FUNCTION SKELETONS
 
+  alias Zigler.Code.LongRunning
+  alias Zigler.Parser.Nif
+  alias Zigler.Typespec
+
+  def function_skeleton(nif = %Nif{opts: opts, test: nil}) do
+    typespec = Typespec.from_nif(nif)
+    if opts[:long] do
+      {:__block__, _, block_contents} = LongRunning.function_skeleton(nif)
+      quote do
+        unquote(typespec)
+        unquote_splicing(block_contents)
+      end
+    else
+      quote do
+        unquote(typespec)
+        unquote(basic_fn(nif))
+      end
+    end
+  end
+  def function_skeleton(%Nif{test: test}) do
+    raise_msg = "nif for test #{test} not found"
+    raise_code = quote do
+      raise unquote(raise_msg)
+    end
+    {:def, [context: Elixir, import: Kernel],
+      [
+        {test, [context: Elixir], Elixir},
+        [do: raise_code]
+      ]}
+  end
+
+  defp basic_fn(%{name: name, arity: arity}) do
     text = "nif for function #{name}/#{arity} not bound"
 
-    params = if arity == 0 do
-      []
+    args = if arity == 0 do
+      Elixir
     else
       for _ <- 1..arity, do: {:_, [], Elixir}
     end
 
     {:def, [context: Elixir, import: Kernel],
       [
-        {name, [context: Elixir], params},
+        {name, [context: Elixir], args},
         [do: {:raise, [context: Elixir, import: Kernel], [text]}]
       ]}
   end
 
-  @staging_root Application.get_env(:zigler, :staging_root, "/tmp/zigler_compiler")
+  #############################################################################
+  ## STEPS
 
   @spec precompile(Zigler.Module.t) :: t | no_return
   def precompile(module) do
     # build the staging directory.
-    random_stamp = DateTime.utc_now |> :erlang.phash2 |> Integer.to_string(16)
-    staging_dir = Path.join(@staging_root, "#{module.module}-#{random_stamp}")
-    File.mkdir_p(staging_dir)
+    assembly_dir = Path.join(System.tmp_dir!(),
+      ".zigler_compiler/#{Mix.env}/#{module.module}")
+
+    File.mkdir_p!(assembly_dir)
+
+    # create the main code file
+    code_file = Path.join(assembly_dir, "#{module.module}.zig")
+    code_content = Zigler.Code.generate_main(%{module | zig_file: code_file})
 
     # define the code file and build it.
-    code_file = Path.join(staging_dir, "#{module.module}.zig")
-    File.write!(code_file, Zigler.Code.generate_main(module))
+    File.write!(code_file, code_content)
 
-    # copy in beam.zig
-    File.cp!("zig/beam/beam.zig", Path.join(staging_dir, "beam.zig"))
-    # copy in erl_nif.zig
-    File.cp!("zig/beam/erl_nif.zig", Path.join(staging_dir, "erl_nif.zig"))
-    # copy in erl_nif_zig.h
-    File.mkdir_p!(Path.join(staging_dir, "include"))
-    File.cp!("zig/include/erl_nif_zig.h", Path.join(staging_dir, "include/erl_nif_zig.h"))
+    # parse the module code to generate the full list of assets
+    # that need to be brought in to the assembly directory
+    assembly = Assembler.parse_code(code_content,
+      parent_dir: Path.dirname(module.file),
+      target_dir: assembly_dir,
+      pub: true,
+      context: [])
 
-    # assemble the module struct
+    Assembler.assemble_kernel!(assembly_dir)
+    Assembler.assemble_assets!(assembly, assembly_dir)
+
     %__MODULE__{
-      staging_dir: staging_dir,
-      code_file:   code_file,
-      module_spec: module
+      assembly_dir: assembly_dir,
+      assembly:     assembly,
+      code_file:    code_file,
+      module_spec:  module,
     }
-  end
-
-  @spec compile(t, Path.t) :: :ok | no_return
-  defp compile(compiler, zig_tree) do
-    # first move everything into the staging directory.
-    Zig.compile(compiler, zig_tree)
-    :ok
   end
 
   @spec cleanup(t) :: :ok | no_return
   defp cleanup(compiler) do
-    File.rm_rf!(compiler.staging_dir)
+    # in dev and test we keep our code around for debugging purposes.
+    unless Mix.env in [:dev, :test] do
+      File.rm_rf!(compiler.assembly_dir)
+    end
     :ok
   end
-
-#  defp copy_files(files, src_dir, dst_dir, in_test?) do
-#
-#    copy_fn = if in_test?, do: &copy_test/2, else: &File.cp!/2
-#
-#    Enum.each(files, fn file_path ->
-#      src_file_path = Path.join(src_dir, file_path) |> Path.expand()
-#      dst_file_path = Path.join(dst_dir, file_path)
-#      # we might be trying to import something which doesn't exist as
-#      # a relative file (e.g. `std`); in that case just don't complain,
-#      # but also don't copy.
-#      if File.exists?(src_file_path) do
-#        # make sure our target directory exists.
-#        dst_file_path
-#        |> Path.dirname
-#        |> File.mkdir_p!
-#
-#        copy_fn.(src_file_path, dst_file_path)
-#      end
-#    end)
-#  end
-#
-#  alias Zigler.Unit
-#
-#  defp copy_test(src_file_path, dst_file_path) do
-#    modified_content = src_file_path
-#    |> File.read!
-#    |> Unit.Parser.modify_file(src_file_path)
-#
-#    File.write!(dst_file_path, modified_content)
-#  end
-#
-#  defp count_newlines([]), do: 0
-#  defp count_newlines([a | b]) do
-#    count_newlines(a) + count_newlines(b)
-#  end
-#  defp count_newlines(str) when is_binary(str) do
-#    str |> String.to_charlist |> Enum.count(&(&1 == ?\n))
-#  end
-#  defp count_newlines(x) do
-#    if x == ?\n, do: 1, else: 0
-#  end
-#
-#  defp verify_if_shared(lib) do
-#    if String.ends_with?(lib, ".so") do
-#      File.exists?(lib) || raise CompileError, description: "shared object library #{lib} not found"
-#    end
-#  end
-#
 end

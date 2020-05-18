@@ -87,12 +87,13 @@
 ///
 /// const ok_slice="ok"[0..];
 /// fn to_ok_tuple(env: beam.env, value: i64) !beam.term {
-///   tuple_slice: []term = try beam.allocator.alloc(beam.term, 2);
+///   var tuple_slice: []term = try beam.allocator.alloc(beam.term, 2);
+///   defer beam.allocator.free(tuple_slice);
 ///
 ///   tuple_slice[0] = beam.make_atom(env, ok_slice);
 ///   tuple_slice[1] = beam.make_i64(env, value);
 ///
-///   return beam.make_tuple(tuple_slice);
+///   return beam.make_tuple(env, tuple_slice);
 /// }
 ///
 /// ```
@@ -110,12 +111,12 @@ const Allocator = std.mem.Allocator;
 // basic allocator
 
 /// !value
-/// provides a BEAM allocator.  Use `beam.allocator.alloc` everywhere to safely
-/// allocate memory efficiently, and use `beam.allocator.free` to release that
-/// memory.
+/// provides a default BEAM allocator.  Use `beam.allocator.alloc` everywhere 
+/// to safely allocate memory efficiently, and use `beam.allocator.free` to 
+/// release that memory.
 ///
 /// Note this does not make the allocated memory *garbage collected* by the
-/// BEAM.  Stategies for handing over GC'able memory are forthcoming
+/// BEAM.
 ///
 /// ### Example
 ///
@@ -128,8 +129,9 @@ const Allocator = std.mem.Allocator;
 ///   return beam.allocator.alloc(u8, 10);
 /// }
 /// ```
-pub const allocator = &allocator_state;
-var allocator_state = Allocator{
+pub threadlocal var allocator: *Allocator = &beam_allocator;
+
+var beam_allocator = Allocator{
   .reallocFn = beam_realloc,
   .shrinkFn = beam_shrink
 };
@@ -167,6 +169,126 @@ fn beam_shrink(_self: *Allocator,
     return @ptrCast([*]u8, buf)[0..new_size];
   }
 }
+
+/// creates a specialized auto-allocator which manages memory on behalf of
+/// the thread and can clean up after a thread, so that memory management is not
+/// necessary for this nif function call.
+pub const AutoAllocator = struct {
+  // members
+  allocator: *Allocator,
+  buffer_list: std.LinkedList([]u8),
+
+  const BufNode = std.LinkedList([]u8).Node;
+  pub fn init() AutoAllocator {
+    return AutoAllocator{
+      .allocator = Allocator{
+          .reallocFn = realloc,
+          .shrinkFn = shrink,
+      },
+      .buffer_list = std.LinkedList([]u8).init(),
+    };
+  }
+
+  pub fn deinit(self: *AutoAllocator) void {
+    var node_or_null = self.buffer_list.first;
+    while (node_or_null) |node| {
+      // this has to occur before the free because the free frees node
+      node_or_null = node.next;
+      allocator.free(node.data);
+      // destroy the node.
+      std.LinkedList.destroyNode(self.buffer_list, node, allocator);
+    }
+  }
+
+  fn realloc(self_generic: *Allocator, 
+             old_mem: []u8, 
+             old_align: u29, 
+             new_size: usize, 
+             new_align: u29) ![]u8 {
+
+    const self = @fieldParentPtr(ThreadAllocator, "allocator", self_generic);
+
+    if (old_mem.len == 0) {
+      // if we're creating a new memory space, use basic beam alloc.
+      const buf = e.enif_alloc(new_size) orelse return error.OutOfMemory;
+      // then prepend it to the linked list.
+      do_prepend(self, buf);
+
+      return @ptrCast([*]u8, buf)[0..new_size];
+    } else {
+      // if we're actually resizing a memory space, use realloc.
+      const old_ptr = @ptrCast(*c_void, old_mem.ptr);
+      const buf = e.enif_realloc(old_ptr, new_size) orelse return error.OutOfMemory;
+
+      // remove the old element of the buffer.
+      self.buffer_list.remove(old_mem);
+      // put the new buffer in there.
+      var new_buf = @ptrCast([*]u8, buf)[0..new_size];
+
+      do_prepend(self, new_buf);
+
+      // return the new slice.
+      return new_buf;
+    }
+  }
+
+  fn shrink(self_generic: *Allocator,
+               old_mem: []u8,
+               old_align: u29,
+               new_size: usize,
+               new_align: u29) []u8 {
+    const self = @fieldParentPtr(ThreadAllocator, "allocator", self_generic);
+    if (new_size == 0) {
+      // use the beam engine to free the memory slice.
+      e.enif_free(@ptrCast(*c_void, old_mem.ptr));
+  
+      // remove it from the linked list.
+      std.LinkedList.do_remove(self, old_mem);
+
+      // send back a generic empty slice.
+      return []u8{};
+    } else {
+      // if we're actually resizing a memory space, use realloc.
+      const old_ptr = @ptrCast(*c_void, old_mem.ptr);
+      const buf = e.enif_realloc(old_ptr, new_size) orelse return error.OutOfMemory;
+
+      // remove the old element of the buffer.
+      self.buffer_list.remove(old_mem);
+      // put the new buffer in there.
+      var new_buf = @ptrCast([*]u8, buf)[0..new_size];
+
+      do_prepend(self, new_buf);
+
+      // return the new slice.
+      return new_buf;
+    }
+  }
+  
+  fn do_prepend(self: *ThreadAllocator, buf: []u8) ![]u8 {
+    // use the beam allocator to allocate a new memory node.
+    var new_node = try std.LinkedList.allocateNode(self.buffer_list, allocator);
+    // store the buffer into the node
+    new_node.data = buf;
+    // append the buffer value to the node.
+    std.LinkedList.prepend(self.buffer_list, buf);
+    // return the newly allocated memory
+    return buf;
+  }
+
+  fn do_remove(self: *ThreadAllocator, buf: []u8) void {
+    // find the node where buf is.
+    var current_node: *std.LinkedList.Node = self.first 
+      orelse unreachable;
+    while (current_node.data != buf) {
+      current_node = current_node.next 
+        orelse unreachable;
+    }
+    // remove it.
+    std.LinkedList.remove(self.buffer_list, current_node);
+    // free the buffer node
+    std.LinkedList.destroyNode(self.buffer_list, current_node, allocator);
+  }
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 // syntactic sugar: important elixir terms
@@ -235,6 +357,9 @@ pub fn get(comptime T: type, environment: env, value: term) !T {
     isize  => return get_isize(environment, value),
     usize  => return get_usize(environment, value),
     u8     => return get_u8(environment, value),
+    u16    => return get_u16(environment, value),
+    u32    => return get_u32(environment, value),
+    u64    => return get_u64(environment, value),
     i32    => return get_i32(environment, value),
     i64    => return get_i64(environment, value),
     f16    => return get_f16(environment, value),
@@ -258,6 +383,17 @@ pub fn get_c_int(environment: env, src_term: term) !c_int {
   } else { return Error.FunctionClauseError; }
 }
 
+/// Takes a BEAM int term and returns a `c_uint` value.  Should only be used for
+/// C interop with Zig functions.
+///
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
+pub fn get_c_uint(environment: env, src_term: term) !c_uint {
+  var result: c_uint = undefined;
+  if (0 != e.enif_get_uint(environment, src_term, &result)) {
+    return result;
+  } else { return Error.FunctionClauseError; }
+}
+
 /// Takes a BEAM int term and returns a `c_long` value.  Should only be used
 /// for C interop with Zig functions.
 ///
@@ -265,6 +401,17 @@ pub fn get_c_int(environment: env, src_term: term) !c_int {
 pub fn get_c_long(environment: env, src_term: term) !c_long {
   var result: c_long = undefined;
   if (0 != e.enif_get_long(environment, src_term, &result)) {
+    return result;
+  } else { return Error.FunctionClauseError; }
+}
+
+/// Takes a BEAM int term and returns a `c_ulong` value.  Should only be used
+/// for C interop with Zig functions.
+///
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
+pub fn get_c_ulong(environment: env, src_term: term) !c_ulong {
+  var result: c_ulong = undefined;
+  if (0 != e.enif_get_ulong(environment, src_term, &result)) {
     return result;
   } else { return Error.FunctionClauseError; }
 }
@@ -300,9 +447,44 @@ pub fn get_usize(environment: env, src_term: term) !usize {
 pub fn get_u8(environment: env, src_term: term) !u8 {
   var result: c_int = undefined;
   if (0 != e.enif_get_int(environment, src_term, &result)) {
-    if ((result >= 0) and (result <= 255)) {
+    if ((result >= 0) and (result <= 0xFF)) {
       return @intCast(u8, result);
     } else { return Error.FunctionClauseError; }
+  } else { return Error.FunctionClauseError; }
+}
+
+/// Takes a BEAM int term and returns a `u16` value.
+///
+/// Note that this conversion function checks to make sure it's in range
+/// (`0..65535`).
+///
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
+pub fn get_u16(environment: env, src_term: term) !u16 {
+  var result: c_int = undefined;
+  if (0 != e.enif_get_int(environment, src_term, &result)) {
+    if ((result >= 0) and (result <= 0xFFFF)) {
+      return @intCast(u16, result);
+    } else { return Error.FunctionClauseError; }
+  } else { return Error.FunctionClauseError; }
+}
+
+/// Takes a BEAM int term and returns a `u32` value.
+///
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
+pub fn get_u32(environment: env, src_term: term) !u32 {
+  var result: c_uint = undefined;
+  if (0 != e.enif_get_uint(environment, src_term, &result)) {
+    return @intCast(u32, result);
+  } else { return Error.FunctionClauseError; }
+}
+
+/// Takes a BEAM int term and returns a `u64` value.
+///
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:integer/0`
+pub fn get_u64(environment: env, src_term: term) !u64 {
+  var result: c_ulong = undefined;
+  if (0 != e.enif_get_ulong(environment, src_term, &result)) {
+    return @intCast(u64, result);
   } else { return Error.FunctionClauseError; }
 }
 
@@ -464,7 +646,7 @@ pub const pid = e.ErlNifPid;
 /// struct.
 ///
 /// Note that this is a fairly opaque struct and you're on your
-/// own as to what you can do with this (for now), except as a parameter
+/// own as to what you can do with this (for now), except as a argument
 /// for the `e.enif_send` function.
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.pid/0`
@@ -486,6 +668,10 @@ pub fn self(environment: env) !pid {
   } else {
     return Error.FunctionClauseError;
   }
+}
+
+pub fn send(c_env: env, to_pid: pid, m_env: env, msg: term) bool {
+  return (e.enif_send(c_env, &to_pid, m_env, msg) == 1);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -654,22 +840,42 @@ pub fn get_bool(environment: env, val: term) !bool {
 pub fn make(comptime T: type, environment: env, val: T) term {
   switch (T) {
     u8     => return make_u8(environment, val),
-    c_int  => return make_c_int(environment, val),
-    c_long => return make_c_long(environment, val),
-    isize  => return make_isize(environment, val),
-    usize  => return make_usize(environment, val),
-    i32    => return make_i32(environment, val),
-    i64    => return make_i64(environment, val),
-    f16    => return make_f16(environment, val),
-    f32    => return make_f32(environment, val),
-    f64    => return make_f64(environment, val),
-    else   => unreachable
+    u16    => return make_u16(environment, val),
+    u32    => return make_u32(environment, val),
+    u64     => return make_u64(environment, val),
+    c_int   => return make_c_int(environment, val),
+    c_uint  => return make_c_uint(environment, val),
+    c_long  => return make_c_long(environment, val),
+    c_ulong => return make_c_ulong(environment, val),
+    isize   => return make_isize(environment, val),
+    usize   => return make_usize(environment, val),
+    i32     => return make_i32(environment, val),
+    i64     => return make_i64(environment, val),
+    f16     => return make_f16(environment, val),
+    f32     => return make_f32(environment, val),
+    f64     => return make_f64(environment, val),
+    else    => unreachable
   }
 }
 
 /// converts a char (`u8`) value into a BEAM `t:integer/0`.
 pub fn make_u8(environment: env, chr: u8) term {
-  return e.enif_make_int(environment, @intCast(c_int, chr));
+  return e.enif_make_uint(environment, @intCast(c_uint, chr));
+}
+
+/// converts a unsigned (`u16`) value into a BEAM `t:integer/0`.
+pub fn make_u16(environment: env, val: u16) term {
+  return e.enif_make_uint(environment, @intCast(c_uint, val));
+}
+
+/// converts a unsigned (`u32`) value into a BEAM `t:integer/0`.
+pub fn make_u32(environment: env, val: u32) term {
+  return e.enif_make_uint(environment, @intCast(c_uint, val));
+}
+
+/// converts a unsigned (`u64`) value into a BEAM `t:integer/0`.
+pub fn make_u64(environment: env, val: u64) term {
+  return e.enif_make_ulong(environment, @intCast(c_ulong, val));
 }
 
 /// converts a `c_int` value into a BEAM `t:integer/0`.
@@ -677,9 +883,19 @@ pub fn make_c_int(environment: env, val: c_int) term {
   return e.enif_make_int(environment, val);
 }
 
+/// converts a `c_uint` value into a BEAM `t:integer/0`.
+pub fn make_c_uint(environment: env, val: c_uint) term {
+  return e.enif_make_uint(environment, val);
+}
+
 /// converts a `c_long` value into a BEAM `t:integer/0`.
 pub fn make_c_long(environment: env, val: c_long) term {
   return e.enif_make_long(environment, val);
+}
+
+/// converts a `c_ulong` value into a BEAM `t:integer/0`.
+pub fn make_c_ulong(environment: env, val: c_ulong) term {
+  return e.enif_make_ulong(environment, val);
 }
 
 /// converts an `isize` value into a BEAM `t:integer/0`.
@@ -754,7 +970,7 @@ pub fn make_slice(environment: env, val: []const u8) term {
 /// no memory allocation inside of Zig is performed and the BEAM environment
 /// is responsible for the resulting binary.  You are responsible for managing
 /// the allocation of the slice.
-pub fn make_c_string(environment: env, val: [*c] const u8) term{
+pub fn make_c_string(environment: env, val: [*c] const u8) term {
   var result: e.ErlNifTerm = undefined;
   var len: usize = 0;
 
@@ -773,7 +989,8 @@ pub fn make_c_string(environment: env, val: [*c] const u8) term{
 
 /// converts a slice of `term`s into a BEAM `t:tuple/0`.
 pub fn make_tuple(environment: env, val: []term) term {
-  return e.enif_make_tuple_from_array(environment, val, val.len);
+  return e.enif_make_tuple_from_array(
+    environment, @ptrCast([*c]term, val.ptr), @intCast(c_uint, val.len));
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -781,7 +998,8 @@ pub fn make_tuple(environment: env, val: []term) term {
 
 /// converts a slice of `term`s into a BEAM `t:list/0`.
 pub fn make_term_list(environment: env, val: []term) term {
-  return e.enif_make_list_from_array(environment, @ptrCast([*c]term, &val[0]), @intCast(c_uint, val.len));
+  return e.enif_make_list_from_array(
+    environment, @ptrCast([*c]term, val.ptr), @intCast(c_uint, val.len));
 }
 
 /// converts a Zig char slice (`[]u8`) into a BEAM `t:charlist/0`.
@@ -887,6 +1105,11 @@ pub fn make_bool(environment: env, val: bool) term {
   return if (val) e.enif_make_atom(environment, c"true") else e.enif_make_atom(environment, c"false");
 }
 
+/// creates a beam `nil` value.
+pub fn make_nil(environment: env) term {
+  return e.enif_make_atom(environment, c"nil");
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // ok and error tuples
 
@@ -977,7 +1200,7 @@ pub fn make_ref(environment: env) !term {
 ///////////////////////////////////////////////////////////////////////////////
 // resources
 
-pub const res = ?*e.ErlNifResourceType;
+pub const resource_type = ?*e.ErlNifResourceType;
 
 pub const resource = struct {
   // fix this V V V 
@@ -986,7 +1209,7 @@ pub const resource = struct {
     ResourceError
   };
 
-  pub fn create(comptime T : type, environment: env, res_typ: res, val : T) !term {
+  pub fn create(comptime T : type, environment: env, res_typ: resource_type, val : T) !term {
     var ptr : ?*c_void = e.enif_alloc_resource(res_typ, @sizeOf(T));
     var obj : *T = undefined;
 
@@ -999,9 +1222,8 @@ pub const resource = struct {
 
     return e.enif_make_resource(environment, ptr);
   }
-
   
-  pub fn update(comptime T : type, environment: env, res_typ: res, res_trm: term, new_val: T) !void {
+  pub fn update(comptime T : type, environment: env, res_typ: resource_type, res_trm: term, new_val: T) !void {
     var obj : ?*c_void = undefined;
 
     if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) { 
@@ -1015,7 +1237,7 @@ pub const resource = struct {
     val.* = new_val;
   }
 
-  pub fn fetch(comptime T : type, environment: env, res_typ: res, res_trm: term) !T {
+  pub fn fetch(comptime T : type, environment: env, res_typ: resource_type, res_trm: term) !T {
     var obj : ?*c_void = undefined;
 
     if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) { 
@@ -1033,7 +1255,7 @@ pub const resource = struct {
     return val.*;
   }
 
-  pub fn release(environment: env, res_typ: res, res_trm: term) void {
+  pub fn release(environment: env, res_typ: resource_type, res_trm: term) void {
     var obj : ?*c_void = undefined;
     var _rsrc = e.enif_get_resource(environment, res_trm, res_typ, &obj);
     return e.enif_release_resource(obj);
@@ -1057,7 +1279,7 @@ const enomem_slice = "enomem"[0..];
 /// OOM errors from `beam.allocator` can be converted to a generic erlang term
 /// that represents an exception.  Returning this from your NIF results in
 /// a BEAM throw event.
-pub fn throw_enomem(environment: env) term {
+pub fn raise_enomem(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, enomem_slice));
 }
 
@@ -1066,11 +1288,11 @@ const f_c_e_slice = "function_clause"[0..];
 /// This function is used to communicate `:function_clause` back to the BEAM as an
 /// exception.
 ///
-/// By default Zigler will do parameter input checking on value
+/// By default Zigler will do argument input checking on value
 /// ingress from the dynamic BEAM runtime to the static Zig runtime.
 /// You can also use this function to communicate a similar error by returning the
 /// resulting term from your NIF.
-pub fn throw_function_clause_error(environment: env) term {
+pub fn raise_function_clause_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, f_c_e_slice));
 }
 
@@ -1080,7 +1302,7 @@ const assert_slice = "assertion_error"[0..];
 /// exception.
 ///
 /// Used when running Zigtests, when trapping `beam.AssertionError.AssertionError`.
-pub fn throw_assertion_error(environment: env) term {
+pub fn raise_assertion_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, assert_slice));
 }
 
@@ -1096,7 +1318,26 @@ pub fn throw_assertion_error(environment: env) term {
 ///
 /// When building zigtests, `assert(...)` calls get lexically converted to
 /// `try beam.assert(...)` calls.
+pub fn assert(ok: bool, file: []const u8, line: i64) !void {
+  if (!ok) {
+    error_file = file;
+    error_line = line;
+    return AssertionError.AssertionError; // assertion failure
+  }
+}
 
-pub fn assert(ok: bool) !void {
-    if (!ok) return AssertionError.AssertionError; // assertion failure
+/// !value
+/// you can use this value to access the BEAM environment of your unit test.
+pub threadlocal var test_env: env = undefined;
+pub threadlocal var error_file: []const u8 = undefined;
+pub threadlocal var error_line: i64 = 0;
+
+// private function which fetches the threadlocal cache.
+pub fn test_error() term {
+  var tuple_slice: []term = allocator.alloc(term, 3) catch unreachable;
+  defer allocator.free(tuple_slice);
+  tuple_slice[0] = make_atom(test_env, "error");
+  tuple_slice[1] = make_slice(test_env, error_file);
+  tuple_slice[2] = make_i64(test_env, error_line);
+  return make_tuple(test_env, tuple_slice);
 }

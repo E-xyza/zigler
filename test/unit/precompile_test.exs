@@ -7,19 +7,19 @@ defmodule ZiglerTest.PrecompileTest do
 
   alias Zigler.Module
 
-  @module %Module{file: "foo.ex", module: Foo, app: :zigler}
+  @module %Module{file: "foo.ex", module: Foo, otp_app: :zigler}
 
   describe "when you run your precompile" do
     test "your staging directory is created" do
       compile = Zigler.Compiler.precompile(@module)
-      assert compile.staging_dir =~ "Foo"
-      assert File.dir?(compile.staging_dir)
+      assert compile.assembly_dir =~ "Foo"
+      assert File.dir?(compile.assembly_dir)
     end
 
     test "the code file is created" do
       compile = Zigler.Compiler.precompile(@module)
 
-      assert Path.dirname(compile.code_file) == compile.staging_dir
+      assert Path.dirname(compile.code_file) == compile.assembly_dir
       assert Path.basename(compile.code_file) =~ "Foo"
       assert Path.extname(compile.code_file) == ".zig"
       assert File.exists?(compile.code_file)
@@ -33,7 +33,7 @@ defmodule ZiglerTest.PrecompileTest do
     test "beam.zig is installed" do
       compile = Zigler.Compiler.precompile(@module)
 
-      assert compile.staging_dir
+      assert compile.assembly_dir
       |> Path.join("beam.zig")
       |> File.exists?
     end
@@ -41,7 +41,7 @@ defmodule ZiglerTest.PrecompileTest do
     test "erl_nif_zig.h is installed" do
       compile = Zigler.Compiler.precompile(@module)
 
-      assert compile.staging_dir
+      assert compile.assembly_dir
       |> Path.join("include/erl_nif_zig.h")
       |> File.exists?
     end

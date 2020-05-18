@@ -139,6 +139,7 @@ extern ErlNifTerm enif_make_uint(ErlNifEnv *, unsigned i);
 extern ErlNifTerm enif_make_long(ErlNifEnv *, long i);
 extern ErlNifTerm enif_make_tuple_from_array(ErlNifEnv*, const ErlNifTerm arr[], unsigned cnt);
 extern ErlNifTerm enif_make_list_from_array(ErlNifEnv*, const ErlNifTerm arr[], unsigned cnt);
+extern ErlNifTerm enif_make_pid(ErlNifEnv *, const ErlNifPid *);
 extern unsigned char* enif_make_new_binary(ErlNifEnv*, size_t size, ErlNifTerm* termp);
 
 // NIF Functions: etcetera
@@ -166,6 +167,25 @@ extern int enif_make_map_put(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, Erl
 extern int enif_get_map_value(ErlNifEnv *, ErlNifTerm map, ErlNifTerm key, ErlNifTerm *value);
 extern int enif_make_map_update(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, ErlNifTerm value, ErlNifTerm *map_out);
 extern int enif_make_map_remove(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, ErlNifTerm *map_out);
+
+// MONITORS
+typedef struct {
+    unsigned char data[sizeof(void *)*4];
+} ErlDrvMonitor;
+
+typedef ErlDrvMonitor ErlNifMonitor;
+
+// RESOURCE THINGS
+typedef int ErlNifEvent;
+typedef void ErlNifResourceDtor(ErlNifEnv*, void*);
+typedef void ErlNifResourceStop(ErlNifEnv*, void*, ErlNifEvent, int is_direct_call);
+typedef void ErlNifResourceDown(ErlNifEnv*, void*, ErlNifPid*, ErlNifMonitor*);
+
+typedef struct {
+    ErlNifResourceDtor* dtor;
+    ErlNifResourceStop* stop;  /* at ERL_NIF_SELECT_STOP event */
+    ErlNifResourceDown* down;  /* enif_monitor_process */
+} ErlNifResourceTypeInit;
 
 typedef struct enif_entry_t
 {

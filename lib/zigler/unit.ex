@@ -25,7 +25,7 @@ defmodule Zigler.Unit do
 
   ```
   defmodule MyZigModule do
-    use Zigler, app: :my_app
+    use Zigler, otp_app: :my_app
 
     ~Z\"""
     const dependent = @import("dependent.zig");
@@ -56,99 +56,94 @@ defmodule Zigler.Unit do
   the support of a BEAM VM), you should put them in subdirectories.
   """
 
-  defstruct [:title, :name]
-
-  @typedoc false
-  @type t :: %__MODULE__{title: String.t, }
-
-  alias Zigler.Unit.Parser
-
   @doc false
-  def string_to_hash(str) do
-    hash = :md5
-    |> :crypto.hash(str)
-    |> Base.encode16
-
-    "test_" <> hash
+  def name_to_hash(str) do
+    Base.encode16(<<:erlang.phash2(str)::32>>)
   end
 
-  defmacro __using__(_) do
-    quote do
-      # tests are always going to be released in safe mode.
-      @release_mode :safe
-      @on_load :__load_nifs__
+  @transfer_params [:otp_app, :file, :libs, :resources, :zig_version,
+    :imports, :c_includes, :include_dirs, :version]
 
-      # don't persist the app or the version, we are going to get that from the parent.
-      Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
-      Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
-      Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
-      Module.register_attribute(__MODULE__, :zig_src_dir, persist: true)
-      Module.register_attribute(__MODULE__, :zig_test, persist: true)
+  # an "assert" assignment that substitutes beam assert for std assert
+  @assert_assign "const assert = beam.assert;\n"
 
-      @zig_test true
-
-      @before_compile Zigler.Compiler
-
-      import Zigler.Unit
-    end
-  end
+  alias Zigler.Assembler
+  alias Zigler.Parser.Unit
 
   @doc """
   loads a module that wraps a zigler NIF, consults the corresponding zig code,
   generating the corresponding zig tests.
 
-  Must be called from within a module that has run `use ExUnit.Case`.
+  Must be called from within a module that has `use ExUnit.Case` and `use Zigler`
   """
-  defmacro zigtest(mod) do
-
-    Process.sleep(5000)
-
+  defmacro zigtest(mod, options \\ []) do
     module = Macro.expand(mod, __CALLER__)
+    Code.ensure_loaded(module)
 
-    source_file = module.__info__(:compile)[:source]
-    src_dir = Path.dirname(source_file)
+    info = __CALLER__
+    |> Map.take([:file, :line])
+    |> Map.to_list
 
-    code = module.__info__(:attributes)[:zig_code]
-    |> IO.iodata_to_binary
-    |> Parser.get_tests(source_file)
-
-    [zigler_app] = module.__info__(:attributes)[:zigler_app]
-    [zig_version] = module.__info__(:attributes)[:zig_version]
-    zig_resources = module.__info__(:attributes)[:zig_resources]
-
-    code_spec = Enum.map(code.tests, &{&1.name, {[], "void"}})
-
-    empty_functions = code.tests
-    |> Enum.map(&%{&1 | name: &1.name |> String.split(".") |> List.last})
-    |> Enum.map(&Zigler.empty_function(String.to_atom(&1.name), 0))
-
-    compilation = quote do
-      @zigler_app unquote(zigler_app)
-      @zig_version unquote(zig_version)
-      @zig_resources unquote(zig_resources)
-
-      @zig_code unquote(code.code)
-      @zig_specs unquote(code_spec)
-      @zig_src_dir unquote(src_dir)
-
-      unquote_splicing(empty_functions)
+    unless function_exported?(module, :__info__, 1) do
+      raise CompileError, info ++ [description: "zigtest called on a nonexistent module"]
     end
 
-    test_list = Enum.map(code.tests, &{&1.title, &1.name})
+    ref_zigler = case module.__info__(:attributes)[:zigler] do
+      [zigler] -> zigler
+      _ -> raise CompileError, info ++ [description: "zigtest called on a module that doesn't bind a zig nif"]
+    end
 
-    in_ex_unit = Application.started_applications
-    |> Enum.any?(fn {app, _, _} -> app == :ex_unit end)
+    assembly_dir = Path.join(System.tmp_dir!(),
+      ".zigler_compiler/#{Mix.env}/#{__CALLER__.module}")
 
-    test = make_code(__CALLER__.module, __CALLER__.file, test_list , in_ex_unit)
+    # convert the code to substitute functions for tests
+    {nifs, code} = ref_zigler.code
+    |> IO.iodata_to_binary
+    |> Unit.parse(info)
 
-    [compilation, test]
+    converted_file = Path.join(assembly_dir, "zig_nif.zig")
+
+    # gather all code dependencies.  We'll want to look for all things
+    # which are labeled as "pub" and modify those code bits accordingly.
+    Assembler.parse_code(ref_zigler.code,
+      parent_dir: Path.dirname(__CALLER__.file),
+      target_dir: assembly_dir,
+      pub: true,
+      context: [])
+
+    zigler = struct(Zigler.Module, ref_zigler
+    |> Map.take(@transfer_params)
+    |> Map.merge(%{
+      code: [@assert_assign, code],
+      nifs: nifs,
+      module: __CALLER__.module}))
+    |> Macro.escape
+
+    in_ex_unit = Enum.any?(Application.started_applications(), fn
+      {app, _, _} -> app == :ex_unit
+    end)
+
+    tests = make_code(
+      __CALLER__.module,
+      __CALLER__.file,
+      nifs,
+      !options[:dry_run] && in_ex_unit)
+
+    # trigger the zigler compiler on this module.
+    quote do
+      Module.put_attribute(unquote(__CALLER__.module), :zigler, unquote(zigler))
+      unquote(tests)
+    end
   end
 
-  defp make_code(module, file, tests, true) do
-    quote bind_quoted: [module: module, file: file, tests: tests] do
+  ####################################################################
+  ## ExUnit Boilerplate
+
+  defp make_code(module, file, nifs, true) do
+    quote bind_quoted: [module: module, file: file, nifs: Macro.escape(nifs)] do
       # register our tests.
       env = __ENV__
-      for {name, test} <- Zigler.Unit.__zigtests__(module, tests) do
+      for {name, test} <- Zigler.Unit.__zigtests__(module, nifs) do
         @file file
         test_name = ExUnit.Case.register_test(env, :zigtest, name, [])
         def unquote(test_name)(_), do: unquote(test)
@@ -156,31 +151,24 @@ defmodule Zigler.Unit do
     end
   end
   # for testing purposes only:
-  defp make_code(module, _, tests, false) do
-    quote bind_quoted: [module: module, tests: tests] do
+  defp make_code(module, _, nifs, false) do
+    quote bind_quoted: [module: module, nifs: Macro.escape(nifs)] do
       # register our tests.
-      for {name, test} <- Zigler.Unit.__zigtests__(module, tests) do
-        test_name = name |> string_to_hash |> String.to_atom
+      for {name, test} <- Zigler.Unit.__zigtests__(module, nifs) do
+        test_name = name |> Zigler.Unit.name_to_hash |> String.to_atom
         def unquote(test_name)(_), do: unquote(test)
       end
     end
   end
 
-  def __zigtests__(module, tests) do
-    Enum.map(tests, fn
-      {title, name} -> {title, test_content(module, name)}
-    end)
+  def __zigtests__(module, test_nifs) do
+    Enum.map(test_nifs, &{&1.test, test_content(module, &1)})
   end
 
-  defp test_content(module, name) do
-    atom_name = name
-    |> String.split(".")
-    |> List.last
-    |> String.to_atom
-
+  defp test_content(module, nif) do
     quote do
       try do
-        apply(unquote(module), unquote(atom_name), [])
+        apply(unquote(module), unquote(nif.test), [])
         :ok
       rescue
         e in ErlangError ->
@@ -195,5 +183,4 @@ defmodule Zigler.Unit do
       end
     end
   end
-
 end

@@ -18,7 +18,7 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 - updated documentation for `mix zig_doc`
 - fixed compilation so that importing zig stdlib doesn't error
-- added better compilation failures for bad types in params and retvals
+- added better compilation failures for bad types in args and retvals
 - added `beam` struct support for ok and error tuples
 
 ## 0.1.3

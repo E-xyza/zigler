@@ -56,17 +56,17 @@ defmodule ZiglerTest.Snapshot.ImportsTest do
   describe "Code.includes/1" do
     test "generates the default correctly" do
       assert """
-      const e = @import("erl_nif.zig").c;
-      const builtin = @import("builtin");
       const std = @import("std");
+      const e = @import("erl_nif.zig").c;
       const beam = @import("beam.zig");
-      """ == Code.zig_imports([builtin: "builtin", std: "std", beam: "beam.zig"])
-        |> IO.iodata_to_binary
+      """ == [:defaults]
+      |> Zigler.Module.imports
+      |> Code.zig_imports
+      |> IO.iodata_to_binary
     end
 
     test "generates an arbitrary list correctly" do
       assert """
-      const e = @import("erl_nif.zig").c;
       const foo = @import("bar");
       """ == Code.zig_imports([foo: "bar"])
         |> IO.iodata_to_binary
