@@ -119,10 +119,68 @@ defmodule Zigler.Unit do
       module: __CALLER__.module}))
     |> Macro.escape
 
+    in_ex_unit = Enum.any?(Application.started_applications(), fn
+      {app, _, _} -> app == :ex_unit
+    end)
+
+    tests = make_code(
+      __CALLER__.module,
+      __CALLER__.file,
+      nifs,
+      !options[:dry_run] && in_ex_unit)
+
     # trigger the zigler compiler on this module.
     quote do
       Module.put_attribute(unquote(__CALLER__.module), :zigler, unquote(zigler))
+      unquote(tests)
     end
   end
 
+  ####################################################################
+  ## ExUnit Boilerplate
+
+  defp make_code(module, file, nifs, true) do
+    quote bind_quoted: [module: module, file: file, nifs: Macro.escape(nifs)] do
+      # register our tests.
+      env = __ENV__
+      for {name, test} <- Zigler.Unit.__zigtests__(module, nifs) do
+        @file file
+        test_name = ExUnit.Case.register_test(env, :zigtest, name, [])
+        def unquote(test_name)(_), do: unquote(test)
+      end
+    end
+  end
+  # for testing purposes only:
+  defp make_code(module, _, nifs, false) do
+    quote bind_quoted: [module: module, nifs: Macro.escape(nifs)] do
+      # register our tests.
+      for {name, test} <- Zigler.Unit.__zigtests__(module, nifs) do
+        test_name = name |> Zigler.Unit.name_to_hash |> String.to_atom
+        def unquote(test_name)(_), do: unquote(test)
+      end
+    end
+  end
+
+  def __zigtests__(module, test_nifs) do
+    Enum.map(test_nifs, &{&1.test, test_content(module, &1)})
+  end
+
+  defp test_content(module, nif) do
+    quote do
+      try do
+        apply(unquote(module), unquote(nif.test), [])
+        :ok
+      rescue
+        e in ErlangError ->
+          error = [
+            message: "Zig test failed",
+            doctest: ExUnit.AssertionError.no_value(),
+            expr: ExUnit.AssertionError.no_value(),
+            left: ExUnit.AssertionError.no_value(),
+            right: ExUnit.AssertionError.no_value()
+          ]
+          reraise ExUnit.AssertionError, error, __STACKTRACE__
+      end
+    end
+  end
 end
