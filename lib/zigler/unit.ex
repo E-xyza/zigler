@@ -103,7 +103,7 @@ defmodule Zigler.Unit do
 
     converted_file = Path.join(assembly_dir, "zig_nif.zig")
 
-    # gather all code depenedencies.  We'll want to look for all things
+    # gather all code dependencies.  We'll want to look for all things
     # which are labeled as "pub" and modify those code bits accordingly.
     Assembler.parse_code(ref_zigler.code,
       parent_dir: Path.dirname(__CALLER__.file),
