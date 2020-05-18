@@ -21,4 +21,11 @@ defmodule ZiglerTest.Parser.ImportTest do
       assert {:error, _, _, _, _, _} = Imports.parse_import_stmt("fn foo(x: i64) i64 {\n")
     end
   end
+
+  describe "the include parser" do
+    test "trivially finds cInclude statements" do
+      assert {:ok, _, _, %{imports: [{:cinclude, "foo.h"}]}, _, _} =
+        Imports.parse_include_stmt("@cInclude(\"foo.h\");\n")
+    end
+  end
 end

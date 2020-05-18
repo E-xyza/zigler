@@ -42,16 +42,28 @@ defmodule Zigler.Assembler do
   assembles zig assets, taking them from their source to and putting them into
   the target directory.
   """
-  def assemble_assets!(assembly) do
-    Enum.each(assembly, fn instruction ->
-      # make sure that the target directory path exists.
-      instruction.target
-      |> Path.dirname
-      |> File.mkdir_p!
-      # send the file in.
-      File.cp!(instruction.source, instruction.target)
-      Logger.debug("copied #{instruction.source} to #{instruction.target}")
-    end)
+  def assemble_assets!(assembly, root_dir) do
+    Enum.each(assembly, &assemble_asset!(&1, root_dir))
+  end
+  def assemble_asset!(instruction = %{target: {:cinclude, target}}, root_dir) do
+    if File.exists?(instruction.source) do
+      # make sure the include directory exists.
+      include_dir = Path.join(root_dir, "include")
+      File.mkdir_p!(include_dir)
+      # send in the file.
+      target_path = Path.join(include_dir, target)
+      File.cp!(instruction.source, target_path)
+      Logger.debug("copied #{instruction.source} to #{target_path}")
+    end
+  end
+  def assemble_asset!(instruction, _) do
+    # make sure that the target directory path exists.
+    instruction.target
+    |> Path.dirname
+    |> File.mkdir_p!
+    # send the file in.
+    File.cp!(instruction.source, instruction.target)
+    Logger.debug("copied #{instruction.source} to #{instruction.target}")
   end
 
   def parse_file(file_path, options) do
@@ -76,6 +88,7 @@ defmodule Zigler.Assembler do
 
   def parse_code(code, options) do
     check_options!(options)
+
     code
     |> IO.iodata_to_binary
     |> Imports.parse
@@ -89,12 +102,20 @@ defmodule Zigler.Assembler do
   defp standard_components({:pub, _, _}), do: false
   defp standard_components({_, "erl_nif.zig"}), do: true
   defp standard_components({_, "beam.zig"}), do: true
+  defp standard_components({:cinclude, include}), do: false
   defp standard_components({_, maybe_standard}) do
     Path.extname(maybe_standard) != ".zig"
   end
 
   defp import_to_assembler({:pub, context, file}, options) do
     import_to_assembler({context, file}, options, options[:pub])
+  end
+  defp import_to_assembler({:cinclude, include}, options) do
+    [struct(__MODULE__,
+      type: :cinclude,
+      source: Path.join([options[:parent_dir], "include", include]),
+      target: {:cinclude, include}
+    )]
   end
   defp import_to_assembler({context, file}, options, pub \\ false) do
     import_path = options[:parent_dir]

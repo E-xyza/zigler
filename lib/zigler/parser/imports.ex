@@ -62,6 +62,20 @@ defmodule Zigler.Parser.Imports do
       |> string(")"))
     |> post_traverse(:register_import)
 
+  include_stmt =
+    ignore(
+      string("@cInclude")
+      |> optional(whitespace)
+      |> string("(")
+      |> optional(whitespace)
+      |> string("\""))
+    |> concat(filename)
+    |> ignore(
+      string("\"")
+      |> optional(whitespace)
+      |> string(")"))
+    |> post_traverse(:register_include)
+
   defp register_identifier(_rest, ["usingnamespace" | rest], context, _, _) do
     {[], %{context | identifier: :usingnamespace, pub: pub?(rest)}}
   end
@@ -88,15 +102,21 @@ defmodule Zigler.Parser.Imports do
     end
   end
 
+  defp register_include(_rest, [path], context, _, _) do
+    {[], %{context | imports: [{:cinclude, path}]}}
+  end
+
   if Mix.env == :test do
     defparsec :parse_import_const, concat(initialize, import_const)
     defparsec :parse_import_stmt, concat(initialize, import_stmt)
+    defparsec :parse_include_stmt, concat(initialize, include_stmt)
   end
 
   parse_imports =
     initialize
     |> repeat(choice([
       import_stmt,
+      include_stmt,
       ascii_char([0..255])
     ]))
 

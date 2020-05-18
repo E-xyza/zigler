@@ -187,7 +187,7 @@ defmodule Zigler.Compiler do
       context: [])
 
     Assembler.assemble_kernel!(assembly_dir)
-    Assembler.assemble_assets!(assembly)
+    Assembler.assemble_assets!(assembly, assembly_dir)
 
     %__MODULE__{
       assembly_dir: assembly_dir,
