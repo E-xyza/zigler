@@ -22,7 +22,7 @@ jobs:
         mix local.rebar --force
         mix local.hex --force
         mix deps.get
-        mix zigler.get_zig latest
+        mix zigler.get_zig 0.5.0
         mix docs
     - name: Run Linting
       run: mix credo --strict
