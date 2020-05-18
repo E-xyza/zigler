@@ -89,7 +89,7 @@ defmodule Zigler.Parser.Unit do
   end
 
   defp parse_test_decl(_rest, [test_name], context, _line, _offset) do
-    test_nif = new_nif(test_name, context.file)
+    test_nif = new_nif(test_name)
     {["fn #{test_nif.name}() !void"],
       %{context | tests: [test_nif | context.tests]}}
   end
@@ -101,9 +101,9 @@ defmodule Zigler.Parser.Unit do
   end
 
   alias Zigler.Parser.Nif
-  defp new_nif(name, file) do
+  defp new_nif(name) do
     %Nif{
-      name: String.to_atom("test_#{Zigler.Unit.name_to_hash(name <> file)}"),
+      name: String.to_atom("test_#{Zigler.Unit.name_to_hash(name)}"),
       test: String.to_atom(name),
       arity: 0,
       args: [],
@@ -115,8 +115,7 @@ defmodule Zigler.Parser.Unit do
   ## API
 
   def parse(code, info) do
-    unless info[:file], do: raise "parser needs a file name!"
-    case unit_parser(code, context: info) do
+    case unit_parser(code, []) do
       {:ok, code, _, %{tests: tests}, _, _} ->
         {tests, code}
       err ->

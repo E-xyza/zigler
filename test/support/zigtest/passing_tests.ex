@@ -1,9 +1,9 @@
 defmodule ZiglerTest.ZigTest.PassingTests do
+  @moduledoc false
+
   use Zigler
 
   ~Z"""
-  const assert = beam.assert;
-
   /// nif: forty_seven/0
   fn forty_seven() i32 {
     return 47;

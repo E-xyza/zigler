@@ -1,6 +1,5 @@
 defmodule ZiglerTest.Integration.ZigTest do
   use ExUnit.Case
-
   use Zigler
 
   import Zigler.Unit
@@ -31,13 +30,13 @@ defmodule ZiglerTest.Integration.ZigTest do
     |> Path.join("fail_shim.exs")
     |> Code.compile_file
 
-    assert {:error, _zig_file, 16} =
+    assert {:error, _zig_file, 14} =
       apply(FailShim, :"a lie", [])
 
-    assert {:error, _zig_file, 20} =
+    assert {:error, _zig_file, 18} =
       apply(FailShim, :"a multiline lie", [])
 
-    assert {:error, _zig_file, 27} =
+    assert {:error, _zig_file, 25} =
       apply(FailShim, :"a truth and a lie", [])
   end
 

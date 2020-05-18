@@ -5,8 +5,6 @@ defmodule ZiglerTest.ZigTest.FailingTest do
   use Zigler
 
   ~Z"""
-  const assert = beam.assert;
-
   /// nif: one/0
   fn one() i64 {
     return 1;

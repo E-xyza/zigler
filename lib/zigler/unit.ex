@@ -61,7 +61,14 @@ defmodule Zigler.Unit do
     Base.encode16(<<:erlang.phash2(str)::32>>)
   end
 
-  @transfer_params [:file, :libs, :resources, :zig_version, :imports, :c_includes, :include_dirs, :version]
+  @transfer_params [:otp_app, :file, :libs, :resources, :zig_version,
+    :imports, :c_includes, :include_dirs, :version]
+
+  # an "assert" assignment that substitutes beam assert for std assert
+  @assert_assign "const assert = beam.assert;\n"
+
+  alias Zigler.Assembler
+  alias Zigler.Parser.Unit
 
   @doc """
   loads a module that wraps a zigler NIF, consults the corresponding zig code,
@@ -69,7 +76,7 @@ defmodule Zigler.Unit do
 
   Must be called from within a module that has `use ExUnit.Case` and `use Zigler`
   """
-  defmacro zigtest(mod, options \\ [test_dirs: ["./"]]) do
+  defmacro zigtest(mod, options \\ []) do
     module = Macro.expand(mod, __CALLER__)
     Code.ensure_loaded(module)
 
@@ -86,95 +93,36 @@ defmodule Zigler.Unit do
       _ -> raise CompileError, info ++ [description: "zigtest called on a module that doesn't bind a zig nif"]
     end
 
-    # parse the zigler code to generate the zigcode test and
-    # also get the list of nifs.
-    ref_code = IO.iodata_to_binary(ref_zigler.code)
+    assembly_dir = Path.join(System.tmp_dir!(),
+      ".zigler_compiler/#{Mix.env}/#{__CALLER__.module}")
 
-    {tests, code} = Zigler.Parser.Unit.parse(ref_code, info)
-
-    __CALLER__.module
-    |> Module.get_attribute(:zigler)
-    |> struct(nifs: tests, code: code)
-    |> struct(Map.take(ref_zigler, @transfer_params))
-    |> struct(options)
-    |> append_import_tests(code, Path.dirname(ref_zigler.file))
-    |> update_zigler_struct(info)
-    |> make_test_fns
-  end
-
-  defp append_import_tests(zigler, code, dir) do
-    import_tests = code
+    # convert the code to substitute functions for tests
+    {nifs, code} = ref_zigler.code
     |> IO.iodata_to_binary
-    |> Zigler.Parser.Imports.parse
-    |> Enum.flat_map(&recursive_find_imports(dir, &1))
+    |> Unit.parse(info)
 
-    %{zigler | nifs: import_tests ++ zigler.nifs}
-  end
+    converted_file = Path.join(assembly_dir, "zig_nif.zig")
 
-  defp recursive_find_imports(file_dir, {import_struct, file}) do
-    full_file_path = Path.join(file_dir, file)
-    code = File.read!(full_file_path)
+    # gather all code depenedencies.  We'll want to look for all things
+    # which are labeled as "pub" and modify those code bits accordingly.
+    Assembler.parse_code(ref_zigler.code,
+      parent_dir: Path.dirname(__CALLER__.file),
+      target_dir: assembly_dir,
+      pub: true,
+      context: [])
 
-    {tests, _} = code
-    |> Zigler.Parser.Unit.parse(file: full_file_path)
+    zigler = struct(Zigler.Module, ref_zigler
+    |> Map.take(@transfer_params)
+    |> Map.merge(%{
+      code: [@assert_assign, code],
+      nifs: nifs,
+      module: __CALLER__.module}))
+    |> Macro.escape
 
-    imports = code
-    |> Zigler.Parser.Imports.parse
-    |> Enum.reject(fn {_, file} -> Path.basename(file) == "beam.zig" end)
-
-    tests
-    |> Enum.map(fn nif ->
-      %{nif |
-        name: String.to_atom("#{import_struct}.#{nif.name}"),
-        test: String.to_atom("#{import_struct}: #{nif.test}")}
-    end)
-  end
-
-  defp update_zigler_struct(zigler, info) do
-    if zigler.nifs == [] do
-      raise CompileError,
-        info ++ [description: "zigtest declared for zigler module #{zigler.module} which has no tests"]
-    end
-    Module.put_attribute(zigler.module, :zigler, zigler)
-    zigler
-  end
-
-  defp make_test_fns(%{module: module, file: file, nifs: nifs}) do
-    tests = Enum.map(nifs, &(&1.test))
-    quote bind_quoted: [module: module, file: file, tests: tests] do
-      # register our tests.
-      env = __ENV__
-      for {name, test_code} <- Zigler.Unit.__zigtests__(module, tests) do
-        @file file
-        test_name = ExUnit.Case.register_test(env, :zigtest, name, [])
-        def unquote(test_name)(_), do: unquote(test_code)
-      end
-    end
-  end
-
-  def __zigtests__(module, tests) do
-    Enum.map(tests, fn
-      title ->
-        {title, test_content(module, title)}
-    end)
-  end
-
-  defp test_content(module, title) do
+    # trigger the zigler compiler on this module.
     quote do
-      case apply(unquote(module), unquote(title), []) do
-        :ok -> :ok
-        {:error, file, line} ->
-          error = [
-            message: "Zig test \"#{unquote title}\" (assert on line #{line} of #{file}) failed",
-            doctest: ExUnit.AssertionError.no_value(),
-            expr: ExUnit.AssertionError.no_value(),
-            left: ExUnit.AssertionError.no_value(),
-            right: ExUnit.AssertionError.no_value()
-          ]
-          raise ExUnit.AssertionError, error
-      end
+      Module.put_attribute(unquote(__CALLER__.module), :zigler, unquote(zigler))
     end
   end
 
 end
-

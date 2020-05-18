@@ -65,6 +65,7 @@ defmodule Zigler.Compiler do
 
     ###########################################################################
     # COMPILATION STEPS
+
     compiler = precompile(module)
     unless module.dry_run do
       Zig.compile(compiler, zig_tree)
@@ -156,6 +157,8 @@ defmodule Zigler.Compiler do
   #############################################################################
   ## STEPS
 
+  alias Zigler.Parser.Imports
+
   @spec precompile(Zigler.Module.t) :: t | no_return
   def precompile(module) do
     # build the staging directory.
@@ -187,54 +190,6 @@ defmodule Zigler.Compiler do
       code_file:    code_file,
       module_spec:  module,
     }
-  end
-
-  defp transfer_imports_for(compiler, transferred_files \\ []) do
-
-    # mechanism for identifying imported files recursively and moving them into
-    # the correct relative directory within the staging zone.
-
-    imports = (compiler.code_file
-    |> File.read!
-    |> Zigler.Parser.Imports.parse
-    |> Keyword.values
-    |> Enum.map(&Path.join(compiler.code_dir, &1))
-    |> Enum.filter(&(Path.extname(&1) == ".zig"))
-    |> Enum.reject(&(Path.basename(&1) in ["beam.zig", "erl_nif.zig"]))
-    |> Enum.uniq)
-    -- transferred_files
-
-    Enum.each(imports, fn path ->
-      rebasename = Path.relative_to(path, compiler.code_dir)
-      rebasedir = Path.dirname(rebasename)
-      stagingfile = Path.join(compiler.assembly_dir, rebasename)
-      stagingfile_dir = Path.dirname(stagingfile)
-
-      File.mkdir_p!(stagingfile_dir)
-
-      transfer_imports_for(
-        struct(compiler,
-          code_file: path,
-          code_dir:  Path.join(compiler.code_dir, rebasedir),
-          assembly_dir: stagingfile_dir))
-
-      File.cp!(path, stagingfile)
-    end)
-  end
-
-  defp transfer_includes_for(src_dir, assembly_dir) do
-    staging_include = Path.join(assembly_dir, "include")
-    File.mkdir_p!(staging_include)
-
-    src_include = Path.join(src_dir, "include")
-    if File.dir?(src_include) do
-      File.ls!(src_include)
-      for file <- File.ls!(src_include) do
-        src_include
-        |> Path.join(file)
-        |> File.cp_r!(Path.join(staging_include, file))
-      end
-    end
   end
 
   @spec cleanup(t) :: :ok | no_return

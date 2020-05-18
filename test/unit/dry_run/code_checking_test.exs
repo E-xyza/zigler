@@ -17,7 +17,6 @@ defmodule ZiglerTest.DryRun.CodeCheckingTest do
     return 42;
   }
 
-
   """
 
   test "two sigil_Z statements have the proper amount of spacing" do

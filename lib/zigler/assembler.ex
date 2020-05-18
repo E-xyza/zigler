@@ -21,6 +21,8 @@ defmodule Zigler.Assembler do
     pub: boolean
   }
 
+  alias Zigler.Parser.Imports
+
   @doc """
   assembles the "core" part of the zig adapter code, these are parts for
   shimming Zig libraries into the BEAM that are going to be @import'd into
@@ -78,7 +80,7 @@ defmodule Zigler.Assembler do
     check_options!(options)
     code
     |> IO.iodata_to_binary
-    |> Zigler.Parser.Imports.parse
+    |> Imports.parse
     |> Enum.reverse
     |> Enum.flat_map(&import_to_assembler(&1, options))
   end
