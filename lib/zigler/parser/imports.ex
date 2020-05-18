@@ -103,7 +103,7 @@ defmodule Zigler.Parser.Imports do
   end
 
   defp register_include(_rest, [path], context, _, _) do
-    {[], %{context | imports: [{:cinclude, path}]}}
+    {[], %{context | imports: [{:cinclude, path} | context.imports]}}
   end
 
   if Mix.env == :test do

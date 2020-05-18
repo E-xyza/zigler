@@ -13,8 +13,6 @@ defmodule ZiglerTest.ZigTest.Blas do
     @cInclude("cblas.h");
   });
 
-  const assert = beam.assert;
-
   /// nif: blas_axpy/3
   fn blas_axpy(env: beam.env, a: f64, x: []f64, y: []f64) beam.term {
 
