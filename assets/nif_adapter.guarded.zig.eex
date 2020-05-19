@@ -3,21 +3,21 @@ fn ___<%= @func %>(env: beam.env, argc: c_int, argv: [*c] const beam.term) !beam
   <%= for {arg, idx} <- Enum.with_index(@args) do %>
   var arg<%= idx %>: <%= arg %> = undefined;<% end %>
 
-  <%= for {arg, idx} <- Enum.with_index(@args) do 
+  <%= for {arg, idx} <- Enum.with_index(@args) do
     Zigler.Zig.getfor(arg, idx) <> "\n"
   end %>
 
   var result: <%= @type %> = <%= @func %>(<%= if @has_env, do: "env, ", else: "" %><%=
     if @args == [] do
-      "" 
+      ""
     else
-      0..Enum.count(@args) - 1 |> Enum.map(&"arg#{&1}") |> Enum.join(", ") 
+      0..Enum.count(@args) - 1 |> Enum.map(&"arg#{&1}") |> Enum.join(", ")
     end
   %>);
   <%= Zigler.Zig.makefor(@type) %>
 }
 
-extern fn __<%= @func %>(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+export fn __<%= @func %>(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
   var res: beam.term = ___<%= @func %>(env, argc, argv) catch | err | {
     if (err == beam.Error.FunctionClauseError) {
       return beam.raise_function_clause_error(env);

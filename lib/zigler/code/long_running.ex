@@ -144,7 +144,7 @@ defmodule Zigler.Code.LongRunning do
 
   def launcher_fn(nif) do
     """
-    extern fn #{launcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+    export fn #{launcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
       return #{packer nif.name}(env, argv)
         catch beam.raise(env, beam.make_atom(env, "error"));
     }
@@ -193,7 +193,7 @@ defmodule Zigler.Code.LongRunning do
 
   def fetcher_fn(nif = %{retval: "void"}) do
     """
-    extern fn #{fetcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+    export fn #{fetcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
       __resource__.release(#{cache_ptr nif.name}, env, argv[0]);
       return beam.make_atom(env, "nil");
     }
@@ -201,7 +201,7 @@ defmodule Zigler.Code.LongRunning do
   end
   def fetcher_fn(nif) do
     """
-    extern fn #{fetcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+    export fn #{fetcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
       var cache_q: ?*#{cache nif.name} = __resource__.fetch(#{cache_ptr nif.name}, env, argv[0])
         catch return beam.raise_function_clause_error(env);
       defer __resource__.release(#{cache_ptr nif.name}, env, argv[0]);

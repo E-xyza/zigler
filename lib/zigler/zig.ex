@@ -15,7 +15,7 @@ defmodule Zigler.Zig do
     include_opts = ["-isystem", Path.join(compiler.assembly_dir, "include")] ++
       includes_from_module(compiler.module_spec)
 
-    lib_opts = libraries_from_module(compiler.module_spec)
+    lib_opts = libraries_from_module(compiler.module_spec) 
 
     version = compiler.module_spec.version
     module = compiler.module_spec.module
@@ -39,7 +39,7 @@ defmodule Zigler.Zig do
       {_, 0} -> :ok
       {err, _} ->
         alias Zigler.Parser.Error
-        Error.parse(err)
+        Error.parse(err, compiler)
     end
 
     library_filename = Zigler.nif_name(compiler.module_spec)

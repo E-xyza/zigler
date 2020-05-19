@@ -1,6 +1,6 @@
 // this adapter is specially designed for tests.
 
-extern fn __<%= @func %>(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+export fn __<%= @func %>(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
   const stacktrace_ptr : type = *builtin.StackTrace;
   const res = <%= @func_call %>() catch | err | {
 

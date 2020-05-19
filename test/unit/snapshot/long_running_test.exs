@@ -78,7 +78,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
   describe "launch_fn/1 generates a zig function" do
     test "for a 0-arity function" do
       assert """
-      extern fn __foo_launch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_launch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         return __foo_pack__(env, argv)
           catch beam.raise(env, beam.make_atom(env, "error"));
       }
@@ -87,7 +87,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
 
     test "for function with a different name" do
       assert """
-      extern fn __bar_launch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __bar_launch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         return __bar_pack__(env, argv)
           catch beam.raise(env, beam.make_atom(env, "error"));
       }
@@ -176,7 +176,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
   describe "fetcher_fn/1 generates a zig function" do
     test "for a function with a generic retval" do
       assert """
-      extern fn __foo_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var cache_q: ?*__foo_cache__ = __resource__.fetch(__foo_cache_ptr__, env, argv[0])
           catch return beam.raise_function_clause_error(env);
         defer __resource__.release(__foo_cache_ptr__, env, argv[0]);
@@ -192,7 +192,7 @@ defmodule ZiglerTest.Snapshot.LongRunningTest do
 
     test "for a function with void retval" do
       assert """
-      extern fn __foo_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         __resource__.release(__foo_cache_ptr__, env, argv[0]);
         return beam.make_atom(env, "nil");
       }

@@ -72,7 +72,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
           null);
       }
 
-      extern fn __destroy_bar__(env: beam.env, res: ?*c_void) void {}
+      export fn __destroy_bar__(env: beam.env, res: ?*c_void) void {}
 
       fn __resource_type__(comptime T: type) beam.resource_type {
         switch (T) {
@@ -99,7 +99,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         }
       };
 
-      extern fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
+      export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
         __bar_resource__ = __init_bar_resource__(env);
         return 0;
       }
@@ -160,7 +160,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
           null);
       }
 
-      extern fn __destroy_bar__(env: beam.env, res: ?*c_void) void {
+      export fn __destroy_bar__(env: beam.env, res: ?*c_void) void {
         if (res) |__res__| {
           baz(env, @ptrCast(*bar, @alignCast(@alignOf(*bar), __res__)));
         } else unreachable;
@@ -191,7 +191,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         }
       };
 
-      extern fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
+      export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
         __bar_resource__ = __init_bar_resource__(env);
         return 0;
       }

@@ -95,7 +95,7 @@ defmodule Zigler.Code do
       result_var = "__#{nif.name}_result__"
       function_call = "#{nif.name}(#{args})"
 
-      head = "extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
+      head = "export fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
 
       result = cond do
         nif.retval in ["beam.term", "e.ErlNifTerm"] ->
@@ -124,7 +124,7 @@ defmodule Zigler.Code do
   def adapter(nif) do
     # when it is a test:
     """
-    extern fn __#{shim_name nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+    export fn __#{shim_name nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
       beam.test_env = env;
       #{nif.name}() catch return beam.test_error();
       return beam.make_atom(env, "ok");
@@ -220,7 +220,7 @@ defmodule Zigler.Code do
       [] -> ""
       _ ->
         """
-        extern fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
+        export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
         #{resource_inits}  return 0;
         }
 
@@ -336,7 +336,7 @@ defmodule Zigler.Code do
         null);
     }
 
-    extern fn __destroy_#{name}__(env: beam.env, res: ?*c_void) void {#{cleanup}}
+    export fn __destroy_#{name}__(env: beam.env, res: ?*c_void) void {#{cleanup}}
     """
   end
 

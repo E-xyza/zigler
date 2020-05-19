@@ -7,7 +7,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
   describe "for a basic, zero-arity function" do
     test "the shim function directly calls the target function" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_result__ = foo();
 
         return beam.make_c_long(env, __foo_result__);
@@ -20,7 +20,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
 
     test "the shim function can use other types" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_result__ = foo();
 
         return beam.make_c_int(env, __foo_result__);
@@ -35,7 +35,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
   describe "for a one-arity function" do
     test "the shim function will correctly fill out arguments" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = beam.get_i64(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
@@ -53,7 +53,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
   describe "for a zero-arity function with a environment term" do
     test "that is beam.env the shim function passes the env term in" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_result__ = foo(env);
 
         return beam.make_i64(env, __foo_result__);
@@ -66,7 +66,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
 
     test "that is ?*e.ErlNifEnv the shim function passes the env term in" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_result__ = foo(env);
 
         return beam.make_i64(env, __foo_result__);
@@ -81,7 +81,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
   describe "for a one-arity function with a special type" do
     test "the shim function respects beam.term type" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = argv[0];
 
         return foo(__foo_arg0__);
@@ -94,7 +94,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
 
     test "the shim function respects e.ErlNifTerm type" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = argv[0];
 
         return foo(__foo_arg0__);
@@ -107,7 +107,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
 
     test "the shim function respects beam.pid type" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = beam.get_pid(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
@@ -123,7 +123,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
 
     test "the shim function respects e.ErlNifPid type" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = beam.get_pid(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
@@ -141,7 +141,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
   describe "for a one-arity function being passed a slice" do
     test "the shim function respects integers" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = beam.get_slice_of(i32, env, argv[0]) catch |err| switch (err) {
           error.OutOfMemory => return beam.raise_enomem(env),
           beam.Error.FunctionClauseError => return beam.raise_function_clause_error(env)
@@ -160,7 +160,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
 
     test "the shim function respects floats" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = beam.get_slice_of(f64, env, argv[0]) catch |err| switch (err) {
           error.OutOfMemory => return beam.raise_enomem(env),
           beam.Error.FunctionClauseError => return beam.raise_function_clause_error(env)
@@ -181,7 +181,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
   describe "for a one-arity function with a environment term" do
     test "that is beam.env the shim function passes the env term in" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = beam.get_i64(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
@@ -197,7 +197,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
 
     test "that is ?*e.ErlNifEnv the shim function passes the env term in" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = beam.get_i64(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
@@ -215,7 +215,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
   describe "for a one-arity function being passed a u8 slice" do
     test "the shim function assumes binary" do
       assert """
-      extern fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_arg0__ = beam.get_char_slice(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
@@ -251,7 +251,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         }
       }
 
-      extern fn __foo_launch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_launch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         return __foo_pack__(env, argv)
           catch beam.raise(env, beam.make_atom(env, "error"));
       }
@@ -279,7 +279,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         var _sent = beam.send(null, cache.self, null, cache.response);
       }
 
-      extern fn __foo_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __foo_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var cache_q: ?*__foo_cache__ = __resource__.fetch(__foo_cache_ptr__, env, argv[0])
           catch return beam.raise_function_clause_error(env);
         defer __resource__.release(__foo_cache_ptr__, env, argv[0]);
@@ -314,7 +314,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         }
       }
 
-      extern fn __bar_launch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __bar_launch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         return __bar_pack__(env, argv)
           catch beam.raise(env, beam.make_atom(env, "error"));
       }
@@ -342,7 +342,7 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         var _sent = beam.send(null, cache.self, null, cache.response);
       }
 
-      extern fn __bar_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      export fn __bar_fetch__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         __resource__.release(__bar_cache_ptr__, env, argv[0]);
         return beam.make_atom(env, "nil");
       }

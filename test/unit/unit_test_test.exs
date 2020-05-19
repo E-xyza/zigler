@@ -15,7 +15,7 @@ defmodule ZiglerTest.UnitTestTest do
   alias Zigler.Parser.Nif
   test "Zigler.Code.adapter/1 produces the correct adapter for a test" do
     assert """
-    extern fn __test_foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+    export fn __test_foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
       beam.test_env = env;
       test_foo() catch return beam.test_error();
       return beam.make_atom(env, "ok");
