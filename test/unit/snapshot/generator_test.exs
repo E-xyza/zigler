@@ -44,7 +44,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
-          .name = c"foo",
+          .name = "foo",
           .arity = 0,
           .fptr = __foo_shim__,
           .flags = 0,
@@ -54,17 +54,17 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       const entry = e.ErlNifEntry{
         .major = #{major},
         .minor = #{minor},
-        .name = c"Elixir.Foo",
+        .name = "Elixir.Foo",
         .num_of_funcs = 1,
         .funcs = &(__exported_nifs__[0]),
         .load = null,
         .reload = null,
         .upgrade = null,
         .unload = null,
-        .vm_variant = c"beam.vanilla",
+        .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
-        .min_erts = c"erts-#{:erlang.system_info(:version)}"
+        .min_erts = "erts-#{:erlang.system_info(:version)}"
       };
 
       export fn nif_init() *const e.ErlNifEntry{
@@ -117,7 +117,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
-          .name = c"foo",
+          .name = "foo",
           .arity = 1,
           .fptr = __foo_shim__,
           .flags = 0,
@@ -127,17 +127,17 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       const entry = e.ErlNifEntry{
         .major = #{major},
         .minor = #{minor},
-        .name = c"Elixir.Foo",
+        .name = "Elixir.Foo",
         .num_of_funcs = 1,
         .funcs = &(__exported_nifs__[0]),
         .load = null,
         .reload = null,
         .upgrade = null,
         .unload = null,
-        .vm_variant = c"beam.vanilla",
+        .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
-        .min_erts = c"erts-#{:erlang.system_info(:version)}"
+        .min_erts = "erts-#{:erlang.system_info(:version)}"
       };
 
       export fn nif_init() *const e.ErlNifEntry{

@@ -98,7 +98,7 @@
 ///
 /// ```
 
-const e = @import("erl_nif.zig").c;
+const e = @import("erl_nif.zig");
 const std = @import("std");
 const builtin = @import("builtin");
 
@@ -111,8 +111,8 @@ const Allocator = std.mem.Allocator;
 // basic allocator
 
 /// !value
-/// provides a default BEAM allocator.  Use `beam.allocator.alloc` everywhere 
-/// to safely allocate memory efficiently, and use `beam.allocator.free` to 
+/// provides a default BEAM allocator.  Use `beam.allocator.alloc` everywhere
+/// to safely allocate memory efficiently, and use `beam.allocator.free` to
 /// release that memory.
 ///
 /// Note this does not make the allocated memory *garbage collected* by the
@@ -200,10 +200,10 @@ pub const AutoAllocator = struct {
     }
   }
 
-  fn realloc(self_generic: *Allocator, 
-             old_mem: []u8, 
-             old_align: u29, 
-             new_size: usize, 
+  fn realloc(self_generic: *Allocator,
+             old_mem: []u8,
+             old_align: u29,
+             new_size: usize,
              new_align: u29) ![]u8 {
 
     const self = @fieldParentPtr(ThreadAllocator, "allocator", self_generic);
@@ -241,7 +241,7 @@ pub const AutoAllocator = struct {
     if (new_size == 0) {
       // use the beam engine to free the memory slice.
       e.enif_free(@ptrCast(*c_void, old_mem.ptr));
-  
+
       // remove it from the linked list.
       std.LinkedList.do_remove(self, old_mem);
 
@@ -263,7 +263,7 @@ pub const AutoAllocator = struct {
       return new_buf;
     }
   }
-  
+
   fn do_prepend(self: *ThreadAllocator, buf: []u8) ![]u8 {
     // use the beam allocator to allocate a new memory node.
     var new_node = try std.LinkedList.allocateNode(self.buffer_list, allocator);
@@ -277,10 +277,10 @@ pub const AutoAllocator = struct {
 
   fn do_remove(self: *ThreadAllocator, buf: []u8) void {
     // find the node where buf is.
-    var current_node: *std.LinkedList.Node = self.first 
+    var current_node: *std.LinkedList.Node = self.first
       orelse unreachable;
     while (current_node.data != buf) {
-      current_node = current_node.next 
+      current_node = current_node.next
         orelse unreachable;
     }
     // remove it.
@@ -1102,18 +1102,18 @@ pub fn make_f64_list(environment: env, val: []f64) !term {
 
 /// converts a `bool` value into a `t:Kernel.boolean/0` value.
 pub fn make_bool(environment: env, val: bool) term {
-  return if (val) e.enif_make_atom(environment, c"true") else e.enif_make_atom(environment, c"false");
+  return if (val) e.enif_make_atom(environment, "true") else e.enif_make_atom(environment, "false");
 }
 
 /// creates a beam `nil` value.
 pub fn make_nil(environment: env) term {
-  return e.enif_make_atom(environment, c"nil");
+  return e.enif_make_atom(environment, "nil");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // ok and error tuples
 
-/// A helper to make `{:ok, term}` terms from arbitrarily-typed values.  
+/// A helper to make `{:ok, term}` terms from arbitrarily-typed values.
 ///
 /// supported types:
 /// - `c_int`
@@ -1145,11 +1145,11 @@ pub fn make_ok_atom(environment: env, val: [] const u8) term {
 
 /// A helper to make `{:ok, term}` terms in general
 pub fn make_ok_term(environment: env, val: term) term {
-  return e.enif_make_tuple(environment, 2, 
-    e.enif_make_atom(environment, c"ok"), val);
+  return e.enif_make_tuple(environment, 2,
+    e.enif_make_atom(environment, "ok"), val);
 }
 
-/// A helper to make `{:error, term}` terms from arbitrarily-typed values.  
+/// A helper to make `{:error, term}` terms from arbitrarily-typed values.
 ///
 /// supported types:
 /// - `c_int`
@@ -1181,14 +1181,14 @@ pub fn make_error_binary(environment: env, val: [] const u8) term {
 
 /// A helper to make `{:error, term}` terms in general
 pub fn make_error_term(environment: env, val: term) term {
-  return e.enif_make_tuple(environment, 2, 
-    e.enif_make_atom(environment, c"error"), val);
+  return e.enif_make_tuple(environment, 2,
+    e.enif_make_atom(environment, "error"), val);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
 // refs
 
-/// Encapsulates `e.enif_make_ref` and allows it to return a 
+/// Encapsulates `e.enif_make_ref` and allows it to return a
 /// FunctionClauseError.
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.pid/0`
@@ -1203,7 +1203,7 @@ pub fn make_ref(environment: env) !term {
 pub const resource_type = ?*e.ErlNifResourceType;
 
 pub const resource = struct {
-  // fix this V V V 
+  // fix this V V V
   pub const Err = error {
     /// something has gone wrong while trying to fetch a resource.
     ResourceError
@@ -1222,12 +1222,12 @@ pub const resource = struct {
 
     return e.enif_make_resource(environment, ptr);
   }
-  
+
   pub fn update(comptime T : type, environment: env, res_typ: resource_type, res_trm: term, new_val: T) !void {
     var obj : ?*c_void = undefined;
 
-    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) { 
-      return resource.Err.ResourceError; 
+    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
+      return resource.Err.ResourceError;
     }
 
     if (obj == null) { unreachable; }
@@ -1240,16 +1240,16 @@ pub const resource = struct {
   pub fn fetch(comptime T : type, environment: env, res_typ: resource_type, res_trm: term) !T {
     var obj : ?*c_void = undefined;
 
-    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) { 
-      return resource.Err.ResourceError; 
+    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
+      return resource.Err.ResourceError;
     }
 
     // according to the erlang documentation:
-    // the pointer received in *objp is guaranteed to be valid at least as long as the 
+    // the pointer received in *objp is guaranteed to be valid at least as long as the
     // resource handle term is valid.
 
     if (obj == null) { unreachable; }
-    
+
     var val : *T = @ptrCast(*T, @alignCast(@alignOf(*T), obj));
 
     return val.*;

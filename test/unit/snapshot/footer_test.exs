@@ -13,7 +13,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
 
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
-          .name = c"foo",
+          .name = "foo",
           .arity = 0,
           .fptr = __foo_shim__,
           .flags = 0,
@@ -23,17 +23,17 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       const entry = e.ErlNifEntry{
         .major = #{major},
         .minor = #{minor},
-        .name = c"Elixir.Foo",
+        .name = "Elixir.Foo",
         .num_of_funcs = 1,
         .funcs = &(__exported_nifs__[0]),
         .load = null,
         .reload = null,
         .upgrade = null,
         .unload = null,
-        .vm_variant = c"beam.vanilla",
+        .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
-        .min_erts = c"erts-#{:erlang.system_info(:version)}"
+        .min_erts = "erts-#{:erlang.system_info(:version)}"
       };
 
       export fn nif_init() *const e.ErlNifEntry{
@@ -53,7 +53,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
 
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
-          .name = c"foo",
+          .name = "foo",
           .arity = 0,
           .fptr = __foo_shim__,
           .flags = 0,
@@ -66,7 +66,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         return e.enif_open_resource_type(
           env,
           null,
-          c"bar",
+          "bar",
           __destroy_bar__,
           @intToEnum(e.ErlNifResourceFlags, 3),
           null);
@@ -107,17 +107,17 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       const entry = e.ErlNifEntry{
         .major = #{major},
         .minor = #{minor},
-        .name = c"Elixir.Foo",
+        .name = "Elixir.Foo",
         .num_of_funcs = 1,
         .funcs = &(__exported_nifs__[0]),
         .load = nif_load,
         .reload = null,
         .upgrade = null,
         .unload = null,
-        .vm_variant = c"beam.vanilla",
+        .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
-        .min_erts = c"erts-#{:erlang.system_info(:version)}"
+        .min_erts = "erts-#{:erlang.system_info(:version)}"
       };
 
       export fn nif_init() *const e.ErlNifEntry{
@@ -141,7 +141,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
 
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
-          .name = c"foo",
+          .name = "foo",
           .arity = 0,
           .fptr = __foo_shim__,
           .flags = 0,
@@ -154,7 +154,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         return e.enif_open_resource_type(
           env,
           null,
-          c"bar",
+          "bar",
           __destroy_bar__,
           @intToEnum(e.ErlNifResourceFlags, 3),
           null);
@@ -199,17 +199,17 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       const entry = e.ErlNifEntry{
         .major = #{major},
         .minor = #{minor},
-        .name = c"Elixir.Foo",
+        .name = "Elixir.Foo",
         .num_of_funcs = 1,
         .funcs = &(__exported_nifs__[0]),
         .load = nif_load,
         .reload = null,
         .upgrade = null,
         .unload = null,
-        .vm_variant = c"beam.vanilla",
+        .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
-        .min_erts = c"erts-#{:erlang.system_info(:version)}"
+        .min_erts = "erts-#{:erlang.system_info(:version)}"
       };
 
       export fn nif_init() *const e.ErlNifEntry{
@@ -233,13 +233,13 @@ defmodule ZiglerTest.Snapshot.FooterTest do
 
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
-          .name = c"foo",
+          .name = "foo",
           .arity = 0,
           .fptr = __foo_shim__,
           .flags = 0,
         },
         e.ErlNifFunc{
-          .name = c"bar",
+          .name = "bar",
           .arity = 1,
           .fptr = __bar_shim__,
           .flags = 0,
@@ -249,17 +249,17 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       const entry = e.ErlNifEntry{
         .major = #{major},
         .minor = #{minor},
-        .name = c"Elixir.Baz",
+        .name = "Elixir.Baz",
         .num_of_funcs = 2,
         .funcs = &(__exported_nifs__[0]),
         .load = null,
         .reload = null,
         .upgrade = null,
         .unload = null,
-        .vm_variant = c"beam.vanilla",
+        .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
-        .min_erts = c"erts-#{:erlang.system_info(:version)}"
+        .min_erts = "erts-#{:erlang.system_info(:version)}"
       };
 
       export fn nif_init() *const e.ErlNifEntry{
@@ -281,13 +281,13 @@ defmodule ZiglerTest.Snapshot.FooterTest do
 
       var __exported_nifs__ = [_] e.ErlNifFunc{
         e.ErlNifFunc{
-          .name = c"__foo_launch__",
+          .name = "__foo_launch__",
           .arity = 0,
           .fptr = __foo_launch__,
           .flags = 0,
         },
         e.ErlNifFunc{
-          .name = c"__foo_fetch__",
+          .name = "__foo_fetch__",
           .arity = 1,
           .fptr = __foo_fetch__,
           .flags = 0,
@@ -297,17 +297,17 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       const entry = e.ErlNifEntry{
         .major = #{major},
         .minor = #{minor},
-        .name = c"Elixir.Baz",
+        .name = "Elixir.Baz",
         .num_of_funcs = 2,
         .funcs = &(__exported_nifs__[0]),
         .load = null,
         .reload = null,
         .upgrade = null,
         .unload = null,
-        .vm_variant = c"beam.vanilla",
+        .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
-        .min_erts = c"erts-#{:erlang.system_info(:version)}"
+        .min_erts = "erts-#{:erlang.system_info(:version)}"
       };
 
       export fn nif_init() *const e.ErlNifEntry{

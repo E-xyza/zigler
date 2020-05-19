@@ -1,9 +1,0 @@
-var exported_nifs = [<%= Enum.count(funcs) %>] e.ErlNifFunc{
-<%= for {func, {args, _}} <- funcs do %>
-e.ErlNifFunc{
-    .name = c"<%= func %>",
-    .arity = <%= Enum.count(Zigler.Zig.adjust_args(args)) %>,
-    .fptr = __<%= func %>,
-    .flags = 0,
-},<% end %>
-};

@@ -15,7 +15,7 @@ defmodule Zigler.Zig do
     include_opts = ["-isystem", Path.join(compiler.assembly_dir, "include")] ++
       includes_from_module(compiler.module_spec)
 
-    lib_opts = libraries_from_module(compiler.module_spec) 
+    lib_opts = libraries_from_module(compiler.module_spec)
 
     version = compiler.module_spec.version
     module = compiler.module_spec.module

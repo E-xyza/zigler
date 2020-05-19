@@ -28,7 +28,7 @@ defmodule ZiglerTest.UnitTestTest do
   test "Zigler.Code.nif_struct/1 produces the correct skeleton for a test" do
     assert """
       e.ErlNifFunc{
-        .name = c"tests foo",
+        .name = "tests foo",
         .arity = 0,
         .fptr = __test_foo_shim__,
         .flags = 0,

@@ -20,7 +20,7 @@ fn bar() i64 {
 // footer content
 
 e.ErlNifFunc{
-    .name = c"foo",
+    .name = "foo",
     .arity = 1,
     .fptr = __foo,
     .flags = 0,
@@ -29,17 +29,17 @@ e.ErlNifFunc{
 const entry = e.ErlNifEntry{
     .major = 2,
     .minor = 15,
-    .name = c"Elixir.ZiglerTest.ErrorParser",
+    .name = "Elixir.ZiglerTest.ErrorParser",
     .num_of_funcs = 1,
     .funcs = &(exported_nifs[0]),
     .load = null,
     .reload = null,
     .upgrade = null,
     .unload = null,
-    .vm_variant = c"beam.vanilla",
+    .vm_variant = "beam.vanilla",
     .options = 1,
     .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
-    .min_erts = c"erts-10.4"
+    .min_erts = "erts-10.4"
 };
 
 export fn nif_init() *const e.ErlNifEntry{

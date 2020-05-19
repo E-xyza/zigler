@@ -57,9 +57,9 @@ typedef enum {
 } ErlNifCharEncoding;
 
 // NIF Functions: memory management
-export void *enif_alloc(size_t size);
-export void enif_free(void* ptr);
-export void *enif_realloc(void* ptr, size_t size);
+extern void *enif_alloc(size_t size);
+extern void enif_free(void* ptr);
+extern void *enif_realloc(void* ptr, size_t size);
 
 // NIF Functions: resource management
 
@@ -71,13 +71,13 @@ typedef enum {
     ERL_NIF_BOTH = 3
 } ErlNifResourceFlags;
 
-export void *enif_alloc_resource(ErlNifResourceType*, size_t);
-export ErlNifTerm enif_make_resource(ErlNifEnv *, void *);
-export int enif_get_resource(ErlNifEnv*, ErlNifTerm, ErlNifResourceType*, void**);
-export int enif_keep_resource(void *);
-export void enif_release_resource(void *);
+extern void *enif_alloc_resource(ErlNifResourceType*, size_t);
+extern ErlNifTerm enif_make_resource(ErlNifEnv *, void *);
+extern int enif_get_resource(ErlNifEnv*, ErlNifTerm, ErlNifResourceType*, void**);
+extern int enif_keep_resource(void *);
+extern void enif_release_resource(void *);
 
-export ErlNifResourceType *enif_open_resource_type(
+extern ErlNifResourceType *enif_open_resource_type(
     ErlNifEnv*,
     const char*,
     const char*,
@@ -86,87 +86,87 @@ export ErlNifResourceType *enif_open_resource_type(
     ErlNifResourceFlags*);
 
 // NIF Functions: guards
-export int enif_is_atom(ErlNifEnv*, ErlNifTerm);
-export int enif_is_binary(ErlNifEnv*, ErlNifTerm);
-export int enif_is_ref(ErlNifEnv*, ErlNifTerm);
-export int enif_is_fun(ErlNifEnv*, ErlNifTerm);
-export int enif_is_pid(ErlNifEnv*, ErlNifTerm);
-export int enif_is_port(ErlNifEnv*, ErlNifTerm);
-export int enif_is_identical(ErlNifTerm, ErlNifTerm);
-export int enif_is_list(ErlNifEnv*, ErlNifTerm);
-export int enif_is_tuple(ErlNifEnv*, ErlNifTerm);
-export int enif_is_empty_list(ErlNifEnv*, ErlNifTerm);
-export int enif_is_map(ErlNifEnv*, ErlNifTerm);
+extern int enif_is_atom(ErlNifEnv*, ErlNifTerm);
+extern int enif_is_binary(ErlNifEnv*, ErlNifTerm);
+extern int enif_is_ref(ErlNifEnv*, ErlNifTerm);
+extern int enif_is_fun(ErlNifEnv*, ErlNifTerm);
+extern int enif_is_pid(ErlNifEnv*, ErlNifTerm);
+extern int enif_is_port(ErlNifEnv*, ErlNifTerm);
+extern int enif_is_identical(ErlNifTerm, ErlNifTerm);
+extern int enif_is_list(ErlNifEnv*, ErlNifTerm);
+extern int enif_is_tuple(ErlNifEnv*, ErlNifTerm);
+extern int enif_is_empty_list(ErlNifEnv*, ErlNifTerm);
+extern int enif_is_map(ErlNifEnv*, ErlNifTerm);
 
-export int enif_is_number(ErlNifEnv*, ErlNifTerm term);
-export int enif_compare(ErlNifTerm, ErlNifTerm);
+extern int enif_is_number(ErlNifEnv*, ErlNifTerm term);
+extern int enif_compare(ErlNifTerm, ErlNifTerm);
 
 // NIF Functions: binary manipulation
-export int enif_inspect_binary(ErlNifEnv *, ErlNifTerm bin_term, ErlNifBinary *bin);
-export int enif_alloc_binary(size_t size, ErlNifBinary *bin);
-export int enif_realloc_binary(ErlNifBinary *bin, size_t size);
-export int enif_release_binary(ErlNifBinary *bin);
+extern int enif_inspect_binary(ErlNifEnv *, ErlNifTerm bin_term, ErlNifBinary *bin);
+extern int enif_alloc_binary(size_t size, ErlNifBinary *bin);
+extern int enif_realloc_binary(ErlNifBinary *bin, size_t size);
+extern int enif_release_binary(ErlNifBinary *bin);
 
 // NIF Functions: get values
-export int enif_get_int(ErlNifEnv *, ErlNifTerm, int * ip);
-export int enif_get_uint(ErlNifEnv*, ErlNifTerm, unsigned* ip);
-export int enif_get_long(ErlNifEnv*, ErlNifTerm, long* ip);
-export int enif_get_ulong(ErlNifEnv *, ErlNifTerm, unsigned long * ip);
-export int enif_get_int64(ErlNifEnv *, ErlNifTerm, long * ip);
-export int enif_get_double(ErlNifEnv *, ErlNifTerm, double * dp);
-export int enif_get_list_cell(ErlNifEnv *, ErlNifTerm, ErlNifTerm *head, ErlNifTerm *tail);
-export int enif_get_list_length(ErlNifEnv*, ErlNifTerm, unsigned* len);
-export int enif_get_tuple(ErlNifEnv *, ErlNifTerm, int* arity, const ErlNifTerm **array);
-export int enif_get_string(ErlNifEnv*, ErlNifTerm, char* buf, unsigned len, ErlNifCharEncoding);
-export int enif_get_atom_length(ErlNifEnv*, ErlNifTerm, unsigned* buf, ErlNifCharEncoding);
-export int enif_get_atom(ErlNifEnv*, ErlNifTerm, char* buf, unsigned len, ErlNifCharEncoding);
+extern int enif_get_int(ErlNifEnv *, ErlNifTerm, int * ip);
+extern int enif_get_uint(ErlNifEnv*, ErlNifTerm, unsigned* ip);
+extern int enif_get_long(ErlNifEnv*, ErlNifTerm, long* ip);
+extern int enif_get_ulong(ErlNifEnv *, ErlNifTerm, unsigned long * ip);
+extern int enif_get_int64(ErlNifEnv *, ErlNifTerm, long * ip);
+extern int enif_get_double(ErlNifEnv *, ErlNifTerm, double * dp);
+extern int enif_get_list_cell(ErlNifEnv *, ErlNifTerm, ErlNifTerm *head, ErlNifTerm *tail);
+extern int enif_get_list_length(ErlNifEnv*, ErlNifTerm, unsigned* len);
+extern int enif_get_tuple(ErlNifEnv *, ErlNifTerm, int* arity, const ErlNifTerm **array);
+extern int enif_get_string(ErlNifEnv*, ErlNifTerm, char* buf, unsigned len, ErlNifCharEncoding);
+extern int enif_get_atom_length(ErlNifEnv*, ErlNifTerm, unsigned* buf, ErlNifCharEncoding);
+extern int enif_get_atom(ErlNifEnv*, ErlNifTerm, char* buf, unsigned len, ErlNifCharEncoding);
 
 // NIF Functions: make values
-export ErlNifTerm enif_make_binary(ErlNifEnv *, ErlNifBinary *);
-export ErlNifTerm enif_make_badarg(ErlNifEnv *);
-export ErlNifTerm enif_make_int(ErlNifEnv *, int);
-export ErlNifTerm enif_make_ulong(ErlNifEnv *, unsigned long);
-export ErlNifTerm enif_make_double(ErlNifEnv *, double);
-export ErlNifTerm enif_make_atom(ErlNifEnv *, const char*);
-export ErlNifTerm enif_make_atom_len(ErlNifEnv*, const char*, size_t);
-export int enif_make_existing_atom(ErlNifEnv *, const char*, ErlNifTerm *atom, ErlNifCharEncoding);
-export ErlNifTerm enif_make_tuple(ErlNifEnv *, unsigned cnt, ...);
-export ErlNifTerm enif_make_list(ErlNifEnv *, unsigned cnt, ...);
-export ErlNifTerm enif_make_list_cell(ErlNifEnv *, ErlNifTerm car, ErlNifTerm cdr);
-export ErlNifTerm enif_make_string(ErlNifEnv *, const char * string, ErlNifCharEncoding);
-export ErlNifTerm enif_make_ref(ErlNifEnv *);
-export ErlNifTerm enif_make_uint(ErlNifEnv *, unsigned i);
-export ErlNifTerm enif_make_long(ErlNifEnv *, long i);
-export ErlNifTerm enif_make_tuple_from_array(ErlNifEnv*, const ErlNifTerm arr[], unsigned cnt);
-export ErlNifTerm enif_make_list_from_array(ErlNifEnv*, const ErlNifTerm arr[], unsigned cnt);
-export ErlNifTerm enif_make_pid(ErlNifEnv *, const ErlNifPid *);
-export unsigned char* enif_make_new_binary(ErlNifEnv*, size_t size, ErlNifTerm* termp);
+extern ErlNifTerm enif_make_binary(ErlNifEnv *, ErlNifBinary *);
+extern ErlNifTerm enif_make_badarg(ErlNifEnv *);
+extern ErlNifTerm enif_make_int(ErlNifEnv *, int);
+extern ErlNifTerm enif_make_ulong(ErlNifEnv *, unsigned long);
+extern ErlNifTerm enif_make_double(ErlNifEnv *, double);
+extern ErlNifTerm enif_make_atom(ErlNifEnv *, const char*);
+extern ErlNifTerm enif_make_atom_len(ErlNifEnv*, const char*, size_t);
+extern int enif_make_existing_atom(ErlNifEnv *, const char*, ErlNifTerm *atom, ErlNifCharEncoding);
+extern ErlNifTerm enif_make_tuple(ErlNifEnv *, unsigned cnt, ...);
+extern ErlNifTerm enif_make_list(ErlNifEnv *, unsigned cnt, ...);
+extern ErlNifTerm enif_make_list_cell(ErlNifEnv *, ErlNifTerm car, ErlNifTerm cdr);
+extern ErlNifTerm enif_make_string(ErlNifEnv *, const char * string, ErlNifCharEncoding);
+extern ErlNifTerm enif_make_ref(ErlNifEnv *);
+extern ErlNifTerm enif_make_uint(ErlNifEnv *, unsigned i);
+extern ErlNifTerm enif_make_long(ErlNifEnv *, long i);
+extern ErlNifTerm enif_make_tuple_from_array(ErlNifEnv*, const ErlNifTerm arr[], unsigned cnt);
+extern ErlNifTerm enif_make_list_from_array(ErlNifEnv*, const ErlNifTerm arr[], unsigned cnt);
+extern ErlNifTerm enif_make_pid(ErlNifEnv *, const ErlNifPid *);
+extern unsigned char* enif_make_new_binary(ErlNifEnv*, size_t size, ErlNifTerm* termp);
 
 // NIF Functions: etcetera
-export void enif_system_info(ErlNifSysInfo * sip, size_t si_size);
-export ErlNifTerm enif_raise_exception(ErlNifEnv *env, ErlNifTerm reason);
-export int enif_term_to_binary(ErlNifEnv *env, ErlNifTerm term, ErlNifBinary *bin);
-export size_t enif_binary_to_term(ErlNifEnv *env, const unsigned char* data, size_t sz, ErlNifTerm *term, unsigned int opts);
-export ErlNifUInt64 enif_hash(ErlNifHash type, ErlNifTerm term, ErlNifUInt64 salt);
+extern void enif_system_info(ErlNifSysInfo * sip, size_t si_size);
+extern ErlNifTerm enif_raise_exception(ErlNifEnv *env, ErlNifTerm reason);
+extern int enif_term_to_binary(ErlNifEnv *env, ErlNifTerm term, ErlNifBinary *bin);
+extern size_t enif_binary_to_term(ErlNifEnv *env, const unsigned char* data, size_t sz, ErlNifTerm *term, unsigned int opts);
+extern ErlNifUInt64 enif_hash(ErlNifHash type, ErlNifTerm term, ErlNifUInt64 salt);
 
 // NIF Functions: environments
-export ErlNifEnv* enif_alloc_env(void);
-export void enif_free_env(ErlNifEnv* env);
-export void enif_clear_env(ErlNifEnv* env);
+extern ErlNifEnv* enif_alloc_env(void);
+extern void enif_free_env(ErlNifEnv* env);
+extern void enif_clear_env(ErlNifEnv* env);
 
 // NIF Functions: message passing
-export int enif_send(ErlNifEnv *, const ErlNifPid*, ErlNifEnv *msg_env, ErlNifTerm msg);
-export ErlNifTerm enif_make_copy(ErlNifEnv *, ErlNifTerm);
-export ErlNifPid *enif_self(ErlNifEnv *, ErlNifPid *);
-export int enif_get_local_pid(ErlNifEnv *, ErlNifTerm, ErlNifPid *pid);
+extern int enif_send(ErlNifEnv *, const ErlNifPid*, ErlNifEnv *msg_env, ErlNifTerm msg);
+extern ErlNifTerm enif_make_copy(ErlNifEnv *, ErlNifTerm);
+extern ErlNifPid *enif_self(ErlNifEnv *, ErlNifPid *);
+extern int enif_get_local_pid(ErlNifEnv *, ErlNifTerm, ErlNifPid *pid);
 
 // NIF: map stuff
-export int enif_get_map_size(ErlNifEnv *, ErlNifTerm, size_t *size);
-export ErlNifTerm enif_make_new_map(ErlNifEnv *);
-export int enif_make_map_put(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, ErlNifTerm value, ErlNifTerm *map_out);
-export int enif_get_map_value(ErlNifEnv *, ErlNifTerm map, ErlNifTerm key, ErlNifTerm *value);
-export int enif_make_map_update(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, ErlNifTerm value, ErlNifTerm *map_out);
-export int enif_make_map_remove(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, ErlNifTerm *map_out);
+extern int enif_get_map_size(ErlNifEnv *, ErlNifTerm, size_t *size);
+extern ErlNifTerm enif_make_new_map(ErlNifEnv *);
+extern int enif_make_map_put(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, ErlNifTerm value, ErlNifTerm *map_out);
+extern int enif_get_map_value(ErlNifEnv *, ErlNifTerm map, ErlNifTerm key, ErlNifTerm *value);
+extern int enif_make_map_update(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, ErlNifTerm value, ErlNifTerm *map_out);
+extern int enif_make_map_remove(ErlNifEnv *, ErlNifTerm map_in, ErlNifTerm key, ErlNifTerm *map_out);
 
 // MONITORS
 typedef struct {
