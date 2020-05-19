@@ -1,8 +1,8 @@
 defmodule ZiglerTest.Integration.LongNifTest do
 
-  use ExUnit.Case, async: true
-  use Zigler
-
+#  use ExUnit.Case, async: true
+#  use Zigler
+#
 #  ~Z"""
 #  /// nif: long_forty_seven/0 long
 #  fn long_forty_seven() i32 {
