@@ -21,7 +21,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
       assert """
       const std = @import("std");
-      const e = @import("erl_nif.zig").c;
+      const e = @import("erl_nif.zig");
       const beam = @import("beam.zig");
 
       // foo.exs line: 3
@@ -42,7 +42,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
       // footer for Elixir.Foo in foo.exs:
 
-      var __exported_nifs__ = [_] e.ErlNifFunc{
+      export var __exported_nifs__ = [_]e.ErlNifFunc{
         e.ErlNifFunc{
           .name = "foo",
           .arity = 0,
@@ -91,7 +91,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
       assert """
       const std = @import("std");
-      const e = @import("erl_nif.zig").c;
+      const e = @import("erl_nif.zig");
       const beam = @import("beam.zig");
 
       // foo.exs line: 3
@@ -115,7 +115,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
       // footer for Elixir.Foo in foo.exs:
 
-      var __exported_nifs__ = [_] e.ErlNifFunc{
+      export var __exported_nifs__ = [_]e.ErlNifFunc{
         e.ErlNifFunc{
           .name = "foo",
           .arity = 1,

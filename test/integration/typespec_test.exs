@@ -1,4 +1,4 @@
-defmodule ZiglerTest.DryRunTypespecTest do
+defmodule ZiglerTest.TypespecTest do
   use ExUnit.Case, async: true
 
   #

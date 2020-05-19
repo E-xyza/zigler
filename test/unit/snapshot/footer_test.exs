@@ -11,7 +11,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       assert """
       // footer for Elixir.Foo in foo.exs:
 
-      var __exported_nifs__ = [_] e.ErlNifFunc{
+      export var __exported_nifs__ = [_]e.ErlNifFunc{
         e.ErlNifFunc{
           .name = "foo",
           .arity = 0,
@@ -51,7 +51,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       assert """
       // footer for Elixir.Foo in foo.exs:
 
-      var __exported_nifs__ = [_] e.ErlNifFunc{
+      export var __exported_nifs__ = [_]e.ErlNifFunc{
         e.ErlNifFunc{
           .name = "foo",
           .arity = 0,
@@ -139,7 +139,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       assert """
       // footer for Elixir.Foo in foo.exs:
 
-      var __exported_nifs__ = [_] e.ErlNifFunc{
+      export var __exported_nifs__ = [_]e.ErlNifFunc{
         e.ErlNifFunc{
           .name = "foo",
           .arity = 0,
@@ -231,7 +231,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       assert """
       // footer for Elixir.Baz in foo.exs:
 
-      var __exported_nifs__ = [_] e.ErlNifFunc{
+      export var __exported_nifs__ = [_]e.ErlNifFunc{
         e.ErlNifFunc{
           .name = "foo",
           .arity = 0,
@@ -279,7 +279,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       assert """
       // footer for Elixir.Baz in foo.exs:
 
-      var __exported_nifs__ = [_] e.ErlNifFunc{
+      export var __exported_nifs__ = [_]e.ErlNifFunc{
         e.ErlNifFunc{
           .name = "__foo_launch__",
           .arity = 0,
