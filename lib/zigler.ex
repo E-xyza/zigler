@@ -236,7 +236,7 @@ defmodule Zigler do
   defmacro sigil_Z({:<<>>, meta, zig_code}, []) do
     line = meta[:line]
 
-    zigler = Module.get_attribute(__CALLER__.module, :zigler) 
+    zigler = Module.get_attribute(__CALLER__.module, :zigler)
 
     new_zigler = zig_code
     |> IO.iodata_to_binary
