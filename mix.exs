@@ -19,7 +19,7 @@ defmodule Zigler.MixProject do
 
     [
       app: :zigler,
-      version: "0.2.0",
+      version: "0.3.0-pre",
       elixir: "~> 1.9",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
@@ -53,7 +53,7 @@ defmodule Zigler.MixProject do
 
   defp elixirc_paths(:dev), do: ["lib", "zigdoc"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
-  defp elixirc_paths(:unit), do: ["lib", "test/support"]
+  defp elixirc_paths(:unit), do: ["lib"]
   defp elixirc_paths(:isolated), do: ["lib", "test/isolated/support"]
   defp elixirc_paths(_), do: ["lib"]
 

@@ -57,7 +57,7 @@ defmodule ZiglerTest.Snapshot.ImportsTest do
     test "generates the default correctly" do
       assert """
       const std = @import("std");
-      const e = @import("erl_nif.zig").c;
+      const e = @import("erl_nif.zig");
       const beam = @import("beam.zig");
       """ == [:defaults]
       |> Zigler.Module.imports

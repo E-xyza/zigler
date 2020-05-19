@@ -14,12 +14,10 @@ by adding `zigler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:zigler, "~> 0.2.0", runtime: false}
+    {:zigler, "~> 0.3.0", runtime: false}
   ]
 end
 ```
-
-## Warning: the 0.2.0 version is transitional and only supports Zig 0.5.0
 
 ## Documentation
 

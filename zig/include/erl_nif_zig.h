@@ -78,11 +78,11 @@ extern int enif_keep_resource(void *);
 extern void enif_release_resource(void *);
 
 extern ErlNifResourceType *enif_open_resource_type(
-    ErlNifEnv*, 
-    const char*, 
-    const char*, 
-    ErlNifResourceDtor*, 
-    ErlNifResourceFlags, 
+    ErlNifEnv*,
+    const char*,
+    const char*,
+    ErlNifResourceDtor*,
+    ErlNifResourceFlags,
     ErlNifResourceFlags*);
 
 // NIF Functions: guards

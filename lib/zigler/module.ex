@@ -6,14 +6,14 @@ defmodule Zigler.Module do
 
   @enforce_keys [:file, :module, :otp_app]
 
-  @default_imports [std: "std", e: {"erl_nif.zig", "c"},  beam: "beam.zig"]
+  @default_imports [std: "std", e: "erl_nif.zig",  beam: "beam.zig"]
 
   defstruct @enforce_keys ++ [
     zig_file:     "",
     libs:         [],
     nifs:         [],
     resources:    [],
-    zig_version:  Version.parse!("0.5.0"),
+    zig_version:  Version.parse!("0.6.0"),
     imports:      @default_imports,
     c_includes:   [],
     include_dirs: [],

@@ -31,15 +31,18 @@ defmodule Zigler.Parser.Error do
   The temporary directory is stripped (when reasonable) in favor of a "true" source file
   and any filename substitutions are performed as well.
   """
-  def parse(msg) do#, code_dir, tmp_dir) do
-    {:ok, [path, line, _col, msg | _rest], _, _, _, _} = parse_error(msg)
+  def parse(msg, compiler) do
+    {:ok, [path, line, _col | msg], rest, _, _, _} = parse_error(msg)
 
-    {path, line} = backreference(path, String.to_integer(line))
+    {path, line} = compiler.assembly_dir
+    |> Path.join(path)
+    |> Path.expand
+    |> backreference(String.to_integer(line))
 
     raise CompileError,
       file: path,
       line: line,
-      description: msg
+      description: IO.iodata_to_binary([msg, "\n" | rest])
   end
 
   @spec backreference(Path.t, non_neg_integer) :: {Path.t, non_neg_integer}

@@ -95,7 +95,7 @@ defmodule Zigler.Code do
       result_var = "__#{nif.name}_result__"
       function_call = "#{nif.name}(#{args})"
 
-      head = "extern fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
+      head = "export fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
 
       result = cond do
         nif.retval in ["beam.term", "e.ErlNifTerm"] ->
@@ -124,7 +124,7 @@ defmodule Zigler.Code do
   def adapter(nif) do
     # when it is a test:
     """
-    extern fn __#{shim_name nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+    export fn __#{shim_name nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
       beam.test_env = env;
       #{nif.name}() catch return beam.test_error();
       return beam.make_atom(env, "ok");
@@ -209,7 +209,7 @@ defmodule Zigler.Code do
     |> Enum.sum
 
     exports = """
-    var __exported_nifs__ = [_] e.ErlNifFunc{
+    export var __exported_nifs__ = [_]e.ErlNifFunc{
     #{Enum.map(module.nifs, &nif_struct/1)}};
     """
     resource_init_defs = Enum.map(module.resources, &resource_init_definition/1)
@@ -220,7 +220,7 @@ defmodule Zigler.Code do
       [] -> ""
       _ ->
         """
-        extern fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
+        export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
         #{resource_inits}  return 0;
         }
 
@@ -237,17 +237,17 @@ defmodule Zigler.Code do
     const entry = e.ErlNifEntry{
       .major = #{major},
       .minor = #{minor},
-      .name = c"#{module.module}",
+      .name = "#{module.module}",
       .num_of_funcs = #{funcs_count},
       .funcs = &(__exported_nifs__[0]),
       .load = #{nif_load_fn},
       .reload = null,
       .upgrade = null,
       .unload = null,
-      .vm_variant = c"beam.vanilla",
+      .vm_variant = "beam.vanilla",
       .options = 1,
       .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
-      .min_erts = c"erts-#{:erlang.system_info(:version)}"
+      .min_erts = "erts-#{:erlang.system_info(:version)}"
     };
 
     export fn nif_init() *const e.ErlNifEntry{
@@ -271,13 +271,13 @@ defmodule Zigler.Code do
     if opts[:long] do
       """
         e.ErlNifFunc{
-          .name = c"#{LongRunning.launcher name}",
+          .name = "#{LongRunning.launcher name}",
           .arity = #{arity},
           .fptr = #{LongRunning.launcher name},
           .flags = 0,
         },
         e.ErlNifFunc{
-          .name = c"#{LongRunning.fetcher name}",
+          .name = "#{LongRunning.fetcher name}",
           .arity = 1,
           .fptr = #{LongRunning.fetcher name},
           .flags = 0,
@@ -286,7 +286,7 @@ defmodule Zigler.Code do
     else
       """
         e.ErlNifFunc{
-          .name = c"#{name}",
+          .name = "#{name}",
           .arity = #{arity},
           .fptr = __#{name}_shim__,
           .flags = 0,
@@ -297,7 +297,7 @@ defmodule Zigler.Code do
   def nif_struct(%Nif{name: name, test: test}) do
     """
       e.ErlNifFunc{
-        .name = c"#{test}",
+        .name = "#{test}",
         .arity = 0,
         .fptr = __#{shim_name name}_shim__,
         .flags = 0,
@@ -330,13 +330,13 @@ defmodule Zigler.Code do
       return e.enif_open_resource_type(
         env,
         null,
-        c\"#{name}\",
+        \"#{name}\",
         __destroy_#{name}__,
         @intToEnum(e.ErlNifResourceFlags, 3),
         null);
     }
 
-    extern fn __destroy_#{name}__(env: beam.env, res: ?*c_void) void {#{cleanup}}
+    export fn __destroy_#{name}__(env: beam.env, res: ?*c_void) void {#{cleanup}}
     """
   end
 
