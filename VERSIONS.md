@@ -34,6 +34,7 @@ Thanks to Dave Cottlehuber @dch for testing.
 - initial support for resources
 - experimental addition of `:dirty`, `:long` and `:safe` function directives
 
-## 0.3.0
+## 0.3.0-pre
 
 - supported zig version: 0.6.0
+- disabled `:long` mode
