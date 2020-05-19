@@ -47,7 +47,7 @@ defmodule Zigler do
   #### Example
   ```
   defmodule MyModule do
-    use Zigler, app: :my_app
+    use Zigler, otp_app: :my_app
 
     ~Z\"""
     /// nif: my_func/1
@@ -73,14 +73,14 @@ defmodule Zigler do
 
   Sometimes, you will need to pass the BEAM environment (which is the code
   execution context, including process info, etc.) into the NIF function.  In
-  this case, you should pass it as the first parameter, as a `beam.env` type
+  this case, you should pass it as the first argument, as a `beam.env` type
   value.
 
   #### Example
 
   ```
   defmodule MyModule do
-    use Zigler, app: :my_app
+    use Zigler, otp_app: :my_app
 
     ~Z\"""
     /// nif: my_func_with_env/1
@@ -96,7 +96,7 @@ defmodule Zigler do
   ### External Libraries
 
   If you need to bind static (`*.a`) or dynamic (`*.so`) libraries into your
-  module, you may link them with the `:libs` parameter.
+  module, you may link them with the `:libs` argument.
 
   Note that for shared libraries, a library with an identical path must exist
   in the target release environment.
@@ -106,7 +106,7 @@ defmodule Zigler do
   ```
   defmodule Blas do
     use Zigler,
-      app: :my_app,
+      otp_app: :my_app,
       libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
       include: ["/usr/include/x86_64-linux-gnu"]
 
@@ -190,162 +190,65 @@ defmodule Zigler do
 
   """
 
+  alias Zigler.Parser
+
   # default release modes.
   # you can override these in your `use Zigler` statement.
-  @default_release_modes %{prod: :safe, dev: :debug, test: :debug}
-  @default_release_mode @default_release_modes[Mix.env()]
+  #@default_release_modes %{prod: :safe, dev: :debug, test: :debug}
+  #@default_release_mode @default_release_modes[Mix.env()]
 
   defmacro __using__(opts) do
-    unless opts[:app] do
-      raise ArgumentError, "you must provide the application"
-    end
-
-    mode = opts[:release_mode] || @default_release_mode
+    #mode = opts[:release_mode] || @default_release_mode
 
     # make sure that we're in the correct operating system.
     if match?({:win32, _}, :os.type()) do
       raise "non-unix systems not currently supported."
     end
 
-    ###########################################################################
-    # Required options:
+    user_opts = Keyword.take(opts, [:libs, :resources, :dry_run, :c_includes, :include_dirs])
 
-    mod_path =  opts[:app]
-    |> Application.app_dir("priv/nifs")
-    |> Path.join(Macro.underscore(__CALLER__.module))
+    zigler = struct(%Zigler.Module{
+      file:    __CALLER__.file,
+      module:  __CALLER__.module,
+      imports: Zigler.Module.imports(opts[:imports]),
+      version: get_project_version(),
+      otp_app: get_app()},
+      user_opts)
 
-    ###########################################################################
-    # Optional options:
-
-    zig_version = opts[:version] || latest_cached_version()
-    c_includes = opts[:include]
-
-    libs = opts[:libs]
-
-    File.mkdir_p!(Path.dirname(mod_path))
-
-    src_dir = Path.dirname(__CALLER__.file)
+    Module.register_attribute(__CALLER__.module, :zigler, persist: true)
+    Module.put_attribute(__CALLER__.module, :zigler, zigler)
 
     quote do
       import Zigler
+      require Zigler.Compiler
 
       @on_load :__load_nifs__
-
-      # persisted values
-      @zigler_app unquote(opts[:app])
-      @zig_version unquote(zig_version)
-      @zig_src_dir unquote(src_dir)
-
-      # free values
-      @release_mode unquote(mode)
-      @zig_libs unquote(libs)
-      @c_includes unquote(c_includes)
-
-      # needs to be persisted so that we can store the version for tests.
-      Module.register_attribute(__MODULE__, :zigler_app, persist: true)
-      Module.register_attribute(__MODULE__, :zig_version, persist: true)
-      Module.register_attribute(__MODULE__, :zig_src_dir, persist: true)
-      Module.register_attribute(__MODULE__, :zig_specs, accumulate: true)
-      Module.register_attribute(__MODULE__, :zig_code, accumulate: true, persist: true)
-      Module.register_attribute(__MODULE__, :zig_imports, accumulate: true)
 
       @before_compile Zigler.Compiler
     end
   end
 
   @doc """
-  Analyzes Zig code inline, then assembles a series of code files, stashes them in a
-  temporary directory, compiles it with NIF adapters, and then binds it into the current
-  module.  You may have multiple sigil_Z blocks in a single Elixir module if you wish.
+  Parses zig code and then accumulates it into the module's :zigler attribute.
+  Doesn't actually write any code, since it can all be taken care of in the
+  `Zigler.Compiler__before_compile__/1` directive.
   """
-  defmacro sigil_Z({:<<>>, meta, [zig_code]}, []) do
-    file = __CALLER__.file
+  defmacro sigil_Z({:<<>>, meta, zig_code}, []) do
     line = meta[:line]
 
-    # perform code analysis
-    code = Zigler.Code.from_string(zig_code, file, line)
+    zigler = Module.get_attribute(__CALLER__.module, :zigler)
 
-    # add a specs list to be retrieved by the compiler.
-    code_spec = Enum.map(code.nifs, &{&1.name, {&1.params, &1.retval}})
+    new_zigler = zig_code
+    |> IO.iodata_to_binary
+    |> Parser.parse(zigler, __CALLER__.file, line)
 
-    empty_functions = Enum.flat_map(code.nifs, fn nif ->
-      if nif.doc do
-        [{:@,
-           [context: Elixir, import: Kernel],
-           [{:doc, [context: Elixir], [IO.iodata_to_binary(nif.doc)]}]}]
-      else
-        []
-      end
-      ++
-      [
-        typespec_for(nif),
-        empty_function(nif.name, nif.arity),
-      ]
-    end)
-
-    quote do
-      @zig_code unquote(code.code)
-      @zig_specs unquote(code_spec)
-      unquote_splicing(empty_functions)
-    end
-  end
-
-  @doc false
-  def empty_function(func, 0) do
-    quote do
-      def unquote(func)(), do: throw unquote("#{func}/0 not defined")
-    end
-  end
-
-  def empty_function(func, arity) do
-    {:def, [context: Elixir, import: Kernel],
-    [
-      {func, [context: Elixir], for _ <- 1..arity do {:_, [], Elixir} end},
-      [
-        do: {:throw, [context: Elixir, import: Kernel],
-         ["#{func}/#{arity} not defined"]}
-      ]
-    ]}
-  end
-
-  @type_for %{
-    "c_int" => :integer, "c_long" => :integer, "isize" => :integer,
-    "usize" => :integer, "u8" => :integer, "i32" => :integer, "i64" => :integer,
-    "f16" => :float, "f32" => :float, "f64" => :float, "bool" => :boolean,
-    "beam.term" => :term, "e.ErlNifTerm" => :term,
-    "beam.pid" => :pid, "e.ErlNifPid" => :pid,
-    "beam.binary" => :binary, "e.ErlNifBinary" => :binary,
-    "[]u8" => :binary, "[*c]u8" => :binary
-  }
-
-  @doc false
-  def typespec_for(%{name: name, params: params, retval: retval}) do
-    [ret_tag] = type_for(retval)
-    {:@, [context: Elixir, import: Kernel], [
-      {:spec, [context: Elixir],
-       [
-         {:"::", [],
-          [
-            {name, [], Enum.flat_map(params, &type_for/1)},
-            ret_tag
-          ]}
-       ]}
-    ]}
-  end
-
-  @doc false
-  def type_for("?*e.ErlNifEnv"), do: []
-  def type_for("beam.env"), do: []
-  def type_for("void"), do: [nil]
-  def type_for("[]" <> val) when val != "u8", do: [type_for(val)]
-  def type_for(" " <> val), do: type_for(val)
-  def type_for(zig_type) do
-    [{@type_for[zig_type], [], Elixir}]
+    Module.put_attribute(__CALLER__.module, :zigler, new_zigler)
+    quote do end
   end
 
   @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
 
-  defp latest_cached_version do
+  def latest_cached_zig_version do
     @zig_dir_path
     |> File.ls!
     |> Enum.filter(&match?("zig" <> _, &1))
@@ -367,6 +270,33 @@ defmodule Zigler do
   rescue
     _err in FileError ->
       reraise CompileError, description: "zig directory path doesn't exist, run `mix zigler.get_zig latest`"
+  end
+
+  defp get_project_version do
+    Mix.Project.get
+    |> apply(:project, [])
+    |> Keyword.get(:version)
+    |> Version.parse!
+  end
+
+  defp get_app do
+    Mix.Project.get
+    |> apply(:project, [])
+    |> Keyword.get(:app)
+  end
+
+  def nif_dir(app \\ get_app()) do
+    app
+    |> :code.lib_dir
+    |> Path.join("nif")
+  end
+
+  def nif_name(module = %{version: version}, use_suffixes \\ true) do
+    if use_suffixes do
+      "lib#{module.module}.so.#{version.major}.#{version.minor}.#{version.patch}"
+    else
+      "lib#{module.module}"
+    end
   end
 
 end

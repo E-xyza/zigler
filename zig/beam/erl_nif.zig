@@ -11,18 +11,17 @@
 ///
 /// pub fn give_me_ten_bytes() ?*u8 {
 ///   return e.enif_alloc(10);
-/// }  
+/// }
 /// ```
 ///
 /// refer to the [erlang documentation](https://erlang.org/doc/man/erl_nif.html)
 /// for available functions
 ///
-/// WARNING: currently, `erl_nif.h` is manually translated from the erlang 
-/// header to be more digestible, and some functions available in the BEAM may 
+/// WARNING: currently, `erl_nif.h` is manually translated from the erlang
+/// header to be more digestible, and some functions available in the BEAM may
 /// not have been implemented yet, and windows support is currently not
 /// possible.
 
-
-pub const c = @cImport({
+usingnamespace @cImport({
   @cInclude("erl_nif_zig.h");
 });

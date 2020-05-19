@@ -20,11 +20,11 @@ defmodule Zigler.Doc do
 
   functions have the following signature:
 
-  `pub fn <identifier>(<parameters>) <type> {`
+  `pub fn <identifier>(<arguments>) <type> {`
 
   and may have the property of being `comptime` which is due to either the
   function being itself a `comptime` function or it having a `comptime`
-  parameter.
+  argument.
 
   **NB** only `pub` functions are documented in Zigler, following the Elixir
   philosophy that only public functions should be documented.
@@ -58,7 +58,7 @@ defmodule Zigler.Doc do
 
   ### Errors
 
-  errors appear inside special [error struct](https://ziglang.org/documentation/0.5.0/#Errors)
+  errors appear inside special [error struct](https://ziglang.org/documentation/0.6.0/#Errors)
   and should be documented at the per-value level:
 
   #### Example
