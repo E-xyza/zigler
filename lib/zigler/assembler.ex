@@ -23,6 +23,12 @@ defmodule Zigler.Assembler do
 
   alias Zigler.Parser.Imports
 
+  defp pr(file) do
+    :zigler
+    |> :code.priv_dir
+    |> Path.join(file)
+  end
+
   @doc """
   assembles the "core" part of the zig adapter code, these are parts for
   shimming Zig libraries into the BEAM that are going to be @import'd into
@@ -30,12 +36,12 @@ defmodule Zigler.Assembler do
   """
   def assemble_kernel!(assembly_dir) do
     # copy in beam.zig
-    File.cp!("zig/beam/beam.zig", Path.join(assembly_dir, "beam.zig"))
-    # copy in erl_nif.zig
-    File.cp!("zig/beam/erl_nif.zig", Path.join(assembly_dir, "erl_nif.zig"))
+    File.cp!(pr("beam/beam.zig"), Path.join(assembly_dir, "beam.zig"))
+    # copy in nif.zig
+    File.cp!(pr("beam/erl_nif.zig"), Path.join(assembly_dir, "erl_nif.zig"))
     # copy in erl_nif_zig.h
     File.mkdir_p!(Path.join(assembly_dir, "include"))
-    File.cp!("zig/include/erl_nif_zig.h", Path.join(assembly_dir, "include/erl_nif_zig.h"))
+    File.cp!(pr("include/erl_nif_zig.h"), Path.join(assembly_dir, "include/erl_nif_zig.h"))
   end
 
   @doc """

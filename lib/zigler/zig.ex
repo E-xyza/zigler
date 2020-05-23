@@ -42,21 +42,26 @@ defmodule Zigler.Zig do
         Error.parse(err, compiler)
     end
 
+    lib_dir = compiler.module_spec.otp_app
+    |> :code.lib_dir()
+    |> Path.join("ebin")
+
     library_filename = Zigler.nif_name(compiler.module_spec)
 
     # copy the compiled library over to the lib/nif directory.
-    File.mkdir_p!(Zigler.nif_dir())
+    File.mkdir_p!(lib_dir)
+
     compiler.assembly_dir
     |> Path.join(library_filename)
-    |> File.cp!(Path.join(Zigler.nif_dir(), library_filename))
+    |> File.cp!(Path.join(lib_dir, library_filename))
 
     # link the compiled library to be unversioned.
-    symlink_filename = Zigler.nif_dir()
+    symlink_filename = lib_dir
     |> Path.join(Zigler.nif_name(compiler.module_spec, false))
     |> Kernel.<>(".so")
 
     unless File.exists?(symlink_filename) do
-      Zigler.nif_dir()
+      lib_dir
       |> Path.join(library_filename)
       |> File.ln_s!(symlink_filename)
     end

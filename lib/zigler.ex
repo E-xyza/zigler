@@ -235,15 +235,17 @@ defmodule Zigler do
   """
   defmacro sigil_Z({:<<>>, meta, zig_code}, []) do
     line = meta[:line]
+    module = __CALLER__.module
+    file = __CALLER__.file
+    quote bind_quoted: [module: module, zig_code: zig_code, file: file, line: line] do
+      zigler = Module.get_attribute(module, :zigler)
 
-    zigler = Module.get_attribute(__CALLER__.module, :zigler)
+      new_zigler = zig_code
+      |> IO.iodata_to_binary
+      |> Parser.parse(zigler, file, line)
 
-    new_zigler = zig_code
-    |> IO.iodata_to_binary
-    |> Parser.parse(zigler, __CALLER__.file, line)
-
-    Module.put_attribute(__CALLER__.module, :zigler, new_zigler)
-    quote do end
+      @zigler new_zigler
+    end
   end
 
   @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
