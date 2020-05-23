@@ -94,6 +94,9 @@ defmodule Zigler.Compiler do
         import Logger
         unquote_splicing(nif_functions)
         def __load_nifs__ do
+          # LOADS the nifs from :code.lib_dir() <> "ebin", which is
+          # a path that has files correctly moved in to release packages.
+
           unquote(module.otp_app)
           |> :code.lib_dir()
           |> Path.join("ebin")
