@@ -112,7 +112,7 @@ defmodule Zigler.Assembler do
   defp standard_components({:pub, _, _}), do: false
   defp standard_components({_, "erl_nif.zig"}), do: true
   defp standard_components({_, "beam.zig"}), do: true
-  defp standard_components({:cinclude, include}), do: false
+  defp standard_components({:cinclude, _include}), do: false
   defp standard_components({_, maybe_standard}) do
     Path.extname(maybe_standard) != ".zig"
   end

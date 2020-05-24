@@ -43,7 +43,7 @@ defmodule Zigler.Zig do
       {_, 0} -> :ok
       {err, _} ->
         alias Zigler.Parser.Error
-        IO.puts(err)
+        # TODO: trap errors in the next call.
         Error.parse(err, compiler)
     end
 
@@ -73,14 +73,15 @@ defmodule Zigler.Zig do
     :ok
   end
 
+  @cross_settings %{
+    host: [],
+    rpi3: ~w(-target arm-linux.4.19-gnueabihf)
+  }
+
   defp nerves_crosscompile do
     alias Mix.Nerves.Utils
-    cond do
-      not function_exported?(Utils, :mix_target, 0) -> []
-      Utils.mix_target() == :host -> []
-      Utils.mix_target() == :rpi3 ->
-        ~w(-target arm-linux.4.19-gnueabihf)
-    end
+    utils = function_exported?(Utils, :mix_target, 0) and Utils
+    if utils, do: @cross_settings[utils.mix_target()], else: []
   end
 
   #############################################################################
