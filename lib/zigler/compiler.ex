@@ -108,7 +108,6 @@ defmodule Zigler.Compiler do
               Logger.info("loaded module at #{unquote(nif_name)}")
             error = {:error, any} ->
               Logger.error("loading module #{unquote(nif_name)} #{inspect any}")
-              error
           end
         end
       end

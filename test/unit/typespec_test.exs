@@ -1,4 +1,4 @@
-defmodule ZiglerTest.TypespecTest do
+defmodule ZiglerTest.Unit.TypespecTest do
   use ExUnit.Case, async: true
 
   @moduletag :typespec
