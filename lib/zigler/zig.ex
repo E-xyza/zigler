@@ -20,6 +20,9 @@ defmodule Zigler.Zig do
     version = compiler.module_spec.version
     module = compiler.module_spec.module
 
+    # nerves_check
+    cross_compile = nerves_crosscompile()
+
     src_file = Path.basename(compiler.code_file)
     cmd_opts = ["build-lib", src_file] ++
       ~w(-dynamic --disable-gen-h --override-lib-dir) ++
@@ -31,6 +34,7 @@ defmodule Zigler.Zig do
       lib_opts ++
       ["--name", "#{module}"] ++
       ["--release-safe"]
+      ++ cross_compile
       #@release_mode[release_mode]
 
     opts = [cd: compiler.assembly_dir, stderr_to_stdout: true]
@@ -66,6 +70,17 @@ defmodule Zigler.Zig do
       |> File.ln_s!(symlink_filename)
     end
     :ok
+  end
+
+  defp nerves_crosscompile do
+    cond do
+      not function_exported?(Mix.Nerves.Utils, :mix_target, 0) ->
+        []
+      Mix.Nerves.Utils.mix_target() == :host ->
+        []
+      Mix.Nerves.Utils.mix_target() == :rpi3 ->
+        ~w(-target aarch64-linux.4.19)
+    end |> IO.inspect(label: "83")
   end
 
   #############################################################################
