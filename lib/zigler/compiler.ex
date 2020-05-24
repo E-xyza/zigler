@@ -104,9 +104,11 @@ defmodule Zigler.Compiler do
           |> String.to_charlist()
           |> :erlang.load_nif(0)
           |> case do
-            :ok -> :ok
-            {:error, any} ->
-              Logger.error("problem loading module #{inspect any}")
+            :ok ->
+              Logger.info("loaded module at #{unquote(nif_name)}")
+            error = {:error, any} ->
+              Logger.error("loading module #{unquote(nif_name)} #{inspect any}")
+              error
           end
         end
       end

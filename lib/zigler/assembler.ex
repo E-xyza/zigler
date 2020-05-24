@@ -41,7 +41,11 @@ defmodule Zigler.Assembler do
     File.cp!(pr("beam/erl_nif.zig"), Path.join(assembly_dir, "erl_nif.zig"))
     # copy in erl_nif_zig.h
     File.mkdir_p!(Path.join(assembly_dir, "include"))
-    File.cp!(pr("include/erl_nif_zig.h"), Path.join(assembly_dir, "include/erl_nif_zig.h"))
+
+    # copy "include" files in from the correct location.
+    :code.root_dir()
+    |> Path.join("usr/include")
+    |> File.cp_r!(Path.join(assembly_dir, "include"))
   end
 
   @doc """

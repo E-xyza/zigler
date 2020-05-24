@@ -25,7 +25,7 @@ defmodule Zigler.Zig do
 
     src_file = Path.basename(compiler.code_file)
     cmd_opts = ["build-lib", src_file] ++
-      ~w(-dynamic --disable-gen-h --override-lib-dir) ++
+      ~w(-dynamic -lc --disable-gen-h --override-lib-dir) ++
       [zig_rpath] ++
       include_opts ++
       ["--ver-major", "#{version.major}",
@@ -73,14 +73,16 @@ defmodule Zigler.Zig do
   end
 
   defp nerves_crosscompile do
+    alias Mix.Nerves.Utils
+
     cond do
-      not function_exported?(Mix.Nerves.Utils, :mix_target, 0) ->
+      not function_exported?(Utils, :mix_target, 0) ->
         []
-      Mix.Nerves.Utils.mix_target() == :host ->
+      Utils.mix_target() == :host ->
         []
-      Mix.Nerves.Utils.mix_target() == :rpi3 ->
-        ~w(-target aarch64-linux.4.19)
-    end |> IO.inspect(label: "83")
+      Utils.mix_target() == :rpi3 ->
+        ~w(-target arm-linux.4.19)
+    end
   end
 
   #############################################################################
