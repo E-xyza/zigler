@@ -122,12 +122,6 @@ defmodule Zigler.Parser.Imports do
 
   defparsec :parse_imports, parse_imports
 
-  @spec clear(String.t, [String.t], t, line_info, non_neg_integer) :: parsec_retval
-
-  defp clear(_rest, _content, context, _, _) do
-    {[], context}
-  end
-
   def parse(code) do
     {:ok, _, _, %Zigler.Parser.Imports{imports: imports}, _, _} = parse_imports(code)
     imports

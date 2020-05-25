@@ -24,13 +24,14 @@ defmodule Zigler.MixProject do
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
       deps: deps(),
-      aliases: [docs: "zig_doc", "test.unit": "test", "test.isolated": "test"],
+      #aliases: [docs: "zig_doc", "test.unit": "test", "test.isolated": "test"],
+      aliases: ["test.unit": "test", "test.isolated": "test"],
       package: [
         description: "Zig nif library",
         licenses: ["MIT"],
         # we need to package the zig BEAM adapters and the c include files as a part
         # of the hex packaging system.
-        files: ~w(lib mix.exs README* LICENSE* VERSIONS* assets zig/beam zig/include),
+        files: ~w(lib mix.exs README* LICENSE* VERSIONS* priv),
         links: %{"GitHub" => "https://github.com/ityonemo/zigler", "Zig" => "https://ziglang.org/"}
       ],
       dialyzer: [plt_add_deps: :transitive],
@@ -51,7 +52,7 @@ defmodule Zigler.MixProject do
 
   def application, do: [extra_applications: [:logger]]
 
-  defp elixirc_paths(:dev), do: ["lib", "zigdoc"]
+  defp elixirc_paths(:dev), do: ["lib"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
   defp elixirc_paths(:unit), do: ["lib"]
   defp elixirc_paths(:isolated), do: ["lib", "test/isolated/support"]

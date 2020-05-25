@@ -2,6 +2,7 @@ defmodule Zigler.Parser.Error do
   @moduledoc false
 
   import NimbleParsec
+  require Logger
 
   @numbers [?0..?9]
 
@@ -32,17 +33,26 @@ defmodule Zigler.Parser.Error do
   and any filename substitutions are performed as well.
   """
   def parse(msg, compiler) do
-    {:ok, [path, line, _col | msg], rest, _, _, _} = parse_error(msg)
+    case parse_error(msg) do
+      {:ok, [path, line, _col | msg], rest, _, _, _} ->
+        {path, line} = compiler.assembly_dir
+        |> Path.join(path)
+        |> Path.expand
+        |> backreference(String.to_integer(line))
 
-    {path, line} = compiler.assembly_dir
-    |> Path.join(path)
-    |> Path.expand
-    |> backreference(String.to_integer(line))
-
-    raise CompileError,
-      file: path,
-      line: line,
-      description: IO.iodata_to_binary([msg, "\n" | rest])
+        raise CompileError,
+          file: path,
+          line: line,
+          description: IO.iodata_to_binary([msg, "\n" | rest])
+      _ ->
+        message = """
+        this zig compiler hasn't been incorporated into the parser.
+        Please file a report at:
+        https://github.com/ityonemo/zigler/issues
+        """ <> msg
+        raise CompileError,
+          description: message
+    end
   end
 
   @spec backreference(Path.t, non_neg_integer) :: {Path.t, non_neg_integer}

@@ -101,8 +101,6 @@ defmodule Zigler.Unit do
     |> IO.iodata_to_binary
     |> Unit.parse(info)
 
-    converted_file = Path.join(assembly_dir, "zig_nif.zig")
-
     # gather all code dependencies.  We'll want to look for all things
     # which are labeled as "pub" and modify those code bits accordingly.
     Assembler.parse_code(ref_zigler.code,

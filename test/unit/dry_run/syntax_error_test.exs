@@ -12,22 +12,6 @@ defmodule ZiglerTest.DryRun.SyntaxErrorTest do
   @moduletag :syntax_error
 
   describe "a SyntaxError is thrown with the correct line" do
-    test "when the sigil Z has no nifs" do
-      file = "empty_sigil_z.exs"
-      error = assert_raise SyntaxError, fn -> load(file) end
-      assert error.description =~ "doesn't contain any nifs"
-      assert error.line == 4
-      assert Path.basename(error.file) == file
-    end
-
-    test "when the sigil Z has no nifs on a second sigil Z" do
-      file = "empty_second_sigil_z.exs"
-      error = assert_raise SyntaxError, fn -> load(file) end
-      assert error.description =~ "doesn't contain any nifs"
-      assert error.line == 11
-      assert Path.basename(error.file) == file
-    end
-
     test "when the sigil Z has a nif invalid return in the second sigil Z" do
       file = "nif_invalid_return_second_sigil_z.exs"
       error = assert_raise SyntaxError, fn -> load(file) end
