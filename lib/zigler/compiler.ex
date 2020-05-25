@@ -50,8 +50,6 @@ defmodule Zigler.Compiler do
         description: "no nifs found in the module #{context.module}"
     end
 
-    module.nifs |> IO.inspect(label: "53")
-
     ###########################################################################
     # COMPILATION STEPS
 
