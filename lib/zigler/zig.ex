@@ -127,7 +127,7 @@ defmodule Zigler.Zig do
 
   @doc false
   def version_name(version) do
-    "zig-#{get_os}-#{get_arch}-#{version}"
+    "zig-#{get_os()}-#{get_arch()}-#{version}"
   end
 
   def get_os do
