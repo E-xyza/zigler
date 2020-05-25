@@ -7,6 +7,8 @@ defmodule Zigler.Zig do
 
   alias Zigler.Patches
 
+  require Logger
+
   #############################################################################
   ## API
 
@@ -120,4 +122,82 @@ defmodule Zigler.Zig do
     Enum.flat_map(module.libs, &["--library", &1])
   end
 
+  #############################################################################
+  ## download zig from online sources.
+
+  @doc false
+  def version_name(version) do
+    os = case :os.type do
+      {:unix, :linux} ->
+        "linux"
+      {:unix, :freebsd} ->
+        "freebsd"
+      {:unix, :darwin} ->
+        Logger.warn("macos support is experimental")
+        "macos"
+      {:win32, _} ->
+        Logger.warn("windows is not supported, but may work.")
+        "windows"
+    end
+
+    arch = case :erlang.system_info(:system_architecture) do
+      [?i, _] ++ '86' ++ _ -> "i386"
+      'x86_64' ++ _ -> "x86_64"
+      'armv6' ++ _ -> "armv6kz"
+      'armv7' ++ _ -> "armv7a"
+      'aarch64' ++ _ -> "aarch64"
+      _ -> raise """
+      it seems like you are compiling from an unsupported architecture.
+      Please leave an issue at https://github.com/ityonemo/zigler/issues
+      """
+    end
+
+    "zig-#{os}-#{arch}-#{version}"
+  end
+
+  @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
+
+  def fetch(version) do
+    # make sure that we're in the correct operating system.
+    extension = if match?({:win32, _}, :os.type()) do
+      Logger.warn("""
+      windows is not currently supported.  If you find an error
+      in the process, please leave an issue at https://github.com/ityonemo/zigler/issues
+      """)
+      "zip"
+    else
+      "tar.xz"
+    end
+
+    Logger.configure(level: :info)
+    Application.ensure_all_started(:mojito)
+
+    tarfile = version_name(version) <> extension
+    # make sure the zig directory path exists and is ready.
+    File.mkdir_p!(@zig_dir_path)
+    zig_download_path = Path.join(@zig_dir_path, tarfile)
+
+    unless File.exists?(zig_download_path) do
+      Logger.info("downloading zig version #{version} and caching in #{@zig_dir_path}.")
+      download_location = "https://ziglang.org/download/#{version}/#{tarfile}"
+
+      download_zig_tarball(zig_download_path, download_location)
+    end
+
+    # untar the zig directory.
+    zig_version_cache = Path.join(@zig_dir_path, version_name(version))
+
+    unless File.dir?(zig_version_cache) do
+      System.cmd("tar", ["xvf", tarfile], cd: @zig_dir_path)
+    end
+  end
+
+  def download_zig_tarball(zig_download_path, download_location) do
+    Application.ensure_all_started(:ssl)
+    case Mojito.get(download_location, [], pool: false, timeout: 100_000) do
+      {:ok, download = %{status_code: 200}} ->
+        File.write!(zig_download_path, download.body)
+      _ -> raise "failed to download the appropriate zig binary."
+    end
+  end
 end
