@@ -127,7 +127,11 @@ defmodule Zigler.Zig do
 
   @doc false
   def version_name(version) do
-    os = case :os.type do
+    "zig-#{get_os}-#{get_arch}-#{version}"
+  end
+
+  def get_os do
+    case :os.type do
       {:unix, :linux} ->
         "linux"
       {:unix, :freebsd} ->
@@ -136,17 +140,18 @@ defmodule Zigler.Zig do
         Logger.warn("macos support is experimental")
         "macos"
       {:win32, _} ->
-        Logger.warn("""
-        windows is not supported, but may work.
-
-        If you find an error in the process, please leave an issue at:
-        https://github.com/ityonemo/zigler/issues
-        """)
+        windows_warn()
         "windows"
     end
+  end
 
-    arch = case :erlang.system_info(:system_architecture) do
-      [?i, _] ++ '86' ++ _ -> "i386"
+  def get_arch do
+    :system_architecture
+    |> :erlang.system_info()
+    |> case do
+      'i386' ++ _ -> "i386"
+      'i486' ++ _ -> "i386"
+      'i586' ++ _ -> "i386"
       'x86_64' ++ _ -> "x86_64"
       'armv6' ++ _ -> "armv6kz"
       'armv7' ++ _ -> "armv7a"
@@ -156,8 +161,15 @@ defmodule Zigler.Zig do
       Please leave an issue at https://github.com/ityonemo/zigler/issues
       """
     end
+  end
 
-    "zig-#{os}-#{arch}-#{version}"
+  defp windows_warn do
+    Logger.warn("""
+        windows is not supported, but may work.
+
+        If you find an error in the process, please leave an issue at:
+        https://github.com/ityonemo/zigler/issues
+        """)
   end
 
   @zig_dir_path Path.expand("../../zig", Path.dirname(__ENV__.file))
