@@ -41,7 +41,7 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 ## 0.3.0
 
-- support (and autodetect) for nerves
+- support for (and autodetect) nerves
 - use erlang nif headers taken from the `include` directory of your erts.
 - correct and verified support for releases
-
+- adds a mechanism for patching errors in zig/llvm releases
