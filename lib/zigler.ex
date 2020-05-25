@@ -197,6 +197,9 @@ defmodule Zigler do
   #@default_release_modes %{prod: :safe, dev: :debug, test: :debug}
   #@default_release_mode @default_release_modes[Mix.env()]
 
+  @spec __using__(keyword) ::
+          {:__block__, [],
+           [{:@, [...], [...]} | {:import, [...], [...]} | {:require, [...], [...]}, ...]}
   defmacro __using__(opts) do
     #mode = opts[:release_mode] || @default_release_mode
 
@@ -233,21 +236,26 @@ defmodule Zigler do
   Doesn't actually write any code, since it can all be taken care of in the
   `Zigler.Compiler__before_compile__/1` directive.
   """
-  defmacro sigil_Z({:<<>>, meta, zig_code}, []) do
+  defmacro sigil_Z({:<<>>, meta, [zig_code]}, []) do
+    quoted_code(zig_code, meta, __CALLER__)
+  end
+  defmacro sigil_z(code = {:<<>>, _, _}, []) do
+    quoted_code(code, [line: __CALLER__.line], __CALLER__)
+  end
+
+  defp quoted_code(zig_code, meta, caller) do
     line = meta[:line]
-    module = __CALLER__.module
-    file = __CALLER__.file
+    module = caller.module
+    file = caller.file
     quote bind_quoted: [module: module, zig_code: zig_code, file: file, line: line] do
       zigler = Module.get_attribute(module, :zigler)
 
       new_zigler = zig_code
-      |> IO.iodata_to_binary
       |> Parser.parse(zigler, file, line)
 
       @zigler new_zigler
     end
   end
-
   @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
 
   def latest_cached_zig_version do

@@ -38,11 +38,11 @@ defmodule ZiglerTest.PrecompileTest do
       |> File.exists?
     end
 
-    test "erl_nif_zig.h is installed" do
+    test "erl_nif.h is installed" do
       compile = Zigler.Compiler.precompile(@module)
 
       assert compile.assembly_dir
-      |> Path.join("include/erl_nif_zig.h")
+      |> Path.join("include/erl_nif.h")
       |> File.exists?
     end
   end
