@@ -40,7 +40,6 @@ defmodule Zigler.Zig do
       {_, 0} -> :ok
       {err, _} ->
         alias Zigler.Parser.Error
-        # TODO: trap errors in the next call.
         Error.parse(err, compiler)
     end
 
