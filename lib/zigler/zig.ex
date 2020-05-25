@@ -73,9 +73,11 @@ defmodule Zigler.Zig do
     :ok
   end
 
+  # currently all targets are arm and use linux 4.19
+  @arm419 ~w(-target arm-linux-4.19-gnueabihf)
   @cross_settings %{
-    host: [],
-    rpi3: ~w(-target arm-linux.4.19-gnueabihf)
+    host: [], rpi: @arm419, rpi0: @arm419, rpi2: @arm419,
+    rpi3: @arm419, rpi3a: @arm419, rpi4: @arm419, bbb: @arm419
   }
 
   defp nerves_crosscompile do
