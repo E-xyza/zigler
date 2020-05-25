@@ -105,7 +105,7 @@ defmodule Zigler.Compiler do
           |> :erlang.load_nif(0)
           |> case do
             :ok ->
-              Logger.info("loaded module at #{unquote(nif_name)}")
+              Logger.debug("loaded module at #{unquote(nif_name)}")
             error = {:error, any} ->
               Logger.error("loading module #{unquote(nif_name)} #{inspect any}")
           end
