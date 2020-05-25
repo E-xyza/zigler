@@ -73,7 +73,7 @@ defmodule Zigler.MixProject do
       # dialyzer
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       # coverage testing
-      {:excoveralls, "~> 0.12", only: :test},
+      {:excoveralls, "~> 0.12", only: :test, runtime: false},
       # zigler's parsing is done using nimble_parsec
       {:nimble_parsec, "~> 0.5", runtime: false},
       # we need this for mix zigler.get_zig mix task.
