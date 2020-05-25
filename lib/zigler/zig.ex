@@ -5,10 +5,15 @@ defmodule Zigler.Zig do
   # contains all parts of the Zigler library which is involved in calling the
   # zig compiler toolchain.
 
+  alias Zigler.Patches
+
   #############################################################################
   ## API
 
   def compile(compiler, zig_tree) do
+    # apply patches, if applicable
+    Patches.sync(zig_tree)
+
     zig_executable = Path.join(zig_tree, "zig")
     zig_rpath = Path.join(zig_tree, "lib/zig")
 
