@@ -45,3 +45,4 @@ Thanks to Dave Cottlehuber @dch for testing.
 - use erlang nif headers taken from the `include` directory of your erts.
 - correct and verified support for releases
 - adds a mechanism for patching errors in zig/llvm releases
+- adds ~z for substituted values
