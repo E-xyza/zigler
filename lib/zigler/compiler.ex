@@ -82,10 +82,7 @@ defmodule Zigler.Compiler do
     # MACRO SETPS
 
     nif_functions = Enum.map(module.nifs, &function_skeleton/1)
-
-    mod_path = module.otp_app
-    |> Zigler.nif_dir
-    |> Path.join(Zigler.nif_name(module, false))
+    nif_name = Zigler.nif_name(module, false)
 
     if module.dry_run do
       quote do
@@ -97,13 +94,20 @@ defmodule Zigler.Compiler do
         import Logger
         unquote_splicing(nif_functions)
         def __load_nifs__ do
-          unquote(mod_path)
+          # LOADS the nifs from :code.lib_dir() <> "ebin", which is
+          # a path that has files correctly moved in to release packages.
+
+          unquote(module.otp_app)
+          |> :code.lib_dir()
+          |> Path.join("ebin")
+          |> Path.join(unquote(nif_name))
           |> String.to_charlist()
           |> :erlang.load_nif(0)
           |> case do
-            :ok -> :ok
-            {:error, any} ->
-              Logger.error("problem loading module #{inspect any}")
+            :ok ->
+              Logger.debug("loaded module at #{unquote(nif_name)}")
+            error = {:error, any} ->
+              Logger.error("loading module #{unquote(nif_name)} #{inspect any}")
           end
         end
       end

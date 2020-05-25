@@ -416,13 +416,6 @@ defmodule Zigler.Parser do
   ## helpers
 
   defp append(old_module, %{global: global}, code, file, line) do
-    unless Enum.any?(global, &match?(%Nif{}, &1)) do
-      raise SyntaxError,
-        file: old_module.file,
-        line: line,
-        description: "sigil Z doesn't contain any nifs"
-    end
-
     spacer = if old_module.code == [], do: [], else: "\n"
     anchor = "// ref: #{file} line: #{line}\n"
 

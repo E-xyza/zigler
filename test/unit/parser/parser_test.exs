@@ -175,16 +175,6 @@ defmodule ZiglerTest.ParserTest do
       assert code_binary =~ code2
     end
 
-    test "errors out if there are no nif definitions" do
-      code = """
-      fn foo(x : i64) i64 {
-        return x + 47;
-      }
-      """
-
-      assert_raise SyntaxError, fn -> Parser.parse(code, @empty_module, "foo.ex", 1) end
-    end
-
     test "can correctly parse a zig block with a resource declaration" do
       assert %Zigler.Module{resources: [resource]} = Parser.parse("""
 

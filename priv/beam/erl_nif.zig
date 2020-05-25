@@ -23,5 +23,7 @@
 /// possible.
 
 usingnamespace @cImport({
-  @cInclude("erl_nif_zig.h");
+  @cInclude("erl_nif.h");
 });
+
+pub const ErlNifTerm = ERL_NIF_TERM;
