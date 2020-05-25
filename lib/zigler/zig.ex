@@ -20,12 +20,9 @@ defmodule Zigler.Zig do
     version = compiler.module_spec.version
     module = compiler.module_spec.module
 
-    # nerves_check
-    cross_compile = nerves_crosscompile()
-
     src_file = Path.basename(compiler.code_file)
     cmd_opts = ["build-lib", src_file] ++
-      ~w(-dynamic -lc) ++ cross_compile ++
+      ~w(-dynamic -lc) ++ cross_compile(compiler.module_spec) ++
       ~w(--disable-gen-h --override-lib-dir) ++
       [zig_rpath] ++
       include_opts ++
@@ -74,13 +71,16 @@ defmodule Zigler.Zig do
   end
 
   # currently all targets are arm and use linux 4.19
-  @arm419 ~w(-target arm-linux-4.19-gnueabihf)
+  @arm419 ~w(-target arm-linux.4.19-gnueabihf)
   @cross_settings %{
     host: [], rpi: @arm419, rpi0: @arm419, rpi2: @arm419,
     rpi3: @arm419, rpi3a: @arm419, rpi4: @arm419, bbb: @arm419
   }
 
-  defp nerves_crosscompile do
+  defp cross_compile(%{target: target}) when is_binary(target) do
+    ["-target", target]
+  end
+  defp cross_compile(_) do
     alias Mix.Nerves.Utils
     utils = function_exported?(Utils, :mix_target, 0) and Utils
     if utils, do: @cross_settings[utils.mix_target()], else: []
