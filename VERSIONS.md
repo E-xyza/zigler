@@ -39,10 +39,11 @@ Thanks to Dave Cottlehuber @dch for testing.
 - supported zig version: 0.6.0
 - disabled `:long` mode
 
-## 0.3.0
+## 0.3.0-pre2
 
 - support for (and autodetect) nerves
 - use erlang nif headers taken from the `include` directory of your erts.
 - correct and verified support for releases
 - adds a mechanism for patching errors in zig/llvm releases
 - adds ~z for substituted values
+- zigler fetches zig on compile when it's in prod.
