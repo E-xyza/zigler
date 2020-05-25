@@ -256,31 +256,6 @@ defmodule Zigler do
       @zigler new_zigler
     end
   end
-  @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
-
-  def latest_cached_zig_version do
-    @zig_dir_path
-    |> File.ls!
-    |> Enum.filter(&match?("zig" <> _, &1))
-    |> Enum.filter(&File.dir?(Path.join(@zig_dir_path, &1)))
-    |> Enum.map(&String.split(&1, "-"))
-    |> Enum.map(fn ["zig", _os, _arch, ver] -> ver end)
-    |> Enum.map(&String.split(&1, "."))
-    |> Enum.map(&List.to_tuple/1)
-    |> case do
-      [] ->
-        raise CompileError, description: "no zig binaries found, run `mix zigler.get_zig latest`"
-      lst ->
-        lst
-        |> Enum.sort
-        |> List.last
-        |> Tuple.to_list
-        |> Enum.join(".")
-    end
-  rescue
-    _err in FileError ->
-      reraise CompileError, description: "zig directory path doesn't exist, run `mix zigler.get_zig latest`"
-  end
 
   defp get_project_version do
     Mix.Project.get

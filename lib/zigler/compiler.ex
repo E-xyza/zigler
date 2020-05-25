@@ -22,23 +22,6 @@ defmodule Zigler.Compiler do
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
 
-  @doc false
-  def basename(version) do
-    os = case :os.type do
-      {:unix, :linux} ->
-        "linux"
-      {:unix, :freebsd} ->
-        "freebsd"
-      {:unix, :darwin} ->
-        Logger.warn("macos support is experimental")
-        "macos"
-      {:win32, _} ->
-        Logger.error("windows is definitely not supported.")
-        "windows"
-    end
-    "zig-#{os}-x86_64-#{version}"
-  end
-
   #@release_mode %{
   #  fast:  ["--release-fast"],
   #  safe:  ["--release-safe"],
@@ -53,14 +36,12 @@ defmodule Zigler.Compiler do
 
     module = Module.get_attribute(context.module, :zigler)
 
-    zig_tree = Path.join(@zig_dir_path, basename(module.zig_version))
+    zig_tree = Path.join(@zig_dir_path, Zig.version_name(module.zig_version))
 
-    # check to see if the zig version has been downloaded.
+    # check to see if the zig version has been downloaded.  If not,
+    # go ahead and download it.
     unless File.dir?(zig_tree) do
-      raise CompileError,
-        file: context.file,
-        line: context.line,
-        description: "zig hasn't been downloaded.  Run mix zigler.get_zig #{module.zig_version}"
+      Zig.fetch("#{module.zig_version}")
     end
 
     if module.nifs == [] do

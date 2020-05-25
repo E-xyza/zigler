@@ -23,10 +23,6 @@ end
 
 Docs can be found at [https://hexdocs.pm/zigler](https://hexdocs.pm/zigler).
 
-once you have this dependency, you should cache the zig build tools by running the following:
-
-`mix zigler.get_zig latest`
-
 ## Currently supported platforms
 
 - Linux
