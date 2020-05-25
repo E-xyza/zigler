@@ -102,6 +102,12 @@ defmodule Zigler.Compiler do
   alias Zigler.Parser.Nif
   alias Zigler.Typespec
 
+  def function_skeleton(nif = %Nif{doc: doc}) when not is_nil(doc) do
+    quote do
+      @doc unquote(doc)
+      unquote(function_skeleton(%{nif | doc: nil}))
+    end
+  end
   def function_skeleton(nif = %Nif{opts: opts, test: nil}) do
     typespec = Typespec.from_nif(nif)
     if opts[:long] do
