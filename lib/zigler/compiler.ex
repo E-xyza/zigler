@@ -60,19 +60,22 @@ defmodule Zigler.Compiler do
     cleanup(compiler)
 
     ###########################################################################
-    # MACRO SETPS
+    # MACRO STEPS
 
+    dependencies = dependencies_for(compiler.assembly)
     nif_functions = Enum.map(module.nifs, &function_skeleton/1)
     nif_name = Zigler.nif_name(module, false)
 
     if module.dry_run do
       quote do
+        unquote_splicing(dependencies)
         unquote_splicing(nif_functions)
         def __load_nifs__, do: :ok
       end
     else
       quote do
         import Logger
+        unquote_splicing(dependencies)
         unquote_splicing(nif_functions)
         def __load_nifs__ do
           # LOADS the nifs from :code.lib_dir() <> "ebin", which is
@@ -93,6 +96,14 @@ defmodule Zigler.Compiler do
         end
       end
     end
+  end
+
+  defp dependencies_for(assemblies) do
+    Enum.map(assemblies, fn assembly ->
+      quote do
+        @external_resource unquote(assembly.source)
+      end
+    end)
   end
 
   #############################################################################
