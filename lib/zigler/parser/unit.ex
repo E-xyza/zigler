@@ -3,7 +3,11 @@ defmodule Zigler.Parser.Unit do
   parses zig code and converts test blocks to test functions
   """
 
-  defstruct tests: [], file: nil, offset: 0, test_dirs: ["./"]
+  defstruct tests: [],
+    file: nil,
+    offset: 0,
+    test_dirs: ["./"],
+    context: []
 
   import NimbleParsec
 
@@ -90,7 +94,7 @@ defmodule Zigler.Parser.Unit do
 
   defp parse_test_decl(_rest, [test_name], context, _line, _offset) do
     test_nif = new_nif(test_name)
-    {["fn #{test_nif.name}() !void"],
+    {["pub fn #{test_nif.name}() !void"],
       %{context | tests: [test_nif | context.tests]}}
   end
 
@@ -117,11 +121,24 @@ defmodule Zigler.Parser.Unit do
   def parse(code, info) do
     case unit_parser(code, []) do
       {:ok, code, _, %{tests: tests}, _, _} ->
-        {tests, code}
+        {Enum.map(tests,
+          &contextualize(&1, info[:context] || [])),
+        code}
       err ->
         raise CompileError, info ++
           [description: "error parsing code in #{info[:file]}: #{inspect err}"]
     end
+  end
+
+  defp contextualize(test, context) do
+    rename = case context do
+      [] -> test.name
+      lst -> lst
+      |> Kernel.++([test.name])
+      |> Enum.join(".")
+      |> String.to_atom
+    end
+    %{test | name: rename}
   end
 
 end
