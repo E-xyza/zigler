@@ -1,6 +1,6 @@
 defmodule Zigler.Assembler do
   @moduledoc """
-  Phase One of Zigler compilation process.
+  Fist phase of the Zigler compilation process.
 
   Looks through the contents of the zig code and creates a map
   of required source code files.  Then outputs a struct containing

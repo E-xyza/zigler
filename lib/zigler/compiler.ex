@@ -1,6 +1,7 @@
 defmodule Zigler.Compiler do
 
-  @moduledoc false
+  @moduledoc """
+  """
 
   @enforce_keys [:assembly_dir, :code_file, :assembly, :module_spec]
 

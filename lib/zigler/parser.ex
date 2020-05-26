@@ -1,5 +1,6 @@
 defmodule Zigler.Parser do
-  @moduledoc false
+  @moduledoc """
+  """
 
   # all functions that parse zig code
 

@@ -1,5 +1,6 @@
 defmodule Zigler.Parser.Imports do
-  @moduledoc false
+  @moduledoc """
+  """
 
   # for parsing zig "import" statements.
 

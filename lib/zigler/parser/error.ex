@@ -1,5 +1,6 @@
 defmodule Zigler.Parser.Error do
-  @moduledoc false
+  @moduledoc """
+  """
 
   import NimbleParsec
   require Logger

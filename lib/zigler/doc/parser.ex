@@ -1,6 +1,7 @@
 defmodule Zigler.Doc.Parser do
 
-  @moduledoc false
+  @moduledoc """
+  """
 
   def docs_from_dir(dir, config) do
     dir
@@ -64,7 +65,7 @@ defmodule Zigler.Doc.Parser do
 
   docstring_line =
     optional(whitespace)
-    |> string("///")
+    |> choice([string("///"), string("//!")])
     |> lookahead_not(ascii_char([?/]))
     |> optional(utf8_string([not: ?\n], min: 1))
     |> string("\n")
@@ -179,6 +180,8 @@ defmodule Zigler.Doc.Parser do
 
   defparsec(:file_parser, file_parser)
 
+  defp trim_slashes("//! " <> rest), do: rest
+  defp trim_slashes("//!" <> rest), do: rest
   defp trim_slashes("/// " <> rest), do: rest
   defp trim_slashes("///" <> rest), do: rest
 

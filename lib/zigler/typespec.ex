@@ -1,6 +1,7 @@
 defmodule Zigler.Typespec do
 
-  @moduledoc false
+  @moduledoc """
+  """
 
   alias Zigler.Parser.Nif
 
