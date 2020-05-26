@@ -190,6 +190,7 @@ defmodule Zigler do
 
   """
 
+  alias Zigler.Compiler
   alias Zigler.Parser
 
   # default release modes.
@@ -207,6 +208,11 @@ defmodule Zigler do
     if match?({:win32, _}, :os.type()) do
       raise "non-unix systems not currently supported."
     end
+
+    # clear out the assembly directory
+    Mix.env
+    |> Compiler.assembly_dir(__CALLER__.module)
+    |> File.rm_rf!
 
     user_opts = Keyword.take(opts, [:libs, :resources, :dry_run, :c_includes, :include_dirs])
 

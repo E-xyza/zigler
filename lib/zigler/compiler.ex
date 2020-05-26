@@ -154,12 +154,14 @@ defmodule Zigler.Compiler do
   #############################################################################
   ## STEPS
 
+  def assembly_dir(env, module) do
+    Path.join(System.tmp_dir!(), ".zigler_compiler/#{env}/#{module}")
+  end
+
   @spec precompile(Zigler.Module.t) :: t | no_return
   def precompile(module) do
     # build the staging directory.
-    assembly_dir = Path.join(System.tmp_dir!(),
-      ".zigler_compiler/#{Mix.env}/#{module.module}")
-
+    assembly_dir = assembly_dir(Mix.env, module.module)
     File.mkdir_p!(assembly_dir)
 
     # create the main code file
