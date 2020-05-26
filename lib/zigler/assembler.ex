@@ -1,6 +1,6 @@
 defmodule Zigler.Assembler do
   @moduledoc """
-  Phase One of Zigler compilation process.
+  Fist phase of the Zigler compilation process.
 
   Looks through the contents of the zig code and creates a map
   of required source code files.  Then outputs a struct containing
@@ -67,13 +67,17 @@ defmodule Zigler.Assembler do
     end
   end
   def assemble_asset!(instruction, _) do
-    # make sure that the target directory path exists.
-    instruction.target
-    |> Path.dirname
-    |> File.mkdir_p!
-    # send the file in.
-    File.cp!(instruction.source, instruction.target)
-    Logger.debug("copied #{instruction.source} to #{instruction.target}")
+    # don't assemble it if it's already there.  This lets
+    # us easily rewrite test cases.
+    unless File.exists?(instruction.target) do
+      # make sure that the target directory path exists.
+      instruction.target
+      |> Path.dirname
+      |> File.mkdir_p!
+      # send the file in.
+      File.cp!(instruction.source, instruction.target)
+      Logger.debug("copied #{instruction.source} to #{instruction.target}")
+    end
   end
 
   def parse_file(file_path, options) do
@@ -98,7 +102,6 @@ defmodule Zigler.Assembler do
 
   def parse_code(code, options) do
     check_options!(options)
-
     code
     |> IO.iodata_to_binary
     |> Imports.parse

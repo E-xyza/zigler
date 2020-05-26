@@ -25,7 +25,7 @@ defmodule Zigler.Unit do
 
   ```
   defmodule MyZigModule do
-    use Zigler, otp_app: :my_app
+    use Zigler
 
     ~Z\"""
     const dependent = @import("dependent.zig");
@@ -49,11 +49,11 @@ defmodule Zigler.Unit do
 
   ### Scope
 
-  This module will run tests in all zig code that resides in the same code
-  directory as the base module (or overridden directory, if applicable).  Zig
-  code in subdirectories will not be subjected to test conversion, so if you
-  would like to run a subset of tests using the Zig test facility (and without
-  the support of a BEAM VM), you should put them in subdirectories.
+  zigtest will run tests from the following sources:
+  - any tests inside of a sigil Z or sigil z construction
+  - any tests inside `pub` `@import` zig sources.
+  - any tests inside `pub usingnamespace` zig sources.
+  - recursively discovered `pub` structs.
   """
 
   @doc false
@@ -101,19 +101,36 @@ defmodule Zigler.Unit do
     |> IO.iodata_to_binary
     |> Unit.parse(info)
 
+    File.mkdir_p!(assembly_dir)
+
     # gather all code dependencies.  We'll want to look for all things
     # which are labeled as "pub" and modify those code bits accordingly.
-    Assembler.parse_code(ref_zigler.code,
-      parent_dir: Path.dirname(__CALLER__.file),
+    transitive_nifs = ref_zigler.code
+    |> Assembler.parse_code(
+      parent_dir: Path.dirname(ref_zigler.file),
       target_dir: assembly_dir,
       pub: true,
       context: [])
+    |> Enum.flat_map(fn
+      assembly = %{pub: true} ->
+        # if it's public, we have to rewrite the code on its
+        # way in, and retarget it to the transferred file.
+        {new_nifs, rewritten_source} = assembly.source
+        |> File.read!
+        |> Unit.parse(context: assembly.context)
+
+        # write out the file
+        File.write!(assembly.target, rewritten_source)
+
+        new_nifs
+      _ -> []
+    end)
 
     zigler = struct(Zigler.Module, ref_zigler
     |> Map.take(@transfer_params)
     |> Map.merge(%{
       code: [@assert_assign, code],
-      nifs: nifs,
+      nifs: nifs ++ transitive_nifs,
       module: __CALLER__.module}))
     |> Macro.escape
 

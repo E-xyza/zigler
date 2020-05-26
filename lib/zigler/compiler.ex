@@ -1,6 +1,7 @@
 defmodule Zigler.Compiler do
-
-  @moduledoc false
+  @moduledoc """
+  handles instrumenting elixir code with hooks for zig NIFs.
+  """
 
   @enforce_keys [:assembly_dir, :code_file, :assembly, :module_spec]
 
@@ -22,23 +23,6 @@ defmodule Zigler.Compiler do
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
 
-  @doc false
-  def basename(version) do
-    os = case :os.type do
-      {:unix, :linux} ->
-        "linux"
-      {:unix, :freebsd} ->
-        "freebsd"
-      {:unix, :darwin} ->
-        Logger.warn("macos support is experimental")
-        "macos"
-      {:win32, _} ->
-        Logger.error("windows is definitely not supported.")
-        "windows"
-    end
-    "zig-#{os}-x86_64-#{version}"
-  end
-
   #@release_mode %{
   #  fast:  ["--release-fast"],
   #  safe:  ["--release-safe"],
@@ -53,14 +37,12 @@ defmodule Zigler.Compiler do
 
     module = Module.get_attribute(context.module, :zigler)
 
-    zig_tree = Path.join(@zig_dir_path, basename(module.zig_version))
+    zig_tree = Path.join(@zig_dir_path, Zig.version_name(module.zig_version))
 
-    # check to see if the zig version has been downloaded.
+    # check to see if the zig version has been downloaded.  If not,
+    # go ahead and download it.
     unless File.dir?(zig_tree) do
-      raise CompileError,
-        file: context.file,
-        line: context.line,
-        description: "zig hasn't been downloaded.  Run mix zigler.get_zig #{module.zig_version}"
+      Zig.fetch("#{module.zig_version}")
     end
 
     if module.nifs == [] do
@@ -79,19 +61,22 @@ defmodule Zigler.Compiler do
     cleanup(compiler)
 
     ###########################################################################
-    # MACRO SETPS
+    # MACRO STEPS
 
+    dependencies = dependencies_for(compiler.assembly)
     nif_functions = Enum.map(module.nifs, &function_skeleton/1)
     nif_name = Zigler.nif_name(module, false)
 
     if module.dry_run do
       quote do
+        unquote_splicing(dependencies)
         unquote_splicing(nif_functions)
         def __load_nifs__, do: :ok
       end
     else
       quote do
         import Logger
+        unquote_splicing(dependencies)
         unquote_splicing(nif_functions)
         def __load_nifs__ do
           # LOADS the nifs from :code.lib_dir() <> "ebin", which is
@@ -114,6 +99,14 @@ defmodule Zigler.Compiler do
     end
   end
 
+  defp dependencies_for(assemblies) do
+    Enum.map(assemblies, fn assembly ->
+      quote do
+        @external_resource unquote(assembly.source)
+      end
+    end)
+  end
+
   #############################################################################
   ## FUNCTION SKELETONS
 
@@ -121,6 +114,12 @@ defmodule Zigler.Compiler do
   alias Zigler.Parser.Nif
   alias Zigler.Typespec
 
+  def function_skeleton(nif = %Nif{doc: doc}) when not is_nil(doc) do
+    quote do
+      @doc unquote(doc)
+      unquote(function_skeleton(%{nif | doc: nil}))
+    end
+  end
   def function_skeleton(nif = %Nif{opts: opts, test: nil}) do
     typespec = Typespec.from_nif(nif)
     if opts[:long] do
@@ -167,12 +166,14 @@ defmodule Zigler.Compiler do
   #############################################################################
   ## STEPS
 
+  def assembly_dir(env, module) do
+    Path.join(System.tmp_dir!(), ".zigler_compiler/#{env}/#{module}")
+  end
+
   @spec precompile(Zigler.Module.t) :: t | no_return
   def precompile(module) do
     # build the staging directory.
-    assembly_dir = Path.join(System.tmp_dir!(),
-      ".zigler_compiler/#{Mix.env}/#{module.module}")
-
+    assembly_dir = assembly_dir(Mix.env, module.module)
     File.mkdir_p!(assembly_dir)
 
     # create the main code file

@@ -1,7 +1,9 @@
 defmodule Zigler.Parser.Imports do
-  @moduledoc false
+  @moduledoc """
+  For parsing, looking for imports, cimports, and usingnamespace directives.
 
-  # for parsing zig "import" statements.
+  To be completed later
+  """
 
   import NimbleParsec
 
@@ -28,7 +30,10 @@ defmodule Zigler.Parser.Imports do
   |> optional(ascii_string([?a..?z, ?A..?Z, ?0..?9, ?_], min: 1))
   |> reduce({IO, :iodata_to_binary, []})
 
-  usingnamespace = string("usingnamespace")
+  usingnamespace = optional(
+    string("pub")
+    |> concat(ignore(whitespace)))
+  |> string("usingnamespace")
   |> ignore(whitespace)
 
   import_const = optional(

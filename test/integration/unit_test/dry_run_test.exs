@@ -13,7 +13,7 @@ defmodule ZiglerTest.ZigT do
   """
 end
 
-defmodule ZiglerTest.DryRun.UnitTest do
+defmodule ZiglerTest.Integration.UnitTest.DryRunTest do
   # checks which make sure our code looks good.
   use ExUnit.Case, async: true
 

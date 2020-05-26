@@ -26,10 +26,6 @@ defmodule Zigler do
   - C integration.  It's very easy to design C-interop between Zig and C.
     In fact, Zig is likely to be an easier glue language for C ABIs than
     C.
-  - OOM safety and sanity.  Zig makes it easy to defer memory destruction,
-    meaning you often don't have to worry about memory leaks.  By design,
-    `alloc` should be failable (as is the BEAM's `alloc`) so it offers
-    an extra layer of protection for you BEAM VM against an OOM situation.
 
   ### Basic usage
 
@@ -47,7 +43,7 @@ defmodule Zigler do
   #### Example
   ```
   defmodule MyModule do
-    use Zigler, otp_app: :my_app
+    use Zigler
 
     ~Z\"""
     /// nif: my_func/1
@@ -66,8 +62,16 @@ defmodule Zigler do
 
   Zigler will also make sure that your statically-typed Zig data are guarded
   when you marshal it from the dynamically-typed BEAM world.  However, you may
-  only pass in and return certain types (though the generic `beam.term` type)
-  is supported.
+  only pass in and return certain types.  As an escape hatch, you may use
+  the `beam.term` type which is equivalent to the `ERLNIFTERM` type.  See
+  [`erl_nif`](erl_nif.html).
+
+  ### Nerves Support
+
+  Nerves is supported out of the box, and the system should cross-compile
+  to arm ABI as necessary depening on what your nerves `:target` is.  You
+  may also directly specify a zig target using the
+  `use Zigler, target: <target>` option.
 
   ### Environment
 
@@ -80,7 +84,7 @@ defmodule Zigler do
 
   ```
   defmodule MyModule do
-    use Zigler, otp_app: :my_app
+    use Zigler
 
     ~Z\"""
     /// nif: my_func_with_env/1
@@ -98,15 +102,14 @@ defmodule Zigler do
   If you need to bind static (`*.a`) or dynamic (`*.so`) libraries into your
   module, you may link them with the `:libs` argument.
 
-  Note that for shared libraries, a library with an identical path must exist
-  in the target release environment.
+  Note that zig statically binds shared libraries into the assets it creates.
+  This simplifies deployment for you.
 
   #### Example
 
   ```
   defmodule Blas do
     use Zigler,
-      otp_app: :my_app,
       libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
       include: ["/usr/include/x86_64-linux-gnu"]
 
@@ -190,6 +193,7 @@ defmodule Zigler do
 
   """
 
+  alias Zigler.Compiler
   alias Zigler.Parser
 
   # default release modes.
@@ -207,6 +211,11 @@ defmodule Zigler do
     if match?({:win32, _}, :os.type()) do
       raise "non-unix systems not currently supported."
     end
+
+    # clear out the assembly directory
+    Mix.env
+    |> Compiler.assembly_dir(__CALLER__.module)
+    |> File.rm_rf!
 
     user_opts = Keyword.take(opts, [:libs, :resources, :dry_run, :c_includes, :include_dirs])
 
@@ -232,13 +241,17 @@ defmodule Zigler do
   end
 
   @doc """
-  Parses zig code and then accumulates it into the module's :zigler attribute.
-  Doesn't actually write any code, since it can all be taken care of in the
-  `Zigler.Compiler__before_compile__/1` directive.
+  declares a string block to be included in the module's .zig source
+  file.  At least one of these blocks must define a nif.
   """
   defmacro sigil_Z({:<<>>, meta, [zig_code]}, []) do
     quoted_code(zig_code, meta, __CALLER__)
   end
+
+  @doc """
+  like `sigil_Z/2`, but lets you interpolate values from the outside
+  elixir context using string interpolation (the `\#{value}` form)
+  """
   defmacro sigil_z(code = {:<<>>, _, _}, []) do
     quoted_code(code, [line: __CALLER__.line], __CALLER__)
   end
@@ -256,31 +269,6 @@ defmodule Zigler do
       @zigler new_zigler
     end
   end
-  @zig_dir_path Path.expand("../zig", Path.dirname(__ENV__.file))
-
-  def latest_cached_zig_version do
-    @zig_dir_path
-    |> File.ls!
-    |> Enum.filter(&match?("zig" <> _, &1))
-    |> Enum.filter(&File.dir?(Path.join(@zig_dir_path, &1)))
-    |> Enum.map(&String.split(&1, "-"))
-    |> Enum.map(fn ["zig", _os, _arch, ver] -> ver end)
-    |> Enum.map(&String.split(&1, "."))
-    |> Enum.map(&List.to_tuple/1)
-    |> case do
-      [] ->
-        raise CompileError, description: "no zig binaries found, run `mix zigler.get_zig latest`"
-      lst ->
-        lst
-        |> Enum.sort
-        |> List.last
-        |> Tuple.to_list
-        |> Enum.join(".")
-    end
-  rescue
-    _err in FileError ->
-      reraise CompileError, description: "zig directory path doesn't exist, run `mix zigler.get_zig latest`"
-  end
 
   defp get_project_version do
     Mix.Project.get
@@ -295,12 +283,7 @@ defmodule Zigler do
     |> Keyword.get(:app)
   end
 
-  def nif_dir(app \\ get_app()) do
-    app
-    |> :code.lib_dir
-    |> Path.join("nif")
-  end
-
+  @doc false
   def nif_name(module = %{version: version}, use_suffixes \\ true) do
     if use_suffixes do
       "lib#{module.module}.so.#{version.major}.#{version.minor}.#{version.patch}"

@@ -1,6 +1,10 @@
 defmodule Zigler.Doc.Retriever do
 
-  @moduledoc false
+  @moduledoc """
+  decides what features should be documented on `zig doc`.
+
+  may be in flux.
+  """
 
   require ExDoc.FunctionNode
 
@@ -14,10 +18,10 @@ defmodule Zigler.Doc.Retriever do
       # set the directory to include zig/... instead of what
       # would normally be a source directory for a standard
       # project.
-      [__ENV__.file
-      |> Path.dirname
-      |> Path.join("../../../zig/beam")
-      |> Path.expand]
+      [:zigler
+       |> :code.priv_dir
+       |> Path.join("beam")
+       |> Path.expand]
     else
       :erlang.loaded()
       |> Enum.filter(&function_exported?(&1, :__info__, 1))

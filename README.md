@@ -23,15 +23,13 @@ end
 
 Docs can be found at [https://hexdocs.pm/zigler](https://hexdocs.pm/zigler).
 
-once you have this dependency, you should cache the zig build tools by running the following:
-
-`mix zigler.get_zig latest`
-
 ## Currently supported platforms
 
 - Linux
 - FreeBSD (tested, but not subjected to CI)
 - MacOS (I believe it works but is still offically untested)
+
+- Nerves cross-compilation is supported out of the box.
 
 ## Zig Nifs made easy
 
@@ -42,8 +40,7 @@ This is now possible, using the magic of Zig.
 
 ```elixir
 defmodule ExampleZig do
-  use Zigler, otp_app: :my_app
-
+  use Zigler
   ~Z"""
   /// nif: example_fun/2
   fn example_fun(value1: f64, value2: f64) bool {
@@ -65,7 +62,7 @@ It will also convert trickier types into types you care about, for example:
 
 ```elixir
 defmodule ZigCollections do
-  use Zigler, otp_app: :my_app
+  use Zigler
   ~Z"""
   /// nif: string_count/1
   fn string_count(string: []u8) i64 {
@@ -94,7 +91,7 @@ so any zig code you import will play nice with the BEAM.
 
 ```elixir
 defmodule Allocations do
-  use Zigler, otp_app: :my_app
+  use Zigler
   ~Z"""
   /// nif: double_atom/1
   fn double_atom(env: beam.env, string: []u8) beam.atom {
@@ -125,7 +122,6 @@ than using C to bind C libraries.  Here is an example:
 ```elixir
 defmodule BlasDynamic do
   use Zigler,
-    otp_app: :zigler,
     libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
     include: ["/usr/include/x86_64-linux-gnu"]
 
@@ -160,7 +156,7 @@ Zigler even has support for zig docstrings.
 ```elixir
 
 defmodule AllTheDocs do
-  use Zigler, otp_app: :zigler
+  use Zigler
   ~Z"""
   /// a zero-arity function which returns 47.
   /// nif: zero_arity/0
