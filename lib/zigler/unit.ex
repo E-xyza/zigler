@@ -25,7 +25,7 @@ defmodule Zigler.Unit do
 
   ```
   defmodule MyZigModule do
-    use Zigler, otp_app: :my_app
+    use Zigler
 
     ~Z\"""
     const dependent = @import("dependent.zig");
@@ -49,11 +49,11 @@ defmodule Zigler.Unit do
 
   ### Scope
 
-  This module will run tests in all zig code that resides in the same code
-  directory as the base module (or overridden directory, if applicable).  Zig
-  code in subdirectories will not be subjected to test conversion, so if you
-  would like to run a subset of tests using the Zig test facility (and without
-  the support of a BEAM VM), you should put them in subdirectories.
+  zigtest will run tests from the following sources:
+  - any tests inside of a sigil Z or sigil z construction
+  - any tests inside `pub` `@import` zig sources.
+  - any tests inside `pub usingnamespace` zig sources.
+  - recursively discovered `pub` structs.
   """
 
   @doc false

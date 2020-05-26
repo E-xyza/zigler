@@ -47,3 +47,9 @@ Thanks to Dave Cottlehuber @dch for testing.
 - adds a mechanism for patching errors in zig/llvm releases
 - adds ~z for substituted values
 - zigler fetches zig on compile when it's in prod.
+
+## 0.3.0
+
+- verified that zig tests run correctly
+- updated documentation.
+  - preliminary "under the hood" category.

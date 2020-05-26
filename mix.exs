@@ -19,12 +19,12 @@ defmodule Zigler.MixProject do
 
     [
       app: :zigler,
-      version: "0.3.0-pre3",
+      version: "0.3.0",
       elixir: "~> 1.9",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
       deps: deps(),
-      #aliases: [docs: "zig_doc", "test.unit": "test", "test.isolated": "test"],
+      aliases: [docs: "zig_doc", "test.unit": "test", "test.isolated": "test"],
       aliases: ["test.unit": "test", "test.isolated": "test"],
       package: [
         description: "Zig nif library",
@@ -46,8 +46,20 @@ defmodule Zigler.MixProject do
         dialyzer: :dev],
       test_paths: test_paths(env),
       source_url: "https://github.com/ityonemo/zigler/",
-      docs: [main: "Zigler", extras: ["README.md"]]
+      docs: [
+        main: "Zigler",
+        extras: ["README.md", "guides/nifs.md", "guides/resources.md"],
+        groups_for_extras: ["Guides": Path.wildcard("guides/*.md")],
+        groups_for_modules: ["Under the hood": under_the_hood()]]
     ]
+  end
+
+  def under_the_hood do
+    [Zigler.Assembler, Zigler.Code, Zigler.Code.LongRunning, Zigler.Compiler,
+     Zigler.Module, Zigler.Parser, Zigler.Typespec, Zigler.Zig, Zigler.Doc.Parser,
+     Zigler.Doc.Retriever, Zigler.Parser.Error, Zigler.Parser.Imports,
+     Zigler.Patches, Zigler.Parser.Unit, Zigler.Parser.Resource,
+     Zigler.Parser.ResourceCleanup, Zigler.Parser.Nif, Zigler.Parser]
   end
 
   def application, do: [extra_applications: [:logger]]
@@ -81,7 +93,7 @@ defmodule Zigler.MixProject do
       # to parse the zig JSON
       {:jason, "~> 1.1", runtime: false},
       # documentation
-      {:ex_doc, "~> 0.21", runtime: false},
+      {:ex_doc, "== 0.21.1", runtime: false},
     ]
   end
 end

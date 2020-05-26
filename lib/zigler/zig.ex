@@ -1,9 +1,9 @@
 defmodule Zigler.Zig do
 
-  @moduledoc false
-
-  # contains all parts of the Zigler library which is involved in calling the
-  # zig compiler toolchain.
+  @moduledoc """
+  contains all parts of the Zigler library involved in calling the
+  zig compiler toolchain
+  """
 
   alias Zigler.Patches
 

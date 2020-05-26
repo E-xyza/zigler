@@ -1,9 +1,12 @@
 defmodule Zigler.Parser do
-  @moduledoc false
-
-  # all functions that parse zig code
+  @moduledoc """
+  main parsing module:  Handles general parsing of nif, resource directives
+  and code elements succeeding those.
+  """
 
   defstruct [:local, file: "", zig_block_line: 0, global: []]
+
+  require Logger
 
   import NimbleParsec
 
@@ -151,6 +154,17 @@ defmodule Zigler.Parser do
     defparsec :parse_docstring,            concat(initialize, docstring)
   end
 
+  # warn on bad declarations.
+  bad_declaration = ignore(
+    optional(blankspace)
+    |> string("//")
+    |> optional(blankspace)
+    |> choice([string("nif"), string("resource")])
+    |> string(":")
+    |> optional(ascii_string([not: ?\n], min: 1))
+    |> string("\n"))
+  |> post_traverse(:warn_on_bad_declaration)
+
   # registrations
 
   @spec register_docstring_line(String.t, [String.t], t, line_info, non_neg_integer)
@@ -225,6 +239,11 @@ defmodule Zigler.Parser do
   end
   defp resource_cleanup_struct(name, _context) do
     struct(ResourceCleanup, for: String.to_atom(name))
+  end
+
+  defp warn_on_bad_declaration(_rest, _content, context, {line, _}, _) do
+    Logger.warn("nif or resource declaration missing third slash, (#{context.file} line #{line})")
+    {[], context}
   end
 
   #############################################################################
@@ -376,6 +395,7 @@ defmodule Zigler.Parser do
       docstring,
       function_header,
       resource_definition,
+      bad_declaration,
       ignored_line,
     ]))
 
@@ -383,8 +403,25 @@ defmodule Zigler.Parser do
 
   @spec clear(String.t, [String.t], t, line_info, non_neg_integer) :: parsec_retval
 
-  defp clear(_rest, _content, context, _, _) do
+  defp clear(_rest, _content, context = %{local: nil}, _, _) do
     {[], context}
+  end
+  defp clear(_rest, _content, context = %{local: {:doc, _}}, _, _) do
+    {[], context}
+  end
+  defp clear(_rest, _content, context = %{local: %type{}}, {line, _}, _) do
+    msg = case type do
+      Nif ->
+        "incomplete nif declaration"
+      Resource ->
+        "incomplete resource declaration"
+      ResourceCleanup ->
+        "incomplete resource cleanup declaration"
+    end
+    raise SyntaxError,
+      file: context.file,
+      line: line + context.zig_block_line - 1,
+      description: msg
   end
 
   #############################################################################
