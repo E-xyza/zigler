@@ -5,6 +5,7 @@ defmodule Zigler.Parser do
 
   defstruct [:local, file: "", zig_block_line: 0, global: []]
 
+  import Logger
   import NimbleParsec
 
   alias Zigler.Parser.{Nif, Resource, ResourceCleanup}
@@ -151,6 +152,17 @@ defmodule Zigler.Parser do
     defparsec :parse_docstring,            concat(initialize, docstring)
   end
 
+  # warn on bad declarations.
+  bad_declaration = ignore(
+    optional(blankspace)
+    |> string("//")
+    |> optional(blankspace)
+    |> choice([string("nif"), string("resource")])
+    |> string(":")
+    |> optional(ascii_string(not: "\n"))
+    |> string("\n"))
+  |> post_traverse(:warn_on_bad_declaration)
+
   # registrations
 
   @spec register_docstring_line(String.t, [String.t], t, line_info, non_neg_integer)
@@ -225,6 +237,11 @@ defmodule Zigler.Parser do
   end
   defp resource_cleanup_struct(name, _context) do
     struct(ResourceCleanup, for: String.to_atom(name))
+  end
+
+  defp warn_on_bad_declaration(_rest, content, context, {line, _}, _) do
+    Logger.warn("nif or resource declaration missing third slash, (#{context.file} line #{line})")
+    {[], context}
   end
 
   #############################################################################
