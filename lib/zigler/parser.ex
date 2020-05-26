@@ -5,7 +5,8 @@ defmodule Zigler.Parser do
 
   defstruct [:local, file: "", zig_block_line: 0, global: []]
 
-  import Logger
+  require Logger
+
   import NimbleParsec
 
   alias Zigler.Parser.{Nif, Resource, ResourceCleanup}
@@ -159,7 +160,7 @@ defmodule Zigler.Parser do
     |> optional(blankspace)
     |> choice([string("nif"), string("resource")])
     |> string(":")
-    |> optional(ascii_string(not: "\n"))
+    |> optional(ascii_string([not: ?\n], min: 1))
     |> string("\n"))
   |> post_traverse(:warn_on_bad_declaration)
 
@@ -239,7 +240,7 @@ defmodule Zigler.Parser do
     struct(ResourceCleanup, for: String.to_atom(name))
   end
 
-  defp warn_on_bad_declaration(_rest, content, context, {line, _}, _) do
+  defp warn_on_bad_declaration(_rest, _content, context, {line, _}, _) do
     Logger.warn("nif or resource declaration missing third slash, (#{context.file} line #{line})")
     {[], context}
   end
@@ -393,6 +394,7 @@ defmodule Zigler.Parser do
       docstring,
       function_header,
       resource_definition,
+      bad_declaration,
       ignored_line,
     ]))
 
@@ -400,8 +402,25 @@ defmodule Zigler.Parser do
 
   @spec clear(String.t, [String.t], t, line_info, non_neg_integer) :: parsec_retval
 
-  defp clear(_rest, _content, context, _, _) do
+  defp clear(_rest, _content, context = %{local: nil}, _, _) do
     {[], context}
+  end
+  defp clear(_rest, _content, context = %{local: {:doc, _}}, _, _) do
+    {[], context}
+  end
+  defp clear(_rest, _content, context = %{local: %type{}}, {line, _}, _) do
+    msg = case type do
+      Nif ->
+        "incomplete nif declaration"
+      Resource ->
+        "incomplete resource declaration"
+      ResourceCleanup ->
+        "incomplete resource cleanup declaration"
+    end
+    raise SyntaxError,
+      file: context.file,
+      line: line + context.zig_block_line - 1,
+      description: msg
   end
 
   #############################################################################
