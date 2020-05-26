@@ -1,5 +1,6 @@
 defmodule Zigler.Parser.Error do
   @moduledoc """
+  parses errors emitted by the zig compiler
   """
 
   import NimbleParsec

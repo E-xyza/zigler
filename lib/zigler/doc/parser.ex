@@ -1,6 +1,6 @@
 defmodule Zigler.Doc.Parser do
-
   @moduledoc """
+  handles parsing zig code for the purposes of documentation
   """
 
   def docs_from_dir(dir, config) do

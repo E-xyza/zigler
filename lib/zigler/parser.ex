@@ -1,8 +1,8 @@
 defmodule Zigler.Parser do
   @moduledoc """
+  main parsing module:  Handles general parsing of nif, resource directives
+  and code elements succeeding those.
   """
-
-  # all functions that parse zig code
 
   defstruct [:local, file: "", zig_block_line: 0, global: []]
 

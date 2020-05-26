@@ -1,6 +1,9 @@
 defmodule Zigler.Doc.Retriever do
 
   @moduledoc """
+  decides what features should be documented on `zig doc`.
+
+  may be in flux.
   """
 
   require ExDoc.FunctionNode

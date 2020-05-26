@@ -1,6 +1,6 @@
 defmodule Zigler.Typespec do
-
   @moduledoc """
+  handles creating typespecs for zig Nif functions
   """
 
   alias Zigler.Parser.Nif

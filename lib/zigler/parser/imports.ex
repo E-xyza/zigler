@@ -1,8 +1,9 @@
 defmodule Zigler.Parser.Imports do
   @moduledoc """
-  """
+  For parsing, looking for imports, cimports, and usingnamespace directives.
 
-  # for parsing zig "import" statements.
+  To be completed later
+  """
 
   import NimbleParsec
 

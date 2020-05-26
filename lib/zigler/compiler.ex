@@ -1,6 +1,6 @@
 defmodule Zigler.Compiler do
-
   @moduledoc """
+  handles instrumenting elixir code with hooks for zig NIFs.
   """
 
   @enforce_keys [:assembly_dir, :code_file, :assembly, :module_spec]
