@@ -53,3 +53,7 @@ Thanks to Dave Cottlehuber @dch for testing.
 - verified that zig tests run correctly
 - updated documentation.
   - preliminary "under the hood" category.
+
+## 0.3.1
+
+- support for `amd64` in freebsd, (thanks @dch)
