@@ -156,8 +156,10 @@ defmodule Zigler.Zig do
       'armv6' ++ _ -> "armv6kz"
       'armv7' ++ _ -> "armv7a"
       'aarch64' ++ _ -> "aarch64"
+      'amd64' ++ _ -> "x86_64"
       _ -> raise """
-      it seems like you are compiling from an unsupported architecture.
+      it seems like you are compiling from an unsupported architecture:
+        #{ :erlang.system_info(:system_architecture) }
       Please leave an issue at https://github.com/ityonemo/zigler/issues
       """
     end
