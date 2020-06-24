@@ -114,7 +114,7 @@ defmodule Zigler.Zig do
     # unusual ones
     Enum.reduce(@substitutions, machine!, fn
       {bad, good}, str -> String.replace(str, bad, good)
-    end)
+    end) |> IO.inspect(label: "117")
   end
 
   #############################################################################
@@ -170,25 +170,30 @@ defmodule Zigler.Zig do
     end
   end
 
+  @arches %{
+    "i386" => "i386",
+    "i486" => "i386",
+    "i586" => "i386",
+    "x86_64" => "x86_64",
+    "armv6" => "armv6kz",
+    "armv7" => "armv7a",
+    "aarch64" => "aarch64",
+    "amd64" => "x86_64"
+  }
+
   # note this is the architecture of the machine where compilation is
-  # being done, not the target architecture of cross-compiled systems
+  # being done, not the target architecture of cross-compiled
   def get_arch do
-    :system_architecture
+    arch = :system_architecture
     |> :erlang.system_info()
-    |> case do
-      'i386' ++ _ -> "i386"
-      'i486' ++ _ -> "i386"
-      'i586' ++ _ -> "i386"
-      'x86_64' ++ _ -> "x86_64"
-      'armv6' ++ _ -> "armv6kz"
-      'armv7' ++ _ -> "armv7a"
-      'aarch64' ++ _ -> "aarch64"
-      'amd64' ++ _ -> "x86_64"
-      _ -> raise arch_warning()
-    end
+    |> List.to_string()
+
+    Enum.find_value(@arches, fn
+      {prefix, zig_arch} -> if String.starts_with?(arch, prefix), do: zig_arch
+    end) || raise arch_warn()
   end
 
-  defp arch_warning(), do: """
+  defp arch_warn, do: """
     it seems like you are compiling from an unsupported architecture:
       #{ :erlang.system_info(:system_architecture) }
     Please leave an issue at https://github.com/ityonemo/zigler/issues
