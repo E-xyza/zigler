@@ -170,6 +170,8 @@ defmodule Zigler.Zig do
     end
   end
 
+  # note this is the architecture of the machine where compilation is
+  # being done, not the target architecture of cross-compiled systems
   def get_arch do
     :system_architecture
     |> :erlang.system_info()
@@ -182,13 +184,15 @@ defmodule Zigler.Zig do
       'armv7' ++ _ -> "armv7a"
       'aarch64' ++ _ -> "aarch64"
       'amd64' ++ _ -> "x86_64"
-      _ -> raise """
-      it seems like you are compiling from an unsupported architecture:
-        #{ :erlang.system_info(:system_architecture) }
-      Please leave an issue at https://github.com/ityonemo/zigler/issues
-      """
+      _ -> raise arch_warning()
     end
   end
+
+  defp arch_warning(), do: """
+    it seems like you are compiling from an unsupported architecture:
+      #{ :erlang.system_info(:system_architecture) }
+    Please leave an issue at https://github.com/ityonemo/zigler/issues
+  """
 
   defp windows_warn do
     Logger.warn("""
