@@ -114,7 +114,7 @@ defmodule Zigler.Zig do
     # unusual ones
     Enum.reduce(@substitutions, machine!, fn
       {bad, good}, str -> String.replace(str, bad, good)
-    end) |> IO.inspect(label: "117")
+    end)
   end
 
   #############################################################################
