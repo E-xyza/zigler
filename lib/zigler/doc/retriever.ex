@@ -18,9 +18,8 @@ defmodule Zigler.Doc.Retriever do
       # set the directory to include zig/... instead of what
       # would normally be a source directory for a standard
       # project.
-      [:zigler
-       |> :code.priv_dir
-       |> Path.join("beam")
+      [__DIR__
+       |> Path.join("../../../priv/beam")
        |> Path.expand]
     else
       :erlang.loaded()

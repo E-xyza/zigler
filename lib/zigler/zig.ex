@@ -95,7 +95,7 @@ defmodule Zigler.Zig do
   end
 
   defp find_cross_compiler(cc) do
-    case System.cmd(cc, ~w(- -dumpmachine)) |> IO.inspect(label: "88") do
+    case System.cmd(cc, ~w(- -dumpmachine)) do
       {machine, 0} -> ["-target", adjust_machine(machine)]
       _ -> raise "unknown error; c compiler not found"
     end
