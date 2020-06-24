@@ -61,3 +61,4 @@ Thanks to Dave Cottlehuber @dch for testing.
 ## 0.3.2
 
 - better support for nerves (thanks @fhunleth)
+- fixed documentation linking for bootstrap
