@@ -76,20 +76,35 @@ defmodule Zigler.Zig do
     :ok
   end
 
-  # currently all targets are arm and use linux 4.19
-  @arm419 ~w(-target arm-linux.4.19-gnueabihf)
-  @cross_settings %{
-    host: [], rpi: @arm419, rpi0: @arm419, rpi2: @arm419,
-    rpi3: @arm419, rpi3a: @arm419, rpi4: @arm419, bbb: @arm419
-  }
-
   defp cross_compile(%{target: target}) when is_binary(target) do
     ["-target", target]
   end
   defp cross_compile(_) do
-    alias Mix.Nerves.Utils
-    utils = function_exported?(Utils, :mix_target, 0) and Utils
-    if utils, do: @cross_settings[utils.mix_target()], else: []
+    cc = System.get_env("CC")
+    if cc, do: find_cross_compiler(cc), else: []
+  end
+
+  defp find_cross_compiler(cc) do
+    case System.cmd(cc, ~w(- -dumpmachine)) |> IO.inspect(label: "88") do
+      {machine, 0} -> ["-target", adjust_machine(machine)]
+      _ -> raise "unknown error; c compiler not found"
+    end
+  end
+
+  @substitutions %{"armv6" => "arm", "armv5tejl" => "arm", "i586" => "i386"}
+
+  defp adjust_machine(machine!) do
+    # cc dumpmachine adds an -unknown part to the machine string which is not
+    # recognized by the zig compiler.
+    machine! = machine!
+    |> String.trim()
+    |> String.replace("-unknown", "")
+
+    # not all architecture types are known by zig, this simplifies the more
+    # unusual ones 
+    Enum.reduce(@substitutions, machine!, fn
+      {bad, good}, str -> String.replace(str, bad, good)
+    end)
   end
 
   #############################################################################

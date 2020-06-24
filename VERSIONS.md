@@ -57,3 +57,7 @@ Thanks to Dave Cottlehuber @dch for testing.
 ## 0.3.1
 
 - support for `amd64` in freebsd, (thanks @dch)
+
+## 0.3.2
+
+- better support for nerves (thanks @fhunleth)
