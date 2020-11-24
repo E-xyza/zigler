@@ -3,9 +3,6 @@
 Library test status:
 ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI/badge.svg)
 
-Dependent package test status:
-![](https://github.com/ityonemo/zigler_test/workflows/Elixir%20CI/badge.svg)
-
 ## Installation
 
 Zigler is [available in Hex](https://hex.pm/zigler), and the package can be installed
@@ -14,7 +11,7 @@ by adding `zigler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:zigler, "~> 0.3.0", runtime: false}
+    {:zigler, "~> 0.7.0", runtime: false}
   ]
 end
 ```
