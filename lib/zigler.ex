@@ -286,7 +286,7 @@ defmodule Zigler do
   @doc false
   def nif_name(module = %{version: version}, use_suffixes \\ true) do
     if use_suffixes do
-      "lib#{module.module}.so.#{version.major}.#{version.minor}.#{version.patch}"
+      "lib#{module.module}.so"
     else
       "lib#{module.module}"
     end

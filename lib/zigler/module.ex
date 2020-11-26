@@ -13,7 +13,7 @@ defmodule Zigler.Module do
     libs:         [],
     nifs:         [],
     resources:    [],
-    zig_version:  Version.parse!("0.6.0"),
+    zig_version:  Version.parse!("0.7.0"),
     imports:      @default_imports,
     c_includes:   [],
     include_dirs: [],

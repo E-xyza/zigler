@@ -5,7 +5,7 @@ defmodule Zigler.Zig do
   zig compiler toolchain
   """
 
-  alias Zigler.Patches
+  alias Zigler.{Builder, Patches}
 
   require Logger
 
@@ -17,33 +17,14 @@ defmodule Zigler.Zig do
     Patches.sync(zig_tree)
 
     zig_executable = Path.join(zig_tree, "zig")
-    zig_rpath = Path.join(zig_tree, "lib/zig")
-
-    include_opts = ["-isystem", Path.join(compiler.assembly_dir, "include")] ++
-      includes_from_module(compiler.module_spec)
-
-    lib_opts = libraries_from_module(compiler.module_spec)
-
-    version = compiler.module_spec.version
-    module = compiler.module_spec.module
-
-    src_file = Path.basename(compiler.code_file)
-    cmd_opts = ["build-lib", src_file] ++
-      ~w(-dynamic -lc) ++ cross_compile(compiler.module_spec) ++
-      ~w(--disable-gen-h --override-lib-dir) ++
-      [zig_rpath] ++
-      include_opts ++
-      ["--ver-major", "#{version.major}",
-       "--ver-minor", "#{version.minor}",
-       "--ver-patch", "#{version.patch}"] ++
-      lib_opts ++
-      ["--name", "#{module}"] ++
-      ["--release-safe"]
-      #@release_mode[release_mode]
 
     opts = [cd: compiler.assembly_dir, stderr_to_stdout: true]
 
-    case System.cmd(zig_executable, cmd_opts, opts) do
+    Logger.debug("compiling nif for module #{inspect compiler.module_spec.module} in path #{compiler.assembly_dir}")
+
+    Builder.build(compiler)
+
+    case System.cmd(zig_executable, ["build"], opts) do
       {_, 0} -> :ok
       {err, _} ->
         alias Zigler.Parser.Error
@@ -60,13 +41,11 @@ defmodule Zigler.Zig do
     File.mkdir_p!(lib_dir)
 
     compiler.assembly_dir
-    |> Path.join(library_filename)
+    |> Path.join("zig-cache/lib/#{library_filename}")
     |> File.cp!(Path.join(lib_dir, library_filename))
 
     # link the compiled library to be unversioned.
-    symlink_filename = lib_dir
-    |> Path.join(Zigler.nif_name(compiler.module_spec, false))
-    |> Kernel.<>(".so")
+    symlink_filename = Path.join(lib_dir, "#{library_filename}")
 
     unless File.exists?(symlink_filename) do
       lib_dir

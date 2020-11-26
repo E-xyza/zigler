@@ -7,12 +7,8 @@ defmodule Zigler.Patches do
 
   require Logger
 
-  @patches %{
-    "lib/zig/libc/glibc/sysdeps/arm/nptl/bits/pthreadtypes-arch.h" =>
-      "pthreadtypes-arch.h",
-    "lib/zig/libc/include/arm-linux-gnueabihf/bits/struct_rwlock.h" =>
-      "struct_rwlock.h"
-  }
+  # currently no patches identified for zig 0.7.0
+  @patches %{}
 
   def sync(zig_path) do
     @patches

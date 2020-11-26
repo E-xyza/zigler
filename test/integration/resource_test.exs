@@ -46,24 +46,25 @@ defmodule ZiglerTest.Integration.ResourceTest do
 
   ~Z"""
   /// resource: test_res_alt definition
-  const test_res_alt = i64;
+  const test_res_alt = struct{ e: i64 };
 
   /// nif: create_resource_alt/1
   fn create_resource_alt(env: beam.env, value: i64) beam.term {
-    return __resource__.create(test_res, env, value)
+    return __resource__.create(test_res_alt, env, .{.e = value})
       catch beam.raise_function_clause_error(env);
   }
 
   /// nif: update_resource_alt/2
   fn update_resource_alt(env: beam.env, resource: beam.term, new_value: i64) beam.term {
-    __resource__.update(test_res, env, resource, new_value)
+    __resource__.update(test_res_alt, env, resource, .{.e = new_value})
       catch return beam.raise_function_clause_error(env);
     return beam.make_atom(env, "ok");
   }
 
   /// nif: retrieve_resource_alt/1
   fn retrieve_resource_alt(env: beam.env, value: beam.term) i64 {
-    return __resource__.fetch(test_res_alt, env, value) catch 0;
+    var res_alt = __resource__.fetch(test_res_alt, env, value) catch return 0;
+    return res_alt.e;
   }
   """
 

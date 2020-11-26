@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Integration.LongNifTest do
 
-#  use ExUnit.Case, async: true
+  use ExUnit.Case, async: true
+
+  test "restore long nif tests"
 #  use Zigler
 #
 #  ~Z"""
