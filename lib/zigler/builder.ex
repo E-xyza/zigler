@@ -21,12 +21,32 @@ defmodule Zigler.Builder do
                             .patch = <%= @module_spec.version.patch %>}});
 
       lib.addSystemIncludeDir("<%= :code.root_dir %>/erts-<%= :erlang.system_info(:version) %>/include");
+
+      <%= for system_include_dir <- @module_spec.system_include_dirs do %>
+      lib.addSystemIncludeDir("<%= system_include_dir %>");
+      <% end %>
+
       lib.setBuildMode(mode);
 
       lib.setTarget(target);
 
       // link libraries
       lib.linkSystemLibrary("c");
+
+      <%= for lib <- @module_spec.libs do %>
+      <%= cond do %>
+        <% String.ends_with?(lib, ".so") -> %>
+      lib.linkSystemLibrary("<%= lib %>");
+        <% String.ends_with?(lib, ".dll") -> %>
+      lib.linkSystemLibrary("<%= lib %>");
+        <% String.ends_with?(lib, ".dylib") -> %>
+      lib.linkSystemLibrary("<%= lib %>");
+        <% String.ends_with?(lib, ".a") -> %>
+      lib.addObjectFile("<%= lib %>");
+        <% true -> %>
+          <% raise "invalid library file" %>
+      <% end %>
+      <% end %>
 
       // strip_symbols option?
       // lib.strip = true;

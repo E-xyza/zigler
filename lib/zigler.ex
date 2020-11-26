@@ -217,7 +217,8 @@ defmodule Zigler do
     |> Compiler.assembly_dir(__CALLER__.module)
     |> File.rm_rf!
 
-    user_opts = Keyword.take(opts, [:libs, :resources, :dry_run, :c_includes, :include_dirs])
+    user_opts = Keyword.take(opts, ~w(libs resources dry_run c_includes
+    include_dirs system_include_dirs)a)
 
     zigler = struct(%Zigler.Module{
       file:    __CALLER__.file,
