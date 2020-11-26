@@ -102,13 +102,13 @@ const e = @import("erl_nif.zig");
 const std = @import("std");
 const builtin = @import("builtin");
 const ExpandAllocator = @import("expand_allocator.zig");
+const BeamMutex = @import("beam_mutex.zig").BeamMutex;
 
 ///////////////////////////////////////////////////////////////////////////////
 // BEAM allocator definitions
 ///////////////////////////////////////////////////////////////////////////////
 
 const Allocator = std.mem.Allocator;
-const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator;
 
 // basic allocator
 
@@ -137,9 +137,9 @@ const GeneralPurposeAllocator = std.heap.GeneralPurposeAllocator;
 ///   return beam.allocator.alloc(u8, 10);
 /// }
 /// ```
-pub const allocator = &BeamAllocator.allocator;
+pub const allocator = &beam_allocator_instance.allocator;
 
-pub var BeamAllocator = ExpandAllocator{
+pub var beam_allocator_instance = ExpandAllocator{
   .backing_allocator = &raw_beam_allocator,
   .max_align = 8,
 };
@@ -178,6 +178,11 @@ fn raw_beam_resize(
     return error.OutOfMemory;
 }
 
+var general_purpose_allocator_instance = std.heap.GeneralPurposeAllocator(.{}){
+  .backing_allocator = allocator,
+};
+
+pub var general_purpose_allocator = &general_purpose_allocator_instance.allocator;
 
 ///////////////////////////////////////////////////////////////////////////////
 // syntactic sugar: important elixir terms

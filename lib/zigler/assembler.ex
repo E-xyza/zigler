@@ -41,6 +41,7 @@ defmodule Zigler.Assembler do
     File.cp!(pr("beam/erl_nif.zig"), Path.join(assembly_dir, "erl_nif.zig"))
     # copy in expand_alloc.zig
     File.cp!(pr("beam/expand_allocator.zig"), Path.join(assembly_dir, "expand_allocator.zig"))
+    File.cp!(pr("beam/beam_mutex.zig"), Path.join(assembly_dir, "beam_mutex.zig"))
     # copy in erl_nif_zig.h
     File.mkdir_p!(Path.join(assembly_dir, "include"))
 
