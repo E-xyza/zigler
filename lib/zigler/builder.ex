@@ -21,9 +21,11 @@ defmodule Zigler.Builder do
                             .patch = <%= @module_spec.version.patch %>}});
 
       lib.addSystemIncludeDir("<%= :code.root_dir %>/erts-<%= :erlang.system_info(:version) %>/include");
-
       <%= for system_include_dir <- @module_spec.system_include_dirs do %>
       lib.addSystemIncludeDir("<%= system_include_dir %>");
+      <% end %>
+      <%= for include_dir <- @module_spec.include_dirs do %>
+      lib.addIncludeDir("<%= include_dir %>");
       <% end %>
 
       lib.setBuildMode(mode);
@@ -64,5 +66,10 @@ defmodule Zigler.Builder do
     build_zig_path = Path.join(target.assembly_dir, "build.zig")
     File.write!(build_zig_path, target |> Map.from_struct |> build_zig)
     Logger.debug("wrote build.zig to #{build_zig_path}")
+  end
+
+  defp i(x) do
+    IO.puts(x)
+    x
   end
 end

@@ -218,14 +218,19 @@ defmodule Zigler do
     |> File.rm_rf!
 
     user_opts = Keyword.take(opts, ~w(libs resources dry_run c_includes
-    include_dirs system_include_dirs)a)
+    system_include_dirs)a)
+
+    include_dirs = opts
+    |> Keyword.get(:include_dirs, [])
+    |> Kernel.++(if has_include_dir?(__CALLER__), do: ["include"], else: [])
 
     zigler = struct(%Zigler.Module{
-      file:    __CALLER__.file,
-      module:  __CALLER__.module,
-      imports: Zigler.Module.imports(opts[:imports]),
-      version: get_project_version(),
-      otp_app: get_app()},
+      file:         __CALLER__.file,
+      module:       __CALLER__.module,
+      imports:      Zigler.Module.imports(opts[:imports]),
+      include_dirs: include_dirs,
+      version:      get_project_version(),
+      otp_app:      get_app()},
       user_opts)
 
     Module.register_attribute(__CALLER__.module, :zigler, persist: true)
@@ -239,6 +244,13 @@ defmodule Zigler do
 
       @before_compile Zigler.Compiler
     end
+  end
+
+  defp has_include_dir?(env) do
+    env.file
+    |> Path.dirname
+    |> Path.join("include")
+    |> File.dir?
   end
 
   @doc """
@@ -285,7 +297,7 @@ defmodule Zigler do
   end
 
   @doc false
-  def nif_name(module = %{version: version}, use_suffixes \\ true) do
+  def nif_name(module, use_suffixes \\ true) do
     if use_suffixes do
       "lib#{module.module}.so"
     else

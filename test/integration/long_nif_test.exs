@@ -2,6 +2,7 @@ defmodule ZiglerTest.Integration.LongNifTest do
 
   use ExUnit.Case, async: true
 
+  @tag skip: true
   test "restore long nif tests"
 #  use Zigler
 #

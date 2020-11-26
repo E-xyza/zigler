@@ -96,35 +96,6 @@ defmodule Zigler.Zig do
     end)
   end
 
-  #############################################################################
-  ## INCLUDES
-
-  @spec includes_from_module(Module.t) :: [Path.t]
-  defp includes_from_module(module) do
-    (module.c_includes
-    |> Keyword.values
-    |> Enum.flat_map(&include_directories/1))
-    ++
-    Enum.flat_map(module.include_dirs, &["-isystem", &1])
-  end
-
-  @spec include_directories([Path.t] | Path.t) :: [Path.t]
-  def include_directories(path) when is_binary(path) do
-    case Path.dirname(path) do
-      "." -> []
-      path -> ["-isystem", path]
-    end
-  end
-  def include_directories(paths) when is_list(paths) do
-    Enum.flat_map(paths, &include_directories/1)
-  end
-
-  #############################################################################
-  ## LIBRARIES
-
-  defp libraries_from_module(module) do
-    Enum.flat_map(module.libs, &["--library", &1])
-  end
 
   #############################################################################
   ## download zig from online sources.

@@ -5,16 +5,16 @@ defmodule ZiglerTest.Include.ZiglerMultiIncludeTest do
   #
 
   use ExUnit.Case, async: true
-#  use Zigler, c_includes: [c: ["fortyseven.h", "five.h"]]
-#
-#  ~Z"""
-#  /// nif: fortytwo/0
-#  fn fortytwo() c_int {
-#    return c.FORTYSEVEN - c.FIVE;
-#  }
-#  """
+  use Zigler, c_includes: [c: ["fortyseven.h", "five.h"]]
 
-  test "multiple include works from zigler preamble" #do
-#    assert 42 == fortytwo()
-#  end
+  ~Z"""
+  /// nif: fortytwo/0
+  fn fortytwo() c_int {
+    return c.FORTYSEVEN - c.FIVE;
+  }
+  """
+
+  test "multiple include works from zigler preamble" do
+    assert 42 == fortytwo()
+  end
 end

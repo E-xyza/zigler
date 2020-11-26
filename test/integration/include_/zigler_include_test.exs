@@ -5,16 +5,37 @@ defmodule ZiglerTest.Include.ZiglerIncludeTest do
   #
 
   use ExUnit.Case, async: true
-#  use Zigler, c_includes: [c: "fortyseven.h"]
-#
-#  ~Z"""
-#  /// nif: fortyseven/0
-#  fn fortyseven() c_int {
-#    return c.FORTYSEVEN;
-#  }
-#  """
+  use Zigler, c_includes: [c: "fortyseven.h"]
 
-  test "single include works from zigler preamble" #do
-#    assert 47 == fortyseven()
-#  end
+  ~Z"""
+  /// nif: fortyseven/0
+  fn fortyseven() c_int {
+    return c.FORTYSEVEN;
+  }
+  """
+
+  test "single include works from zigler preamble" do
+    assert 47 == fortyseven()
+  end
+
+end
+
+defmodule ZiglerTest.Include.ZiglerIncludeAltNameTest do
+
+  # tries a different name
+
+  use ExUnit.Case, async: true
+  use Zigler, c_includes: [namespace: "fortyseven.h"]
+
+  ~Z"""
+  /// nif: fortyseven/0
+  fn fortyseven() c_int {
+    return namespace.FORTYSEVEN;
+  }
+  """
+
+  test "single include works from zigler preamble" do
+    assert 47 == fortyseven()
+  end
+
 end
