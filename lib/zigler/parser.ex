@@ -91,7 +91,7 @@ defmodule Zigler.Parser do
   ## certain zigler arguments are encoded in zig's /// docstrings.
   ## this includes definitions for nifs and destructors for resources.
 
-  @nif_options Enum.map(~w(long dirty_io dirty_cpu), &string/1)
+  @nif_options Enum.map(~w(yielding threaded dirty_io dirty_cpu), &string/1)
 
   docstring_line =
     optional(blankspace)
@@ -106,7 +106,7 @@ defmodule Zigler.Parser do
 
   # nif declarations take the form:
   # /// nif: <nif_name>/<arity> [nif_options]
-  # where nif_options can be "long", "dirty_io", or "dirty_cpu"
+  # where nif_options can be "yielding", "threaded", "dirty_io", or "dirty_cpu"
   nif_declaration =
     optional(blankspace)
     |> ignore(string("///"))
@@ -202,21 +202,24 @@ defmodule Zigler.Parser do
   defp register_nif_declaration(content, context = %{local: {:doc, doc}}, opts) do
     register_nif_declaration(content, %{context | local: nil}, opts ++ [doc: doc])
   end
-  defp register_nif_declaration(["long" | rest], context, opts) do
-    register_nif_declaration(rest, context, opts ++ [long: true])
+  defp register_nif_declaration(["yielding" | rest], context, opts) do
+    register_nif_declaration(rest, context, opts ++ [concurrency: :yielding])
+  end
+  defp register_nif_declaration(["threaded" | rest], context, opts) do
+    register_nif_declaration(rest, context, opts ++ [concurrency: :threaded])
   end
   defp register_nif_declaration(["dirty_io" | rest], context, opts) do
-    register_nif_declaration(rest, context, opts ++ [dirty: :io])
+    register_nif_declaration(rest, context, opts ++ [concurrency: :dirty_io])
   end
   defp register_nif_declaration(["dirty_cpu" | rest], context, opts) do
-    register_nif_declaration(rest, context, opts ++ [dirty: :cpu])
+    register_nif_declaration(rest, context, opts ++ [concurrency: :dirty_cpu])
   end
   defp register_nif_declaration([arity, name], context, opts) do
     local = struct(Nif,
       name:  String.to_atom(name),
       arity: String.to_integer(arity),
       doc:   opts[:doc],
-      opts:  Keyword.take(opts, [:long, :dirty]))
+      opts:  Keyword.take(opts, [:concurrency]))
     {[], %{context | local: local}}
   end
 

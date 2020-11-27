@@ -13,10 +13,14 @@ defmodule Zigler.Parser.Nif do
   - args: (`t:String.t/0`) a list of zig types which are the arguments for
     the function
   - retval: (`t:String.t/0`) the type of the return value
-  - opts: (`t:keyword`) list of nif options.
-    - long: true  -- if the nif should run in a separate OS thread.
-    - dirty: :cpu -- if the nif should run in a dirty cpu scheduler.
-    - dirty: :io  -- if the nif should run in a dirty io scheduler.
+  - opts: (`t:keyword`) list of nif options.  These options are currently supported:
+    - `concurrency: <model>` picks a [long-running nif](http://erlang.org/doc/man/erl_nif.html#lengthy_work)
+      concurrency model.  The following concurrency models are supported:
+      - :threaded  -- if the nif should run in a separate OS thread.
+      - :yielding  -- if the nif should use zig's `yield` keyword to yield
+        to the BEAM scheduler.
+      - :dirty_cpu -- if the nif should run in a dirty cpu scheduler.
+      - :dirty_io  -- if the nif should run in a dirty io scheduler.
   """
 
   alias Zigler.Code.LongRunning
@@ -47,9 +51,8 @@ defmodule Zigler.Parser.Nif do
                 # of the test which is going to be bound in.
   ]
 
-  @type option ::
-    {:long, boolean} |
-    {:dirty, :cpu | :io}
+  @type concurrency :: :threaded | :yielding | :dirty_io | :dirty_cpu
+  @type option :: {:concurrency, concurrency}
 
   @type t :: %__MODULE__{
     name:   atom,
