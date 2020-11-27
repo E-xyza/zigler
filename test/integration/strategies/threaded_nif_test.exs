@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Integration.ThreadedNifTest do
+defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
 
   use ExUnit.Case, async: true
 

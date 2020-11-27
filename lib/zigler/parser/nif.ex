@@ -107,15 +107,22 @@ defmodule Zigler.Parser.Nif do
   end
 
   def register_function_header([retval | args], context) do
+    alias Zigler.Nif.Threaded
+
     final_nif = %{context.local | retval: retval, args: Enum.reverse(args)}
-    # long nifs require a resource
-    resource = if context.local.opts[:long] do
-      [%Resource{
-        name: LongRunning.cache_ptr(context.local.name),
-        cleanup: LongRunning.cache_cleanup(context.local.name)}]
-    else
-      []
+
+    # additional resources that the nif requires to perform correctly.  These are
+    # usually references dropped by called nif for a safe callback.
+    resource = case context.local.opts[:concurrency] do
+      # threaded nifs require a resource containing a reference to the thread
+      # callback.
+      :threaded -> [%Resource{
+        name: Threaded.cache_ptr(context.local.name),
+        cleanup: Threaded.cache_cleanup(context.local.name)
+      }]
+      nil -> []
     end
+
     %{context | global: resource ++ [final_nif | context.global]}
   end
 

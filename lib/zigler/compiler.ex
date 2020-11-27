@@ -110,7 +110,7 @@ defmodule Zigler.Compiler do
   #############################################################################
   ## FUNCTION SKELETONS
 
-  alias Zigler.Code.LongRunning
+  alias Zigler.Nif.{Synchronous, Threaded, Test}
   alias Zigler.Parser.Nif
   alias Zigler.Typespec
 
@@ -121,46 +121,15 @@ defmodule Zigler.Compiler do
     end
   end
   def function_skeleton(nif = %Nif{opts: opts, test: nil}) do
-    typespec = Typespec.from_nif(nif)
-    if opts[:long] do
-      {:__block__, _, block_contents} = LongRunning.function_skeleton(nif)
-      quote do
-        unquote(typespec)
-        unquote_splicing(block_contents)
-      end
-    else
-      quote do
-        unquote(typespec)
-        unquote(basic_fn(nif))
-      end
+    case opts[:concurrency] do
+      :threaded ->
+        Threaded.beam_adapter(nif)
+      nil ->
+        Synchronous.beam_adapter(nif)
     end
   end
-  def function_skeleton(%Nif{test: test}) do
-    raise_msg = "nif for test #{test} not found"
-    raise_code = quote do
-      raise unquote(raise_msg)
-    end
-    {:def, [context: Elixir, import: Kernel],
-      [
-        {test, [context: Elixir], Elixir},
-        [do: raise_code]
-      ]}
-  end
-
-  defp basic_fn(%{name: name, arity: arity}) do
-    text = "nif for function #{name}/#{arity} not bound"
-
-    args = if arity == 0 do
-      Elixir
-    else
-      for _ <- 1..arity, do: {:_, [], Elixir}
-    end
-
-    {:def, [context: Elixir, import: Kernel],
-      [
-        {name, [context: Elixir], args},
-        [do: {:raise, [context: Elixir, import: Kernel], [text]}]
-      ]}
+  def function_skeleton(nif) do
+    Test.beam_adapter(nif)
   end
 
   #############################################################################

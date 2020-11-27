@@ -1,11 +1,11 @@
-defmodule Zigler.Code.LongRunning do
+defmodule Zigler.Nif.Threaded do
   @moduledoc """
-  Generates code for long-running nifs.
+  Generates code for threaded nifs.
 
-  long-running functions require several parts to get right.
+  threaded functions require several parts to get right.
 
   0. a zig struct needs to be that holds arguments relvant to the
-  long-running nif, these arguments need to be cleaned up in a sane
+  threaded nif, these arguments need to be cleaned up in a sane
   fashion once the nif has completed running. This struct is going to be
   argetric on the nif arguments, and will be packed into a BEAM
   resource.
@@ -32,12 +32,18 @@ defmodule Zigler.Code.LongRunning do
   """
 
   alias Zigler.Parser.Nif
+  alias Zigler.Typespec
+
+  @behaviour Zigler.Nif.Adapter
 
   #############################################################################
   ## Elixir Metaprogramming for long functions
 
-  def function_skeleton(nif = %Nif{}) do
+  @impl true
+  def beam_adapter(nif = %Nif{}) do
+    typespec = Typespec.from_nif(nif)
     quote context: Elixir do
+      unquote(typespec)
       unquote(long_main_fn(nif))
       unquote(long_launch_fn(nif))
       unquote(long_fetch_fn(nif))
@@ -215,7 +221,8 @@ defmodule Zigler.Code.LongRunning do
     """
   end
 
-  def adapter(nif) do
+  @impl true
+  def zig_adapter(nif) do
     [cache_struct(nif), "\n",
      launcher_fn(nif), "\n",
      packer_fn(nif), "\n",
@@ -270,4 +277,23 @@ defmodule Zigler.Code.LongRunning do
   defp make_clause(type, var) do
     "beam.make_#{short_name type}(env, #{var})"
   end
+
+  @impl true
+  def nif_table_entries(nif) do
+    """
+      e.ErlNifFunc{
+        .name = "#{launcher nif.name}",
+        .arity = #{nif.arity},
+        .fptr = #{launcher nif.name},
+        .flags = 0,
+      },
+      e.ErlNifFunc{
+        .name = "#{fetcher nif.name}",
+        .arity = 1,
+        .fptr = #{fetcher nif.name},
+        .flags = 0,
+      },
+    """
+  end
+
 end
