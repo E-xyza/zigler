@@ -23,7 +23,6 @@ defmodule Zigler.Parser.Nif do
       - :dirty_io  -- if the nif should run in a dirty io scheduler.
   """
 
-  alias Zigler.Code.LongRunning
   alias Zigler.Parser.Resource
 
   @float_types  ~w(f16 f32 f64)

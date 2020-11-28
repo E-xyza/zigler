@@ -62,3 +62,9 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 - better support for nerves (thanks @fhunleth)
 - fixed documentation linking for bootstrap
+
+## 0.7.0
+- upgraded to zig 0.7.0.  From now on zigler versions will roughly track Zig versions.
+- completed implementation of `threaded` nifs.
+- makes the interface to `beam.send` simpler and less confusing.
+- adds extra atom/tuple directives

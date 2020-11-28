@@ -570,7 +570,23 @@ pub fn self(environment: env) !pid {
   }
 }
 
-pub fn send(c_env: env, to_pid: pid, m_env: env, msg: term) bool {
+/// shortcut for `e.enif_self`
+///
+/// returns true if the send is successful, false otherwise.
+///
+/// NOTE this function assumes a valid BEAM environment.  If you have spawned
+/// an OS thread without a BEAM environment, you must use `send_advanced/4`
+pub fn send(c_env: env, to_pid: pid, msg: term) bool {
+  return (e.enif_send(c_env, &to_pid, null, msg) == 1);
+}
+
+/// shortcut for `e.enif_self`
+///
+/// returns true if the send is successful, false otherwise.
+///
+/// if you are sending from a thread that does not have a BEAM environment, you
+/// should put `null` in both environment variables.
+pub fn send_advanced(c_env: env, to_pid: pid, m_env: env, msg: term) bool {
   return (e.enif_send(c_env, &to_pid, m_env, msg) == 1);
 }
 

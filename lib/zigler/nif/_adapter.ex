@@ -61,14 +61,14 @@ defmodule Zigler.Nif.Adapter do
     ## NB: we don't deallocate strings because the BEAM returns a pointer to memory space that it owns.
     """
       var __#{function}_arg#{index}__ = beam.get_char_slice(env, #{fetcher.(index)})
-        catch #{bail.(:function_clause)};
+        catch #{String.trim bail.(:function_clause)};
     """
   end
   defp get_clause({"[]" <> type, index}, function, bail, fetcher) do
     """
       var __#{function}_arg#{index}__ = beam.get_slice_of(#{short_name type}, env, #{fetcher.(index)}) catch |err| switch (err) {
-        error.OutOfMemory => #{bail.(:oom)},
-        beam.Error.FunctionClauseError => #{bail.(:function_clause)}
+        error.OutOfMemory => #{String.trim bail.(:oom)},
+        beam.Error.FunctionClauseError => #{String.trim bail.(:function_clause)}
       };
       defer beam.allocator.free(__#{function}_arg#{index}__);
     """
@@ -76,7 +76,7 @@ defmodule Zigler.Nif.Adapter do
   defp get_clause({type, index}, function, bail, fetcher) do
     """
       var __#{function}_arg#{index}__ = beam.get_#{short_name type}(env, #{fetcher.(index)})
-        catch #{bail.(:function_clause)};
+        catch #{String.trim bail.(:function_clause)};
     """
   end
 

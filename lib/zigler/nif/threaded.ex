@@ -34,20 +34,20 @@ defmodule Zigler.Nif.Threaded do
   @behaviour Adapter
 
   #############################################################################
-  ## Elixir Metaprogramming for long functions
+  ## Elixir Metaprogramming for threaded functions
 
   @impl true
   def beam_adapter(nif = %Nif{}) do
     typespec = Typespec.from_nif(nif)
     quote context: Elixir do
       unquote(typespec)
-      unquote(long_main_fn(nif))
-      unquote(long_launch_fn(nif))
-      unquote(long_fetch_fn(nif))
+      unquote(threaded_main_fn(nif))
+      unquote(threaded_launch_fn(nif))
+      unquote(threaded_cleanup_fn(nif))
     end
   end
 
-  defp long_main_fn(%{name: name, arity: arity, retval: retval}) do
+  defp threaded_main_fn(%{name: name, arity: arity}) do
     # note that the "define function" args should not take parentheses
     # but the "call" args must take parentheses.
     args = if arity == 0 do
@@ -90,7 +90,7 @@ defmodule Zigler.Nif.Threaded do
       ]}
   end
 
-  defp long_launch_fn(%{name: name, arity: arity}) do
+  defp threaded_launch_fn(%{name: name, arity: arity}) do
     text = "nif launcher for function #{name}/#{arity} not bound"
 
     args = if arity == 0 do
@@ -106,8 +106,8 @@ defmodule Zigler.Nif.Threaded do
       ]}
   end
 
-  defp long_fetch_fn(%{name: name, arity: arity}) do
-    text = "nif fetcher for function #{name}/#{arity} not bound"
+  defp threaded_cleanup_fn(%{name: name, arity: arity}) do
+    text = "nif cleanup for function #{name}/#{arity} not bound"
     quote context: Elixir do
       def unquote(cleanup name)(_) do
         raise unquote(text)
@@ -133,11 +133,10 @@ defmodule Zigler.Nif.Threaded do
     extra_lines = nif.args
     |> Enum.reject(&(&1 in @env_types))
     |> Enum.with_index
-    |> Enum.map(fn {type, idx} -> "  arg#{idx}: beam.term" end)
-    |> Enum.intersperse(",\n")
+    |> Enum.map(fn {_type, idx} -> "  arg#{idx}: beam.term,\n" end)
 
     test_msg = """
-        _ = beam.send(env, cache.parent, null, beam.make_atom(env, "thread_freed"));
+        _ = beam.send(env, cache.parent, beam.make_atom(env, "thread_freed"));
     """
 
     """
@@ -147,8 +146,7 @@ defmodule Zigler.Nif.Threaded do
       thread: e.ErlNifTid,
       name: [:0]u8,
       this: beam.term,
-    #{extra_lines}
-    };
+    #{extra_lines}};
 
     /// resource: #{cache_ptr nif.name} definition
     const #{cache_ptr nif.name} = ?*#{cache nif.name};
@@ -164,7 +162,7 @@ defmodule Zigler.Nif.Threaded do
 
         // perform thread join to clean up any internal references to this thread.
         var tjoin = e.enif_thread_join(cache.thread, null);
-        #{if Mix.env == :test, do: test_msg}  }
+    #{if Mix.env == :test, do: test_msg}  }
     }
     """
   end
@@ -181,8 +179,7 @@ defmodule Zigler.Nif.Threaded do
     transfer_args = nif.args
     |> Enum.reject(&(&1 in @env_types))
     |> Enum.with_index
-    |> Enum.map(fn {_, index} -> "  cache.arg#{index} = e.enif_make_copy(new_env, argv[#{index}]);" end)
-    |> Enum.intersperse("\n")
+    |> Enum.map(fn {_, index} -> "  cache.arg#{index} = e.enif_make_copy(new_env, argv[#{index}]);\n" end)
 
     """
     const #{thread_name nif.name} = "#{nif.name}-threaded";
@@ -212,10 +209,11 @@ defmodule Zigler.Nif.Threaded do
       cache.this = e.enif_make_copy(new_env, cache_ref);
     #{transfer_args}
       if (0 == e.enif_thread_create(
-        thread_name.ptr, &cache.thread,
-        #{harness nif.name},
-        @ptrCast(*c_void, cache),
-        null)){
+          thread_name.ptr,
+          &cache.thread,
+          #{harness nif.name},
+          @ptrCast(*c_void, cache),
+          null)) {
         return beam.make_ok_term(env, cache_ref);
       } else return beam.ThreadError.LaunchError;
     }
@@ -223,13 +221,6 @@ defmodule Zigler.Nif.Threaded do
   end
 
   def harness_fn(nif) do
-    cache_args = if nif.args == [] do
-      ""
-    else
-      0..(length(nif.args) - 1)
-      |> Enum.map(&"cache.arg#{&1}")
-      |> Enum.join(", ")
-    end
     result_assign = if nif.retval == "void", do: "", else: "var result = "
 
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"cache.arg#{&1}")
@@ -258,7 +249,7 @@ defmodule Zigler.Nif.Threaded do
 
       var result_term = #{result_term};
       var sent_term = e.enif_make_tuple(cache.env, 2, cache.this, result_term);
-      _ = beam.send(null, cache.parent, cache.env, sent_term);
+      _ = beam.send_advanced(null, cache.parent, cache.env, sent_term);
 
       return null;
     }
@@ -267,23 +258,23 @@ defmodule Zigler.Nif.Threaded do
 
   defp bail(:oom), do: """
   {
-      _ = beam.send(
-        null,
-        cache.parent,
-        cache.env,
-        beam.make_error_term(env, beam.make_atom(env, "enomem"[0..])));
-      return null;
-    }
+        _ = beam.send_advanced(
+          null,
+          cache.parent,
+          cache.env,
+          beam.make_error_term(env, beam.make_atom(env, "enomem"[0..])));
+        return null;
+      }
   """
   defp bail(:function_clause), do: """
   {
-      _ = beam.send(
-        null,
-        cache.parent,
-        cache.env,
-        beam.make_error_term(env, beam.make_atom(env, "function_clause"[0..])));
-      return null;
-    }
+        _ = beam.send_advanced(
+          null,
+          cache.parent,
+          cache.env,
+          beam.make_error_term(env, beam.make_atom(env, "function_clause"[0..])));
+        return null;
+      }
   """
 
   def cleanup_fn(nif) do

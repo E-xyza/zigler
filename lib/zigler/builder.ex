@@ -67,9 +67,4 @@ defmodule Zigler.Builder do
     File.write!(build_zig_path, target |> Map.from_struct |> build_zig)
     Logger.debug("wrote build.zig to #{build_zig_path}")
   end
-
-  defp i(x) do
-    IO.puts(x)
-    x
-  end
 end

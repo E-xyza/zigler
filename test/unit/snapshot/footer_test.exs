@@ -94,6 +94,10 @@ defmodule ZiglerTest.Snapshot.FooterTest do
           return beam.resource.fetch(T, env, __resource_type__(T), res);
         }
 
+        fn keep(comptime T: type, env: beam.env, res: beam.term) !void {
+          return beam.resource.keep(T, env, __resource_type__(T), res);
+        }
+
         fn release(comptime T: type, env: beam.env, res: beam.term) void {
           return beam.resource.release(env, __resource_type__(T), res);
         }
@@ -186,6 +190,10 @@ defmodule ZiglerTest.Snapshot.FooterTest do
           return beam.resource.fetch(T, env, __resource_type__(T), res);
         }
 
+        fn keep(comptime T: type, env: beam.env, res: beam.term) !void {
+          return beam.resource.keep(T, env, __resource_type__(T), res);
+        }
+
         fn release(comptime T: type, env: beam.env, res: beam.term) void {
           return beam.resource.release(env, __resource_type__(T), res);
         }
@@ -273,7 +281,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       |> IO.iodata_to_binary
     end
 
-    test "works for a long nif" do
+    test "works for a threaded nif" do
       [major, minor] = Code.nif_major_minor()
 
       assert """
@@ -287,9 +295,9 @@ defmodule ZiglerTest.Snapshot.FooterTest do
           .flags = 0,
         },
         e.ErlNifFunc{
-          .name = "__foo_fetch__",
+          .name = "__foo_cleanup__",
           .arity = 1,
-          .fptr = __foo_fetch__,
+          .fptr = __foo_cleanup__,
           .flags = 0,
         },
       };
@@ -313,7 +321,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       export fn nif_init() *const e.ErlNifEntry{
         return &entry;
       }
-      """ == %Module{nifs: [%Nif{name: :foo, arity: 0, opts: [long: true]}],
+      """ == %Module{nifs: [%Nif{name: :foo, arity: 0, opts: [concurrency: :threaded]}],
              file: "foo.exs", module: Baz, otp_app: :zigler}
       |> Code.footer
       |> IO.iodata_to_binary

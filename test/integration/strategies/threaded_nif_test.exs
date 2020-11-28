@@ -28,8 +28,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     // sleep for 50 ms
     std.time.sleep(50000000);
 
-    // note that you have to do this a bit differently here.
-    _ = beam.send(null, parent, env, beam.make_atom(env, "threaded"));
+    _ = beam.send(env, parent, beam.make_atom(env, "threaded"));
   }
   """
 

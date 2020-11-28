@@ -89,7 +89,7 @@ defmodule ZiglerTest.Parser.DocstringTest do
       /// nif: foo/0 dirty_io
       """)
       assert %Nif{opts: opts} = local
-      assert :drity_io == opts[:concurrency]
+      assert :dirty_io == opts[:concurrency]
     end
 
     test "detects dirty_cpu concurrency" do
@@ -97,7 +97,7 @@ defmodule ZiglerTest.Parser.DocstringTest do
       /// nif: foo/0 dirty_cpu
       """)
       assert %Nif{opts: opts} = local
-      assert :dirty_cpu ==  opt[:concurrency]
+      assert :dirty_cpu ==  opts[:concurrency]
     end
   end
 

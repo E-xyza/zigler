@@ -112,7 +112,6 @@ defmodule Zigler.Compiler do
 
   alias Zigler.Nif.{Synchronous, Threaded, Test}
   alias Zigler.Parser.Nif
-  alias Zigler.Typespec
 
   def function_skeleton(nif = %Nif{doc: doc}) when not is_nil(doc) do
     quote do
