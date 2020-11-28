@@ -23,18 +23,15 @@ defmodule Zigler.Nif.Threaded do
   message to parent context.  The harness function will be responsible
   for wrapping the declared nif function.
 
-  4. a `fetching` function which is passed the resource struct, and
-  marshals it back into BEAM terms, returning the result.  This function
-  must be a nif function, as it will be called from the BEAM.
-
-  5. a `cleanup` function which is responsible for cleaning up the
+  4. a `cleanup` function which is responsible for cleaning up the
   resource object once the thread has completed its task.
   """
 
   alias Zigler.Parser.Nif
   alias Zigler.Typespec
+  alias Zigler.Nif.Adapter
 
-  @behaviour Zigler.Nif.Adapter
+  @behaviour Adapter
 
   #############################################################################
   ## Elixir Metaprogramming for long functions
@@ -64,23 +61,19 @@ defmodule Zigler.Nif.Threaded do
       {launcher(name), [], args}
     end
 
-    block = if retval == "void" do
-      quote context: Elixir do
-        resource = unquote(launcher_call)
-        receive do {:done, ^resource} -> :ok end
+    internal_code = quote context: Elixir do
+      {:ok, ref} = unquote(launcher_call)
+      return = receive do
+        {^ref, return} -> return
       end
-    else
-      quote context: Elixir do
-        resource = unquote(launcher_call)
-        receive do {:done, ^resource} -> :ok end
-        unquote(fetcher name)(resource)
-      end
+      unquote(cleanup name)(ref)
+      return
     end
 
     {:def, [context: Elixir, import: Kernel],
       [
         {name, [context: Elixir], args},
-        [do: block]
+        [do: internal_code]
       ]}
   end
 
@@ -103,7 +96,7 @@ defmodule Zigler.Nif.Threaded do
   defp long_fetch_fn(%{name: name, arity: arity}) do
     text = "nif fetcher for function #{name}/#{arity} not bound"
     quote context: Elixir do
-      def unquote(fetcher name)(_) do
+      def unquote(cleanup name)(_) do
         raise unquote(text)
       end
     end
@@ -118,23 +111,23 @@ defmodule Zigler.Nif.Threaded do
   def packer(fn_name), do: String.to_atom("__#{fn_name}_pack__")
   def launcher(fn_name), do: String.to_atom("__#{fn_name}_launch__")
   def harness(fn_name), do: String.to_atom("__#{fn_name}_harness__")
-  def fetcher(fn_name), do: String.to_atom("__#{fn_name}_fetch__")
+  def cleanup(fn_name), do: String.to_atom("__#{fn_name}_cleanup__")
 
   def cache_struct(nif) do
     extra_lines = nif.args
     |> Enum.with_index
-    |> Enum.map(fn {type, idx} -> "  arg#{idx}: #{type},\n" end)
-    |> Enum.join
-
-    result = if nif.retval == "void", do: "", else: "  result: #{nif.retval}\n"
+    |> Enum.map(fn {type, idx} -> "  arg#{idx}: #{type}" end)
+    |> Enum.intersperse(",\n")
 
     """
     const #{cache nif.name} = struct {
       env: beam.env,
-      self: beam.pid,
-      thread: *std.Thread,
-      response: beam.term,
-    #{extra_lines}#{result}};
+      parent: beam.pid,
+      thread: e.ErlNifTid,
+      name: [:0]u8,
+      this: beam.term,
+    #{extra_lines}
+    };
 
     /// resource: #{cache_ptr nif.name} definition
     const #{cache_ptr nif.name} = ?*#{cache nif.name};
@@ -150,31 +143,52 @@ defmodule Zigler.Nif.Threaded do
 
   def launcher_fn(nif) do
     """
-    export fn #{launcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-      return #{packer nif.name}(env, argv)
-        catch beam.raise(env, beam.make_atom(env, "error"));
+    export fn #{launcher nif.name}(env: beam.env, _argc: c_int, argv: [*c] const beam.term) beam.term {
+      return #{packer nif.name}(env, argv) catch beam.make_error_binary(env, "launching nif");
     }
     """
   end
 
   def packer_fn(nif) do
+    transfer_args = nif.args
+    |> Enum.with_index
+    |> Enum.map(fn {_, index} -> "  cache.arg#{index} = e.enif_make_copy(new_env, argv[#{index}]);" end)
+    |> Enum.intersperse("\n")
+
     """
+    const thread_name_const = "#{nif.name}-threaded";
     fn #{packer nif.name}(env: beam.env, argv: [*c] const beam.term) !beam.term {
-      var cache_term = try __resource__.create(#{cache_ptr nif.name}, env, null);
-      errdefer __resource__.release(#{cache_ptr nif.name}, env, cache_term);
+      // create a resource that is ready to hold the pointer to the cache.
+      var cache_ref = try __resource__.create(#{cache_ptr nif.name}, env, null);
+      errdefer __resource__.release(#{cache_ptr nif.name}, env, cache_ref);
 
+      // allocate space for the cache and obtain its pointer.
       var cache = try beam.allocator.create(#{cache nif.name});
-      try __resource__.update(#{cache_ptr nif.name}, env, cache_term, cache);
+      errdefer beam.allocator.destroy(cache);
 
-      var done_atom = beam.make_atom(env, "done");
+      // allocate space for the name of this thread, then copy it, and null-terminate it.
+      var thread_name: []u8 = try beam.allocator.alloc(u8, thread_name_const.len + 1);
+      std.mem.copy(u8, thread_name, thread_name_const);
+      thread_name[thread_name_const.len] = 0;
 
-      cache.env = env;
-      cache.self = try beam.self(env);
-      cache.response = e.enif_make_tuple(env, 2, done_atom, cache_term);
+      // update the stored pointer.
+      try __resource__.update(#{cache_ptr nif.name}, env, cache_ref, cache);
 
-    #{get_clauses nif}  cache.thread = try std.Thread.spawn(cache, #{harness nif.name});
+      // drop contents into the cache; all items in the cache will be placed into
+      // the new environment created specially for the thread.
+      var new_env = if (e.enif_alloc_env()) | env_ | env_ else return beam.ThreadError.LaunchError;
 
-      return cache_term;
+      cache.env = new_env;
+      cache.parent = try beam.self(env);
+      cache.this = e.enif_make_copy(new_env, cache_ref);
+    #{transfer_args}
+      if (0 == e.enif_thread_create(
+        thread_name.ptr, &cache.thread,
+        #{harness nif.name},
+        @ptrCast(*c_void, cache),
+        null)){
+        return beam.make_ok_term(env, cache_ref);
+      } else return beam.ThreadError.LaunchError;
     }
     """
   end
@@ -187,36 +201,49 @@ defmodule Zigler.Nif.Threaded do
       |> Enum.map(&"cache.arg#{&1}")
       |> Enum.join(", ")
     end
-    result = if nif.retval == "void", do: "", else: "cache.result = "
+    result_assign = if nif.retval == "void", do: "", else: "var result = "
+    result_term = if nif.retval == "void" do
+      "beam.make_ok(cache.env)"
+    else
+      Adapter.make_clause(nif.retval, "result", "cache.env")
+    end
 
     """
-    fn #{harness nif.name}(cache: *#{cache nif.name}) void {
-      #{result}#{nif.name}(#{cache_args});
-      var _sent = beam.send(null, cache.self, null, cache.response);
+    export fn #{harness nif.name}(cache_q: ?*c_void) ?*c_void {
+      var cache: *#{cache nif.name} =
+        @ptrCast(*#{cache nif.name},
+          @alignCast(@alignOf(#{cache nif.name}), cache_q.?));
+
+      // always release the reference to the desired resource
+      defer __resource__.release(#{cache_ptr nif.name}, cache.env, cache.this);
+
+      // take out a reference against the desired resource
+      __resource__.keep(#{cache_ptr nif.name}, cache.env, cache.this) catch return null;
+
+      // execute the nif function
+      #{result_assign}#{nif.name}(#{cache_args});
+
+      var result_term = #{result_term};
+      var sent_term = e.enif_make_tuple(cache.env, 2, cache.this, result_term);
+      _ = beam.send(null, cache.parent, cache.env, sent_term);
+
+      return null;
     }
     """
   end
 
-  def fetcher_fn(nif = %{retval: "void"}) do
+  def cleanup_fn(nif) do
     """
-    export fn #{fetcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-      __resource__.release(#{cache_ptr nif.name}, env, argv[0]);
-      return beam.make_atom(env, "nil");
-    }
-    """
-  end
-  def fetcher_fn(nif) do
-    """
-    export fn #{fetcher nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-      var cache_q: ?*#{cache nif.name} = __resource__.fetch(#{cache_ptr nif.name}, env, argv[0])
-        catch return beam.raise_function_clause_error(env);
+    export fn #{cleanup nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      // release the resource and let it be garbage collected.
       defer __resource__.release(#{cache_ptr nif.name}, env, argv[0]);
 
-      if (cache_q) | cache | {
-        return #{make_clause nif.retval, "cache.result"};
-      } else {
-        return beam.raise_function_clause_error(env);
-      }
+      var cache = __resource__.fetch(#{cache_ptr nif.name}, env, argv[0]) catch return beam.make_error(env);
+
+      // always destroy the beam environment for the thread
+      e.enif_clear_env(cache.?.env);
+
+      return beam.make_ok(env);
     }
     """
   end
@@ -227,7 +254,7 @@ defmodule Zigler.Nif.Threaded do
      launcher_fn(nif), "\n",
      packer_fn(nif), "\n",
      harness_fn(nif), "\n",
-     fetcher_fn(nif)]
+     cleanup_fn(nif)]
   end
 
   @env_types ["beam.env", "?*e.ErlNifEnv"]
@@ -240,7 +267,7 @@ defmodule Zigler.Nif.Threaded do
   defp get_clauses(args) do
     [args
     |> Enum.with_index
-    |> Enum.map(&get_clause/1), "\n"]
+    |> Enum.map(&get_clause/1)]
   end
 
   defp get_clause({term, index}) when term in ["beam.term", "e.ErlNifTerm"] do
@@ -288,9 +315,9 @@ defmodule Zigler.Nif.Threaded do
         .flags = 0,
       },
       e.ErlNifFunc{
-        .name = "#{fetcher nif.name}",
+        .name = "#{cleanup nif.name}",
         .arity = 1,
-        .fptr = #{fetcher nif.name},
+        .fptr = #{cleanup nif.name},
         .flags = 0,
       },
     """

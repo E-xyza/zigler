@@ -28,51 +28,57 @@ defmodule Zigler.Nif.Adapter do
     |> Enum.join(", ")
   end
 
-  def get_clauses(%{arity: 0}), do: ""
-  def get_clauses(%{args: args, name: name}), do: get_clauses(args, name)
+  def get_clauses(nif, prefix \\ nil)
+  def get_clauses(%{arity: 0}, _), do: ""
+  def get_clauses(%{args: args, name: name}, prefix) do
+    get_clauses(args, name, (if prefix, do: prefix <> "."))
+  end
 
-  def get_clauses([env | rest], name) when env in @env_types, do: get_clauses(rest, name)
-  def get_clauses(args, name) do
+  defp get_clauses([env | rest], name, prefix) when env in @env_types do
+    get_clauses(rest, name, prefix)
+  end
+  defp get_clauses(args, name, prefix) do
     [args
     |> Enum.with_index
-    |> Enum.map(&get_clause(&1, name)),
+    |> Enum.map(&get_clause(&1, name, prefix)),
     "\n"]
   end
 
-  defp get_clause({term, index}, function) when term in ["beam.term", "e.ErlNifTerm"] do
-    "  var __#{function}_arg#{index}__ = argv[#{index}];\n"
+  defp get_clause({term, index}, function, prefix) when term in ["beam.term", "e.ErlNifTerm"] do
+    "  var __#{function}_arg#{index}__ = #{prefix}argv[#{index}];\n"
   end
-  defp get_clause({"[]u8", index}, function) do
+  defp get_clause({"[]u8", index}, function, prefix) do
     ## NB: we don't deallocate strings because the BEAM returns a pointer to memory space that it owns.
     """
-      var __#{function}_arg#{index}__ = beam.get_char_slice(env, argv[#{index}])
+      var __#{function}_arg#{index}__ = beam.get_char_slice(env, #{prefix}argv[#{index}])
         catch return beam.raise_function_clause_error(env);
     """
   end
-  defp get_clause({"[]" <> type, index}, function) do
+  defp get_clause({"[]" <> type, index}, function, prefix) do
     """
-      var __#{function}_arg#{index}__ = beam.get_slice_of(#{short_name type}, env, argv[#{index}]) catch |err| switch (err) {
+      var __#{function}_arg#{index}__ = beam.get_slice_of(#{short_name type}, env, #{prefix}argv[#{index}]) catch |err| switch (err) {
         error.OutOfMemory => return beam.raise_enomem(env),
         beam.Error.FunctionClauseError => return beam.raise_function_clause_error(env)
       };
       defer beam.allocator.free(__#{function}_arg#{index}__);
     """
   end
-  defp get_clause({type, index}, function) do
+  defp get_clause({type, index}, function, prefix) do
     """
-      var __#{function}_arg#{index}__ = beam.get_#{short_name type}(env, argv[#{index}])
+      var __#{function}_arg#{index}__ = beam.get_#{short_name type}(env, #{prefix}argv[#{index}])
         catch return beam.raise_function_clause_error(env);
     """
   end
 
-  def make_clause("[]u8", var) do
-    "beam.make_slice(env, #{var})"
+  def make_clause(type, var, env \\ "env")
+  def make_clause("[]u8", var, env) do
+    "beam.make_slice(#{env}, #{var})"
   end
-  def make_clause("[]" <> type, var) do
-    "beam.make_#{type}_list(env, #{var}) catch return beam.raise_enomem(env)"
+  def make_clause("[]" <> type, var, env) do
+    "beam.make_#{type}_list(#{env}, #{var}) catch return beam.raise_enomem(env)"
   end
-  def make_clause(type, var) do
-    "beam.make_#{short_name type}(env, #{var})"
+  def make_clause(type, var, env) do
+    "beam.make_#{short_name type}(#{env}, #{var})"
   end
 
   defp short_name("beam.pid"), do: "pid"

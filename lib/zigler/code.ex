@@ -242,6 +242,10 @@ defmodule Zigler.Code do
             return beam.resource.fetch(T, env, __resource_type__(T), res);
           }
 
+          fn keep(comptime T: type, env: beam.env, res: beam.term) !void {
+            return beam.resource.keep(T, env, __resource_type__(T), res);
+          }
+
           fn release(comptime T: type, env: beam.env, res: beam.term) void {
             return beam.resource.release(env, __resource_type__(T), res);
           }
