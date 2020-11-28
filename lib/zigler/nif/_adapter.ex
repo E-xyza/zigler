@@ -28,45 +28,55 @@ defmodule Zigler.Nif.Adapter do
     |> Enum.join(", ")
   end
 
-  def get_clauses(nif, prefix \\ nil)
-  def get_clauses(%{arity: 0}, _), do: ""
-  def get_clauses(%{args: args, name: name}, prefix) do
-    get_clauses(args, name, (if prefix, do: prefix <> "."))
+  @type bail_reasons :: :oom | :function_clause
+  @spec get_clauses(Nif.t, (bail_reasons -> String.t), (non_neg_integer -> String.t)) :: iodata
+  @doc """
+  obtains the clauses that convert one type of value into another.
+
+  the second parameter should be code which executed when the argument assignment
+  has to bail.  This is context-dependent.
+
+  the third parameter should be a lambda which describes as a string, how one
+  fetches the the index to be converted from a term into a proper value.
+  """
+  def get_clauses(%{arity: 0}, _, _), do: ""
+  def get_clauses(%{args: args, name: name}, bail, fetcher) do
+    get_clauses(args, name, bail, fetcher)
   end
 
-  defp get_clauses([env | rest], name, prefix) when env in @env_types do
-    get_clauses(rest, name, prefix)
+  defp get_clauses([env | rest], name, bail, fetcher) when env in @env_types do
+    get_clauses(rest, name, bail, fetcher)
   end
-  defp get_clauses(args, name, prefix) do
+  defp get_clauses(args, name, bail, fetcher) do
     [args
     |> Enum.with_index
-    |> Enum.map(&get_clause(&1, name, prefix)),
+    |> Enum.map(&get_clause(&1, name, bail, fetcher)),
     "\n"]
   end
 
-  defp get_clause({term, index}, function, prefix) when term in ["beam.term", "e.ErlNifTerm"] do
-    "  var __#{function}_arg#{index}__ = #{prefix}argv[#{index}];\n"
+  defp get_clause({term, index}, function, _bail, fetcher) when term in ["beam.term", "e.ErlNifTerm"] do
+    "  var __#{function}_arg#{index}__ = #{fetcher.(index)};\n"
   end
-  defp get_clause({"[]u8", index}, function, prefix) do
+  defp get_clause({"[]u8", index}, function, bail, fetcher) do
     ## NB: we don't deallocate strings because the BEAM returns a pointer to memory space that it owns.
     """
-      var __#{function}_arg#{index}__ = beam.get_char_slice(env, #{prefix}argv[#{index}])
-        catch return beam.raise_function_clause_error(env);
+      var __#{function}_arg#{index}__ = beam.get_char_slice(env, #{fetcher.(index)})
+        catch #{bail.(:function_clause)};
     """
   end
-  defp get_clause({"[]" <> type, index}, function, prefix) do
+  defp get_clause({"[]" <> type, index}, function, bail, fetcher) do
     """
-      var __#{function}_arg#{index}__ = beam.get_slice_of(#{short_name type}, env, #{prefix}argv[#{index}]) catch |err| switch (err) {
-        error.OutOfMemory => return beam.raise_enomem(env),
-        beam.Error.FunctionClauseError => return beam.raise_function_clause_error(env)
+      var __#{function}_arg#{index}__ = beam.get_slice_of(#{short_name type}, env, #{fetcher.(index)}) catch |err| switch (err) {
+        error.OutOfMemory => #{bail.(:oom)},
+        beam.Error.FunctionClauseError => #{bail.(:function_clause)}
       };
       defer beam.allocator.free(__#{function}_arg#{index}__);
     """
   end
-  defp get_clause({type, index}, function, prefix) do
+  defp get_clause({type, index}, function, bail, fetcher) do
     """
-      var __#{function}_arg#{index}__ = beam.get_#{short_name type}(env, #{prefix}argv[#{index}])
-        catch return beam.raise_function_clause_error(env);
+      var __#{function}_arg#{index}__ = beam.get_#{short_name type}(env, #{fetcher.(index)})
+        catch #{bail.(:function_clause)};
     """
   end
 

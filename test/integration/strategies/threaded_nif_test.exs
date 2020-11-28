@@ -2,9 +2,6 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
 
   use ExUnit.Case, async: true
 
-  @tag skip: true
-  test "complete tests for threaded nifs"
-
   use Zigler
 
   ~Z"""
@@ -21,48 +18,67 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     assert 47 == threaded_forty_seven()
     elapsed = DateTime.utc_now |> DateTime.diff(start)
     assert elapsed >= 2 and elapsed < 4
+
+    verify_cleanup()
   end
 
-#  ~Z"""
-#  /// nif: threaded_void/0 threaded
-#  fn threaded_void() void {
-#    // sleep for 50 ms
-#    std.time.sleep(50000000);
-#  }
-#  """
-#
-#  test "threaded nifs can have a void return" do
-#    test_pid = self()
-#    spawn(fn ->
-#      threaded_void()
-#      send(test_pid, :done)
-#    end)
-#    refute_receive :done, 25
-#    assert_receive :done
-#  end
-#
-#  ~Z"""
-#  /// nif: threaded_sum/1 threaded
-#  fn threaded_sum(list: []i64) i64 {
-#    var result : i64 = 0;
-#    for (list) | val | { result += val; }
-#    return result;
-#  }
-#  """
-#
-#  test "threaded nifs can have an slice input" do
-#    assert 5050 == 1..100 |> Enum.to_list |> threaded_sum
-#  end
-#
-#  ~Z"""
-#  /// nif: threaded_string/1 threaded
-#  fn threaded_string(str: []u8) usize {
-#    return str.len;
-#  }
-#  """
-#
-#  test "threaded nifs can have an string input" do
-#    assert 6 = threaded_string("foobar")
-#  end
+  ~Z"""
+  /// nif: threaded_void/1 threaded
+  fn threaded_void(env: beam.env, parent: beam.pid) void {
+    // sleep for 50 ms
+    std.time.sleep(50000000);
 
+    // note that you have to do this a bit differently here.
+    _ = beam.send(null, parent, env, beam.make_atom(env, "threaded"));
+  }
+  """
+
+  test "threaded nifs can have a void return and parameters" do
+    assert :ok = threaded_void(self())
+    assert_receive :threaded
+
+    verify_cleanup()
+  end
+
+  ~Z"""
+  /// nif: threaded_sum/1 threaded
+  fn threaded_sum(list: []i64) i64 {
+    var result : i64 = 0;
+    for (list) | val | { result += val; }
+    return result;
+  }
+  """
+
+  test "threaded nifs can have an slice input" do
+    assert 5050 == 1..100 |> Enum.to_list |> threaded_sum
+
+    verify_cleanup()
+  end
+
+  ~Z"""
+  /// nif: threaded_string/1 threaded
+  fn threaded_string(str: []u8) usize {
+    return str.len;
+  }
+  """
+
+  test "threaded nifs can have an string input" do
+    assert 6 = threaded_string("foobar")
+
+    verify_cleanup()
+  end
+
+  test "if you pass an incorrect value in you get fce" do
+    assert_raise FunctionClauseError, fn ->
+      threaded_string(:foobar)
+    end
+
+    verify_cleanup()
+  end
+
+  def verify_cleanup do
+    :erlang.garbage_collect(self())
+    # debug message from the cleanup process
+    assert_receive :thread_freed
+  end
 end

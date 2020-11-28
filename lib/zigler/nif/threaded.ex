@@ -63,11 +63,24 @@ defmodule Zigler.Nif.Threaded do
 
     internal_code = quote context: Elixir do
       {:ok, ref} = unquote(launcher_call)
-      return = receive do
-        {^ref, return} -> return
+
+      try do
+        receive do
+          {^ref, return} -> return
+          {:error, :enomem} ->
+            raise "no memory"
+          {:error, :function_clause} ->
+            raise %FunctionClauseError{
+              module: __MODULE__,
+              function: unquote(name),
+              arity: unquote(arity)
+            }
+        end
+      rescue
+        error -> reraise error, __STACKTRACE__
+      after
+        unquote(cleanup name)(ref)
       end
-      unquote(cleanup name)(ref)
-      return
     end
 
     {:def, [context: Elixir, import: Kernel],
@@ -108,16 +121,24 @@ defmodule Zigler.Nif.Threaded do
   def cache_ptr(fn_name), do: String.to_atom("__#{fn_name}_cache_ptr__")
   def cache(fn_name), do: String.to_atom("__#{fn_name}_cache__")
   def cache_cleanup(fn_name), do: String.to_atom("__#{fn_name}_cache_cleanup__")
+  def thread_name(fn_name), do: String.to_atom("__#{fn_name}_name__")
   def packer(fn_name), do: String.to_atom("__#{fn_name}_pack__")
   def launcher(fn_name), do: String.to_atom("__#{fn_name}_launch__")
   def harness(fn_name), do: String.to_atom("__#{fn_name}_harness__")
   def cleanup(fn_name), do: String.to_atom("__#{fn_name}_cleanup__")
 
+  @env_types ["beam.env", "?*e.ErlNifEnv"]
+
   def cache_struct(nif) do
     extra_lines = nif.args
+    |> Enum.reject(&(&1 in @env_types))
     |> Enum.with_index
-    |> Enum.map(fn {type, idx} -> "  arg#{idx}: #{type}" end)
+    |> Enum.map(fn {type, idx} -> "  arg#{idx}: beam.term" end)
     |> Enum.intersperse(",\n")
+
+    test_msg = """
+        _ = beam.send(env, cache.parent, null, beam.make_atom(env, "thread_freed"));
+    """
 
     """
     const #{cache nif.name} = struct {
@@ -134,9 +155,16 @@ defmodule Zigler.Nif.Threaded do
 
     /// resource: #{cache_ptr nif.name} cleanup
     fn #{cache_cleanup nif.name}(env: beam.env, cache_res_ptr: *#{cache_ptr nif.name}) void {
-      if (cache_res_ptr.*) | cache_ptr | {
-        beam.allocator.destroy(cache_ptr);
-      }
+      if (cache_res_ptr.*) | cache | {
+        // always destroy the allocated memory for the cache.
+        defer beam.allocator.destroy(cache);
+
+        // always destroy the beam environment for the thread
+        defer e.enif_clear_env(cache.env);
+
+        // perform thread join to clean up any internal references to this thread.
+        var tjoin = e.enif_thread_join(cache.thread, null);
+        #{if Mix.env == :test, do: test_msg}  }
     }
     """
   end
@@ -151,12 +179,13 @@ defmodule Zigler.Nif.Threaded do
 
   def packer_fn(nif) do
     transfer_args = nif.args
+    |> Enum.reject(&(&1 in @env_types))
     |> Enum.with_index
     |> Enum.map(fn {_, index} -> "  cache.arg#{index} = e.enif_make_copy(new_env, argv[#{index}]);" end)
     |> Enum.intersperse("\n")
 
     """
-    const thread_name_const = "#{nif.name}-threaded";
+    const #{thread_name nif.name} = "#{nif.name}-threaded";
     fn #{packer nif.name}(env: beam.env, argv: [*c] const beam.term) !beam.term {
       // create a resource that is ready to hold the pointer to the cache.
       var cache_ref = try __resource__.create(#{cache_ptr nif.name}, env, null);
@@ -167,9 +196,9 @@ defmodule Zigler.Nif.Threaded do
       errdefer beam.allocator.destroy(cache);
 
       // allocate space for the name of this thread, then copy it, and null-terminate it.
-      var thread_name: []u8 = try beam.allocator.alloc(u8, thread_name_const.len + 1);
-      std.mem.copy(u8, thread_name, thread_name_const);
-      thread_name[thread_name_const.len] = 0;
+      var thread_name: []u8 = try beam.allocator.alloc(u8, #{thread_name nif.name}.len + 1);
+      std.mem.copy(u8, thread_name, #{thread_name nif.name});
+      thread_name[#{thread_name nif.name}.len] = 0;
 
       // update the stored pointer.
       try __resource__.update(#{cache_ptr nif.name}, env, cache_ref, cache);
@@ -202,6 +231,9 @@ defmodule Zigler.Nif.Threaded do
       |> Enum.join(", ")
     end
     result_assign = if nif.retval == "void", do: "", else: "var result = "
+
+    get_clauses = Adapter.get_clauses(nif, &bail/1, &"cache.arg#{&1}")
+
     result_term = if nif.retval == "void" do
       "beam.make_ok(cache.env)"
     else
@@ -219,9 +251,10 @@ defmodule Zigler.Nif.Threaded do
 
       // take out a reference against the desired resource
       __resource__.keep(#{cache_ptr nif.name}, cache.env, cache.this) catch return null;
+      var env = cache.env;
 
-      // execute the nif function
-      #{result_assign}#{nif.name}(#{cache_args});
+    #{get_clauses}  // execute the nif function
+      #{result_assign}#{nif.name}(#{Adapter.args nif});
 
       var result_term = #{result_term};
       var sent_term = e.enif_make_tuple(cache.env, 2, cache.this, result_term);
@@ -232,16 +265,32 @@ defmodule Zigler.Nif.Threaded do
     """
   end
 
+  defp bail(:oom), do: """
+  {
+      _ = beam.send(
+        null,
+        cache.parent,
+        cache.env,
+        beam.make_error_term(env, beam.make_atom(env, "enomem"[0..])));
+      return null;
+    }
+  """
+  defp bail(:function_clause), do: """
+  {
+      _ = beam.send(
+        null,
+        cache.parent,
+        cache.env,
+        beam.make_error_term(env, beam.make_atom(env, "function_clause"[0..])));
+      return null;
+    }
+  """
+
   def cleanup_fn(nif) do
     """
     export fn #{cleanup nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
       // release the resource and let it be garbage collected.
       defer __resource__.release(#{cache_ptr nif.name}, env, argv[0]);
-
-      var cache = __resource__.fetch(#{cache_ptr nif.name}, env, argv[0]) catch return beam.make_error(env);
-
-      // always destroy the beam environment for the thread
-      e.enif_clear_env(cache.?.env);
 
       return beam.make_ok(env);
     }
@@ -255,54 +304,6 @@ defmodule Zigler.Nif.Threaded do
      packer_fn(nif), "\n",
      harness_fn(nif), "\n",
      cleanup_fn(nif)]
-  end
-
-  @env_types ["beam.env", "?*e.ErlNifEnv"]
-
-  defp get_clauses(%{arity: 0}), do: ""
-  defp get_clauses(%{args: args}), do: get_clauses(args)
-
-  defp get_clauses([env | rest]) when env in @env_types, do: get_clauses(rest)
-  defp get_clauses([]), do: []
-  defp get_clauses(args) do
-    [args
-    |> Enum.with_index
-    |> Enum.map(&get_clause/1)]
-  end
-
-  defp get_clause({term, index}) when term in ["beam.term", "e.ErlNifTerm"] do
-    """
-      cache.arg#{index} = argv[#{index}];
-    """
-  end
-  defp get_clause({"[]u8", index}) do
-    """
-      cache.arg#{index} = try beam.get_char_slice(env, argv[#{index}]);
-    """
-  end
-  defp get_clause({"[]" <> type, index}) do
-    """
-      cache.arg#{index} = try beam.get_slice_of(#{short_name type}, env, argv[#{index}]);
-    """
-  end
-  defp get_clause({type, index}) do
-    """
-      cache.arg#{index} = try beam.get_#{short_name type}(env, argv[#{index}]);
-    """
-  end
-
-  defp short_name("beam.pid"), do: "pid"
-  defp short_name("e.ErlNifPid"), do: "pid"
-  defp short_name(any), do: any
-
-  defp make_clause("[]u8", var) do
-    "beam.make_slice(env, #{var})"
-  end
-  defp make_clause("[]" <> type, var) do
-    "beam.make_#{type}_list(env, #{var}) catch return beam.raise_enomem(env)"
-  end
-  defp make_clause(type, var) do
-    "beam.make_#{short_name type}(env, #{var})"
   end
 
   @impl true

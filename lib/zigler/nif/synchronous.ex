@@ -7,12 +7,10 @@ defmodule Zigler.Nif.Synchronous do
 
   @impl true
   def zig_adapter(nif) do
-    args = Adapter.args(nif)
-
-    get_clauses = Adapter.get_clauses(nif)
+    get_clauses = Adapter.get_clauses(nif, &bail/1, &"argv[#{&1}]")
 
     result_var = "__#{nif.name}_result__"
-    function_call = "#{nif.name}(#{args})"
+    function_call = "#{nif.name}(#{Adapter.args nif})"
 
     head = "export fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
 
@@ -39,6 +37,9 @@ defmodule Zigler.Nif.Synchronous do
     end
     [head, "\n", get_clauses, result, "\n"]
   end
+
+  defp bail(:oom), do: "return beam.raise_enomem(env)"
+  defp bail(:function_clause), do: "return beam.raise_function_clause_error(env)"
 
   @impl true
   def nif_table_entries(nif) do
