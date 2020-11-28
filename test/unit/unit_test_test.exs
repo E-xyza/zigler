@@ -25,7 +25,7 @@ defmodule ZiglerTest.UnitTestTest do
     |> IO.iodata_to_binary
   end
 
-  test "Zigler.Code.nif_struct/1 produces the correct skeleton for a test" do
+  test "Zigler.Code.nif_table_entries/1 produces the correct skeleton for a test" do
     assert """
       e.ErlNifFunc{
         .name = "tests foo",
@@ -34,7 +34,7 @@ defmodule ZiglerTest.UnitTestTest do
         .flags = 0,
       },
     """ = %Nif{name: :test_foo, arity: 0, test: "tests foo"}
-    |> Zigler.Code.nif_struct
+    |> Zigler.Code.nif_table_entries
     |> IO.iodata_to_binary
   end
 end

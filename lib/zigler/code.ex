@@ -2,7 +2,7 @@ defmodule Zigler.Code do
   @moduledoc """
   all code responsible for generating zig code lives in this module.
   """
-  alias Zigler.Code.LongRunning
+  alias Zigler.Nif.{Synchronous, Test, Threaded}
   alias Zigler.Module
   alias Zigler.Parser.{Nif, Resource}
 
@@ -79,122 +79,15 @@ defmodule Zigler.Code do
     end)
   end
 
-  #############################################################################
-  ## ADAPTER GENERATION
-
-  defp shim_name(nif_name), do: nif_name |> Atom.to_string |> String.split(".") |> List.last
-
   def adapter(nif = %Zigler.Parser.Nif{opts: opts, test: nil}) do
-    if opts[:long] do
-      LongRunning.adapter(nif)
-    else
-      args = args(nif)
-
-      get_clauses = get_clauses(nif)
-
-      result_var = "__#{nif.name}_result__"
-      function_call = "#{nif.name}(#{args})"
-
-      head = "export fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
-
-      result = cond do
-        nif.retval in ["beam.term", "e.ErlNifTerm"] ->
-          """
-            return #{function_call};
-          }
-          """
-        nif.retval == "void" ->
-          """
-            #{function_call};
-
-            return beam.make_nil(env);
-          }
-          """
-        true ->
-          """
-            var #{result_var} = #{function_call};
-
-            return #{make_clause nif.retval, result_var};
-          }
-          """
-      end
-      [head, "\n", get_clauses, result, "\n"]
+    case opts[:concurrency] do
+      :threaded ->
+        Threaded.zig_adapter(nif)
+      nil ->
+        Synchronous.zig_adapter(nif)
     end
   end
-  def adapter(nif) do
-    # when it is a test:
-    """
-    export fn __#{shim_name nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-      beam.test_env = env;
-      #{nif.name}() catch return beam.test_error();
-      return beam.make_atom(env, "ok");
-    }
-    """
-  end
-
-  @env_types ["beam.env", "?*e.ErlNifEnv"]
-
-  defp args(%{arity: 0, args: [p]}) when p in @env_types, do: "env"
-  defp args(%{arity: 0}), do: ""
-  defp args(nif = %{args: [env | rest]}) when env in @env_types do
-    ["env, ", args(%{nif | args: rest})]
-  end
-  defp args(nif) do
-    0..(nif.arity - 1)
-    |> Enum.map(&"__#{nif.name}_arg#{&1}__")
-    |> Enum.join(", ")
-  end
-
-  defp get_clauses(%{arity: 0}), do: ""
-  defp get_clauses(%{args: args, name: name}), do: get_clauses(args, name)
-
-  defp get_clauses([env | rest], name) when env in @env_types, do: get_clauses(rest, name)
-  defp get_clauses(args, name) do
-    [args
-    |> Enum.with_index
-    |> Enum.map(&get_clause(&1, name)),
-    "\n"]
-  end
-
-  defp get_clause({term, index}, function) when term in ["beam.term", "e.ErlNifTerm"] do
-    "  var __#{function}_arg#{index}__ = argv[#{index}];\n"
-  end
-  defp get_clause({"[]u8", index}, function) do
-    ## NB: we don't deallocate strings because the BEAM returns a pointer to memory space that it owns.
-    """
-      var __#{function}_arg#{index}__ = beam.get_char_slice(env, argv[#{index}])
-        catch return beam.raise_function_clause_error(env);
-    """
-  end
-  defp get_clause({"[]" <> type, index}, function) do
-    """
-      var __#{function}_arg#{index}__ = beam.get_slice_of(#{short_name type}, env, argv[#{index}]) catch |err| switch (err) {
-        error.OutOfMemory => return beam.raise_enomem(env),
-        beam.Error.FunctionClauseError => return beam.raise_function_clause_error(env)
-      };
-      defer beam.allocator.free(__#{function}_arg#{index}__);
-    """
-  end
-  defp get_clause({type, index}, function) do
-    """
-      var __#{function}_arg#{index}__ = beam.get_#{short_name type}(env, argv[#{index}])
-        catch return beam.raise_function_clause_error(env);
-    """
-  end
-
-  defp make_clause("[]u8", var) do
-    "beam.make_slice(env, #{var})"
-  end
-  defp make_clause("[]" <> type, var) do
-    "beam.make_#{type}_list(env, #{var}) catch return beam.raise_enomem(env)"
-  end
-  defp make_clause(type, var) do
-    "beam.make_#{short_name type}(env, #{var})"
-  end
-
-  defp short_name("beam.pid"), do: "pid"
-  defp short_name("e.ErlNifPid"), do: "pid"
-  defp short_name(any), do: any
+  def adapter(nif), do: Test.zig_adapter(nif)
 
   #############################################################################
   ## FOOTER GENERATION
@@ -204,13 +97,16 @@ defmodule Zigler.Code do
 
     funcs_count = module.nifs
     |> Enum.map(fn %{opts: opts} ->
-      if opts[:long], do: 2, else: 1
+      case opts[:concurrency] do
+        :threaded -> 2
+        _ -> 1
+      end
     end)
     |> Enum.sum
 
     exports = """
     export var __exported_nifs__ = [_]e.ErlNifFunc{
-    #{Enum.map(module.nifs, &nif_struct/1)}};
+    #{Enum.map(module.nifs, &nif_table_entries/1)}};
     """
     resource_init_defs = Enum.map(module.resources, &resource_init_definition/1)
     resource_inits = Enum.map(module.resources, &resource_initializer/1)
@@ -265,44 +161,16 @@ defmodule Zigler.Code do
   end
 
   @doc false
-  def nif_struct(%Nif{name: name, arity: arity, opts: opts, test: nil}) do
-    alias Zigler.Code.LongRunning
-
-    if opts[:long] do
-      """
-        e.ErlNifFunc{
-          .name = "#{LongRunning.launcher name}",
-          .arity = #{arity},
-          .fptr = #{LongRunning.launcher name},
-          .flags = 0,
-        },
-        e.ErlNifFunc{
-          .name = "#{LongRunning.fetcher name}",
-          .arity = 1,
-          .fptr = #{LongRunning.fetcher name},
-          .flags = 0,
-        },
-      """
-    else
-      """
-        e.ErlNifFunc{
-          .name = "#{name}",
-          .arity = #{arity},
-          .fptr = __#{name}_shim__,
-          .flags = 0,
-        },
-      """
+  def nif_table_entries(nif = %Nif{opts: opts, test: nil}) do
+    case opts[:concurrency] do
+      :threaded ->
+        Threaded.nif_table_entries(nif)
+      nil ->
+        Synchronous.nif_table_entries(nif)
     end
   end
-  def nif_struct(%Nif{name: name, test: test}) do
-    """
-      e.ErlNifFunc{
-        .name = "#{test}",
-        .arity = 0,
-        .fptr = __#{shim_name name}_shim__,
-        .flags = 0,
-      },
-    """
+  def nif_table_entries(nif) do
+    Zigler.Nif.Test.nif_table_entries(nif)
   end
 
   #############################################################################
@@ -372,6 +240,10 @@ defmodule Zigler.Code do
 
           fn fetch(comptime T: type, env: beam.env, res: beam.term) !T {
             return beam.resource.fetch(T, env, __resource_type__(T), res);
+          }
+
+          fn keep(comptime T: type, env: beam.env, res: beam.term) !void {
+            return beam.resource.keep(T, env, __resource_type__(T), res);
           }
 
           fn release(comptime T: type, env: beam.env, res: beam.term) void {

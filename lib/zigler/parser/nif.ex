@@ -13,13 +13,16 @@ defmodule Zigler.Parser.Nif do
   - args: (`t:String.t/0`) a list of zig types which are the arguments for
     the function
   - retval: (`t:String.t/0`) the type of the return value
-  - opts: (`t:keyword`) list of nif options.
-    - long: true  -- if the nif should run in a separate OS thread.
-    - dirty: :cpu -- if the nif should run in a dirty cpu scheduler.
-    - dirty: :io  -- if the nif should run in a dirty io scheduler.
+  - opts: (`t:keyword`) list of nif options.  These options are currently supported:
+    - `concurrency: <model>` picks a [long-running nif](http://erlang.org/doc/man/erl_nif.html#lengthy_work)
+      concurrency model.  The following concurrency models are supported:
+      - :threaded  -- if the nif should run in a separate OS thread.
+      - :yielding  -- if the nif should use zig's `yield` keyword to yield
+        to the BEAM scheduler.
+      - :dirty_cpu -- if the nif should run in a dirty cpu scheduler.
+      - :dirty_io  -- if the nif should run in a dirty io scheduler.
   """
 
-  alias Zigler.Code.LongRunning
   alias Zigler.Parser.Resource
 
   @float_types  ~w(f16 f32 f64)
@@ -47,9 +50,8 @@ defmodule Zigler.Parser.Nif do
                 # of the test which is going to be bound in.
   ]
 
-  @type option ::
-    {:long, boolean} |
-    {:dirty, :cpu | :io}
+  @type concurrency :: :threaded | :yielding | :dirty_io | :dirty_cpu
+  @type option :: {:concurrency, concurrency}
 
   @type t :: %__MODULE__{
     name:   atom,
@@ -104,15 +106,22 @@ defmodule Zigler.Parser.Nif do
   end
 
   def register_function_header([retval | args], context) do
+    alias Zigler.Nif.Threaded
+
     final_nif = %{context.local | retval: retval, args: Enum.reverse(args)}
-    # long nifs require a resource
-    resource = if context.local.opts[:long] do
-      [%Resource{
-        name: LongRunning.cache_ptr(context.local.name),
-        cleanup: LongRunning.cache_cleanup(context.local.name)}]
-    else
-      []
+
+    # additional resources that the nif requires to perform correctly.  These are
+    # usually references dropped by called nif for a safe callback.
+    resource = case context.local.opts[:concurrency] do
+      # threaded nifs require a resource containing a reference to the thread
+      # callback.
+      :threaded -> [%Resource{
+        name: Threaded.cache_ptr(context.local.name),
+        cleanup: Threaded.cache_cleanup(context.local.name)
+      }]
+      nil -> []
     end
+
     %{context | global: resource ++ [final_nif | context.global]}
   end
 

@@ -198,7 +198,13 @@ pub const Error = error {
   ///
   /// support for users to be able to throw this value in their own Zig functions
   /// is forthcoming.
-  FunctionClauseError
+  FunctionClauseError,
+};
+
+/// errors for launching nif errors
+pub const ThreadError = error {
+  /// Occurs when there's a problem launching a threaded nif.
+  LaunchError
 };
 
 /// errors for testing
@@ -564,7 +570,23 @@ pub fn self(environment: env) !pid {
   }
 }
 
-pub fn send(c_env: env, to_pid: pid, m_env: env, msg: term) bool {
+/// shortcut for `e.enif_self`
+///
+/// returns true if the send is successful, false otherwise.
+///
+/// NOTE this function assumes a valid BEAM environment.  If you have spawned
+/// an OS thread without a BEAM environment, you must use `send_advanced/4`
+pub fn send(c_env: env, to_pid: pid, msg: term) bool {
+  return (e.enif_send(c_env, &to_pid, null, msg) == 1);
+}
+
+/// shortcut for `e.enif_self`
+///
+/// returns true if the send is successful, false otherwise.
+///
+/// if you are sending from a thread that does not have a BEAM environment, you
+/// should put `null` in both environment variables.
+pub fn send_advanced(c_env: env, to_pid: pid, m_env: env, msg: term) bool {
   return (e.enif_send(c_env, &to_pid, m_env, msg) == 1);
 }
 
@@ -992,7 +1014,7 @@ pub fn make_f64_list(environment: env, val: []f64) !term {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// booleans
+// special atoms
 
 /// converts a `bool` value into a `t:Kernel.boolean/0` value.
 pub fn make_bool(environment: env, val: bool) term {
@@ -1002,6 +1024,16 @@ pub fn make_bool(environment: env, val: bool) term {
 /// creates a beam `nil` value.
 pub fn make_nil(environment: env) term {
   return e.enif_make_atom(environment, "nil");
+}
+
+/// creates a beam `ok` value.
+pub fn make_ok(environment: env) term {
+  return e.enif_make_atom(environment, "ok");
+}
+
+/// creates a beam `error` value.
+pub fn make_error(environment: env) term {
+  return e.enif_make_atom(environment, "error");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1039,8 +1071,7 @@ pub fn make_ok_atom(environment: env, val: [] const u8) term {
 
 /// A helper to make `{:ok, term}` terms in general
 pub fn make_ok_term(environment: env, val: term) term {
-  return e.enif_make_tuple(environment, 2,
-    e.enif_make_atom(environment, "ok"), val);
+  return e.enif_make_tuple(environment, 2, make_ok(environment), val);
 }
 
 /// A helper to make `{:error, term}` terms from arbitrarily-typed values.
@@ -1075,8 +1106,7 @@ pub fn make_error_binary(environment: env, val: [] const u8) term {
 
 /// A helper to make `{:error, term}` terms in general
 pub fn make_error_term(environment: env, val: term) term {
-  return e.enif_make_tuple(environment, 2,
-    e.enif_make_atom(environment, "error"), val);
+  return e.enif_make_tuple(environment, 2, make_error(environment), val);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1097,10 +1127,10 @@ pub fn make_ref(environment: env) !term {
 pub const resource_type = ?*e.ErlNifResourceType;
 
 pub const resource = struct {
-  // fix this V V V
-  pub const Err = error {
+  /// errors related to resource transactions
+  pub const ResourceError = error {
     /// something has gone wrong while trying to fetch a resource.
-    ResourceError
+    FetchError,
   };
 
   pub fn create(comptime T : type, environment: env, res_typ: resource_type, val : T) !term {
@@ -1121,7 +1151,7 @@ pub const resource = struct {
     var obj : ?*c_void = undefined;
 
     if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
-      return resource.Err.ResourceError;
+      return resource.ResourceError.FetchError;
     }
 
     if (obj == null) { unreachable; }
@@ -1135,7 +1165,7 @@ pub const resource = struct {
     var obj : ?*c_void = undefined;
 
     if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
-      return resource.Err.ResourceError;
+      return resource.ResourceError.FetchError;
     }
 
     // according to the erlang documentation:
@@ -1147,6 +1177,18 @@ pub const resource = struct {
     var val : *T = @ptrCast(*T, @alignCast(@alignOf(*T), obj));
 
     return val.*;
+  }
+
+  pub fn keep(comptime T: type, environment: env, res_typ: resource_type, res_trm: term) !void {
+    var obj : ?*c_void = undefined;
+
+    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
+      return resource.ResourceError.FetchError;
+    }
+
+    if (obj == null) { unreachable; }
+
+    e.enif_keep_resource(obj);
   }
 
   pub fn release(environment: env, res_typ: resource_type, res_trm: term) void {

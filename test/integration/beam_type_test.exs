@@ -34,7 +34,7 @@ defmodule ZiglerTest.Integration.BeamTypeTest do
   ~Z"""
   /// nif: pass_beam_pid/1
   fn pass_beam_pid(env: beam.env, val: beam.pid) void {
-    var res = beam.send(env, val, null, beam.make_i64(env, 47));
+    var res = beam.send(env, val, beam.make_i64(env, 47));
   }
   """
 
@@ -52,7 +52,7 @@ defmodule ZiglerTest.Integration.BeamTypeTest do
   ~Z"""
   /// nif: pass_erl_nif_pid/1
   fn pass_erl_nif_pid(env: beam.env, val: e.ErlNifPid) void {
-    var res = beam.send(env, val, null, beam.make_i64(env, 47));
+    var res = beam.send(env, val, beam.make_i64(env, 47));
   }
   """
 

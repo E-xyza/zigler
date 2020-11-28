@@ -82,12 +82,34 @@ fn add_3(env: beam.env, number: i32) beam.term {
 }
 ```
 
+## Threaded nifs
+
+If you want to launch your nif as threaded, use the `threaded` attribute.  Note that
+this a heavy handed operation that is inappropriate if you can do yielding or dirty
+nifs.  You should use this strategy if:
+
+- you are using 3rd party library code that can't take advantage of yielding nifs.
+- you need to run more nifs concurrently than you have dirty schedulers
+
+```zig
+/// nif: threaded_nif/1 threaded
+fn threaded_nif(env: beam.env, input: u64) u64 {
+  ...
+  // code that takes a long time
+  ...
+  return my_result;
+}
+```
+
 ## Dirty nifs
 
-If you want to launch your nif as a dirty, use the `dirty_cpu` or
-`dirty_io` attributes.  Note that by default, your vm will only have
-a limited number of dirty threads available and launching the nif
-may fail if all of them are occupied.
+If you want to launch your nif as a dirty, use the `dirty_cpu` or `dirty_io` attributes.
+Note that by default, your vm will only have a limited number of dirty schedulers
+available and launching the nif may fail if all of them are occupied.  You should use
+this strategy if:
+
+- you are using 3rd party library code that can't take advantage of yielding nifs.
+- you can throttle requests to limit how many are using the available schedulers.
 
 ```zig
 /// nif: dirty_nif/1 dirty_cpu
@@ -98,75 +120,3 @@ fn dirty_nif(env: beam.env, input: u64) u64 {
   return my_result;
 }
 ```
-
-## Future feature:  `long`
-
-An upcoming feature will be the ability to run a function inside of a
-sidecar (OS) process.  There is a considerable amount of boilerplate
-required to safely wrap launching such a process, and Zigler will take
-care of that for you.
-
-### Example
-
-```zig
-/// nif: my_nif/1 long
-fn my_nif(env: beam.env, input: beam.term) u64 {
-  ...
-  // code that takes a long time
-  ...
-  return my_result;
-}
-```
-
-In the above example situation, the result `my_result` will be returned
-to the process which called it, which will block awaiting a completion
-message, without consuming NIF timeslices except for entry into the
-function (serialization of the input data).
-
-### Optional parent pid example
-
-In some instances, you may want to monitor the parent pid from within the
-long-running NIF. In those situations, if you request the parent's pid as
-the second term you can for example, effectively monitor to silently quit
-out of loops in case the parent dies.
-
-If you don't want the parent pid to block awaiting a response, use the
-`long:detached` attribute.
-
-```zig
-/// nif: my_nif/1 long:detached
-fn my_nif(env: beam.env, parent: beam.pid, input: beam.term) void {
-  while (true) {
-    ...
-    // code inside of a loop
-    ...
-    if is_dead(env, parent) break;
-  }
-}
-```
-
-This attribute may be combined with the `managed` or `dirty` attributes.
-You should use `dirty long` nifs if you think serialization of your BEAM
-data structure will take a very long time.
-
-## Future feature:  `managed` and `managed:arena`
-
-An upcoming feature will be the ability to use a 'managed' allocation
-system.  Within a managed nif, performing `free` operations on allocated data
-is optional, preventing the risk of memory leaks.  All memory fetched from the
-managed allocator will be automatically freed on function exit.  It is
-important to never pass these data into a `resource`.  If you don't want to
-ever perform free operations you can use `managed:arena` which will use an
-arena allocation strategy, which can potentially offer better latency.
-
-### Example
-
-```zig
-/// nif: my_nif/1 managed
-fn my_nif(env: beam.env, input: beam.term) beam.term {
-  beam.managed.alloc(u8, 100)
-  ...
-}
-```
-
-This attribute may be combined with the `long` attribute.

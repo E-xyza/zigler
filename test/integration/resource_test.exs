@@ -94,7 +94,7 @@ defmodule ZiglerTest.Integration.ResourceTest do
   /// resource: test_pid_res cleanup
   fn test_pid_res_cleanup(env: beam.env, pid: *test_pid_res) void {
     var msg = beam.make_atom(env, "done");
-    var _res = beam.send(env, pid.*, null, msg);
+    var _res = beam.send(env, pid.*, msg);
   }
 
   /// nif: create_pid_resource/1
