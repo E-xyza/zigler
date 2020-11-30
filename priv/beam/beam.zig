@@ -1114,9 +1114,7 @@ pub fn make_error_term(environment: env, val: term) term {
 
 /// Encapsulates `e.enif_make_ref` and allows it to return a
 /// FunctionClauseError.
-///
-/// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.pid/0`
-pub fn make_ref(environment: env) !term {
+pub fn make_ref(environment: env) term {
   return e.enif_make_ref(environment);
 }
 
@@ -1236,6 +1234,16 @@ pub fn yield() !env {
   if (yield_info.cancelled) return YieldError.Cancelled;
   yield_info.yielded = true;
   return yield_info.environment;
+}
+
+pub fn reschedule() term {
+  return e.enif_schedule_nif(
+              yield_info.environment,
+              yield_info.name.ptr,
+              0,
+              yield_info.rescheduler,
+              1,
+              &yield_info.self);
 }
 
 ///////////////////////////////////////////////////////////////////////////////

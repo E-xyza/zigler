@@ -119,13 +119,18 @@ defmodule Zigler.Nif.Yielding do
     export fn #{rescheduler nif.name}(env: beam.env, argc: c_int, argv: [*c]const beam.term) beam.term {
       //pull frame information from the passed resource.
       var beam_frame = __resource__.fetch(#{frame_ptr nif.name}, env, argv[0]) catch unreachable;
+      // update the threadlocal yield_info value.
+      beam.yield_info = &(beam_frame.*.yield_info);
 
       // sometimes the environment can shift.  In this case, you have to update the contents of
       // yield_info; and make sure the resource token is known to the new environment.
       // update, as necessary (if the environment has shifted)
-      if (beam_frame.*.yield_info.environment != env) {
-        beam_frame.*.yield_info.environment = env;
-        beam_frame.*.yield_info.self = e.enif_make_copy(env, argv[0]);
+      if (beam.yield_info.environment != env) {
+        beam.yield_info.environment = env;
+        beam.yield_info.self = e.enif_make_copy(env, argv[0]);
+      } else {
+        // always update the self object id.
+        beam.yield_info.self = argv[0];
       }
 
       // hand-off from C ABI into Zig ABI to allow for async operations.
@@ -133,7 +138,7 @@ defmodule Zigler.Nif.Yielding do
 
       // BEAM expects the result of `e.enif_schedule_nif` as an response, if it needs to be
       // rescheduled, or the NIF return value otherwise.
-      return beam_frame.*.yield_info.response;
+      return beam.yield_info.response;
     }
 
     fn #{rescheduler_shim nif.name}(env: beam.env, beam_frame: *#{frame(harness nif.name)}) void {
@@ -160,12 +165,16 @@ defmodule Zigler.Nif.Yielding do
       Adapter.make_clause(nif.retval, "await inner_frame", "env")
     end
     """
-    fn #{harness nif.name}(env: beam.env, argv: [*c] const beam.term, yield_info: *beam.YieldInfo) void {
+    fn #{harness nif.name}(env_: beam.env, argv: [*c] const beam.term, yield_info: *beam.YieldInfo) void {
+      // env could change underneath us so always update it.
+      var env: beam.env = env_;
+
       // decode parameters
     #{get_clauses}
 
       var to: i64 = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
       var tf: i64 = undefined;
+      var elapsed: i64 = undefined;
       var percent: c_int = undefined;
 
       // launch the inner frame.
@@ -174,28 +183,22 @@ defmodule Zigler.Nif.Yielding do
       // go into a scheduler loop around the inner frame.
       while (yield_info.yielded) {
         tf = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
-
-        // 10 microseconds in one percent of a millisecond.
-        percent = @intCast(c_int, @divFloor(tf - to, 10));
-        if (e.enif_consume_timeslice(env, percent) == 1) {
-          // reschedule the yielded function.
-          yield_info.response = e.enif_schedule_nif(
-            yield_info.environment,
-            yield_info.name.ptr,
-            0,
-            yield_info.rescheduler,
-            1,
-            &yield_info.self);
-
-          // forward the suspension if we have consumed too many timeslices
-          suspend;
-          to = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
-        } else {
-          to = tf;
+        elapsed = tf - to;
+        // don't ask the vm for timeslice info too often.
+        if (elapsed > 100) {
+          percent = @intCast(c_int, @divFloor(elapsed, 10));
+          if (e.enif_consume_timeslice(env, percent) == 1) {
+            // reschedule the yielded function.
+            yield_info.response = beam.reschedule();
+            // forward the suspension if we have consumed too many timeslices
+            suspend;
+            // update the environment, which could have changed.
+            env = yield_info.environment;
+            to = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
+          } else {
+            to = tf;
+          }
         }
-
-        // update beam.yield info to make sure we're synced
-        beam.yield_info = yield_info;
         // flag as not yielded yet.
         yield_info.yielded = false;
 

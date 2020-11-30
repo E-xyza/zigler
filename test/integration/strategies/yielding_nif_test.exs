@@ -1,8 +1,9 @@
  defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
 
   use ExUnit.Case, async: true
-
   use Zigler
+
+  @moduletag :yielding
 
   ~Z"""
   const tenth_millisecond = 100000;
@@ -25,7 +26,8 @@
     start = DateTime.utc_now
     assert 47 == yielding_forty_seven()
     elapsed = DateTime.utc_now |> DateTime.diff(start)
-    assert elapsed >= 2 and elapsed < 4
+    assert elapsed >= 2
+    assert elapsed < 4
   end
 
   ~Z"""
