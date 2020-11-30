@@ -1199,6 +1199,47 @@ pub const resource = struct {
 };
 
 ///////////////////////////////////////////////////////////////////////////////
+// yielding NIFs
+
+const Rescheduler = fn (env, c_int, [*c]const term) callconv(.C) term;
+
+pub const YieldInfo = struct {
+  yielded: bool = false,
+  cancelled: bool = false,
+  environment: env,
+  self: term,
+  name: [] const u8,
+  response: term = undefined,
+  rescheduler: Rescheduler,
+};
+
+/// transparently passes information into the yield statement.
+pub threadlocal var yield_info: *YieldInfo = undefined;
+// make this "undefined", eventually:
+pub threadlocal var yielding_allocator: ?*std.mem.Allocator = null;
+
+pub fn Frame(function: anytype) type {
+  return struct {
+    yield_info: YieldInfo,
+    yielding_allocator: ?*std.mem.Allocator = null,
+    zig_frame: *@Frame(function),
+  };
+}
+
+pub const YieldError = error {
+  Cancelled,
+};
+
+const print = std.debug.print;
+
+/// this function is going to be dropped inside the suspend statement.
+pub fn yield() !env {
+  if (yield_info.cancelled) return YieldError.Cancelled;
+  yield_info.yielded = true;
+  return yield_info.environment;
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // errors, etc.
 
 pub fn raise(environment: env, exception: atom) term {

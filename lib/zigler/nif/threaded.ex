@@ -4,10 +4,10 @@ defmodule Zigler.Nif.Threaded do
 
   threaded functions require several parts to get right.
 
-  0. a zig struct needs to be that holds arguments relvant to the
+  0. a zig struct that holds arguments relevant to the
   threaded nif, these arguments need to be cleaned up in a sane
   fashion once the nif has completed running. This struct is going to be
-  argetric on the nif arguments, and will be packed into a BEAM
+  variadic on the nif arguments, and will be packed into a BEAM
   resource.
 
   1. a `packer` function which takes the beam arguments and shoves
