@@ -165,17 +165,18 @@ defmodule Zigler.Nif.Yielding do
   end
 
   def harness_fn(nif) do
-    get_clauses = Adapter.get_clauses(nif, &bail/1, &"cache.arg#{&1}")
+    get_clauses = Adapter.get_clauses(nif, &bail/1, &"argv[#{&1}]")
     """
     fn #{harness nif.name}(env: beam.env, argv: [*c] const beam.term, yield_info: *beam.YieldInfo) void {
       // decode parameters
+    #{get_clauses}
 
       var to: i64 = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
       var tf: i64 = undefined;
       var percent: c_int = undefined;
 
       // launch the inner frame.
-      var inner_frame = async #{nif.name}();
+      var inner_frame = async #{nif.name}(#{Adapter.args nif});
 
       // go into a scheduler loop around the inner frame.
       while (yield_info.yielded) {
@@ -214,7 +215,18 @@ defmodule Zigler.Nif.Yielding do
     """
   end
 
-  def bail(_), do: ""
+  def bail(:oom), do: """
+  {
+        yield_info.response = beam.raise_enomem(env);
+        return;
+      }
+  """
+  def bail(:function_clause), do: """
+  {
+        yield_info.response = beam.raise_function_clause_error(env);
+        return;
+      }
+  """
 
   @impl true
   def zig_adapter(nif) do

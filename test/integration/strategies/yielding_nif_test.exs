@@ -21,12 +21,22 @@
   }
   """
 
-  #test "yielding nifs don't have to suspend"
-
   test "yielding nifs can sleep for a while" do
     start = DateTime.utc_now
     assert 47 == yielding_forty_seven()
     elapsed = DateTime.utc_now |> DateTime.diff(start)
     assert elapsed >= 2 and elapsed < 4
+  end
+
+  ~Z"""
+  /// nif: non_yielding_forty_seven/1 yielding
+  fn non_yielding_forty_seven(yields: bool) i32 {
+    if (yields) { _ = beam.yield() catch return 0; }
+    return 47;
+  }
+  """
+
+  test "yielding nifs don't have to suspend" do
+    assert 47 == non_yielding_forty_seven(false)
   end
 end
