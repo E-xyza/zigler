@@ -1137,7 +1137,7 @@ pub const resource = struct {
     var obj : *T = undefined;
 
     if (ptr == null) {
-      return error.enomem;
+      return error.OutOfMemory;
     } else {
       obj = @ptrCast(*T, @alignCast(@alignOf(*T), ptr));
       obj.* = val;
