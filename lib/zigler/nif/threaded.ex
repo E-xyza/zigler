@@ -225,11 +225,7 @@ defmodule Zigler.Nif.Threaded do
 
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"cache.arg#{&1}")
 
-    result_term = if nif.retval == "void" do
-      "beam.make_ok(cache.env)"
-    else
-      Adapter.make_clause(nif.retval, "result", "cache.env")
-    end
+    result_term = Adapter.make_clause(nif.retval, "result", "cache.env")
 
     """
     export fn #{harness nif.name}(cache_q: ?*c_void) ?*c_void {

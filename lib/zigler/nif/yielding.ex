@@ -62,7 +62,6 @@ defmodule Zigler.Nif.Yielding do
   def launcher(fn_name), do: String.to_atom("__#{fn_name}_launch__")
   def rescheduler(fn_name), do: String.to_atom("__#{fn_name}_rescheduler__")
   def rescheduler_shim(fn_name), do: String.to_atom("__#{fn_name}_rescheduler_shim__")
-  def joiner(fn_name), do: String.to_atom("__#{fn_name}_joiner__")
   def harness(fn_name), do: String.to_atom("__#{fn_name}_harness__")
 
   @env_types ["beam.env", "?*e.ErlNifEnv"]
@@ -150,22 +149,16 @@ defmodule Zigler.Nif.Yielding do
     """
   end
 
-  def joiner_fn(nif) do
-    result_term = if nif.retval == "void" do
-      "beam.make_ok(cache.env)"
-    else
-      Adapter.make_clause(nif.retval, "await beam_frame.zig_frame", "env")
-    end
-
-    """
-    fn #{joiner nif.name}(env: beam.env, beam_frame: *#{frame(harness nif.name)}) void {
-      beam_frame.yield_info.response = #{result_term};
-    }
-    """
-  end
-
   def harness_fn(nif) do
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"argv[#{&1}]")
+    result_term = if nif.retval == "void" do
+      """
+      beam.make_ok(env);
+      await inner_frame
+      """
+    else
+      Adapter.make_clause(nif.retval, "await inner_frame", "env")
+    end
     """
     fn #{harness nif.name}(env: beam.env, argv: [*c] const beam.term, yield_info: *beam.YieldInfo) void {
       // decode parameters
@@ -209,7 +202,7 @@ defmodule Zigler.Nif.Yielding do
         resume inner_frame;
       }
       // join the result, since it finished.
-      yield_info.response = beam.make_i32(env, await inner_frame);
+      yield_info.response = #{result_term};
       return;
     }
     """
@@ -233,7 +226,6 @@ defmodule Zigler.Nif.Yielding do
     [frame_struct(nif), "\n",
      launcher_fn(nif), "\n",
      rescheduler_fns(nif), "\n",
-     joiner_fn(nif), "\n",
      harness_fn(nif)]
   end
 

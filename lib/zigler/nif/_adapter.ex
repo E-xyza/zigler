@@ -81,6 +81,9 @@ defmodule Zigler.Nif.Adapter do
   end
 
   def make_clause(type, var, env \\ "env")
+  def make_clause("void", _var, env) do
+    "beam.make_ok(#{env})"
+  end
   def make_clause("[]u8", var, env) do
     "beam.make_slice(#{env}, #{var})"
   end
