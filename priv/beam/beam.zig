@@ -1280,6 +1280,14 @@ pub fn raise_function_clause_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, f_c_e_slice));
 }
 
+const resource_error = "resource_error";
+
+/// This function is used to communicate `:resource_error` back to the BEAM as an
+/// exception.
+pub fn raise_resource_error(environment: env) term {
+  return e.enif_raise_exception(environment, make_atom(environment, resource_error));
+}
+
 const assert_slice = "assertion_error"[0..];
 
 /// This function is used to communicate `:assertion_error` back to the BEAM as an

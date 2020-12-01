@@ -60,6 +60,7 @@ defmodule Zigler.Nif.Yielding do
   def frame(fn_name), do: String.to_atom("beam.Frame(#{fn_name})")
   def frame_cleanup(fn_name), do: String.to_atom("__#{fn_name}_frame_cleanup__")
   def launcher(fn_name), do: String.to_atom("__#{fn_name}_launch__")
+  def launcher_shim(fn_name), do: String.to_atom("__#{fn_name}_launcher_shim__")
   def rescheduler(fn_name), do: String.to_atom("__#{fn_name}_rescheduler__")
   def rescheduler_shim(fn_name), do: String.to_atom("__#{fn_name}_rescheduler_shim__")
   def harness(fn_name), do: String.to_atom("__#{fn_name}_harness__")
@@ -81,18 +82,25 @@ defmodule Zigler.Nif.Yielding do
   def launcher_fn(nif) do
     """
     export fn #{launcher nif.name}(env: beam.env, _argc: c_int, argv: [*c] const beam.term) beam.term {
+      return #{launcher_shim nif.name}(env, argv) catch | err | switch (err) {
+        error.OutOfMemory => beam.raise_enomem(env),
+        beam.resource.ResourceError.FetchError => beam.raise_resource_error(env),
+      };
+    }
+
+    fn #{launcher_shim nif.name}(env: beam.env, argv: [*c] const beam.term) !beam.term {
       // first, create a frame on the heap.
       // irl this needs to be resource that we can jam into the rescheduler.
-      var beam_frame = beam.allocator.create(#{frame(harness nif.name)}) catch unreachable;
-      // put in errdefer here.
-      beam_frame.zig_frame = beam.allocator.create(@Frame(#{harness nif.name})) catch unreachable;
-      // put in errdefer here
+      var beam_frame = try beam.allocator.create(#{frame(harness nif.name)});
+      errdefer beam.allocator.destroy(beam_frame);
 
-      var frame_resource = __resource__.create(#{frame_ptr nif.name}, env, beam_frame)
-        catch unreachable;
+      beam_frame.zig_frame = try beam.allocator.create(@Frame(#{harness nif.name}));
+      errdefer beam.allocator.destroy(beam_frame.zig_frame);
+
+      var frame_resource = try __resource__.create(#{frame_ptr nif.name}, env, beam_frame);
 
       // lock down the resource
-      __resource__.keep(#{frame_ptr nif.name}, env, frame_resource) catch unreachable;
+      try __resource__.keep(#{frame_ptr nif.name}, env, frame_resource);
 
       beam_frame.yield_info = .{
         .environment = env,
@@ -106,7 +114,6 @@ defmodule Zigler.Nif.Yielding do
 
       // run the desired function.
       beam_frame.zig_frame.* = async #{harness nif.name}(env, argv, beam.yield_info);
-
       return beam_frame.yield_info.response;
     }
     """
