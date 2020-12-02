@@ -2,7 +2,7 @@ defmodule Zigler.Code do
   @moduledoc """
   all code responsible for generating zig code lives in this module.
   """
-  alias Zigler.Nif.{Synchronous, Test, Threaded}
+  alias Zigler.Nif.{DirtyCpu, DirtyIO, Synchronous, Test, Threaded}
   alias Zigler.Module
   alias Zigler.Parser.{Nif, Resource}
 
@@ -83,6 +83,10 @@ defmodule Zigler.Code do
     case opts[:concurrency] do
       :threaded ->
         Threaded.zig_adapter(nif)
+      :dirty_cpu ->
+        DirtyCpu.zig_adapter(nif)
+      :dirty_io ->
+        DirtyIO.zig_adapter(nif)
       nil ->
         Synchronous.zig_adapter(nif)
     end
@@ -165,6 +169,10 @@ defmodule Zigler.Code do
     case opts[:concurrency] do
       :threaded ->
         Threaded.nif_table_entries(nif)
+      :dirty_cpu ->
+        DirtyCpu.nif_table_entries(nif)
+      :dirty_io ->
+        DirtyIO.nif_table_entries(nif)
       nil ->
         Synchronous.nif_table_entries(nif)
     end

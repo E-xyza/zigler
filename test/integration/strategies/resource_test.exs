@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Integration.ResourceTest do
+defmodule ZiglerTest.Integration.Strategies.ResourceTest do
 
   # tests to make sure that the basics of a resource lifecycle works.
 
