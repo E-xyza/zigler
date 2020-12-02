@@ -123,7 +123,7 @@ defmodule Zigler.Parser.Nif do
         name: Yielding.frame_ptr(context.local.name),
         cleanup: Yielding.frame_cleanup(context.local.name),
       }]
-      nil -> []
+      _ -> []
     end
 
     %{context | global: resource ++ [final_nif | context.global]}

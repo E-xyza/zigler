@@ -110,7 +110,8 @@ defmodule Zigler.Compiler do
   #############################################################################
   ## FUNCTION SKELETONS
 
-  alias Zigler.Nif.{Synchronous, Test, Threaded, Yielding}
+
+  alias Zigler.Nif.{DirtyCpu, DirtyIO, Synchronous, Threaded, Test, Yielding}
   alias Zigler.Parser.Nif
 
   def function_skeleton(nif = %Nif{doc: doc}) when not is_nil(doc) do
@@ -125,6 +126,10 @@ defmodule Zigler.Compiler do
         Threaded.beam_adapter(nif)
       :yielding ->
         Yielding.beam_adapter(nif)
+      :dirty_cpu ->
+        DirtyCpu.beam_adapter(nif)
+      :dirty_io ->
+        DirtyIO.beam_adapter(nif)
       nil ->
         Synchronous.beam_adapter(nif)
     end
