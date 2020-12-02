@@ -287,6 +287,10 @@ defmodule Zigler.Doc.Parser do
     {[], %{context | docs: [this_value | context.docs]}}
   end
 
+  defp typed_docstring(rest, [{:fn, [" " <> _, name, defn]}, doc], context, meta, offset) do
+    typed_docstring(rest, [{:fn, [name, defn]}, doc], context, meta, offset)
+  end
+
   defp typed_docstring(_rest, [{:fn, [name, defn]}, doc], context, {line, _}, _offset) do
     {:ok, types, _, _, _, _} = head_parser(defn)
     arity = div(Enum.count(types), 2)

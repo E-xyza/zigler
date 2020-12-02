@@ -1,8 +1,9 @@
 defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
 
   use ExUnit.Case, async: true
-
   use Zigler
+
+  @moduletag :threaded
 
   ~Z"""
   /// nif: threaded_forty_seven/0 threaded

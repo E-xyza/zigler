@@ -1114,11 +1114,8 @@ pub fn make_error_term(environment: env, val: term) term {
 
 /// Encapsulates `e.enif_make_ref` and allows it to return a
 /// FunctionClauseError.
-///
-/// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.pid/0`
-pub fn make_ref(environment: env) !term {
-  var result = e.enif_make_ref(environment);
-  if (0 != result) { return result; } else { return Error.FunctionClauseError; }
+pub fn make_ref(environment: env) term {
+  return e.enif_make_ref(environment);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1138,7 +1135,7 @@ pub const resource = struct {
     var obj : *T = undefined;
 
     if (ptr == null) {
-      return error.enomem;
+      return error.OutOfMemory;
     } else {
       obj = @ptrCast(*T, @alignCast(@alignOf(*T), ptr));
       obj.* = val;
@@ -1199,6 +1196,52 @@ pub const resource = struct {
 };
 
 ///////////////////////////////////////////////////////////////////////////////
+// yielding NIFs
+
+const Rescheduler = fn (env, c_int, [*c]const term) callconv(.C) term;
+
+pub const YieldInfo = struct {
+  yielded: bool = false,
+  cancelled: bool = false,
+  environment: env,
+  self: term,
+  name: [*] const u8,
+  response: term = undefined,
+  rescheduler: Rescheduler,
+};
+
+/// transparently passes information into the yield statement.
+pub threadlocal var yield_info: *YieldInfo = undefined;
+
+pub fn Frame(function: anytype) type {
+  return struct {
+    yield_info: YieldInfo,
+    zig_frame: *@Frame(function),
+  };
+}
+
+pub const YieldError = error {
+  Cancelled,
+};
+
+/// this function is going to be dropped inside the suspend statement.
+pub fn yield() !env {
+  if (yield_info.cancelled) return YieldError.Cancelled;
+  yield_info.yielded = true;
+  return yield_info.environment;
+}
+
+pub fn reschedule() term {
+  return e.enif_schedule_nif(
+              yield_info.environment,
+              yield_info.name,
+              0,
+              yield_info.rescheduler,
+              1,
+              &yield_info.self);
+}
+
+///////////////////////////////////////////////////////////////////////////////
 // errors, etc.
 
 pub fn raise(environment: env, exception: atom) term {
@@ -1230,6 +1273,14 @@ const f_c_e_slice = "function_clause"[0..];
 /// resulting term from your NIF.
 pub fn raise_function_clause_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, f_c_e_slice));
+}
+
+const resource_error = "resource_error";
+
+/// This function is used to communicate `:resource_error` back to the BEAM as an
+/// exception.
+pub fn raise_resource_error(environment: env) term {
+  return e.enif_raise_exception(environment, make_atom(environment, resource_error));
 }
 
 const assert_slice = "assertion_error"[0..];

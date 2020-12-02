@@ -106,7 +106,7 @@ defmodule Zigler.Parser.Nif do
   end
 
   def register_function_header([retval | args], context) do
-    alias Zigler.Nif.Threaded
+    alias Zigler.Nif.{Threaded, Yielding}
 
     final_nif = %{context.local | retval: retval, args: Enum.reverse(args)}
 
@@ -118,6 +118,10 @@ defmodule Zigler.Parser.Nif do
       :threaded -> [%Resource{
         name: Threaded.cache_ptr(context.local.name),
         cleanup: Threaded.cache_cleanup(context.local.name)
+      }]
+      :yielding -> [%Resource{
+        name: Yielding.frame_ptr(context.local.name),
+        cleanup: Yielding.frame_cleanup(context.local.name),
       }]
       _ -> []
     end

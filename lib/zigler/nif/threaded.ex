@@ -4,10 +4,10 @@ defmodule Zigler.Nif.Threaded do
 
   threaded functions require several parts to get right.
 
-  0. a zig struct needs to be that holds arguments relvant to the
+  0. a zig struct that holds arguments relevant to the
   threaded nif, these arguments need to be cleaned up in a sane
   fashion once the nif has completed running. This struct is going to be
-  argetric on the nif arguments, and will be packed into a BEAM
+  variadic on the nif arguments, and will be packed into a BEAM
   resource.
 
   1. a `packer` function which takes the beam arguments and shoves
@@ -27,9 +27,9 @@ defmodule Zigler.Nif.Threaded do
   resource object once the thread has completed its task.
   """
 
+  alias Zigler.Nif.Adapter
   alias Zigler.Parser.Nif
   alias Zigler.Typespec
-  alias Zigler.Nif.Adapter
 
   @behaviour Adapter
 
@@ -225,11 +225,7 @@ defmodule Zigler.Nif.Threaded do
 
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"cache.arg#{&1}")
 
-    result_term = if nif.retval == "void" do
-      "beam.make_ok(cache.env)"
-    else
-      Adapter.make_clause(nif.retval, "result", "cache.env")
-    end
+    result_term = Adapter.make_clause(nif.retval, "result", "cache.env")
 
     """
     export fn #{harness nif.name}(cache_q: ?*c_void) ?*c_void {

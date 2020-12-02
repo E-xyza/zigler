@@ -1,5 +1,10 @@
 defmodule Zigler.Builder do
 
+  @moduledoc """
+  Code for interfacing with `std.build.Builder`, the interface for programattically invoking
+  build code with the `zig build` command.
+  """
+
   require EEx
   require Logger
 
@@ -29,8 +34,8 @@ defmodule Zigler.Builder do
       <% end %>
 
       lib.setBuildMode(mode);
-
       lib.setTarget(target);
+      lib.single_threaded = true;
 
       // link libraries
       lib.linkSystemLibrary("c");
@@ -51,7 +56,7 @@ defmodule Zigler.Builder do
       <% end %>
 
       // strip_symbols option?
-      // lib.strip = true;
+      lib.strip = <%= Mix.env() == :prod %>;
 
       // c files
       // for (cfiles) |c_file| {

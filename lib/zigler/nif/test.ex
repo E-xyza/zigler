@@ -1,5 +1,9 @@
 defmodule Zigler.Nif.Test do
 
+  @moduledoc """
+  Adapter code for test nifs.
+  """
+
   alias Zigler.Nif.Adapter
 
   @behaviour Adapter

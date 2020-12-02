@@ -16,7 +16,7 @@ defmodule ZiglerTest.LibraryTest do
     const blas = @cImport({
       @cInclude("cblas.h");
     });
-    
+
     /// nif: blas_axpy/3
     fn blas_axpy(env: beam.env, a: f64, x: []f64, y: []f64) beam.term {
       if (x.len != y.len) {

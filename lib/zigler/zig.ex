@@ -2,7 +2,9 @@ defmodule Zigler.Zig do
 
   @moduledoc """
   contains all parts of the Zigler library involved in calling the
-  zig compiler toolchain
+  zig compiler toolchain, especially with regards to the `zig` command, except
+  for assembling the build.zig file, which is performed by the
+  `Zigler.Builder` module.
   """
 
   alias Zigler.{Builder, Patches}
@@ -95,7 +97,6 @@ defmodule Zigler.Zig do
       {bad, good}, str -> String.replace(str, bad, good)
     end)
   end
-
 
   #############################################################################
   ## download zig from online sources.
