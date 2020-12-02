@@ -117,9 +117,9 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
 
   test "elixir general purpose allocator works" do
     assert rem(gp_alloctest(4096), 4096) == 0
-    assert rem(gp_alloctest(10000), 4096) == 0
+    assert rem(gp_alloctest(10_000), 4096) == 0
 
     assert rem(gp_realloctest(4096), 4096) == 0
-    assert rem(gp_realloctest(10000), 4096) == 0
+    assert rem(gp_realloctest(10_000), 4096) == 0
   end
 end

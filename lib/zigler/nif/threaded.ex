@@ -27,9 +27,9 @@ defmodule Zigler.Nif.Threaded do
   resource object once the thread has completed its task.
   """
 
+  alias Zigler.Nif.Adapter
   alias Zigler.Parser.Nif
   alias Zigler.Typespec
-  alias Zigler.Nif.Adapter
 
   @behaviour Adapter
 

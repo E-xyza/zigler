@@ -1,5 +1,9 @@
 defmodule Zigler.Nif.Synchronous do
 
+  @moduledoc """
+  Adapter code for synchronous nifs
+  """
+
   alias Zigler.Nif.Adapter
   alias Zigler.Typespec
 

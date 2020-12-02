@@ -2,8 +2,8 @@ defmodule Zigler.Code do
   @moduledoc """
   all code responsible for generating zig code lives in this module.
   """
-  alias Zigler.Nif.{Synchronous, Test, Threaded, Yielding}
   alias Zigler.Module
+  alias Zigler.Nif.{Synchronous, Test, Threaded, Yielding}
   alias Zigler.Parser.{Nif, Resource}
 
   def generate_main(module = %Module{}) do
@@ -177,7 +177,7 @@ defmodule Zigler.Code do
     end
   end
   def nif_table_entries(nif) do
-    Zigler.Nif.Test.nif_table_entries(nif)
+    Test.nif_table_entries(nif)
   end
 
   #############################################################################

@@ -19,9 +19,9 @@ defmodule Zigler.Nif.Yielding do
   target function has been completed.
   """
 
+  alias Zigler.Nif.Adapter
   alias Zigler.Parser.Nif
   alias Zigler.Typespec
-  alias Zigler.Nif.Adapter
 
   @behaviour Adapter
 
