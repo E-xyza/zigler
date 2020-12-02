@@ -91,6 +91,7 @@ defmodule Zigler.Nif.Adapter do
   end
 
   def make_clause(type, var, env \\ "env")
+  def make_clause("beam.term", var, _), do: var
   def make_clause("void", _var, env) do
     "beam.make_ok(#{env})"
   end

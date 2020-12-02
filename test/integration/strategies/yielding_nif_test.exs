@@ -90,4 +90,40 @@
       yielding_string(:foobar)
     end
   end
+
+  @one_m 1024 * 1024
+
+  ~z"""
+  /// nif: cancellation/0 yielding
+  fn cancellation() void {
+    var mem = beam.allocator.alloc(u8, 10 * #{@one_m}) catch unreachable;
+    defer beam.allocator.free(mem);
+
+    while (true) {
+      std.time.sleep(tenth_millisecond);
+      suspend {
+        _ = beam.yield() catch { return; };
+      }
+    }
+  }
+  """
+
+  test "killing the other process lets you cancel the nif" do
+    pre_memory = :erlang.memory()[:total]
+
+    nif_pid = spawn(&cancellation/0)
+
+    Process.sleep(100)
+    trans_memory = :erlang.memory()[:total]
+    assert div(trans_memory - pre_memory, @one_m) > 8
+
+    Process.exit(nif_pid, :kill)
+    Process.sleep(1000)
+
+    refute Process.alive?(nif_pid)
+    post_memory = :erlang.memory()[:total]
+
+    assert div(post_memory - pre_memory, @one_m) < 1
+  end
+
 end

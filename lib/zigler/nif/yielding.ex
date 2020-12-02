@@ -59,6 +59,7 @@ defmodule Zigler.Nif.Yielding do
   def frame_ptr(fn_name), do: String.to_atom("__#{fn_name}_frame_ptr__")
   def frame(fn_name), do: String.to_atom("beam.Frame(#{fn_name})")
   def frame_cleanup(fn_name), do: String.to_atom("__#{fn_name}_frame_cleanup__")
+  def cancel_join(fn_name), do: String.to_atom("__cancel_join_#{fn_name}__")
   def launcher(fn_name), do: String.to_atom("__#{fn_name}_launch__")
   def launcher_shim(fn_name), do: String.to_atom("__#{fn_name}_launcher_shim__")
   def rescheduler(fn_name), do: String.to_atom("__#{fn_name}_rescheduler__")
@@ -66,14 +67,25 @@ defmodule Zigler.Nif.Yielding do
   def scheduler(fn_name), do: String.to_atom("__#{fn_name}_scheduler__")
   def harness(fn_name), do: String.to_atom("__#{fn_name}_harness__")
 
-  @spec frame_struct(Nif.t) :: iodata
-  def frame_struct(nif) do
+  @spec frame_resources(Nif.t) :: iodata
+  def frame_resources(nif) do
     """
     /// resource: #{frame_ptr nif.name} definition
     const #{frame_ptr nif.name} = *#{frame(scheduler nif.name)};
 
     /// resource: #{frame_ptr nif.name} cleanup
-    fn #{frame_cleanup nif.name}(env: beam.env, frame_res_ptr: *#{frame_ptr nif.name}) void {}
+    fn #{frame_cleanup nif.name}(env: beam.env, frame_ptr: *#{frame_ptr nif.name}) void {
+      _ = async #{cancel_join nif.name}(env, frame_ptr);
+    }
+
+    fn #{cancel_join nif.name}(env: beam.env, beam_frame: *#{frame_ptr nif.name}) void {
+      // async join with cancellation.
+      beam.yield_info = &(beam_frame.*.yield_info);
+      beam.yield_info.cancelled = true;
+
+      resume beam_frame.*.zig_frame;
+      await beam_frame.*.zig_frame;
+    }
     """
   end
 
@@ -83,7 +95,6 @@ defmodule Zigler.Nif.Yielding do
     export fn #{launcher nif.name}(env: beam.env, _argc: c_int, argv: [*c] const beam.term) beam.term {
       return #{launcher_shim nif.name}(env, argv) catch | err | switch (err) {
         error.OutOfMemory => beam.raise_enomem(env),
-        beam.resource.ResourceError.FetchError => beam.raise_resource_error(env),
       };
     }
 
@@ -97,9 +108,6 @@ defmodule Zigler.Nif.Yielding do
       errdefer beam.allocator.destroy(beam_frame.zig_frame);
 
       var frame_resource = try __resource__.create(#{frame_ptr nif.name}, env, beam_frame);
-
-      // lock down the resource
-      try __resource__.keep(#{frame_ptr nif.name}, env, frame_resource);
 
       beam_frame.yield_info = .{
         .environment = env,
@@ -124,6 +132,9 @@ defmodule Zigler.Nif.Yielding do
     /// C abi function that acts as the seam between reentrancy that the BEAM FFI expects and
     /// the zig-style async runner (this is for nif #{nif.name}).
     export fn #{rescheduler nif.name}(env: beam.env, argc: c_int, argv: [*c]const beam.term) beam.term {
+      // take out a lease on the resource
+      __resource__.keep(#{frame_ptr nif.name}, env, argv[0]) catch return beam.raise_resource_error(env);
+
       //pull frame information from the passed resource.
       var beam_frame = __resource__.fetch(#{frame_ptr nif.name}, env, argv[0])
         catch return beam.raise_resource_error(env);
@@ -183,6 +194,8 @@ defmodule Zigler.Nif.Yielding do
         if (elapsed > 100) {
           percent = @intCast(c_int, @divFloor(elapsed, 10));
           if (e.enif_consume_timeslice(env, percent) == 1) {
+            // release the lease on the resource.
+            __resource__.release(#{frame_ptr nif.name}, env, yield_info.self);
             // reschedule the yielded function.
             yield_info.response = beam.reschedule();
             // forward the suspension if we have consumed too many timeslices
@@ -250,7 +263,7 @@ defmodule Zigler.Nif.Yielding do
 
   @impl true
   def zig_adapter(nif) do
-    [frame_struct(nif), "\n",
+    [frame_resources(nif), "\n",
      launcher_fns(nif), "\n",
      rescheduler_fns(nif), "\n",
      scheduler_fn(nif), "\n",

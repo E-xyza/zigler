@@ -1224,8 +1224,6 @@ pub const YieldError = error {
   Cancelled,
 };
 
-const print = std.debug.print;
-
 /// this function is going to be dropped inside the suspend statement.
 pub fn yield() !env {
   if (yield_info.cancelled) return YieldError.Cancelled;
