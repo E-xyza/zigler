@@ -66,20 +66,18 @@ defmodule Zigler.Nif.Yielding do
   def scheduler(fn_name), do: String.to_atom("__#{fn_name}_scheduler__")
   def harness(fn_name), do: String.to_atom("__#{fn_name}_harness__")
 
-  @env_types ["beam.env", "?*e.ErlNifEnv"]
-
+  @spec frame_struct(Nif.t) :: iodata
   def frame_struct(nif) do
     """
     /// resource: #{frame_ptr nif.name} definition
     const #{frame_ptr nif.name} = *#{frame(scheduler nif.name)};
 
     /// resource: #{frame_ptr nif.name} cleanup
-    fn #{frame_cleanup nif.name}(env: beam.env, frame_res_ptr: *#{frame_ptr nif.name}) void {
-      // do nothing, for now.
-    }
+    fn #{frame_cleanup nif.name}(env: beam.env, frame_res_ptr: *#{frame_ptr nif.name}) void {}
     """
   end
 
+  @spec launcher_fns(Nif.t) :: iodata
   def launcher_fns(nif) do
     """
     export fn #{launcher nif.name}(env: beam.env, _argc: c_int, argv: [*c] const beam.term) beam.term {
@@ -106,7 +104,7 @@ defmodule Zigler.Nif.Yielding do
       beam_frame.yield_info = .{
         .environment = env,
         .self = frame_resource,
-        .name = "#{nif.name}"[0..],
+        .name = "#{nif.name}",
         .rescheduler = #{rescheduler nif.name},
       };
 
@@ -120,6 +118,7 @@ defmodule Zigler.Nif.Yielding do
     """
   end
 
+  @spec rescheduler_fns(Nif.t) :: iodata
   def rescheduler_fns(nif) do
     """
     /// C abi function that acts as the seam between reentrancy that the BEAM FFI expects and
@@ -153,7 +152,6 @@ defmodule Zigler.Nif.Yielding do
 
     fn #{rescheduler_shim nif.name}(env: beam.env, beam_frame: *#{frame(scheduler nif.name)}) void {
       beam_frame.yield_info.yielded = false;
-      beam.yielding_allocator = beam_frame.yielding_allocator;
 
       resume beam_frame.zig_frame;
 
@@ -164,6 +162,7 @@ defmodule Zigler.Nif.Yielding do
     """
   end
 
+  @spec scheduler_fn(Nif.t) :: iodata
   def scheduler_fn(nif) do
     """
     fn #{scheduler nif.name}(_env: beam.env, argv: [*c] const beam.term, yield_info: *beam.YieldInfo) void {
@@ -205,6 +204,7 @@ defmodule Zigler.Nif.Yielding do
     """
   end
 
+  @spec harness_fns(Nif.t) :: iodata
   def harness_fns(nif) do
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"argv[#{&1}]")
     result_term = if nif.retval == "void" do

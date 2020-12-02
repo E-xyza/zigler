@@ -1205,20 +1205,17 @@ pub const YieldInfo = struct {
   cancelled: bool = false,
   environment: env,
   self: term,
-  name: [] const u8,
+  name: [*] const u8,
   response: term = undefined,
   rescheduler: Rescheduler,
 };
 
 /// transparently passes information into the yield statement.
 pub threadlocal var yield_info: *YieldInfo = undefined;
-// make this "undefined", eventually:
-pub threadlocal var yielding_allocator: ?*std.mem.Allocator = null;
 
 pub fn Frame(function: anytype) type {
   return struct {
     yield_info: YieldInfo,
-    yielding_allocator: ?*std.mem.Allocator = null,
     zig_frame: *@Frame(function),
   };
 }
@@ -1239,7 +1236,7 @@ pub fn yield() !env {
 pub fn reschedule() term {
   return e.enif_schedule_nif(
               yield_info.environment,
-              yield_info.name.ptr,
+              yield_info.name,
               0,
               yield_info.rescheduler,
               1,
