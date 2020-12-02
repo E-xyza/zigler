@@ -119,7 +119,7 @@ defmodule Zigler.Parser.Nif do
         name: Threaded.cache_ptr(context.local.name),
         cleanup: Threaded.cache_cleanup(context.local.name)
       }]
-      nil -> []
+      _ -> []
     end
 
     %{context | global: resource ++ [final_nif | context.global]}
