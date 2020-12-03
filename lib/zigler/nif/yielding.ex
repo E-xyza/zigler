@@ -75,7 +75,16 @@ defmodule Zigler.Nif.Yielding do
 
     /// resource: #{frame_ptr nif.name} cleanup
     fn #{frame_cleanup nif.name}(env: beam.env, frame_ptr: *#{frame_ptr nif.name}) void {
-      _ = async #{cancel_join nif.name}(env, frame_ptr);
+      var beam_frame = frame_ptr.*;
+
+      // only join the frame if it's still in the "yielded" state
+      if (beam_frame.yield_info.yielded) {
+        _ = async #{cancel_join nif.name}(env, frame_ptr);
+      }
+
+      // destroy the resources associated with this frame.
+      beam.allocator.destroy(beam_frame.zig_frame);
+      beam.allocator.destroy(beam_frame);
     }
 
     fn #{cancel_join nif.name}(env: beam.env, beam_frame: *#{frame_ptr nif.name}) void {
