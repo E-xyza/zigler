@@ -62,3 +62,8 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 - better support for nerves (thanks @fhunleth)
 - fixed documentation linking for bootstrap
+
+## 0.3.3
+
+- supported zig version: 0.7.0+d4c167f3c (2020-12-03)
+

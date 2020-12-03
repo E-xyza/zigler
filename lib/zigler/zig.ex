@@ -16,7 +16,7 @@ defmodule Zigler.Zig do
     # apply patches, if applicable
     Patches.sync(zig_tree)
 
-    zig_executable = Path.join(zig_tree, "zig")
+    zig_executable = hd(Path.wildcard("#{ zig_tree }/zig"))
     zig_rpath = Path.join(zig_tree, "lib/zig")
 
     include_opts = ["-isystem", Path.join(compiler.assembly_dir, "include")] ++
@@ -30,18 +30,18 @@ defmodule Zigler.Zig do
     src_file = Path.basename(compiler.code_file)
     cmd_opts = ["build-lib", src_file] ++
       ~w(-dynamic -lc) ++ cross_compile(compiler.module_spec) ++
-      ~w(--disable-gen-h --override-lib-dir) ++
+      ~w(--override-lib-dir) ++
       [zig_rpath] ++
       include_opts ++
-      ["--ver-major", "#{version.major}",
-       "--ver-minor", "#{version.minor}",
-       "--ver-patch", "#{version.patch}"] ++
+      ["--version", "#{version}"] ++
       lib_opts ++
       ["--name", "#{module}"] ++
-      ["--release-safe"]
+      ~w(-O ReleaseSafe)
       #@release_mode[release_mode]
 
     opts = [cd: compiler.assembly_dir, stderr_to_stdout: true]
+
+    Logger.debug([zig_executable, cmd_opts, opts])
 
     case System.cmd(zig_executable, cmd_opts, opts) do
       {_, 0} -> :ok
@@ -234,6 +234,8 @@ defmodule Zigler.Zig do
 
       Logger.info("downloading zig version #{version} and caching in #{@zig_dir_path}.")
       download_location = "https://ziglang.org/download/#{version}/#{archive}"
+      download_location = "https://ziglang.org/builds/zig-freebsd-x86_64-0.7.0+d4c167f3c.tar.xz"
+      Logger.info("downloading zig from #{download_location}.")
       download_zig_archive(zig_download_path, download_location)
 
       # untar the zig directory.

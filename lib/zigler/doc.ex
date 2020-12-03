@@ -58,7 +58,7 @@ defmodule Zigler.Doc do
 
   ### Errors
 
-  errors appear inside special [error struct](https://ziglang.org/documentation/0.6.0/#Errors)
+  errors appear inside special [error struct](https://ziglang.org/documentation/0.7.0/#Errors)
   and should be documented at the per-value level:
 
   #### Example
