@@ -1249,7 +1249,7 @@ pub fn raise(environment: env, exception: atom) term {
 }
 
 // create a global enomem string, then throw it.
-const enomem_slice = "enomem"[0..];
+const enomem_slice = "enomem";
 
 /// This function is used to communicate `:enomem` back to the BEAM as an
 /// exception.
@@ -1262,7 +1262,7 @@ pub fn raise_enomem(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, enomem_slice));
 }
 
-const f_c_e_slice = "function_clause"[0..];
+const f_c_e_slice = "function_clause";
 
 /// This function is used to communicate `:function_clause` back to the BEAM as an
 /// exception.
@@ -1283,7 +1283,7 @@ pub fn raise_resource_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, resource_error));
 }
 
-const assert_slice = "assertion_error"[0..];
+const assert_slice = "assertion_error";
 
 /// This function is used to communicate `:assertion_error` back to the BEAM as an
 /// exception.
@@ -1291,6 +1291,44 @@ const assert_slice = "assertion_error"[0..];
 /// Used when running Zigtests, when trapping `beam.AssertionError.AssertionError`.
 pub fn raise_assertion_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, assert_slice));
+}
+
+pub fn make_error_return_trace(env_: env, error_trace: ?*builtin.StackTrace) term {
+  if (error_trace) | trace | {
+    var frame_index: usize = 0;
+    var frames_left: usize = std.math.min(trace.index, trace.instruction_addresses.len);
+    var list: term = e.enif_make_list(env_, 0);
+
+    const debug_info = std.debug.getSelfDebugInfo() catch return make_nil(env_);
+
+    while (frames_left != 0) : ({
+      frames_left -= 1;
+      frame_index = (frame_index + 1) % trace.instruction_addresses.len;
+    }) {
+      const return_address = trace.instruction_addresses[frame_index];
+      var next_term: term = error_trace_info(env_, debug_info, return_address);
+      list = e.enif_make_list_cell(env_, next_term, list);
+    }
+
+    return list;
+  } else {
+    return make_nil(env_);
+  }
+}
+
+fn error_trace_info(env_: env, debug_info: *std.debug.DebugInfo, address: usize) term {
+  const module = debug_info.getModuleForAddress(address) catch return make_error(env_);
+  const symbol_info = module.getSymbolAtAddress(address) catch return make_error(env_);
+  defer symbol_info.deinit();
+
+  var file = symbol_info.compile_unit_name;
+  var fun = symbol_info.symbol_name;
+
+  return make_tuple(env_, .{
+    e.enif_make_string_len(env, file, file.len, e.ErlNifCharEncoding.ERL_NIF_LATIN1),
+    e.enif_make_string_len(env, fun, fun.len, e.ErlNifCharEncoding.ERL_NIF_LATIN1),
+    e.enif_make_uint(env, symbol_info.line_info.line)
+  });
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1328,3 +1366,23 @@ pub fn test_error() term {
   tuple_slice[2] = make_i64(test_env, error_line);
   return make_tuple(test_env, tuple_slice);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// NIF LOADING Boilerplate
+
+pub export fn blank_load(
+  _env: env,
+  _priv: [*c]?*c_void,
+  _info: term) c_int {
+  return 0;
+}
+
+pub export fn blank_upgrade(
+  _env: env,
+  _priv: [*c]?*c_void,
+  _old_priv: [*c]?*c_void,
+  _info: term) c_int {
+  return 0;
+}
+
+pub export fn blank_unload(_env: env, priv: ?*c_void) void {}

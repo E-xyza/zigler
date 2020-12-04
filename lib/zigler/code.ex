@@ -2,7 +2,7 @@ defmodule Zigler.Code do
   @moduledoc """
   all code responsible for generating zig code lives in this module.
   """
-  
+
   alias Zigler.Nif.{DirtyCpu, DirtyIO, Synchronous, Test, Threaded, Yielding}
   alias Zigler.Module
   alias Zigler.Nif.{Synchronous, Test, Threaded, Yielding}
@@ -135,7 +135,7 @@ defmodule Zigler.Code do
     end
 
     nif_load_fn = case module.resources do
-      [] -> "null"
+      [] -> "beam.blank_load"
       _ -> "nif_load"
     end
 
@@ -148,9 +148,9 @@ defmodule Zigler.Code do
       .num_of_funcs = #{funcs_count},
       .funcs = &(__exported_nifs__[0]),
       .load = #{nif_load_fn},
-      .reload = null,
-      .upgrade = null,
-      .unload = null,
+      .reload = beam.blank_load,     // currently unsupported
+      .upgrade = beam.blank_upgrade, // currently unsupported
+      .unload = beam.blank_unload,   // currently unsupported
       .vm_variant = "beam.vanilla",
       .options = 1,
       .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),

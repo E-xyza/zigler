@@ -13,29 +13,24 @@ defmodule Zigler.Nif.Synchronous do
   def zig_adapter(nif) do
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"argv[#{&1}]")
 
-    result_var = "__#{nif.name}_result__"
-    function_call = "#{nif.name}(#{Adapter.args nif})"
-
     head = "export fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {"
 
     result = cond do
-      nif.retval in ["beam.term", "e.ErlNifTerm"] ->
+      nif.retval in ["beam.term", "e.ErlNifTerm", "!beam.term", "!e.ErlNifTerm"] ->
         """
-          return #{function_call};
+          return #{function_call nif}
         }
         """
-      nif.retval == "void" ->
+      nif.retval in ["void", "!void"] ->
         """
-          #{function_call};
-
+          #{function_call nif}
           return beam.make_nil(env);
         }
         """
       true ->
         """
-          var #{result_var} = #{function_call};
-
-          return #{Adapter.make_clause nif.retval, result_var};
+          var #{result_var nif} = #{function_call nif}
+          return #{Adapter.make_clause nif.retval, result_var(nif)};
         }
         """
     end
@@ -44,6 +39,18 @@ defmodule Zigler.Nif.Synchronous do
 
   defp bail(:oom), do: "return beam.raise_enomem(env)"
   defp bail(:function_clause), do: "return beam.raise_function_clause_error(env)"
+
+  defp result_var(nif), do: "__#{nif.name}_result__"
+
+  # error return calls.
+  defp function_call(nif = %{retval: "!" <> _}) do
+    """
+    #{nif.name}(#{Adapter.args nif}) catch {
+      return beam.make_error_term(env, beam.make_error_return_trace(env, @errorReturnTrace()));
+    };
+    """
+  end
+  defp function_call(nif), do: "#{nif.name}(#{Adapter.args nif});\n"
 
   @impl true
   def nif_table_entries(nif) do
