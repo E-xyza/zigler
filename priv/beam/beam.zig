@@ -1198,18 +1198,6 @@ pub const resource = struct {
 ///////////////////////////////////////////////////////////////////////////////
 // yielding NIFs
 
-const Rescheduler = fn (env, c_int, [*c]const term) callconv(.C) term;
-
-pub const YieldInfo = struct {
-  yielded: bool = false,
-  cancelled: bool = false,
-  environment: env,
-  self: term,
-  name: [*] const u8,
-  response: term = undefined,
-  rescheduler: Rescheduler,
-};
-
 /// transparently passes information into the yield statement.
 pub threadlocal var yield_info: *YieldInfo = undefined;
 
@@ -1226,19 +1214,30 @@ pub const YieldError = error {
 
 /// this function is going to be dropped inside the suspend statement.
 pub fn yield() !env {
-  if (yield_info.cancelled) return YieldError.Cancelled;
-  yield_info.yielded = true;
+  suspend {
+    if (yield_info.cancelled) return YieldError.Cancelled;
+    yield_info.yield_frame = @frame();
+  }
   return yield_info.environment;
 }
 
-pub fn reschedule() term {
-  return e.enif_schedule_nif(
-              yield_info.environment,
-              yield_info.name,
-              0,
-              yield_info.rescheduler,
-              1,
-              &yield_info.self);
+pub const YieldInfo = struct {
+  yield_frame: ?anyframe = null,
+  cancelled: bool = false,
+  response: term = undefined,
+  environment: env,
+};
+
+pub fn set_yield_response(what: term) void {
+  yield_info.response = what;
+}
+
+pub fn print_info(where: [] const u8) void {
+  if (yield_info.yield_frame) | yf | {
+    std.debug.print("{}: {}\n", .{where, @ptrToInt(yf)});
+  } else {
+    std.debug.print("{}: noframe\n", .{where});
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
