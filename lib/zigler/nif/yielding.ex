@@ -83,16 +83,17 @@ defmodule Zigler.Nif.Yielding do
         beam.yield_info.cancelled = true;
 
         resume yield_frame;
+        nosuspend await beam_frame.zig_frame;
       }
 
-      // joining the harness always happens as a part of cleanup.
-      nosuspend await beam_frame.zig_frame;
-
       // destroy the resources associated with this frame.
-      
-      // why is this causing segfaults??
-      //beam.allocator.destroy(beam_frame.zig_frame);
-      //beam.allocator.destroy(beam_frame);
+      // why u segfault?
+      // beam.allocator.destroy(beam_frame.zig_frame);
+      // beam.allocator.destroy(beam_frame);
+
+      // sometimes a little shuteye goes a long way.  Note this is in ns.
+      // for some reason, this prevents a segfault.
+      std.time.sleep(100);
     }
     """
   end
@@ -120,7 +121,7 @@ defmodule Zigler.Nif.Yielding do
       var frame_resource = try __resource__.create(#{frame_ptr nif.name}, env, beam_frame);
 
       // populate initial information for the yield clause
-      beam_frame.yield_info = .{.environment = env};
+      beam_frame.yield_info = .{ .environment = env };
 
       // set the threadlocal yield info pointer.
       beam.yield_info = &(beam_frame.yield_info);
@@ -147,10 +148,12 @@ defmodule Zigler.Nif.Yielding do
   def rescheduler_fn(nif) do
     """
     export fn #{rescheduler nif.name}(env: beam.env, _argc: c_int, argv: [*c] const beam.term) beam.term {
-
       var beam_frame = __resource__.fetch(#{frame_ptr nif.name}, env, argv[0]) catch
         return beam.raise_resource_error(env);
-      const next_frame = beam_frame.yield_info.yield_frame.?;
+
+      var start_time = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
+      var tick_time: e.ErlNifTime = undefined;
+      var elapsed_time: e.ErlNifTime = undefined;
 
       // update the yield_info values, reset the frame
       beam_frame.yield_info.environment = env;
@@ -158,15 +161,28 @@ defmodule Zigler.Nif.Yielding do
       // reset the threadlocal yield_info pointer.
       beam.yield_info = &(beam_frame.yield_info);
 
-      // set yielded to false and resume the frame:
-      beam.yield_info.yield_frame = null;
-      resume next_frame;
+      while (beam.yield_info.yield_frame) |next_frame| {
+        // set yielded to false and resume the frame:
+        beam.yield_info.yield_frame = null;
+        resume next_frame;
+        tick_time = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
+        elapsed_time = tick_time - start_time;
 
-      if (beam.yield_info.yield_frame) | _ | {
-        return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler nif.name}, 1, argv);
+        if (elapsed_time >= 100) {
+          // seems to be necessary to prevent segfaults.  Note this is in ns.  Seems to work
+          // on @ityonemo platform with 1ns but expanded to 10 in case slower platforms
+          // still have problems.
+          std.time.sleep(10);
+          if (e.enif_consume_timeslice(env, @intCast(c_int, @divFloor(elapsed_time, 10))) == 0) {
+            start_time = tick_time;
+          } else break;
+        }
       } else {
+        nosuspend await beam_frame.zig_frame;
         return beam.yield_info.response;
       }
+
+      return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler nif.name}, 1, argv);
     }
     """
   end
