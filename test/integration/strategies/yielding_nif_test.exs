@@ -1,47 +1,48 @@
-#defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
-#
-#  use ExUnit.Case, async: true
-#  use Zigler
-#
-#  @moduletag :yielding
-#
-#  ~Z"""
-#  const tenth_ms = 100; // in usec.
-#  const intervals = 20000;
-#  const USEC = e.ErlNifTimeUnit.ERL_NIF_USEC;
-#
-#  /// nif: yielding_forty_seven/0 yielding
-#  fn yielding_forty_seven() i32 {
-#    var start_time = e.enif_monotonic_time(USEC);
-#    var this_time: e.ErlNifTime = undefined;
-#    var elapsed_time: e.ErlNifTime = undefined;
-#
-#    // try to sleep for 2 seconds
-#    var idx : i32 = 0;
-#    while (idx < intervals) {
-#      this_time = e.enif_monotonic_time(USEC);
-#      elapsed_time = this_time - start_time;
-#
-#      if (elapsed_time < 100) {
-#        // note that sleep is in ns.
-#        std.time.sleep(@intCast(u64, (100 - elapsed_time) * 1000));
-#      }
-#
-#      start_time = this_time;
-#      _ = beam.yield() catch return 0;
-#      idx += 1;
-#    }
-#    return 47;
-#  }
-#  """
-#
-#  test "yielding nifs can sleep for a while" do
-#    start = DateTime.utc_now
-#    assert 47 == yielding_forty_seven()
-#    elapsed = DateTime.utc_now |> DateTime.diff(start)
-#    assert elapsed >= 2
-#    assert elapsed <= 4 # this one is a bit slower than I expected.
-#  end
+defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
+
+  use ExUnit.Case, async: true
+  use Zigler
+
+  @moduletag :yielding
+
+  ~Z"""
+  const tenth_ms = 100; // in usec.
+  const intervals = 20000;
+  const USEC = e.ErlNifTimeUnit.ERL_NIF_USEC;
+
+  /// nif: yielding_forty_seven/0 yielding
+  fn yielding_forty_seven() i32 {
+    var start_time = e.enif_monotonic_time(USEC);
+    var this_time: e.ErlNifTime = undefined;
+    var elapsed_time: e.ErlNifTime = undefined;
+
+    // try to sleep for 2 seconds
+    var idx : i32 = 0;
+    while (idx < intervals) {
+      this_time = e.enif_monotonic_time(USEC);
+      elapsed_time = this_time - start_time;
+
+      if (elapsed_time < 100) {
+        // note that sleep is in ns.
+        std.time.sleep(@intCast(u64, (100 - elapsed_time) * 1000));
+      }
+
+      start_time = this_time;
+      _ = beam.yield() catch return 0;
+      idx += 1;
+    }
+    return 47;
+  }
+  """
+
+  test "yielding nifs can sleep for a while" do
+    IO.puts("y")
+    start = DateTime.utc_now
+    assert 47 == yielding_forty_seven()
+    elapsed = DateTime.utc_now |> DateTime.diff(start)
+    assert elapsed >= 2
+    assert elapsed <= 4 # this one is a bit slower than I expected.
+  end
 #
 #  ~Z"""
 #  /// nif: non_yielding_forty_seven/1 yielding
@@ -148,5 +149,4 @@
 #
 #    assert div(post_memory - pre_memory, @one_m) <= 1
 #  end
-#end
-#
+end
