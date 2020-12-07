@@ -156,8 +156,8 @@ fn raw_beam_alloc(
     _len_align: u29,
     _ret_addr: usize,
 ) Allocator.Error![]u8 {
-    const ptr = @ptrCast([*]u8, e.enif_alloc(len) orelse return error.OutOfMemory);
-    return ptr[0..len];
+  const ptr = @ptrCast([*]u8, e.enif_alloc(len) orelse return error.OutOfMemory);
+  return ptr[0..len];
 }
 
 fn raw_beam_resize(
@@ -168,17 +168,18 @@ fn raw_beam_resize(
     _len_align: u29,
     _ret_addr: usize,
 ) Allocator.Error!usize {
-    if (new_len == 0) {
-        e.enif_free(buf.ptr);
-        return 0;
-    }
-    if (new_len <= buf.len) {
-       _ = e.enif_realloc(buf.ptr, new_len);
-    }
-    return error.OutOfMemory;
+  if (new_len == 0) {
+      e.enif_free(buf.ptr);
+      return 0;
+  }
+  if (new_len <= buf.len) {
+     _ = e.enif_realloc(buf.ptr, new_len);
+  }
+  return error.OutOfMemory;
 }
 
-var general_purpose_allocator_instance = std.heap.GeneralPurposeAllocator(.{}){
+var general_purpose_allocator_instance = std.heap.GeneralPurposeAllocator(
+.{.thread_safe = true}) {
   .backing_allocator = allocator,
 };
 
@@ -1230,14 +1231,6 @@ pub const YieldInfo = struct {
 
 pub fn set_yield_response(what: term) void {
   yield_info.response = what;
-}
-
-pub fn print_info(where: [] const u8) void {
-  if (yield_info.yield_frame) | yf | {
-    std.debug.print("{}: {}\n", .{where, @ptrToInt(yf)});
-  } else {
-    std.debug.print("{}: noframe\n", .{where});
-  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////

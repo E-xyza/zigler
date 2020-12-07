@@ -74,6 +74,8 @@ defmodule Zigler.Nif.Yielding do
 
     /// resource: #{frame_type nif.name} cleanup
     fn #{frame_cleanup nif.name}(env: beam.env, beam_frame_ptr: *#{frame_ptr nif.name}) void {
+      const allocator = std.heap.c_allocator;
+
       var beam_frame = beam_frame_ptr.*;
 
       // only join the frame if it's still in the "yielded" state
@@ -86,10 +88,9 @@ defmodule Zigler.Nif.Yielding do
         nosuspend await beam_frame.zig_frame;
       }
 
-      // destroy the resources associated with this frame.
-      // why u segfault?
-      // beam.allocator.destroy(beam_frame.zig_frame);
-      // beam.allocator.destroy(beam_frame);
+      // not sure why, but using the c allocator prevents a segfault:
+      defer allocator.destroy(beam_frame);
+      defer allocator.destroy(beam_frame.zig_frame);
 
       // sometimes a little shuteye goes a long way.  Note this is in ns.
       // for some reason, this prevents a segfault.
@@ -108,15 +109,16 @@ defmodule Zigler.Nif.Yielding do
     }
 
     fn #{launcher_shim nif.name}(env: beam.env, argv: [*c] const beam.term) !beam.term {
-      // first, create the beam.Frame on the heap.
-      // this needs to be resource that we can jam into the rescheduler tail-call's
-      // argument list.
-      var beam_frame = try beam.allocator.create(beam.Frame(#{harness nif.name}));
-      errdefer beam.allocator.destroy(beam_frame);
+      const allocator = std.heap.c_allocator;
+
+      // first, create the beam.Frame on the heap.  this needs to be resource that we can jam
+      // into the rescheduler tail-call's argument list.
+      var beam_frame = try allocator.create(beam.Frame(#{harness nif.name}));
+      errdefer allocator.destroy(beam_frame);
 
       // next create the zig frame for the scheduler on the heap.
-      beam_frame.zig_frame = try beam.allocator.create(@Frame(#{harness nif.name}));
-      errdefer beam.allocator.destroy(beam_frame.zig_frame);
+      beam_frame.zig_frame = try allocator.create(@Frame(#{harness nif.name}));
+      errdefer allocator.destroy(beam_frame.zig_frame);
 
       var frame_resource = try __resource__.create(#{frame_ptr nif.name}, env, beam_frame);
 
@@ -156,7 +158,10 @@ defmodule Zigler.Nif.Yielding do
       var elapsed_time: e.ErlNifTime = undefined;
 
       // update the yield_info values, reset the frame
-      beam_frame.yield_info.environment = env;
+      if (env != beam_frame.yield_info.environment) {
+        beam_frame.yield_info.environment = env;
+        _ = e.enif_make_copy(env, argv[0]);
+      }
 
       // reset the threadlocal yield_info pointer.
       beam.yield_info = &(beam_frame.yield_info);
