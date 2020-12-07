@@ -130,7 +130,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   """
 
   test "killing the other process lets you cancel the nif" do
-    test_pid = self();
+    test_pid = self()
     pre_memory = :erlang.memory()[:total]
 
     nif_pid = spawn(fn -> cancellation(test_pid) end)
