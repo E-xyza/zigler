@@ -2,7 +2,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
 
   # need to do this manually in order to prevent some strange library-on-load
   # segfault.
-  
+
   use ExUnit.Case, async: true
   use Zigler
 
