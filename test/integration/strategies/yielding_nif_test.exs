@@ -1,8 +1,9 @@
-# need to do this manually in order to prevent some strange library-on-load
-# segfault.
-unless :yielding in ExUnit.configuration()[:exclude] do
-
 defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
+
+  # need to do this manually in order to prevent some strange library-on-load
+  # segfault.
+
+  unless :yielding in ExUnit.configuration()[:exclude] do
 
   use ExUnit.Case, async: true
   use Zigler
@@ -150,6 +151,5 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
 
     assert div(post_memory - pre_memory, @one_m) <= 1
   end
-end
-
+  end
 end
