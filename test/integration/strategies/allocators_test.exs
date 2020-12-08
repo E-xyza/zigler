@@ -84,42 +84,42 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
     assert :ab == fetch()
   end
 
-  ~Z"""
-
-  /// nif: gp_alloctest/1
-  fn gp_alloctest(env: ?*e.ErlNifEnv, length: usize) beam.term {
-    var usize_length = @intCast(usize, length);
-    var slice = beam.general_purpose_allocator.allocAdvanced(u8, 4096, usize_length, .exact) catch {
-      return beam.raise_enomem(env);
-    };
-    defer beam.general_purpose_allocator.free(slice);
-
-    return beam.make_u64(env, @ptrToInt(slice.ptr));
-  }
-
-  /// nif: gp_realloctest/1
-  fn gp_realloctest(env: ?*e.ErlNifEnv, length: usize) beam.term {
-    var usize_length = @intCast(usize, length);
-    var slice = beam.general_purpose_allocator.allocAdvanced(u8, 4096, usize_length, .exact) catch {
-      return beam.raise_enomem(env);
-    };
-
-    var slice2 = beam.general_purpose_allocator.realloc(slice, usize_length * 2) catch {
-      return beam.raise_enomem(env);
-    };
-
-    defer beam.general_purpose_allocator.free(slice2);
-
-    return beam.make_u64(env, @ptrToInt(slice.ptr));
-  }
-
-  """
-
-  test "elixir general purpose allocator works" do
-    assert rem(gp_alloctest(4096), 4096) == 0
-    assert rem(gp_alloctest(10_000), 4096) == 0
-
-    assert rem(gp_realloctest(4096), 4096) == 0
-    assert rem(gp_realloctest(10_000), 4096) == 0
-  end
+#  ~Z"""
+#
+#  /// nif: gp_alloctest/1
+#  fn gp_alloctest(env: ?*e.ErlNifEnv, length: usize) beam.term {
+#    var usize_length = @intCast(usize, length);
+#    var slice = beam.general_purpose_allocator.allocAdvanced(u8, 4096, usize_length, .exact) catch {
+#      return beam.raise_enomem(env);
+#    };
+#    defer beam.general_purpose_allocator.free(slice);
+#
+#    return beam.make_u64(env, @ptrToInt(slice.ptr));
+#  }
+#
+#  /// nif: gp_realloctest/1
+#  fn gp_realloctest(env: ?*e.ErlNifEnv, length: usize) beam.term {
+#    var usize_length = @intCast(usize, length);
+#    var slice = beam.general_purpose_allocator.allocAdvanced(u8, 4096, usize_length, .exact) catch {
+#      return beam.raise_enomem(env);
+#    };
+#
+#    var slice2 = beam.general_purpose_allocator.realloc(slice, usize_length * 2) catch {
+#      return beam.raise_enomem(env);
+#    };
+#
+#    defer beam.general_purpose_allocator.free(slice2);
+#
+#    return beam.make_u64(env, @ptrToInt(slice.ptr));
+#  }
+#
+#  """
+#
+#  test "elixir general purpose allocator works" do
+#    assert rem(gp_alloctest(4096), 4096) == 0
+#    assert rem(gp_alloctest(10_000), 4096) == 0
+#
+#    assert rem(gp_realloctest(4096), 4096) == 0
+#    assert rem(gp_realloctest(10_000), 4096) == 0
+#  end
 end
