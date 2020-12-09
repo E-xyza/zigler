@@ -180,5 +180,13 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
 
     assert rem(gp_realloctest(4096), 4096) == 0
     assert rem(gp_realloctest(10_000), 4096) == 0
+
+    for _ <- 1..200 do
+      gp_alloctest(Enum.random(4096..102_400))
+    end
+
+    for _ <- 1..200 do
+      gp_realloctest(Enum.random(4096..102_400))
+    end
   end
 end

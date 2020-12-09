@@ -112,18 +112,19 @@ const Allocator = std.mem.Allocator;
 // basic allocator
 
 /// !value
-/// provides a default BEAM allocator.  Use `beam.allocator.alloc` everywhere
-/// to safely allocate memory efficiently, and use `beam.allocator.free` to
-/// release that memory.
+/// provides a default BEAM allocator.  This is an implementation of the Zig
+/// allocator interface.  Use `beam.allocator.alloc` everywhere to safely
+/// allocate slices efficiently, and use `beam.allocator.free` to release that
+/// memory.  For single item allocation, use `beam.allocator.create` and
+/// `beam.allocator.destroy` to release the memory.
 ///
 /// Note this does not make the allocated memory *garbage collected* by the
 /// BEAM.
 ///
-/// All memory will be tracked by the beam.  If you require 64-bit alignment,
-/// the allocator will use the standard BEAM allocator.  If you require greater
-/// alignment, the basic allocator will use Zig's General Purpose Allocator,
-/// backed by the beam_alloc; note that this will 1) fetch memory in 4k chunks
-/// and 2)
+/// All memory will be tracked by the beam.  All allocations happen with 8-byte
+/// alignment, as described in `erl_nif.h`.  This is sufficient to create
+/// correctly aligned `beam.terms`, and for most purposes.
+/// For data that require greater alignment, use `beam.large_allocator`.
 ///
 /// ### Example
 ///
@@ -136,6 +137,8 @@ const Allocator = std.mem.Allocator;
 ///   return beam.allocator.alloc(u8, 10);
 /// }
 /// ```
+///
+/// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
 pub const allocator = &raw_beam_allocator;
 
 pub const MAX_ALIGN = 8;
@@ -177,8 +180,15 @@ fn raw_beam_resize(
   return error.OutOfMemory;
 }
 
-// large allocator.  For alignments that must be bigger than max_align_size.
-
+/// !value
+/// provides a BEAM allocator that can perform allocations with greater
+/// alignment than the machine word.  Note that this comes at the cost
+/// of some memory to store important metadata.
+///
+/// currently does not release memory that is resized.  For this behaviour
+/// use `beam.general_purpose_allocator`.
+///
+/// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
 pub const large_allocator = &large_beam_allocator;
 
 var large_beam_allocator = Allocator {
@@ -246,6 +256,8 @@ fn getPtrPtr(aligned_ptr: [*]u8) *usize {
   return @intToPtr(*usize, @ptrToInt(aligned_ptr) - @sizeOf(usize));
 }
 
+/// !value
+/// wraps the zig GeneralPurposeAllocator into the standard BEAM allocator.
 var general_purpose_allocator_instance = std.heap.GeneralPurposeAllocator(
 .{.thread_safe = true}) {
   .backing_allocator = large_allocator,
