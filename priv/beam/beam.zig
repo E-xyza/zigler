@@ -101,7 +101,6 @@
 const e = @import("erl_nif.zig");
 const std = @import("std");
 const builtin = @import("builtin");
-const ExpandAllocator = @import("expand_allocator.zig");
 const BeamMutex = @import("beam_mutex.zig").BeamMutex;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -137,12 +136,9 @@ const Allocator = std.mem.Allocator;
 ///   return beam.allocator.alloc(u8, 10);
 /// }
 /// ```
-pub const allocator = &beam_allocator_instance.allocator;
+pub const allocator = &raw_beam_allocator;
 
-pub var beam_allocator_instance = ExpandAllocator{
-  .backing_allocator = &raw_beam_allocator,
-  .max_align = 8,
-};
+pub const MAX_ALIGN = 8;
 
 var raw_beam_allocator = Allocator{
   .allocFn = raw_beam_alloc,
@@ -156,6 +152,7 @@ fn raw_beam_alloc(
     _len_align: u29,
     _ret_addr: usize,
 ) Allocator.Error![]u8 {
+  if (ptr_align > MAX_ALIGN) { return error.OutOfMemory; }
   const ptr = @ptrCast([*]u8, e.enif_alloc(len) orelse return error.OutOfMemory);
   return ptr[0..len];
 }
@@ -169,18 +166,89 @@ fn raw_beam_resize(
     _ret_addr: usize,
 ) Allocator.Error!usize {
   if (new_len == 0) {
-      e.enif_free(buf.ptr);
-      return 0;
+    e.enif_free(buf.ptr);
+    return 0;
   }
   if (new_len <= buf.len) {
-     _ = e.enif_realloc(buf.ptr, new_len);
+    if (e.enif_realloc(@ptrCast(*c_void, buf.ptr), new_len)) | _ | {
+      return new_len;
+    }
   }
   return error.OutOfMemory;
 }
 
+// large allocator.  For alignments that must be bigger than max_align_size.
+
+pub const large_allocator = &large_beam_allocator;
+
+var large_beam_allocator = Allocator {
+  .allocFn = large_beam_alloc,
+  .resizeFn = large_beam_resize,
+};
+
+fn large_beam_alloc(
+  allocator_: *Allocator,
+  len: usize,
+  alignment: u29,
+  len_align: u29,
+  return_address: usize
+) error{OutOfMemory}![]u8 {
+  var ptr = try alignedAlloc(len, alignment, len_align, return_address);
+  if (len_align == 0) { return ptr[0..len]; }
+  return ptr[0..std.mem.alignBackwardAnyAlign(len, len_align)];
+}
+
+fn large_beam_resize(
+    allocator_: *Allocator,
+    buf: []u8,
+    buf_align: u29,
+    new_len: usize,
+    len_align: u29,
+    return_address: usize,
+) Allocator.Error!usize {
+  if (new_len > buf.len) { return error.OutOfMemory; }
+  if (new_len == 0) { return alignedFree(buf, buf_align); }
+  if (len_align == 0) { return new_len; }
+  return std.mem.alignBackwardAnyAlign(new_len, len_align);
+}
+
+fn alignedAlloc(len: usize, alignment: u29, len_align: u29, return_address: usize) ![*]u8 {
+  var safe_len = safeLen(len, alignment);
+  var alloc_slice: []u8 = try allocator.allocAdvanced(
+    u8, MAX_ALIGN, safe_len, std.mem.Allocator.Exact.exact);
+
+  const unaligned_addr = @ptrToInt(alloc_slice.ptr);
+  const aligned_addr = reAlign(unaligned_addr, alignment);
+
+  getPtrPtr(aligned_addr).* = unaligned_addr;
+  return aligned_addr;
+}
+
+fn alignedFree(buf: []u8, alignment: u29) usize {
+  var ptr = getPtrPtr(buf.ptr).*;
+  allocator.free(@intToPtr([*]u8, ptr)[0..safeLen(buf.len, alignment)]);
+  return 0;
+}
+
+fn reAlign(unaligned_addr: usize, alignment: u29) [*]u8 {
+  return @intToPtr(
+    [*]u8,
+    std.mem.alignForward(
+      unaligned_addr + @sizeOf(usize),
+      alignment));
+}
+
+fn safeLen(len: usize, alignment: u29) usize {
+  return len + alignment - @sizeOf(usize) + MAX_ALIGN;
+}
+
+fn getPtrPtr(aligned_ptr: [*]u8) *usize {
+  return @intToPtr(*usize, @ptrToInt(aligned_ptr) - @sizeOf(usize));
+}
+
 var general_purpose_allocator_instance = std.heap.GeneralPurposeAllocator(
 .{.thread_safe = true}) {
-  .backing_allocator = allocator,
+  .backing_allocator = large_allocator,
 };
 
 pub var general_purpose_allocator = &general_purpose_allocator_instance.allocator;

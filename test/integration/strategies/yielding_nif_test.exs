@@ -6,6 +6,8 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   use ExUnit.Case, async: true
   use Zigler
 
+  @moduletag :yielding
+
   ~Z"""
   const tenth_ms = 100; // in usec.
   const intervals = 20000;

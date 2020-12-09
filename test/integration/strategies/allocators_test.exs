@@ -87,6 +87,61 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
   end
 
   ~Z"""
+  const at_least = std.mem.Allocator.Exact.at_least;
+
+  fn dealloc(ptr: []u8) u64 {
+    beam.large_allocator.free(ptr);
+    return @ptrToInt(ptr.ptr);
+  }
+
+  /// nif: large_allocator_stress_8/0
+  fn large_allocator_stress_8() u64 {
+    var result = beam.large_allocator.allocAdvanced(u8, 8, 100, at_least) catch unreachable;
+    return dealloc(result);
+  }
+
+  /// nif: large_allocator_stress_16/0
+  fn large_allocator_stress_16() u64 {
+    var result = beam.large_allocator.allocAdvanced(u8, 16, 100, at_least) catch unreachable;
+    return dealloc(result);
+  }
+
+  /// nif: large_allocator_stress_32/0
+  fn large_allocator_stress_32() u64 {
+    var result = beam.large_allocator.allocAdvanced(u8, 32, 100, at_least) catch unreachable;
+    return dealloc(result);
+  }
+
+  /// nif: large_allocator_realloc/0
+  fn large_allocator_realloc() u64 {
+    var result = beam.large_allocator.allocAdvanced(u8, 32, 100, at_least) catch unreachable;
+    _ = beam.large_allocator.realloc(result, 50) catch unreachable;
+    return dealloc(result);
+  }
+  """
+
+  test "allocator stress test" do
+    for _ <- 1..200 do
+      addr = large_allocator_stress_8()
+      assert rem(addr, 8) == 0
+    end
+
+    for _ <- 1..200 do
+      addr = large_allocator_stress_16()
+      assert rem(addr, 16) == 0
+    end
+
+    for _ <- 1..200 do
+      addr = large_allocator_stress_32()
+      assert rem(addr, 32) == 0
+    end
+
+    for _ <- 1..200 do
+      large_allocator_realloc()
+    end
+  end
+
+  ~Z"""
 
   /// nif: gp_alloctest/1
   fn gp_alloctest(env: ?*e.ErlNifEnv, length: usize) beam.term {
@@ -102,6 +157,7 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
   /// nif: gp_realloctest/1
   fn gp_realloctest(env: ?*e.ErlNifEnv, length: usize) beam.term {
     var usize_length = @intCast(usize, length);
+
     var slice = beam.general_purpose_allocator.allocAdvanced(u8, 4096, usize_length, .exact) catch {
       return beam.raise_enomem(env);
     };
@@ -117,6 +173,7 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
 
   """
 
+  @tag :gp_allocator
   test "elixir general purpose allocator works" do
     assert rem(gp_alloctest(4096), 4096) == 0
     assert rem(gp_alloctest(10_000), 4096) == 0
