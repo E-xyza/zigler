@@ -74,7 +74,7 @@ defmodule Zigler.Nif.Yielding do
 
     /// resource: #{frame_type nif.name} cleanup
     fn #{frame_cleanup nif.name}(env: beam.env, beam_frame_ptr: *#{frame_ptr nif.name}) void {
-      const allocator = std.heap.c_allocator;
+      const allocator = beam.large_allocator;
 
       var beam_frame = beam_frame_ptr.*;
 
@@ -109,7 +109,7 @@ defmodule Zigler.Nif.Yielding do
     }
 
     fn #{launcher_shim nif.name}(env: beam.env, argv: [*c] const beam.term) !beam.term {
-      const allocator = std.heap.c_allocator;
+      const allocator = beam.large_allocator;
 
       // first, create the beam.Frame on the heap.  this needs to be resource that we can jam
       // into the rescheduler tail-call's argument list.
