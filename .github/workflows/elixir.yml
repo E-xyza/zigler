@@ -26,4 +26,4 @@ jobs:
     - name: Run Linting
       run: mix credo --strict
     - name: Run Tests
-      run: mix test test/integration/strategies/ci_test.exs #--exclude allocators --exclude threaded --exclude yielding
+      run: mix test --exclude allocators --exclude yielding
