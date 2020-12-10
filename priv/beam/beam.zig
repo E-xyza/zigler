@@ -156,7 +156,7 @@ fn raw_beam_alloc(
     _ret_addr: usize,
 ) Allocator.Error![]u8 {
   if (ptr_align > MAX_ALIGN) { return error.OutOfMemory; }
-  const ptr = @ptrCast([*]u8, e.enif_alloc(len) orelse return error.OutOfMemory);
+  const ptr = e.enif_alloc(len) orelse return error.OutOfMemory;
 
   std.debug.print(
     \\CREATED
@@ -173,7 +173,7 @@ fn raw_beam_alloc(
     _ret_addr}
   );
 
-  return ptr[0..len];
+  return @ptrCast([*]u8, ptr)[0..len];
 }
 
 fn raw_beam_resize(

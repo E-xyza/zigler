@@ -3,7 +3,7 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
 
   use Zigler
 
-  @moduletag :allocators
+  #@moduletag :allocators
 
   ~Z"""
   /// nif: alloctest/1
