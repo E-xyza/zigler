@@ -15,7 +15,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
   """
 
   test "threaded nifs can sleep for a while" do
-    :run |> IO.inspect(label: "18")
+    IO.puts("18")
     start = DateTime.utc_now
     assert 47 == threaded_forty_seven()
     elapsed = DateTime.utc_now |> DateTime.diff(start)
@@ -35,7 +35,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
   """
 
   test "threaded nifs can have a void return and parameters" do
-    :run |> IO.inspect(label: "38")
+    IO.puts("38")
     assert :ok = threaded_void(self())
     assert_receive :threaded
 
@@ -52,7 +52,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
   """
 
   test "threaded nifs can have an slice input" do
-    :run |> IO.inspect(label: "55")
+    IO.puts("55")
     assert 5050 == 1..100 |> Enum.to_list |> threaded_sum
 
     verify_cleanup()
@@ -66,14 +66,14 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
   """
 
   test "threaded nifs can have an string input" do
-    :run |> IO.inspect(label: "69")
+    IO.puts("69")
     assert 6 = threaded_string("foobar")
 
     verify_cleanup()
   end
 
   test "if you pass an incorrect value in you get fce" do
-    :run |> IO.inspect(label: "76")
+    IO.puts("76")
     assert_raise FunctionClauseError, fn ->
       threaded_string(:foobar)
     end
