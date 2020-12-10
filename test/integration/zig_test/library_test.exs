@@ -7,7 +7,8 @@ defmodule ZiglerTest.Integration.ZigTest.LibraryTest do
 
   import Zigler.Unit
 
-  @moduletag :zigtest
+  @moduletag :allocators
+  #@moduletag :zigtest
 
   zigtest ZiglerTest.ZigTest.Blas
 

@@ -2,6 +2,8 @@ defmodule ZiglerTest.Integration.BeamTypeTest do
   use ExUnit.Case, async: true
   use Zigler
 
+  @moduletag :allocators
+
   ~Z"""
   /// nif: pass_beam_term/1
   fn pass_beam_term(val: beam.term) beam.term {

@@ -2,6 +2,8 @@ defmodule ZiglerTest.Integration.SliceTypeIngressTest do
   use ExUnit.Case, async: true
   use Zigler
 
+  @moduletag :allocators
+
   ~Z"""
   /// nif: ingress_i32_slice/1
   fn ingress_i32_slice(slice: []i32) []i32 {
