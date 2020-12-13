@@ -3,6 +3,8 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
 
   alias Zigler.Parser.Nif
 
+  @moduletag :snapshot
+
   test "an arity zero function is produced correctly" do
 
     result = quote context: Elixir do

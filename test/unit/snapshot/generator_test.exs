@@ -7,6 +7,8 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
   @zeroarity %Nif{name: :foo, arity: 0, args: [], retval: "i64"}
 
+  @moduletag :snapshot
+
   describe "the generator creates a reasonable shim" do
     test "for a single, zero arity function" do
       code = """

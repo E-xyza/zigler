@@ -4,6 +4,8 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
 
   alias Zigler.Nif.Threaded
 
+  @moduletag :snapshot
+
   describe "resource_struct/1 generates a zig struct" do
     test "for a 0-arity function" do
       assert """

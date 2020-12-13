@@ -3,6 +3,8 @@ defmodule ZiglerTest.Snapshot.ImportsTest do
 
   alias Zigler.Code
 
+  @moduletag :snapshot
+
   # tests header conditions generated from the module struct's c_includes and
   # imports fields.
 

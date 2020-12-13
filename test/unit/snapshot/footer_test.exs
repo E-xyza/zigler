@@ -3,6 +3,8 @@ defmodule ZiglerTest.Snapshot.FooterTest do
 
   alias Zigler.{Code, Module, Parser.Nif, Parser.Resource}
 
+  @moduletag :snapshot
+
   describe "the zigler compiler footer generates" do
     test "works for a single function" do
 

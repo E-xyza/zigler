@@ -4,6 +4,8 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
   alias Zigler.Code
   alias Zigler.Parser.Nif
 
+  @moduletag :snapshot
+
   describe "for a basic, zero-arity function" do
     test "the shim function directly calls the target function" do
       assert """
