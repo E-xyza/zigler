@@ -1,8 +1,7 @@
 defmodule Zigler.Nif.DirtyCpu do
 
   alias Zigler.Nif.{Adapter, Synchronous}
-  alias Zigler.Typespec
-
+  
   @behaviour Adapter
 
   @impl true
