@@ -13,7 +13,6 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     return 47;
   }
   """
-
   test "threaded nifs can sleep for a while" do
     start = DateTime.utc_now
     assert 47 == threaded_forty_seven()
@@ -32,7 +31,6 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     _ = beam.send(env, parent, beam.make_atom(env, "threaded"));
   }
   """
-
   test "threaded nifs can have a void return and parameters" do
     assert :ok = threaded_void(self())
     assert_receive :threaded

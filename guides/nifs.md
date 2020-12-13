@@ -82,6 +82,36 @@ fn add_3(env: beam.env, number: i32) beam.term {
 }
 ```
 
+## Yielding nifs
+
+If you want to launch your nif as a yielding, use the `yielding` attribute.
+This will allow the BEAM to schedule around the yield points.  This is the
+most desirable way of creating a long-running NIF (when it gets repaired).
+
+- during normal operation the `beam.yield()` function returns either a
+  `beam.env` which updates the current environment for the benefit of the
+  running nif.  If you need an environment for downstream puproses, use this
+  value.
+- if the running process is stopped by the VM, the nif will be caught by the
+  cleanup method and will return `beam.YieldError`.  You **must** catch this
+  error and return to allow the nif to be awaited.
+- future editions of this feature will let you forward the yield-error to the
+  cleanup method so you can use try instead of catch.
+
+```zig
+/// nif: yielded_nif/1 yielding
+fn threaded_nif(env: beam.env, input: u64) u64 {
+  ...
+  // code that takes a long time
+  ...
+
+  // yield point
+  _ = beam.yield() catch return 0;
+
+  return my_result;
+}
+```
+
 ## Threaded nifs
 
 If you want to launch your nif as threaded, use the `threaded` attribute.  Note that

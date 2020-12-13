@@ -35,7 +35,7 @@ defmodule Zigler.Builder do
 
       lib.setBuildMode(mode);
       lib.setTarget(target);
-      lib.single_threaded = true;
+      lib.single_threaded = false;
 
       // link libraries
       lib.linkSystemLibrary("c");

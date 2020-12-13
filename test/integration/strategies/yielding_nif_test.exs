@@ -1,4 +1,7 @@
- defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
+defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
+
+  # need to do this manually in order to prevent some strange library-on-load
+  # segfault.
 
   use ExUnit.Case, async: true
   use Zigler
@@ -6,17 +9,30 @@
   @moduletag :yielding
 
   ~Z"""
-  const tenth_millisecond = 100000;
+  const tenth_ms = 100; // in usec.
   const intervals = 20000;
+  const USEC = e.ErlNifTimeUnit.ERL_NIF_USEC;
 
   /// nif: yielding_forty_seven/0 yielding
   fn yielding_forty_seven() i32 {
-    // sleep for 2 seconds
+    var start_time = e.enif_monotonic_time(USEC);
+    var this_time: e.ErlNifTime = undefined;
+    var elapsed_time: e.ErlNifTime = undefined;
+
+    // try to sleep for 2 seconds
     var idx : i32 = 0;
     while (idx < intervals) {
-      std.time.sleep(tenth_millisecond);
+      this_time = e.enif_monotonic_time(USEC);
+      elapsed_time = this_time - start_time;
+
+      if (elapsed_time < 100) {
+        // note that sleep is in ns.
+        std.time.sleep(@intCast(u64, (100 - elapsed_time) * 1000));
+      }
+
+      start_time = this_time;
+      _ = beam.yield() catch return 0;
       idx += 1;
-      suspend{ _ = beam.yield() catch return 0; }
     }
     return 47;
   }
@@ -36,17 +52,23 @@
     if (yields) { _ = beam.yield() catch return 0; }
     return 47;
   }
+
+  /// nif: not_even_async/0 yielding
+  fn not_even_async() i32 {
+    return 47;
+  }
   """
 
   test "yielding nifs don't have to suspend" do
     assert 47 == non_yielding_forty_seven(false)
+    assert 47 == not_even_async()
   end
 
   ~Z"""
   /// nif: yielding_void/1 yielding
   fn yielding_void(env: beam.env, parent: beam.pid) void {
     // do at least one suspend
-    suspend { _ = beam.yield() catch return; }
+    _ = beam.yield() catch return;
 
     _ = beam.send(env, parent, beam.make_atom(env, "yielding"));
   }
@@ -63,7 +85,7 @@
     var result : i64 = 0;
     for (list) | val | {
       result += val;
-      suspend { _ = beam.yield() catch return 0; }
+      _ = beam.yield() catch return 0;
     }
     return result;
   }
@@ -76,7 +98,7 @@
   ~Z"""
   /// nif: yielding_string/1 yielding
   fn yielding_string(str: []u8) usize {
-    suspend { _ = beam.yield() catch return 0; }
+    _ = beam.yield() catch return 0;
     return str.len;
   }
   """
@@ -94,36 +116,39 @@
   @one_m 1024 * 1024
 
   ~z"""
-  /// nif: cancellation/0 yielding
-  fn cancellation() void {
+  const tenth_ms_in_us = 100_000;
+
+  /// nif: cancellation/1 yielding
+  fn cancellation(env: beam.env, pid: beam.pid) void {
     var mem = beam.allocator.alloc(u8, 10 * #{@one_m}) catch unreachable;
     defer beam.allocator.free(mem);
 
+    _ = beam.send(env, pid, beam.make_atom(env, "allocated"));
+
     while (true) {
-      std.time.sleep(tenth_millisecond);
-      suspend {
-        _ = beam.yield() catch { return; };
-      }
+      std.time.sleep(tenth_ms_in_us);
+        _ = beam.yield() catch return;
     }
   }
   """
 
   test "killing the other process lets you cancel the nif" do
+    test_pid = self()
     pre_memory = :erlang.memory()[:total]
 
-    nif_pid = spawn(&cancellation/0)
+    nif_pid = spawn(fn -> cancellation(test_pid) end)
 
-    Process.sleep(100)
+    assert_receive :allocated
+
     trans_memory = :erlang.memory()[:total]
     assert div(trans_memory - pre_memory, @one_m) > 8
 
     Process.exit(nif_pid, :kill)
-    Process.sleep(1000)
+    Process.sleep(200)
 
     refute Process.alive?(nif_pid)
     post_memory = :erlang.memory()[:total]
 
-    assert div(post_memory - pre_memory, @one_m) < 1
+    assert div(post_memory - pre_memory, @one_m) <= 1
   end
-
 end

@@ -4,6 +4,8 @@ defmodule ZiglerTest.OkErrorTupleTest do
   use ExUnit.Case, async: true
   use Zigler
 
+  @moduletag :okerror
+
   ~Z"""
   /// nif: ok_int/1
   fn ok_int(env: beam.env, val: i64) beam.term {

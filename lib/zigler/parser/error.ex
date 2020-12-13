@@ -38,8 +38,7 @@ defmodule Zigler.Parser.Error do
     case parse_error(msg) do
       {:ok, [path, line, _col | msg], rest, _, _, _} ->
         {path, line} = compiler.assembly_dir
-        |> Path.join(path)
-        |> Path.expand
+        |> find_file(path)
         |> backreference(String.to_integer(line))
 
         raise CompileError,
@@ -55,6 +54,13 @@ defmodule Zigler.Parser.Error do
         raise CompileError,
           description: message
     end
+  end
+
+  defp find_file(_dir, path = ("/" <> _)), do: path
+  defp find_file(dir, path) do
+    dir
+    |> Path.join(path)
+    |> Path.expand
   end
 
   @spec backreference(Path.t, non_neg_integer) :: {Path.t, non_neg_integer}
