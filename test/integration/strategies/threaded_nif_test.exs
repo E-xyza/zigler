@@ -59,12 +59,13 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     return str.len;
   }
   """
-
+  @tag :exclude
   test "threaded nifs can have an string input" do
     assert 6 = threaded_string("foobar")
 
     verify_cleanup()
   end
+  @tag :exclude
   test "if you pass an incorrect value in you get fce" do
     assert_raise FunctionClauseError, fn ->
       threaded_string(:foobar)
