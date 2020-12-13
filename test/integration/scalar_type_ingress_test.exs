@@ -2,8 +2,6 @@ defmodule ZiglerTest.Integration.ScalarTypeIngressTest do
   use ExUnit.Case, async: true
   use Zigler
 
-  @moduletag :allocators
-
   ~Z"""
   /// nif: ingress_bool/1
   fn ingress_bool(val: bool) bool {

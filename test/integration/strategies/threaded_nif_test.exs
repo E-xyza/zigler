@@ -13,9 +13,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     return 47;
   }
   """
-  @tag :allocators
   test "threaded nifs can sleep for a while" do
-    IO.puts("18")
     start = DateTime.utc_now
     assert 47 == threaded_forty_seven()
     elapsed = DateTime.utc_now |> DateTime.diff(start)
@@ -33,9 +31,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     _ = beam.send(env, parent, beam.make_atom(env, "threaded"));
   }
   """
-  @tag :allocators
   test "threaded nifs can have a void return and parameters" do
-    IO.puts("38")
     assert :ok = threaded_void(self())
     assert_receive :threaded
 
@@ -50,9 +46,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     return result;
   }
   """
-  @tag :allocators
   test "threaded nifs can have an slice input" do
-    IO.puts("55")
     assert 5050 == 1..100 |> Enum.to_list |> threaded_sum
 
     verify_cleanup()
@@ -64,17 +58,13 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     return str.len;
   }
   """
-
   test "threaded nifs can have an string input" do
-    IO.puts("69")
     assert 6 = threaded_string("foobar")
 
     verify_cleanup()
   end
 
-  @tag :allocators
   test "if you pass an incorrect value in you get fce" do
-    IO.puts("76")
     assert_raise FunctionClauseError, fn ->
       threaded_string(:foobar)
     end

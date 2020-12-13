@@ -138,6 +138,9 @@ const Allocator = std.mem.Allocator;
 /// }
 /// ```
 ///
+/// currently does not release memory that is resized.  For this behaviour, use
+/// use `beam.general_purpose_allocator`.
+///
 /// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
 pub const allocator = &raw_beam_allocator;
 
@@ -157,22 +160,6 @@ fn raw_beam_alloc(
 ) Allocator.Error![]u8 {
   if (ptr_align > MAX_ALIGN) { return error.OutOfMemory; }
   const ptr = e.enif_alloc(len) orelse return error.OutOfMemory;
-
-  std.debug.print(
-    \\CREATED
-    \\ptr: {}
-    \\len: {}
-    \\ptr_align: {}
-    \\len_align: {}
-    \\ret_addr: {}
-    \\
-  , .{@ptrCast(*c_void, ptr),
-    len,
-    ptr_align,
-    _len_align,
-    _ret_addr}
-  );
-
   return @ptrCast([*]u8, ptr)[0..len];
 }
 
@@ -184,31 +171,12 @@ fn raw_beam_resize(
     _len_align: u29,
     _ret_addr: usize,
 ) Allocator.Error!usize {
-
-  // allocator things
-  std.debug.print(
-    \\DELETED
-    \\buf: {}
-    \\old_align: {}
-    \\new_len: {}
-    \\len_align: {}
-    \\ret_addr: {}
-    \\
-  , .{@ptrCast(*c_void, buf.ptr),
-    _old_align,
-    new_len,
-    _len_align,
-    _ret_addr}
-  );
-
   if (new_len == 0) {
     e.enif_free(buf.ptr);
     return 0;
   }
   if (new_len <= buf.len) {
-    if (e.enif_realloc(@ptrCast(*c_void, buf.ptr), new_len)) | _ | {
-      return new_len;
-    }
+    return new_len;
   }
   return error.OutOfMemory;
 }

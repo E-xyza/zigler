@@ -5,8 +5,7 @@ defmodule ZiglerTest.Integration.ResourceTest do
   use ExUnit.Case, async: true
   use Zigler
 
-  #@moduletag :resources
-  @moduletag :allocators
+  @moduletag :resources
 
   ~Z"""
   /// resource: test_res definition

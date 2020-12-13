@@ -2,8 +2,6 @@ defmodule ZiglerTest.Integration.SliceTypeEgressTest do
   use ExUnit.Case, async: true
   use Zigler
 
-  @moduletag :allocators
-
   ~Z"""
   var empty_i32 = [_]i32 { };
   /// nif: egress_i32_slice/0

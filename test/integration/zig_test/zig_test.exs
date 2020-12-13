@@ -4,8 +4,7 @@ defmodule ZiglerTest.Integration.ZigTest do
 
   import Zigler.Unit
 
-  #@moduletag :zigtest
-  @moduletag :allocators
+  @moduletag :zigtest
 
   # imports module support/passing_tests.exs into zigler.
   # note that this should be precompiled as a result of being in
