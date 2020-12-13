@@ -32,6 +32,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     _ = beam.send(env, parent, beam.make_atom(env, "threaded"));
   }
   """
+  @tag :exclude
   test "threaded nifs can have a void return and parameters" do
     assert :ok = threaded_void(self())
     assert_receive :threaded
@@ -48,7 +49,6 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
   }
   """
 
-  @tag :exclude
   test "threaded nifs can have an slice input" do
     assert 5050 == 1..100 |> Enum.to_list |> threaded_sum
 
