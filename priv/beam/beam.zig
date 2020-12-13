@@ -101,7 +101,6 @@
 const e = @import("erl_nif.zig");
 const std = @import("std");
 const builtin = @import("builtin");
-const ExpandAllocator = @import("expand_allocator.zig");
 const BeamMutex = @import("beam_mutex.zig").BeamMutex;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -113,18 +112,19 @@ const Allocator = std.mem.Allocator;
 // basic allocator
 
 /// !value
-/// provides a default BEAM allocator.  Use `beam.allocator.alloc` everywhere
-/// to safely allocate memory efficiently, and use `beam.allocator.free` to
-/// release that memory.
+/// provides a default BEAM allocator.  This is an implementation of the Zig
+/// allocator interface.  Use `beam.allocator.alloc` everywhere to safely
+/// allocate slices efficiently, and use `beam.allocator.free` to release that
+/// memory.  For single item allocation, use `beam.allocator.create` and
+/// `beam.allocator.destroy` to release the memory.
 ///
 /// Note this does not make the allocated memory *garbage collected* by the
 /// BEAM.
 ///
-/// All memory will be tracked by the beam.  If you require 64-bit alignment,
-/// the allocator will use the standard BEAM allocator.  If you require greater
-/// alignment, the basic allocator will use Zig's General Purpose Allocator,
-/// backed by the beam_alloc; note that this will 1) fetch memory in 4k chunks
-/// and 2)
+/// All memory will be tracked by the beam.  All allocations happen with 8-byte
+/// alignment, as described in `erl_nif.h`.  This is sufficient to create
+/// correctly aligned `beam.terms`, and for most purposes.
+/// For data that require greater alignment, use `beam.large_allocator`.
 ///
 /// ### Example
 ///
@@ -137,12 +137,14 @@ const Allocator = std.mem.Allocator;
 ///   return beam.allocator.alloc(u8, 10);
 /// }
 /// ```
-pub const allocator = &beam_allocator_instance.allocator;
+///
+/// currently does not release memory that is resized.  For this behaviour, use
+/// use `beam.general_purpose_allocator`.
+///
+/// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
+pub const allocator = &raw_beam_allocator;
 
-pub var beam_allocator_instance = ExpandAllocator{
-  .backing_allocator = &raw_beam_allocator,
-  .max_align = 8,
-};
+pub const MAX_ALIGN = 8;
 
 var raw_beam_allocator = Allocator{
   .allocFn = raw_beam_alloc,
@@ -156,8 +158,9 @@ fn raw_beam_alloc(
     _len_align: u29,
     _ret_addr: usize,
 ) Allocator.Error![]u8 {
-    const ptr = @ptrCast([*]u8, e.enif_alloc(len) orelse return error.OutOfMemory);
-    return ptr[0..len];
+  if (ptr_align > MAX_ALIGN) { return error.OutOfMemory; }
+  const ptr = e.enif_alloc(len) orelse return error.OutOfMemory;
+  return @ptrCast([*]u8, ptr)[0..len];
 }
 
 fn raw_beam_resize(
@@ -168,18 +171,97 @@ fn raw_beam_resize(
     _len_align: u29,
     _ret_addr: usize,
 ) Allocator.Error!usize {
-    if (new_len == 0) {
-        e.enif_free(buf.ptr);
-        return 0;
-    }
-    if (new_len <= buf.len) {
-       _ = e.enif_realloc(buf.ptr, new_len);
-    }
-    return error.OutOfMemory;
+  if (new_len == 0) {
+    e.enif_free(buf.ptr);
+    return 0;
+  }
+  if (new_len <= buf.len) {
+    return new_len;
+  }
+  return error.OutOfMemory;
 }
 
-var general_purpose_allocator_instance = std.heap.GeneralPurposeAllocator(.{}){
-  .backing_allocator = allocator,
+/// !value
+/// provides a BEAM allocator that can perform allocations with greater
+/// alignment than the machine word.  Note that this comes at the cost
+/// of some memory to store important metadata.
+///
+/// currently does not release memory that is resized.  For this behaviour
+/// use `beam.general_purpose_allocator`.
+///
+/// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
+pub const large_allocator = &large_beam_allocator;
+
+var large_beam_allocator = Allocator {
+  .allocFn = large_beam_alloc,
+  .resizeFn = large_beam_resize,
+};
+
+fn large_beam_alloc(
+  allocator_: *Allocator,
+  len: usize,
+  alignment: u29,
+  len_align: u29,
+  return_address: usize
+) error{OutOfMemory}![]u8 {
+  var ptr = try alignedAlloc(len, alignment, len_align, return_address);
+  if (len_align == 0) { return ptr[0..len]; }
+  return ptr[0..std.mem.alignBackwardAnyAlign(len, len_align)];
+}
+
+fn large_beam_resize(
+    allocator_: *Allocator,
+    buf: []u8,
+    buf_align: u29,
+    new_len: usize,
+    len_align: u29,
+    return_address: usize,
+) Allocator.Error!usize {
+  if (new_len > buf.len) { return error.OutOfMemory; }
+  if (new_len == 0) { return alignedFree(buf, buf_align); }
+  if (len_align == 0) { return new_len; }
+  return std.mem.alignBackwardAnyAlign(new_len, len_align);
+}
+
+fn alignedAlloc(len: usize, alignment: u29, len_align: u29, return_address: usize) ![*]u8 {
+  var safe_len = safeLen(len, alignment);
+  var alloc_slice: []u8 = try allocator.allocAdvanced(
+    u8, MAX_ALIGN, safe_len, std.mem.Allocator.Exact.exact);
+
+  const unaligned_addr = @ptrToInt(alloc_slice.ptr);
+  const aligned_addr = reAlign(unaligned_addr, alignment);
+
+  getPtrPtr(aligned_addr).* = unaligned_addr;
+  return aligned_addr;
+}
+
+fn alignedFree(buf: []u8, alignment: u29) usize {
+  var ptr = getPtrPtr(buf.ptr).*;
+  allocator.free(@intToPtr([*]u8, ptr)[0..safeLen(buf.len, alignment)]);
+  return 0;
+}
+
+fn reAlign(unaligned_addr: usize, alignment: u29) [*]u8 {
+  return @intToPtr(
+    [*]u8,
+    std.mem.alignForward(
+      unaligned_addr + @sizeOf(usize),
+      alignment));
+}
+
+fn safeLen(len: usize, alignment: u29) usize {
+  return len + alignment - @sizeOf(usize) + MAX_ALIGN;
+}
+
+fn getPtrPtr(aligned_ptr: [*]u8) *usize {
+  return @intToPtr(*usize, @ptrToInt(aligned_ptr) - @sizeOf(usize));
+}
+
+/// !value
+/// wraps the zig GeneralPurposeAllocator into the standard BEAM allocator.
+var general_purpose_allocator_instance = std.heap.GeneralPurposeAllocator(
+.{.thread_safe = true}) {
+  .backing_allocator = large_allocator,
 };
 
 pub var general_purpose_allocator = &general_purpose_allocator_instance.allocator;
@@ -1198,18 +1280,6 @@ pub const resource = struct {
 ///////////////////////////////////////////////////////////////////////////////
 // yielding NIFs
 
-const Rescheduler = fn (env, c_int, [*c]const term) callconv(.C) term;
-
-pub const YieldInfo = struct {
-  yielded: bool = false,
-  cancelled: bool = false,
-  environment: env,
-  self: term,
-  name: [*] const u8,
-  response: term = undefined,
-  rescheduler: Rescheduler,
-};
-
 /// transparently passes information into the yield statement.
 pub threadlocal var yield_info: *YieldInfo = undefined;
 
@@ -1226,19 +1296,22 @@ pub const YieldError = error {
 
 /// this function is going to be dropped inside the suspend statement.
 pub fn yield() !env {
-  if (yield_info.cancelled) return YieldError.Cancelled;
-  yield_info.yielded = true;
+  suspend {
+    if (yield_info.cancelled) return YieldError.Cancelled;
+    yield_info.yield_frame = @frame();
+  }
   return yield_info.environment;
 }
 
-pub fn reschedule() term {
-  return e.enif_schedule_nif(
-              yield_info.environment,
-              yield_info.name,
-              0,
-              yield_info.rescheduler,
-              1,
-              &yield_info.self);
+pub const YieldInfo = struct {
+  yield_frame: ?anyframe = null,
+  cancelled: bool = false,
+  response: term = undefined,
+  environment: env,
+};
+
+pub fn set_yield_response(what: term) void {
+  yield_info.response = what;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

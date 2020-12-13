@@ -6,6 +6,8 @@ defmodule ZiglerTest.LibraryTest do
 
   use ExUnit.Case, async: true
 
+  @moduletag :library
+
   defmodule BlasDynamic do
 
     use Zigler,

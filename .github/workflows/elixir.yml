@@ -26,4 +26,4 @@ jobs:
     - name: Run Linting
       run: mix credo --strict
     - name: Run Tests
-      run: mix test
+      run: mix test --exclude threaded
