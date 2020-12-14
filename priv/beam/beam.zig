@@ -160,6 +160,13 @@ fn raw_beam_alloc(
 ) Allocator.Error![]u8 {
   if (ptr_align > MAX_ALIGN) { return error.OutOfMemory; }
   const ptr = e.enif_alloc(len) orelse return error.OutOfMemory;
+  std.debug.print(
+    \\ALLOCATING\n
+    \\
+    \\ ptr: {}
+    \\ len: {}
+    \\
+    , .{@ptrCast(*c_void), len});
   return @ptrCast([*]u8, ptr)[0..len];
 }
 
@@ -171,13 +178,24 @@ fn raw_beam_resize(
     _len_align: u29,
     _ret_addr: usize,
 ) Allocator.Error!usize {
+  std.debug.print(
+    \\RESIZING\n
+    \\
+    \\ ptr: {}
+    \\ len: {}
+    \\
+    , .{@ptrCast(*c_void, buf.ptr), new_len});
   if (new_len == 0) {
+    std.debug.print("FREEING\n", .{});
     e.enif_free(buf.ptr);
+    std.debug.print("FREED\n", .{});
     return 0;
   }
   if (new_len <= buf.len) {
+    std.debug.print("SHRINK\n", .{});
     return new_len;
   }
+  std.debug.print("OOM\n", .{});
   return error.OutOfMemory;
 }
 
