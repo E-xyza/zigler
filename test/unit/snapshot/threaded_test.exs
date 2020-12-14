@@ -40,7 +40,7 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
 
         // always destroy the beam environment for the thread
         if (cache.env) | t_env | {
-          defer e.enif_clear_env(t_env);
+          defer e.enif_free_env(t_env);
         }
 
         // perform thread join to clean up any internal references to this thread.
@@ -86,7 +86,7 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
 
         // always destroy the beam environment for the thread
         if (cache.env) | t_env | {
-          defer e.enif_clear_env(t_env);
+          defer e.enif_free_env(t_env);
         }
 
         // perform thread join to clean up any internal references to this thread.
@@ -139,7 +139,7 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
 
         cache.env = if (e.enif_alloc_env()) | env_ | env_ else return beam.ThreadError.LaunchError;
         cache.parent = try beam.self(env);
-        cache.this = cache_ref;
+        cache.this = e.enif_make_copy(cache.env, cache_ref);
 
         // copy the name and null-terminate it.
         std.mem.copy(u8, cache.name.?, __foo_name__);
@@ -181,7 +181,7 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
 
         cache.env = if (e.enif_alloc_env()) | env_ | env_ else return beam.ThreadError.LaunchError;
         cache.parent = try beam.self(env);
-        cache.this = cache_ref;
+        cache.this = e.enif_make_copy(cache.env, cache_ref);
 
         // copy the name and null-terminate it.
         std.mem.copy(u8, cache.name.?, __foo_name__);
@@ -214,11 +214,8 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
 
         var env = cache.env;
 
-        // always clean up the environment.
-        defer e.enif_free_env(env);
-
         // check out the cache resource and lock its possession
-        __resource__.keep(__foo_cache_ptr__, cache.env, cache.this) catch {
+        __resource__.keep(__foo_cache_ptr__, env, cache.this) catch {
           _ = beam.send_advanced(
             null,
             cache.parent,
@@ -228,25 +225,32 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           return null;
         };
 
-        // always release the reference to the desired resource
-        defer __resource__.release(__foo_cache_ptr__, cache.env, cache.this);
+        var result_term: beam.term = undefined;
+
+        defer {
+          // releasing the resource MUST come before sending the response, otherwise the
+          // release event in this thread can collide with the release event in the main
+          // thread and cause a segfault.
+
+          __resource__.release(__foo_cache_ptr__, env, cache.this);
+
+          _ = beam.send_advanced(
+            null,
+            cache.parent,
+            env,
+            result_term
+          );
+        }
 
         // execute the nif function
         var result = foo();
-
-        var result_term = beam.make_i64(cache.env, result);
-        _ = beam.send_advanced(
-          null,
-          cache.parent,
+        result_term = beam.make_ok_term(
           env,
-          beam.make_ok_term(
+          e.enif_make_tuple(
             env,
-            e.enif_make_tuple(
-              env,
-              2,
-              cache.this,
-              result_term
-            )
+            2,
+            cache.this,
+            beam.make_i64(cache.env, result)
           )
         );
 
@@ -264,11 +268,8 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
 
         var env = cache.env;
 
-        // always clean up the environment.
-        defer e.enif_free_env(env);
-
         // check out the cache resource and lock its possession
-        __resource__.keep(__bar_cache_ptr__, cache.env, cache.this) catch {
+        __resource__.keep(__bar_cache_ptr__, env, cache.this) catch {
           _ = beam.send_advanced(
             null,
             cache.parent,
@@ -278,15 +279,26 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           return null;
         };
 
-        // always release the reference to the desired resource
-        defer __resource__.release(__bar_cache_ptr__, cache.env, cache.this);
+        var result_term: beam.term = undefined;
+
+        defer {
+          // releasing the resource MUST come before sending the response, otherwise the
+          // release event in this thread can collide with the release event in the main
+          // thread and cause a segfault.
+
+          __resource__.release(__bar_cache_ptr__, env, cache.this);
+
+          _ = beam.send_advanced(
+            null,
+            cache.parent,
+            env,
+            result_term
+          );
+        }
 
         var __bar_arg0__ = beam.get_i64(env, cache.args.?[0])
           catch {
-            _ = beam.send_advanced(
-              null,
-              cache.parent,
-              cache.env,
+            result_term =
               beam.make_error_term(env,
                 e.enif_make_tuple(
                   cache.env,
@@ -294,16 +306,12 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
                   cache.this,
                   beam.make_atom(env, \"function_clause\"[0..])
                 )
-              )
-            );
+              );
             return null;
           };
         var __bar_arg1__ = beam.get_f64(env, cache.args.?[1])
           catch {
-            _ = beam.send_advanced(
-              null,
-              cache.parent,
-              cache.env,
+            result_term =
               beam.make_error_term(env,
                 e.enif_make_tuple(
                   cache.env,
@@ -311,27 +319,19 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
                   cache.this,
                   beam.make_atom(env, \"function_clause\"[0..])
                 )
-              )
-            );
+              );
             return null;
           };
 
         // execute the nif function
         var result = bar(__bar_arg0__, __bar_arg1__);
-
-        var result_term = beam.make_i64(cache.env, result);
-        _ = beam.send_advanced(
-          null,
-          cache.parent,
+        result_term = beam.make_ok_term(
           env,
-          beam.make_ok_term(
+          e.enif_make_tuple(
             env,
-            e.enif_make_tuple(
-              env,
-              2,
-              cache.this,
-              result_term
-            )
+            2,
+            cache.this,
+            beam.make_i64(cache.env, result)
           )
         );
 
@@ -349,11 +349,8 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
 
         var env = cache.env;
 
-        // always clean up the environment.
-        defer e.enif_free_env(env);
-
         // check out the cache resource and lock its possession
-        __resource__.keep(__foo_cache_ptr__, cache.env, cache.this) catch {
+        __resource__.keep(__foo_cache_ptr__, env, cache.this) catch {
           _ = beam.send_advanced(
             null,
             cache.parent,
@@ -363,25 +360,32 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           return null;
         };
 
-        // always release the reference to the desired resource
-        defer __resource__.release(__foo_cache_ptr__, cache.env, cache.this);
+        var result_term: beam.term = undefined;
+
+        defer {
+          // releasing the resource MUST come before sending the response, otherwise the
+          // release event in this thread can collide with the release event in the main
+          // thread and cause a segfault.
+
+          __resource__.release(__foo_cache_ptr__, env, cache.this);
+
+          _ = beam.send_advanced(
+            null,
+            cache.parent,
+            env,
+            result_term
+          );
+        }
 
         // execute the nif function
         foo();
-
-        var result_term = beam.make_ok(cache.env);
-        _ = beam.send_advanced(
-          null,
-          cache.parent,
+        result_term = beam.make_ok_term(
           env,
-          beam.make_ok_term(
+          e.enif_make_tuple(
             env,
-            e.enif_make_tuple(
-              env,
-              2,
-              cache.this,
-              result_term
-            )
+            2,
+            cache.this,
+            beam.make_ok(cache.env)
           )
         );
 

@@ -252,28 +252,32 @@ defmodule Zigler.Nif.Threaded do
         return null;
       };
 
+      var result_term: beam.term = undefined;
+
+      defer {
+        // releasing the resource MUST come before sending the response, otherwise the
+        // release event in this thread can collide with the release event in the main
+        // thread and cause a segfault.
+
+        __resource__.release(#{cache_ptr nif.name}, env, cache.this);
+
+        _ = beam.send_advanced(
+          null,
+          cache.parent,
+          env,
+          result_term
+        );
+      }
+
     #{get_clauses}  // execute the nif function
       #{result_assign}#{nif.name}(#{Adapter.args nif});
-
-      // releasing the resource MUST come before sending the response, otherwise the
-      // release event in this thread can collide with the release event in the main
-      // thread and cause a segfault.
-
-      __resource__.release(#{cache_ptr nif.name}, env, cache.this);
-
-      var result_term = #{result_term};
-      _ = beam.send_advanced(
-        null,
-        cache.parent,
+      result_term = beam.make_ok_term(
         env,
-        beam.make_ok_term(
+        e.enif_make_tuple(
           env,
-          e.enif_make_tuple(
-            env,
-            2,
-            cache.this,
-            result_term
-          )
+          2,
+          cache.this,
+          #{result_term}
         )
       );
 
@@ -284,10 +288,7 @@ defmodule Zigler.Nif.Threaded do
 
   defp bail(:oom), do: """
   {
-        _ = beam.send_advanced(
-          null,
-          cache.parent,
-          cache.env,
+        result_term =
           beam.make_error_term(env,
             e.enif_make_tuple(
               cache.env,
@@ -295,17 +296,13 @@ defmodule Zigler.Nif.Threaded do
               cache.this,
               beam.make_atom(env, "enomem"[0..])
             )
-          )
-        );
+          );
         return null;
       }
   """
   defp bail(:function_clause), do: """
   {
-        _ = beam.send_advanced(
-          null,
-          cache.parent,
-          cache.env,
+        result_term =
           beam.make_error_term(env,
             e.enif_make_tuple(
               cache.env,
@@ -313,8 +310,7 @@ defmodule Zigler.Nif.Threaded do
               cache.this,
               beam.make_atom(env, "function_clause"[0..])
             )
-          )
-        );
+          );
         return null;
       }
   """
