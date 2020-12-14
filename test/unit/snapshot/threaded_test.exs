@@ -40,7 +40,7 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
 
         // always destroy the beam environment for the thread
         if (cache.env) | t_env | {
-          defer e.enif_clear_env(t_env);
+          defer e.enif_free_env(t_env);
         }
 
         // perform thread join to clean up any internal references to this thread.
@@ -86,7 +86,7 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
 
         // always destroy the beam environment for the thread
         if (cache.env) | t_env | {
-          defer e.enif_clear_env(t_env);
+          defer e.enif_free_env(t_env);
         }
 
         // perform thread join to clean up any internal references to this thread.

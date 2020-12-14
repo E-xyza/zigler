@@ -163,7 +163,7 @@ defmodule Zigler.Nif.Threaded do
 
       // always destroy the beam environment for the thread
       if (cache.env) | t_env | {
-        defer e.enif_clear_env(t_env);
+        defer e.enif_free_env(t_env);
       }
 
       // perform thread join to clean up any internal references to this thread.
@@ -204,7 +204,9 @@ defmodule Zigler.Nif.Threaded do
 
       cache.env = if (e.enif_alloc_env()) | env_ | env_ else return beam.ThreadError.LaunchError;
       cache.parent = try beam.self(env);
-      cache.this = cache_ref;
+      cache.this = e.enif_make_copy(cache.env, cache_ref);
+
+      std.debug.print("ENV: {} {}->{}\\n", .{cache.env, cache_ref, cache.this});
 
       // copy the name and null-terminate it.
       std.mem.copy(u8, cache.name.?, #{name nif.name});
@@ -257,6 +259,8 @@ defmodule Zigler.Nif.Threaded do
 
       std.debug.print("C\\n", .{});
 
+      __resource__.release(#{cache_ptr nif.name}, env, cache.this);
+
       var result_term = #{result_term};
       _ = beam.send_advanced(
         null,
@@ -272,11 +276,6 @@ defmodule Zigler.Nif.Threaded do
           )
         )
       );
-
-      std.debug.print("RELEASE {} {}\\n", .{env, cache.this});
-
-      // always release the reference to the desired resource
-      __resource__.release(#{cache_ptr nif.name}, env, cache.this);
 
       std.debug.print("E\\n", .{});
 

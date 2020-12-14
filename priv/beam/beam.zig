@@ -1284,13 +1284,16 @@ pub const resource = struct {
 
     if (obj == null) { unreachable; }
 
-    e.enif_keep_resource(obj);
+    var res = e.enif_keep_resource(obj);
+    std.debug.print("KEEP: {} {} {} {}\n", .{environment, res_trm, res_typ, obj});
   }
 
   pub fn release(environment: env, res_typ: resource_type, res_trm: term) void {
     var obj : ?*c_void = undefined;
-    var _rsrc = e.enif_get_resource(environment, res_trm, res_typ, &obj);
-    return e.enif_release_resource(obj);
+    std.debug.print("RELS: {} {} {}\n", .{environment, res_trm, res_typ});
+    if (0 != e.enif_get_resource(environment, res_trm, res_typ, &obj)) {
+      e.enif_release_resource(obj);
+    } else { unreachable; }
   }
 };
 
