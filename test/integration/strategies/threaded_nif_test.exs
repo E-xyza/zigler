@@ -59,7 +59,6 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     return str.len;
   }
   """
-  @tag :isolate
   test "threaded nifs can have an string input" do
     assert 6 = threaded_string("foobar")
 
