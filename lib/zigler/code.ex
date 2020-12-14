@@ -3,8 +3,8 @@ defmodule Zigler.Code do
   all code responsible for generating zig code lives in this module.
   """
 
-  alias Zigler.Nif.{DirtyCpu, DirtyIO, Synchronous, Test, Threaded, Yielding}
   alias Zigler.Module
+  alias Zigler.Nif.{DirtyCpu, DirtyIO, Synchronous, Test, Threaded, Yielding}
   alias Zigler.Nif.{Synchronous, Test, Threaded, Yielding}
   alias Zigler.Parser.{Nif, Resource}
 

@@ -1,5 +1,7 @@
 defmodule Zigler.Nif.DirtyIO do
 
+  @moduledoc false
+
   alias Zigler.Nif.{Adapter, Synchronous}
 
   @behaviour Adapter
