@@ -273,10 +273,12 @@ defmodule Zigler.Nif.Threaded do
         )
       );
 
-      std.debug.print("D\\n", .{});
+      std.debug.print("RELEASE {} {}\\n", .{env, cache.this});
 
       // always release the reference to the desired resource
       __resource__.release(#{cache_ptr nif.name}, env, cache.this);
+
+      std.debug.print("E\\n", .{});
 
       return null;
     }
