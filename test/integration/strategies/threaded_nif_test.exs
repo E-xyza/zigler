@@ -42,7 +42,9 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
   /// nif: threaded_sum/1 threaded
   fn threaded_sum(list: []i64) i64 {
     var result : i64 = 0;
+    std.debug.print("A\n", .{});
     for (list) | val | { result += val; }
+    std.debug.print("B\n", .{});
     return result;
   }
   """

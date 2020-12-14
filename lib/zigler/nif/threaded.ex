@@ -255,6 +255,8 @@ defmodule Zigler.Nif.Threaded do
     #{get_clauses}  // execute the nif function
       #{result_assign}#{nif.name}(#{Adapter.args nif});
 
+      std.debug.print("C\\n", .{});
+
       var result_term = #{result_term};
       _ = beam.send_advanced(
         null,
@@ -270,6 +272,8 @@ defmodule Zigler.Nif.Threaded do
           )
         )
       );
+
+      std.debug.print("D\\n", .{});
 
       // always release the reference to the desired resource
       __resource__.release(#{cache_ptr nif.name}, env, cache.this);
