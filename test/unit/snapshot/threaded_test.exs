@@ -212,19 +212,24 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           @ptrCast(*__foo_cache__,
             @alignCast(@alignOf(__foo_cache__), cache_q.?));
 
+        var env = cache.env;
+
         // always clean up the environment.
-        defer e.enif_free_env(cache.env);
+        defer e.enif_free_env(env);
 
         // check out the cache resource and lock its possession
         __resource__.keep(__foo_cache_ptr__, cache.env, cache.this) catch {
-          // TODO: DO BETTER HERE.
+          _ = beam.send_advanced(
+            null,
+            cache.parent,
+            env,
+            beam.make_error_atom(env, "thread_resource_error")
+          );
           return null;
         };
 
         // always release the reference to the desired resource
         defer __resource__.release(__foo_cache_ptr__, cache.env, cache.this);
-
-        var env = cache.env;
 
         // execute the nif function
         var result = foo();
@@ -257,19 +262,24 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           @ptrCast(*__bar_cache__,
             @alignCast(@alignOf(__bar_cache__), cache_q.?));
 
+        var env = cache.env;
+
         // always clean up the environment.
-        defer e.enif_free_env(cache.env);
+        defer e.enif_free_env(env);
 
         // check out the cache resource and lock its possession
         __resource__.keep(__bar_cache_ptr__, cache.env, cache.this) catch {
-          XXXX
+          _ = beam.send_advanced(
+            null,
+            cache.parent,
+            env,
+            beam.make_error_atom(env, "thread_resource_error")
+          );
           return null;
         };
 
         // always release the reference to the desired resource
         defer __resource__.release(__bar_cache_ptr__, cache.env, cache.this);
-
-        var env = cache.env;
 
         var __bar_arg0__ = beam.get_i64(env, cache.args.?[0])
           catch {
@@ -337,19 +347,24 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           @ptrCast(*__foo_cache__,
             @alignCast(@alignOf(__foo_cache__), cache_q.?));
 
+        var env = cache.env;
+
         // always clean up the environment.
-        defer e.enif_free_env(cache.env);
+        defer e.enif_free_env(env);
 
         // check out the cache resource and lock its possession
         __resource__.keep(__foo_cache_ptr__, cache.env, cache.this) catch {
-          // TODO: DO BETTER HERE.
+          _ = beam.send_advanced(
+            null,
+            cache.parent,
+            env,
+            beam.make_error_atom(env, "thread_resource_error")
+          );
           return null;
         };
 
         // always release the reference to the desired resource
         defer __resource__.release(__foo_cache_ptr__, cache.env, cache.this);
-
-        var env = cache.env;
 
         // execute the nif function
         foo();

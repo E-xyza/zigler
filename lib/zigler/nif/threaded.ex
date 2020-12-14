@@ -74,6 +74,8 @@ defmodule Zigler.Nif.Threaded do
                 function: unquote(name),
                 arity: unquote(arity)
               }
+            {:error, :thread_resource_error} ->
+              raise "thread resource error for #{__ENV__.function}"
           end
         {:error, error} ->
           raise error
@@ -237,19 +239,24 @@ defmodule Zigler.Nif.Threaded do
         @ptrCast(*#{cache nif.name},
           @alignCast(@alignOf(#{cache nif.name}), cache_q.?));
 
+      var env = cache.env;
+
       // always clean up the environment.
-      defer e.enif_free_env(cache.env);
+      defer e.enif_free_env(env);
 
       // check out the cache resource and lock its possession
       __resource__.keep(#{cache_ptr nif.name}, cache.env, cache.this) catch {
-        // TODO: DO BETTER HERE.
+        _ = beam.send_advanced(
+          null,
+          cache.parent,
+          env,
+          beam.make_error_atom(env, "thread_resource_error")
+        );
         return null;
       };
 
       // always release the reference to the desired resource
       defer __resource__.release(#{cache_ptr nif.name}, cache.env, cache.this);
-
-      var env = cache.env;
 
     #{get_clauses}  // execute the nif function
       #{result_assign}#{nif.name}(#{Adapter.args nif});
