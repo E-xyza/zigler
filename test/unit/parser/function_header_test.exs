@@ -6,7 +6,6 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
   alias Zigler.Parser.{Nif, Resource, ResourceCleanup}
 
   @moduletag :parser
-  @moduletag :function
 
   describe "the argument parser" do
     test "correctly parses a basic identifier argument" do

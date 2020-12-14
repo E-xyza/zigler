@@ -46,7 +46,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     return result;
   }
   """
-
+  @tag :isolate
   test "threaded nifs can have an slice input" do
     assert 5050 == 1..100 |> Enum.to_list |> threaded_sum
 
@@ -59,7 +59,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     return str.len;
   }
   """
-
+  @tag :isolate
   test "threaded nifs can have an string input" do
     assert 6 = threaded_string("foobar")
 
