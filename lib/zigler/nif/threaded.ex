@@ -136,7 +136,8 @@ defmodule Zigler.Nif.Threaded do
       thread: e.ErlNifTid,
       name: ?[:0] u8 = null,
       this: beam.term,
-      args: ?[]beam.term = null};
+      args: ?[]beam.term = null
+    };
 
     /// resource: #{cache_ptr nif.name} definition
     const #{cache_ptr nif.name} = *#{cache nif.name};
@@ -168,7 +169,7 @@ defmodule Zigler.Nif.Threaded do
         _ = e.enif_thread_join(thread, null);
       }
 
-    #{if Mix.env == :test, do: test_msg}  }
+    #{if Mix.env == :test, do: test_msg}}
     """
   end
 

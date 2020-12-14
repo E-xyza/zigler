@@ -18,19 +18,16 @@ defmodule Zigler.Nif.Synchronous do
     result = cond do
       nif.retval in ["beam.term", "e.ErlNifTerm", "!beam.term", "!e.ErlNifTerm"] ->
         """
-          return #{function_call nif}
-        }
+          return #{function_call nif}}
         """
       nif.retval in ["void", "!void"] ->
         """
-          #{function_call nif}
-          return beam.make_nil(env);
+          #{function_call nif}  return beam.make_nil(env);
         }
         """
       true ->
         """
-          var #{result_var nif} = #{function_call nif}
-          return #{Adapter.make_clause nif.retval, result_var(nif)};
+          var #{result_var nif} = #{function_call nif}  return #{Adapter.make_clause nif.retval, result_var(nif)};
         }
         """
     end
