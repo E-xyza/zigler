@@ -163,7 +163,7 @@ defmodule Zigler.Nif.Threaded do
 
       // always destroy the beam environment for the thread
       if (cache.env) | t_env | {
-        defer e.enif_clear_env(t_env);
+        defer e.enif_free_env(t_env);
       }
 
       // perform thread join to clean up any internal references to this thread.
@@ -204,7 +204,7 @@ defmodule Zigler.Nif.Threaded do
 
       cache.env = if (e.enif_alloc_env()) | env_ | env_ else return beam.ThreadError.LaunchError;
       cache.parent = try beam.self(env);
-      cache.this = cache_ref;
+      cache.this = e.enif_make_copy(cache.env, cache_ref);
 
       // copy the name and null-terminate it.
       std.mem.copy(u8, cache.name.?, #{name nif.name});
@@ -241,11 +241,8 @@ defmodule Zigler.Nif.Threaded do
 
       var env = cache.env;
 
-      // always clean up the environment.
-      defer e.enif_free_env(env);
-
       // check out the cache resource and lock its possession
-      __resource__.keep(#{cache_ptr nif.name}, cache.env, cache.this) catch {
+      __resource__.keep(#{cache_ptr nif.name}, env, cache.this) catch {
         _ = beam.send_advanced(
           null,
           cache.parent,
@@ -255,11 +252,14 @@ defmodule Zigler.Nif.Threaded do
         return null;
       };
 
-      // always release the reference to the desired resource
-      defer __resource__.release(#{cache_ptr nif.name}, cache.env, cache.this);
-
     #{get_clauses}  // execute the nif function
       #{result_assign}#{nif.name}(#{Adapter.args nif});
+
+      // releasing the resource MUST come before sending the response, otherwise the
+      // release event in this thread can collide with the release event in the main
+      // thread and cause a segfault.
+
+      __resource__.release(#{cache_ptr nif.name}, env, cache.this);
 
       var result_term = #{result_term};
       _ = beam.send_advanced(
