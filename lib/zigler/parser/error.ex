@@ -47,7 +47,7 @@ defmodule Zigler.Parser.Error do
           description: IO.iodata_to_binary([msg, "\n" | rest])
       _ ->
         message = """
-        this zig compiler hasn't been incorporated into the parser.
+        this zig compiler warning hasn't been incorporated into the parser.
         Please file a report at:
         https://github.com/ityonemo/zigler/issues
         """ <> msg

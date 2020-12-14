@@ -110,8 +110,7 @@ defmodule Zigler.Compiler do
   #############################################################################
   ## FUNCTION SKELETONS
 
-
-  alias Zigler.Nif.{DirtyCpu, DirtyIO, Synchronous, Threaded, Test, Yielding}
+  alias Zigler.Nif.{DirtyCpu, DirtyIO, Synchronous, Test, Threaded, Yielding}
   alias Zigler.Parser.Nif
 
   def function_skeleton(nif = %Nif{doc: doc}) when not is_nil(doc) do

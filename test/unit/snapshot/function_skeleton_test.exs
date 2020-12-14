@@ -3,6 +3,8 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
 
   alias Zigler.Parser.Nif
 
+  @moduletag :snapshot
+
   test "an arity zero function is produced correctly" do
 
     result = quote context: Elixir do
@@ -32,21 +34,27 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
     result = quote context: Elixir do
       @spec foo() :: nil
       def foo do
-        {:ok, ref} = __foo_launch__()
-        try do
-          receive do
-            {^ref, return} ->
-              return
-            {:error, :enomem} ->
-              raise("no memory")
-            {:error, :function_clause} ->
-              raise(%FunctionClauseError{module: __MODULE__, function: :foo, arity: 0})
-          end
-        rescue
-          error ->
-            reraise(error, __STACKTRACE__)
-        after
-          __foo_cleanup__(ref)
+        case __foo_launch__() do
+          {:ok, ref} ->
+            receive do
+              {:ok, {^ref, return}} ->
+                __foo_cleanup__(ref)
+                return
+              {:error, {^ref, :enomem}} ->
+                __foo_cleanup__(ref)
+                raise "no memory"
+              {:error, {^ref, :function_clause}} ->
+                __foo_cleanup__(ref)
+                raise %FunctionClauseError{
+                  module: __MODULE__,
+                  function: :foo,
+                  arity: 0
+                }
+              {:error, :thread_resource_error} ->
+                raise "thread resource error for #{__ENV__.function}"
+            end
+          {:error, error} ->
+            raise error
         end
       end
 
@@ -68,21 +76,27 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
     result = quote context: Elixir do
       @spec foo(integer) :: nil
       def foo(arg1) do
-        {:ok, ref} = __foo_launch__(arg1)
-        try do
-          receive do
-            {^ref, return} ->
-              return
-            {:error, :enomem} ->
-              raise("no memory")
-            {:error, :function_clause} ->
-              raise(%FunctionClauseError{module: __MODULE__, function: :foo, arity: 1})
-          end
-        rescue
-          error ->
-            reraise(error, __STACKTRACE__)
-        after
-          __foo_cleanup__(ref)
+        case __foo_launch__(arg1) do
+          {:ok, ref} ->
+            receive do
+              {:ok, {^ref, return}} ->
+                __foo_cleanup__(ref)
+                return
+              {:error, {^ref, :enomem}} ->
+                __foo_cleanup__(ref)
+                raise "no memory"
+              {:error, {^ref, :function_clause}} ->
+                __foo_cleanup__(ref)
+                raise %FunctionClauseError{
+                  module: __MODULE__,
+                  function: :foo,
+                  arity: 1
+                }
+              {:error, :thread_resource_error} ->
+                raise "thread resource error for #{__ENV__.function}"
+            end
+          {:error, error} ->
+            raise error
         end
       end
 

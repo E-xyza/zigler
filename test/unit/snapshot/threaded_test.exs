@@ -4,33 +4,51 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
 
   alias Zigler.Nif.Threaded
 
+  @moduletag :snapshot
+
   describe "resource_struct/1 generates a zig struct" do
     test "for a 0-arity function" do
       assert """
       const __foo_cache__ = struct {
-        env: beam.env,
+        env: beam.env = null,
         parent: beam.pid,
         thread: e.ErlNifTid,
-        name: [:0]u8,
+        name: ?[:0] u8 = null,
         this: beam.term,
+        args: ?[]beam.term = null
       };
 
       /// resource: __foo_cache_ptr__ definition
-      const __foo_cache_ptr__ = ?*__foo_cache__;
+      const __foo_cache_ptr__ = *__foo_cache__;
 
       /// resource: __foo_cache_ptr__ cleanup
-      fn __foo_cache_cleanup__(env: beam.env, cache_res_ptr: *__foo_cache_ptr__) void {
-        if (cache_res_ptr.*) | cache | {
-          // always destroy the allocated memory for the cache.
-          defer beam.allocator.destroy(cache);
+      fn __foo_cache_cleanup__(env: beam.env, cache_ptr: *__foo_cache_ptr__) void {
+        var cache = cache_ptr.*;
 
-          // always destroy the beam environment for the thread
-          defer e.enif_clear_env(cache.env);
-
-          // perform thread join to clean up any internal references to this thread.
-          var tjoin = e.enif_thread_join(cache.thread, null);
-          _ = beam.send(env, cache.parent, beam.make_atom(env, \"thread_freed\"));
+        // always destroy the allocated arguments.
+        if (cache.args) | args | {
+          defer beam.allocator.free(args);
         }
+
+        // always free the name.
+        if (cache.name) | name | {
+          defer beam.allocator.free(name);
+        }
+
+        // always destroy the allocated memory for the cache.
+        defer beam.allocator.destroy(cache);
+
+        // always destroy the beam environment for the thread
+        if (cache.env) | t_env | {
+          defer e.enif_free_env(t_env);
+        }
+
+        // perform thread join to clean up any internal references to this thread.
+        if (cache.thread) | thread | {
+          _ = e.enif_thread_join(thread, null);
+        }
+
+        _ = beam.send(env, cache.parent, beam.make_atom(env, \"thread_freed\"));
       }
       """ == Threaded.cache_struct(%{name: :foo, args: [], retval: "i64"})
     end
@@ -38,31 +56,45 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
     test "for a 2-arity function, with a different name and retval" do
       assert """
       const __bar_cache__ = struct {
-        env: beam.env,
+        env: beam.env = null,
         parent: beam.pid,
         thread: e.ErlNifTid,
-        name: [:0]u8,
+        name: ?[:0] u8 = null,
         this: beam.term,
-        arg0: beam.term,
-        arg1: beam.term,
+        args: ?[]beam.term = null
       };
 
       /// resource: __bar_cache_ptr__ definition
-      const __bar_cache_ptr__ = ?*__bar_cache__;
+      const __bar_cache_ptr__ = *__bar_cache__;
 
       /// resource: __bar_cache_ptr__ cleanup
-      fn __bar_cache_cleanup__(env: beam.env, cache_res_ptr: *__bar_cache_ptr__) void {
-        if (cache_res_ptr.*) | cache | {
-          // always destroy the allocated memory for the cache.
-          defer beam.allocator.destroy(cache);
+      fn __bar_cache_cleanup__(env: beam.env, cache_ptr: *__bar_cache_ptr__) void {
+        var cache = cache_ptr.*;
 
-          // always destroy the beam environment for the thread
-          defer e.enif_clear_env(cache.env);
-
-          // perform thread join to clean up any internal references to this thread.
-          var tjoin = e.enif_thread_join(cache.thread, null);
-          _ = beam.send(env, cache.parent, beam.make_atom(env, "thread_freed"));
+        // always destroy the allocated arguments.
+        if (cache.args) | args | {
+          defer beam.allocator.free(args);
         }
+
+        // always free the name.
+        if (cache.name) | name | {
+          defer beam.allocator.free(name);
+        }
+
+        // always destroy the allocated memory for the cache.
+        defer beam.allocator.destroy(cache);
+
+        // always destroy the beam environment for the thread
+        if (cache.env) | t_env | {
+          defer e.enif_free_env(t_env);
+        }
+
+        // perform thread join to clean up any internal references to this thread.
+        if (cache.thread) | thread | {
+          _ = e.enif_thread_join(thread, null);
+        }
+
+        _ = beam.send(env, cache.parent, beam.make_atom(env, "thread_freed"));
       }
       """ == Threaded.cache_struct(%{name: :bar, args: ["i64", "f64"], retval: "f64"})
     end
@@ -91,32 +123,34 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
       assert """
       const __foo_name__ = "foo-threaded";
       fn __foo_pack__(env: beam.env, argv: [*c] const beam.term) !beam.term {
-        // create a resource that is ready to hold the pointer to the cache.
-        var cache_ref = try __resource__.create(__foo_cache_ptr__, env, null);
-        errdefer __resource__.release(__foo_cache_ptr__, env, cache_ref);
-
         // allocate space for the cache and obtain its pointer.
         var cache = try beam.allocator.create(__foo_cache__);
         errdefer beam.allocator.destroy(cache);
 
-        // allocate space for the name of this thread, then copy it, and null-terminate it.
-        var thread_name: []u8 = try beam.allocator.alloc(u8, __foo_name__.len + 1);
-        std.mem.copy(u8, thread_name, __foo_name__);
-        thread_name[__foo_name__.len] = 0;
+        // create a resource that is ready to hold the pointer to the cache.
+        var cache_ref = try __resource__.create(__foo_cache_ptr__, env, cache);
+        errdefer __resource__.release(__foo_cache_ptr__, env, cache_ref);
 
-        // update the stored pointer.
-        try __resource__.update(__foo_cache_ptr__, env, cache_ref, cache);
+        // allocate space for the argument terms.
+        cache.args = try beam.allocator.alloc(beam.term, 0);
 
-        // drop contents into the cache; all items in the cache will be placed into
-        // the new environment created specially for the thread.
-        var new_env = if (e.enif_alloc_env()) | env_ | env_ else return beam.ThreadError.LaunchError;
+        // allocate space for the thread name, with a sentinel.
+        cache.name = try beam.allocator.allocSentinel(u8, 12, 0);
 
-        cache.env = new_env;
+        cache.env = if (e.enif_alloc_env()) | env_ | env_ else return beam.ThreadError.LaunchError;
         cache.parent = try beam.self(env);
-        cache.this = e.enif_make_copy(new_env, cache_ref);
+        cache.this = e.enif_make_copy(cache.env, cache_ref);
+
+        // copy the name and null-terminate it.
+        std.mem.copy(u8, cache.name.?, __foo_name__);
+
+        // transfer the arguments over to the new environment.
+        for (cache.args.?) |*arg, index| {
+          cache.args.?[index] = e.enif_make_copy(cache.env, argv[index]);
+        }
 
         if (0 == e.enif_thread_create(
-            thread_name.ptr,
+            cache.name.?,
             &cache.thread,
             __foo_harness__,
             @ptrCast(*c_void, cache),
@@ -124,41 +158,41 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           return beam.make_ok_term(env, cache_ref);
         } else return beam.ThreadError.LaunchError;
       }
-      """ == Threaded.packer_fn(%{name: :foo, args: [], retval: "i64"})
+      """ == Threaded.packer_fn(%{name: :foo, args: [], arity: 0, retval: "i64"})
     end
 
     test "for a 2-arity function with a different name" do
       assert """
       const __foo_name__ = "foo-threaded";
       fn __foo_pack__(env: beam.env, argv: [*c] const beam.term) !beam.term {
-        // create a resource that is ready to hold the pointer to the cache.
-        var cache_ref = try __resource__.create(__foo_cache_ptr__, env, null);
-        errdefer __resource__.release(__foo_cache_ptr__, env, cache_ref);
-
         // allocate space for the cache and obtain its pointer.
         var cache = try beam.allocator.create(__foo_cache__);
         errdefer beam.allocator.destroy(cache);
 
-        // allocate space for the name of this thread, then copy it, and null-terminate it.
-        var thread_name: []u8 = try beam.allocator.alloc(u8, __foo_name__.len + 1);
-        std.mem.copy(u8, thread_name, __foo_name__);
-        thread_name[__foo_name__.len] = 0;
+        // create a resource that is ready to hold the pointer to the cache.
+        var cache_ref = try __resource__.create(__foo_cache_ptr__, env, cache);
+        errdefer __resource__.release(__foo_cache_ptr__, env, cache_ref);
 
-        // update the stored pointer.
-        try __resource__.update(__foo_cache_ptr__, env, cache_ref, cache);
+        // allocate space for the argument terms.
+        cache.args = try beam.allocator.alloc(beam.term, 2);
 
-        // drop contents into the cache; all items in the cache will be placed into
-        // the new environment created specially for the thread.
-        var new_env = if (e.enif_alloc_env()) | env_ | env_ else return beam.ThreadError.LaunchError;
+        // allocate space for the thread name, with a sentinel.
+        cache.name = try beam.allocator.allocSentinel(u8, 12, 0);
 
-        cache.env = new_env;
+        cache.env = if (e.enif_alloc_env()) | env_ | env_ else return beam.ThreadError.LaunchError;
         cache.parent = try beam.self(env);
-        cache.this = e.enif_make_copy(new_env, cache_ref);
-        cache.arg0 = e.enif_make_copy(new_env, argv[0]);
-        cache.arg1 = e.enif_make_copy(new_env, argv[1]);
+        cache.this = e.enif_make_copy(cache.env, cache_ref);
+
+        // copy the name and null-terminate it.
+        std.mem.copy(u8, cache.name.?, __foo_name__);
+
+        // transfer the arguments over to the new environment.
+        for (cache.args.?) |*arg, index| {
+          cache.args.?[index] = e.enif_make_copy(cache.env, argv[index]);
+        }
 
         if (0 == e.enif_thread_create(
-            thread_name.ptr,
+            cache.name.?,
             &cache.thread,
             __foo_harness__,
             @ptrCast(*c_void, cache),
@@ -166,7 +200,7 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           return beam.make_ok_term(env, cache_ref);
         } else return beam.ThreadError.LaunchError;
       }
-      """  == Threaded.packer_fn(%{name: :foo, args: ["i64", "f64"], retval: "i64"})
+      """  == Threaded.packer_fn(%{name: :foo, args: ["i64", "f64"], arity: 2, retval: "i64"})
     end
   end
 
@@ -178,19 +212,47 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           @ptrCast(*__foo_cache__,
             @alignCast(@alignOf(__foo_cache__), cache_q.?));
 
-        // always release the reference to the desired resource
-        defer __resource__.release(__foo_cache_ptr__, cache.env, cache.this);
-
-        // take out a reference against the desired resource
-        __resource__.keep(__foo_cache_ptr__, cache.env, cache.this) catch return null;
         var env = cache.env;
+
+        // check out the cache resource and lock its possession
+        __resource__.keep(__foo_cache_ptr__, env, cache.this) catch {
+          _ = beam.send_advanced(
+            null,
+            cache.parent,
+            env,
+            beam.make_error_atom(env, "thread_resource_error")
+          );
+          return null;
+        };
+
+        var result_term: beam.term = undefined;
+
+        defer {
+          // releasing the resource MUST come before sending the response, otherwise the
+          // release event in this thread can collide with the release event in the main
+          // thread and cause a segfault.
+
+          __resource__.release(__foo_cache_ptr__, env, cache.this);
+
+          _ = beam.send_advanced(
+            null,
+            cache.parent,
+            env,
+            result_term
+          );
+        }
 
         // execute the nif function
         var result = foo();
-
-        var result_term = beam.make_i64(cache.env, result);
-        var sent_term = e.enif_make_tuple(cache.env, 2, cache.this, result_term);
-        _ = beam.send_advanced(null, cache.parent, cache.env, sent_term);
+        result_term = beam.make_ok_term(
+          env,
+          e.enif_make_tuple(
+            env,
+            2,
+            cache.this,
+            beam.make_i64(cache.env, result)
+          )
+        );
 
         return null;
       }
@@ -204,38 +266,74 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           @ptrCast(*__bar_cache__,
             @alignCast(@alignOf(__bar_cache__), cache_q.?));
 
-        // always release the reference to the desired resource
-        defer __resource__.release(__bar_cache_ptr__, cache.env, cache.this);
-
-        // take out a reference against the desired resource
-        __resource__.keep(__bar_cache_ptr__, cache.env, cache.this) catch return null;
         var env = cache.env;
 
-        var __bar_arg0__ = beam.get_i64(env, cache.arg0)
+        // check out the cache resource and lock its possession
+        __resource__.keep(__bar_cache_ptr__, env, cache.this) catch {
+          _ = beam.send_advanced(
+            null,
+            cache.parent,
+            env,
+            beam.make_error_atom(env, "thread_resource_error")
+          );
+          return null;
+        };
+
+        var result_term: beam.term = undefined;
+
+        defer {
+          // releasing the resource MUST come before sending the response, otherwise the
+          // release event in this thread can collide with the release event in the main
+          // thread and cause a segfault.
+
+          __resource__.release(__bar_cache_ptr__, env, cache.this);
+
+          _ = beam.send_advanced(
+            null,
+            cache.parent,
+            env,
+            result_term
+          );
+        }
+
+        var __bar_arg0__ = beam.get_i64(env, cache.args.?[0])
           catch {
-            _ = beam.send_advanced(
-              null,
-              cache.parent,
-              cache.env,
-              beam.make_error_term(env, beam.make_atom(env, "function_clause"[0..])));
+            result_term =
+              beam.make_error_term(env,
+                e.enif_make_tuple(
+                  cache.env,
+                  2,
+                  cache.this,
+                  beam.make_atom(env, \"function_clause\"[0..])
+                )
+              );
             return null;
           };
-        var __bar_arg1__ = beam.get_f64(env, cache.arg1)
+        var __bar_arg1__ = beam.get_f64(env, cache.args.?[1])
           catch {
-            _ = beam.send_advanced(
-              null,
-              cache.parent,
-              cache.env,
-              beam.make_error_term(env, beam.make_atom(env, "function_clause"[0..])));
+            result_term =
+              beam.make_error_term(env,
+                e.enif_make_tuple(
+                  cache.env,
+                  2,
+                  cache.this,
+                  beam.make_atom(env, \"function_clause\"[0..])
+                )
+              );
             return null;
           };
 
         // execute the nif function
         var result = bar(__bar_arg0__, __bar_arg1__);
-
-        var result_term = beam.make_i64(cache.env, result);
-        var sent_term = e.enif_make_tuple(cache.env, 2, cache.this, result_term);
-        _ = beam.send_advanced(null, cache.parent, cache.env, sent_term);
+        result_term = beam.make_ok_term(
+          env,
+          e.enif_make_tuple(
+            env,
+            2,
+            cache.this,
+            beam.make_i64(cache.env, result)
+          )
+        );
 
         return null;
       }
@@ -249,19 +347,47 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           @ptrCast(*__foo_cache__,
             @alignCast(@alignOf(__foo_cache__), cache_q.?));
 
-        // always release the reference to the desired resource
-        defer __resource__.release(__foo_cache_ptr__, cache.env, cache.this);
-
-        // take out a reference against the desired resource
-        __resource__.keep(__foo_cache_ptr__, cache.env, cache.this) catch return null;
         var env = cache.env;
+
+        // check out the cache resource and lock its possession
+        __resource__.keep(__foo_cache_ptr__, env, cache.this) catch {
+          _ = beam.send_advanced(
+            null,
+            cache.parent,
+            env,
+            beam.make_error_atom(env, "thread_resource_error")
+          );
+          return null;
+        };
+
+        var result_term: beam.term = undefined;
+
+        defer {
+          // releasing the resource MUST come before sending the response, otherwise the
+          // release event in this thread can collide with the release event in the main
+          // thread and cause a segfault.
+
+          __resource__.release(__foo_cache_ptr__, env, cache.this);
+
+          _ = beam.send_advanced(
+            null,
+            cache.parent,
+            env,
+            result_term
+          );
+        }
 
         // execute the nif function
         foo();
-
-        var result_term = beam.make_ok(cache.env);
-        var sent_term = e.enif_make_tuple(cache.env, 2, cache.this, result_term);
-        _ = beam.send_advanced(null, cache.parent, cache.env, sent_term);
+        result_term = beam.make_ok_term(
+          env,
+          e.enif_make_tuple(
+            env,
+            2,
+            cache.this,
+            beam.make_ok(cache.env)
+          )
+        );
 
         return null;
       }

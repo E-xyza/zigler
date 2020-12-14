@@ -4,12 +4,13 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
   alias Zigler.Code
   alias Zigler.Parser.Nif
 
+  @moduletag :snapshot
+
   describe "for a basic, zero-arity function" do
     test "the shim function directly calls the target function" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_result__ = foo();
-
         return beam.make_c_long(env, __foo_result__);
       }
 
@@ -22,7 +23,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_result__ = foo();
-
         return beam.make_c_int(env, __foo_result__);
       }
 
@@ -40,7 +40,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
           catch return beam.raise_function_clause_error(env);
 
         var __foo_result__ = foo(__foo_arg0__);
-
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -55,7 +54,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_result__ = foo(env);
-
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -68,7 +66,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
         var __foo_result__ = foo(env);
-
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -112,7 +109,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
           catch return beam.raise_function_clause_error(env);
 
         foo(__foo_arg0__);
-
         return beam.make_nil(env);
       }
 
@@ -128,7 +124,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
           catch return beam.raise_function_clause_error(env);
 
         foo(__foo_arg0__);
-
         return beam.make_nil(env);
       }
 
@@ -149,7 +144,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         defer beam.allocator.free(__foo_arg0__);
 
         var __foo_result__ = foo(__foo_arg0__);
-
         return beam.make_i32_list(env, __foo_result__) catch return beam.raise_enomem(env);
       }
 
@@ -168,7 +162,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
         defer beam.allocator.free(__foo_arg0__);
 
         var __foo_result__ = foo(__foo_arg0__);
-
         return beam.make_f64_list(env, __foo_result__) catch return beam.raise_enomem(env);
       }
 
@@ -186,7 +179,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
           catch return beam.raise_function_clause_error(env);
 
         var __foo_result__ = foo(env, __foo_arg0__);
-
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -202,7 +194,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
           catch return beam.raise_function_clause_error(env);
 
         var __foo_result__ = foo(env, __foo_arg0__);
-
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -220,7 +211,6 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
           catch return beam.raise_function_clause_error(env);
 
         var __foo_result__ = foo(__foo_arg0__);
-
         return beam.make_slice(env, __foo_result__);
       }
 
