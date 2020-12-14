@@ -1232,7 +1232,7 @@ pub const resource = struct {
     if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
       return resource.ResourceError.FetchError;
     }
-
+    
     if (obj == null) { unreachable; }
 
     var val : *T = @ptrCast(*T, @alignCast(@alignOf(*T), obj));
@@ -1264,7 +1264,7 @@ pub const resource = struct {
     if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
       return resource.ResourceError.FetchError;
     }
-
+    
     if (obj == null) { unreachable; }
 
     e.enif_keep_resource(obj);
@@ -1272,8 +1272,9 @@ pub const resource = struct {
 
   pub fn release(environment: env, res_typ: resource_type, res_trm: term) void {
     var obj : ?*c_void = undefined;
-    var _rsrc = e.enif_get_resource(environment, res_trm, res_typ, &obj);
-    return e.enif_release_resource(obj);
+    if (0 != e.enif_get_resource(environment, res_trm, res_typ, &obj)) {
+      e.enif_release_resource(obj);
+    } else { unreachable; }
   }
 };
 
