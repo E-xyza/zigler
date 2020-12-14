@@ -166,7 +166,7 @@ fn raw_beam_alloc(
     \\ ptr: {}
     \\ len: {}
     \\
-    , .{@ptrCast(*c_void), len});
+    , .{@ptrCast(*c_void, ptr), len});
   return @ptrCast([*]u8, ptr)[0..len];
 }
 

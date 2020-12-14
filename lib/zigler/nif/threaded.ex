@@ -241,11 +241,8 @@ defmodule Zigler.Nif.Threaded do
 
       var env = cache.env;
 
-      // always clean up the environment.
-      defer e.enif_free_env(env);
-
       // check out the cache resource and lock its possession
-      __resource__.keep(#{cache_ptr nif.name}, cache.env, cache.this) catch {
+      __resource__.keep(#{cache_ptr nif.name}, env, cache.this) catch {
         _ = beam.send_advanced(
           null,
           cache.parent,
@@ -254,9 +251,6 @@ defmodule Zigler.Nif.Threaded do
         );
         return null;
       };
-
-      // always release the reference to the desired resource
-      defer __resource__.release(#{cache_ptr nif.name}, cache.env, cache.this);
 
     #{get_clauses}  // execute the nif function
       #{result_assign}#{nif.name}(#{Adapter.args nif});
@@ -276,6 +270,9 @@ defmodule Zigler.Nif.Threaded do
           )
         )
       );
+
+      // always release the reference to the desired resource
+      __resource__.release(#{cache_ptr nif.name}, env, cache.this);
 
       return null;
     }
