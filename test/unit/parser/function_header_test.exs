@@ -2,8 +2,8 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
   # these tests make sure that the parser can correctly identify docstrings.
   use ExUnit.Case, async: true
 
-  alias Zigler.Parser
-  alias Zigler.Parser.{Nif, Resource, ResourceCleanup}
+  alias Zig.Parser
+  alias Zig.Parser.{Nif, Resource, ResourceCleanup}
 
   @moduletag :parser
   @moduletag :function

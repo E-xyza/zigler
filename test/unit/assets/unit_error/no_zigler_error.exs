@@ -1,7 +1,7 @@
 defmodule ZiglerTest.NoZiglerError do
   use ExUnit.Case
-  import Zigler.Unit
+  import Zig.Unit
 
   zigtest FooModule
-  # ^^ this should fail since we haven't done `use Zigler`
+  # ^^ this should fail since we haven't done `use Zig`
 end

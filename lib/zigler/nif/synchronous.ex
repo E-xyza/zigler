@@ -1,11 +1,11 @@
-defmodule Zigler.Nif.Synchronous do
+defmodule Zig.Nif.Synchronous do
 
   @moduledoc """
   Adapter code for synchronous nifs
   """
 
-  alias Zigler.Nif.Adapter
-  alias Zigler.Typespec
+  alias Zig.Nif.Adapter
+  alias Zig.Typespec
 
   @behaviour Adapter
 

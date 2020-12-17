@@ -1,7 +1,7 @@
 defmodule ZiglerTest.Parser.DocsTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.Doc.Parser
+  alias Zig.Doc.Parser
 
   @moduletag :parser
 

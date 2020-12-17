@@ -1,4 +1,4 @@
-defmodule Zigler.Module do
+defmodule Zig.Module do
   @moduledoc """
   this struct represents all information a zigler module bound to a
   nif should have.  WIP.
@@ -31,8 +31,8 @@ defmodule Zigler.Module do
     otp_app:             atom,
     zig_file:            Path.t,
     libs:                [Path.t],
-    nifs:                [Zigler.Parser.Function.t],
-    resources:           [Zigler.Parser.Resource.t],
+    nifs:                [Zig.Parser.Function.t],
+    resources:           [Zig.Parser.Resource.t],
     zig_version:         Version.t,
     imports:             keyword(Path.t),
     c_includes:          keyword(Path.t | [Path.t]),

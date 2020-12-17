@@ -1,4 +1,4 @@
-defmodule Zigler.Parser.Unit do
+defmodule Zig.Parser.Unit do
   @moduledoc """
   parses zig code and converts test blocks to test functions
   """
@@ -104,10 +104,10 @@ defmodule Zigler.Parser.Unit do
     {[rewritten], context}
   end
 
-  alias Zigler.Parser.Nif
+  alias Zig.Parser.Nif
   defp new_nif(name) do
     %Nif{
-      name: String.to_atom("test_#{Zigler.Unit.name_to_hash(name)}"),
+      name: String.to_atom("test_#{Zig.Unit.name_to_hash(name)}"),
       test: String.to_atom(name),
       arity: 0,
       args: [],

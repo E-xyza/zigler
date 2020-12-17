@@ -1,6 +1,6 @@
-defmodule Zigler.Assembler do
+defmodule Zig.Assembler do
   @moduledoc """
-  Fist phase of the Zigler compilation process.
+  Fist phase of the Zig compilation process.
 
   Looks through the contents of the zig code and creates a map
   of required source code files.  Then outputs a struct containing
@@ -21,7 +21,7 @@ defmodule Zigler.Assembler do
     pub: boolean
   }
 
-  alias Zigler.Parser.Imports
+  alias Zig.Parser.Imports
 
   defp pr(file) do
     :zigler

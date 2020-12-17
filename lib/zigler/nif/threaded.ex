@@ -1,4 +1,4 @@
-defmodule Zigler.Nif.Threaded do
+defmodule Zig.Nif.Threaded do
   @moduledoc """
   Generates code for threaded nifs.
 
@@ -23,9 +23,9 @@ defmodule Zigler.Nif.Threaded do
     the parent process that it's finished.
   """
 
-  alias Zigler.Nif.Adapter
-  alias Zigler.Parser.Nif
-  alias Zigler.Typespec
+  alias Zig.Nif.Adapter
+  alias Zig.Parser.Nif
+  alias Zig.Typespec
 
   @behaviour Adapter
 

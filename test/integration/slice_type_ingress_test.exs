@@ -1,6 +1,6 @@
 defmodule ZiglerTest.Integration.SliceTypeIngressTest do
   use ExUnit.Case, async: true
-  use Zigler
+  use Zig
 
   ~Z"""
   /// nif: ingress_i32_slice/1

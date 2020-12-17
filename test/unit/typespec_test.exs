@@ -3,8 +3,8 @@ defmodule ZiglerTest.Unit.TypespecTest do
 
   @moduletag :typespec
 
-  alias Zigler.Parser.Nif
-  alias Zigler.Typespec
+  alias Zig.Parser.Nif
+  alias Zig.Typespec
 
   describe "when asking for a typespec retval" do
     test "a void function gives a sane result" do

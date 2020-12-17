@@ -1,7 +1,7 @@
-defmodule Zigler.MixProject do
+defmodule Zig.MixProject do
   use Mix.Project
 
-  # for the Zigler application, tests are divided into two groups:  Unit tests
+  # for the Zig application, tests are divided into two groups:  Unit tests
   # are all tests which don't require any sort of zig compilation and
   # integration tests are all tests which do.
   #
@@ -47,7 +47,7 @@ defmodule Zigler.MixProject do
       test_paths: test_paths(env),
       source_url: "https://github.com/ityonemo/zigler/",
       docs: [
-        main: "Zigler",
+        main: "Zig",
         extras: ["README.md", "guides/nifs.md", "guides/resources.md"],
         groups_for_extras: ["Guides": Path.wildcard("guides/*.md")],
         groups_for_modules: ["Under the hood": under_the_hood()]]
@@ -55,11 +55,11 @@ defmodule Zigler.MixProject do
   end
 
   def under_the_hood do
-    [Zigler.Assembler, Zigler.Code, Zigler.Code.LongRunning, Zigler.Compiler,
-     Zigler.Module, Zigler.Parser, Zigler.Typespec, Zigler.Zig, Zigler.Doc.Parser,
-     Zigler.Doc.Retriever, Zigler.Parser.Error, Zigler.Parser.Imports,
-     Zigler.Patches, Zigler.Parser.Unit, Zigler.Parser.Resource,
-     Zigler.Parser.ResourceCleanup, Zigler.Parser.Nif, Zigler.Parser]
+    [Zig.Assembler, Zig.Code, Zig.Code.LongRunning, Zig.Compiler,
+     Zig.Module, Zig.Parser, Zig.Typespec, Zig.Command, Zig.Doc.Parser,
+     Zig.Doc.Retriever, Zig.Parser.Error, Zig.Parser.Imports,
+     Zig.Patches, Zig.Parser.Unit, Zig.Parser.Resource,
+     Zig.Parser.ResourceCleanup, Zig.Parser.Nif, Zig.Parser]
   end
 
   def application, do: [extra_applications: [:logger]]

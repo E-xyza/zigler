@@ -1,4 +1,4 @@
-defmodule Zigler do
+defmodule Zig do
 
   @moduledoc """
 
@@ -34,7 +34,7 @@ defmodule Zigler do
   shared object/DLL callbacks.  However, Zigler will take care of all of
   this for you.
 
-  Simply `use Zigler` in your module, providing the app atom in the property
+  Simply `use Zig` in your module, providing the app atom in the property
   list.
 
   Then, use the `sigil_Z/2` macro and write zig code.  Any nifs you define
@@ -43,7 +43,7 @@ defmodule Zigler do
   #### Example
   ```
   defmodule MyModule do
-    use Zigler
+    use Zig
 
     ~Z\"""
     /// nif: my_func/1
@@ -55,12 +55,12 @@ defmodule Zigler do
   end
   ```
 
-  Zigler will *automatically* fill out the appropriate NIF C template, compile
+  Zig will *automatically* fill out the appropriate NIF C template, compile
   the shared object, and bind it into the module pre-compilation. In the case
   of the example, there will be a `MyModule.my_func/1` function call found in
   the module.
 
-  Zigler will also make sure that your statically-typed Zig data are guarded
+  Zig will also make sure that your statically-typed Zig data are guarded
   when you marshal it from the dynamically-typed BEAM world.  However, you may
   only pass in and return certain types.  As an escape hatch, you may use
   the `beam.term` type which is equivalent to the `ERLNIFTERM` type.  See
@@ -71,7 +71,7 @@ defmodule Zigler do
   Nerves is supported out of the box, and the system should cross-compile
   to arm ABI as necessary depening on what your nerves `:target` is.  You
   may also directly specify a zig target using the
-  `use Zigler, target: <target>` option.
+  `use Zig, target: <target>` option.
 
   ### Environment
 
@@ -84,7 +84,7 @@ defmodule Zigler do
 
   ```
   defmodule MyModule do
-    use Zigler
+    use Zig
 
     ~Z\"""
     /// nif: my_func_with_env/1
@@ -109,7 +109,7 @@ defmodule Zigler do
 
   ```
   defmodule Blas do
-    use Zigler,
+    use Zig,
       libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
       include: ["/usr/include/x86_64-linux-gnu"]
 
@@ -172,7 +172,7 @@ defmodule Zigler do
   front of the nif declaration, it will wind up in the correct place in your
   elixir documentation.
 
-  See `Zigler.Doc` for more information on how to document in zig and what to
+  See `Zig.Doc` for more information on how to document in zig and what to
   document.  See `Mix.Tasks.ZigDoc` for information on how to get your Elixir
   project to incorporate zig documentation.
 
@@ -184,17 +184,17 @@ defmodule Zigler do
   ```
   defmodule MyTest do
     use ExUnit.Case
-    use Zigler.Unit
+    use Zig.Unit
     zigtest ModuleWithZigCode
   end
   ```
 
-  See `Zigler.Unit` for more information.
+  See `Zig.Unit` for more information.
 
   """
 
-  alias Zigler.Compiler
-  alias Zigler.Parser
+  alias Zig.Compiler
+  alias Zig.Parser
 
   # default release modes.
   # you can override these in your `use Zigler` statement.
@@ -224,10 +224,10 @@ defmodule Zigler do
     |> Keyword.get(:include_dirs, [])
     |> Kernel.++(if has_include_dir?(__CALLER__), do: ["include"], else: [])
 
-    zigler = struct(%Zigler.Module{
+    zigler = struct(%Zig.Module{
       file:         __CALLER__.file,
       module:       __CALLER__.module,
-      imports:      Zigler.Module.imports(opts[:imports]),
+      imports:      Zig.Module.imports(opts[:imports]),
       include_dirs: include_dirs,
       version:      get_project_version(),
       otp_app:      get_app()},
@@ -237,12 +237,12 @@ defmodule Zigler do
     Module.put_attribute(__CALLER__.module, :zigler, zigler)
 
     quote do
-      import Zigler
-      require Zigler.Compiler
+      import Zig
+      require Zig.Compiler
 
       @on_load :__load_nifs__
 
-      @before_compile Zigler.Compiler
+      @before_compile Zig.Compiler
     end
   end
 

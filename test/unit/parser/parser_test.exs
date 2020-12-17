@@ -1,8 +1,8 @@
 defmodule ZiglerTest.ParserTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.Parser
-  alias Zigler.Parser.{Nif, Resource}
+  alias Zig.Parser
+  alias Zig.Parser.{Nif, Resource}
 
   @moduletag :parser
 
@@ -104,10 +104,10 @@ defmodule ZiglerTest.ParserTest do
 
   describe "the zig code parser" do
 
-    @empty_module %Zigler.Module{file: "", module: __MODULE__, otp_app: :zigler}
+    @empty_module %Zig.Module{file: "", module: __MODULE__, otp_app: :zigler}
 
     test "can correctly parse a zig block with a single nif function" do
-      assert %Zigler.Module{nifs: [nif]} = Parser.parse("""
+      assert %Zig.Module{nifs: [nif]} = Parser.parse("""
 
       /// nif: foo/0
       fn foo() i64 {
@@ -129,7 +129,7 @@ defmodule ZiglerTest.ParserTest do
 
       """, @empty_module, "foo.ex", 1)
 
-      assert %Zigler.Module{nifs: nifs} = Parser.parse("""
+      assert %Zig.Module{nifs: nifs} = Parser.parse("""
       const bar = struct {
         baz: i64,
         quux: i64
@@ -167,7 +167,7 @@ defmodule ZiglerTest.ParserTest do
       """
 
       first_parse = Parser.parse(code1, @empty_module, "foo.ex", 1)
-      assert %Zigler.Module{code: code} = Parser.parse(code2, first_parse, "foo.ex", 1)
+      assert %Zig.Module{code: code} = Parser.parse(code2, first_parse, "foo.ex", 1)
 
       code_binary = IO.iodata_to_binary(code)
 
@@ -176,7 +176,7 @@ defmodule ZiglerTest.ParserTest do
     end
 
     test "can correctly parse a zig block with a resource declaration" do
-      assert %Zigler.Module{resources: [resource]} = Parser.parse("""
+      assert %Zig.Module{resources: [resource]} = Parser.parse("""
 
       /// resource: bar definition
       const bar = i64;

@@ -1,4 +1,4 @@
-defmodule Zigler.Parser.Imports do
+defmodule Zig.Parser.Imports do
   @moduledoc """
   For parsing, looking for imports, cimports, and usingnamespace directives.
 
@@ -128,7 +128,7 @@ defmodule Zigler.Parser.Imports do
   defparsec :parse_imports, parse_imports
 
   def parse(code) do
-    {:ok, _, _, %Zigler.Parser.Imports{imports: imports}, _, _} = parse_imports(code)
+    {:ok, _, _, %Zig.Parser.Imports{imports: imports}, _, _} = parse_imports(code)
     imports
   end
 

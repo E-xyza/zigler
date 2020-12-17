@@ -1,4 +1,4 @@
-defmodule Zigler.Parser do
+defmodule Zig.Parser do
   @moduledoc """
   main parsing module:  Handles general parsing of nif, resource directives
   and code elements succeeding those.
@@ -10,7 +10,7 @@ defmodule Zigler.Parser do
 
   import NimbleParsec
 
-  alias Zigler.Parser.{Nif, Resource, ResourceCleanup}
+  alias Zig.Parser.{Nif, Resource, ResourceCleanup}
 
   @type t :: %__MODULE__{
     local: Nif.t | ResourceCleanup.t | {:doc, iodata},
@@ -430,7 +430,7 @@ defmodule Zigler.Parser do
   #############################################################################
   ## API
 
-  @spec parse(String.t, Zigler.Module.t, Path.t, non_neg_integer) :: Zigler.Module.t
+  @spec parse(String.t, Zig.Module.t, Path.t, non_neg_integer) :: Zig.Module.t
   def parse(code, old_module, file, line) do
     context = old_module
     |> Map.from_struct

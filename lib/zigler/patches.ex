@@ -1,4 +1,4 @@
-defmodule Zigler.Patches do
+defmodule Zig.Patches do
   @moduledoc """
   occasionally zig and/or the llvm bits that get
   pulled down have errors.  This module actively patches

@@ -1,4 +1,4 @@
-defmodule Zigler.Parser.Error do
+defmodule Zig.Parser.Error do
   @moduledoc """
   parses errors emitted by the zig compiler
   """

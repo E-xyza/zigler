@@ -3,7 +3,7 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
   # tests to make sure that the compiler makse the correct code.
 
-  alias Zigler.{Code, Module, Parser.Nif}
+  alias Zig.{Code, Module, Parser.Nif}
 
   @zeroarity %Nif{name: :foo, arity: 0, args: [], retval: "i64"}
 

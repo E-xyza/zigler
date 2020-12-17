@@ -1,6 +1,6 @@
 defmodule ZiglerTest.Integration.BeamTypeTest do
   use ExUnit.Case, async: true
-  use Zigler
+  use Zig
 
   ~Z"""
   /// nif: pass_beam_term/1
