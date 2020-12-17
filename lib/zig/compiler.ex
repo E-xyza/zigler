@@ -41,7 +41,7 @@ defmodule Zig.Compiler do
 
     # check to see if the zig version has been downloaded.  If not,
     # go ahead and download it.
-    unless File.dir?(zig_tree) do
+    unless module.local_zig or File.dir?(zig_tree) do
       Command.fetch("#{module.zig_version}")
     end
 
@@ -54,11 +54,7 @@ defmodule Zig.Compiler do
     ###########################################################################
     # COMPILATION STEPS
 
-    compiler = precompile(module)
-    unless module.dry_run do
-      Command.compile(compiler, zig_tree)
-    end
-    cleanup(compiler)
+    compiler = compilation(module, zig_tree)
 
     ###########################################################################
     # MACRO STEPS
@@ -97,6 +93,15 @@ defmodule Zig.Compiler do
         end
       end
     end
+  end
+
+  defp compilation(module, zig_tree) do
+    compiler = precompile(module)
+    unless module.dry_run do
+      Command.compile(compiler, zig_tree)
+    end
+    cleanup(compiler)
+    compiler
   end
 
   defp dependencies_for(assemblies) do
