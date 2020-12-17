@@ -1,6 +1,6 @@
 defmodule ZiglerTest.Integration.VoidReturnTest do
   use ExUnit.Case, async: true
-  use Zigler
+  use Zig
 
   ~Z"""
   /// nif: void_return/1

@@ -3,7 +3,7 @@ defmodule ZigTest.Assembler.ParseTest do
 
   @moduletag :assembler
 
-  alias Zigler.Assembler
+  alias Zig.Assembler
 
   assets_dir = __ENV__.file
   |> Path.dirname

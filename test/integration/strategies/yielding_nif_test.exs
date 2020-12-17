@@ -4,7 +4,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   # segfault.
 
   use ExUnit.Case, async: true
-  use Zigler
+  use Zig
 
   @moduletag :yielding
 

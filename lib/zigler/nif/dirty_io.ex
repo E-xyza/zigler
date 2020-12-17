@@ -1,8 +1,8 @@
-defmodule Zigler.Nif.DirtyIO do
+defmodule Zig.Nif.DirtyIO do
 
   @moduledoc false
 
-  alias Zigler.Nif.{Adapter, Synchronous}
+  alias Zig.Nif.{Adapter, Synchronous}
 
   @behaviour Adapter
 

@@ -1,4 +1,4 @@
-defmodule Zigler.Doc.Parser do
+defmodule Zig.Doc.Parser do
   @moduledoc """
   handles parsing zig code for the purposes of documentation
   """

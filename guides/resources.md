@@ -46,7 +46,7 @@ references have been to the term have been lost (more on that in
 [cleanup](#basics-cleanup)).
 
 Note that you will only have access to the `__resource__` struct in the context
-of code associated with your module in `Zigler.sigil_Z/2` segments.  Also note
+of code associated with your module in `Zig.sigil_Z/2` segments.  Also note
 that resource references must remain local, the content cannot be automatically
 serialized and deserialized and transferred to another node.
 

@@ -1,4 +1,4 @@
-defmodule Zigler.Nif.Yielding do
+defmodule Zig.Nif.Yielding do
   @moduledoc """
   Generates code for yielding nifs.
 
@@ -19,9 +19,9 @@ defmodule Zigler.Nif.Yielding do
   target function has been completed.
   """
 
-  alias Zigler.Nif.Adapter
-  alias Zigler.Parser.Nif
-  alias Zigler.Typespec
+  alias Zig.Nif.Adapter
+  alias Zig.Parser.Nif
+  alias Zig.Typespec
 
   @behaviour Adapter
 

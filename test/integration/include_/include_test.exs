@@ -1,6 +1,6 @@
 defmodule ZiglerTest.Include.IncludeTest do
   use ExUnit.Case, async: true
-  use Zigler
+  use Zig
 
   ~Z"""
   const c = @cImport({

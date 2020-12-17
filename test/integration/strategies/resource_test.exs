@@ -3,7 +3,7 @@ defmodule ZiglerTest.Integration.Strategies.ResourceTest do
   # tests to make sure that the basics of a resource lifecycle works.
 
   use ExUnit.Case, async: true
-  use Zigler
+  use Zig
 
   @moduletag :resources
 

@@ -1,6 +1,6 @@
 defmodule ZiglerTest.Integration.StringTest do
   use ExUnit.Case, async: true
-  use Zigler
+  use Zig
 
   ~Z"""
   /// nif: ingress_string/1

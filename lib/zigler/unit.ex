@@ -1,4 +1,4 @@
-defmodule Zigler.Unit do
+defmodule Zig.Unit do
 
   @moduledoc """
   Hooks your zig code into ExUnit, by converting zig tests into ExUnit tests.
@@ -25,7 +25,7 @@ defmodule Zigler.Unit do
 
   ```
   defmodule MyZigModule do
-    use Zigler
+    use Zig
 
     ~Z\"""
     const dependent = @import("dependent.zig");
@@ -41,7 +41,7 @@ defmodule Zigler.Unit do
   ```
   defmodule MyZigTest do
     use ExUnit.Case, async: true
-    use Zigler.Unit
+    use Zig.Unit
 
     zigtest MyZigModule
   end
@@ -67,14 +67,14 @@ defmodule Zigler.Unit do
   # an "assert" assignment that substitutes beam assert for std assert
   @assert_assign "const assert = beam.assert;\n"
 
-  alias Zigler.Assembler
-  alias Zigler.Parser.Unit
+  alias Zig.Assembler
+  alias Zig.Parser.Unit
 
   @doc """
   loads a module that wraps a zigler NIF, consults the corresponding zig code,
   generating the corresponding zig tests.
 
-  Must be called from within a module that has `use ExUnit.Case` and `use Zigler`
+  Must be called from within a module that has `use ExUnit.Case` and `use Zig`
   """
   defmacro zigtest(mod, options \\ []) do
     module = Macro.expand(mod, __CALLER__)
@@ -126,7 +126,7 @@ defmodule Zigler.Unit do
       _ -> []
     end)
 
-    zigler = struct(Zigler.Module, ref_zigler
+    zigler = struct(Zig.Module, ref_zigler
     |> Map.take(@transfer_params)
     |> Map.merge(%{
       code: [@assert_assign, code],
@@ -158,7 +158,7 @@ defmodule Zigler.Unit do
     quote bind_quoted: [module: module, file: file, nifs: Macro.escape(nifs)] do
       # register our tests.
       env = __ENV__
-      for {name, test} <- Zigler.Unit.__zigtests__(module, nifs) do
+      for {name, test} <- Zig.Unit.__zigtests__(module, nifs) do
         @file file
         test_name = ExUnit.Case.register_test(env, :zigtest, name, [])
         def unquote(test_name)(_), do: unquote(test)
@@ -169,8 +169,8 @@ defmodule Zigler.Unit do
   defp make_code(module, _, nifs, false) do
     quote bind_quoted: [module: module, nifs: Macro.escape(nifs)] do
       # register our tests.
-      for {name, test} <- Zigler.Unit.__zigtests__(module, nifs) do
-        test_name = name |> Zigler.Unit.name_to_hash |> String.to_atom
+      for {name, test} <- Zig.Unit.__zigtests__(module, nifs) do
+        test_name = name |> Zig.Unit.name_to_hash |> String.to_atom
         def unquote(test_name)(_), do: unquote(test)
       end
     end

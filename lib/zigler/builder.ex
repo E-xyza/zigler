@@ -1,4 +1,4 @@
-defmodule Zigler.Builder do
+defmodule Zig.Builder do
 
   @moduledoc """
   Code for interfacing with `std.build.Builder`, the interface for programattically invoking

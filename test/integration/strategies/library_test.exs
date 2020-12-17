@@ -10,7 +10,7 @@ defmodule ZiglerTest.LibraryTest do
 
   defmodule BlasDynamic do
 
-    use Zigler,
+    use Zig,
       libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
       system_include_dirs: ["/usr/include/x86_64-linux-gnu"]
 
@@ -40,7 +40,7 @@ defmodule ZiglerTest.LibraryTest do
   if File.exists?("/usr/lib/x86_64-linux-gnu/blas/libblas.a") do
 
     defmodule BlasStatic do
-      use Zigler,
+      use Zig,
         libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.a"],
         system_include_dirs: ["/usr/include/x86_64-linux-gnu"]
 

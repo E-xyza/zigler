@@ -1,7 +1,7 @@
 defmodule ZiglerTest.Snapshot.FooterTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.{Code, Module, Parser.Nif, Parser.Resource}
+  alias Zig.{Code, Module, Parser.Nif, Parser.Resource}
 
   @moduletag :snapshot
 

@@ -4,7 +4,7 @@ if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") do
 defmodule ZiglerTest.ZigTest.Blas do
   @moduledoc false
 
-  use Zigler,
+  use Zig,
   libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
   system_include_dirs: ["/usr/include/x86_64-linux-gnu"]
 

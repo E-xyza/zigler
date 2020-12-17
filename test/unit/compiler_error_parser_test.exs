@@ -1,7 +1,7 @@
 defmodule ZiglerTest.CompilerErrorParserTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.Parser.Error
+  alias Zig.Parser.Error
 
   @moduletag :parser
 

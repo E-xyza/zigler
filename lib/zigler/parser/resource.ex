@@ -1,4 +1,4 @@
-defmodule Zigler.Parser.Resource do
+defmodule Zig.Parser.Resource do
 
   @moduledoc """
   resource parser object
@@ -7,7 +7,7 @@ defmodule Zigler.Parser.Resource do
   @enforce_keys [:name]
   defstruct @enforce_keys ++ [:doc, :cleanup]
 
-  alias Zigler.Parser.ResourceCleanup
+  alias Zig.Parser.ResourceCleanup
 
   def register_resource_definition(context = %{local: %{name: res}}) do
     # search through global for a resource_cleanup that matches our name argument.

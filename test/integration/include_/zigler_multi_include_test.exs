@@ -5,7 +5,7 @@ defmodule ZiglerTest.Include.ZiglerMultiIncludeTest do
   #
 
   use ExUnit.Case, async: true
-  use Zigler, c_includes: [c: ["fortyseven.h", "five.h"]]
+  use Zig, c_includes: [c: ["fortyseven.h", "five.h"]]
 
   ~Z"""
   /// nif: fortytwo/0

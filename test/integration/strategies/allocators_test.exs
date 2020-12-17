@@ -1,7 +1,7 @@
 defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
   use ExUnit.Case, async: true
 
-  use Zigler
+  use Zig
 
   ~Z"""
   const testing = std.testing;
