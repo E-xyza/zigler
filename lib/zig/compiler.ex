@@ -41,15 +41,11 @@ defmodule Zig.Compiler do
 
     # check to see if the zig version has been downloaded.  If not,
     # go ahead and download it.
-    unless module.local_zig || File.dir?(zig_tree) do
-      Command.fetch("#{module.zig_version}")
-    end
+     module.local_zig or File.dir?(zig_tree) or Command.fetch("#{module.zig_version}")
 
-    if module.nifs == [] do
-      raise CompileError,
-        file: context.file,
-        description: "no nifs found in the module #{context.module}"
-    end
+    (module.nifs == []) and raise CompileError,
+      file: context.file,
+      description: "no nifs found in the module #{context.module}"
 
     ###########################################################################
     # COMPILATION STEPS
