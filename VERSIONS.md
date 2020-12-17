@@ -68,3 +68,4 @@ Thanks to Dave Cottlehuber @dch for testing.
 - completed implementation of `threaded` nifs.
 - makes the interface to `beam.send` simpler and less confusing.
 - adds extra atom/tuple directives
+- **important:** changes the base module namespace from `Zigler` to `Zig`
