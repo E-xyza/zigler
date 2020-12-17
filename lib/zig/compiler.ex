@@ -54,7 +54,7 @@ defmodule Zig.Compiler do
     ###########################################################################
     # COMPILATION STEPS
 
-    compilation(compiler, module, zig_tree)
+    compilation(module, zig_tree)
 
     ###########################################################################
     # MACRO STEPS
@@ -95,7 +95,7 @@ defmodule Zig.Compiler do
     end
   end
 
-  defp compilation(compiler, module, zig_tree) do
+  defp compilation(module, zig_tree) do
     compiler = precompile(module)
     unless module.dry_run do
       Command.compile(compiler, zig_tree)
