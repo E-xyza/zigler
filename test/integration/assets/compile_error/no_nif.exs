@@ -1,3 +1,3 @@
 defmodule ZiglerTest.CompileError.NoNif do
-  use Zigler
+  use Zig
 end

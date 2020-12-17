@@ -4,7 +4,7 @@ defmodule ZiglerTest.Integration.EnvTest do
   # definition and have them compile correctly.
 
   use ExUnit.Case, async: true
-  use Zigler
+  use Zig
 
   ~Z"""
   /// nif: zeroarity_with_env/0

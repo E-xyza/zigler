@@ -1,8 +1,8 @@
 defmodule ZiglerTest.Snapshot.AdapterTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.Code
-  alias Zigler.Parser.Nif
+  alias Zig.Code
+  alias Zig.Parser.Nif
 
   @moduletag :snapshot
 

@@ -1,9 +1,9 @@
-defmodule Zigler.Typespec do
+defmodule Zig.Typespec do
   @moduledoc """
   handles creating typespecs for zig Nif functions
   """
 
-  alias Zigler.Parser.Nif
+  alias Zig.Parser.Nif
 
   @type_for %{
     "void"         => nil,

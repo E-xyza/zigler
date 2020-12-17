@@ -1,8 +1,8 @@
-defmodule Zigler.Parser.Nif do
+defmodule Zig.Parser.Nif do
 
   @moduledoc """
   This datastructure represents structured information about a single nif
-  inside of a `Zigler.sigil_Z/2` block.  This is used to generate the
+  inside of a `Zig.sigil_Z/2` block.  This is used to generate the
   `exported_nifs` variable which is an array of `ErlNifFunc` structs.  The
   following keys are implemented:
 
@@ -23,7 +23,7 @@ defmodule Zigler.Parser.Nif do
       - :dirty_io  -- if the nif should run in a dirty io scheduler.
   """
 
-  alias Zigler.Parser.Resource
+  alias Zig.Parser.Resource
 
   @float_types  ~w(f16 f32 f64)
   @int_types    ~w(u16 i32 u32 i64 u64 c_int c_uint c_long c_ulong isize usize)
@@ -106,7 +106,7 @@ defmodule Zigler.Parser.Nif do
   end
 
   def register_function_header([retval | args], context) do
-    alias Zigler.Nif.{Threaded, Yielding}
+    alias Zig.Nif.{Threaded, Yielding}
 
     final_nif = %{context.local | retval: retval, args: Enum.reverse(args)}
 

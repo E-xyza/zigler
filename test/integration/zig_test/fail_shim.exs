@@ -1,7 +1,7 @@
 defmodule ZiglerTest.Integration.ZigTest.FailShim do
   use ExUnit.Case
-  use Zigler
-  import Zigler.Unit
+  use Zig
+  import Zig.Unit
 
   # imports the failing test codes into our system.
   # this can be found in test/support

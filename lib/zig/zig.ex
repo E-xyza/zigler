@@ -1,13 +1,13 @@
-defmodule Zigler.Zig do
+defmodule Zig.Command do
 
   @moduledoc """
-  contains all parts of the Zigler library involved in calling the
+  contains all parts of the Zig library involved in calling the
   zig compiler toolchain, especially with regards to the `zig` command, except
   for assembling the build.zig file, which is performed by the
-  `Zigler.Builder` module.
+  `Zig.Builder` module.
   """
 
-  alias Zigler.{Builder, Patches}
+  alias Zig.{Builder, Patches}
 
   require Logger
 
@@ -29,7 +29,7 @@ defmodule Zigler.Zig do
     case System.cmd(zig_executable, ["build"], opts) do
       {_, 0} -> :ok
       {err, _} ->
-        alias Zigler.Parser.Error
+        alias Zig.Parser.Error
         Error.parse(err, compiler)
     end
 
@@ -37,7 +37,7 @@ defmodule Zigler.Zig do
     |> :code.lib_dir()
     |> Path.join("ebin")
 
-    library_filename = Zigler.nif_name(compiler.module_spec)
+    library_filename = Zig.nif_name(compiler.module_spec)
 
     # copy the compiled library over to the lib/nif directory.
     File.mkdir_p!(lib_dir)
@@ -62,7 +62,7 @@ defmodule Zigler.Zig do
   ##
   ## this section primarily exists to support Nerves deployments, though
   ## it is possible to set an arbitrary cross-compilation target using a
-  ## setting in your `use Zigler` directive.  This selects the architecture
+  ## setting in your `use Zig` directive.  This selects the architecture
   ## by checking your "CC" environment variable, which is in turn set by
   ## Nerves, then adjusts gcc's machine type to a string which allows zig to
   ## select the appropriate cross-compilation settings and libc.

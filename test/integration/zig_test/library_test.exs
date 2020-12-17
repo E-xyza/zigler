@@ -3,9 +3,9 @@ if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") do
 
 defmodule ZiglerTest.Integration.ZigTest.LibraryTest do
   use ExUnit.Case
-  use Zigler
+  use Zig
 
-  import Zigler.Unit
+  import Zig.Unit
 
   @moduletag :zigtest
 

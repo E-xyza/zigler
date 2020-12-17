@@ -1,4 +1,4 @@
-defmodule Zigler.Compiler do
+defmodule Zig.Compiler do
   @moduledoc """
   handles instrumenting elixir code with hooks for zig NIFs.
   """
@@ -8,18 +8,18 @@ defmodule Zigler.Compiler do
   # contains critical information for the compilation.
   defstruct @enforce_keys ++ [test_dirs: []]
 
-  alias Zigler.Assembler
+  alias Zig.Assembler
 
   @type t :: %__MODULE__{
     assembly_dir: Path.t,
     assembly:     [Assembler.t],
     code_file:    Path.t,
-    module_spec:  Zigler.Module.t
+    module_spec:  Zig.Module.t
   }
 
   require Logger
 
-  alias Zigler.Zig
+  alias Zig.Command
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
 
@@ -37,12 +37,12 @@ defmodule Zigler.Compiler do
 
     module = Module.get_attribute(context.module, :zigler)
 
-    zig_tree = Path.join(@zig_dir_path, Zig.version_name(module.zig_version))
+    zig_tree = Path.join(@zig_dir_path, Command.version_name(module.zig_version))
 
     # check to see if the zig version has been downloaded.  If not,
     # go ahead and download it.
     unless File.dir?(zig_tree) do
-      Zig.fetch("#{module.zig_version}")
+      Command.fetch("#{module.zig_version}")
     end
 
     if module.nifs == [] do
@@ -56,7 +56,7 @@ defmodule Zigler.Compiler do
 
     compiler = precompile(module)
     unless module.dry_run do
-      Zig.compile(compiler, zig_tree)
+      Command.compile(compiler, zig_tree)
     end
     cleanup(compiler)
 
@@ -65,7 +65,7 @@ defmodule Zigler.Compiler do
 
     dependencies = dependencies_for(compiler.assembly)
     nif_functions = Enum.map(module.nifs, &function_skeleton/1)
-    nif_name = Zigler.nif_name(module, false)
+    nif_name = Zig.nif_name(module, false)
 
     if module.dry_run do
       quote do
@@ -110,8 +110,8 @@ defmodule Zigler.Compiler do
   #############################################################################
   ## FUNCTION SKELETONS
 
-  alias Zigler.Nif.{DirtyCpu, DirtyIO, Synchronous, Test, Threaded, Yielding}
-  alias Zigler.Parser.Nif
+  alias Zig.Nif.{DirtyCpu, DirtyIO, Synchronous, Test, Threaded, Yielding}
+  alias Zig.Parser.Nif
 
   def function_skeleton(nif = %Nif{doc: doc}) when not is_nil(doc) do
     quote do
@@ -144,7 +144,7 @@ defmodule Zigler.Compiler do
     Path.join(System.tmp_dir!(), ".zigler_compiler/#{env}/#{module}")
   end
 
-  @spec precompile(Zigler.Module.t) :: t | no_return
+  @spec precompile(Zig.Module.t) :: t | no_return
   def precompile(module) do
     # build the staging directory.
     assembly_dir = assembly_dir(Mix.env, module.module)
@@ -152,7 +152,7 @@ defmodule Zigler.Compiler do
 
     # create the main code file
     code_file = Path.join(assembly_dir, "#{module.module}.zig")
-    code_content = Zigler.Code.generate_main(%{module | zig_file: code_file})
+    code_content = Zig.Code.generate_main(%{module | zig_file: code_file})
 
     # define the code file and build it.
     File.write!(code_file, code_content)

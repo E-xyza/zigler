@@ -1,10 +1,10 @@
-defmodule Zigler.Nif.Adapter do
+defmodule Zig.Nif.Adapter do
   @moduledoc false
 
   # helper functions for Zigler code adapters as well as a behaviour api describing
   # how they work.
 
-  alias Zigler.Parser.Nif
+  alias Zig.Parser.Nif
 
   @doc "converts a Nif struct into zig code that wraps the function call"
   @callback zig_adapter(Nif.t) :: iodata

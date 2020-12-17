@@ -1,4 +1,4 @@
-defmodule Zigler.Doc.Retriever do
+defmodule Zig.Doc.Retriever do
 
   @moduledoc """
   decides what features should be documented on `zig doc`.
@@ -8,7 +8,7 @@ defmodule Zigler.Doc.Retriever do
 
   require ExDoc.FunctionNode
 
-  alias Zigler.Doc.Parser
+  alias Zig.Doc.Parser
 
   @odd_modules [:elixir_bootstrap]
 

@@ -1,4 +1,4 @@
-defmodule Zigler.Parser.ResourceCleanup do
+defmodule Zig.Parser.ResourceCleanup do
 
   @moduledoc """
   resource cleanup struct
@@ -9,7 +9,7 @@ defmodule Zigler.Parser.ResourceCleanup do
 
   @beam_envs ["beam.env", "?*e.ErlNifEnv"]
 
-  alias Zigler.Parser.Resource
+  alias Zig.Parser.Resource
 
   # validate_arity/3: checks to make sure the arity of resource cleanup declaration matches the function
   @spec validate_arity([String.t], Parser.t, non_neg_integer)

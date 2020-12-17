@@ -2,7 +2,7 @@ defmodule ZiglerTest.Integration.Strategies.DirtyNifTest do
 
   use ExUnit.Case, async: true
 
-  use Zigler
+  use Zig
 
   ~Z"""
   /// nif: dirty_cpu_forty_seven/0 dirty_cpu

@@ -1,12 +1,12 @@
-defmodule Zigler.Code do
+defmodule Zig.Code do
   @moduledoc """
   all code responsible for generating zig code lives in this module.
   """
 
-  alias Zigler.Module
-  alias Zigler.Nif.{DirtyCpu, DirtyIO, Synchronous, Test, Threaded, Yielding}
-  alias Zigler.Nif.{Synchronous, Test, Threaded, Yielding}
-  alias Zigler.Parser.{Nif, Resource}
+  alias Zig.Module
+  alias Zig.Nif.{DirtyCpu, DirtyIO, Synchronous, Test, Threaded, Yielding}
+  alias Zig.Nif.{Synchronous, Test, Threaded, Yielding}
+  alias Zig.Parser.{Nif, Resource}
 
   def generate_main(module = %Module{}) do
     body = case module.c_includes do
@@ -84,7 +84,7 @@ defmodule Zigler.Code do
   #############################################################################
   ## FUNCTION ADAPTER
 
-  def adapter(nif = %Zigler.Parser.Nif{opts: opts, test: nil}) do
+  def adapter(nif = %Zig.Parser.Nif{opts: opts, test: nil}) do
     case opts[:concurrency] do
       :threaded ->
         Threaded.zig_adapter(nif)

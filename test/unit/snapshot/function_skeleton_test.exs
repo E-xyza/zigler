@@ -1,7 +1,7 @@
 defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.Parser.Nif
+  alias Zig.Parser.Nif
 
   @moduletag :snapshot
 
@@ -14,7 +14,7 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
       end
     end
 
-    assert Zigler.Compiler.function_skeleton(%Nif{name: :foo, arity: 0}) == result
+    assert Zig.Compiler.function_skeleton(%Nif{name: :foo, arity: 0}) == result
   end
 
   test "an arity one function is produced correctly" do
@@ -26,7 +26,7 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
       end
     end
 
-    assert Zigler.Compiler.function_skeleton(%Nif{name: :foo, arity: 1}) == result
+    assert Zig.Compiler.function_skeleton(%Nif{name: :foo, arity: 1}) == result
   end
 
   test "a zero-arity threaded function is produced correctly" do
@@ -67,7 +67,7 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
       end
     end
 
-    assert Zigler.Compiler.function_skeleton(
+    assert Zig.Compiler.function_skeleton(
       %Nif{name: :foo, arity: 0, opts: [concurrency: :threaded]}) == result
   end
 
@@ -109,7 +109,7 @@ defmodule ZiglerTest.Snapshot.FunctionSkeletonTest do
       end
     end
 
-    assert Zigler.Compiler.function_skeleton(
+    assert Zig.Compiler.function_skeleton(
       %Nif{name: :foo, arity: 1, opts: [concurrency: :threaded], args: ["i64"]}) == result
   end
 end

@@ -2,7 +2,7 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
 
   use ExUnit.Case, async: true
 
-  alias Zigler.Nif.Threaded
+  alias Zig.Nif.Threaded
 
   @moduletag :snapshot
 

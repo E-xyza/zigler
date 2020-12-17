@@ -1,10 +1,10 @@
-defmodule Zigler.Nif.Test do
+defmodule Zig.Nif.Test do
 
   @moduledoc """
   Adapter code for test nifs.
   """
 
-  alias Zigler.Nif.Adapter
+  alias Zig.Nif.Adapter
 
   @behaviour Adapter
 
