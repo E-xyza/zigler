@@ -97,6 +97,19 @@ defmodule Zig do
   end
   ```
 
+  ### Bring your own version of Zig
+
+  If you would like to use your system's local `zig` command, set the
+  `local_zig` option in your `use Zig` statement.
+
+  ```
+  defmodule UsesLocalZig do
+    use Zig, local_zig: true
+
+    ~Z\"""
+    ...
+  ```
+
   ### External Libraries
 
   If you need to bind static (`*.a`) or dynamic (`*.so`) libraries into your
@@ -166,6 +179,10 @@ defmodule Zig do
   \"""
   ```
 
+  If the c header defines `extern` functions, it's your responsibility to make
+  sure those externed functions are available by compiling other c files or
+  using a shared library.
+
   ### Documentation
 
   Use the builtin zig `///` docstring to write your documentation.  If it's in
@@ -218,7 +235,7 @@ defmodule Zig do
     |> File.rm_rf!
 
     user_opts = Keyword.take(opts, ~w(libs resources dry_run c_includes
-    system_include_dirs)a)
+    system_include_dirs local)a)
 
     include_dirs = opts
     |> Keyword.get(:include_dirs, [])

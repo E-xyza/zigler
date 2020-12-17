@@ -22,7 +22,8 @@ defmodule Zig.Module do
     code:                [],
     version:             Version.parse!("0.0.0"),
     test_dirs:           nil,
-    target:              nil
+    target:              nil,
+    local_zig:           false
   ]
 
   @type t :: %__MODULE__{
@@ -42,7 +43,8 @@ defmodule Zig.Module do
     code:                iodata,
     version:             Version.t,
     test_dirs:           nil | [Path.t],
-    target:              String.t
+    target:              String.t,
+    local_zig:           boolean
   }
 
   # takes the zigler imports option and turns it into the imports keyword

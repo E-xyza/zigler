@@ -15,10 +15,13 @@ defmodule Zig.Command do
   ## API
 
   def compile(compiler, zig_tree) do
-    # apply patches, if applicable
-    Patches.sync(zig_tree)
-
-    zig_executable = Path.join(zig_tree, "zig")
+    zig_executable = if compiler.module_spec.local_zig do
+      System.find_executable("zig")
+    else
+      # apply patches, if applicable
+      Patches.sync(zig_tree)
+      Path.join(zig_tree, "zig")
+    end
 
     opts = [cd: compiler.assembly_dir, stderr_to_stdout: true]
 

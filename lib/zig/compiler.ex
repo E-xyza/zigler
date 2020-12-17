@@ -41,7 +41,7 @@ defmodule Zig.Compiler do
 
     # check to see if the zig version has been downloaded.  If not,
     # go ahead and download it.
-    unless File.dir?(zig_tree) do
+    unless module.local_zig || File.dir?(zig_tree) do
       Command.fetch("#{module.zig_version}")
     end
 
