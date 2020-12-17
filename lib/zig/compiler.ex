@@ -54,7 +54,7 @@ defmodule Zig.Compiler do
     ###########################################################################
     # COMPILATION STEPS
 
-    compilation(module, zig_tree)
+    compiler = compilation(module, zig_tree)
 
     ###########################################################################
     # MACRO STEPS
@@ -101,6 +101,7 @@ defmodule Zig.Compiler do
       Command.compile(compiler, zig_tree)
     end
     cleanup(compiler)
+    compiler
   end
 
   defp dependencies_for(assemblies) do
