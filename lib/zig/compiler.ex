@@ -41,20 +41,20 @@ defmodule Zig.Compiler do
 
     # check to see if the zig version has been downloaded.  If not,
     # go ahead and download it.
-     module.local_zig or File.dir?(zig_tree) or Command.fetch("#{module.zig_version}")
+    unless module.local_zig or File.dir?(zig_tree) do
+      Command.fetch("#{module.zig_version}")
+    end
 
-    (module.nifs == []) and raise CompileError,
-      file: context.file,
-      description: "no nifs found in the module #{context.module}"
+    if module.nifs == [] do
+      raise CompileError,
+        file: context.file,
+        description: "no nifs found in the module #{context.module}"
+    end
 
     ###########################################################################
     # COMPILATION STEPS
 
-    compiler = precompile(module)
-    unless module.dry_run do
-      Command.compile(compiler, zig_tree)
-    end
-    cleanup(compiler)
+    compilation(compiler, module, zig_tree)
 
     ###########################################################################
     # MACRO STEPS
@@ -93,6 +93,14 @@ defmodule Zig.Compiler do
         end
       end
     end
+  end
+
+  defp compilation(compiler, module, zig_tree) do
+    compiler = precompile(module)
+    unless module.dry_run do
+      Command.compile(compiler, zig_tree)
+    end
+    cleanup(compiler)
   end
 
   defp dependencies_for(assemblies) do
