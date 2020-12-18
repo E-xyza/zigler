@@ -118,7 +118,7 @@ defmodule Zig.Command do
       {:unix, :darwin} ->
         Logger.warn("macos support is experimental")
         "macos"
-      {:win32, _} ->
+      {_, :nt} ->
         windows_warn()
         "windows"
     end
@@ -132,7 +132,9 @@ defmodule Zig.Command do
     "armv6" => "armv6kz",
     "armv7" => "armv7a",
     "aarch64" => "aarch64",
-    "amd64" => "x86_64"
+    "amd64" => "x86_64",
+    "win32" => "i386",
+    "win64" => "x86_64"
   }
 
   # note this is the architecture of the machine where compilation is
@@ -173,7 +175,7 @@ defmodule Zig.Command do
       File.mkdir_p!(@zig_dir_path)
 
       # make sure that we're in the correct operating system.
-      extension = if match?({:win32, _}, :os.type()) do
+      extension = if match?({_, :nt}, :os.type()) do
         ".zip"
       else
         ".tar.xz"
@@ -186,7 +188,7 @@ defmodule Zig.Command do
 
       zig_download_path = Path.join(@zig_dir_path, archive)
 
-      Logger.info("downloading zig version #{version} and caching in #{@zig_dir_path}.")
+      Logger.info("downloading zig version #{version} (#{archive}) and caching in #{@zig_dir_path}.")
       download_location = "https://ziglang.org/download/#{version}/#{archive}"
       download_zig_archive(zig_download_path, download_location)
 
@@ -199,7 +201,7 @@ defmodule Zig.Command do
   def download_zig_archive(zig_download_path, download_location) do
     Application.ensure_all_started(:ssl)
 
-    case Mojito.get(download_location, [], pool: false, timeout: 100_000) do
+    case Mojito.get(download_location, [], pool: false, timeout: 600_000) do
       {:ok, download = %{status_code: 200}} ->
         File.write!(zig_download_path, download.body)
       _ -> raise "failed to download the appropriate zig archive."
@@ -207,11 +209,6 @@ defmodule Zig.Command do
   end
 
   def unarchive_zig(archive) do
-    case Path.extname(archive) do
-      ".zip" ->
-        System.cmd("unzip", [archive], cd: @zig_dir_path)
-      ".xz" ->
-        System.cmd("tar", ["xvf", archive], cd: @zig_dir_path)
-     end
+    System.cmd("tar", ["xvf", archive], cd: @zig_dir_path)
   end
 end
