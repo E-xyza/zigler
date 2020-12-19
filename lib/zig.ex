@@ -224,11 +224,6 @@ defmodule Zig do
   defmacro __using__(opts) do
     #mode = opts[:release_mode] || @default_release_mode
 
-    # make sure that we're in the correct operating system.
-    if match?({:win32, _}, :os.type()) do
-      raise "non-unix systems not currently supported."
-    end
-
     # clear out the assembly directory
     Mix.env
     |> Compiler.assembly_dir(__CALLER__.module)

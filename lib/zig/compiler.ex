@@ -146,7 +146,9 @@ defmodule Zig.Compiler do
   ## STEPS
 
   def assembly_dir(env, module) do
-    Path.join(System.tmp_dir!(), ".zigler_compiler/#{env}/#{module}")
+    System.tmp_dir()
+    |> String.replace("\\", "/")
+    |> Path.join(".zigler_compiler/#{env}/#{module}")
   end
 
   @spec precompile(Zig.Module.t) :: t | no_return
