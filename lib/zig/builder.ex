@@ -43,13 +43,13 @@ defmodule Zig.Builder do
       <%= for lib <- @module_spec.libs do %>
       <%= cond do %>
         <% String.ends_with?(lib, ".so") -> %>
-      lib.linkSystemLibrary("<%= lib %>");
+      lib.linkSystemLibrary("<%= Path.basename(lib) %>");
         <% String.ends_with?(lib, ".dll") -> %>
-      lib.linkSystemLibrary("<%= lib %>");
+      lib.linkSystemLibrary("<%= Path.basename(lib) %>");
         <% String.ends_with?(lib, ".dylib") -> %>
-      lib.linkSystemLibrary("<%= lib %>");
+      lib.linkSystemLibrary("<%= Path.basename(lib) %>");
         <% String.ends_with?(lib, ".a") -> %>
-      lib.addObjectFile("<%= lib %>");
+      lib.addObjectFile("<%= Path.basename(lib) %>");
         <% true -> %>
           <% raise "invalid library file" %>
       <% end %>
@@ -58,6 +58,8 @@ defmodule Zig.Builder do
       // strip_symbols option?
       lib.strip = <%= Mix.env() == :prod %>;
 
+      // future feature
+      //
       // c files
       // for (cfiles) |c_file| {
       //     lib.addCSourceFile(c_file, &cflags);

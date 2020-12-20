@@ -171,6 +171,11 @@ defmodule Zig.Compiler do
       target_dir: assembly_dir,
       pub: true,
       context: [])
+      ++ Enum.map(module.libs,
+        &%Assembler{
+          type: :library,
+          source: &1,
+          target: Path.basename(&1)})
 
     Assembler.assemble_kernel!(assembly_dir)
     Assembler.assemble_assets!(assembly, assembly_dir)
