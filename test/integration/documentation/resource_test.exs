@@ -6,16 +6,16 @@ defmodule ZiglerTest.Integration.Documentation.ResourceTest do
 
   use Zig
 
-  @readme_path Parser.resource("guides/resources.md")
-  @external_resource @readme_path
-  @readme Parser.code_blocks("guides/resources.md")
-
+  resource_path = Parser.resource("guides/resources.md")
+  resource = Parser.code_blocks(resource_path)
   env = __ENV__
+
   Enum.each(
-    @readme,
+    resource,
     &Code.eval_string(
       elem(&1, 0),
       [],
-      %{env | file: @readme_path, line: elem(&1, 1)}))
+      %{env | file: resource_path, line: elem(&1, 1)}))
 
+  @external_resource resource_path
 end

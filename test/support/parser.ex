@@ -20,7 +20,6 @@ defmodule ZiglerTest.Support.Parser do
 
   def code_blocks(file_path) do
     file_path
-    |> resource
     |> File.read!
     |> String.split("\n")
     |> Enum.with_index(1)

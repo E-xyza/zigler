@@ -169,7 +169,7 @@ end
 
 ## Zigler Principles
 
-1. Make doing the right thing easy.
+1. Make being a good citizen of the BEAM easy.
 2. Use magic, but sparingly, only to prevent errors.
 3. Let the user see behind the curtain.
 4. Let the user opt out of magic.
