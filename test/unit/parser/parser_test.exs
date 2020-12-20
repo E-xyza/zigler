@@ -100,6 +100,16 @@ defmodule ZiglerTest.ParserTest do
       assert Enum.any?(global, &match?(%Resource{name: :__foo_cache_ptr__, cleanup: :__foo_cache_cleanup__}, &1))
       assert Enum.any?(global, &match?(%Nif{name: :foo, opts: [concurrency: :threaded]}, &1))
     end
+
+    test "will ignore lines with four or more slashes" do
+      assert {:ok, _, _, %{local: nil}, _, _} = Parser.parse_zig_block("""
+      ////
+      """)
+
+      assert {:ok, _, _, %{local: nil}, _, _} = Parser.parse_zig_block("""
+      /////
+      """)
+    end
   end
 
   describe "the zig code parser" do

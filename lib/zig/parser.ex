@@ -96,6 +96,7 @@ defmodule Zig.Parser do
   docstring_line =
     optional(blankspace)
     |> ignore(string("///"))
+    |> lookahead_not(string("/"))
     |> optional(blankspace)
     |> lookahead_not(choice([string("nif:"), string("resource:")]))
     |> optional(utf8_string([not: ?\n], min: 1))
