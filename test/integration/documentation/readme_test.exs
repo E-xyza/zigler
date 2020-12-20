@@ -13,7 +13,7 @@ defmodule ZiglerTest.Integration.Documentation.ReadmeTest do
   @readme Parser.code_blocks("README.md")
 
   test "the version numbers match" do
-    assert hd(@readme) =~ @project[:version]
+    assert @readme |> hd |> elem(0) =~ @project[:version]
   end
 
   env = __ENV__
