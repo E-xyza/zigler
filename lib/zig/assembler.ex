@@ -11,7 +11,7 @@ defmodule Zig.Assembler do
 
   defstruct [:type, :source, :target, context: [], pub: false]
 
-  @type file_type :: :zig | :cinclude
+  @type file_type :: :zig | :cinclude | :library
 
   @type t :: %__MODULE__{
     type: file_type,

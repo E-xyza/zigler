@@ -63,9 +63,12 @@ Thanks to Dave Cottlehuber @dch for testing.
 - better support for nerves (thanks @fhunleth)
 - fixed documentation linking for bootstrap
 
-## 0.7.0
-- upgraded to zig 0.7.0.  From now on zigler versions will roughly track Zig versions.
+## 0.7.1
+- upgraded to zig 0.7.1.  From now on zigler version numbers will track Zig releases.
 - completed implementation of `threaded` nifs.
 - makes the interface to `beam.send` simpler and less confusing.
 - adds extra atom/tuple directives
 - **important:** changes the base module namespace from `Zigler` to `Zig`
+- readme and guides are now checked.
+- libraries are now brought into the staging directory.
+- unblocked windows compilation path.  There are still some bugs. Thanks @seomwan
