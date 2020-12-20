@@ -15,6 +15,7 @@ defmodule ZiglerTest.Support.Parser do
     __DIR__
     |> Path.join("../..")
     |> Path.join(file_path)
+    |> Path.expand
   end
 
   def code_blocks(file_path) do
