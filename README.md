@@ -44,14 +44,12 @@ defmodule ExampleZig do
     return value1 > value2;
   }
   """
-
 end
 
-iex> ExampleZig.example_fun(0.1, 0.4)
-false
-
-iex> ExampleZig.example_fun(0.8, -0.8)
-true
+test "example nifs" do
+  assert ExampleZig.example_fun(0.8, -0.8)
+  refute ExampleZig.example_fun(0.1, 0.4)
+end
 ```
 
 Zigler will do automatic type marshalling between Elixir code and Zig code.
@@ -77,10 +75,10 @@ defmodule ZigCollections do
   """
 end
 
-iex> ZigCollections.string_count("hello zig")
-9
-iex> ZigCollections.list_sum([1.0, 2.0, 3.0])
-6.0
+test "type marshalling" do
+  assert 9 == ZigCollections.string_count("hello zig")
+  assert 6.0 == ZigCollections.list_sum([1.0, 2.0, 3.0])
+end
 ```
 
 Memory allocation with zigler is easy!  A standard BEAM allocator is provided for you,
@@ -91,7 +89,7 @@ defmodule Allocations do
   use Zig
   ~Z"""
   /// nif: double_atom/1
-  fn double_atom(env: beam.env, string: []u8) beam.atom {
+  fn double_atom(env: beam.env, string: []u8) beam.term {
     var double_string = beam.allocator.alloc(u8, string.len * 2) catch {
       return beam.raise_enomem(env);
     };
@@ -108,9 +106,9 @@ defmodule Allocations do
   """
 end
 
-iex> Allocations.double_atom("foo")
-:foofoo
-
+test "allocations" do
+  assert :foofoo == Allocations.double_atom("foo")
+end
 ```
 
 It is a goal for Zigler to make using *it* to bind C libraries easier
@@ -148,32 +146,31 @@ test "we can use dynamically-linked blas" do
 end
 ```
 
-Zigler even has support for zig docstrings.
+### Documentation
+
+You can document nif functions, local functions, zig structs, variables, and types.
+If you document a nif function, it will be a part of the module documentation, and
+accessible using the iex `h` method, etc.
+
+Example:
 
 ```elixir
-
-defmodule AllTheDocs do
+defmodule Documentation do
   use Zig
   ~Z"""
   /// a zero-arity function which returns 47.
   /// nif: zero_arity/0
-  fn zeroarity() i64 {
+  fn zero_arity() i64 {
     return 47;
   }
   """
 end
-
-iex> h AllTheDocs.zeroarity
-
-                                def zeroarity()
-
-a zero-arity function which returns 47.
 ```
 
 ## Zigler Principles
 
 1. Make doing the right thing easy.
-2. Use magic, but sparingly.
+2. Use magic, but sparingly, only to prevent errors.
 3. Let the user see behind the curtain.
-4. Let the user dial in magic as they choose.
-5. Magic shouldn't get in the way
+4. Let the user opt out of magic.
+5. Magic shouldn't get in the way.

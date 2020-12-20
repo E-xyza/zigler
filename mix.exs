@@ -1,4 +1,4 @@
-defmodule Zig.MixProject do
+defmodule Zigler.MixProject do
   use Mix.Project
 
   # for the Zig application, tests are divided into two groups:  Unit tests
