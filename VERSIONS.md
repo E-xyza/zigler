@@ -72,3 +72,5 @@ Thanks to Dave Cottlehuber @dch for testing.
 - readme and guides are now checked.
 - libraries are now brought into the staging directory.
 - unblocked windows compilation path.  There are still some bugs. Thanks @seomwan
+- regressions:
+  - Nerves support will have to be dropped until arm32 is tier 1
