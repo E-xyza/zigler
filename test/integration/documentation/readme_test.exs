@@ -1,3 +1,5 @@
+if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") do
+
 defmodule ZiglerTest.Integration.Documentation.ReadmeTest do
   use ExUnit.Case, async: true
 
@@ -25,4 +27,6 @@ defmodule ZiglerTest.Integration.Documentation.ReadmeTest do
       %{env | file: readme_path, line: elem(&1, 1)}))
 
   @external_resource readme_path
+end
+
 end
