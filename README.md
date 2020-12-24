@@ -3,9 +3,6 @@
 Library test status:
 ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI/badge.svg)
 
-Dependent package test status:
-![](https://github.com/ityonemo/zigler_test/workflows/Elixir%20CI/badge.svg)
-
 ## Installation
 
 Zigler is [available in Hex](https://hex.pm/zigler), and the package can be installed
@@ -14,7 +11,7 @@ by adding `zigler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:zigler, "~> 0.3.0", runtime: false}
+    {:zigler, "~> 0.7.1", runtime: false}
   ]
 end
 ```
@@ -40,21 +37,19 @@ This is now possible, using the magic of Zig.
 
 ```elixir
 defmodule ExampleZig do
-  use Zigler
+  use Zig
   ~Z"""
   /// nif: example_fun/2
   fn example_fun(value1: f64, value2: f64) bool {
     return value1 > value2;
   }
   """
-
 end
 
-iex> ExampleZig.example_fun(0.1, 0.4)
-false
-
-iex> ExampleZig.example_fun(0.8, -0.8)
-true
+test "example nifs" do
+  assert ExampleZig.example_fun(0.8, -0.8)
+  refute ExampleZig.example_fun(0.1, 0.4)
+end
 ```
 
 Zigler will do automatic type marshalling between Elixir code and Zig code.
@@ -62,7 +57,7 @@ It will also convert trickier types into types you care about, for example:
 
 ```elixir
 defmodule ZigCollections do
-  use Zigler
+  use Zig
   ~Z"""
   /// nif: string_count/1
   fn string_count(string: []u8) i64 {
@@ -80,10 +75,10 @@ defmodule ZigCollections do
   """
 end
 
-iex> ZigCollections.string_count("hello zig")
-9
-iex> ZigCollections.list_sum([1.0, 2.0, 3.0])
-6.0
+test "type marshalling" do
+  assert 9 == ZigCollections.string_count("hello zig")
+  assert 6.0 == ZigCollections.list_sum([1.0, 2.0, 3.0])
+end
 ```
 
 Memory allocation with zigler is easy!  A standard BEAM allocator is provided for you,
@@ -91,10 +86,10 @@ so any zig code you import will play nice with the BEAM.
 
 ```elixir
 defmodule Allocations do
-  use Zigler
+  use Zig
   ~Z"""
   /// nif: double_atom/1
-  fn double_atom(env: beam.env, string: []u8) beam.atom {
+  fn double_atom(env: beam.env, string: []u8) beam.term {
     var double_string = beam.allocator.alloc(u8, string.len * 2) catch {
       return beam.raise_enomem(env);
     };
@@ -111,9 +106,9 @@ defmodule Allocations do
   """
 end
 
-iex> Allocations.double_atom("foo")
-:foofoo
-
+test "allocations" do
+  assert :foofoo == Allocations.double_atom("foo")
+end
 ```
 
 It is a goal for Zigler to make using *it* to bind C libraries easier
@@ -121,7 +116,7 @@ than using C to bind C libraries.  Here is an example:
 
 ```elixir
 defmodule BlasDynamic do
-  use Zigler,
+  use Zig,
     libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
     include: ["/usr/include/x86_64-linux-gnu"]
 
@@ -151,32 +146,31 @@ test "we can use dynamically-linked blas" do
 end
 ```
 
-Zigler even has support for zig docstrings.
+### Documentation
+
+You can document nif functions, local functions, zig structs, variables, and types.
+If you document a nif function, it will be a part of the module documentation, and
+accessible using the iex `h` method, etc.
+
+Example:
 
 ```elixir
-
-defmodule AllTheDocs do
-  use Zigler
+defmodule Documentation do
+  use Zig
   ~Z"""
   /// a zero-arity function which returns 47.
   /// nif: zero_arity/0
-  fn zeroarity() i64 {
+  fn zero_arity() i64 {
     return 47;
   }
   """
 end
-
-iex> h AllTheDocs.zeroarity
-
-                                def zeroarity()
-
-a zero-arity function which returns 47.
 ```
 
 ## Zigler Principles
 
-1. Make doing the right thing easy.
-2. Use magic, but sparingly.
+1. Make being a good citizen of the BEAM easy.
+2. Use magic, but sparingly, only to prevent errors.
 3. Let the user see behind the curtain.
-4. Let the user dial in magic as they choose.
-5. Magic shouldn't get in the way
+4. Let the user opt out of magic.
+5. Magic shouldn't get in the way.

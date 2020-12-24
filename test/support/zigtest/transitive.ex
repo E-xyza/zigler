@@ -2,7 +2,7 @@ defmodule ZiglerTest.ZigTest.Transitive do
 
   @moduledoc false
 
-  use Zigler
+  use Zig
 
   ~Z"""
   pub const trans = @import("imported.zig");

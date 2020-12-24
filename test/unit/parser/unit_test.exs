@@ -17,11 +17,11 @@ defmodule ZiglerTest.Parser.UnitTest do
   }
   """
 
-  alias Zigler.Parser.Nif
-  alias Zigler.Parser.Unit
+  alias Zig.Parser.Nif
+  alias Zig.Parser.Unit
 
   test "a unit test header is properly detected" do
-    hash = Zigler.Unit.name_to_hash("foobar")
+    hash = Zig.Unit.name_to_hash("foobar")
     code = "pub fn test_#{hash}() !void"
     assert {:ok, [^code], "", %{tests: [%Nif{test: :foobar}]}, _, _} =
       Unit.test_decl_parser("test \"foobar\"", context: %{file: "foo.zig"})
@@ -68,7 +68,7 @@ defmodule ZiglerTest.Parser.UnitTest do
       return 47;
     }
 
-    pub fn test_#{Zigler.Unit.name_to_hash @test_name}() !void {
+    pub fn test_#{Zig.Unit.name_to_hash @test_name}() !void {
       try assert(47 == forty_seven(), "foo.zig", 9);
     }
     """

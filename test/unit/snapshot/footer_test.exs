@@ -1,7 +1,9 @@
 defmodule ZiglerTest.Snapshot.FooterTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.{Code, Module, Parser.Nif, Parser.Resource}
+  alias Zig.{Code, Module, Parser.Nif, Parser.Resource}
+
+  @moduletag :snapshot
 
   describe "the zigler compiler footer generates" do
     test "works for a single function" do
@@ -26,10 +28,10 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         .name = "Elixir.Foo",
         .num_of_funcs = 1,
         .funcs = &(__exported_nifs__[0]),
-        .load = null,
-        .reload = null,
-        .upgrade = null,
-        .unload = null,
+        .load = beam.blank_load,
+        .reload = beam.blank_load,     // currently unsupported
+        .upgrade = beam.blank_upgrade, // currently unsupported
+        .unload = beam.blank_unload,   // currently unsupported
         .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
@@ -94,6 +96,10 @@ defmodule ZiglerTest.Snapshot.FooterTest do
           return beam.resource.fetch(T, env, __resource_type__(T), res);
         }
 
+        fn keep(comptime T: type, env: beam.env, res: beam.term) !void {
+          return beam.resource.keep(T, env, __resource_type__(T), res);
+        }
+
         fn release(comptime T: type, env: beam.env, res: beam.term) void {
           return beam.resource.release(env, __resource_type__(T), res);
         }
@@ -111,9 +117,9 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         .num_of_funcs = 1,
         .funcs = &(__exported_nifs__[0]),
         .load = nif_load,
-        .reload = null,
-        .upgrade = null,
-        .unload = null,
+        .reload = beam.blank_load,     // currently unsupported
+        .upgrade = beam.blank_upgrade, // currently unsupported
+        .unload = beam.blank_unload,   // currently unsupported
         .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
@@ -186,6 +192,10 @@ defmodule ZiglerTest.Snapshot.FooterTest do
           return beam.resource.fetch(T, env, __resource_type__(T), res);
         }
 
+        fn keep(comptime T: type, env: beam.env, res: beam.term) !void {
+          return beam.resource.keep(T, env, __resource_type__(T), res);
+        }
+
         fn release(comptime T: type, env: beam.env, res: beam.term) void {
           return beam.resource.release(env, __resource_type__(T), res);
         }
@@ -203,9 +213,9 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         .num_of_funcs = 1,
         .funcs = &(__exported_nifs__[0]),
         .load = nif_load,
-        .reload = null,
-        .upgrade = null,
-        .unload = null,
+        .reload = beam.blank_load,     // currently unsupported
+        .upgrade = beam.blank_upgrade, // currently unsupported
+        .unload = beam.blank_unload,   // currently unsupported
         .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
@@ -252,10 +262,10 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         .name = "Elixir.Baz",
         .num_of_funcs = 2,
         .funcs = &(__exported_nifs__[0]),
-        .load = null,
-        .reload = null,
-        .upgrade = null,
-        .unload = null,
+        .load = beam.blank_load,
+        .reload = beam.blank_load,     // currently unsupported
+        .upgrade = beam.blank_upgrade, // currently unsupported
+        .unload = beam.blank_unload,   // currently unsupported
         .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
@@ -273,7 +283,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       |> IO.iodata_to_binary
     end
 
-    test "works for a long nif" do
+    test "works for a threaded nif" do
       [major, minor] = Code.nif_major_minor()
 
       assert """
@@ -287,9 +297,9 @@ defmodule ZiglerTest.Snapshot.FooterTest do
           .flags = 0,
         },
         e.ErlNifFunc{
-          .name = "__foo_fetch__",
+          .name = "__foo_cleanup__",
           .arity = 1,
-          .fptr = __foo_fetch__,
+          .fptr = __foo_cleanup__,
           .flags = 0,
         },
       };
@@ -300,10 +310,10 @@ defmodule ZiglerTest.Snapshot.FooterTest do
         .name = "Elixir.Baz",
         .num_of_funcs = 2,
         .funcs = &(__exported_nifs__[0]),
-        .load = null,
-        .reload = null,
-        .upgrade = null,
-        .unload = null,
+        .load = beam.blank_load,
+        .reload = beam.blank_load,     // currently unsupported
+        .upgrade = beam.blank_upgrade, // currently unsupported
+        .unload = beam.blank_unload,   // currently unsupported
         .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
@@ -313,7 +323,7 @@ defmodule ZiglerTest.Snapshot.FooterTest do
       export fn nif_init() *const e.ErlNifEntry{
         return &entry;
       }
-      """ == %Module{nifs: [%Nif{name: :foo, arity: 0, opts: [long: true]}],
+      """ == %Module{nifs: [%Nif{name: :foo, arity: 0, opts: [concurrency: :threaded]}],
              file: "foo.exs", module: Baz, otp_app: :zigler}
       |> Code.footer
       |> IO.iodata_to_binary

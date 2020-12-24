@@ -2,7 +2,7 @@ defmodule ZiglerTest.DryRun.CodeCheckingTest do
   # checks which make sure our code looks good.
 
   use ExUnit.Case, async: true
-  use Zigler, dry_run: true
+  use Zig, dry_run: true
 
   ~Z"""
   /// nif: test1/0

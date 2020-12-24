@@ -3,7 +3,7 @@ defmodule ZiglerTest.Integration.Documentation do
   @moduledoc false
 
   # checks which make sure documentation generation is OK.
-  use Zigler, dry_run: true
+  use Zig, dry_run: true
 
   ~Z"""
   /// documentation for foo

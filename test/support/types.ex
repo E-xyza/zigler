@@ -2,7 +2,7 @@ defmodule ZiglerTest.Types do
 
   @moduledoc false
 
-  use Zigler, dry_run: true
+  use Zig, dry_run: true
 
   @spec dummy_integer(integer) :: integer
   def dummy_integer(a), do: a

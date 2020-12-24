@@ -1,8 +1,8 @@
 defmodule ZiglerTest.Integration.ZigTest do
   use ExUnit.Case
-  use Zigler
+  use Zig
 
-  import Zigler.Unit
+  import Zig.Unit
 
   @moduletag :zigtest
 

@@ -16,7 +16,7 @@ jobs:
     - name: Install XZ and blas
       run: |
         apt-get update
-        apt-get install -y --no-install-recommends xz-utils libblas-dev liblapack-dev
+        apt-get install -y --no-install-recommends xz-utils
     - name: Install Dependencies
       run: |
         mix local.rebar --force

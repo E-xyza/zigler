@@ -101,6 +101,7 @@
 const e = @import("erl_nif.zig");
 const std = @import("std");
 const builtin = @import("builtin");
+const BeamMutex = @import("beam_mutex.zig").BeamMutex;
 
 ///////////////////////////////////////////////////////////////////////////////
 // BEAM allocator definitions
@@ -111,184 +112,159 @@ const Allocator = std.mem.Allocator;
 // basic allocator
 
 /// !value
-/// provides a default BEAM allocator.  Use `beam.allocator.alloc` everywhere
-/// to safely allocate memory efficiently, and use `beam.allocator.free` to
-/// release that memory.
+/// provides a default BEAM allocator.  This is an implementation of the Zig
+/// allocator interface.  Use `beam.allocator.alloc` everywhere to safely
+/// allocate slices efficiently, and use `beam.allocator.free` to release that
+/// memory.  For single item allocation, use `beam.allocator.create` and
+/// `beam.allocator.destroy` to release the memory.
 ///
 /// Note this does not make the allocated memory *garbage collected* by the
 /// BEAM.
+///
+/// All memory will be tracked by the beam.  All allocations happen with 8-byte
+/// alignment, as described in `erl_nif.h`.  This is sufficient to create
+/// correctly aligned `beam.terms`, and for most purposes.
+/// For data that require greater alignment, use `beam.large_allocator`.
 ///
 /// ### Example
 ///
 /// The following code will return ten bytes of new memory.
 ///
-/// ```
+/// ```zig
 /// const beam = @import("beam.zig");
 ///
 /// fn give_me_ten_bytes() ![]u8 {
 ///   return beam.allocator.alloc(u8, 10);
 /// }
 /// ```
-pub threadlocal var allocator: *Allocator = &beam_allocator;
+///
+/// currently does not release memory that is resized.  For this behaviour, use
+/// use `beam.general_purpose_allocator`.
+///
+/// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
+pub const allocator = &raw_beam_allocator;
 
-var beam_allocator = Allocator{
-  .reallocFn = beam_realloc,
-  .shrinkFn = beam_shrink
+pub const MAX_ALIGN = 8;
+
+var raw_beam_allocator = Allocator{
+  .allocFn = raw_beam_alloc,
+  .resizeFn = raw_beam_resize,
 };
 
-fn beam_realloc(_self: *Allocator,
-                old_mem: []u8,
-                old_align: u29,
-                new_size: usize,
-                new_align: u29) ![]u8 {
-  if (old_mem.len == 0) {
-    // if we're creating a new memory space, use alloc.
-    const buf = e.enif_alloc(new_size) orelse return error.OutOfMemory;
-    return @ptrCast([*]u8, buf)[0..new_size];
-  } else {
-    // if we're actually resizing a memory space, use realloc.
-    const old_ptr = @ptrCast(*c_void, old_mem.ptr);
-    const buf = e.enif_realloc(old_ptr, new_size) orelse return error.OutOfMemory;
-    return @ptrCast([*]u8, buf)[0..new_size];
-  }
+fn raw_beam_alloc(
+    _self: *Allocator,
+    len: usize,
+    ptr_align: u29,
+    _len_align: u29,
+    _ret_addr: usize,
+) Allocator.Error![]u8 {
+  if (ptr_align > MAX_ALIGN) { return error.OutOfMemory; }
+  const ptr = e.enif_alloc(len) orelse return error.OutOfMemory;
+  return @ptrCast([*]u8, ptr)[0..len];
 }
 
-var nothing = [_]u8 {};
-fn beam_shrink(_self: *Allocator,
-               old_mem: []u8,
-               old_align: u29,
-               new_size: usize,
-               new_align: u29) []u8 {
-  if (new_size == 0) {
-    e.enif_free(@ptrCast(*c_void, old_mem.ptr));
-    return nothing[0..0];
-  } else {
-    // if we're actually resizing a memory space, use realloc.
-    const old_ptr = @ptrCast(*c_void, old_mem.ptr);
-    const buf = e.enif_realloc(old_ptr, new_size) orelse return old_mem[0..new_size];
-    return @ptrCast([*]u8, buf)[0..new_size];
+fn raw_beam_resize(
+    _self: *Allocator,
+    buf: []u8,
+    _old_align: u29,
+    new_len: usize,
+    _len_align: u29,
+    _ret_addr: usize,
+) Allocator.Error!usize {
+  if (new_len == 0) {
+    e.enif_free(buf.ptr);
+    return 0;
   }
+  if (new_len <= buf.len) {
+    return new_len;
+  }
+  return error.OutOfMemory;
 }
 
-/// creates a specialized auto-allocator which manages memory on behalf of
-/// the thread and can clean up after a thread, so that memory management is not
-/// necessary for this nif function call.
-pub const AutoAllocator = struct {
-  // members
-  allocator: *Allocator,
-  buffer_list: std.LinkedList([]u8),
+/// !value
+/// provides a BEAM allocator that can perform allocations with greater
+/// alignment than the machine word.  Note that this comes at the cost
+/// of some memory to store important metadata.
+///
+/// currently does not release memory that is resized.  For this behaviour
+/// use `beam.general_purpose_allocator`.
+///
+/// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
+pub const large_allocator = &large_beam_allocator;
 
-  const BufNode = std.LinkedList([]u8).Node;
-  pub fn init() AutoAllocator {
-    return AutoAllocator{
-      .allocator = Allocator{
-          .reallocFn = realloc,
-          .shrinkFn = shrink,
-      },
-      .buffer_list = std.LinkedList([]u8).init(),
-    };
-  }
-
-  pub fn deinit(self: *AutoAllocator) void {
-    var node_or_null = self.buffer_list.first;
-    while (node_or_null) |node| {
-      // this has to occur before the free because the free frees node
-      node_or_null = node.next;
-      allocator.free(node.data);
-      // destroy the node.
-      std.LinkedList.destroyNode(self.buffer_list, node, allocator);
-    }
-  }
-
-  fn realloc(self_generic: *Allocator,
-             old_mem: []u8,
-             old_align: u29,
-             new_size: usize,
-             new_align: u29) ![]u8 {
-
-    const self = @fieldParentPtr(ThreadAllocator, "allocator", self_generic);
-
-    if (old_mem.len == 0) {
-      // if we're creating a new memory space, use basic beam alloc.
-      const buf = e.enif_alloc(new_size) orelse return error.OutOfMemory;
-      // then prepend it to the linked list.
-      do_prepend(self, buf);
-
-      return @ptrCast([*]u8, buf)[0..new_size];
-    } else {
-      // if we're actually resizing a memory space, use realloc.
-      const old_ptr = @ptrCast(*c_void, old_mem.ptr);
-      const buf = e.enif_realloc(old_ptr, new_size) orelse return error.OutOfMemory;
-
-      // remove the old element of the buffer.
-      self.buffer_list.remove(old_mem);
-      // put the new buffer in there.
-      var new_buf = @ptrCast([*]u8, buf)[0..new_size];
-
-      do_prepend(self, new_buf);
-
-      // return the new slice.
-      return new_buf;
-    }
-  }
-
-  fn shrink(self_generic: *Allocator,
-               old_mem: []u8,
-               old_align: u29,
-               new_size: usize,
-               new_align: u29) []u8 {
-    const self = @fieldParentPtr(ThreadAllocator, "allocator", self_generic);
-    if (new_size == 0) {
-      // use the beam engine to free the memory slice.
-      e.enif_free(@ptrCast(*c_void, old_mem.ptr));
-
-      // remove it from the linked list.
-      std.LinkedList.do_remove(self, old_mem);
-
-      // send back a generic empty slice.
-      return []u8{};
-    } else {
-      // if we're actually resizing a memory space, use realloc.
-      const old_ptr = @ptrCast(*c_void, old_mem.ptr);
-      const buf = e.enif_realloc(old_ptr, new_size) orelse return error.OutOfMemory;
-
-      // remove the old element of the buffer.
-      self.buffer_list.remove(old_mem);
-      // put the new buffer in there.
-      var new_buf = @ptrCast([*]u8, buf)[0..new_size];
-
-      do_prepend(self, new_buf);
-
-      // return the new slice.
-      return new_buf;
-    }
-  }
-
-  fn do_prepend(self: *ThreadAllocator, buf: []u8) ![]u8 {
-    // use the beam allocator to allocate a new memory node.
-    var new_node = try std.LinkedList.allocateNode(self.buffer_list, allocator);
-    // store the buffer into the node
-    new_node.data = buf;
-    // append the buffer value to the node.
-    std.LinkedList.prepend(self.buffer_list, buf);
-    // return the newly allocated memory
-    return buf;
-  }
-
-  fn do_remove(self: *ThreadAllocator, buf: []u8) void {
-    // find the node where buf is.
-    var current_node: *std.LinkedList.Node = self.first
-      orelse unreachable;
-    while (current_node.data != buf) {
-      current_node = current_node.next
-        orelse unreachable;
-    }
-    // remove it.
-    std.LinkedList.remove(self.buffer_list, current_node);
-    // free the buffer node
-    std.LinkedList.destroyNode(self.buffer_list, current_node, allocator);
-  }
+var large_beam_allocator = Allocator {
+  .allocFn = large_beam_alloc,
+  .resizeFn = large_beam_resize,
 };
+
+fn large_beam_alloc(
+  allocator_: *Allocator,
+  len: usize,
+  alignment: u29,
+  len_align: u29,
+  return_address: usize
+) error{OutOfMemory}![]u8 {
+  var ptr = try alignedAlloc(len, alignment, len_align, return_address);
+  if (len_align == 0) { return ptr[0..len]; }
+  return ptr[0..std.mem.alignBackwardAnyAlign(len, len_align)];
+}
+
+fn large_beam_resize(
+    allocator_: *Allocator,
+    buf: []u8,
+    buf_align: u29,
+    new_len: usize,
+    len_align: u29,
+    return_address: usize,
+) Allocator.Error!usize {
+  if (new_len > buf.len) { return error.OutOfMemory; }
+  if (new_len == 0) { return alignedFree(buf, buf_align); }
+  if (len_align == 0) { return new_len; }
+  return std.mem.alignBackwardAnyAlign(new_len, len_align);
+}
+
+fn alignedAlloc(len: usize, alignment: u29, len_align: u29, return_address: usize) ![*]u8 {
+  var safe_len = safeLen(len, alignment);
+  var alloc_slice: []u8 = try allocator.allocAdvanced(
+    u8, MAX_ALIGN, safe_len, std.mem.Allocator.Exact.exact);
+
+  const unaligned_addr = @ptrToInt(alloc_slice.ptr);
+  const aligned_addr = reAlign(unaligned_addr, alignment);
+
+  getPtrPtr(aligned_addr).* = unaligned_addr;
+  return aligned_addr;
+}
+
+fn alignedFree(buf: []u8, alignment: u29) usize {
+  var ptr = getPtrPtr(buf.ptr).*;
+  allocator.free(@intToPtr([*]u8, ptr)[0..safeLen(buf.len, alignment)]);
+  return 0;
+}
+
+fn reAlign(unaligned_addr: usize, alignment: u29) [*]u8 {
+  return @intToPtr(
+    [*]u8,
+    std.mem.alignForward(
+      unaligned_addr + @sizeOf(usize),
+      alignment));
+}
+
+fn safeLen(len: usize, alignment: u29) usize {
+  return len + alignment - @sizeOf(usize) + MAX_ALIGN;
+}
+
+fn getPtrPtr(aligned_ptr: [*]u8) *usize {
+  return @intToPtr(*usize, @ptrToInt(aligned_ptr) - @sizeOf(usize));
+}
+
+/// !value
+/// wraps the zig GeneralPurposeAllocator into the standard BEAM allocator.
+var general_purpose_allocator_instance = std.heap.GeneralPurposeAllocator(
+.{.thread_safe = true}) {
+  .backing_allocator = large_allocator,
+};
+
+pub var general_purpose_allocator = &general_purpose_allocator_instance.allocator;
 
 ///////////////////////////////////////////////////////////////////////////////
 // syntactic sugar: important elixir terms
@@ -304,7 +280,13 @@ pub const Error = error {
   ///
   /// support for users to be able to throw this value in their own Zig functions
   /// is forthcoming.
-  FunctionClauseError
+  FunctionClauseError,
+};
+
+/// errors for launching nif errors
+pub const ThreadError = error {
+  /// Occurs when there's a problem launching a threaded nif.
+  LaunchError
 };
 
 /// errors for testing
@@ -670,7 +652,23 @@ pub fn self(environment: env) !pid {
   }
 }
 
-pub fn send(c_env: env, to_pid: pid, m_env: env, msg: term) bool {
+/// shortcut for `e.enif_self`
+///
+/// returns true if the send is successful, false otherwise.
+///
+/// NOTE this function assumes a valid BEAM environment.  If you have spawned
+/// an OS thread without a BEAM environment, you must use `send_advanced/4`
+pub fn send(c_env: env, to_pid: pid, msg: term) bool {
+  return (e.enif_send(c_env, &to_pid, null, msg) == 1);
+}
+
+/// shortcut for `e.enif_self`
+///
+/// returns true if the send is successful, false otherwise.
+///
+/// if you are sending from a thread that does not have a BEAM environment, you
+/// should put `null` in both environment variables.
+pub fn send_advanced(c_env: env, to_pid: pid, m_env: env, msg: term) bool {
   return (e.enif_send(c_env, &to_pid, m_env, msg) == 1);
 }
 
@@ -1098,7 +1096,7 @@ pub fn make_f64_list(environment: env, val: []f64) !term {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
-// booleans
+// special atoms
 
 /// converts a `bool` value into a `t:Kernel.boolean/0` value.
 pub fn make_bool(environment: env, val: bool) term {
@@ -1108,6 +1106,16 @@ pub fn make_bool(environment: env, val: bool) term {
 /// creates a beam `nil` value.
 pub fn make_nil(environment: env) term {
   return e.enif_make_atom(environment, "nil");
+}
+
+/// creates a beam `ok` value.
+pub fn make_ok(environment: env) term {
+  return e.enif_make_atom(environment, "ok");
+}
+
+/// creates a beam `error` value.
+pub fn make_error(environment: env) term {
+  return e.enif_make_atom(environment, "error");
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1145,8 +1153,7 @@ pub fn make_ok_atom(environment: env, val: [] const u8) term {
 
 /// A helper to make `{:ok, term}` terms in general
 pub fn make_ok_term(environment: env, val: term) term {
-  return e.enif_make_tuple(environment, 2,
-    e.enif_make_atom(environment, "ok"), val);
+  return e.enif_make_tuple(environment, 2, make_ok(environment), val);
 }
 
 /// A helper to make `{:error, term}` terms from arbitrarily-typed values.
@@ -1181,8 +1188,7 @@ pub fn make_error_binary(environment: env, val: [] const u8) term {
 
 /// A helper to make `{:error, term}` terms in general
 pub fn make_error_term(environment: env, val: term) term {
-  return e.enif_make_tuple(environment, 2,
-    e.enif_make_atom(environment, "error"), val);
+  return e.enif_make_tuple(environment, 2, make_error(environment), val);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1190,11 +1196,8 @@ pub fn make_error_term(environment: env, val: term) term {
 
 /// Encapsulates `e.enif_make_ref` and allows it to return a
 /// FunctionClauseError.
-///
-/// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.pid/0`
-pub fn make_ref(environment: env) !term {
-  var result = e.enif_make_ref(environment);
-  if (0 != result) { return result; } else { return Error.FunctionClauseError; }
+pub fn make_ref(environment: env) term {
+  return e.enif_make_ref(environment);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1203,10 +1206,10 @@ pub fn make_ref(environment: env) !term {
 pub const resource_type = ?*e.ErlNifResourceType;
 
 pub const resource = struct {
-  // fix this V V V
-  pub const Err = error {
+  /// errors related to resource transactions
+  pub const ResourceError = error {
     /// something has gone wrong while trying to fetch a resource.
-    ResourceError
+    FetchError,
   };
 
   pub fn create(comptime T : type, environment: env, res_typ: resource_type, val : T) !term {
@@ -1214,7 +1217,7 @@ pub const resource = struct {
     var obj : *T = undefined;
 
     if (ptr == null) {
-      return error.enomem;
+      return error.OutOfMemory;
     } else {
       obj = @ptrCast(*T, @alignCast(@alignOf(*T), ptr));
       obj.* = val;
@@ -1227,9 +1230,9 @@ pub const resource = struct {
     var obj : ?*c_void = undefined;
 
     if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
-      return resource.Err.ResourceError;
+      return resource.ResourceError.FetchError;
     }
-
+    
     if (obj == null) { unreachable; }
 
     var val : *T = @ptrCast(*T, @alignCast(@alignOf(*T), obj));
@@ -1241,7 +1244,7 @@ pub const resource = struct {
     var obj : ?*c_void = undefined;
 
     if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
-      return resource.Err.ResourceError;
+      return resource.ResourceError.FetchError;
     }
 
     // according to the erlang documentation:
@@ -1255,12 +1258,62 @@ pub const resource = struct {
     return val.*;
   }
 
+  pub fn keep(comptime T: type, environment: env, res_typ: resource_type, res_trm: term) !void {
+    var obj : ?*c_void = undefined;
+
+    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
+      return resource.ResourceError.FetchError;
+    }
+    
+    if (obj == null) { unreachable; }
+
+    e.enif_keep_resource(obj);
+  }
+
   pub fn release(environment: env, res_typ: resource_type, res_trm: term) void {
     var obj : ?*c_void = undefined;
-    var _rsrc = e.enif_get_resource(environment, res_trm, res_typ, &obj);
-    return e.enif_release_resource(obj);
+    if (0 != e.enif_get_resource(environment, res_trm, res_typ, &obj)) {
+      e.enif_release_resource(obj);
+    } else { unreachable; }
   }
 };
+
+///////////////////////////////////////////////////////////////////////////////
+// yielding NIFs
+
+/// transparently passes information into the yield statement.
+pub threadlocal var yield_info: *YieldInfo = undefined;
+
+pub fn Frame(function: anytype) type {
+  return struct {
+    yield_info: YieldInfo,
+    zig_frame: *@Frame(function),
+  };
+}
+
+pub const YieldError = error {
+  Cancelled,
+};
+
+/// this function is going to be dropped inside the suspend statement.
+pub fn yield() !env {
+  suspend {
+    if (yield_info.cancelled) return YieldError.Cancelled;
+    yield_info.yield_frame = @frame();
+  }
+  return yield_info.environment;
+}
+
+pub const YieldInfo = struct {
+  yield_frame: ?anyframe = null,
+  cancelled: bool = false,
+  response: term = undefined,
+  environment: env,
+};
+
+pub fn set_yield_response(what: term) void {
+  yield_info.response = what;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // errors, etc.
@@ -1270,7 +1323,7 @@ pub fn raise(environment: env, exception: atom) term {
 }
 
 // create a global enomem string, then throw it.
-const enomem_slice = "enomem"[0..];
+const enomem_slice = "enomem";
 
 /// This function is used to communicate `:enomem` back to the BEAM as an
 /// exception.
@@ -1283,7 +1336,7 @@ pub fn raise_enomem(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, enomem_slice));
 }
 
-const f_c_e_slice = "function_clause"[0..];
+const f_c_e_slice = "function_clause";
 
 /// This function is used to communicate `:function_clause` back to the BEAM as an
 /// exception.
@@ -1296,7 +1349,15 @@ pub fn raise_function_clause_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, f_c_e_slice));
 }
 
-const assert_slice = "assertion_error"[0..];
+const resource_error = "resource_error";
+
+/// This function is used to communicate `:resource_error` back to the BEAM as an
+/// exception.
+pub fn raise_resource_error(environment: env) term {
+  return e.enif_raise_exception(environment, make_atom(environment, resource_error));
+}
+
+const assert_slice = "assertion_error";
 
 /// This function is used to communicate `:assertion_error` back to the BEAM as an
 /// exception.
@@ -1304,6 +1365,44 @@ const assert_slice = "assertion_error"[0..];
 /// Used when running Zigtests, when trapping `beam.AssertionError.AssertionError`.
 pub fn raise_assertion_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, assert_slice));
+}
+
+pub fn make_error_return_trace(env_: env, error_trace: ?*builtin.StackTrace) term {
+  if (error_trace) | trace | {
+    var frame_index: usize = 0;
+    var frames_left: usize = std.math.min(trace.index, trace.instruction_addresses.len);
+    var list: term = e.enif_make_list(env_, 0);
+
+    const debug_info = std.debug.getSelfDebugInfo() catch return make_nil(env_);
+
+    while (frames_left != 0) : ({
+      frames_left -= 1;
+      frame_index = (frame_index + 1) % trace.instruction_addresses.len;
+    }) {
+      const return_address = trace.instruction_addresses[frame_index];
+      var next_term: term = error_trace_info(env_, debug_info, return_address);
+      list = e.enif_make_list_cell(env_, next_term, list);
+    }
+
+    return list;
+  } else {
+    return make_nil(env_);
+  }
+}
+
+fn error_trace_info(env_: env, debug_info: *std.debug.DebugInfo, address: usize) term {
+  const module = debug_info.getModuleForAddress(address) catch return make_error(env_);
+  const symbol_info = module.getSymbolAtAddress(address) catch return make_error(env_);
+  defer symbol_info.deinit();
+
+  var file = symbol_info.compile_unit_name;
+  var fun = symbol_info.symbol_name;
+
+  return make_tuple(env_, .{
+    e.enif_make_string_len(env, file, file.len, e.ErlNifCharEncoding.ERL_NIF_LATIN1),
+    e.enif_make_string_len(env, fun, fun.len, e.ErlNifCharEncoding.ERL_NIF_LATIN1),
+    e.enif_make_uint(env, symbol_info.line_info.line)
+  });
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1341,3 +1440,23 @@ pub fn test_error() term {
   tuple_slice[2] = make_i64(test_env, error_line);
   return make_tuple(test_env, tuple_slice);
 }
+
+///////////////////////////////////////////////////////////////////////////////
+// NIF LOADING Boilerplate
+
+pub export fn blank_load(
+  _env: env,
+  _priv: [*c]?*c_void,
+  _info: term) c_int {
+  return 0;
+}
+
+pub export fn blank_upgrade(
+  _env: env,
+  _priv: [*c]?*c_void,
+  _old_priv: [*c]?*c_void,
+  _info: term) c_int {
+  return 0;
+}
+
+pub export fn blank_unload(_env: env, priv: ?*c_void) void {}
