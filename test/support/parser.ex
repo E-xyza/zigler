@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Support.Parser do
   # parses .md files and chunks back the triple quoted sections
 
+  @moduledoc false
+
   defstruct [
     in_docstring?: false,
     docstrings: []

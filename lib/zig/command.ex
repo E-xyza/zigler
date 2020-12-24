@@ -60,47 +60,6 @@ defmodule Zig.Command do
     :ok
   end
 
-  ############################################################################
-  ## cross-compilation logic.
-  ##
-  ## this section primarily exists to support Nerves deployments, though
-  ## it is possible to set an arbitrary cross-compilation target using a
-  ## setting in your `use Zig` directive.  This selects the architecture
-  ## by checking your "CC" environment variable, which is in turn set by
-  ## Nerves, then adjusts gcc's machine type to a string which allows zig to
-  ## select the appropriate cross-compilation settings and libc.
-
-  defp cross_compile(%{target: target}) when is_binary(target) do
-    ["-target", target]
-  end
-  defp cross_compile(_) do
-    cc = System.get_env("CC")
-    if cc, do: find_cross_compiler(cc), else: []
-  end
-
-  defp find_cross_compiler(cc) do
-    case System.cmd(cc, ~w(- -dumpmachine)) do
-      {machine, 0} -> ["-target", adjust_machine(machine)]
-      _ -> raise "unknown error; c compiler not found"
-    end
-  end
-
-  @substitutions %{"armv6" => "arm", "armv5tejl" => "arm", "i586" => "i386"}
-
-  defp adjust_machine(machine!) do
-    # cc dumpmachine adds an -unknown part to the machine string which is not
-    # recognized by the zig compiler.
-    machine! = machine!
-    |> String.trim()
-    |> String.replace("-unknown", "")
-
-    # not all architecture types are known by zig, this simplifies the more
-    # unusual ones
-    Enum.reduce(@substitutions, machine!, fn
-      {bad, good}, str -> String.replace(str, bad, good)
-    end)
-  end
-
   #############################################################################
   ## download zig from online sources.
 

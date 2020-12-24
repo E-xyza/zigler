@@ -18,6 +18,5 @@ defmodule ZiglerTest.Integration.Documentation.NifsTest do
       [],
       %{env | file: nifs_path, line: elem(&1, 1)}))
 
-
   @external_resource nifs_path
 end

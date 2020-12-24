@@ -6,15 +6,16 @@ defmodule Zig.Compiler do
   @enforce_keys [:assembly_dir, :code_file, :assembly, :module_spec]
 
   # contains critical information for the compilation.
-  defstruct @enforce_keys ++ [test_dirs: []]
+  defstruct @enforce_keys ++ [compiler_target: nil, test_dirs: []]
 
   alias Zig.Assembler
 
   @type t :: %__MODULE__{
-    assembly_dir: Path.t,
-    assembly:     [Assembler.t],
-    code_file:    Path.t,
-    module_spec:  Zig.Module.t
+    assembly_dir:    Path.t,
+    assembly:        [Assembler.t],
+    code_file:       Path.t,
+    module_spec:     Zig.Module.t,
+    compiler_target: atom
   }
 
   require Logger
@@ -164,6 +165,8 @@ defmodule Zig.Compiler do
     # define the code file and build it.
     File.write!(code_file, code_content)
 
+    compiler_target = Mix.target()
+
     # parse the module code to generate the full list of assets
     # that need to be brought in to the assembly directory
     assembly = Assembler.parse_code(code_content,
@@ -181,10 +184,11 @@ defmodule Zig.Compiler do
     Assembler.assemble_assets!(assembly, assembly_dir)
 
     %__MODULE__{
-      assembly_dir: assembly_dir,
-      assembly:     assembly,
-      code_file:    code_file,
-      module_spec:  module,
+      assembly_dir:    assembly_dir,
+      assembly:        assembly,
+      code_file:       code_file,
+      module_spec:     module,
+      compiler_target: compiler_target
     }
   end
 
