@@ -1,4 +1,6 @@
-if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") do
+#guard against this cblas.h not existing.
+if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") and
+   File.exists?("/usr/lib/x86_64-linux-gnu/blas/libblas.so") do
 
 defmodule ZiglerTest.Integration.Documentation.ReadmeTest do
   use ExUnit.Case, async: true
