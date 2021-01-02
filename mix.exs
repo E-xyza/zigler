@@ -88,8 +88,6 @@ defmodule Zigler.MixProject do
       {:excoveralls, "~> 0.12", only: :test, runtime: false},
       # zigler's parsing is done using nimble_parsec
       {:nimble_parsec, "~> 0.5", runtime: false},
-      # necessary to fetch the zig distribution.
-      {:mojito, "~> 0.6.0", runtime: false},
       # to parse the zig JSON
       {:jason, "~> 1.1", runtime: false},
       # documentation

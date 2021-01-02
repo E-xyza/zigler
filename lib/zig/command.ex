@@ -143,13 +143,9 @@ defmodule Zig.Command do
       archive = version_name(version) <> extension
 
       Logger.configure(level: :info)
-      Application.ensure_all_started(:mojito)
 
       zig_download_path = Path.join(@zig_dir_path, archive)
-
-      Logger.info("downloading zig version #{version} (#{archive}) and caching in #{@zig_dir_path}.")
-      download_location = "https://ziglang.org/download/#{version}/#{archive}"
-      download_zig_archive(zig_download_path, download_location)
+      download_zig_archive(zig_download_path, version, archive)
 
       # untar the zig directory.
       unarchive_zig(archive)
@@ -157,13 +153,53 @@ defmodule Zig.Command do
     :global.del_lock({__MODULE__, self()})
   end
 
-  def download_zig_archive(zig_download_path, download_location) do
-    Application.ensure_all_started(:ssl)
+  # https://ziglang.org/download/#release-0.7.1
+  @checksums %{
+    "zig-freebsd-x86_64-0.7.1.tar.xz" => "e73c1dca35791a3183fdd5ecde0443ebbe180942efceafe651886034fb8def09",
+    "zig-linux-aarch64-0.7.1.tar.xz" => "48ec90eba407e4587ddef7eecef25fec7e13587eb98e3b83c5f2f5fff2a5cbe7",
+    "zig-linux-armv7a-0.7.1.tar.xz" => "5a0662e07b4c4968665e1f97558f8591f6facec45d2e0ff5715e661743107ceb",
+    "zig-linux-i386-0.7.1.tar.xz" => "4882e052e5f83690bd0334bb4fc1702b5403cb3a3d2aa63fd7d6043d8afecba3",
+    "zig-linux-riscv64-0.7.1.tar.xz" => "187294bfd35983348c3fe042901b42e67e7e36ab7f77a5f969d21c0051f4d21f",
+    "zig-linux-x86_64-0.7.1.tar.xz" => "18c7b9b200600f8bcde1cd8d7f1f578cbc3676241ce36d771937ce19a8159b8d",
+    "zig-macos-x86_64-0.7.1.tar.xz" => "845cb17562978af0cf67e3993f4e33330525eaf01ead9386df9105111e3bc519",
+    "zig-windows-i386-0.7.1.zip" => "a1b9a7421e13153e07fd2e2c93ff29aad64d83105b8fcdafa633dbe689caf1c0",
+    "zig-windows-x86_64-0.7.1.zip" => "4818a8a65b4672bc52c0ae7f14d014e0eb8caf10f12c0745176820384cea296a"
+  }
 
-    case Mojito.get(download_location, [], pool: false, timeout: 600_000) do
-      {:ok, download = %{status_code: 200}} ->
-        File.write!(zig_download_path, download.body)
-      _ -> raise "failed to download the appropriate zig archive."
+  defp download_zig_archive(zig_download_path, version, archive) do
+    url = "https://ziglang.org/download/#{version}/#{archive}"
+    Logger.info("downloading zig version #{version} (#{url}) and caching in #{@zig_dir_path}.")
+
+    case httpc_get(url) do
+      {:ok, %{status: 200, body: body}} ->
+        expected_checksum = Map.fetch!(@checksums, archive)
+        actual_checksum = :sha256 |> :crypto.hash(body) |> Base.encode16(case: :lower)
+
+        if expected_checksum != actual_checksum do
+          raise "checksum mismatch: expected #{expected_checksum}, got #{actual_checksum}"
+        end
+
+        File.write!(zig_download_path, body)
+
+      _ ->
+        raise "failed to download the appropriate zig archive."
+    end
+  end
+
+  defp httpc_get(url) do
+    {:ok, _} = Application.ensure_all_started(:ssl)
+    {:ok, _} = Application.ensure_all_started(:inets)
+    headers = []
+    request = {String.to_charlist(url), headers}
+    http_options = [timeout: 600_000]
+    options = [body_format: :binary]
+
+    case :httpc.request(:get, request, http_options, options) do
+      {:ok, {{_, status, _}, headers, body}} ->
+        {:ok, %{status: status, headers: headers, body: body}}
+
+      other ->
+        other
     end
   end
 
