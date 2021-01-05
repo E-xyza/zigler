@@ -27,7 +27,7 @@ defmodule Zig.Command do
 
     Logger.debug("compiling nif for module #{inspect compiler.module_spec.module} in path #{compiler.assembly_dir}")
 
-    Builder.build(compiler)
+    Builder.build(compiler, zig_tree)
 
     case System.cmd(zig_executable, ["build"], opts) do
       {_, 0} -> :ok

@@ -118,7 +118,8 @@ than using C to bind C libraries.  Here is an example:
 defmodule BlasDynamic do
   use Zig,
     libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
-    include: ["/usr/include/x86_64-linux-gnu"]
+    include: ["/usr/include/x86_64-linux-gnu"],
+    link_libc: true
 
   ~Z"""
   const blas = @cImport({
@@ -140,7 +141,7 @@ defmodule BlasDynamic do
   """
 end
 
-test "we can use dynamically-linked blas" do
+test "we can use a blas shared library" do
   # returns aX+Y
   assert [11.0, 18.0] == BlasDynamic.blas_axpy(3.0, [2.0, 4.0], [5.0, 6.0])
 end

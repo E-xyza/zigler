@@ -11,12 +11,13 @@ defmodule Zig.Builder do
   EEx.function_from_string(:defp, :build_zig, ~S"""
   const std = @import("std");
   const Builder = std.build.Builder;
+  <% target = target_struct(@compiler_target, zig_tree) %>
 
   const for_wasm = true;
 
   pub fn build(b: *Builder) void {
       const mode = b.standardReleaseOptions();
-      const target = b.standardTargetOptions(<%= target_struct(@compiler_target) %>);
+      const target = b.standardTargetOptions(<%= to_structdef target %>);
 
       const cflags = [_][]const u8{};
       const lib = b.addSharedLibrary(
@@ -27,6 +28,12 @@ defmodule Zig.Builder do
                             .patch = <%= @module_spec.version.patch %>}});
 
       lib.addSystemIncludeDir("<%= :code.root_dir %>/erts-<%= :erlang.system_info(:version) %>/include");
+      <%= unless @module_spec.link_libc do %>
+      <%= for dir <- dirs_for(target) do %>
+      lib.addSystemIncludeDir("<%= Path.join(zig_tree, dir) %>");
+      <% end %>
+      <% end %>
+
       <%= for system_include_dir <- @module_spec.system_include_dirs do %>
       lib.addSystemIncludeDir("<%= system_include_dir %>");
       <% end %>
@@ -38,8 +45,10 @@ defmodule Zig.Builder do
       lib.setTarget(target);
       lib.single_threaded = true;
 
-      // link libraries.  Always link libc.
+      <%= if @module_spec.link_libc do %>
+      // use libc if it has been asked for
       lib.linkSystemLibrary("c");
+      <% end %>
 
       <%= for lib <- @module_spec.libs do %>
       <%= cond do %>
@@ -68,11 +77,11 @@ defmodule Zig.Builder do
 
       lib.install();
   }
-  """, [:assigns])
+  """, [:assigns, :zig_tree])
 
-  def build(target) do
+  def build(target, zig_tree) do
     build_zig_path = Path.join(target.assembly_dir, "build.zig")
-    File.write!(build_zig_path, target |> Map.from_struct |> build_zig)
+    File.write!(build_zig_path, target |> Map.from_struct |> build_zig(zig_tree))
     Logger.debug("wrote build.zig to #{build_zig_path}")
   end
 
@@ -86,21 +95,44 @@ defmodule Zig.Builder do
   ## Nerves, then adjusts gcc's machine type to a string which allows zig to
   ## select the appropriate cross-compilation settings and libc.
 
-  def target_struct(:host), do: ".{}"
+  def target_struct(:host, zig_tree) do
+    {targets, 0} = zig_tree
+    |> Path.join("zig")
+    |> System.cmd(["targets"])
+
+    %{"abi" => abi, "cpu" => %{"arch" => arch}, "os" => os} = targets
+    |> Jason.decode!
+    |> Map.get("native")
+
+    %{abi: abi, arch: arch, os: os}
+  end
   def target_struct(_other) do
     "CC"
     |> System.get_env
     |> System.cmd(~w(- -dumpmachine))
     |> elem(0)
     |> String.split("-")
-    |> to_structdef
+    |> case do
+      ["i386"| _] -> %{arch: "i386", os: "linux", abi: "gnu"}
+      [arch | _] -> %{arch: arch, os: "linux", abi: "gnu"}
+    end
   end
 
-  defp to_structdef("i386") do
-    ".{.default_target = .{.cpu_arch = .i386, .os_tag = .linux, .abi = .gnu}}"
+  defp to_structdef(t) do
+    ".{.default_target = .{.cpu_arch = .#{t.arch}, .os_tag = .#{t.os}, .abi = .#{t.abi}}}"
   end
-  defp to_structdef([arch | _]) do
-    ".{.default_target = .{.cpu_arch = .#{arch}, .os_tag = .linux, .abi = .gnueabihf}}"
+
+  defp dirs_for(target = %{os: "windows"}) do
+    ["lib/libc/include/any-windows-any/"] ++ dirs_for_specific(target)
+  end
+  defp dirs_for(target) do
+    ["lib/libc/musl/include/"] ++ dirs_for_specific(target)
+  end
+  defp dirs_for_specific(%{abi: _, os: os, arch: "x86_64"}) do
+    ["lib/libc/include/x86_64-#{os}-musl"]
+  end
+  defp dirs_for_specific(%{abi: abi, os: os, arch: arch}) do
+    ["lib/libc/include/#{arch}-#{os}-#{abi}"]
   end
 
 end
