@@ -106,7 +106,7 @@ defmodule Zig.Builder do
 
     %{abi: abi, arch: arch, os: os}
   end
-  def target_struct(_other) do
+  def target_struct(_other, _zig_tree) do
     "CC"
     |> System.get_env
     |> System.cmd(~w(- -dumpmachine))
@@ -126,10 +126,13 @@ defmodule Zig.Builder do
     ["lib/libc/include/any-windows-any/"] ++ dirs_for_specific(target)
   end
   defp dirs_for(target) do
-    ["lib/libc/musl/include/"] ++ dirs_for_specific(target)
+    ["lib/libc/musl/include"] ++ dirs_for_specific(target)
   end
   defp dirs_for_specific(%{abi: _, os: os, arch: "x86_64"}) do
     ["lib/libc/include/x86_64-#{os}-musl"]
+  end
+  defp dirs_for_specific(%{abi: "gnu", os: os, arch: "arm"}) do
+    ["lib/libc/include/arm-#{os}-gnueabihf", "lib/libc/include/arm-linux-musl"]
   end
   defp dirs_for_specific(%{abi: abi, os: os, arch: arch}) do
     ["lib/libc/include/#{arch}-#{os}-#{abi}"]
