@@ -1,5 +1,4 @@
 defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
-
   # need to do this manually in order to prevent some strange library-on-load
   # segfault.
 
@@ -39,11 +38,20 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   """
 
   test "yielding nifs can sleep for a while" do
-    start = DateTime.utc_now
+    # ideally, append `+C multi_time_warp` to `ERL_FLAGS`
+    # for more info, read:
+    # https://learnyousomeerlang.com/time
+    # https://erlang.org/doc/apps/erts/time_correction.html
+    # https://erlang.org/doc/man/erlang.html#type-time_unit
+    start = System.monotonic_time(:millisecond)
     assert 47 == yielding_forty_seven()
-    elapsed = DateTime.utc_now |> DateTime.diff(start)
-    assert elapsed >= 2
-    assert elapsed <= 4 # this one is a bit slower than I expected.
+    stop = System.monotonic_time(:millisecond)
+    # NB System.monotonic_time/1 may return negative values
+    # but they will always be monotonically increasing
+    elapsed = abs(start - stop)
+    assert elapsed >= 1000
+    # this one is a bit slower than I expected.
+    assert elapsed <= 4000
   end
 
   ~Z"""
@@ -92,7 +100,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   """
 
   test "yielding nifs can have an slice input" do
-    assert 5050 == 1..100 |> Enum.to_list |> yielding_sum
+    assert 5050 == 1..100 |> Enum.to_list() |> yielding_sum
   end
 
   ~Z"""
