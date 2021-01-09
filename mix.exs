@@ -19,7 +19,7 @@ defmodule Zigler.MixProject do
 
     [
       app: :zigler,
-      version: "0.7.1",
+      version: "0.7.2",
       elixir: "~> 1.9",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
@@ -87,11 +87,11 @@ defmodule Zigler.MixProject do
       # coverage testing
       {:excoveralls, "~> 0.12", only: :test, runtime: false},
       # zigler's parsing is done using nimble_parsec
-      {:nimble_parsec, "~> 0.5", runtime: false},
+      {:nimble_parsec, "~> 1.1", runtime: false},
       # to parse the zig JSON
       {:jason, "~> 1.1", runtime: false},
       # documentation
-      {:ex_doc, "== 0.21.1", runtime: false},
+      {:ex_doc, "~> 0.23", runtime: false},
     ]
   end
 end
