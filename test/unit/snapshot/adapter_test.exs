@@ -10,7 +10,9 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "the shim function directly calls the target function" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-        var __foo_result__ = foo();
+        beam.yield_info = null;
+
+        var __foo_result__ = nosuspend foo();
         return beam.make_c_long(env, __foo_result__);
       }
 
@@ -22,7 +24,9 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "the shim function can use other types" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-        var __foo_result__ = foo();
+        beam.yield_info = null;
+
+        var __foo_result__ = nosuspend foo();
         return beam.make_c_int(env, __foo_result__);
       }
 
@@ -36,10 +40,12 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "the shim function will correctly fill out arguments" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        beam.yield_info = null;
+
         var __foo_arg0__ = beam.get_i64(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
-        var __foo_result__ = foo(__foo_arg0__);
+        var __foo_result__ = nosuspend foo(__foo_arg0__);
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -53,7 +59,9 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "that is beam.env the shim function passes the env term in" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-        var __foo_result__ = foo(env);
+        beam.yield_info = null;
+
+        var __foo_result__ = nosuspend foo(env);
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -65,7 +73,9 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "that is ?*e.ErlNifEnv the shim function passes the env term in" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-        var __foo_result__ = foo(env);
+        beam.yield_info = null;
+
+        var __foo_result__ = nosuspend foo(env);
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -79,9 +89,11 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "the shim function respects beam.term type" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        beam.yield_info = null;
+
         var __foo_arg0__ = argv[0];
 
-        return foo(__foo_arg0__);
+        return nosuspend foo(__foo_arg0__);
       }
 
       """ == %Nif{name: :foo, arity: 1, args: ["beam.term"], retval: "beam.term"}
@@ -92,9 +104,11 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "the shim function respects e.ErlNifTerm type" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        beam.yield_info = null;
+
         var __foo_arg0__ = argv[0];
 
-        return foo(__foo_arg0__);
+        return nosuspend foo(__foo_arg0__);
       }
 
       """ == %Nif{name: :foo, arity: 1, args: ["e.ErlNifTerm"], retval: "e.ErlNifTerm"}
@@ -105,10 +119,12 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "the shim function respects beam.pid type" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        beam.yield_info = null;
+
         var __foo_arg0__ = beam.get_pid(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
-        foo(__foo_arg0__);
+        nosuspend foo(__foo_arg0__);
         return beam.make_nil(env);
       }
 
@@ -120,10 +136,12 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "the shim function respects e.ErlNifPid type" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        beam.yield_info = null;
+
         var __foo_arg0__ = beam.get_pid(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
-        foo(__foo_arg0__);
+        nosuspend foo(__foo_arg0__);
         return beam.make_nil(env);
       }
 
@@ -137,13 +155,15 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "the shim function respects integers" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        beam.yield_info = null;
+
         var __foo_arg0__ = beam.get_slice_of(i32, env, argv[0]) catch |err| switch (err) {
           error.OutOfMemory => return beam.raise_enomem(env),
           beam.Error.FunctionClauseError => return beam.raise_function_clause_error(env)
         };
         defer beam.allocator.free(__foo_arg0__);
 
-        var __foo_result__ = foo(__foo_arg0__);
+        var __foo_result__ = nosuspend foo(__foo_arg0__);
         return beam.make_i32_list(env, __foo_result__) catch return beam.raise_enomem(env);
       }
 
@@ -155,13 +175,15 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "the shim function respects floats" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        beam.yield_info = null;
+
         var __foo_arg0__ = beam.get_slice_of(f64, env, argv[0]) catch |err| switch (err) {
           error.OutOfMemory => return beam.raise_enomem(env),
           beam.Error.FunctionClauseError => return beam.raise_function_clause_error(env)
         };
         defer beam.allocator.free(__foo_arg0__);
 
-        var __foo_result__ = foo(__foo_arg0__);
+        var __foo_result__ = nosuspend foo(__foo_arg0__);
         return beam.make_f64_list(env, __foo_result__) catch return beam.raise_enomem(env);
       }
 
@@ -175,10 +197,12 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "that is beam.env the shim function passes the env term in" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        beam.yield_info = null;
+
         var __foo_arg0__ = beam.get_i64(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
-        var __foo_result__ = foo(env, __foo_arg0__);
+        var __foo_result__ = nosuspend foo(env, __foo_arg0__);
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -190,10 +214,12 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "that is ?*e.ErlNifEnv the shim function passes the env term in" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        beam.yield_info = null;
+
         var __foo_arg0__ = beam.get_i64(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
-        var __foo_result__ = foo(env, __foo_arg0__);
+        var __foo_result__ = nosuspend foo(env, __foo_arg0__);
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -207,10 +233,12 @@ defmodule ZiglerTest.Snapshot.AdapterTest do
     test "the shim function assumes binary" do
       assert """
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        beam.yield_info = null;
+
         var __foo_arg0__ = beam.get_char_slice(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
-        var __foo_result__ = foo(__foo_arg0__);
+        var __foo_result__ = nosuspend foo(__foo_arg0__);
         return beam.make_slice(env, __foo_result__);
       }
 

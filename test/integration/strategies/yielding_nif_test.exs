@@ -55,6 +55,18 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   end
 
   ~Z"""
+  /// nif: nonyielding_nif/0
+  fn nonyielding_nif() i32 {
+    _ = beam.yield() catch return 0;
+    return 47;
+  }
+  """
+
+  test "yielding nif code can be run in a nonyielding fn" do
+    assert 47 == nonyielding_nif()
+  end
+
+  ~Z"""
   /// nif: non_yielding_forty_seven/1 yielding
   fn non_yielding_forty_seven(yields: bool) i32 {
     if (yields) { _ = beam.yield() catch return 0; }

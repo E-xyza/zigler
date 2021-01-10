@@ -82,7 +82,7 @@ defmodule Zig.Nif.Yielding do
       if (beam_frame.yield_info.yield_frame) | yield_frame | {
         // async join with cancellation.
         beam.yield_info = &(beam_frame.yield_info);
-        beam.yield_info.cancelled = true;
+        beam.yield_info.?.cancelled = true;
 
         resume yield_frame;
         nosuspend await beam_frame.zig_frame;
@@ -134,7 +134,7 @@ defmodule Zig.Nif.Yielding do
       // mark the resource for releasing here.
       __resource__.release(#{frame_ptr nif.name}, env, frame_resource);
 
-      if (beam.yield_info.yield_frame) | _ | {
+      if (beam.yield_info.?.yield_frame) | _ | {
         return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler nif.name}, 1, &frame_resource);
       } else {
         return beam_frame.yield_info.response;
@@ -166,9 +166,9 @@ defmodule Zig.Nif.Yielding do
       // reset the threadlocal yield_info pointer.
       beam.yield_info = &(beam_frame.yield_info);
 
-      while (beam.yield_info.yield_frame) |next_frame| {
-        // set yielded to false and resume the frame:
-        beam.yield_info.yield_frame = null;
+      while (beam.yield_info.?.yield_frame) |next_frame| {
+        // stash the yielding frame and resume it:
+        beam.yield_info.?.yield_frame = null;
         resume next_frame;
         tick_time = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
         elapsed_time = tick_time - start_time;
@@ -184,7 +184,7 @@ defmodule Zig.Nif.Yielding do
         }
       } else {
         nosuspend await beam_frame.zig_frame;
-        return beam.yield_info.response;
+        return beam.yield_info.?.response;
       }
 
       return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler nif.name}, 1, argv);
@@ -198,7 +198,7 @@ defmodule Zig.Nif.Yielding do
     result_term = if nif.retval == "void" do
       "beam.make_ok(env)"
     else
-      Adapter.make_clause(nif.retval, "result", "beam.yield_info.environment")
+      Adapter.make_clause(nif.retval, "result", "beam.yield_info.?.environment")
     end
     """
     fn #{harness nif.name}(env_: beam.env, argv: [*c] const beam.term) callconv(.Async) void {
@@ -219,13 +219,13 @@ defmodule Zig.Nif.Yielding do
 
   def bail(:oom), do: """
   {
-        beam.yield_info.response = beam.raise_enomem(env);
+        beam.yield_info.?.response = beam.raise_enomem(env);
         return;
       }
   """
   def bail(:function_clause), do: """
   {
-        beam.yield_info.response = beam.raise_function_clause_error(env);
+        beam.yield_info.?.response = beam.raise_function_clause_error(env);
         return;
       }
   """

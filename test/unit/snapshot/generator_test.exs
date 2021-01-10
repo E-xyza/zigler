@@ -37,7 +37,9 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       // adapters for Elixir.Foo in foo.exs:
 
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-        var __foo_result__ = foo();
+        beam.yield_info = null;
+
+        var __foo_result__ = nosuspend foo();
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -106,10 +108,12 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       // adapters for Elixir.Foo in foo.exs:
 
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        beam.yield_info = null;
+
         var __foo_arg0__ = beam.get_i64(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
-        var __foo_result__ = foo(__foo_arg0__);
+        var __foo_result__ = nosuspend foo(__foo_arg0__);
         return beam.make_i64(env, __foo_result__);
       }
 
