@@ -88,7 +88,9 @@ defmodule Zig.Nif.Yielding do
         nosuspend await beam_frame.zig_frame;
       }
 
-      // not sure why, but using the c allocator prevents a segfault:
+      // always destroy the beam environment for the thread
+      e.enif_free_env(beam_frame.yield_info.environment);
+
       defer allocator.destroy(beam_frame);
       defer allocator.destroy(beam_frame.zig_frame);
 
@@ -104,7 +106,9 @@ defmodule Zig.Nif.Yielding do
     """
     export fn #{launcher nif.name}(env: beam.env, _argc: c_int, argv: [*c] const beam.term) beam.term {
       return #{launcher_shim nif.name}(env, argv) catch | err | switch (err) {
+        error.LaunchError => beam.raise(env, beam.make_atom(env, "launch_error")),
         error.OutOfMemory => beam.raise_enomem(env),
+        error.Cancelled => unreachable,
       };
     }
 
@@ -122,14 +126,17 @@ defmodule Zig.Nif.Yielding do
 
       var frame_resource = try __resource__.create(#{frame_ptr nif.name}, env, beam_frame);
 
+      // create a new environment for the yielding nif.
+      var yield_env = if (e.enif_alloc_env()) | env_ | env_ else return beam.YieldError.LaunchError;
+
       // populate initial information for the yield clause
-      beam_frame.yield_info = .{ .environment = env };
+      beam_frame.yield_info = .{ .environment = yield_env };
 
       // set the threadlocal yield info pointer.
       beam.yield_info = &(beam_frame.yield_info);
 
       // run the desired function.
-      beam_frame.zig_frame.* = async #{harness nif.name}(env, argv);
+      beam_frame.zig_frame.* = async #{harness nif.name}(yield_env, env, argv);
 
       // mark the resource for releasing here.
       __resource__.release(#{frame_ptr nif.name}, env, frame_resource);
@@ -156,12 +163,6 @@ defmodule Zig.Nif.Yielding do
       var start_time = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
       var tick_time: e.ErlNifTime = undefined;
       var elapsed_time: e.ErlNifTime = undefined;
-
-      // update the yield_info values, reset the frame
-      if (env != beam_frame.yield_info.environment) {
-        beam_frame.yield_info.environment = env;
-        _ = e.enif_make_copy(env, argv[0]);
-      }
 
       // reset the threadlocal yield_info pointer.
       beam.yield_info = &(beam_frame.yield_info);
@@ -201,9 +202,7 @@ defmodule Zig.Nif.Yielding do
       Adapter.make_clause(nif.retval, "result", "beam.yield_info.?.environment")
     end
     """
-    fn #{harness nif.name}(env_: beam.env, argv: [*c] const beam.term) callconv(.Async) void {
-      var env = env_;
-
+    fn #{harness nif.name}(env: beam.env, parent_env: beam.env, argv: [*c] const beam.term) callconv(.Async) void {
       // decode parameters
     #{get_clauses}
 
@@ -219,13 +218,13 @@ defmodule Zig.Nif.Yielding do
 
   def bail(:oom), do: """
   {
-        beam.yield_info.?.response = beam.raise_enomem(env);
+        beam.yield_info.?.response = beam.raise_enomem(parent_env);
         return;
       }
   """
   def bail(:function_clause), do: """
   {
-        beam.yield_info.?.response = beam.raise_function_clause_error(env);
+        beam.yield_info.?.response = beam.raise_function_clause_error(parent_env);
         return;
       }
   """

@@ -30,7 +30,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
       }
 
       start_time = this_time;
-      _ = beam.yield() catch return 0;
+      beam.yield() catch return 0;
       idx += 1;
     }
     return 47;
@@ -57,7 +57,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   ~Z"""
   /// nif: nonyielding_nif/0
   fn nonyielding_nif() i32 {
-    _ = beam.yield() catch return 0;
+    beam.yield() catch return 0;
     return 47;
   }
   """
@@ -69,7 +69,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   ~Z"""
   /// nif: non_yielding_forty_seven/1 yielding
   fn non_yielding_forty_seven(yields: bool) i32 {
-    if (yields) { _ = beam.yield() catch return 0; }
+    if (yields) { beam.yield() catch return 0; }
     return 47;
   }
 
@@ -88,7 +88,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   /// nif: yielding_void/1 yielding
   fn yielding_void(env: beam.env, parent: beam.pid) void {
     // do at least one suspend
-    _ = beam.yield() catch return;
+    beam.yield() catch return;
 
     _ = beam.send(env, parent, beam.make_atom(env, "yielding"));
   }
@@ -105,7 +105,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
     var result : i64 = 0;
     for (list) | val | {
       result += val;
-      _ = beam.yield() catch return 0;
+      beam.yield() catch return 0;
     }
     return result;
   }
@@ -118,7 +118,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   ~Z"""
   /// nif: yielding_string/1 yielding
   fn yielding_string(str: []u8) usize {
-    _ = beam.yield() catch return 0;
+    beam.yield() catch return 0;
     return str.len;
   }
   """
@@ -147,7 +147,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
 
     while (true) {
       std.time.sleep(tenth_ms_in_us);
-        _ = beam.yield() catch return;
+        beam.yield() catch return;
     }
   }
   """

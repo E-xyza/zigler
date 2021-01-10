@@ -1292,20 +1292,19 @@ pub fn Frame(function: anytype) type {
 }
 
 pub const YieldError = error {
+  LaunchError,
   Cancelled,
 };
 
 /// this function is going to be dropped inside the suspend statement.
-pub fn yield() !env {
+pub fn yield() !void {
   // only suspend if we are inside of a yielding nif
   if (yield_info) | info | {
     suspend {
       if (info.cancelled) return YieldError.Cancelled;
       info.yield_frame = @frame();
     }
-    return info.environment;
   }
-  return null;
 }
 
 pub const YieldInfo = struct {

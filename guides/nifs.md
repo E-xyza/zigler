@@ -145,10 +145,10 @@ If you want to launch your nif as a yielding, use the `yielding` attribute.
 This will allow the BEAM to schedule around the yield points.  This is the
 most desirable way of creating a long-running NIF (when it gets repaired).
 
-- during normal operation the `beam.yield()` function returns either a
-  `beam.env` which updates the current environment for the benefit of the
-  running nif.  If you need an environment for downstream puproses, use this
-  value.
+- it is safe to use the `beam.yield()` function in non-yielding functions.
+  you can thus write a yielding NIF function and then test the performance delta
+  with, for example dirty or threaded NIFs and decide if behaving correctly is
+  worth the performance cost.
 - if the running process is stopped by the VM, the nif will be caught by the
   cleanup method and will return `beam.YieldError`.  You **must** catch this
   error and return to allow the nif to be awaited.
@@ -167,7 +167,7 @@ fn yielding(env: beam.env) beam.term {
     //
 
     // yield point
-    _ = beam.yield() catch return beam.make_error(env);
+    beam.yield() catch return beam.make_error(env);
     count += 1;
   }
   return beam.make_ok(env);

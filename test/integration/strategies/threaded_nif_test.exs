@@ -83,7 +83,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
   ~Z"""
   /// nif: threaded_with_yield/0 threaded
   fn threaded_with_yield() i32 {
-    _ = beam.yield() catch return 0;
+    beam.yield() catch return 0;
     return 47;
   }
   """
