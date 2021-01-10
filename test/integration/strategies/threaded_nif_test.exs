@@ -79,4 +79,16 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     # debug message from the cleanup process
     assert_receive :thread_freed
   end
+
+  ~Z"""
+  /// nif: threaded_with_yield/0 threaded
+  fn threaded_with_yield() i32 {
+    _ = beam.yield() catch return 0;
+    return 47;
+  }
+  """
+
+  test "yielding nif code can be run in a threaded fn" do
+    assert 47 == threaded_with_yield()
+  end
 end
