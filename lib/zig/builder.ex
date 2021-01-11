@@ -111,10 +111,11 @@ defmodule Zig.Builder do
     |> System.get_env
     |> System.cmd(~w(- -dumpmachine))
     |> elem(0)
+    |> String.trim
     |> String.split("-")
+    |> Enum.reject(&(&1 == "unknown"))
     |> case do
-      ["i386"| _] -> %{arch: "i386", os: "linux", abi: "gnu"}
-      [arch | _] -> %{arch: arch, os: "linux", abi: "gnu"}
+      [arch, os, abi] -> %{arch: arch, os: os, abi: abi}
     end
   end
 
@@ -131,7 +132,7 @@ defmodule Zig.Builder do
   defp dirs_for_specific(%{abi: _, os: os, arch: "x86_64"}) do
     ["lib/libc/include/x86_64-#{os}-musl"]
   end
-  defp dirs_for_specific(%{abi: "gnu", os: os, arch: "arm"}) do
+  defp dirs_for_specific(%{abi: "gnueabihf", os: os, arch: "arm"}) do
     ["lib/libc/include/arm-#{os}-gnueabihf", "lib/libc/include/arm-linux-musl"]
   end
   defp dirs_for_specific(%{abi: abi, os: os, arch: arch}) do
