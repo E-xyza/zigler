@@ -1232,7 +1232,7 @@ pub const resource = struct {
     if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
       return resource.ResourceError.FetchError;
     }
-    
+
     if (obj == null) { unreachable; }
 
     var val : *T = @ptrCast(*T, @alignCast(@alignOf(*T), obj));
@@ -1264,7 +1264,7 @@ pub const resource = struct {
     if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
       return resource.ResourceError.FetchError;
     }
-    
+
     if (obj == null) { unreachable; }
 
     e.enif_keep_resource(obj);
@@ -1282,7 +1282,7 @@ pub const resource = struct {
 // yielding NIFs
 
 /// transparently passes information into the yield statement.
-pub threadlocal var yield_info: *YieldInfo = undefined;
+pub threadlocal var yield_info: ?*YieldInfo = null;
 
 pub fn Frame(function: anytype) type {
   return struct {
@@ -1292,27 +1292,31 @@ pub fn Frame(function: anytype) type {
 }
 
 pub const YieldError = error {
+  LaunchError,
   Cancelled,
 };
 
 /// this function is going to be dropped inside the suspend statement.
-pub fn yield() !env {
-  suspend {
-    if (yield_info.cancelled) return YieldError.Cancelled;
-    yield_info.yield_frame = @frame();
+pub fn yield() !void {
+  // only suspend if we are inside of a yielding nif
+  if (yield_info) | info | {
+    suspend {
+      if (info.cancelled) return YieldError.Cancelled;
+      info.yield_frame = @frame();
+    }
   }
-  return yield_info.environment;
 }
 
 pub const YieldInfo = struct {
   yield_frame: ?anyframe = null,
+  is_yielding: bool = false,
   cancelled: bool = false,
   response: term = undefined,
   environment: env,
 };
 
 pub fn set_yield_response(what: term) void {
-  yield_info.response = what;
+  yield_info.?.response = what;
 }
 
 ///////////////////////////////////////////////////////////////////////////////

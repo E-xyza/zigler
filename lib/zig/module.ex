@@ -21,6 +21,7 @@ defmodule Zig.Module do
     dry_run:             false,
     code:                [],
     version:             Version.parse!("0.0.0"),
+    link_libc:           false,
     test_dirs:           nil,
     local_zig:           false
   ]
@@ -38,6 +39,7 @@ defmodule Zig.Module do
     c_includes:          keyword(Path.t | [Path.t]),
     include_dirs:        [Path.t],
     system_include_dirs: [Path.t],
+    link_libc:           boolean,
     dry_run:             boolean,
     code:                iodata,
     version:             Version.t,

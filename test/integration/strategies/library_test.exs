@@ -12,7 +12,8 @@ defmodule ZiglerTest.Integration.Strategies.LibraryTest do
 
     use Zig,
       libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
-      system_include_dirs: ["/usr/include/x86_64-linux-gnu"]
+      system_include_dirs: ["/usr/include/x86_64-linux-gnu"],
+      link_libc: true
 
     ~Z"""
     const blas = @cImport({
@@ -42,7 +43,8 @@ defmodule ZiglerTest.Integration.Strategies.LibraryTest do
     defmodule BlasStatic do
       use Zig,
         libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.a"],
-        system_include_dirs: ["/usr/include/x86_64-linux-gnu"]
+        system_include_dirs: ["/usr/include/x86_64-linux-gnu"],
+        link_libc: true
 
       ~Z"""
       const blas = @cImport({

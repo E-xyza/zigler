@@ -242,8 +242,10 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           );
         }
 
+        beam.yield_info = null;
+
         // execute the nif function
-        var result = foo();
+        var result = nosuspend foo();
         result_term = beam.make_ok_term(
           env,
           e.enif_make_tuple(
@@ -296,6 +298,8 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           );
         }
 
+        beam.yield_info = null;
+
         var __bar_arg0__ = beam.get_i64(env, cache.args.?[0])
           catch {
             result_term =
@@ -324,7 +328,7 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           };
 
         // execute the nif function
-        var result = bar(__bar_arg0__, __bar_arg1__);
+        var result = nosuspend bar(__bar_arg0__, __bar_arg1__);
         result_term = beam.make_ok_term(
           env,
           e.enif_make_tuple(
@@ -377,8 +381,10 @@ defmodule ZiglerTest.Snapshot.ThreadedTest do
           );
         }
 
+        beam.yield_info = null;
+
         // execute the nif function
-        foo();
+        nosuspend foo();
         result_term = beam.make_ok_term(
           env,
           e.enif_make_tuple(

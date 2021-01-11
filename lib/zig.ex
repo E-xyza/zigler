@@ -230,10 +230,10 @@ defmodule Zig do
     |> File.rm_rf!
 
     user_opts = Keyword.take(opts, ~w(libs resources dry_run c_includes
-    system_include_dirs local)a)
+    system_include_dirs local link_libc)a)
 
     include_dirs = opts
-    |> Keyword.get(:include_dirs, [])
+    |> Keyword.get(:include, [])
     |> Kernel.++(if has_include_dir?(__CALLER__), do: ["include"], else: [])
 
     zigler = struct(%Zig.Module{

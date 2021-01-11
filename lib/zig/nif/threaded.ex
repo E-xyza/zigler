@@ -269,8 +269,10 @@ defmodule Zig.Nif.Threaded do
         );
       }
 
+      beam.yield_info = null;
+
     #{get_clauses}  // execute the nif function
-      #{result_assign}#{nif.name}(#{Adapter.args nif});
+      #{result_assign}nosuspend #{nif.name}(#{Adapter.args nif});
       result_term = beam.make_ok_term(
         env,
         e.enif_make_tuple(

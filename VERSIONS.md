@@ -75,3 +75,13 @@ Thanks to Dave Cottlehuber @dch for testing.
 - regressions:
   - Nerves support will have to be dropped until arm32 is tier 1.  Use 0.3.2.
   - zigtests do not seem to work when libraries are loaded
+
+## 0.7.2
+- **note:** this compiles with zig 0.7.1
+- **important (breaking):** semantics for `beam.yield` have changed.
+  there is no longer any need to update the environment of the yielding
+  function, and `beam.yield()` now returns `!void`
+- `beam.yield` is safely usable in non-yielding nifs.
+- Zigler now no longer automatically links libc.  This may cause
+  compilation problems on non-linux platforms.  Please post any bug
+  reports to github tracker.

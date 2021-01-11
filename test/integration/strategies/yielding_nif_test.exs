@@ -1,5 +1,4 @@
 defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
-
   # need to do this manually in order to prevent some strange library-on-load
   # segfault.
 
@@ -31,7 +30,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
       }
 
       start_time = this_time;
-      _ = beam.yield() catch return 0;
+      beam.yield() catch return 0;
       idx += 1;
     }
     return 47;
@@ -39,17 +38,38 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   """
 
   test "yielding nifs can sleep for a while" do
-    start = DateTime.utc_now
+    # ideally, append `+C multi_time_warp` to `ERL_FLAGS`
+    # for more info, read:
+    # https://learnyousomeerlang.com/time
+    # https://erlang.org/doc/apps/erts/time_correction.html
+    # https://erlang.org/doc/man/erlang.html#type-time_unit
+    start = System.monotonic_time(:millisecond)
     assert 47 == yielding_forty_seven()
-    elapsed = DateTime.utc_now |> DateTime.diff(start)
-    assert elapsed >= 2
-    assert elapsed <= 4 # this one is a bit slower than I expected.
+    stop = System.monotonic_time(:millisecond)
+    # NB System.monotonic_time/1 may return negative values
+    # but they will always be monotonically increasing
+    elapsed = abs(start - stop)
+    assert elapsed >= 1000
+    # this one is a bit slower than I expected.
+    assert elapsed <= 4000
+  end
+
+  ~Z"""
+  /// nif: nonyielding_nif/0
+  fn nonyielding_nif() i32 {
+    beam.yield() catch return 0;
+    return 47;
+  }
+  """
+
+  test "yielding nif code can be run in a nonyielding fn" do
+    assert 47 == nonyielding_nif()
   end
 
   ~Z"""
   /// nif: non_yielding_forty_seven/1 yielding
   fn non_yielding_forty_seven(yields: bool) i32 {
-    if (yields) { _ = beam.yield() catch return 0; }
+    if (yields) { beam.yield() catch return 0; }
     return 47;
   }
 
@@ -68,7 +88,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   /// nif: yielding_void/1 yielding
   fn yielding_void(env: beam.env, parent: beam.pid) void {
     // do at least one suspend
-    _ = beam.yield() catch return;
+    beam.yield() catch return;
 
     _ = beam.send(env, parent, beam.make_atom(env, "yielding"));
   }
@@ -85,20 +105,20 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
     var result : i64 = 0;
     for (list) | val | {
       result += val;
-      _ = beam.yield() catch return 0;
+      beam.yield() catch return 0;
     }
     return result;
   }
   """
 
   test "yielding nifs can have an slice input" do
-    assert 5050 == 1..100 |> Enum.to_list |> yielding_sum
+    assert 5050 == 1..100 |> Enum.to_list() |> yielding_sum
   end
 
   ~Z"""
   /// nif: yielding_string/1 yielding
   fn yielding_string(str: []u8) usize {
-    _ = beam.yield() catch return 0;
+    beam.yield() catch return 0;
     return str.len;
   }
   """
@@ -127,7 +147,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
 
     while (true) {
       std.time.sleep(tenth_ms_in_us);
-        _ = beam.yield() catch return;
+        beam.yield() catch return;
     }
   }
   """
