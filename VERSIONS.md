@@ -85,3 +85,4 @@ Thanks to Dave Cottlehuber @dch for testing.
 - Zigler now no longer automatically links libc.  This may cause
   compilation problems on non-linux platforms.  Please post any bug
   reports to github tracker.
+- thanks to (@dch and @wojtekmach for updating some dependency issues)
