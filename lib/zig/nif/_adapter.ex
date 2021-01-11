@@ -80,16 +80,6 @@ defmodule Zig.Nif.Adapter do
     """
   end
 
-  defp get_clause_yielding({"[]" <> type, index}, function, bail, fetcher) do
-    """
-      var __#{function}_arg#{index}__ = beam.get_slice_of(#{short_name type}, env, #{fetcher.(index)}) catch |err| switch (err) {
-        error.OutOfMemory => #{String.trim bail.(:oom)},
-        beam.Error.FunctionClauseError => #{String.trim bail.(:function_clause)}
-      };
-      defer beam.allocator.free(__#{function}_arg#{index}__);
-    """
-  end
-
   def make_clause(type, var, env \\ "env")
   def make_clause("beam.term", var, _), do: var
   def make_clause("void", _var, env) do

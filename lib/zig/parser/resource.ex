@@ -7,6 +7,12 @@ defmodule Zig.Parser.Resource do
   @enforce_keys [:name]
   defstruct @enforce_keys ++ [:doc, :cleanup]
 
+  @type t :: %__MODULE__{
+    name: atom,
+    cleanup: atom,
+    doc: String.t
+  }
+
   alias Zig.Parser.ResourceCleanup
 
   def register_resource_definition(context = %{local: %{name: res}}) do

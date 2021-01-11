@@ -576,7 +576,7 @@ pub fn get_atom_slice_alloc(a: *Allocator, environment: env, src_term: atom) ![]
 /// shorthand for `e.ErlNifBinary`.
 pub const binary = e.ErlNifBinary;
 
-/// Takes an BEAM `t:Kernel.binary/0` term and retrieves a pointer to the
+/// Takes an BEAM `t:binary/0` term and retrieves a pointer to the
 /// binary data as a Zig c-string (`[*c]u8`).  No memory is allocated for
 /// this operation.
 ///
@@ -586,7 +586,7 @@ pub const binary = e.ErlNifBinary;
 /// contains any zero byte values.  Always use `get_char_slice/2` when
 /// C-interop is not necessary.
 ///
-/// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.binary/0`
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:binary/0`
 pub fn get_c_string(environment: env, src_term: term) ![*c]u8 {
   var bin: binary = undefined;
   if (0 != e.enif_inspect_binary(environment, src_term, &bin)) {
@@ -594,10 +594,10 @@ pub fn get_c_string(environment: env, src_term: term) ![*c]u8 {
   } else { return Error.FunctionClauseError;}
 }
 
-/// Takes an BEAM `t:Kernel.binary/0` term and retrieves it as a Zig character slice
+/// Takes an BEAM `t:binary/0` term and retrieves it as a Zig character slice
 /// (`[]u8`)  No memory is allocated for this operation.
 ///
-/// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.binary/0`
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:binary/0`
 pub fn get_char_slice(environment: env, src_term: term) ![]u8 {
   var bin: binary = undefined;
   var result: []u8 = undefined;
@@ -607,10 +607,10 @@ pub fn get_char_slice(environment: env, src_term: term) ![]u8 {
   } else { return Error.FunctionClauseError; }
 }
 
-/// Takes an BEAM `t:Kernel.binary/0` term and returns the corresponding
+/// Takes an BEAM `t:binary/0` term and returns the corresponding
 /// `binary` struct.
 ///
-/// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.binary/0`
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:binary/0`
 pub fn get_binary(environment: env, src_term: term) !binary {
   var bin: binary = undefined;
   if (0 != e.enif_inspect_binary(environment, src_term, &bin)) {
@@ -624,14 +624,14 @@ pub fn get_binary(environment: env, src_term: term) !binary {
 /// shorthand for `e.ErlNifPid`.
 pub const pid = e.ErlNifPid;
 
-/// Takes an BEAM `t:Kernel.pid/0` term and returns the corresponding `pid`
+/// Takes an BEAM `t:pid/0` term and returns the corresponding `pid`
 /// struct.
 ///
 /// Note that this is a fairly opaque struct and you're on your
 /// own as to what you can do with this (for now), except as a argument
 /// for the `e.enif_send` function.
 ///
-/// Raises `beam.Error.FunctionClauseError` if the term is not `t:Kernel.pid/0`
+/// Raises `beam.Error.FunctionClauseError` if the term is not `t:pid/0`
 pub fn get_pid(environment: env, src_term: term) !pid {
   var result: pid = undefined;
   if (0 != e.enif_get_local_pid(environment, src_term, &result)) {
@@ -1098,7 +1098,7 @@ pub fn make_f64_list(environment: env, val: []f64) !term {
 ///////////////////////////////////////////////////////////////////////////////
 // special atoms
 
-/// converts a `bool` value into a `t:Kernel.boolean/0` value.
+/// converts a `bool` value into a `t:boolean/0` value.
 pub fn make_bool(environment: env, val: bool) term {
   return if (val) e.enif_make_atom(environment, "true") else e.enif_make_atom(environment, "false");
 }

@@ -55,6 +55,7 @@ defmodule Zig.Doc.Parser do
 
     [%{parsed_module |
         docs: Enum.reverse(parsed_module.docs),
+        doc: doc_ast(parsed_module),
         typespecs: Enum.reverse(types)}
     | exceptions]
   end
@@ -237,7 +238,7 @@ defmodule Zig.Doc.Parser do
     this_value =
       %ExDoc.FunctionNode{
         arity: 0,
-        doc: String.trim(doc),
+        doc: doc_ast(String.trim(doc), context.source_path, line),
         doc_line: line,
         group: "Values",
         id: "#{name}",
@@ -255,7 +256,7 @@ defmodule Zig.Doc.Parser do
     this_type =
       %ExDoc.TypeNode{
         arity: 0,
-        doc: doc,
+        doc: doc_ast(doc, context.source_path, line),
         doc_line: line,
         id: "#{name}/0",
         name: String.to_atom(name),
@@ -273,7 +274,7 @@ defmodule Zig.Doc.Parser do
       %ExDoc.FunctionNode{
         annotations: "mutable",
         arity: 0,
-        doc: doc,
+        doc: doc_ast(doc, context.source_path, line),
         doc_line: line,
         group: "Values",
         id: "#{name}",
@@ -300,7 +301,7 @@ defmodule Zig.Doc.Parser do
       %ExDoc.FunctionNode{
         annotations: (if comptime, do: ["comptime"], else: []),
         arity: arity,
-        doc: doc,
+        doc: doc_ast(doc, context.source_path, line),
         doc_line: line,
         group: "Functions",
         id: "#{name}/#{arity}",
@@ -323,7 +324,7 @@ defmodule Zig.Doc.Parser do
   defp exceptions_from([{:doc, doc}, error | rest], group, context, line) do
     errname = "#{context.id}.#{group}.#{error}"
     [%ExDoc.ModuleNode{
-      doc: IO.iodata_to_binary(doc),
+      doc: doc_ast(IO.iodata_to_binary(doc), context.source_path, 1),
       doc_line: 1,
       function_groups: [],
       group: "Zig Errors",
@@ -346,5 +347,11 @@ defmodule Zig.Doc.Parser do
       source_path: context.source_path,
       source_url: interpolate_line(line),
       title: errname} | exceptions_from(rest, group, context, line)]
+  end
+
+  defp doc_ast(parsed), do: doc_ast(parsed.doc, parsed.source_path, parsed.doc_line)
+  defp doc_ast(markdown, path, line) do
+    alias ExDoc.Markdown
+    Markdown.to_ast(markdown, file: path, line: line)
   end
 end

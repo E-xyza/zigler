@@ -7,6 +7,12 @@ defmodule Zig.Parser.ResourceCleanup do
   @enforce_keys [:for]
   defstruct @enforce_keys ++ [:name, :doc]
 
+  @type t :: %__MODULE__{
+    for: atom,
+    name: atom,
+    doc: String.t
+  }
+
   @beam_envs ["beam.env", "?*e.ErlNifEnv"]
 
   alias Zig.Parser.Resource
