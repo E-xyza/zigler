@@ -91,8 +91,7 @@ defmodule Zigler.MixProject do
       # to parse the zig JSON
       {:jason, "~> 1.1", runtime: false},
       # documentation
-      {:ex_doc, path: "../ex_doc", runtime: false}
-      #{:ex_doc, "~> 0.23", runtime: false},
+      {:ex_doc, "~> 0.23", runtime: false},
     ]
   end
 end
