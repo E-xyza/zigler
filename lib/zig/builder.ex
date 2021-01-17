@@ -106,9 +106,23 @@ defmodule Zig.Builder do
 
     %{abi: abi, arch: arch, os: os}
   end
+
   def target_struct(_other, _zig_tree) do
-    "CC"
-    |> System.get_env
+    System.get_env
+    |> target_struct_from_env
+  end
+
+  def target_struct_from_env(%{
+        "TARGET_ABI" => abi,
+        "TARGET_ARCH" => arch,
+        "TARGET_OS" => os,
+        "TARGET_CPU" => cpu
+      }) do
+    %{abi: abi, arch: arch, os: os, cpu: cpu}
+  end
+
+  def target_struct_from_env(%{"CC" => cc}) do
+    cc
     |> System.cmd(~w(- -dumpmachine))
     |> elem(0)
     |> String.trim
@@ -117,6 +131,10 @@ defmodule Zig.Builder do
     |> case do
       [arch, os, abi] -> %{arch: arch, os: os, abi: abi}
     end
+  end
+
+  defp to_structdef(t = %{cpu: cpu}) do
+    ".{.default_target = .{.cpu_arch = .#{t.arch}, .os_tag = .#{t.os}, .abi = .#{t.abi}, .cpu_model = .{ .explicit = &std.Target.arm.cpu.#{cpu}}}}"
   end
 
   defp to_structdef(t) do
@@ -129,14 +147,8 @@ defmodule Zig.Builder do
   defp dirs_for(target) do
     ["lib/libc/musl/include"] ++ dirs_for_specific(target)
   end
-  defp dirs_for_specific(%{abi: _, os: os, arch: "x86_64"}) do
-    ["lib/libc/include/x86_64-#{os}-musl"]
-  end
-  defp dirs_for_specific(%{abi: "gnueabihf", os: os, arch: "arm"}) do
-    ["lib/libc/include/arm-#{os}-gnueabihf", "lib/libc/include/arm-linux-musl"]
-  end
-  defp dirs_for_specific(%{abi: abi, os: os, arch: arch}) do
-    ["lib/libc/include/#{arch}-#{os}-#{abi}"]
-  end
 
+  defp dirs_for_specific(%{abi: _abi, os: os, arch: arch}) do
+    ["lib/libc/include/#{arch}-#{os}-musl"]
+  end
 end
