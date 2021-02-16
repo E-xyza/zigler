@@ -1,8 +1,8 @@
 defmodule ZiglerTest.ParserTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.Parser
-  alias Zigler.Parser.{Nif, Resource}
+  alias Zig.Parser
+  alias Zig.Parser.{Nif, Resource}
 
   @moduletag :parser
 
@@ -87,10 +87,10 @@ defmodule ZiglerTest.ParserTest do
       assert %Resource{name: :foo, cleanup: :foo_cleanup} = global
     end
 
-    test "will generate a resource struct for a long nif" do
+    test "will generate a resource struct for a threaded nif" do
       assert {:ok, [], "", %Parser{global: global}, _, _} = Parser.parse_zig_block("""
 
-      /// nif: foo/0 long
+      /// nif: foo/0 threaded
       fn foo() i64 {
         return 47;
       }
@@ -98,16 +98,26 @@ defmodule ZiglerTest.ParserTest do
       """)
 
       assert Enum.any?(global, &match?(%Resource{name: :__foo_cache_ptr__, cleanup: :__foo_cache_cleanup__}, &1))
-      assert Enum.any?(global, &match?(%Nif{name: :foo, opts: [long: true]}, &1))
+      assert Enum.any?(global, &match?(%Nif{name: :foo, opts: [concurrency: :threaded]}, &1))
+    end
+
+    test "will ignore lines with four or more slashes" do
+      assert {:ok, _, _, %{local: nil}, _, _} = Parser.parse_zig_block("""
+      ////
+      """)
+
+      assert {:ok, _, _, %{local: nil}, _, _} = Parser.parse_zig_block("""
+      /////
+      """)
     end
   end
 
   describe "the zig code parser" do
 
-    @empty_module %Zigler.Module{file: "", module: __MODULE__, otp_app: :zigler}
+    @empty_module %Zig.Module{file: "", module: __MODULE__, otp_app: :zigler}
 
     test "can correctly parse a zig block with a single nif function" do
-      assert %Zigler.Module{nifs: [nif]} = Parser.parse("""
+      assert %Zig.Module{nifs: [nif]} = Parser.parse("""
 
       /// nif: foo/0
       fn foo() i64 {
@@ -129,7 +139,7 @@ defmodule ZiglerTest.ParserTest do
 
       """, @empty_module, "foo.ex", 1)
 
-      assert %Zigler.Module{nifs: nifs} = Parser.parse("""
+      assert %Zig.Module{nifs: nifs} = Parser.parse("""
       const bar = struct {
         baz: i64,
         quux: i64
@@ -167,7 +177,7 @@ defmodule ZiglerTest.ParserTest do
       """
 
       first_parse = Parser.parse(code1, @empty_module, "foo.ex", 1)
-      assert %Zigler.Module{code: code} = Parser.parse(code2, first_parse, "foo.ex", 1)
+      assert %Zig.Module{code: code} = Parser.parse(code2, first_parse, "foo.ex", 1)
 
       code_binary = IO.iodata_to_binary(code)
 
@@ -176,7 +186,7 @@ defmodule ZiglerTest.ParserTest do
     end
 
     test "can correctly parse a zig block with a resource declaration" do
-      assert %Zigler.Module{resources: [resource]} = Parser.parse("""
+      assert %Zig.Module{resources: [resource]} = Parser.parse("""
 
       /// resource: bar definition
       const bar = i64;

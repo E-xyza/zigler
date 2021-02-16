@@ -2,9 +2,9 @@ defmodule ZiglerTest.Parser.DocstringTest do
   # these tests make sure that the parser can correctly identify docstrings.
   use ExUnit.Case, async: true
 
-  alias Zigler.Parser
-  alias Zigler.Parser.Nif
-  alias Zigler.Parser.Resource
+  alias Zig.Parser
+  alias Zig.Parser.Nif
+  alias Zig.Parser.Resource
 
   @moduletag :parser
   @moduletag :docstring
@@ -68,28 +68,36 @@ defmodule ZiglerTest.Parser.DocstringTest do
       assert %Nif{doc: "doc"} = local
     end
 
-    test "adds in a long option" do
+    test "detects yielding concurrency" do
       assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_nif_declaration("""
-      /// nif: foo/0 long
+      /// nif: foo/0 yielding
       """)
       assert %Nif{opts: opts} = local
-      assert {:long, true} in opts
+      assert :yielding == opts[:concurrency]
     end
 
-    test "adds in a dirty_io option" do
+    test "detects threaded concurrency" do
+      assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_nif_declaration("""
+      /// nif: foo/0 threaded
+      """)
+      assert %Nif{opts: opts} = local
+      assert :threaded == opts[:concurrency]
+    end
+
+    test "detects dirty_io concurrency" do
       assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_nif_declaration("""
       /// nif: foo/0 dirty_io
       """)
       assert %Nif{opts: opts} = local
-      assert {:dirty, :io} in opts
+      assert :dirty_io == opts[:concurrency]
     end
 
-    test "adds in a dirty_cpu option" do
+    test "detects dirty_cpu concurrency" do
       assert {:ok, _, _, %Parser{local: local}, _, _} = Parser.parse_nif_declaration("""
       /// nif: foo/0 dirty_cpu
       """)
       assert %Nif{opts: opts} = local
-      assert {:dirty, :cpu} in opts
+      assert :dirty_cpu ==  opts[:concurrency]
     end
   end
 

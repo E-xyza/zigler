@@ -1,7 +1,7 @@
 defmodule ZiglerTest.Integration.ZigTest.TransitiveTest do
   use ExUnit.Case, async: true
-  use Zigler
-  import Zigler.Unit
+  use Zig
+  import Zig.Unit
 
   alias ZiglerTest.ZigTest.Transitive
 

@@ -3,7 +3,7 @@ defmodule ZiglerTest.UnitTestTest do
 
   @this_file __ENV__.file
 
-  test "`use Zigler.Unit` requires `use Zigler`" do
+  test "`use Zig.Unit` requires `use Zig`" do
     assert_raise CompileError, fn ->
       @this_file
       |> Path.dirname
@@ -12,8 +12,8 @@ defmodule ZiglerTest.UnitTestTest do
     end
   end
 
-  alias Zigler.Parser.Nif
-  test "Zigler.Code.adapter/1 produces the correct adapter for a test" do
+  alias Zig.Parser.Nif
+  test "Zig.Code.adapter/1 produces the correct adapter for a test" do
     assert """
     export fn __test_foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
       beam.test_env = env;
@@ -21,11 +21,11 @@ defmodule ZiglerTest.UnitTestTest do
       return beam.make_atom(env, "ok");
     }
     """ = %Nif{name: :test_foo, arity: 0, test: "tests foo"}
-    |> Zigler.Code.adapter
+    |> Zig.Code.adapter
     |> IO.iodata_to_binary
   end
 
-  test "Zigler.Code.nif_struct/1 produces the correct skeleton for a test" do
+  test "Zig.Code.nif_table_entries/1 produces the correct skeleton for a test" do
     assert """
       e.ErlNifFunc{
         .name = "tests foo",
@@ -34,7 +34,7 @@ defmodule ZiglerTest.UnitTestTest do
         .flags = 0,
       },
     """ = %Nif{name: :test_foo, arity: 0, test: "tests foo"}
-    |> Zigler.Code.nif_struct
+    |> Zig.Code.nif_table_entries
     |> IO.iodata_to_binary
   end
 end

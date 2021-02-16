@@ -4,7 +4,7 @@ defmodule ZiglerTest.Imports.ZiglerImportTest do
   #
 
   use ExUnit.Case, async: true
-  use Zigler, imports: [:defaults, test_import: "test_import.zig"]
+  use Zig, imports: [:defaults, test_import: "test_import.zig"]
 
   ~Z"""
   /// nif: test_47/0

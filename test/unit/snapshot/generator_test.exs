@@ -3,9 +3,11 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
 
   # tests to make sure that the compiler makse the correct code.
 
-  alias Zigler.{Code, Module, Parser.Nif}
+  alias Zig.{Code, Module, Parser.Nif}
 
   @zeroarity %Nif{name: :foo, arity: 0, args: [], retval: "i64"}
+
+  @moduletag :snapshot
 
   describe "the generator creates a reasonable shim" do
     test "for a single, zero arity function" do
@@ -35,8 +37,9 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       // adapters for Elixir.Foo in foo.exs:
 
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-        var __foo_result__ = foo();
+        beam.yield_info = null;
 
+        var __foo_result__ = nosuspend foo();
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -57,10 +60,10 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         .name = "Elixir.Foo",
         .num_of_funcs = 1,
         .funcs = &(__exported_nifs__[0]),
-        .load = null,
-        .reload = null,
-        .upgrade = null,
-        .unload = null,
+        .load = beam.blank_load,
+        .reload = beam.blank_load,     // currently unsupported
+        .upgrade = beam.blank_upgrade, // currently unsupported
+        .unload = beam.blank_unload,   // currently unsupported
         .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
@@ -105,11 +108,12 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       // adapters for Elixir.Foo in foo.exs:
 
       export fn __foo_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+        beam.yield_info = null;
+
         var __foo_arg0__ = beam.get_i64(env, argv[0])
           catch return beam.raise_function_clause_error(env);
 
-        var __foo_result__ = foo(__foo_arg0__);
-
+        var __foo_result__ = nosuspend foo(__foo_arg0__);
         return beam.make_i64(env, __foo_result__);
       }
 
@@ -130,10 +134,10 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
         .name = "Elixir.Foo",
         .num_of_funcs = 1,
         .funcs = &(__exported_nifs__[0]),
-        .load = null,
-        .reload = null,
-        .upgrade = null,
-        .unload = null,
+        .load = beam.blank_load,
+        .reload = beam.blank_load,     // currently unsupported
+        .upgrade = beam.blank_upgrade, // currently unsupported
+        .unload = beam.blank_unload,   // currently unsupported
         .vm_variant = "beam.vanilla",
         .options = 1,
         .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),

@@ -2,7 +2,7 @@ defmodule ZiglerTest.ZigTest.FailingTest do
 
   @moduledoc false
 
-  use Zigler
+  use Zig
 
   ~Z"""
   /// nif: one/0

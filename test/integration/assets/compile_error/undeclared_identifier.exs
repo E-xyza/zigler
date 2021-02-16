@@ -1,5 +1,5 @@
 defmodule ZiglerTest.CompileError.InvalidIdentifier do
-  use Zigler
+  use Zig
 
   ~Z"""
   /// nif: foo/1

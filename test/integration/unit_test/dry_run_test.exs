@@ -1,7 +1,7 @@
 defmodule ZiglerTest.ZigT do
   # a module with a single zig test
 
-  use Zigler, dry_run: true
+  use Zig, dry_run: true
 
   ~Z"""
   /// nif: foo/0
@@ -23,8 +23,8 @@ defmodule ZiglerTest.Integration.UnitTest.DryRunTest do
 
   defmodule NotExecuted do
     #use ExUnit.Case, async: true
-    use Zigler, dry_run: true
-    import Zigler.Unit
+    use Zig, dry_run: true
+    import Zig.Unit
 
     zigtest ZiglerTest.ZigT, dry_run: true
   end

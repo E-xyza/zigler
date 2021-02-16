@@ -1,6 +1,6 @@
 defmodule ZiglerTest.Imports.ImportTest do
   use ExUnit.Case, async: true
-  use Zigler
+  use Zig
 
   # basic importing
   ~Z"""

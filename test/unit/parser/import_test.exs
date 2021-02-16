@@ -1,7 +1,7 @@
 defmodule ZiglerTest.Parser.ImportTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.Parser.Imports
+  alias Zig.Parser.Imports
 
   describe "the import const parser" do
     test "parses a valid import const" do

@@ -1,7 +1,9 @@
 defmodule ZiglerTest.Snapshot.ImportsTest do
   use ExUnit.Case, async: true
 
-  alias Zigler.Code
+  alias Zig.Code
+
+  @moduletag :snapshot
 
   # tests header conditions generated from the module struct's c_includes and
   # imports fields.
@@ -60,7 +62,7 @@ defmodule ZiglerTest.Snapshot.ImportsTest do
       const e = @import("erl_nif.zig");
       const beam = @import("beam.zig");
       """ == [:defaults]
-      |> Zigler.Module.imports
+      |> Zig.Module.imports
       |> Code.zig_imports
       |> IO.iodata_to_binary
     end

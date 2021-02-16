@@ -1,7 +1,7 @@
 defmodule ZiglerTest.ZigTest.PassingTests do
   @moduledoc false
 
-  use Zigler
+  use Zig
 
   ~Z"""
   /// nif: forty_seven/0

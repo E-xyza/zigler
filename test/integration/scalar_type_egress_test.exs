@@ -1,6 +1,6 @@
 defmodule ZiglerTest.Integration.ScalarTypeEgressTest do
   use ExUnit.Case, async: true
-  use Zigler
+  use Zig
 
   ~Z"""
   /// nif: egress_true/0

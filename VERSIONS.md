@@ -53,3 +53,36 @@ Thanks to Dave Cottlehuber @dch for testing.
 - verified that zig tests run correctly
 - updated documentation.
   - preliminary "under the hood" category.
+
+## 0.3.1
+
+- support for `amd64` in freebsd, (thanks @dch)
+
+## 0.3.2
+
+- better support for nerves (thanks @fhunleth)
+- fixed documentation linking for bootstrap
+
+## 0.7.1
+- upgraded to zig 0.7.1.  From now on zigler version numbers will track Zig releases.
+- completed implementation of `threaded` nifs.
+- makes the interface to `beam.send` simpler and less confusing.
+- adds extra atom/tuple directives
+- **important:** changes the base module namespace from `Zigler` to `Zig`
+- readme and guides are now checked.
+- libraries are now brought into the staging directory.
+- unblocked windows compilation path.  There are still some bugs. Thanks @seomwan
+- regressions:
+  - Nerves support will have to be dropped until arm32 is tier 1.  Use 0.3.2.
+  - zigtests do not seem to work when libraries are loaded
+
+## 0.7.2
+- **note:** this compiles with zig 0.7.1
+- **important (breaking):** semantics for `beam.yield` have changed.
+  there is no longer any need to update the environment of the yielding
+  function, and `beam.yield()` now returns `!void`
+- `beam.yield` is safely usable in non-yielding nifs.
+- Zigler now no longer automatically links libc.  This may cause
+  compilation problems on non-linux platforms.  Please post any bug
+  reports to github tracker.
+- thanks to (@dch and @wojtekmach for updating some dependency issues)

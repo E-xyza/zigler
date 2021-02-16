@@ -1,5 +1,5 @@
 defmodule ZiglerTest.DryRun.NifNameMismatch do
-  use Zigler, dry_run: true
+  use Zig, dry_run: true
 
   ~Z"""
   /// nif: foo/0
