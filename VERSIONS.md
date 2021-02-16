@@ -86,3 +86,7 @@ Thanks to Dave Cottlehuber @dch for testing.
   compilation problems on non-linux platforms.  Please post any bug
   reports to github tracker.
 - thanks to (@dch and @wojtekmach for updating some dependency issues)
+
+## 0.7.3
+- **note:** this compiles with zig 0.7.1
+- better platform matching for nerves cross-compliation (@fhunleth)
