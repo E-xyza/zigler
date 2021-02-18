@@ -3,16 +3,25 @@ name: Elixir CI
 on: push
 
 jobs:
-  build:
-
+  ubuntu:
     runs-on: ubuntu-latest
-
-    # updated from elixir 1.9.1  TODO: make this a sophisticated matrix later
-    container:
-      image: elixir:1.9.4-slim
+    name: OTP ${{matrix.pair.otp-version}} / Elixir ${{matrix.pair.elixir-version}}
+    strategy:
+      matrix:
+        pair:
+          - otp-version: '22.0'
+            elixir-version: '1.9.0'
+          - otp-version: '23.0'
+            elixir-version: '1.10'
+          - otp-version: '23.0'
+            elixir-version: '1.11'
 
     steps:
     - uses: actions/checkout@v1
+    - uses: actions/setup-elixir
+      with:
+        otp-version: ${{matrix.pair.otp-version}}
+        elixir-version: ${{matrix.pair.elixir-version}}
     - name: Install XZ and blas
       run: |
         apt-get update
