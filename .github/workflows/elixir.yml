@@ -24,8 +24,8 @@ jobs:
         elixir-version: ${{matrix.pair.elixir-version}}
     - name: Install XZ and blas
       run: |
-        apt-get update
-        apt-get install -y --no-install-recommends xz-utils
+        sudo apt-get update
+        sudo apt-get install -y --no-install-recommends xz-utils
     - name: Install Dependencies
       run: |
         mix deps.get
