@@ -133,24 +133,22 @@ defmodule Zig.Builder do
     end
   end
 
-  # temporary macos hack.  See https://github.com/ziglang/zig-bootstrap/issues/38.
-  # revisit this on v 0.8.0
-  unless Version.compare(Zigler.MixProject.project()[:version], Version.parse!("0.8.0") == :lt do
-    raise CompileError, description: "double-check if macos hack is still necessary"
-  end
   defp to_structdef(t = %{os: "macos"}) do
+    # temporary macos hack.  See https://github.com/ziglang/zig-bootstrap/issues/38.
+    # revisit this on v 0.8.0
+    unless Version.compare(Zigler.MixProject.project()[:version], Version.parse!("0.8.0")) == :lt do
+      raise CompileError, description: "double-check if macos hack is still necessary"
+    end
     to_structdef(%{t | os: "native"})
   end
-
   defp to_structdef(t = %{cpu: cpu}) do
-    # NB: this uses zig's duck-typing facilities to only set the cpu_model field when the .explict field is available
-    # that can only happen when it's arm.  x86 basically ignores this.
+    # NB: this uses zig's duck-typing facilities to only set the cpu_model field when cpu is provided.
+    # .explict field is only available when it's arm; x86 will ignore this extra field.
     ".{.default_target = .{.cpu_arch = .#{t.arch}, .os_tag = .#{t.os}, .abi = .#{t.abi}, .cpu_model = .{ .explicit = &std.Target.arm.cpu.#{cpu}}}}"
   end
-
-  #defp to_structdef(t) do
-  #  ".{.default_target = .{.cpu_arch = .#{t.arch}, .os_tag = .#{t.os}, .abi = .#{t.abi}}}"
-  #end
+  defp to_structdef(t) do
+    ".{.default_target = .{.cpu_arch = .#{t.arch}, .os_tag = .#{t.os}, .abi = .#{t.abi}}}"
+  end
 
   defp dirs_for(target = %{os: "windows"}) do
     ["lib/libc/include/any-windows-any/"] ++ dirs_for_specific(target)
