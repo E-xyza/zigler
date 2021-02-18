@@ -22,10 +22,6 @@ jobs:
       with:
         otp-version: ${{matrix.pair.otp-version}}
         elixir-version: ${{matrix.pair.elixir-version}}
-    - name: Install XZ and blas
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y --no-install-recommends xz-utils
     - name: Install Dependencies
       run: |
         mix deps.get
