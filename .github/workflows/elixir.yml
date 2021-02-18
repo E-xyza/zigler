@@ -27,6 +27,8 @@ jobs:
     - name: Run Linting
       run: mix credo --strict
     - name: Run Tests
+      env:
+        RUNNING_CI: "true"
       run: mix test
   macos:
     runs-on: macos-latest
@@ -49,4 +51,6 @@ jobs:
     - name: Install Dependencies
       run: mix deps.get
     - name: Run Tests
-      run: RUNNING_CI=true mix test
+      env:
+        RUNNING_CI: "true"
+      run: mix test
