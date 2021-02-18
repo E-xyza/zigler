@@ -69,7 +69,7 @@ defmodule Zig.Command do
   end
 
   def get_os do
-    case :os.type do
+    case :os.type() do
       {:unix, :linux} ->
         "linux"
       {:unix, :freebsd} ->
