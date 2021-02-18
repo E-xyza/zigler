@@ -18,18 +18,16 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - uses: actions/setup-elixir@v1
+    - uses: actions/erlef-elixir@v1
       with:
         otp-version: ${{matrix.pair.otp-version}}
         elixir-version: ${{matrix.pair.elixir-version}}
     - name: Install XZ and blas
       run: |
         apt-get update
-        apt-get install -y --no-install-recommends xz-utils openssl
+        apt-get install -y --no-install-recommends xz-utils
     - name: Install Dependencies
       run: |
-        mix local.rebar --force
-        mix local.hex --force
         mix deps.get
         mix docs
     - name: Run Linting
