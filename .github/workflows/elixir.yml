@@ -3,7 +3,7 @@ name: Elixir CI
 on: push
 
 jobs:
-  build:
+  ubuntu:
     runs-on: ubuntu-latest
     name: OTP ${{matrix.pair.otp-version}} / Elixir ${{matrix.pair.elixir-version}}
     strategy:
@@ -18,7 +18,7 @@ jobs:
 
     steps:
     - uses: actions/checkout@v1
-    - uses: actions/setup-elixir
+    - uses: actions/setup-elixir@v1
       with:
         otp-version: ${{matrix.pair.otp-version}}
         elixir-version: ${{matrix.pair.elixir-version}}
