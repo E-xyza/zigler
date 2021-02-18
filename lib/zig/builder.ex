@@ -133,7 +133,6 @@ defmodule Zig.Builder do
     end
   end
 
-
   # temporary macos hack.  See https://github.com/ziglang/zig-bootstrap/issues/38.
   # revisit this on v 0.8.0
   unless Version.compare(Zigler.MixProject.project()[:version], Version.parse!("0.8.0") == :lt do
