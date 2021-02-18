@@ -25,7 +25,7 @@ jobs:
     - name: Install XZ and blas
       run: |
         apt-get update
-        apt-get install -y --no-install-recommends xz-utils
+        apt-get install -y --no-install-recommends xz-utils openssl
     - name: Install Dependencies
       run: |
         mix local.rebar --force
