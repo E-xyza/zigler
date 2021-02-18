@@ -102,6 +102,7 @@ defmodule Zig.Builder do
 
     %{"abi" => abi, "cpu" => %{"arch" => arch}, "os" => os} = targets
     |> Jason.decode!
+    |> IO.inspect(label: "105", limit: :infinity)
     |> Map.get("native")
 
     %{abi: abi, arch: arch, os: os}
