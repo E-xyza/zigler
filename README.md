@@ -11,7 +11,7 @@ by adding `zigler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:zigler, "~> 0.7.4", runtime: false}
+    {:zigler, "~> 0.8.0", runtime: false}
   ]
 end
 ```

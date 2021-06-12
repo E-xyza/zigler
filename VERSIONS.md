@@ -90,3 +90,6 @@ Thanks to Dave Cottlehuber @dch for testing.
 ## 0.7.3
 - **note:** this compiles with zig 0.7.1
 - better platform matching for nerves cross-compliation (@fhunleth)
+
+## 0.8.0
+- **note:** this compiles with zig 0.8.0
