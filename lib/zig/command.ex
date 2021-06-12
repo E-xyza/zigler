@@ -46,7 +46,7 @@ defmodule Zig.Command do
     File.mkdir_p!(lib_dir)
 
     compiler.assembly_dir
-    |> Path.join("zig-cache/lib/#{library_filename}")
+    |> Path.join("zig-out/lib/#{library_filename}")
     |> File.cp!(Path.join(lib_dir, library_filename))
 
     # link the compiled library to be unversioned.
