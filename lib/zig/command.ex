@@ -23,7 +23,7 @@ defmodule Zig.Command do
       Path.join(zig_tree, "zig")
     end
 
-    opts = [cd: compiler.assembly_dir, stderr_to_stdout: true]
+    opts = Keyword.merge(hacky_envs(), [cd: compiler.assembly_dir, stderr_to_stdout: true])
 
     Logger.debug("compiling nif for module #{inspect compiler.module_spec.module} in path #{compiler.assembly_dir}")
 
@@ -67,6 +67,13 @@ defmodule Zig.Command do
       fullpath
       |> Path.dirname()
       |> Path.join(Path.basename(fullpath, ".dylib") <> ".so")
+    end
+  end
+
+  # REVIEW THIS ON ZIG 1.0.0
+  defp hacky_envs() do
+    List.wrap(if :os.type() == {:unix, :darwin} do
+      [env: {"ZIG_SYSTEM_LINKER_HACK", "true"}]
     end
   end
 
