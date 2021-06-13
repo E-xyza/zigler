@@ -10,10 +10,9 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
   /// nif: test_beam_allocator/0
   fn test_beam_allocator() void {
     std.heap.testAllocator(beam.allocator) catch unreachable;
-    // swap these with 0.7.1
-    std.heap.testAllocatorAligned(beam.allocator, 2) catch unreachable;
-    std.heap.testAllocatorAligned(beam.allocator, 4) catch unreachable;
-    std.heap.testAllocatorAligned(beam.allocator, 8) catch unreachable;
+    std.heap.testAllocatorAligned(beam.allocator) catch unreachable;
+    std.heap.testAllocatorAligned(beam.allocator) catch unreachable;
+    std.heap.testAllocatorAligned(beam.allocator) catch unreachable;
     //std.heap.testAllocatorAligned(beam.allocator) catch unreachable;
     //std.heap.testAllocatorAlignedShrink(beam.allocator) catch unreachable;
   }
@@ -21,10 +20,9 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
   /// nif: test_beam_large_allocator/0
   fn test_beam_large_allocator() void {
     std.heap.testAllocator(beam.allocator) catch unreachable;
-    // swap these with 0.7.1
-    std.heap.testAllocatorAligned(beam.large_allocator, 2) catch unreachable;
-    std.heap.testAllocatorAligned(beam.large_allocator, 4) catch unreachable;
-    std.heap.testAllocatorAligned(beam.large_allocator, 8) catch unreachable;
+    std.heap.testAllocatorAligned(beam.large_allocator) catch unreachable;
+    std.heap.testAllocatorAligned(beam.large_allocator) catch unreachable;
+    std.heap.testAllocatorAligned(beam.large_allocator) catch unreachable;
     //std.heap.testAllocatorAligned(beam.allocator) catch unreachable;
     std.heap.testAllocatorLargeAlignment(beam.large_allocator) catch unreachable;
     std.heap.testAllocatorAlignedShrink(beam.large_allocator) catch unreachable;
@@ -33,16 +31,16 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
   /// nif: test_beam_general_purpose_allocator/0
   fn test_beam_general_purpose_allocator() void {
     std.heap.testAllocator(beam.allocator) catch unreachable;
-    // swap these with 0.7.1
-    std.heap.testAllocatorAligned(beam.general_purpose_allocator, 2) catch unreachable;
-    std.heap.testAllocatorAligned(beam.general_purpose_allocator, 4) catch unreachable;
-    std.heap.testAllocatorAligned(beam.general_purpose_allocator, 8) catch unreachable;
+    std.heap.testAllocatorAligned(beam.general_purpose_allocator) catch unreachable;
+    std.heap.testAllocatorAligned(beam.general_purpose_allocator) catch unreachable;
+    std.heap.testAllocatorAligned(beam.general_purpose_allocator) catch unreachable;
     //std.heap.testAllocatorAligned(beam.allocator) catch unreachable;
     std.heap.testAllocatorLargeAlignment(beam.general_purpose_allocator) catch unreachable;
     std.heap.testAllocatorAlignedShrink(beam.general_purpose_allocator) catch unreachable;
   }
   """
 
+  @tag :skip
   test "allocator stress test" do
     test_beam_allocator()
     test_beam_large_allocator()

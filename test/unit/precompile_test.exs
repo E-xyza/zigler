@@ -1,3 +1,7 @@
+# don't run this on MacOS platform.
+
+unless :os.type() == {:unix, :darwin} do
+
 defmodule ZiglerTest.PrecompileTest do
   use ExUnit.Case, async: true
 
@@ -46,4 +50,6 @@ defmodule ZiglerTest.PrecompileTest do
       |> File.exists?
     end
   end
+end
+
 end

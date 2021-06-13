@@ -62,7 +62,8 @@ defmodule Zig.Unit do
   end
 
   @transfer_params [:otp_app, :file, :libs, :resources, :zig_version,
-    :imports, :c_includes, :include_dirs, :version, :system_include_dirs]
+    :imports, :c_includes, :include_dirs, :version, :system_include_dirs,
+    :link_libc]
 
   # an "assert" assignment that substitutes beam assert for std assert
   @assert_assign "const assert = beam.assert;\n"

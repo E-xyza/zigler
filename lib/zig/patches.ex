@@ -7,7 +7,7 @@ defmodule Zig.Patches do
 
   require Logger
 
-  # currently no patches identified for zig 0.7.1
+  # currently no patches identified for zig 0.8.0
   @patches %{}
 
   def sync(zig_path) do
