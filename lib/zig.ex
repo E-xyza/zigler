@@ -308,7 +308,6 @@ defmodule Zig do
     |> Keyword.get(:app)
   end
 
-  # TODO: put this into some sort of target resolution system.
   @extension (case :os.type() do
     {:unix, :linux} -> ".so"
     {:unix, :freebsd} -> ".so"

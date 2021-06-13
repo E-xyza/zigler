@@ -85,7 +85,6 @@ defmodule Zig.Builder do
     Logger.debug("wrote build.zig to #{build_zig_path}")
   end
 
-
   ############################################################################
   ## cross-compilation logic.
   ##
