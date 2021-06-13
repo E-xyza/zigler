@@ -80,9 +80,15 @@ defmodule Zig.Builder do
   """, [:assigns, :zig_tree])
 
   def build(target, zig_tree) do
+    IO.puts("==============================")
     build_zig_path = Path.join(target.assembly_dir, "build.zig")
-    File.write!(build_zig_path, target |> Map.from_struct |> build_zig(zig_tree))
+    File.write!(build_zig_path, target |> Map.from_struct |> build_zig(zig_tree) |> insp)
     Logger.debug("wrote build.zig to #{build_zig_path}")
+  end
+
+  defp insp(x) do
+    IO.puts(x)
+    x
   end
 
   ############################################################################
