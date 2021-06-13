@@ -63,7 +63,7 @@ jobs:
       - name: Choco install elixir
         uses: crazy-max/ghaction-chocolatey@v1
         with:
-          args: elixir
+          args: install elixir
       - name: Run Tests
         env:
           RUNNING_CI: "true"
