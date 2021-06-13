@@ -73,7 +73,7 @@ defmodule Zig.Command do
   # REVIEW THIS ON ZIG 1.0.0
   defp hacky_envs() do
     List.wrap(if :os.type() == {:unix, :darwin} do
-      [env: {"ZIG_SYSTEM_LINKER_HACK", "true"}]
+      [env: [{"ZIG_SYSTEM_LINKER_HACK", "true"}]]
     end)
   end
 
