@@ -40,7 +40,9 @@ defmodule Zig.Command do
     |> :code.lib_dir()
     |> Path.join("ebin")
 
-    library_filename = Zig.nif_name(compiler.module_spec)
+    library_filename = compiler.module_spec
+    |> Zig.nif_name()
+    |> maybe_rename_library_filename
 
     # copy the compiled library over to the lib/nif directory.
     File.mkdir_p!(lib_dir)
@@ -48,8 +50,6 @@ defmodule Zig.Command do
     compiler.assembly_dir
     |> Path.join("zig-out/lib/#{library_filename}")
     |> File.cp!(Path.join(lib_dir, library_filename))
-
-    maybe_rename_library_filename(compiler.assembly_dir, library_filename)
 
     # link the compiled library to be unversioned.
     symlink_filename = Path.join(lib_dir, "#{library_filename}")
@@ -62,13 +62,11 @@ defmodule Zig.Command do
     :ok
   end
 
-  defp maybe_rename_library_filename(dir, filename) do
-    if Path.extname(filename) == ".dylib" do
-      orig = Path.join(dir, filename)
-      destfile = Path.basename(filename, ".dylib") <> ".so"
-      dest = Path.join(dir, destfile)
-
-      File.rename!(orig, dest)
+  defp maybe_rename_library_filename(fullpath) do
+    if Path.extname(fullpath) == ".dylib" do
+      fullpath
+      |> Path.dirname()
+      |> Path.join(Path.basename(filename, ".dylib") <> ".so")
     end
   end
 
