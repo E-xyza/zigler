@@ -8,6 +8,16 @@ defmodule Zig.Module do
 
   @default_imports [std: "std", e: "erl_nif.zig",  beam: "beam.zig"]
 
+  # libc is required to be linked in the case of *bsd based systems
+  # because these operating systems do not have syscall stability and
+  # ensure libc stability.
+  link_libc = case :os.type() do
+    {:unix, :linux} -> false
+    {:unix, :freebsd} -> true
+    {:unix, :darwin} -> true
+    {_, :nt} -> false
+  end
+
   defstruct @enforce_keys ++ [
     zig_file:            "",
     libs:                [],
@@ -21,7 +31,7 @@ defmodule Zig.Module do
     dry_run:             false,
     code:                [],
     version:             Version.parse!("0.0.0"),
-    link_libc:           false,
+    link_libc:           link_libc,
     test_dirs:           nil,
     local_zig:           false
   ]

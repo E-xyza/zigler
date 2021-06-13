@@ -23,7 +23,7 @@ defmodule Zig.Command do
       Path.join(zig_tree, "zig")
     end
 
-    opts = [cd: compiler.assembly_dir, stderr_to_stdout: true]
+    opts = Keyword.merge(hacky_envs(), [cd: compiler.assembly_dir, stderr_to_stdout: true])
 
     Logger.debug("compiling nif for module #{inspect compiler.module_spec.module} in path #{compiler.assembly_dir}")
 
@@ -40,13 +40,15 @@ defmodule Zig.Command do
     |> :code.lib_dir()
     |> Path.join("ebin")
 
-    library_filename = Zig.nif_name(compiler.module_spec)
+    source_library_filename = Zig.nif_name(compiler.module_spec)
+
+    library_filename = maybe_rename_library_filename(source_library_filename)
 
     # copy the compiled library over to the lib/nif directory.
     File.mkdir_p!(lib_dir)
 
     compiler.assembly_dir
-    |> Path.join("zig-out/lib/#{library_filename}")
+    |> Path.join("zig-out/lib/#{source_library_filename}")
     |> File.cp!(Path.join(lib_dir, library_filename))
 
     # link the compiled library to be unversioned.
@@ -60,6 +62,23 @@ defmodule Zig.Command do
     :ok
   end
 
+  defp maybe_rename_library_filename(fullpath) do
+    if Path.extname(fullpath) == ".dylib" do
+      fullpath
+      |> Path.dirname()
+      |> Path.join(Path.basename(fullpath, ".dylib") <> ".so")
+    else
+      fullpath
+    end
+  end
+
+  # REVIEW THIS ON ZIG 1.0.0
+  defp hacky_envs do
+    List.wrap(if :os.type() == {:unix, :darwin} do
+      [env: [{"ZIG_SYSTEM_LINKER_HACK", "true"}]]
+    end)
+  end
+
   #############################################################################
   ## download zig from online sources.
 
@@ -69,13 +88,12 @@ defmodule Zig.Command do
   end
 
   def get_os do
-    case :os.type do
+    case :os.type() do
       {:unix, :linux} ->
         "linux"
       {:unix, :freebsd} ->
         "freebsd"
       {:unix, :darwin} ->
-        Logger.warn("macos support is experimental")
         "macos"
       {_, :nt} ->
         windows_warn()

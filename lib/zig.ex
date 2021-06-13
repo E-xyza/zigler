@@ -308,13 +308,24 @@ defmodule Zig do
     |> Keyword.get(:app)
   end
 
-  @doc false
+  @extension (case :os.type() do
+    {:unix, :linux} -> ".so"
+    {:unix, :freebsd} -> ".so"
+    {:unix, :darwin} -> ".dylib"
+    {_, :nt} -> ".dll"
+  end)
+
+  @doc """
+  outputs a String name for the module.
+
+  note that for filesystem use, you must supply the extension.  For internal (BEAM) use, the
+  filesystem extension will be inferred.  Therefore we provide two versions of this function.
+  """
   def nif_name(module, use_suffixes \\ true) do
     if use_suffixes do
-      "lib#{module.module}.so"
+      "lib#{module.module}#{@extension}"
     else
       "lib#{module.module}"
     end
   end
-
 end

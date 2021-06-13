@@ -24,13 +24,6 @@ defmodule Zig.Compiler do
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
 
-  #@release_mode %{
-  #  fast:  ["--release-fast"],
-  #  safe:  ["--release-safe"],
-  #  small: ["--release-small"],
-  #  debug: []
-  #}
-
   defmacro __before_compile__(context) do
 
     ###########################################################################

@@ -3,27 +3,54 @@ name: Elixir CI
 on: push
 
 jobs:
-  build:
-
+  ubuntu:
     runs-on: ubuntu-latest
-
-    # updated from elixir 1.9.1  TODO: make this a sophisticated matrix later
-    container:
-      image: elixir:1.9.4-slim
+    name: Linux OTP ${{matrix.pair.otp-version}} / Elixir ${{matrix.pair.elixir-version}}
+    strategy:
+      matrix:
+        pair:
+          - otp-version: '22.0'
+            elixir-version: '1.9.0'
+          #- otp-version: '23.0'
+          #  elixir-version: '1.10'
+          #- otp-version: '23.0'
+          #  elixir-version: '1.11'
 
     steps:
     - uses: actions/checkout@v1
-    - name: Install XZ and blas
-      run: |
-        apt-get update
-        apt-get install -y --no-install-recommends xz-utils
+    - uses: erlef/setup-elixir@v1
+      with:
+        otp-version: ${{matrix.pair.otp-version}}
+        elixir-version: ${{matrix.pair.elixir-version}}
     - name: Install Dependencies
-      run: |
-        mix local.rebar --force
-        mix local.hex --force
-        mix deps.get
-        mix docs
+      run: mix deps.get
     - name: Run Linting
       run: mix credo --strict
     - name: Run Tests
+      env:
+        RUNNING_CI: "true"
+      run: mix test
+  macos:
+    runs-on: macos-latest
+    name: MacOS OTP ${{matrix.pair.otp-version}} / Elixir ${{matrix.pair.elixir-version}}
+    strategy:
+      matrix:
+        pair:
+          - otp-version: '23.0'
+            elixir-version: '1.11'
+    steps:
+    - uses: actions/checkout@v1
+    - name: Install Elixir
+      run: |
+        brew update
+        brew install elixir
+    - name: Setup mix
+      run: |
+        mix local.hex --force
+        mix local.rebar --force
+    - name: Install Dependencies
+      run: mix deps.get
+    - name: Run Tests
+      env:
+        RUNNING_CI: "true"
       run: mix test
