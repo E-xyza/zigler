@@ -54,3 +54,25 @@ jobs:
       env:
         RUNNING_CI: "true"
       run: mix test
+  freebsd:
+    runs-on: macos-latest
+    name: FreeBSD OTP ${{matrix.pair.otp-version}} / Elixir ${{matrix.pair.elixir-version}}
+    strategy:
+      matrix:
+        pair:
+          - otp-version: '23.0'
+            elixir-version: '1.11'
+    steps:
+    - uses: actions/checkout@v2
+    - name: Test in FreeBSD
+      id: test
+      uses: vmactions/freebsd-vm@v0.1.4
+      with:
+        usesh: true
+        prepare: pkg install -y curl
+        run: |
+          pwd
+          ls -lah
+          whoami
+          env
+          freebsd-version
