@@ -40,15 +40,15 @@ defmodule Zig.Command do
     |> :code.lib_dir()
     |> Path.join("ebin")
 
-    library_filename = compiler.module_spec
-    |> Zig.nif_name()
-    |> maybe_rename_library_filename
+    source_library_filename = Zig.nif_name(compile.module_spec)
+
+    library_filename = maybe_rename_library_filename(source_library_filename)
 
     # copy the compiled library over to the lib/nif directory.
     File.mkdir_p!(lib_dir)
 
     compiler.assembly_dir
-    |> Path.join("zig-out/lib/#{library_filename}")
+    |> Path.join("zig-out/lib/#{source_library_filename}")
     |> File.cp!(Path.join(lib_dir, library_filename))
 
     # link the compiled library to be unversioned.
