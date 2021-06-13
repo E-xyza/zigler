@@ -54,3 +54,21 @@ jobs:
       env:
         RUNNING_CI: "true"
       run: mix test
+  windows:
+    runs-on: windows-latest
+    name: Windows
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+      - name: Choco install elixir
+        uses: crazy-max/ghaction-chocolatey@v1
+        with:
+          args: elixir
+      - name: Run Tests
+        env:
+          RUNNING_CI: "true"
+        run: |
+          mix local.hex --force
+          mix local.rebar --force
+          mix deps.get
+          mix test
