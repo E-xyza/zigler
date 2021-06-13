@@ -73,4 +73,5 @@ jobs:
           pkg install -y curl
           pkg install -y elixir
         run: |
+          elixir --version
           mix test
