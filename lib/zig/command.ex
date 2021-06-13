@@ -92,7 +92,6 @@ defmodule Zig.Command do
       {:unix, :freebsd} ->
         "freebsd"
       {:unix, :darwin} ->
-        Logger.warn("macos support is experimental")
         "macos"
       {_, :nt} ->
         windows_warn()
