@@ -40,7 +40,7 @@ defmodule Zig.Command do
     |> :code.lib_dir()
     |> Path.join("ebin")
 
-    source_library_filename = Zig.nif_name(compile.module_spec)
+    source_library_filename = Zig.nif_name(compiler.module_spec)
 
     library_filename = maybe_rename_library_filename(source_library_filename)
 
