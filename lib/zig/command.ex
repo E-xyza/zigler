@@ -66,7 +66,7 @@ defmodule Zig.Command do
     if Path.extname(fullpath) == ".dylib" do
       fullpath
       |> Path.dirname()
-      |> Path.join(Path.basename(filename, ".dylib") <> ".so")
+      |> Path.join(Path.basename(fullpath, ".dylib") <> ".so")
     end
   end
 
