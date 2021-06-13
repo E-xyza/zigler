@@ -69,10 +69,8 @@ jobs:
       uses: vmactions/freebsd-vm@v0.1.4
       with:
         usesh: true
-        prepare: pkg install -y curl
+        prepare: |
+          pkg install -y curl
+          pkg install -y elixir
         run: |
-          pwd
-          ls -lah
-          whoami
-          env
-          freebsd-version
+          mix test
