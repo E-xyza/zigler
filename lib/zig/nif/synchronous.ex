@@ -18,19 +18,24 @@ defmodule Zig.Nif.Synchronous do
       beam.yield_info = null;
     """
 
-    result = cond do
-      nif.retval in ["beam.term", "e.ErlNifTerm", "!beam.term", "!e.ErlNifTerm"] ->
+    result = case nif.retval do
+      v when v in ["beam.term", "e.ErlNifTerm", "!beam.term", "!e.ErlNifTerm"] ->
         """
           return nosuspend #{function_call nif}}
         """
-      nif.retval in ["void", "!void"] ->
+      v when v in ["void", "!void"] ->
         """
           nosuspend #{function_call nif}  return beam.make_nil(env);
         }
         """
-      true ->
+      "!" <> retval  ->
         """
-          var #{result_var nif} = nosuspend #{function_call nif}  return #{Adapter.make_clause nif.retval, result_var(nif)};
+          var #{result_var nif} = nosuspend #{function_call nif}  return #{Adapter.make_clause retval, result_var(nif)};
+        }
+        """
+      other ->
+        """
+          var #{result_var nif} = nosuspend #{function_call nif}  return #{Adapter.make_clause other, result_var(nif)};
         }
         """
     end

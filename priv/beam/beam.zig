@@ -100,7 +100,6 @@
 
 const e = @import("erl_nif.zig");
 const std = @import("std");
-const builtin = @import("builtin");
 const BeamMutex = @import("beam_mutex.zig").BeamMutex;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1322,7 +1321,7 @@ pub fn set_yield_response(what: term) void {
 ///////////////////////////////////////////////////////////////////////////////
 // errors, etc.
 
-pub fn raise(environment: env, exception: atom) term {
+pub fn raise(environment: env, exception: term) term {
   return e.enif_raise_exception(environment, exception);
 }
 
@@ -1371,41 +1370,45 @@ pub fn raise_assertion_error(environment: env) term {
   return e.enif_raise_exception(environment, make_atom(environment, assert_slice));
 }
 
-pub fn make_error_return_trace(env_: env, error_trace: ?*builtin.StackTrace) term {
+pub fn make_error_return_trace(env_: env, error_trace: ?*std.builtin.StackTrace) term {
   if (error_trace) | trace | {
+    const debug_info = std.debug.getSelfDebugInfo() catch unreachable;
+
     var frame_index: usize = 0;
     var frames_left: usize = std.math.min(trace.index, trace.instruction_addresses.len);
-    var list: term = e.enif_make_list(env_, 0);
-
-    const debug_info = std.debug.getSelfDebugInfo() catch return make_nil(env_);
+    var ert = e.enif_make_list(env_, 0);
 
     while (frames_left != 0) : ({
-      frames_left -= 1;
-      frame_index = (frame_index + 1) % trace.instruction_addresses.len;
+        frames_left -= 1;
+        frame_index = (frame_index + 1) % trace.instruction_addresses.len;
     }) {
-      const return_address = trace.instruction_addresses[frame_index];
-      var next_term: term = error_trace_info(env_, debug_info, return_address);
-      list = e.enif_make_list_cell(env_, next_term, list);
+        const return_address = trace.instruction_addresses[frame_index];
+        var location = make_location(env_, debug_info, return_address - 1) catch unreachable;
+        ert = e.enif_make_list_cell(env_, location, ert);
     }
+    return ert;
 
-    return list;
   } else {
     return make_nil(env_);
   }
 }
 
-fn error_trace_info(env_: env, debug_info: *std.debug.DebugInfo, address: usize) term {
-  const module = debug_info.getModuleForAddress(address) catch return make_error(env_);
-  const symbol_info = module.getSymbolAtAddress(address) catch return make_error(env_);
-  defer symbol_info.deinit();
+fn make_location(env_: env, debug_info: *std.debug.DebugInfo, address: usize) !term {
+  const module = debug_info.getModuleForAddress(address) catch |err| switch (err) {
+      error.MissingDebugInfo, error.InvalidDebugInfo => return make_nil(env_),
+      else => return err,
+  };
 
-  var file = symbol_info.compile_unit_name;
-  var fun = symbol_info.symbol_name;
+  const symbol_info = try module.getSymbolAtAddress(address);
+  // the following line incurs a resource leak; this function needs to be made public.
+  // usable when: https://github.com/ziglang/zig/pull/9123
+  // defer symbol_info.deinit();
 
-  return make_tuple(env_, .{
-    e.enif_make_string_len(env, file, file.len, e.ErlNifCharEncoding.ERL_NIF_LATIN1),
-    e.enif_make_string_len(env, fun, fun.len, e.ErlNifCharEncoding.ERL_NIF_LATIN1),
-    e.enif_make_uint(env, symbol_info.line_info.line)
+  return make_tuple(env_, &[_]term{
+    make_atom(env_, symbol_info.compile_unit_name),
+    make_atom(env_, symbol_info.symbol_name),
+    make_slice(env_, symbol_info.line_info.?.file_name),
+    make(u64, env_, symbol_info.line_info.?.line),
   });
 }
 

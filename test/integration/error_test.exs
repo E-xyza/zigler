@@ -1,6 +1,6 @@
 defmodule ZiglerTest.Integration.ErrorTest do
   use ExUnit.Case, async: true
-  use Zig
+  use Zig, link_libc: true
 
   ~Z"""
   /// nif: void_error/1
@@ -8,6 +8,21 @@ defmodule ZiglerTest.Integration.ErrorTest do
     if (input != 47) {
       return error.BadInput;
     }
+  }
+
+  /// nif: raise_error/1
+  fn raise_error(env: beam.env, input: i64) beam.term {
+    void_error(input) catch | err | {
+      var ert = @errorReturnTrace();
+      var raise_content =
+        beam.make_tuple(env, &[_]beam.term{
+          beam.make_atom(env, @errorName(err)),
+          beam.make_error_return_trace(env, ert)
+        });
+
+      return beam.raise(env, raise_content);
+    };
+    return beam.make_ok(env);
   }
 
   /// nif: union_error/1
@@ -19,12 +34,32 @@ defmodule ZiglerTest.Integration.ErrorTest do
   }
   """
 
-  test "for the void error case" do
-    assert :ok == void_error(47)
+  defmodule ZigError do
+    defexception [:message, :error_return_trace]
 
-    void_error(42)
+    def blame(exception, stacktrace) do
+      zig_errors = Enum.map(exception.error_return_trace, fn
+        {module, fun, file, line} ->
+          {module, fun, 0, [file: file, line: line]}
+      end)
+      {exception, zig_errors ++ stacktrace}
+    end
   end
 
+  defp void_error_shim(int) do
+    raise_error(42)
+  catch :error, {error, error_return_trace} ->
+    raise ZigError, message: "zig code returned the error #{error}", error_return_trace: error_return_trace
+  end
+
+
+  test "for the void error case" do
+    assert nil == void_error(47)
+
+    void_error_shim(42)
+  end
+
+  @tag :skip
   test "for the error set union case" do
   end
 
