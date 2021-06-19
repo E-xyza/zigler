@@ -215,12 +215,7 @@ defmodule Zig do
 
   # default release modes.
   # you can override these in your `use Zigler` statement.
-  #@default_release_modes %{prod: :safe, dev: :debug, test: :debug}
-  #@default_release_mode @default_release_modes[Mix.env()]
-
-  @spec __using__(keyword) ::
-          {:__block__, [],
-           [{:@, [...], [...]} | {:import, [...], [...]} | {:require, [...], [...]}, ...]}
+  @spec __using__(keyword) :: Macro.t
   defmacro __using__(opts) do
     #mode = opts[:release_mode] || @default_release_mode
 
