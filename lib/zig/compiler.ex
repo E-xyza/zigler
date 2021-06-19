@@ -109,8 +109,17 @@ defmodule Zig.Compiler do
     end)
   end
 
-  defp exception_for(%{nifs: nifs}) do
+  defp exception_for(mod = %{nifs: nifs}) do
     if Enum.any?(nifs, &returns_error?/1) do
+      # raise a compile error, if we are running linux and we don't link_libc
+      if {:unix, :linux} == :os.type() do
+        unless mod.link_libc do
+          raise CompileError,
+            file: mod.file,
+            description: "a nif module that has zig error returns compiled with debug symbols must be `link_libc: true`"
+        end
+      end
+
       quote do
         defmodule ZigError do
           defexception [:message, :error_return_trace]

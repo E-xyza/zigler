@@ -4,7 +4,7 @@ defmodule ZiglerTest.DryRunErrorTest do
   @moduletag :dry_run
 
   defmodule ZeroArityError do
-    use Zig, dry_run: true
+    use Zig, dry_run: true, link_libc: true
 
     ~Z"""
     /// nif: void_error/1
@@ -39,6 +39,19 @@ defmodule ZiglerTest.DryRunErrorTest do
     refute function_exported?(__MODULE__.NoError.ZigError, :module_info, 1)
   end
 
-  # 0.8.0, linux, only
-  test "this module links libc"
+  if match?({:unix, :linux}, :os.type()) do
+    describe "in linux" do
+      test "it's a compiler error if you seek stacktraces don't link_libc" do
+        assert_raise CompileError, fn ->
+          __DIR__
+          |> Path.join("../assets/compiler_error/linux_error_without_link_libc.exs")
+          |> Path.expand()
+          |> Code.compile_file
+        end
+      end
+
+      @tag :skip
+      test "it's not a compiler error if stacktrace info is stripped"
+    end
+  end
 end

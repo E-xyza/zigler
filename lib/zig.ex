@@ -224,7 +224,8 @@ defmodule Zig do
     |> Compiler.assembly_dir(__CALLER__.module)
     |> File.rm_rf!
 
-    user_opts = Keyword.take(opts, ~w(libs resources dry_run c_includes
+    user_opts = opts
+    |> Keyword.take(~w(libs resources dry_run c_includes
     system_include_dirs local link_libc)a)
 
     include_dirs = opts
