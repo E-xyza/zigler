@@ -57,10 +57,12 @@ defmodule Zig.Compiler do
     nif_functions = Enum.map(module.nifs, &function_skeleton/1)
     nif_name = Zig.nif_name(module, false)
 
+    # TODO: merge these two.
     if module.dry_run do
       quote do
         unquote_splicing(dependencies)
         unquote_splicing(nif_functions)
+        unquote(exception_for(module))
         def __load_nifs__, do: :ok
       end
     else
@@ -68,6 +70,7 @@ defmodule Zig.Compiler do
         import Logger
         unquote_splicing(dependencies)
         unquote_splicing(nif_functions)
+        unquote(exception_for(module))
         def __load_nifs__ do
           # LOADS the nifs from :code.lib_dir() <> "ebin", which is
           # a path that has files correctly moved in to release packages.
@@ -104,6 +107,30 @@ defmodule Zig.Compiler do
         @external_resource unquote(assembly.source)
       end
     end)
+  end
+
+  defp exception_for(%{nifs: nifs}) do
+    if Enum.any?(nifs, &returns_error?/1) do
+      quote do
+        defmodule ZigError do
+          defexception [:message, :error_return_trace]
+
+          def blame(exception, stacktrace) do
+            zig_errors =
+              Enum.map(exception.error_return_trace, fn
+                {module, fun, file, line} ->
+                  {module, fun, 0, [file: file, line: line]}
+              end)
+
+            {exception, zig_errors ++ stacktrace}
+          end
+        end
+      end
+    end
+  end
+
+  defp returns_error?(%{retval: retval}) do
+    match?("!" <> _, retval)
   end
 
   #############################################################################
@@ -187,8 +214,8 @@ defmodule Zig.Compiler do
 
   @spec cleanup(t) :: :ok | no_return
   defp cleanup(compiler) do
-    # in dev and test we keep our code around for debugging purposes.
-    unless Mix.env in [:dev, :test] do
+    # in Zigler dev and test we keep our code around for debugging purposes.
+    unless Mix.env() in [:dev, :test] do
       File.rm_rf!(compiler.assembly_dir)
     end
     :ok
