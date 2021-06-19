@@ -34,41 +34,19 @@ defmodule ZiglerTest.Integration.ErrorTest do
   }
   """
 
-  defmodule ZigError do
-    defexception [:message, :error_return_trace]
-
-    def blame(exception, stacktrace) do
-      zig_errors =
-        Enum.map(exception.error_return_trace, fn
-          {module, fun, file, line} ->
-            {module, fun, 0, [file: file, line: line]}
-        end)
-
-      {exception, zig_errors ++ stacktrace}
-    end
-  end
-
-  defp void_error_shim(int) do
-    raise_error(42)
-  catch
-    :error, {error, error_return_trace} ->
-      raise ZigError,
-        message: "zig code returned the error #{error}",
-        error_return_trace: error_return_trace
-  end
-
   test "for the void error case" do
     assert nil == void_error(47)
 
     {error, stacktrace} =
       try do
-        void_error_shim(42)
+        void_error(42)
       rescue
         error in ZigError ->
           Exception.blame(:error, error, __STACKTRACE__)
       end
 
     assert Exception.message(error)
+
     assert [{
       __MODULE__, :void_error, 0,
     [
