@@ -44,7 +44,7 @@ defmodule ZiglerTest.Integration.ErrorTest do
     assert [{
       :zig, :void_error, '*',
     [
-      file: "/tmp/.zigler_compiler/test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
+      file: "test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
       line: 9
     ]} | _] = stacktrace
   end
@@ -65,12 +65,12 @@ defmodule ZiglerTest.Integration.ErrorTest do
     assert [{
       :zig, :void_error, '*',
     [
-      file: "/tmp/.zigler_compiler/test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
+      file: "test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
       line: 9
     ]}, {
       :zig, :nested_error, '*',
     [
-      file: "/tmp/.zigler_compiler/test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
+      file: "test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
       line: 15
     ]} | _] = stacktrace
   end
@@ -91,7 +91,7 @@ defmodule ZiglerTest.Integration.ErrorTest do
     assert [{
       :zig, :union_error, '*',
     [
-      file: "/tmp/.zigler_compiler/test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
+      file: "test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
       line: 21
     ]} | _] = stacktrace
   end
