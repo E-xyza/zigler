@@ -7,7 +7,7 @@ defmodule Zig.Nif.Adapter do
   alias Zig.Parser.Nif
 
   @doc "converts a Nif struct into zig code that wraps the function call"
-  @callback zig_adapter(Nif.t) :: iodata
+  @callback zig_adapter(Nif.t, module) :: iodata
   @doc "converts a Nif struct into the entries that winds up in the nif table"
   @callback nif_table_entries(Nif.t) :: iodata
   @doc "elixir-side code that wraps the function call"
@@ -90,6 +90,9 @@ defmodule Zig.Nif.Adapter do
   end
   def make_clause("[]" <> type, var, env) do
     "beam.make_#{type}_list(#{env}, #{var}) catch return beam.raise_enomem(env)"
+  end
+  def make_clause("!" <> type, var, env) do
+    make_clause(type, var, env)
   end
   def make_clause(type, var, env) do
     "beam.make_#{short_name type}(#{env}, #{var})"

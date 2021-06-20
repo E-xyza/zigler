@@ -21,7 +21,7 @@ defmodule ZiglerTest.UnitTestTest do
       return beam.make_atom(env, "ok");
     }
     """ = %Nif{name: :test_foo, arity: 0, test: "tests foo"}
-    |> Zig.Code.adapter
+    |> Zig.Code.adapter(__MODULE__)
     |> IO.iodata_to_binary
   end
 

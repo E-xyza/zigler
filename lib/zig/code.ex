@@ -24,7 +24,7 @@ defmodule Zig.Code do
       body,
       "// ref: #{module.zig_file} line: #{body_lines + 1}\n\n",
       "// adapters for #{module.module} in #{module.file}:\n\n",
-      Enum.map(module.nifs, &adapter/1),
+      Enum.map(module.nifs, &adapter(&1, module.module)),
       footer(module)
     ]
   end
@@ -84,21 +84,21 @@ defmodule Zig.Code do
   #############################################################################
   ## FUNCTION ADAPTER
 
-  def adapter(nif = %Zig.Parser.Nif{opts: opts, test: nil}) do
+  def adapter(nif = %Zig.Parser.Nif{opts: opts, test: nil}, module) do
     case opts[:concurrency] do
       :threaded ->
-        Threaded.zig_adapter(nif)
+        Threaded.zig_adapter(nif, module)
       :yielding ->
-        Yielding.zig_adapter(nif)
+        Yielding.zig_adapter(nif, module)
       :dirty_cpu ->
-        DirtyCpu.zig_adapter(nif)
+        DirtyCpu.zig_adapter(nif, module)
       :dirty_io ->
-        DirtyIO.zig_adapter(nif)
+        DirtyIO.zig_adapter(nif, module)
       nil ->
-        Synchronous.zig_adapter(nif)
+        Synchronous.zig_adapter(nif, module)
     end
   end
-  def adapter(nif), do: Test.zig_adapter(nif)
+  def adapter(nif, module), do: Test.zig_adapter(nif, module)
 
   #############################################################################
   ## FOOTER GENERATION

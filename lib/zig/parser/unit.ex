@@ -93,7 +93,7 @@ defmodule Zig.Parser.Unit do
   end
 
   defp parse_test_decl(_rest, [test_name], context, _line, _offset) do
-    test_nif = new_nif(test_name)
+    test_nif = new_nif(test_name, context.module)
     {["pub fn #{test_nif.name}() !void"],
       %{context | tests: [test_nif | context.tests]}}
   end
@@ -105,7 +105,7 @@ defmodule Zig.Parser.Unit do
   end
 
   alias Zig.Parser.Nif
-  defp new_nif(name) do
+  defp new_nif(name, module) do
     %Nif{
       name: String.to_atom("test_#{Zig.Unit.name_to_hash(name)}"),
       test: String.to_atom(name),

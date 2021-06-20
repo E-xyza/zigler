@@ -329,7 +329,7 @@ defmodule Zig.Nif.Threaded do
   end
 
   @impl true
-  def zig_adapter(nif) do
+  def zig_adapter(nif, _module) do
     [cache_struct(nif), "\n",
      launcher_fn(nif), "\n",
      packer_fn(nif), "\n",

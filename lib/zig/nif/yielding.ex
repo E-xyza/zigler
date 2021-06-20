@@ -230,7 +230,7 @@ defmodule Zig.Nif.Yielding do
   """
 
   @impl true
-  def zig_adapter(nif) do
+  def zig_adapter(nif, _module) do
     [frame_resources(nif), "\n",
      launcher_fns(nif), "\n",
      rescheduler_fn(nif), "\n",

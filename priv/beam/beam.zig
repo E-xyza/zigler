@@ -318,7 +318,7 @@ pub const term = e.ErlNifTerm;
 /// A helper for marshalling values from the BEAM runtime into Zig.  Use this
 /// function if you need support for Zig generics.
 ///
-/// Used internally to typcheck values coming into Zig slice.
+/// Used internally to typeheck values coming into Zig slice.
 ///
 /// supported types:
 /// - `c_int`
@@ -331,21 +331,21 @@ pub const term = e.ErlNifTerm;
 /// - `f16`
 /// - `f32`
 /// - `f64`
-pub fn get(comptime T: type, environment: env, value: term) !T {
+pub fn get(comptime T: type, env_: env, value: term) !T {
   switch (T) {
-    c_int  => return get_c_int(environment, value),
-    c_long => return get_c_long(environment, value),
-    isize  => return get_isize(environment, value),
-    usize  => return get_usize(environment, value),
-    u8     => return get_u8(environment, value),
-    u16    => return get_u16(environment, value),
-    u32    => return get_u32(environment, value),
-    u64    => return get_u64(environment, value),
-    i32    => return get_i32(environment, value),
-    i64    => return get_i64(environment, value),
-    f16    => return get_f16(environment, value),
-    f32    => return get_f32(environment, value),
-    f64    => return get_f64(environment, value),
+    c_int  => return get_c_int(env_, value),
+    c_long => return get_c_long(env_, value),
+    isize  => return get_isize(env_, value),
+    usize  => return get_usize(env_, value),
+    u8     => return get_u8(env_, value),
+    u16    => return get_u16(env_, value),
+    u32    => return get_u32(env_, value),
+    u64    => return get_u64(env_, value),
+    i32    => return get_i32(env_, value),
+    i64    => return get_i64(env_, value),
+    f16    => return get_f16(env_, value),
+    f32    => return get_f32(env_, value),
+    f64    => return get_f64(env_, value),
     else   => unreachable
   }
 }
@@ -1348,16 +1348,16 @@ const f_c_e_slice = "function_clause";
 /// ingress from the dynamic BEAM runtime to the static Zig runtime.
 /// You can also use this function to communicate a similar error by returning the
 /// resulting term from your NIF.
-pub fn raise_function_clause_error(environment: env) term {
-  return e.enif_raise_exception(environment, make_atom(environment, f_c_e_slice));
+pub fn raise_function_clause_error(env_: env) term {
+  return e.enif_raise_exception(env_, make_atom(env_, f_c_e_slice));
 }
 
 const resource_error = "resource_error";
 
 /// This function is used to communicate `:resource_error` back to the BEAM as an
 /// exception.
-pub fn raise_resource_error(environment: env) term {
-  return e.enif_raise_exception(environment, make_atom(environment, resource_error));
+pub fn raise_resource_error(env_: env) term {
+  return e.enif_raise_exception(env_, make_atom(env_, resource_error));
 }
 
 const assert_slice = "assertion_error";
@@ -1366,11 +1366,11 @@ const assert_slice = "assertion_error";
 /// exception.
 ///
 /// Used when running Zigtests, when trapping `beam.AssertionError.AssertionError`.
-pub fn raise_assertion_error(environment: env) term {
-  return e.enif_raise_exception(environment, make_atom(environment, assert_slice));
+pub fn raise_assertion_error(env_: env) term {
+  return e.enif_raise_exception(env_, make_atom(env_, assert_slice));
 }
 
-pub fn make_error_return_trace(env_: env, error_trace: ?*std.builtin.StackTrace) term {
+pub fn raise_error(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
   if (error_trace) | trace | {
     const debug_info = std.debug.getSelfDebugInfo() catch unreachable;
 
@@ -1386,7 +1386,39 @@ pub fn make_error_return_trace(env_: env, error_trace: ?*std.builtin.StackTrace)
         var location = make_location(env_, debug_info, return_address - 1) catch unreachable;
         ert = e.enif_make_list_cell(env_, location, ert);
     }
-    return ert;
+
+    var exception = e.enif_make_new_map(env_);
+    // define the struct
+    _ = e.enif_make_map_put(
+      env_,
+      exception,
+      make_atom(env_, "__struct__"),
+      make_atom(env_, exception_module),
+      &exception);
+    _ = e.enif_make_map_put(
+      env_,
+      exception,
+      make_atom(env_, "__exception__"),
+      make_bool(env_, true),
+      &exception);
+    // define the error
+    _ = e.enif_make_map_put(
+      env_,
+      exception,
+      make_atom(env_, "message"),
+      make_slice(env_, @errorName(err)),
+      &exception
+    );
+    // store the error return trace
+    _ = e.enif_make_map_put(
+      env_,
+      exception,
+      make_atom(env_, "error_return_trace"),
+      ert,
+      &exception
+    );
+
+    return e.enif_raise_exception(env_, exception);
 
   } else {
     return make_nil(env_);

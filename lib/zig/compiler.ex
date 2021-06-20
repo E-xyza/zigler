@@ -125,13 +125,18 @@ defmodule Zig.Compiler do
           defexception [:message, :error_return_trace]
 
           def blame(exception, stacktrace) do
+            [{m, f, _, _} | _] = stacktrace
+            [z] = m.__info__(:attributes)[:zigler]
+            a = Enum.find(z.nifs, &(&1.name == f)).arity
+
+            new_message = "#{inspect m}.#{f}/#{a} returned the zig error `.#{exception.message}`"
             zig_errors =
               Enum.map(exception.error_return_trace, fn
-                {module, fun, file, line} ->
-                  {module, fun, 0, [file: file, line: line]}
+                {_, fun, file, line} ->
+                  {:zig, fun, '*', [file: file, line: line]}
               end)
 
-            {exception, zig_errors ++ stacktrace}
+            {%{exception | message: new_message}, Enum.reverse(zig_errors, stacktrace)}
           end
         end
       end

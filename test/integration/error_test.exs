@@ -10,19 +10,9 @@ defmodule ZiglerTest.Integration.ErrorTest do
     }
   }
 
-  /// nif: raise_error/1
-  fn raise_error(env: beam.env, input: i64) beam.term {
-    void_error(input) catch | err | {
-      var ert = @errorReturnTrace();
-      var raise_content =
-        beam.make_tuple(env, &[_]beam.term{
-          beam.make_atom(env, @errorName(err)),
-          beam.make_error_return_trace(env, ert)
-        });
-
-      return beam.raise(env, raise_content);
-    };
-    return beam.make_ok(env);
+  /// nif: nested_error/1
+  fn nested_error(input: i64) !void {
+    return void_error(input);
   }
 
   /// nif: union_error/1
@@ -34,6 +24,10 @@ defmodule ZiglerTest.Integration.ErrorTest do
   }
   """
 
+  def foo do
+    raise __MODULE__.ZigError, message: "foo", error_return_trace: []
+  end
+
   test "for the void error case" do
     assert nil == void_error(47)
 
@@ -41,21 +35,70 @@ defmodule ZiglerTest.Integration.ErrorTest do
       try do
         void_error(42)
       rescue
-        error in ZigError ->
+        error in __MODULE__.ZigError ->
           Exception.blame(:error, error, __STACKTRACE__)
       end
 
-    assert Exception.message(error)
+    assert Exception.message(error) == "#{inspect __MODULE__}.void_error/1 returned the zig error `.BadInput`"
 
     assert [{
-      __MODULE__, :void_error, 0,
+      :zig, :void_error, '*',
     [
       file: "/tmp/.zigler_compiler/test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
       line: 9
     ]} | _] = stacktrace
   end
 
-  @tag :skip
-  test "for the error set union case" do
+  test "for the nested error case" do
+    assert nil == nested_error(47)
+
+    {error, stacktrace} =
+      try do
+        nested_error(42)
+      rescue
+        error in __MODULE__.ZigError ->
+          Exception.blame(:error, error, __STACKTRACE__)
+      end
+
+    assert Exception.message(error) == "#{inspect __MODULE__}.nested_error/1 returned the zig error `.BadInput`"
+
+    assert [{
+      :zig, :void_error, '*',
+    [
+      file: "/tmp/.zigler_compiler/test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
+      line: 9
+    ]}, {
+      :zig, :nested_error, '*',
+    [
+      file: "/tmp/.zigler_compiler/test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
+      line: 15
+    ]} | _] = stacktrace
   end
+
+  test "for the error set union case" do
+    assert 47 == union_error(47)
+
+    {error, stacktrace} =
+      try do
+        union_error(42)
+      rescue
+        error in __MODULE__.ZigError ->
+          Exception.blame(:error, error, __STACKTRACE__)
+      end
+
+    assert Exception.message(error) == "#{inspect __MODULE__}.union_error/1 returned the zig error `.BadInput`"
+
+    assert [{
+      :zig, :union_error, '*',
+    [
+      file: "/tmp/.zigler_compiler/test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
+      line: 21
+    ]} | _] = stacktrace
+  end
+
+  @tag :skip
+  test "for threaded"
+
+  @tag :skip
+  test "for yielding"
 end

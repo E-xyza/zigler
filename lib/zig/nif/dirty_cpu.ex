@@ -7,7 +7,7 @@ defmodule Zig.Nif.DirtyCpu do
   @behaviour Adapter
 
   @impl true
-  defdelegate zig_adapter(nif), to: Synchronous
+  defdelegate zig_adapter(nif, module), to: Synchronous
 
   @impl true
   def nif_table_entries(nif) do

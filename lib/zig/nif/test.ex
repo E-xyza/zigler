@@ -9,7 +9,7 @@ defmodule Zig.Nif.Test do
   @behaviour Adapter
 
   @impl true
-  def zig_adapter(nif) do
+  def zig_adapter(nif, _module) do
     # when it is a test:
     """
     export fn __#{Adapter.shim_name nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {

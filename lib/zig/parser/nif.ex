@@ -42,9 +42,8 @@ defmodule Zig.Parser.Nif do
   @enforce_keys [:name, :arity]
 
   defstruct @enforce_keys ++ [
-    doc:    nil,
+    :module, :doc, :retval,
     args:   [],
-    retval: nil,
     opts:   [],
     test:   nil # only to be used for tests.  This is the string name
                 # of the test which is going to be bound in.

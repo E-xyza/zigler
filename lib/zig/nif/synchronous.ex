@@ -10,7 +10,7 @@ defmodule Zig.Nif.Synchronous do
   @behaviour Adapter
 
   @impl true
-  def zig_adapter(nif) do
+  def zig_adapter(nif, module) do
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"argv[#{&1}]")
 
     head = """
@@ -21,21 +21,16 @@ defmodule Zig.Nif.Synchronous do
     result = case nif.retval do
       v when v in ["beam.term", "e.ErlNifTerm", "!beam.term", "!e.ErlNifTerm"] ->
         """
-          return nosuspend #{function_call nif}}
+          return nosuspend #{function_call nif, module}}
         """
       v when v in ["void", "!void"] ->
         """
-          nosuspend #{function_call nif}  return beam.make_nil(env);
-        }
-        """
-      "!" <> retval  ->
-        """
-          var #{result_var nif} = nosuspend #{function_call nif}  return #{Adapter.make_clause retval, result_var(nif)};
+          nosuspend #{function_call nif, module}  return beam.make_nil(env);
         }
         """
       other ->
         """
-          var #{result_var nif} = nosuspend #{function_call nif}  return #{Adapter.make_clause other, result_var(nif)};
+          var #{result_var nif} = nosuspend #{function_call nif, module}  return #{Adapter.make_clause other, result_var(nif)};
         }
         """
     end
@@ -48,14 +43,14 @@ defmodule Zig.Nif.Synchronous do
   defp result_var(nif), do: "__#{nif.name}_result__"
 
   # error return calls.
-  defp function_call(nif = %{retval: "!" <> _}) do
+  defp function_call(nif = %{retval: "!" <> _}, module) do
     """
-    #{nif.name}(#{Adapter.args nif}) catch {
-      return beam.make_error_term(env, beam.make_error_return_trace(env, @errorReturnTrace()));
+    #{nif.name}(#{Adapter.args nif}) catch |err| {
+      return beam.raise_error(env, "#{module}.ZigError", err, @errorReturnTrace());
     };
     """
   end
-  defp function_call(nif), do: "#{nif.name}(#{Adapter.args nif});\n"
+  defp function_call(nif, _module), do: "#{nif.name}(#{Adapter.args nif});\n"
 
   @impl true
   def nif_table_entries(nif) do
@@ -87,10 +82,12 @@ defmodule Zig.Nif.Synchronous do
       for _ <- 1..arity, do: {:_, [], Elixir}
     end
 
+    body = quote do raise unquote(text) end
+
     {:def, [context: Elixir, import: Kernel],
       [
         {name, [context: Elixir], args},
-        [do: {:raise, [context: Elixir, import: Kernel], [text]}]
+        [do: body]
       ]}
   end
 
