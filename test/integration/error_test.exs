@@ -9,19 +9,6 @@ defmodule ZiglerTest.Integration.ErrorTest do
       return error.BadInput;
     }
   }
-
-  /// nif: nested_error/1
-  fn nested_error(input: i64) !void {
-    return void_error(input);
-  }
-
-  /// nif: union_error/1
-  fn union_error(input: i64) !i64 {
-    if (input == 42) {
-      return error.BadInput;
-    }
-    return input;
-  }
   """
 
   def foo do
@@ -44,10 +31,17 @@ defmodule ZiglerTest.Integration.ErrorTest do
     assert [{
       :zig, :void_error, '*',
     [
-      file: "test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
+      file: "test/integration/error_test.exs",
       line: 9
     ]} | _] = stacktrace
   end
+
+  ~Z"""
+  /// nif: nested_error/1
+  fn nested_error(input: i64) !void {
+    return void_error(input);
+  }
+  """
 
   test "for the nested error case" do
     assert nil == nested_error(47)
@@ -65,15 +59,25 @@ defmodule ZiglerTest.Integration.ErrorTest do
     assert [{
       :zig, :void_error, '*',
     [
-      file: "test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
-      line: 9
+      file: "test/integration/error_test.exs",
+      line: _
     ]}, {
       :zig, :nested_error, '*',
     [
-      file: "test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
-      line: 15
+      file: "test/integration/error_test.exs",
+      line: 42
     ]} | _] = stacktrace
   end
+
+  ~Z"""
+  /// nif: union_error/1
+  fn union_error(input: i64) !i64 {
+    if (input == 42) {
+      return error.BadInput;
+    }
+    return input;
+  }
+  """
 
   test "for the error set union case" do
     assert 47 == union_error(47)
@@ -91,10 +95,13 @@ defmodule ZiglerTest.Integration.ErrorTest do
     assert [{
       :zig, :union_error, '*',
     [
-      file: "test/Elixir.ZiglerTest.Integration.ErrorTest/Elixir.ZiglerTest.Integration.ErrorTest.zig",
-      line: 21
+      file: "test/integration/error_test.exs",
+      line: 76
     ]} | _] = stacktrace
   end
+
+  @tag :skip
+  test "for external files"
 
   @tag :skip
   test "for threaded"

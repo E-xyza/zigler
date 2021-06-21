@@ -30,6 +30,7 @@ defmodule Zig.Compiler do
     # VERIFICATION
 
     module = Module.get_attribute(context.module, :zigler)
+    Module.register_attribute(context.module, :nif_code_map, persist: true)
 
     zig_tree = Path.join(@zig_dir_path, Command.version_name(module.zig_version))
 
@@ -48,12 +49,12 @@ defmodule Zig.Compiler do
     ###########################################################################
     # COMPILATION STEPS
 
-    compiler = compilation(module, zig_tree)
+    compiled = compilation(module, zig_tree)
 
     ###########################################################################
     # MACRO STEPS
 
-    dependencies = dependencies_for(compiler.assembly)
+    dependencies = dependencies_for(compiled.assembly)
     nif_functions = Enum.map(module.nifs, &function_skeleton/1)
     nif_name = Zig.nif_name(module, false)
 
@@ -128,15 +129,46 @@ defmodule Zig.Compiler do
             [{m, f, _, _} | _] = stacktrace
             [z] = m.__info__(:attributes)[:zigler]
             a = Enum.find(z.nifs, &(&1.name == f)).arity
+            code_map =
 
             new_message = "#{inspect m}.#{f}/#{a} returned the zig error `.#{exception.message}`"
             zig_errors =
               Enum.map(exception.error_return_trace, fn
-                {_, fun, file, line} ->
-                  {:zig, fun, '*', [file: file, line: line]}
+                {_, fun, dest_file, dest_line} ->
+                  file = file_lookup(m.__info__(:attributes)[:nif_code_map], dest_file)
+
+                  {src_file, src_line} = if file == z.file do
+                    z.code
+                    |> IO.iodata_to_binary
+                    |> String.split("\n")
+                    |> line_lookup(dest_line)
+                  else
+                    {file, dest_line}
+                  end
+
+                  {:zig, fun, '*', [file: src_file, line: src_line]}
               end)
 
             {%{exception | message: new_message}, Enum.reverse(zig_errors, stacktrace)}
+          end
+
+          defp file_lookup(code_map, dest_file) do
+            :proplists.get_value(dest_file, code_map, dest_file)
+          end
+
+          defp line_lookup(code_cache, dest_line) do
+            code_cache
+            |> Enum.with_index(1)
+            |> Enum.reduce({"", 0}, fn
+              {_, ^dest_line}, fileline -> throw fileline
+              {"// ref: " <> spec, _}, _ ->
+                [file, "line:", line] = String.split(spec)
+                {file, String.to_integer(line) + 1}
+              _, {file, line} ->
+                {file, line + 1}
+            end)
+          catch
+            fileline -> fileline
           end
         end
       end
@@ -195,6 +227,12 @@ defmodule Zig.Compiler do
     # create the main code file
     code_file = Path.join(assembly_dir, "#{module.module}.zig")
     code_content = Zig.Code.generate_main(%{module | zig_file: code_file})
+
+    # store it in the lookup table
+    Module.put_attribute(module.module, :nif_code_map, {
+      code_file,
+      Path.relative_to_cwd(module.file)
+    })
 
     # define the code file and build it.
     File.write!(code_file, code_content)

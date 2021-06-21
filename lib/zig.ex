@@ -232,8 +232,8 @@ defmodule Zig do
     |> Keyword.get(:include, [])
     |> Kernel.++(if has_include_dir?(__CALLER__), do: ["include"], else: [])
 
-    zigler = struct(%Zig.Module{
-      file:         __CALLER__.file,
+    zigler! = struct(%Zig.Module{
+      file:         Path.relative_to_cwd(__CALLER__.file),
       module:       __CALLER__.module,
       imports:      Zig.Module.imports(opts[:imports]),
       include_dirs: include_dirs,
@@ -241,8 +241,10 @@ defmodule Zig do
       otp_app:      get_app()},
       user_opts)
 
+    zigler! = %{zigler! | code: Zig.Code.headers(zigler!)}
+
     Module.register_attribute(__CALLER__.module, :zigler, persist: true)
-    Module.put_attribute(__CALLER__.module, :zigler, zigler)
+    Module.put_attribute(__CALLER__.module, :zigler, zigler!)
 
     quote do
       import Zig
@@ -280,7 +282,7 @@ defmodule Zig do
   defp quoted_code(zig_code, meta, caller) do
     line = meta[:line]
     module = caller.module
-    file = caller.file
+    file = Path.relative_to_cwd(caller.file)
     quote bind_quoted: [module: module, zig_code: zig_code, file: file, line: line] do
       zigler = Module.get_attribute(module, :zigler)
 

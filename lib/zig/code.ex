@@ -8,20 +8,21 @@ defmodule Zig.Code do
   alias Zig.Nif.{Synchronous, Test, Threaded, Yielding}
   alias Zig.Parser.{Nif, Resource}
 
-  def generate_main(module = %Module{}) do
+  def headers(module = %Module{}) do
     body = case module.c_includes do
       [] -> []
       includes -> c_imports(includes) ++ ["\n"]
     end
     ++ [
       zig_imports(module.imports), "\n",
-      module.code, "\n"
     ]
+  end
 
-    body_lines = count_lines(body)
+  def generate_main(module = %Module{}) do
+    body_lines = count_lines(module.code)
 
     [
-      body,
+      module.code,
       "// ref: #{module.zig_file} line: #{body_lines + 1}\n\n",
       "// adapters for #{module.module} in #{module.file}:\n\n",
       Enum.map(module.nifs, &adapter(&1, module.module)),
