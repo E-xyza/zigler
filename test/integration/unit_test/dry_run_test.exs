@@ -21,14 +21,15 @@ defmodule ZiglerTest.Integration.UnitTest.DryRunTest do
   # elixir module, and its failure (due to not being loaded) is
   # immaterial.
 
-  defmodule NotExecuted do
-    #use ExUnit.Case, async: true
-    use Zig, dry_run: true
-    import Zig.Unit
+  #defmodule NotExecuted do
+  #  #use ExUnit.Case, async: true
+  #  use Zig, dry_run: true
+  #  import Zig.Unit
+#
+  #  zigtest ZiglerTest.ZigT, dry_run: true
+  #end
 
-    zigtest ZiglerTest.ZigT, dry_run: true
-  end
-
+  @tag :skip
   test "dry run is successful" do
     assert {:"foo returns 47", 0} in NotExecuted.__info__(:functions)
   end

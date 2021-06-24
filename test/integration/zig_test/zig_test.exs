@@ -1,6 +1,6 @@
 defmodule ZiglerTest.Integration.ZigTest do
   use ExUnit.Case
-  use Zig
+  #use Zig
 
   import Zig.Unit
 
@@ -9,11 +9,14 @@ defmodule ZiglerTest.Integration.ZigTest do
   # imports module support/passing_tests.exs into zigler.
   # note that this should be precompiled as a result of being in
   # test/support directory.
-  zigtest ZiglerTest.ZigTest.PassingTests
+  @tag :skip
+  test "restore next test"
+  #zigtest ZiglerTest.ZigTest.PassingTests
 
   # make sure the existing module recapitulates the code from the
   # tested module
 
+  @tag :skip
   test "this module has the code" do
     [zigler] = __MODULE__.__info__(:attributes)[:zigler]
     assert IO.iodata_to_binary(zigler.code)
@@ -24,6 +27,7 @@ defmodule ZiglerTest.Integration.ZigTest do
 
   alias ZiglerTest.Integration.ZigTest.FailShim
 
+  @tag :skip
   test "a test can fail, with the correct line number" do
     @this_file
     |> Path.dirname

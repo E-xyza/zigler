@@ -35,7 +35,7 @@ defmodule Zig.Nif.Test do
   @impl true
   def beam_adapter(nif) do
     raise_msg = "nif for test #{nif.test} not found"
-    raise_code = quote do
+    raise_code = quote context: Elixir do
       raise unquote(raise_msg)
     end
     {:def, [context: Elixir, import: Kernel],

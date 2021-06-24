@@ -146,7 +146,7 @@ defmodule Zig.Compiler do
                     {file, dest_line}
                   end
 
-                  {:zig, fun, '*', [file: src_file, line: src_line]}
+                  {:.., fun, [:...], [file: src_file, line: src_line]}
               end)
 
             {%{exception | message: new_message}, Enum.reverse(zig_errors, stacktrace)}
@@ -228,11 +228,15 @@ defmodule Zig.Compiler do
     code_file = Path.join(assembly_dir, "#{module.module}.zig")
     code_content = Zig.Code.generate_main(%{module | zig_file: code_file})
 
-    # store it in the lookup table
-    Module.put_attribute(module.module, :nif_code_map, {
-      code_file,
-      Path.relative_to_cwd(module.file)
-    })
+    # store it in the lookup table.  This needs to be guarded for test purposes.
+    try do
+      Module.put_attribute(module.module, :nif_code_map, {
+        code_file,
+        Path.relative_to_cwd(module.file)
+      })
+    rescue
+      _ in ArgumentError -> :ok
+    end
 
     # define the code file and build it.
     File.write!(code_file, code_content)

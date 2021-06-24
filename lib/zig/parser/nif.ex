@@ -98,7 +98,7 @@ defmodule Zig.Parser.Nif do
     :: :ok | no_return
   def validate_retval([retval | _], _context, _line) when retval in @valid_retvals, do: :ok
   def validate_retval(["!" <> retval | rest], context, line) when retval in @valid_retvals do
-    validate_retval(rest, context, line)
+    validate_retval([retval | rest], context, line)
   end
   def validate_retval([retval | _], context, line) do
     raise SyntaxError,

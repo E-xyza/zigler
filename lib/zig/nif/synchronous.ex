@@ -82,7 +82,7 @@ defmodule Zig.Nif.Synchronous do
       for _ <- 1..arity, do: {:_, [], Elixir}
     end
 
-    body = quote do raise unquote(text) end
+    body = quote context: Elixir do raise unquote(text) end
 
     {:def, [context: Elixir, import: Kernel],
       [

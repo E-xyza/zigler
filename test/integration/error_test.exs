@@ -29,7 +29,7 @@ defmodule ZiglerTest.Integration.ErrorTest do
     assert Exception.message(error) == "#{inspect __MODULE__}.void_error/1 returned the zig error `.BadInput`"
 
     assert [{
-      :zig, :void_error, '*',
+      :.., :void_error, [:...],
     [
       file: "test/integration/error_test.exs",
       line: 9
@@ -57,12 +57,12 @@ defmodule ZiglerTest.Integration.ErrorTest do
     assert Exception.message(error) == "#{inspect __MODULE__}.nested_error/1 returned the zig error `.BadInput`"
 
     assert [{
-      :zig, :void_error, '*',
+      :.., :void_error, [:...],
     [
       file: "test/integration/error_test.exs",
       line: _
     ]}, {
-      :zig, :nested_error, '*',
+      :.., :nested_error, [:...],
     [
       file: "test/integration/error_test.exs",
       line: 42
@@ -93,7 +93,7 @@ defmodule ZiglerTest.Integration.ErrorTest do
     assert Exception.message(error) == "#{inspect __MODULE__}.union_error/1 returned the zig error `.BadInput`"
 
     assert [{
-      :zig, :union_error, '*',
+      :.., :union_error, [:...],
     [
       file: "test/integration/error_test.exs",
       line: 76

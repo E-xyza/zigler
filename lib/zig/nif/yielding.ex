@@ -31,7 +31,7 @@ defmodule Zig.Nif.Yielding do
   @impl true
   def beam_adapter(nif) do
     typespec = Typespec.from_nif(nif)
-    quote do
+    quote context: Elixir do
       unquote(typespec)
       unquote(basic_fn(nif))
     end
