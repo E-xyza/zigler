@@ -1370,9 +1370,9 @@ pub fn raise_assertion_error(env_: env) term {
   return e.enif_raise_exception(env_, make_atom(env_, assert_slice));
 }
 
-pub fn raise_error(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
+pub fn build_exception(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
   if (error_trace) | trace | {
-    const debug_info = std.debug.getSelfDebugInfo() catch unreachable;
+    const debug_info = std.debug.getSelfDebugInfo() catch return make_nil(env_);
 
     var frame_index: usize = 0;
     var frames_left: usize = std.math.min(trace.index, trace.instruction_addresses.len);
@@ -1383,7 +1383,7 @@ pub fn raise_error(env_: env, exception_module: []const u8, err: anyerror, error
         frame_index = (frame_index + 1) % trace.instruction_addresses.len;
     }) {
         const return_address = trace.instruction_addresses[frame_index];
-        var location = make_location(env_, debug_info, return_address - 1) catch unreachable;
+        var location = make_location(env_, debug_info, return_address - 1) catch return make_nil(env_);
         ert = e.enif_make_list_cell(env_, location, ert);
     }
 
@@ -1418,8 +1418,16 @@ pub fn raise_error(env_: env, exception_module: []const u8, err: anyerror, error
       &exception
     );
 
-    return e.enif_raise_exception(env_, exception);
+    return exception;
 
+  } else {
+    return make_nil(env_);
+  }
+}
+
+pub fn raise_error(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
+  if (error_trace) | trace | {
+    return e.enif_raise_exception(env_, build_exception(env_, exception_module, err, error_trace));
   } else {
     return make_nil(env_);
   }

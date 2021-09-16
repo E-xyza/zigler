@@ -103,8 +103,36 @@ defmodule ZiglerTest.Integration.ErrorTest do
   @tag :skip
   test "for external files"
 
-  @tag :skip
-  test "for threaded"
+  ~Z"""
+  /// nif: threaded_error/1 threaded
+  fn threaded_error(input: i64) !i64 {
+    if (input == 42) {
+      return error.BadInput;
+    }
+    return input;
+  }
+  """
+
+  test "for threaded" do
+    assert 47 == threaded_error(47)
+
+    {error, stacktrace} =
+      try do
+        threaded_error(42)
+      rescue
+        error in __MODULE__.ZigError ->
+          Exception.blame(:error, error, __STACKTRACE__)
+      end
+
+    assert Exception.message(error) == "#{inspect __MODULE__}.threaded_error/1 returned the zig error `.BadInput`"
+
+    assert [{
+      :.., :threaded_error, [:...],
+    [
+      file: "test/integration/error_test.exs",
+      line: 110
+    ]} | _] = stacktrace
+  end
 
   @tag :skip
   test "for yielding"

@@ -74,6 +74,8 @@ defmodule Zig.Nif.Threaded do
                 function: unquote(name),
                 arity: unquote(arity)
               }
+            {:error, {^ref, map}} when is_exception(map) ->
+              raise map
             {:error, :thread_resource_error} ->
               raise "thread resource error for #{__ENV__.function}"
           end
@@ -231,7 +233,50 @@ defmodule Zig.Nif.Threaded do
 
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"cache.args.?[#{&1}]")
 
-    result_term = Adapter.make_clause(nif.retval, "result", "cache.env")
+    result_clause = case nif.retval do
+      "!" <> _type ->
+        result_term = Adapter.make_clause(nif.retval, "__r", "cache.env")
+        """
+        if (result) | __r |
+          beam.make_ok_term(
+            env,
+            e.enif_make_tuple(
+              env,
+              2,
+              cache.this,
+              #{result_term}
+            )
+          )
+        else | __e |
+          beam.make_error_term(
+            env,
+            e.enif_make_tuple(
+              env,
+              2,
+              cache.this,
+              beam.build_exception(
+                env,
+                "#{nif.module}.ZigError",
+                __e,
+                @errorReturnTrace())
+            )
+          );
+        """
+      _ ->
+        result_term = Adapter.make_clause(nif.retval, "result", "cache.env")
+
+        """
+        beam.make_ok_term(
+          env,
+          e.enif_make_tuple(
+            env,
+            2,
+            cache.this,
+            #{result_term}
+          )
+        );
+        """
+    end
 
     """
     export fn #{harness nif.name}(cache_q: ?*c_void) ?*c_void {
@@ -273,15 +318,7 @@ defmodule Zig.Nif.Threaded do
 
     #{get_clauses}  // execute the nif function
       #{result_assign}nosuspend #{nif.name}(#{Adapter.args nif});
-      result_term = beam.make_ok_term(
-        env,
-        e.enif_make_tuple(
-          env,
-          2,
-          cache.this,
-          #{result_term}
-        )
-      );
+      result_term = #{result_clause}
 
       return null;
     }
