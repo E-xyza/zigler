@@ -22,17 +22,12 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       [major, minor] = Code.nif_major_minor
 
       assert """
-      const std = @import("std");
-      const e = @import("erl_nif.zig");
-      const beam = @import("beam.zig");
-
       // foo.exs line: 3
 
       fn foo() i64 {
         return 47;
       }
-
-      // ref: foo.zig line: 11
+      // ref: foo.zig line: 6
 
       // adapters for Elixir.Foo in foo.exs:
 
@@ -93,17 +88,12 @@ defmodule ZiglerTest.Snapshot.GeneratorTest do
       [major, minor] = Code.nif_major_minor
 
       assert """
-      const std = @import("std");
-      const e = @import("erl_nif.zig");
-      const beam = @import("beam.zig");
-
       // foo.exs line: 3
 
       fn foo(bar: i64) i64 {
         return bar;
       }
-
-      // ref: foo.zig line: 11
+      // ref: foo.zig line: 6
 
       // adapters for Elixir.Foo in foo.exs:
 
