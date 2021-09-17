@@ -1,6 +1,5 @@
 defmodule ZiglerTest.Integration.ZigTest do
   use ExUnit.Case
-  #use Zig
 
   import Zig.Unit
 

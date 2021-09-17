@@ -196,11 +196,21 @@ defmodule Zig.Nif.Yielding do
   @spec harness_fns(Nif.t) :: iodata
   def harness_fns(nif) do
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"argv[#{&1}]")
-    result_term = if nif.retval == "void" do
-      "beam.make_ok(env)"
-    else
-      Adapter.make_clause(nif.retval, "result", "beam.yield_info.?.environment")
+
+    result_term = case nif.retval do
+      "void" -> "beam.make_ok(env)"
+      "!" <> _ ->
+        r = Adapter.make_clause(nif.retval, "__r", "beam.yield_info.?.environment")
+        """
+        if (result) | __r |
+          #{r}
+        else | __e |
+          beam.raise_error(parent_env, "#{nif.module}.ZigError", __e, @errorReturnTrace())
+        """
+      _ ->
+        Adapter.make_clause(nif.retval, "result", "beam.yield_info.?.environment")
     end
+
     """
     fn #{harness nif.name}(env: beam.env, parent_env: beam.env, argv: [*c] const beam.term) callconv(.Async) void {
       // decode parameters

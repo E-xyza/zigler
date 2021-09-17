@@ -267,14 +267,14 @@ defmodule Zig.Nif.Threaded do
 
         """
         beam.make_ok_term(
-          env,
-          e.enif_make_tuple(
             env,
-            2,
-            cache.this,
-            #{result_term}
-          )
-        );
+            e.enif_make_tuple(
+              env,
+              2,
+              cache.this,
+              #{result_term}
+            )
+          );
         """
     end
 
