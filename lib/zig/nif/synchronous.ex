@@ -46,7 +46,7 @@ defmodule Zig.Nif.Synchronous do
   defp function_call(nif = %{retval: "!" <> _}, module) do
     """
     #{nif.name}(#{Adapter.args nif}) catch |err| {
-      return beam.raise_error(env, "#{module}.ZigError", err, @errorReturnTrace());
+      return beam.raise_exception(env, "#{module}.ZigError", err, @errorReturnTrace());
     };
     """
   end

@@ -2,6 +2,7 @@ defmodule ZiglerTest.Integration.ErrorTest do
   use ExUnit.Case, async: true
   use Zig, link_libc: true
 
+  @basic_error_line __ENV__.line + 5
   ~Z"""
   /// nif: void_error/1
   fn void_error(input: i64) !void {
@@ -32,10 +33,11 @@ defmodule ZiglerTest.Integration.ErrorTest do
       :.., :void_error, [:...],
     [
       file: "test/integration/error_test.exs",
-      line: 9
+      line: @basic_error_line
     ]} | _] = stacktrace
   end
 
+  @nested_error_line __ENV__.line + 4
   ~Z"""
   /// nif: nested_error/1
   fn nested_error(input: i64) !void {
@@ -60,15 +62,16 @@ defmodule ZiglerTest.Integration.ErrorTest do
       :.., :void_error, [:...],
     [
       file: "test/integration/error_test.exs",
-      line: _
+      line: @basic_error_line
     ]}, {
       :.., :nested_error, [:...],
     [
       file: "test/integration/error_test.exs",
-      line: 42
+      line: @nested_error_line
     ]} | _] = stacktrace
   end
 
+  @union_error_line __ENV__.line + 5
   ~Z"""
   /// nif: union_error/1
   fn union_error(input: i64) !i64 {
@@ -96,13 +99,46 @@ defmodule ZiglerTest.Integration.ErrorTest do
       :.., :union_error, [:...],
     [
       file: "test/integration/error_test.exs",
-      line: 76
+      line: @union_error_line
     ]} | _] = stacktrace
   end
 
-  @tag :skip
-  test "for external files"
+  @external_line __ENV__.line + 6
+  ~Z"""
+  const external = @import("error_external.zig");
 
+  /// nif: external_error/0 threaded
+  fn external_error() !void {
+    return external.void_error();
+  }
+  """
+
+  @tag :skip # we won't do file resolution yet.
+  test "for external files" do
+    {error, stacktrace} =
+      try do
+        external_error()
+      rescue
+        error in __MODULE__.ZigError ->
+          Exception.blame(:error, error, __STACKTRACE__)
+      end
+
+    assert Exception.message(error) == "#{inspect __MODULE__}.external_error/0 returned the zig error `.ExternalError`"
+
+    assert [{
+      :.., :"error_external.void_error", [:...],
+    [
+      file: "test/integration/error_external.zig",
+      line: 4
+    ]}, {
+      :.., :nested_error, [:...],
+    [
+      file: "test/integration/error_test.exs",
+      line: @external_line
+    ]} | _] = stacktrace
+  end
+
+  @threaded_line __ENV__.line + 5
   ~Z"""
   /// nif: threaded_error/1 threaded
   fn threaded_error(input: i64) !i64 {
@@ -130,10 +166,11 @@ defmodule ZiglerTest.Integration.ErrorTest do
       :.., :threaded_error, [:...],
     [
       file: "test/integration/error_test.exs",
-      line: 110
+      line: @threaded_line
     ]} | _] = stacktrace
   end
 
+  @yielding_line __ENV__.line + 5
   ~Z"""
   /// nif: yielding_error/1 yielding
   fn yielding_error(input: i64) !i64 {
@@ -145,23 +182,23 @@ defmodule ZiglerTest.Integration.ErrorTest do
   """
 
   test "for yielding" do
-    assert 47 == threaded_error(47)
+    assert 47 == yielding_error(47)
 
     {error, stacktrace} =
       try do
-        threaded_error(42)
+        yielding_error(42)
       rescue
         error in __MODULE__.ZigError ->
           Exception.blame(:error, error, __STACKTRACE__)
       end
 
-    assert Exception.message(error) == "#{inspect __MODULE__}.threaded_error/1 returned the zig error `.BadInput`"
+    assert Exception.message(error) == "#{inspect __MODULE__}.yielding_error/1 returned the zig error `.BadInput`"
 
     assert [{
-      :.., :threaded_error, [:...],
+      :.., :yielding_error, [:...],
     [
       file: "test/integration/error_test.exs",
-      line: 110
+      line: @yielding_line
     ]} | _] = stacktrace
   end
 end

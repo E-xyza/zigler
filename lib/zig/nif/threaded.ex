@@ -254,7 +254,7 @@ defmodule Zig.Nif.Threaded do
               env,
               2,
               cache.this,
-              beam.build_exception(
+              beam.make_exception(
                 env,
                 "#{nif.module}.ZigError",
                 __e,

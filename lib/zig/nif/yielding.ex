@@ -144,7 +144,15 @@ defmodule Zig.Nif.Yielding do
       if (beam.yield_info.?.yield_frame) | _ | {
         return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler nif.name}, 1, &frame_resource);
       } else {
-        return beam_frame.yield_info.response;
+        if (beam_frame.yield_info.errored) {
+          // is this correct?  Should we be only copying if it's errored?  Or should we
+          // be copying depending on what the datatype is?
+
+          const __response = e.enif_make_copy(env, beam_frame.yield_info.response);
+          return e.enif_raise_exception(env, __response);
+        } else {
+          return beam_frame.yield_info.response;
+        }
       }
     }
     """
@@ -204,8 +212,15 @@ defmodule Zig.Nif.Yielding do
         """
         if (result) | __r |
           #{r}
-        else | __e |
-          beam.raise_error(parent_env, "#{nif.module}.ZigError", __e, @errorReturnTrace())
+        else | __e | res: {
+          beam.yield_info.?.errored = true;
+          break :res beam.make_exception(
+            beam.yield_info.?.environment,
+            "#{nif.module}.ZigError",
+            __e,
+            @errorReturnTrace());
+        }
+
         """
       _ ->
         Adapter.make_clause(nif.retval, "result", "beam.yield_info.?.environment")

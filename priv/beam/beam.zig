@@ -1308,8 +1308,8 @@ pub fn yield() !void {
 
 pub const YieldInfo = struct {
   yield_frame: ?anyframe = null,
-  is_yielding: bool = false,
   cancelled: bool = false,
+  errored: bool = false,
   response: term = undefined,
   environment: env,
 };
@@ -1370,7 +1370,7 @@ pub fn raise_assertion_error(env_: env) term {
   return e.enif_raise_exception(env_, make_atom(env_, assert_slice));
 }
 
-pub fn build_exception(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
+pub fn make_exception(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
   if (error_trace) | trace | {
     const debug_info = std.debug.getSelfDebugInfo() catch return make_nil(env_);
 
@@ -1425,9 +1425,9 @@ pub fn build_exception(env_: env, exception_module: []const u8, err: anyerror, e
   }
 }
 
-pub fn raise_error(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
+pub fn raise_exception(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
   if (error_trace) | trace | {
-    return e.enif_raise_exception(env_, build_exception(env_, exception_module, err, error_trace));
+    return e.enif_raise_exception(env_, make_exception(env_, exception_module, err, error_trace));
   } else {
     return make_nil(env_);
   }
