@@ -1,7 +1,7 @@
 defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
 
   use ExUnit.Case, async: true
-  use Zig
+  use Zig, link_libc: true
 
   @moduletag :threaded
 
@@ -91,4 +91,28 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
   test "yielding nif code can be run in a threaded fn" do
     assert 47 == threaded_with_yield()
   end
+
+  ~Z"""
+  /// nif: threaded_with_yield_cancel/1 threaded
+  fn threaded_with_yield_cancel(env: beam.env, pid: beam.pid) !void {
+    defer {
+      _ = beam.send(env, pid, beam.make_atom(env, "done"));
+    }
+
+    _ = beam.send(env, pid, beam.make_atom(env, "started"));
+
+    while (true) {
+      try beam.yield();
+    }
+  }
+  """
+
+  test "threaded function can be cancelled" do
+    this = self()
+    child = spawn(fn -> threaded_with_yield_cancel(this) end)
+    assert_receive :started
+    Process.exit(child, :kill)
+    assert_receive :done
+  end
+
 end
