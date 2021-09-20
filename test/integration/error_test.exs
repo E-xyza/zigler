@@ -148,7 +148,7 @@ defmodule ZiglerTest.Integration.ErrorTest do
     return input;
   }
   """
-
+  @tag :skip
   test "for threaded" do
     assert 47 == threaded_error(47)
 

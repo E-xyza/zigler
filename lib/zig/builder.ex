@@ -43,7 +43,6 @@ defmodule Zig.Builder do
 
       lib.setBuildMode(mode);
       lib.setTarget(target);
-      lib.single_threaded = true;
 
       <%= if @module_spec.link_libc do %>
       // use libc if it has been asked for

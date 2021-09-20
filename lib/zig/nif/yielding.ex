@@ -82,7 +82,7 @@ defmodule Zig.Nif.Yielding do
       if (beam_frame.yield_info.yield_frame) | yield_frame | {
         // async join with cancellation.
         beam.yield_info = &(beam_frame.yield_info);
-        beam.yield_info.?.cancelled = true;
+        beam.yield_info.?.state = .Cancelled;
 
         resume yield_frame;
         nosuspend await beam_frame.zig_frame;
@@ -127,7 +127,7 @@ defmodule Zig.Nif.Yielding do
       var frame_resource = try __resource__.create(#{frame_ptr nif.name}, env, beam_frame);
 
       // create a new environment for the yielding nif.
-      var yield_env = if (e.enif_alloc_env()) | env_ | env_ else return beam.YieldError.LaunchError;
+      var yield_env = e.enif_alloc_env() orelse return beam.YieldError.LaunchError;
 
       // populate initial information for the yield clause
       beam_frame.yield_info = .{ .environment = yield_env };

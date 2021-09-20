@@ -107,15 +107,6 @@ defmodule Zig.Code do
   def footer(module = %Module{}) do
     [major, minor] = nif_major_minor()
 
-    funcs_count = module.nifs
-    |> Enum.map(fn %{opts: opts} ->
-      case opts[:concurrency] do
-        :threaded -> 2
-        _ -> 1
-      end
-    end)
-    |> Enum.sum
-
     exports = """
     export var __exported_nifs__ = [_]e.ErlNifFunc{
     #{Enum.map(module.nifs, &nif_table_entries/1)}};
@@ -146,7 +137,7 @@ defmodule Zig.Code do
       .major = #{major},
       .minor = #{minor},
       .name = "#{module.module}",
-      .num_of_funcs = #{funcs_count},
+      .num_of_funcs = __exported_nifs__.len,
       .funcs = &(__exported_nifs__[0]),
       .load = #{nif_load_fn},
       .reload = beam.blank_load,     // currently unsupported

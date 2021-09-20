@@ -642,13 +642,27 @@ pub fn get_pid(environment: env, src_term: term) !pid {
 ///
 /// returns the pid value if it's env is a process-bound environment, otherwise
 /// returns `beam.Error.FunctionClauseError`.
-pub fn self(environment: env) !pid {
+///
+/// if you're in a threaded nif, it returns the correct `self` for the wrapping
+/// function.
+pub threadlocal var self: fn (env) Error!pid = generic_self;
+
+fn generic_self(environment: env) !pid {
   var p: pid = undefined;
   if (e.enif_self(environment, @ptrCast([*c] pid, &p))) |self_val| {
     return self_val.*;
   } else {
     return Error.FunctionClauseError;
   }
+}
+
+// internal-use only.
+pub fn set_threaded_self() void {self = threaded_self;}
+
+fn threaded_self(environment: env) !pid {
+  _ = environment;
+  var p: pid = undefined;
+  return yield_info.?.parent;
 }
 
 /// shortcut for `e.enif_self`
@@ -1295,22 +1309,36 @@ pub const YieldError = error {
   Cancelled,
 };
 
-/// this function is going to be dropped inside the suspend statement.
+/// this function is called to tell zigler's scheduler that future rescheduling
+/// *or* cancellation is possible at this point.  For threaded nifs, it also
+/// serves as a potential cancellation point.
 pub fn yield() !void {
   // only suspend if we are inside of a yielding nif
-  if (yield_info) | info | {
-    suspend {
-      if (info.cancelled) return YieldError.Cancelled;
-      info.yield_frame = @frame();
+  if (yield_info) | info | { // null, for synchronous nifs.
+    if (info.threaded) {
+      const should_cancel = @atomicLoad(YieldState, &info.state, .Monotonic) == .Cancelled;
+      if (should_cancel) {
+        return YieldError.Cancelled;
+      }
+    } else {
+      // must be yielding
+      suspend {
+        if (info.state == .Cancelled) return YieldError.Cancelled;
+        info.yield_frame = @frame();
+      }
     }
   }
 }
 
+pub const YieldState = enum { Running, Finished, Cancelled, Abandoned };
+
 pub const YieldInfo = struct {
   yield_frame: ?anyframe = null,
-  cancelled: bool = false,
+  state: YieldState = .Running,
+  threaded: bool = false,
   errored: bool = false,
   response: term = undefined,
+  parent: pid = undefined,
   environment: env,
 };
 

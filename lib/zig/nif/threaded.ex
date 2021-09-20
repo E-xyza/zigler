@@ -5,7 +5,8 @@ defmodule Zig.Nif.Threaded do
   threaded functions require several parts to get right.
 
   0. a resource that holds space for arguments, result, and flags.  This
-    is held on to by both the calling function
+    is created by the calling function and owned by the process that called
+    the function.
 
   1. a `packer` function which takes the beam arguments and shoves
     them into resource struct, then launches the function, returning the
@@ -19,8 +20,18 @@ defmodule Zig.Nif.Threaded do
     responsible for unwrapping beam terms into function parameters.  This is
     what runs the nif function.
 
-  4. a `catch` function which releases the resource reference, and signals to
-    the parent process that it's finished.
+  ### Cleanup Strategy
+
+  - If the thread is "naturally completed", then yield_info does not need to
+  be cleaned up internally, it gets cleaned up by the harness function, and
+  the `finished` value in yield_info is set to `true`.
+
+  - If the thread has been "killed", then yield_info's `cancelled` value is set to
+  true and the thread is given 500us (in 50 us chunks) to set its `finished`
+  value to true.
+
+  - If the thread has not self-terminated, it will be kept running, and its
+  resources may not wind up being properly cleaned up.
   """
 
   alias Zig.Nif.Adapter
@@ -39,7 +50,6 @@ defmodule Zig.Nif.Threaded do
       unquote(typespec)
       unquote(threaded_main_fn(nif))
       unquote(threaded_launch_fn(nif))
-      unquote(threaded_cleanup_fn(nif))
     end
   end
 
@@ -62,13 +72,10 @@ defmodule Zig.Nif.Threaded do
         {:ok, ref} ->
           receive do
             {:ok, {^ref, return}} ->
-              unquote(cleanup name)(ref)
               return
             {:error, {^ref, :enomem}} ->
-              unquote(cleanup name)(ref)
               raise "no memory"
             {:error, {^ref, :function_clause}} ->
-              unquote(cleanup name)(ref)
               raise %FunctionClauseError{
                 module: __MODULE__,
                 function: unquote(name),
@@ -107,40 +114,30 @@ defmodule Zig.Nif.Threaded do
       ]}
   end
 
-  defp threaded_cleanup_fn(%{name: name, arity: arity}) do
-    text = "nif cleanup for function #{name}/#{arity} not bound"
-    quote context: Elixir do
-      def unquote(cleanup name)(_) do
-        raise unquote(text)
-      end
-    end
-  end
-
   #############################################################################
   ## Zig metaprogramming
 
   def cache_ptr(fn_name), do: String.to_atom("__#{fn_name}_cache_ptr__")
-  def cache(fn_name), do: String.to_atom("__#{fn_name}_cache__")
   def cache_cleanup(fn_name), do: String.to_atom("__#{fn_name}_cache_cleanup__")
-  def packer(fn_name), do: String.to_atom("__#{fn_name}_pack__")
-  def name(fn_name), do: String.to_atom("__#{fn_name}_name__")
-  def launcher(fn_name), do: String.to_atom("__#{fn_name}_launch__")
-  def harness(fn_name), do: String.to_atom("__#{fn_name}_harness__")
-  def cleanup(fn_name), do: String.to_atom("__#{fn_name}_cleanup__")
+  defp cache(fn_name), do: String.to_atom("__#{fn_name}_cache__")
+  defp packer(fn_name), do: String.to_atom("__#{fn_name}_pack__")
+  defp name(fn_name), do: String.to_atom("__#{fn_name}_name__")
+  defp launcher(fn_name), do: String.to_atom("__#{fn_name}_launch__")
+  defp harness(fn_name), do: String.to_atom("__#{fn_name}_harness__")
 
-  def cache_struct(nif) do
+  defp cache_struct(nif) do
     test_msg = """
       _ = beam.send(env, cache.parent, beam.make_atom(env, "thread_freed"));
     """
 
     """
     const #{cache nif.name} = struct {
-      env: beam.env = null,
       parent: beam.pid,
       thread: e.ErlNifTid,
       name: ?[:0] u8 = null,
       this: beam.term,
-      args: ?[]beam.term = null
+      args: ?[]beam.term = null,
+      yield_info: beam.YieldInfo = undefined,
     };
 
     /// resource: #{cache_ptr nif.name} definition
@@ -148,36 +145,41 @@ defmodule Zig.Nif.Threaded do
 
     /// resource: #{cache_ptr nif.name} cleanup
     fn #{cache_cleanup nif.name}(env: beam.env, cache_ptr: *#{cache_ptr nif.name}) void {
+      std.debug.assert(beam.yield_info == null);
       var cache = cache_ptr.*;
 
       // always destroy the allocated arguments.
-      if (cache.args) | args | {
-        defer beam.allocator.free(args);
-      }
+      if (cache.args) | args | { beam.allocator.free(args); }
 
       // always free the name.
-      if (cache.name) | name | {
-        defer beam.allocator.free(name);
+      if (cache.name) | name | { beam.allocator.free(name); }
+
+      var attempts: usize = 50;
+      while (@atomicRmw(
+               beam.YieldState,
+               &cache.yield_info.state,
+               .Xchg,
+               .Cancelled,
+               .Monotonic) != .Finished) {
+        attempts -= 1; // decrement first so there is no time between checking and giving up.
+        if (attempts == 0) {
+          @atomicStore(beam.YieldState, &cache.yield_info.state, .Abandoned, .Monotonic);
+          return;
+        }
+        std.time.sleep(100_000);
+      } else {
+        _ = e.enif_thread_join(cache.thread, null);
       }
 
-      // always destroy the allocated memory for the cache.
-      defer beam.allocator.destroy(cache);
-
-      // always destroy the beam environment for the thread
-      if (cache.env) | t_env | {
-        defer e.enif_free_env(t_env);
-      }
-
-      // perform thread join to clean up any internal references to this thread.
-      if (cache.thread) | thread | {
-        _ = e.enif_thread_join(thread, null);
-      }
-
-    #{if Mix.env == :test, do: test_msg}}
+      // if it's finished, it's safe to store the allocated memory for the cache.
+      beam.allocator.destroy(cache);
+    }
     """
   end
 
   def launcher_fn(nif) do
+    # note that this function needs to exist as a separate function to be a seam between the C ABI
+    # that the erlang system demands.
     """
     export fn #{launcher nif.name}(env: beam.env, _argc: c_int, argv: [*c] const beam.term) beam.term {
       return #{packer nif.name}(env, argv) catch beam.make_error_binary(env, "launching nif");
@@ -190,13 +192,17 @@ defmodule Zig.Nif.Threaded do
     """
     const #{name nif.name} = "#{nif.name}-threaded";
     fn #{packer nif.name}(env: beam.env, argv: [*c] const beam.term) !beam.term {
+      std.debug.assert(beam.yield_info == null);
+
       // allocate space for the cache and obtain its pointer.
       var cache = try beam.allocator.create(#{cache nif.name});
       errdefer beam.allocator.destroy(cache);
 
       // create a resource that is ready to hold the pointer to the cache.
       var cache_ref = try __resource__.create(#{cache_ptr nif.name}, env, cache);
-      errdefer __resource__.release(#{cache_ptr nif.name}, env, cache_ref);
+      defer {
+        __resource__.release(#{cache_ptr nif.name}, env, cache_ref);
+      }
 
       // allocate space for the argument terms.
       cache.args = try beam.allocator.alloc(beam.term, #{nif.arity});
@@ -204,16 +210,22 @@ defmodule Zig.Nif.Threaded do
       // allocate space for the thread name, with a sentinel.
       cache.name = try beam.allocator.allocSentinel(u8, #{namelen}, 0);
 
-      cache.env = if (e.enif_alloc_env()) | env_ | env_ else return beam.ThreadError.LaunchError;
       cache.parent = try beam.self(env);
-      cache.this = e.enif_make_copy(cache.env, cache_ref);
 
       // copy the name and null-terminate it.
       std.mem.copy(u8, cache.name.?, #{name nif.name});
 
+      const new_environment = e.enif_alloc_env() orelse return beam.ThreadError.LaunchError;
+      cache.yield_info = .{
+        .environment = new_environment,
+        .threaded = true,
+      };
+
+      cache.this = cache_ref;
+
       // transfer the arguments over to the new environment.
       for (cache.args.?) |*arg, index| {
-        cache.args.?[index] = e.enif_make_copy(cache.env, argv[index]);
+        cache.args.?[index] = e.enif_make_copy(new_environment, argv[index]);
       }
 
       if (0 == e.enif_thread_create(
@@ -222,6 +234,7 @@ defmodule Zig.Nif.Threaded do
           #{harness nif.name},
           @ptrCast(*c_void, cache),
           null)) {
+
         return beam.make_ok_term(env, cache_ref);
       } else return beam.ThreadError.LaunchError;
     }
@@ -235,7 +248,7 @@ defmodule Zig.Nif.Threaded do
 
     result_clause = case nif.retval do
       "!" <> _type ->
-        result_term = Adapter.make_clause(nif.retval, "__r", "cache.env")
+        result_term = Adapter.make_clause(nif.retval, "__r", "cache.yield_info.environment")
         """
         if (result) | __r |
           beam.make_ok_term(
@@ -263,7 +276,7 @@ defmodule Zig.Nif.Threaded do
           );
         """
       _ ->
-        result_term = Adapter.make_clause(nif.retval, "result", "cache.env")
+        result_term = Adapter.make_clause(nif.retval, "result", "cache.yield_info.environment")
 
         """
         beam.make_ok_term(
@@ -284,41 +297,38 @@ defmodule Zig.Nif.Threaded do
         @ptrCast(*#{cache nif.name},
           @alignCast(@alignOf(#{cache nif.name}), cache_q.?));
 
-      var env = cache.env;
+      // make sure yield_info is clear.
+      std.debug.assert(beam.yield_info == null);
 
-      // check out the cache resource and lock its possession
-      __resource__.keep(#{cache_ptr nif.name}, env, cache.this) catch {
-        _ = beam.send_advanced(
-          null,
-          cache.parent,
-          env,
-          beam.make_error_atom(env, "thread_resource_error")
-        );
-        return null;
-      };
+      // set the threadlocal yield_info.
+      // ownership is passed to this function.
+      beam.yield_info = &cache.yield_info;
+
+      const env = cache.yield_info.environment;
+      defer e.enif_clear_env(env);
 
       var result_term: beam.term = undefined;
 
-      defer {
-        // releasing the resource MUST come before sending the response, otherwise the
-        // release event in this thread can collide with the release event in the main
-        // thread and cause a segfault.
-
-        __resource__.release(#{cache_ptr nif.name}, env, cache.this);
-
-        _ = beam.send_advanced(
-          null,
-          cache.parent,
-          env,
-          result_term
-        );
-      }
-
-      beam.yield_info = null;
+      beam.set_threaded_self();
 
     #{get_clauses}  // execute the nif function
       #{result_assign}nosuspend #{nif.name}(#{Adapter.args nif});
       result_term = #{result_clause}
+
+      _ = beam.send_advanced(
+        null,
+        cache.parent,
+        env,
+        result_term
+      );
+
+      // probably unnecessary, but do it anyways.
+      beam.yield_info = null;
+
+      // signal that the thread has completed
+      if (@atomicRmw(beam.YieldState, &cache.yield_info.state, .Xchg, .Finished, .Monotonic) == .Abandoned) {
+        beam.allocator.destroy(cache);
+      }
 
       return null;
     }
@@ -330,7 +340,7 @@ defmodule Zig.Nif.Threaded do
         result_term =
           beam.make_error_term(env,
             e.enif_make_tuple(
-              cache.env,
+              cache.yield_info.environment,
               2,
               cache.this,
               beam.make_atom(env, "enomem"[0..])
@@ -344,7 +354,7 @@ defmodule Zig.Nif.Threaded do
         result_term =
           beam.make_error_term(env,
             e.enif_make_tuple(
-              cache.env,
+              cache.yield_info.environment,
               2,
               cache.this,
               beam.make_atom(env, "function_clause"[0..])
@@ -354,24 +364,12 @@ defmodule Zig.Nif.Threaded do
       }
   """
 
-  def cleanup_fn(nif) do
-    """
-    export fn #{cleanup nif.name}(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
-      // release the resource and let it be garbage collected.
-      defer __resource__.release(#{cache_ptr nif.name}, env, argv[0]);
-
-      return beam.make_ok(env);
-    }
-    """
-  end
-
   @impl true
   def zig_adapter(nif, _module) do
     [cache_struct(nif), "\n",
      launcher_fn(nif), "\n",
      packer_fn(nif), "\n",
-     harness_fn(nif), "\n",
-     cleanup_fn(nif)]
+     harness_fn(nif)]
   end
 
   @impl true
@@ -381,12 +379,6 @@ defmodule Zig.Nif.Threaded do
         .name = "#{launcher nif.name}",
         .arity = #{nif.arity},
         .fptr = #{launcher nif.name},
-        .flags = 0,
-      },
-      e.ErlNifFunc{
-        .name = "#{cleanup nif.name}",
-        .arity = 1,
-        .fptr = #{cleanup nif.name},
         .flags = 0,
       },
     """
