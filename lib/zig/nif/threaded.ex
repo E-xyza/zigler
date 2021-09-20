@@ -126,13 +126,8 @@ defmodule Zig.Nif.Threaded do
   defp harness(fn_name), do: String.to_atom("__#{fn_name}_harness__")
 
   defp cache_struct(nif) do
-    test_msg = """
-      _ = beam.send(env, cache.parent, beam.make_atom(env, "thread_freed"));
-    """
-
     """
     const #{cache nif.name} = struct {
-      parent: beam.pid,
       thread: e.ErlNifTid,
       name: ?[:0] u8 = null,
       this: beam.term,
@@ -210,8 +205,6 @@ defmodule Zig.Nif.Threaded do
       // allocate space for the thread name, with a sentinel.
       cache.name = try beam.allocator.allocSentinel(u8, #{namelen}, 0);
 
-      cache.parent = try beam.self(env);
-
       // copy the name and null-terminate it.
       std.mem.copy(u8, cache.name.?, #{name nif.name});
 
@@ -219,6 +212,7 @@ defmodule Zig.Nif.Threaded do
       cache.yield_info = .{
         .environment = new_environment,
         .threaded = true,
+        .parent = try beam.self(env),
       };
 
       cache.this = cache_ref;
@@ -309,18 +303,18 @@ defmodule Zig.Nif.Threaded do
 
       var result_term: beam.term = undefined;
 
+      defer _ = beam.send_advanced(
+        null,
+        cache.yield_info.parent,
+        env,
+        result_term
+      );
+
       beam.set_threaded_self();
 
     #{get_clauses}  // execute the nif function
       #{result_assign}nosuspend #{nif.name}(#{Adapter.args nif});
       result_term = #{result_clause}
-
-      _ = beam.send_advanced(
-        null,
-        cache.parent,
-        env,
-        result_term
-      );
 
       // probably unnecessary, but do it anyways.
       beam.yield_info = null;

@@ -643,8 +643,11 @@ pub fn get_pid(environment: env, src_term: term) !pid {
 /// returns the pid value if it's env is a process-bound environment, otherwise
 /// returns `beam.Error.FunctionClauseError`.
 ///
-/// if you're in a threaded nif, it returns the correct `self` for the wrapping
-/// function.
+/// if you're in a threaded nif, it returns the correct `self` for the process
+/// running the wrapped function.  That way, `beam.self()` is safe to use when
+/// you swap between different execution modes.
+///
+/// if you need the process mailbox for the actual spawned thread, use `e.enif_self`
 pub threadlocal var self: fn (env) Error!pid = generic_self;
 
 fn generic_self(environment: env) !pid {
@@ -660,12 +663,13 @@ fn generic_self(environment: env) !pid {
 pub fn set_threaded_self() void {self = threaded_self;}
 
 fn threaded_self(environment: env) !pid {
-  _ = environment;
-  var p: pid = undefined;
-  return yield_info.?.parent;
+  if (environment == yield_info.?.environment) {
+    return yield_info.?.parent;
+  }
+  return generic_self(environment);
 }
 
-/// shortcut for `e.enif_self`
+/// shortcut for `e.enif_send`
 ///
 /// returns true if the send is successful, false otherwise.
 ///
@@ -675,7 +679,7 @@ pub fn send(c_env: env, to_pid: pid, msg: term) bool {
   return (e.enif_send(c_env, &to_pid, null, msg) == 1);
 }
 
-/// shortcut for `e.enif_self`
+/// shortcut for `e.enif_send`
 ///
 /// returns true if the send is successful, false otherwise.
 ///
