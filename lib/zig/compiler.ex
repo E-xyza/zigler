@@ -24,6 +24,8 @@ defmodule Zig.Compiler do
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
 
+  @local_zig Application.compile_env(:zigler, :local_zig, false)
+
   defmacro __before_compile__(context) do
 
     ###########################################################################
@@ -36,7 +38,7 @@ defmodule Zig.Compiler do
 
     # check to see if the zig version has been downloaded.  If not,
     # go ahead and download it.
-    unless module.local_zig or File.dir?(zig_tree) do
+    unless @local_zig || File.dir?(zig_tree) do
       Command.fetch("#{module.zig_version}")
     end
 

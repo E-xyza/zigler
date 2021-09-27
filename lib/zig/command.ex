@@ -14,13 +14,17 @@ defmodule Zig.Command do
   #############################################################################
   ## API
 
+  @local_zig Application.get_env(:zigler, :local_zig, false)
+
   def compile(compiler, zig_tree) do
-    zig_executable = if compiler.module_spec.local_zig do
-      System.find_executable("zig")
-    else
-      # apply patches, if applicable
-      Patches.sync(zig_tree)
-      Path.join(zig_tree, "zig")
+    zig_executable = case @local_zig do
+      false ->
+        # apply patches, if applicable
+        Patches.sync(zig_tree)
+        Path.join(zig_tree, "zig")
+      true ->
+        System.find_executable("zig")
+      path -> path
     end
 
     opts = Keyword.merge(hacky_envs(), [cd: compiler.assembly_dir, stderr_to_stdout: true])

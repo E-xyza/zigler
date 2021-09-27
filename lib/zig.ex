@@ -100,14 +100,17 @@ defmodule Zig do
   ### Bring your own version of Zig
 
   If you would like to use your system's local `zig` command, set the
-  `local_zig` option in your `use Zig` statement.
+  `local_zig` option in `config.exs`, which
 
   ```
-  defmodule UsesLocalZig do
-    use Zig, local_zig: true
+  config :zigler, local_zig: true
+  ```
 
-    ~Z\"""
-    ...
+  This will use `System.find_executable` to obtain the zig command. If
+  you want to specify the zig command manually, use the following:
+
+  ```
+  config :zigler, local_zig: "path/to/zig/command"
   ```
 
   ### External Libraries
