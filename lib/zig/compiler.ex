@@ -245,6 +245,12 @@ defmodule Zig.Compiler do
 
     compiler_target = Mix.target()
 
+    # store the list of files we have seen in the process dictionary.
+    # this prevents us from going over the same file more than once,
+    # so circular dependencies don't cause infinite loops.  There's
+    # probably a better way to do this, but use this for now.
+    Process.put(:files_so_far, [])
+
     # parse the module code to generate the full list of assets
     # that need to be brought in to the assembly directory
     assembly = Assembler.parse_code(code_content,

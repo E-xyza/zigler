@@ -106,18 +106,25 @@ defmodule Zig.Assembler do
     ++ transitive_imports
   end
 
-  def parse_code(code, options) do
-    check_options!(options)
+  def parse_code(code, options!) do
+    check_options!(options!)
+
     code
     |> IO.iodata_to_binary
     |> Imports.parse
     |> Enum.reverse
     |> Enum.reject(&standard_components/1)
-    |> Enum.flat_map(&import_to_assembler(&1, options))
+    |> Enum.reject(&in_cache/1)
+    |> Enum.map(&cache_file/1)
+    |> Enum.flat_map(&import_to_assembler(&1, options!))
   end
 
+  #####################################################################
+  # dependency pruning
+  #
   # allows filtering standard components.  These are either in the zig
   # standard libraries or intended to be put into place by the zigler system.
+
   defp standard_components({:pub, _, _}), do: false
   defp standard_components({_, "erl_nif.zig"}), do: true
   defp standard_components({_, "beam.zig"}), do: true
@@ -125,6 +132,26 @@ defmodule Zig.Assembler do
   defp standard_components({_, maybe_standard}) do
     Path.extname(maybe_standard) != ".zig"
   end
+
+  # based on the cache
+
+  defp in_cache({:pub, _, file}), do: file in Process.get(:files_so_far, [])
+  defp in_cache({_, file}), do: file in Process.get(:files_so_far, [])
+
+  defp cache_file(spec = {:pub, _, file}) do
+    cache(file)
+    spec
+  end
+  defp cache_file(spec = {_, file}) do
+    cache(file)
+    spec
+  end
+
+  defp cache(file) do
+    Process.put(:files_so_far, [file | Process.get(:files_so_far, [])])
+  end
+
+  ####################################################################
 
   defp import_to_assembler({:pub, context, file}, options) do
     import_to_assembler({context, file}, options, options[:pub])
@@ -136,7 +163,11 @@ defmodule Zig.Assembler do
       target: {:cinclude, include}
     )]
   end
-  defp import_to_assembler({context, file}, options, pub \\ false) do
+  defp import_to_assembler(spec, options) do
+    import_to_assembler(spec, options, false)
+  end
+
+  defp import_to_assembler({context, file}, options, pub) do
     import_path = options[:parent_dir]
     |> Path.join(file)
     |> Path.expand()
