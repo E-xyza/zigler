@@ -140,7 +140,7 @@ defmodule Zig.Nif.Threaded do
 
     /// resource: #{cache_ptr nif.name} cleanup
     fn #{cache_cleanup nif.name}(env: beam.env, cache_ptr: *#{cache_ptr nif.name}) void {
-      std.debug.assert(beam.yield_info == null);
+      // std.debug.assert(beam.yield_info == null);
       var cache = cache_ptr.*;
 
       // always destroy the allocated arguments.
@@ -187,7 +187,7 @@ defmodule Zig.Nif.Threaded do
     """
     const #{name nif.name} = "#{nif.name}-threaded";
     fn #{packer nif.name}(env: beam.env, argv: [*c] const beam.term) !beam.term {
-      std.debug.assert(beam.yield_info == null);
+      // std.debug.assert(beam.yield_info == null);
 
       // allocate space for the cache and obtain its pointer.
       var cache = try beam.allocator.create(#{cache nif.name});
@@ -292,7 +292,7 @@ defmodule Zig.Nif.Threaded do
           @alignCast(@alignOf(#{cache nif.name}), cache_q.?));
 
       // make sure yield_info is clear.
-      std.debug.assert(beam.yield_info == null);
+      // std.debug.assert(beam.yield_info == null);
 
       // set the threadlocal yield_info.
       // ownership is passed to this function.

@@ -5,15 +5,13 @@ defmodule ZiglerTest.Parser.UnitTest do
   @test_atom String.to_atom(@test_name)
 
   @core_doc """
-  const assert = beam.assert;
-
   /// nif: forty_seven/0
   fn forty_seven() i32 {
     return 47;
   }
 
   test "#{@test_name}" {
-    assert(47 == forty_seven());
+    try std.testing.expect(47 == forty_seven());
   }
   """
 
@@ -61,15 +59,13 @@ defmodule ZiglerTest.Parser.UnitTest do
     assert [%Nif{test: @test_atom}] = context.tests
 
     assert IO.iodata_to_binary(code) == """
-    const assert = beam.assert;
-
     /// nif: forty_seven/0
     fn forty_seven() i32 {
       return 47;
     }
 
     pub fn test_#{Zig.Unit.name_to_hash @test_name}() !void {
-      try assert(47 == forty_seven(), "foo.zig", 9);
+      try std.testing.expect(47 == forty_seven());
     }
     """
   end

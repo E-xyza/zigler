@@ -43,8 +43,8 @@ defmodule ZiglerTest.ZigTest.Blas do
 
     // retrieve the result parts.
     var res = beam.get_slice_of(f64, beam.test_env, beam_res) catch unreachable;
-    assert(res[0] == 5.0);
-    assert(res[1] == 8.0);
+    try std.testing.expect(res[0] == 5.0);
+    try std.testing.expect(res[1] == 8.0);
   }
   """
 end

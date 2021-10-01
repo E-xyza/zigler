@@ -288,18 +288,6 @@ pub const ThreadError = error {
   LaunchError
 };
 
-/// errors for testing
-pub const AssertionError = error {
-  /// Translates to `ExUnit.AssertionError`.  Mostly used in Zig unit tests.
-  ///
-  /// All test clauses in the directories of your Zig-enabled modules are
-  /// converted to Zig functions with the inferred type `!void`.  The
-  /// `beam.assert/1` function can throw this error as its error type.
-  ///
-  /// Zigler converts assert statements in test blocks to `try beam.assert(...);`
-  AssertionError
-};
-
 /// syntactic sugar for the BEAM environment.  Note that the `env` type
 /// encapsulates the pointer, since you will almost always be passing this
 /// pointer to an opaque struct around without accessing it.
@@ -1484,41 +1472,9 @@ fn make_location(env_: env, debug_info: *std.debug.DebugInfo, address: usize) !t
   });
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// assertation for tests
-
-/// A function used to return assertion errors to a zigtest.
-///
-/// Zig's std.assert() will panic the Zig runtime and therefore the entire
-/// BEAM VM, making it incompatible with Elixir's Unit tests.  As the VM is
-/// required for certain functionality (like `e.enif_alloc`), a BEAM-compatible
-/// assert is necessary.
-///
-/// When building zigtests, `assert(...)` calls get lexically converted to
-/// `try beam.assert(...)` calls.
-pub fn assert(ok: bool, file: []const u8, line: i64) !void {
-  if (!ok) {
-    error_file = file;
-    error_line = line;
-    return AssertionError.AssertionError; // assertion failure
-  }
-}
-
 /// !value
 /// you can use this value to access the BEAM environment of your unit test.
 pub threadlocal var test_env: env = undefined;
-pub threadlocal var error_file: []const u8 = undefined;
-pub threadlocal var error_line: i64 = 0;
-
-// private function which fetches the threadlocal cache.
-pub fn test_error() term {
-  var tuple_slice: []term = allocator.alloc(term, 3) catch unreachable;
-  defer allocator.free(tuple_slice);
-  tuple_slice[0] = make_atom(test_env, "error");
-  tuple_slice[1] = make_slice(test_env, error_file);
-  tuple_slice[2] = make_i64(test_env, error_line);
-  return make_tuple(test_env, tuple_slice);
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 // NIF LOADING Boilerplate

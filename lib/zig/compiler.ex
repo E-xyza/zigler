@@ -32,6 +32,7 @@ defmodule Zig.Compiler do
     # VERIFICATION
 
     module = Module.get_attribute(context.module, :zigler)
+
     Module.register_attribute(context.module, :nif_code_map, persist: true)
 
     zig_tree = Path.join(@zig_dir_path, Command.version_name(module.zig_version))
@@ -41,6 +42,15 @@ defmodule Zig.Compiler do
     unless @local_zig || File.dir?(zig_tree) do
       Command.fetch("#{module.zig_version}")
     end
+
+    zig_executable = case @local_zig do
+      true -> System.find_executable("zig")
+      path when is_binary(path) -> path
+      _ -> Path.join(zig_tree, "zig")
+    end
+
+    Module.register_attribute(context.module, :zig_root_dir, persist: true)
+    Module.put_attribute(context.module, :zig_root_dir, resolve(zig_executable))
 
     if module.nifs == [] do
       raise CompileError,
@@ -112,6 +122,16 @@ defmodule Zig.Compiler do
     end)
   end
 
+  defp resolve(zig_path) do
+    Path.dirname(
+      with {:ok, %{type: :link}} <- File.lstat(zig_path),
+           {:ok, path} <- File.read_link(zig_path) do
+        path
+      else
+        _ -> zig_path
+      end)
+  end
+
   defp exception_for(mod = %{nifs: nifs}) do
     if Enum.any?(nifs, &returns_error?/1) do
       # raise a compile error, if we are running linux and we don't link_libc
@@ -129,26 +149,37 @@ defmodule Zig.Compiler do
 
           def blame(exception, stacktrace) do
             [{m, f, _, _} | _] = stacktrace
-            [z] = m.__info__(:attributes)[:zigler]
-            a = Enum.find(z.nifs, &(&1.name == f)).arity
-            code_map =
+            [%{code: code, nifs: nifs}] = m.__info__(:attributes)[:zigler]
+            a = Enum.find(nifs, &(&1.name == f)).arity
 
             new_message = "#{inspect m}.#{f}/#{a} returned the zig error `.#{exception.message}`"
+
             zig_errors =
               Enum.map(exception.error_return_trace, fn
-                {_, fun, dest_file, dest_line} ->
-                  file = file_lookup(m.__info__(:attributes)[:nif_code_map], dest_file)
+                {_, fun, error_file, error_line} ->
+                  code_map = m.__info__(:attributes)[:nif_code_map]
+                  [zig_root] = m.__info__(:attributes)[:zig_root_dir]
 
-                  {src_file, src_line} = if file == z.file do
-                    z.code
-                    |> IO.iodata_to_binary
-                    |> String.split("\n")
-                    |> line_lookup(dest_line)
-                  else
-                    {file, dest_line}
+                  cond do
+                    String.starts_with?(error_file, zig_root) ->
+                      file = String.replace_leading(error_file, zig_root, "[zig]")
+
+                      {:@, fun, [:...], [file: file, line: error_line]}
+                    String.starts_with?(Path.basename(error_file), "#{m}") ->
+
+                      {src_file, src_line} = code
+                      |> IO.iodata_to_binary
+                      |> String.split("\n")
+                      |> line_lookup(error_line)
+
+                      {:.., fun, [:...], [file: src_file, line: src_line]}
+                    lookup = List.keyfind(code_map, error_file, 0) ->
+                      {_, src_file} = lookup
+
+                      {:.., fun, [:...], [file: src_file, line: error_line]}
+                    true ->
+                      {:.., fun, [:...], [file: error_file, line: error_line]}
                   end
-
-                  {:.., fun, [:...], [file: src_file, line: src_line]}
               end)
 
             {%{exception | message: new_message}, Enum.reverse(zig_errors, stacktrace)}
@@ -226,16 +257,17 @@ defmodule Zig.Compiler do
     assembly_dir = assembly_dir(Mix.env, module.module)
     File.mkdir_p!(assembly_dir)
 
+
     # create the main code file
     code_file = Path.join(assembly_dir, "#{module.module}.zig")
     code_content = Zig.Code.generate_main(%{module | zig_file: code_file})
 
     # store it in the lookup table.  This needs to be guarded for test purposes.
     try do
-      Module.put_attribute(module.module, :nif_code_map, {
+      Module.put_attribute(module.module, :nif_code_map, [{
         code_file,
         Path.relative_to_cwd(module.file)
-      })
+      }])
     rescue
       _ in ArgumentError -> :ok
     end
@@ -265,7 +297,7 @@ defmodule Zig.Compiler do
           target: Path.basename(&1)})
 
     Assembler.assemble_kernel!(assembly_dir)
-    Assembler.assemble_assets!(assembly, assembly_dir)
+    Assembler.assemble_assets!(assembly, assembly_dir, for: module.module)
 
     %__MODULE__{
       assembly_dir:    assembly_dir,

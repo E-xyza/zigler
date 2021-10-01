@@ -106,9 +106,9 @@ defmodule Zig.Builder do
     %{abi: abi, arch: arch, os: os}
   end
 
-  def target_struct(_other, _zig_tree) do
+  def target_struct(_other, zig_tree) do
     System.get_env
-    |> target_struct_from_env
+    |> target_struct_from_env(zig_tree)
   end
 
   def target_struct_from_env(%{
@@ -116,11 +116,11 @@ defmodule Zig.Builder do
         "TARGET_ARCH" => arch,
         "TARGET_OS" => os,
         "TARGET_CPU" => cpu
-      }) do
+      }, _zig_tree) do
     %{abi: abi, arch: arch, os: os, cpu: cpu}
   end
 
-  def target_struct_from_env(%{"CC" => cc}) do
+  def target_struct_from_env(%{"CC" => cc}, _zig_tree) do
     cc
     |> System.cmd(~w(- -dumpmachine))
     |> elem(0)
@@ -130,6 +130,11 @@ defmodule Zig.Builder do
     |> case do
       [arch, os, abi] -> %{arch: arch, os: os, abi: abi}
     end
+  end
+
+  def target_struct_from_env(_, zig_tree) do
+    # fall back to the default zig identification
+    target_struct(:host, zig_tree)
   end
 
   defp to_structdef(t = %{cpu: cpu}) do

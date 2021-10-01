@@ -54,14 +54,14 @@ defmodule Zig.Assembler do
   assembles zig assets, taking them from their source to and putting them into
   the target directory.
   """
-  def assemble_assets!(assembly, root_dir) do
-    Enum.each(assembly, &assemble_asset!(&1, root_dir))
+  def assemble_assets!(assembly, root_dir, for_whom) do
+    Enum.each(assembly, &assemble_asset!(&1, root_dir, for_whom))
   end
-  def assemble_asset!(instruction = %{type: :library}, root_dir) do
+  def assemble_asset!(instruction = %{type: :library}, root_dir, for_whom) do
     target_path = Path.join(root_dir, instruction.target)
     File.cp!(instruction.source, target_path)
   end
-  def assemble_asset!(instruction = %{target: {:cinclude, target}}, root_dir) do
+  def assemble_asset!(instruction = %{target: {:cinclude, target}}, root_dir, for_whom) do
     if File.exists?(instruction.source) do
       # make sure the include directory exists.
       include_dir = Path.join(root_dir, "include")
@@ -72,7 +72,7 @@ defmodule Zig.Assembler do
       Logger.debug("copied #{instruction.source} to #{target_path}")
     end
   end
-  def assemble_asset!(instruction, _) do
+  def assemble_asset!(instruction, _, for: module) do
     # don't assemble it if it's already there.  This lets
     # us easily rewrite test cases.
     unless File.exists?(instruction.target) do
@@ -82,6 +82,11 @@ defmodule Zig.Assembler do
       |> File.mkdir_p!
       # send the file in.
       File.cp!(instruction.source, instruction.target)
+      # save it in the code map.
+      Module.put_attribute(module, :nif_code_map, [{
+        instruction.target,
+        Path.relative_to_cwd(instruction.source)
+      } | Module.get_attribute(module, :nif_code_map)])
       Logger.debug("copied #{instruction.source} to #{instruction.target}")
     end
   end

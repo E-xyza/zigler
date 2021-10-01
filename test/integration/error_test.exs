@@ -113,7 +113,6 @@ defmodule ZiglerTest.Integration.ErrorTest do
   }
   """
 
-  @tag :skip # we won't do file resolution yet.
   test "for external files" do
     {error, stacktrace} =
       try do
@@ -131,7 +130,7 @@ defmodule ZiglerTest.Integration.ErrorTest do
       file: "test/integration/error_external.zig",
       line: 4
     ]}, {
-      :.., :nested_error, [:...],
+      :.., :external_error, [:...],
     [
       file: "test/integration/error_test.exs",
       line: @external_line
@@ -148,7 +147,6 @@ defmodule ZiglerTest.Integration.ErrorTest do
     return input;
   }
   """
-  @tag :skip
   test "for threaded" do
     assert 47 == threaded_error(47)
 

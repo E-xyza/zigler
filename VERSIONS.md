@@ -91,5 +91,10 @@ Thanks to Dave Cottlehuber @dch for testing.
 - **note:** this compiles with zig 0.7.1
 - better platform matching for nerves cross-compliation (@fhunleth)
 
-## 0.8.0
-- **note:** this compiles with zig 0.8.0
+## 0.8.1
+- `beam.assert` deprecated.  Use `std.testing` functions.
+- support for error-returning functions and error return traces merged with stacktraces.
+- support for cancellation of threaded nifs with `beam.yield`
+- better support for 'bring your own zig'; moved to library config function
+- tentative support for MacOS and FreeBSD targets
+- `void` returning functions now output `:ok` instead of `nil`
