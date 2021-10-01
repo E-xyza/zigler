@@ -9,7 +9,7 @@ defmodule Zig.Code do
   alias Zig.Parser.{Nif, Resource}
 
   def headers(module = %Module{}) do
-    body = case module.c_includes do
+    case module.c_includes do
       [] -> []
       includes -> c_imports(includes) ++ ["\n"]
     end

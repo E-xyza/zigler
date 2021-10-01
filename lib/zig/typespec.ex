@@ -6,7 +6,7 @@ defmodule Zig.Typespec do
   alias Zig.Parser.Nif
 
   @type_for %{
-    "void"         => nil,
+    "void"         => :ok,
     "u8"           => quote [context: Elixir] do 0..255 end,
     "u16"          => quote [context: Elixir] do 0..0xFFFF end,
     "u32"          => quote [context: Elixir] do 0..0xFFFF_FFFF end,

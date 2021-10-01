@@ -57,11 +57,11 @@ defmodule Zig.Assembler do
   def assemble_assets!(assembly, root_dir, for_whom) do
     Enum.each(assembly, &assemble_asset!(&1, root_dir, for_whom))
   end
-  def assemble_asset!(instruction = %{type: :library}, root_dir, for_whom) do
+  def assemble_asset!(instruction = %{type: :library}, root_dir, _for_whom) do
     target_path = Path.join(root_dir, instruction.target)
     File.cp!(instruction.source, target_path)
   end
-  def assemble_asset!(instruction = %{target: {:cinclude, target}}, root_dir, for_whom) do
+  def assemble_asset!(instruction = %{target: {:cinclude, target}}, root_dir, _for_whom) do
     if File.exists?(instruction.source) do
       # make sure the include directory exists.
       include_dir = Path.join(root_dir, "include")

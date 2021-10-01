@@ -9,7 +9,7 @@ defmodule ZiglerTest.Unit.TypespecTest do
   describe "when asking for a typespec retval" do
     test "a void function gives a sane result" do
       result = quote context: Elixir do
-        @spec egress() :: :nil
+        @spec egress() :: :ok
       end
       assert Typespec.from_nif(%Nif{name: :egress, arity: 0, args: [], retval: "void"}) == result
     end
@@ -202,14 +202,14 @@ defmodule ZiglerTest.Unit.TypespecTest do
 
     test "?*e.ErlNifEnv is ignored for zero arity" do
       result = quote context: Elixir do
-        @spec ingress() :: nil
+        @spec ingress() :: :ok
       end
       assert Typespec.from_nif(%Nif{name: :ingress, arity: 0, args: ["?*e.ErlNifEnv"], retval: "void"}) == result
     end
 
     test "beam.env is ignored for zero arity" do
       result = quote context: Elixir do
-        @spec ingress() :: nil
+        @spec ingress() :: :ok
       end
       assert Typespec.from_nif(%Nif{name: :ingress, arity: 0, args: ["beam.env"], retval: "void"}) == result
     end

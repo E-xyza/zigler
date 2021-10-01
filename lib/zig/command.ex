@@ -14,18 +14,8 @@ defmodule Zig.Command do
   #############################################################################
   ## API
 
-  @local_zig Application.get_env(:zigler, :local_zig, false)
-
   def compile(compiler, zig_tree) do
-    zig_executable = case @local_zig do
-      false ->
-        # apply patches, if applicable
-        Patches.sync(zig_tree)
-        Path.join(zig_tree, "zig")
-      true ->
-        System.find_executable("zig")
-      path -> path
-    end
+    zig_executable = executable_path(zig_tree)
 
     opts = Keyword.merge(hacky_envs(), [cd: compiler.assembly_dir, stderr_to_stdout: true])
 
@@ -65,6 +55,14 @@ defmodule Zig.Command do
     end
     :ok
   end
+
+  @local_zig Application.get_env(:zigler, :local_zig, false)
+
+  defp executable_path(zig_tree), do: executable_path(zig_tree, @local_zig)
+
+  defp executable_path(zig_tree, false), do: Path.join(zig_tree, "zig")
+  defp executable_path(_, true), do: System.find_executable("zig")
+  defp executable_path(_, path), do: path
 
   defp maybe_rename_library_filename(fullpath) do
     if Path.extname(fullpath) == ".dylib" do

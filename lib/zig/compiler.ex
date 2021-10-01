@@ -24,33 +24,22 @@ defmodule Zig.Compiler do
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
 
-  @local_zig Application.compile_env(:zigler, :local_zig, false)
-
   defmacro __before_compile__(context) do
 
     ###########################################################################
     # VERIFICATION
 
     module = Module.get_attribute(context.module, :zigler)
-
     Module.register_attribute(context.module, :nif_code_map, persist: true)
 
     zig_tree = Path.join(@zig_dir_path, Command.version_name(module.zig_version))
 
-    # check to see if the zig version has been downloaded.  If not,
-    # go ahead and download it.
-    unless @local_zig || File.dir?(zig_tree) do
-      Command.fetch("#{module.zig_version}")
-    end
-
-    zig_executable = case @local_zig do
-      true -> System.find_executable("zig")
-      path when is_binary(path) -> path
-      _ -> Path.join(zig_tree, "zig")
-    end
+    zig_root_dir = zig_tree
+    |> zig_location(module)
+    |> resolve
 
     Module.register_attribute(context.module, :zig_root_dir, persist: true)
-    Module.put_attribute(context.module, :zig_root_dir, resolve(zig_executable))
+    Module.put_attribute(context.module, :zig_root_dir, zig_root_dir)
 
     if module.nifs == [] do
       raise CompileError,
@@ -121,6 +110,22 @@ defmodule Zig.Compiler do
       end
     end)
   end
+
+  @local_zig Application.compile_env(:zigler, :local_zig, false)
+
+  defp zig_location(zig_tree, module), do: zig_location(zig_tree, module, @local_zig)
+
+  defp zig_location(_, _, true), do: System.find_executable("zig")
+  defp zig_location(zig_tree, module, false) do
+    # check to see if the zig version has been downloaded.  If not,
+    # go ahead and download it.
+    unless File.dir?(zig_tree) do
+      Command.fetch("#{module.zig_version}")
+    end
+
+    Path.join(zig_tree, "zig")
+  end
+  defp zig_location(_, _, path), do: path
 
   defp resolve(zig_path) do
     Path.dirname(

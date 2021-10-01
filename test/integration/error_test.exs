@@ -17,7 +17,7 @@ defmodule ZiglerTest.Integration.ErrorTest do
   end
 
   test "for the void error case" do
-    assert nil == void_error(47)
+    assert :ok == void_error(47)
 
     {error, stacktrace} =
       try do
@@ -46,7 +46,7 @@ defmodule ZiglerTest.Integration.ErrorTest do
   """
 
   test "for the nested error case" do
-    assert nil == nested_error(47)
+    assert :ok == nested_error(47)
 
     {error, stacktrace} =
       try do

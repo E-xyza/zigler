@@ -47,8 +47,8 @@ defmodule ZiglerTest.Integration.TypespecTest do
   end
 
   describe "for the selected function values" do
-    test "void return gives nil" do
-      assert_typespec(:void_out, 0, [], {:atom, :nil})
+    test "void return gives ok" do
+      assert_typespec(:void_out, 0, [], {:atom, :ok})
     end
 
     test "u32 is specced correctly" do

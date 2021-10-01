@@ -25,7 +25,7 @@ defmodule Zig.Nif.Synchronous do
         """
       v when v in ["void", "!void"] ->
         """
-          nosuspend #{function_call nif, module}  return beam.make_nil(env);
+          nosuspend #{function_call nif, module}  return beam.make_ok(env);
         }
         """
       other ->

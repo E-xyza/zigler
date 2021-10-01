@@ -116,4 +116,13 @@ defmodule ZiglerTest.Integration.ScalarTypeEgressTest do
     assert 47.0 === egress_f32()
     assert 47.0 === egress_f64()
   end
+
+  ~Z"""
+  /// nif: egress_void/0
+  fn egress_void() void {}
+  """
+
+  test "egressing void is :ok" do
+    assert :ok == egress_void()
+  end
 end

@@ -161,5 +161,4 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     final_memory = :erlang.memory()[:total]
     assert (mid_memory - final_memory) > 8_000_000
   end
-
 end
