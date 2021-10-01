@@ -52,7 +52,7 @@ defmodule Zig.Module do
     dry_run:             boolean,
     code:                iodata,
     version:             Version.t,
-    test_dirs:           nil | [Path.t]
+    test_dirs:           nil | [Path.t],
   }
 
   # takes the zigler imports option and turns it into the imports keyword

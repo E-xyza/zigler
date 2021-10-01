@@ -18,7 +18,7 @@ defmodule Zig.Code do
     ]
   end
 
-  def generate_main(module = %Module{}) do
+  def generate_main(module = %Module{}, target) do
     body_lines = count_lines(module.code)
 
     [
@@ -26,7 +26,7 @@ defmodule Zig.Code do
       "// ref: #{module.zig_file} line: #{body_lines + 1}\n\n",
       "// adapters for #{module.module} in #{module.file}:\n\n",
       Enum.map(module.nifs, &adapter(&1, module.module)),
-      footer(module)
+      footer(module, target)
     ]
   end
 
@@ -104,8 +104,16 @@ defmodule Zig.Code do
   #############################################################################
   ## FOOTER GENERATION
 
-  def footer(module = %Module{}) do
+  def footer(module = %Module{}, target) do
     [major, minor] = nif_major_minor()
+
+    # for now, this only distinguishes between "host" and (nerves).  However,
+    # in the long run, when cross-compilation of BEAM systems becomes possible,
+    # it will need to take into account target operating systems.
+    os = case {target, :os.type()} do
+      {:host, {_, :nt}} -> :windows
+      _ -> :unix
+    end
 
     exports = """
     export var __exported_nifs__ = [_]e.ErlNifFunc{
@@ -131,6 +139,23 @@ defmodule Zig.Code do
       _ -> "nif_load"
     end
 
+    nif_init_fn = case os do
+      :windows ->
+        """
+        export var WinDynNifCallbacks: e.TWinDynNifCallbacks;
+        export fn nif_init(callbacks: *?e.TWinDynNifCallbacks) *const e.ErlNifEntry {
+          std.mem.copy(e.TWinDynNifCallbacks, &WinDynNifCallbacks, callbacks.?);
+          return &entry;
+        }
+        """
+      :unix ->
+        """
+        export fn nif_init() *const e.ErlNifEntry{
+          return &entry;
+        }
+        """
+    end
+
     ["// footer for #{module.module} in #{module.file}:\n\n",
      exports, resource_init_defs, "\n", resource_manager, nif_loader, """
     const entry = e.ErlNifEntry{
@@ -140,18 +165,16 @@ defmodule Zig.Code do
       .num_of_funcs = __exported_nifs__.len,
       .funcs = &(__exported_nifs__[0]),
       .load = #{nif_load_fn},
-      .reload = beam.blank_load,     // currently unsupported
-      .upgrade = beam.blank_upgrade, // currently unsupported
-      .unload = beam.blank_unload,   // currently unsupported
+      .reload = null,   // currently unsupported
+      .upgrade = null,  // currently unsupported
+      .unload = null,   // currently unsupported
       .vm_variant = "beam.vanilla",
       .options = 1,
       .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
       .min_erts = "erts-#{:erlang.system_info(:version)}"
     };
 
-    export fn nif_init() *const e.ErlNifEntry{
-      return &entry;
-    }
+    #{nif_init_fn}
     """]
   end
 
@@ -178,6 +201,7 @@ defmodule Zig.Code do
         Synchronous.nif_table_entries(nif)
     end
   end
+
   def nif_table_entries(nif) do
     Test.nif_table_entries(nif)
   end

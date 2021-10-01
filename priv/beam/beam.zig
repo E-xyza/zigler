@@ -1494,4 +1494,6 @@ pub export fn blank_upgrade(
   return 0;
 }
 
-pub export fn blank_unload(_env: env, priv: ?*c_void) void {}
+pub export fn blank_unload(_env: env, priv: ?*c_void) void {
+  std.debug.print("baz\n", .{});
+}

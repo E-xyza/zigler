@@ -258,14 +258,15 @@ defmodule Zig.Compiler do
 
   @spec precompile(Zig.Module.t) :: t | no_return
   def precompile(module) do
+    compiler_target = Mix.target()
+
     # build the staging directory.
     assembly_dir = assembly_dir(Mix.env, module.module)
     File.mkdir_p!(assembly_dir)
 
-
     # create the main code file
     code_file = Path.join(assembly_dir, "#{module.module}.zig")
-    code_content = Zig.Code.generate_main(%{module | zig_file: code_file})
+    code_content = Zig.Code.generate_main(%{module | zig_file: code_file}, compiler_target)
 
     # store it in the lookup table.  This needs to be guarded for test purposes.
     try do
@@ -279,8 +280,6 @@ defmodule Zig.Compiler do
 
     # define the code file and build it.
     File.write!(code_file, code_content)
-
-    compiler_target = Mix.target()
 
     # store the list of files we have seen in the process dictionary.
     # this prevents us from going over the same file more than once,
