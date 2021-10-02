@@ -1493,7 +1493,3 @@ pub export fn blank_upgrade(
   _info: term) c_int {
   return 0;
 }
-
-pub export fn blank_unload(_env: env, priv: ?*c_void) void {
-  std.debug.print("baz\n", .{});
-}

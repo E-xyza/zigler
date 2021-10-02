@@ -66,6 +66,13 @@ defmodule Zig do
   the `beam.term` type which is equivalent to the `ERLNIFTERM` type.  See
   [`erl_nif`](erl_nif.html).
 
+  ### Guides
+
+  Please consult the following guides for detail topics:
+
+  - [different execution modes](nifs.html)
+  - [how to build BEAM `resources`](resources.html)
+
   ### Nerves Support
 
   Nerves is supported out of the box, and the system should cross-compile
