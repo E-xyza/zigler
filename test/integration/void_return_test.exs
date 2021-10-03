@@ -10,7 +10,7 @@ defmodule ZiglerTest.Integration.VoidReturnTest do
   """
 
   test "a function can have a void return" do
-    assert is_nil(void_return(self()))
+    assert :ok == void_return(self())
     assert_receive :done
   end
 end

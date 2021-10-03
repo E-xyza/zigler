@@ -130,9 +130,9 @@ fn allocate_leak(env: beam.env) beam.term {
 """
 
 test "allocate_leak" do
-  start_memory = :erlang.memory[:total]
+  start_memory = :erlang.memory()[:total]
   assert :ok == allocate_leak()
-  after_memory = :erlang.memory[:total]
+  after_memory = :erlang.memory()[:total]
 
   # evidence that we have leaked memory!
   assert 8_000_000 < (after_memory - start_memory)

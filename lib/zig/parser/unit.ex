@@ -105,7 +105,7 @@ defmodule Zig.Parser.Unit do
   end
 
   alias Zig.Parser.Nif
-  defp new_nif(name) do
+  defp new_nif(name ) do
     %Nif{
       name: String.to_atom("test_#{Zig.Unit.name_to_hash(name)}"),
       test: String.to_atom(name),

@@ -43,7 +43,6 @@ defmodule Zig.Builder do
 
       lib.setBuildMode(mode);
       lib.setTarget(target);
-      lib.single_threaded = true;
 
       <%= if @module_spec.link_libc do %>
       // use libc if it has been asked for
@@ -107,9 +106,9 @@ defmodule Zig.Builder do
     %{abi: abi, arch: arch, os: os}
   end
 
-  def target_struct(_other, _zig_tree) do
+  def target_struct(_other, zig_tree) do
     System.get_env
-    |> target_struct_from_env
+    |> target_struct_from_env(zig_tree)
   end
 
   def target_struct_from_env(%{
@@ -117,11 +116,11 @@ defmodule Zig.Builder do
         "TARGET_ARCH" => arch,
         "TARGET_OS" => os,
         "TARGET_CPU" => cpu
-      }) do
+      }, _zig_tree) do
     %{abi: abi, arch: arch, os: os, cpu: cpu}
   end
 
-  def target_struct_from_env(%{"CC" => cc}) do
+  def target_struct_from_env(%{"CC" => cc}, _zig_tree) do
     cc
     |> System.cmd(~w(- -dumpmachine))
     |> elem(0)
@@ -133,10 +132,16 @@ defmodule Zig.Builder do
     end
   end
 
-  defp to_structdef(t = %{cpu: cpu}) do
-    ".{.default_target = .{.cpu_arch = .#{t.arch}, .os_tag = .#{t.os}, .abi = .#{t.abi}, .cpu_model = .{ .explicit = &std.Target.arm.cpu.#{cpu}}}}"
+  def target_struct_from_env(_, zig_tree) do
+    # fall back to the default zig identification
+    target_struct(:host, zig_tree)
   end
 
+  defp to_structdef(t = %{cpu: cpu}) do
+    # NB: this uses zig's duck-typing facilities to only set the cpu_model field when cpu is provided.
+    # .explict field is only available when it's arm; x86 will ignore this extra field.
+    ".{.default_target = .{.cpu_arch = .#{t.arch}, .os_tag = .#{t.os}, .abi = .#{t.abi}, .cpu_model = .{ .explicit = &std.Target.arm.cpu.#{cpu}}}}"
+  end
   defp to_structdef(t) do
     ".{.default_target = .{.cpu_arch = .#{t.arch}, .os_tag = .#{t.os}, .abi = .#{t.abi}}}"
   end

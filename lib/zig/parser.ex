@@ -4,7 +4,9 @@ defmodule Zig.Parser do
   and code elements succeeding those.
   """
 
-  defstruct [:local, file: "", zig_block_line: 0, global: []]
+  @enforce_keys [:module]
+
+  defstruct [:local, file: "", zig_block_line: 0, global: []] ++ @enforce_keys
 
   require Logger
 
@@ -16,7 +18,8 @@ defmodule Zig.Parser do
     local: Nif.t | ResourceCleanup.t | {:doc, iodata},
     file: Path.t,
     zig_block_line: non_neg_integer,
-    global: [Nif.t]
+    global: [Nif.t],
+    module: module
   }
 
   @type line_info :: {non_neg_integer, non_neg_integer}
@@ -217,6 +220,7 @@ defmodule Zig.Parser do
   end
   defp register_nif_declaration([arity, name], context, opts) do
     local = struct(Nif,
+      module: context.module,
       name:  String.to_atom(name),
       arity: String.to_integer(arity),
       doc:   opts[:doc],

@@ -31,7 +31,7 @@ defmodule Zig.Nif.Yielding do
   @impl true
   def beam_adapter(nif) do
     typespec = Typespec.from_nif(nif)
-    quote do
+    quote context: Elixir do
       unquote(typespec)
       unquote(basic_fn(nif))
     end
@@ -82,7 +82,7 @@ defmodule Zig.Nif.Yielding do
       if (beam_frame.yield_info.yield_frame) | yield_frame | {
         // async join with cancellation.
         beam.yield_info = &(beam_frame.yield_info);
-        beam.yield_info.?.cancelled = true;
+        beam.yield_info.?.state = .Cancelled;
 
         resume yield_frame;
         nosuspend await beam_frame.zig_frame;
@@ -127,7 +127,7 @@ defmodule Zig.Nif.Yielding do
       var frame_resource = try __resource__.create(#{frame_ptr nif.name}, env, beam_frame);
 
       // create a new environment for the yielding nif.
-      var yield_env = if (e.enif_alloc_env()) | env_ | env_ else return beam.YieldError.LaunchError;
+      var yield_env = e.enif_alloc_env() orelse return beam.YieldError.LaunchError;
 
       // populate initial information for the yield clause
       beam_frame.yield_info = .{ .environment = yield_env };
@@ -144,7 +144,15 @@ defmodule Zig.Nif.Yielding do
       if (beam.yield_info.?.yield_frame) | _ | {
         return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler nif.name}, 1, &frame_resource);
       } else {
-        return beam_frame.yield_info.response;
+        if (beam_frame.yield_info.errored) {
+          // is this correct?  Should we be only copying if it's errored?  Or should we
+          // be copying depending on what the datatype is?
+
+          const __response = e.enif_make_copy(env, beam_frame.yield_info.response);
+          return e.enif_raise_exception(env, __response);
+        } else {
+          return beam_frame.yield_info.response;
+        }
       }
     }
     """
@@ -196,11 +204,28 @@ defmodule Zig.Nif.Yielding do
   @spec harness_fns(Nif.t) :: iodata
   def harness_fns(nif) do
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"argv[#{&1}]")
-    result_term = if nif.retval == "void" do
-      "beam.make_ok(env)"
-    else
-      Adapter.make_clause(nif.retval, "result", "beam.yield_info.?.environment")
+
+    result_term = case nif.retval do
+      "void" -> "beam.make_ok(env)"
+      "!" <> _ ->
+        r = Adapter.make_clause(nif.retval, "__r", "beam.yield_info.?.environment")
+        """
+        if (result) | __r |
+          #{r}
+        else | __e | res: {
+          beam.yield_info.?.errored = true;
+          break :res beam.make_exception(
+            beam.yield_info.?.environment,
+            "#{nif.module}.ZigError",
+            __e,
+            @errorReturnTrace());
+        }
+
+        """
+      _ ->
+        Adapter.make_clause(nif.retval, "result", "beam.yield_info.?.environment")
     end
+
     """
     fn #{harness nif.name}(env: beam.env, parent_env: beam.env, argv: [*c] const beam.term) callconv(.Async) void {
       // decode parameters
@@ -230,7 +255,7 @@ defmodule Zig.Nif.Yielding do
   """
 
   @impl true
-  def zig_adapter(nif) do
+  def zig_adapter(nif, _module) do
     [frame_resources(nif), "\n",
      launcher_fns(nif), "\n",
      rescheduler_fn(nif), "\n",

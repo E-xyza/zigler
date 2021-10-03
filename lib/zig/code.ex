@@ -8,24 +8,25 @@ defmodule Zig.Code do
   alias Zig.Nif.{Synchronous, Test, Threaded, Yielding}
   alias Zig.Parser.{Nif, Resource}
 
-  def generate_main(module = %Module{}) do
-    body = case module.c_includes do
+  def headers(module = %Module{}) do
+    case module.c_includes do
       [] -> []
       includes -> c_imports(includes) ++ ["\n"]
     end
     ++ [
       zig_imports(module.imports), "\n",
-      module.code, "\n"
     ]
+  end
 
-    body_lines = count_lines(body)
+  def generate_main(module = %Module{}, target) do
+    body_lines = count_lines(module.code)
 
     [
-      body,
+      module.code,
       "// ref: #{module.zig_file} line: #{body_lines + 1}\n\n",
       "// adapters for #{module.module} in #{module.file}:\n\n",
-      Enum.map(module.nifs, &adapter/1),
-      footer(module)
+      Enum.map(module.nifs, &adapter(&1, module.module)),
+      footer(module, target)
     ]
   end
 
@@ -84,36 +85,35 @@ defmodule Zig.Code do
   #############################################################################
   ## FUNCTION ADAPTER
 
-  def adapter(nif = %Zig.Parser.Nif{opts: opts, test: nil}) do
+  def adapter(nif = %Zig.Parser.Nif{opts: opts, test: nil}, module) do
     case opts[:concurrency] do
       :threaded ->
-        Threaded.zig_adapter(nif)
+        Threaded.zig_adapter(nif, module)
       :yielding ->
-        Yielding.zig_adapter(nif)
+        Yielding.zig_adapter(nif, module)
       :dirty_cpu ->
-        DirtyCpu.zig_adapter(nif)
+        DirtyCpu.zig_adapter(nif, module)
       :dirty_io ->
-        DirtyIO.zig_adapter(nif)
+        DirtyIO.zig_adapter(nif, module)
       nil ->
-        Synchronous.zig_adapter(nif)
+        Synchronous.zig_adapter(nif, module)
     end
   end
-  def adapter(nif), do: Test.zig_adapter(nif)
+  def adapter(nif, module), do: Test.zig_adapter(nif, module)
 
   #############################################################################
   ## FOOTER GENERATION
 
-  def footer(module = %Module{}) do
+  def footer(module = %Module{}, target) do
     [major, minor] = nif_major_minor()
 
-    funcs_count = module.nifs
-    |> Enum.map(fn %{opts: opts} ->
-      case opts[:concurrency] do
-        :threaded -> 2
-        _ -> 1
-      end
-    end)
-    |> Enum.sum
+    # for now, this only distinguishes between "host" and (nerves).  However,
+    # in the long run, when cross-compilation of BEAM systems becomes possible,
+    # it will need to take into account target operating systems.
+    os = case {target, :os.type()} do
+      {:host, {_, :nt}} -> :windows
+      _ -> :unix
+    end
 
     exports = """
     export var __exported_nifs__ = [_]e.ErlNifFunc{
@@ -139,17 +139,34 @@ defmodule Zig.Code do
       _ -> "nif_load"
     end
 
+    nif_init_fn = case os do
+      :windows ->
+        """
+        export var WinDynNifCallbacks: e.TWinDynNifCallbacks;
+        export fn nif_init(callbacks: *?e.TWinDynNifCallbacks) *const e.ErlNifEntry {
+          std.mem.copy(e.TWinDynNifCallbacks, &WinDynNifCallbacks, callbacks.?);
+          return &entry;
+        }
+        """
+      :unix ->
+        """
+        export fn nif_init() *const e.ErlNifEntry{
+          return &entry;
+        }
+        """
+    end
+
     ["// footer for #{module.module} in #{module.file}:\n\n",
      exports, resource_init_defs, "\n", resource_manager, nif_loader, """
     const entry = e.ErlNifEntry{
       .major = #{major},
       .minor = #{minor},
       .name = "#{module.module}",
-      .num_of_funcs = #{funcs_count},
+      .num_of_funcs = __exported_nifs__.len,
       .funcs = &(__exported_nifs__[0]),
       .load = #{nif_load_fn},
-      .reload = beam.blank_load,     // currently unsupported
-      .upgrade = beam.blank_upgrade, // currently unsupported
+      .reload = null,   // currently unsupported
+      .upgrade = beam.blank_upgrade,  // currently unsupported
       .unload = beam.blank_unload,   // currently unsupported
       .vm_variant = "beam.vanilla",
       .options = 1,
@@ -157,9 +174,7 @@ defmodule Zig.Code do
       .min_erts = "erts-#{:erlang.system_info(:version)}"
     };
 
-    export fn nif_init() *const e.ErlNifEntry{
-      return &entry;
-    }
+    #{nif_init_fn}
     """]
   end
 
@@ -186,6 +201,7 @@ defmodule Zig.Code do
         Synchronous.nif_table_entries(nif)
     end
   end
+
   def nif_table_entries(nif) do
     Test.nif_table_entries(nif)
   end

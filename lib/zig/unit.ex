@@ -9,15 +9,12 @@ defmodule Zig.Unit do
 
   Inside your zig code (`dependent.zig`):
   ```
-  const beam = @import("beam.zig");
-  const assert = beam.assert;
-
   fn one() i64 {
     return 1;
   }
 
   test "the one function returns one" {
-    assert(one() == 1);
+    std.testing.expect(one() == 1);
   }
   ```
 
@@ -62,10 +59,8 @@ defmodule Zig.Unit do
   end
 
   @transfer_params [:otp_app, :file, :libs, :resources, :zig_version,
-    :imports, :c_includes, :include_dirs, :version, :system_include_dirs]
-
-  # an "assert" assignment that substitutes beam assert for std assert
-  @assert_assign "const assert = beam.assert;\n"
+    :imports, :c_includes, :include_dirs, :version, :system_include_dirs,
+    :link_libc]
 
   alias Zig.Assembler
   alias Zig.Parser.Unit
@@ -129,9 +124,10 @@ defmodule Zig.Unit do
     zigler = struct(Zig.Module, ref_zigler
     |> Map.take(@transfer_params)
     |> Map.merge(%{
-      code: [@assert_assign, code],
-      nifs: nifs ++ transitive_nifs,
-      module: __CALLER__.module}))
+      code: code,
+      nifs: (nifs ++ transitive_nifs),
+      module: __CALLER__.module,
+      link_libc: true}))
     |> Macro.escape
 
     in_ex_unit = Enum.any?(Application.started_applications(), fn
@@ -141,7 +137,7 @@ defmodule Zig.Unit do
     tests = make_code(
       __CALLER__.module,
       __CALLER__.file,
-      nifs,
+      nifs ++ transitive_nifs,
       !options[:dry_run] && in_ex_unit)
 
     # trigger the zigler compiler on this module.
@@ -162,6 +158,22 @@ defmodule Zig.Unit do
         @file file
         test_name = ExUnit.Case.register_test(env, :zigtest, name, [])
         def unquote(test_name)(_), do: unquote(test)
+      end
+
+      # TODO: dry this as a generic function
+      defp line_lookup(code_cache, dest_line) do
+        code_cache
+        |> Enum.with_index(1)
+        |> Enum.reduce({"", 0}, fn
+          {_, ^dest_line}, fileline -> throw fileline
+          {"// ref: " <> spec, _}, _ ->
+            [file, "line:", line] = String.split(spec)
+            {file, String.to_integer(line) + 1}
+          _, {file, line} ->
+            {file, line + 1}
+        end)
+      catch
+        fileline -> fileline
       end
     end
   end
@@ -186,15 +198,57 @@ defmodule Zig.Unit do
         apply(unquote(module), unquote(nif.test), [])
         :ok
       rescue
-        e in ErlangError ->
-          error = [
-            message: "Zig test failed",
-            doctest: ExUnit.AssertionError.no_value(),
-            expr: ExUnit.AssertionError.no_value(),
-            left: ExUnit.AssertionError.no_value(),
-            right: ExUnit.AssertionError.no_value()
-          ]
-          reraise ExUnit.AssertionError, error, __STACKTRACE__
+        exception ->
+          zig_error_return_trace =
+            Enum.map(exception.error_return_trace, fn
+              {_, fun, error_file, error_line} ->
+                code_map = unquote(module).__info__(:attributes)[:nif_code_map]
+                [zig_root] = unquote(module).__info__(:attributes)[:zig_root_dir]
+
+                cond do
+                  String.starts_with?(error_file, zig_root) ->
+                    file = String.replace_leading(error_file, zig_root, "[zig]")
+
+                    {:@, fun, [:...], [file: file, line: error_line]}
+                  String.starts_with?(Path.basename(error_file), "#{unquote(module)}") ->
+                    [%{code: code, nifs: nifs}] = unquote(module).__info__(:attributes)[:zigler]
+
+                    {src_file, src_line} = code
+                    |> IO.iodata_to_binary
+                    |> String.split("\n")
+                    |> line_lookup(error_line)
+
+                    test = Enum.find_value(nifs, fn nif ->
+                      if nif.name == fun, do: :"test #{nif.test}"
+                    end)
+
+                    {:.., test, [], [file: src_file, line: src_line]}
+                  lookup = List.keyfind(code_map, error_file, 0) ->
+                    {_, src_file} = lookup
+
+                    {:.., fun, [:...], [file: src_file, line: error_line]}
+                  true ->
+                    {:.., fun, [:...], [file: error_file, line: error_line]}
+                end
+            end)
+
+        new_stacktrace = Enum.reverse(zig_error_return_trace, tl(__STACKTRACE__))
+
+        case exception.message do
+          message = "Test" <> _ ->
+            # create correct content
+            error = [
+              message: "Zig test `#{unquote(nif.test)}` failed with error.#{message}",
+              doctest: ExUnit.AssertionError.no_value(),
+              expr: ExUnit.AssertionError.no_value(),
+              left: ExUnit.AssertionError.no_value(),
+              right: ExUnit.AssertionError.no_value(),
+            ]
+
+            reraise ExUnit.AssertionError, error, new_stacktrace
+          _ ->
+            reraise exception, new_stacktrace
+        end
       end
     end
   end

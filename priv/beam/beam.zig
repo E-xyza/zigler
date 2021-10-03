@@ -100,7 +100,6 @@
 
 const e = @import("erl_nif.zig");
 const std = @import("std");
-const builtin = @import("builtin");
 const BeamMutex = @import("beam_mutex.zig").BeamMutex;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -289,18 +288,6 @@ pub const ThreadError = error {
   LaunchError
 };
 
-/// errors for testing
-pub const AssertionError = error {
-  /// Translates to `ExUnit.AssertionError`.  Mostly used in Zig unit tests.
-  ///
-  /// All test clauses in the directories of your Zig-enabled modules are
-  /// converted to Zig functions with the inferred type `!void`.  The
-  /// `beam.assert/1` function can throw this error as its error type.
-  ///
-  /// Zigler converts assert statements in test blocks to `try beam.assert(...);`
-  AssertionError
-};
-
 /// syntactic sugar for the BEAM environment.  Note that the `env` type
 /// encapsulates the pointer, since you will almost always be passing this
 /// pointer to an opaque struct around without accessing it.
@@ -319,7 +306,7 @@ pub const term = e.ErlNifTerm;
 /// A helper for marshalling values from the BEAM runtime into Zig.  Use this
 /// function if you need support for Zig generics.
 ///
-/// Used internally to typcheck values coming into Zig slice.
+/// Used internally to typeheck values coming into Zig slice.
 ///
 /// supported types:
 /// - `c_int`
@@ -332,21 +319,21 @@ pub const term = e.ErlNifTerm;
 /// - `f16`
 /// - `f32`
 /// - `f64`
-pub fn get(comptime T: type, environment: env, value: term) !T {
+pub fn get(comptime T: type, env_: env, value: term) !T {
   switch (T) {
-    c_int  => return get_c_int(environment, value),
-    c_long => return get_c_long(environment, value),
-    isize  => return get_isize(environment, value),
-    usize  => return get_usize(environment, value),
-    u8     => return get_u8(environment, value),
-    u16    => return get_u16(environment, value),
-    u32    => return get_u32(environment, value),
-    u64    => return get_u64(environment, value),
-    i32    => return get_i32(environment, value),
-    i64    => return get_i64(environment, value),
-    f16    => return get_f16(environment, value),
-    f32    => return get_f32(environment, value),
-    f64    => return get_f64(environment, value),
+    c_int  => return get_c_int(env_, value),
+    c_long => return get_c_long(env_, value),
+    isize  => return get_isize(env_, value),
+    usize  => return get_usize(env_, value),
+    u8     => return get_u8(env_, value),
+    u16    => return get_u16(env_, value),
+    u32    => return get_u32(env_, value),
+    u64    => return get_u64(env_, value),
+    i32    => return get_i32(env_, value),
+    i64    => return get_i64(env_, value),
+    f16    => return get_f16(env_, value),
+    f32    => return get_f32(env_, value),
+    f64    => return get_f64(env_, value),
     else   => unreachable
   }
 }
@@ -643,7 +630,15 @@ pub fn get_pid(environment: env, src_term: term) !pid {
 ///
 /// returns the pid value if it's env is a process-bound environment, otherwise
 /// returns `beam.Error.FunctionClauseError`.
-pub fn self(environment: env) !pid {
+///
+/// if you're in a threaded nif, it returns the correct `self` for the process
+/// running the wrapped function.  That way, `beam.self()` is safe to use when
+/// you swap between different execution modes.
+///
+/// if you need the process mailbox for the actual spawned thread, use `e.enif_self`
+pub threadlocal var self: fn (env) Error!pid = generic_self;
+
+fn generic_self(environment: env) !pid {
   var p: pid = undefined;
   if (e.enif_self(environment, @ptrCast([*c] pid, &p))) |self_val| {
     return self_val.*;
@@ -652,7 +647,17 @@ pub fn self(environment: env) !pid {
   }
 }
 
-/// shortcut for `e.enif_self`
+// internal-use only.
+pub fn set_threaded_self() void {self = threaded_self;}
+
+fn threaded_self(environment: env) !pid {
+  if (environment == yield_info.?.environment) {
+    return yield_info.?.parent;
+  }
+  return generic_self(environment);
+}
+
+/// shortcut for `e.enif_send`
 ///
 /// returns true if the send is successful, false otherwise.
 ///
@@ -662,7 +667,7 @@ pub fn send(c_env: env, to_pid: pid, msg: term) bool {
   return (e.enif_send(c_env, &to_pid, null, msg) == 1);
 }
 
-/// shortcut for `e.enif_self`
+/// shortcut for `e.enif_send`
 ///
 /// returns true if the send is successful, false otherwise.
 ///
@@ -1296,22 +1301,36 @@ pub const YieldError = error {
   Cancelled,
 };
 
-/// this function is going to be dropped inside the suspend statement.
+/// this function is called to tell zigler's scheduler that future rescheduling
+/// *or* cancellation is possible at this point.  For threaded nifs, it also
+/// serves as a potential cancellation point.
 pub fn yield() !void {
   // only suspend if we are inside of a yielding nif
-  if (yield_info) | info | {
-    suspend {
-      if (info.cancelled) return YieldError.Cancelled;
-      info.yield_frame = @frame();
+  if (yield_info) | info | { // null, for synchronous nifs.
+    if (info.threaded) {
+      const should_cancel = @atomicLoad(YieldState, &info.state, .Monotonic) == .Cancelled;
+      if (should_cancel) {
+        return YieldError.Cancelled;
+      }
+    } else {
+      // must be yielding
+      suspend {
+        if (info.state == .Cancelled) return YieldError.Cancelled;
+        info.yield_frame = @frame();
+      }
     }
   }
 }
 
+pub const YieldState = enum { Running, Finished, Cancelled, Abandoned };
+
 pub const YieldInfo = struct {
   yield_frame: ?anyframe = null,
-  is_yielding: bool = false,
-  cancelled: bool = false,
+  state: YieldState = .Running,
+  threaded: bool = false,
+  errored: bool = false,
   response: term = undefined,
+  parent: pid = undefined,
   environment: env,
 };
 
@@ -1322,7 +1341,7 @@ pub fn set_yield_response(what: term) void {
 ///////////////////////////////////////////////////////////////////////////////
 // errors, etc.
 
-pub fn raise(environment: env, exception: atom) term {
+pub fn raise(environment: env, exception: term) term {
   return e.enif_raise_exception(environment, exception);
 }
 
@@ -1349,16 +1368,16 @@ const f_c_e_slice = "function_clause";
 /// ingress from the dynamic BEAM runtime to the static Zig runtime.
 /// You can also use this function to communicate a similar error by returning the
 /// resulting term from your NIF.
-pub fn raise_function_clause_error(environment: env) term {
-  return e.enif_raise_exception(environment, make_atom(environment, f_c_e_slice));
+pub fn raise_function_clause_error(env_: env) term {
+  return e.enif_raise_exception(env_, make_atom(env_, f_c_e_slice));
 }
 
 const resource_error = "resource_error";
 
 /// This function is used to communicate `:resource_error` back to the BEAM as an
 /// exception.
-pub fn raise_resource_error(environment: env) term {
-  return e.enif_raise_exception(environment, make_atom(environment, resource_error));
+pub fn raise_resource_error(env_: env) term {
+  return e.enif_raise_exception(env_, make_atom(env_, resource_error));
 }
 
 const assert_slice = "assertion_error";
@@ -1367,83 +1386,95 @@ const assert_slice = "assertion_error";
 /// exception.
 ///
 /// Used when running Zigtests, when trapping `beam.AssertionError.AssertionError`.
-pub fn raise_assertion_error(environment: env) term {
-  return e.enif_raise_exception(environment, make_atom(environment, assert_slice));
+pub fn raise_assertion_error(env_: env) term {
+  return e.enif_raise_exception(env_, make_atom(env_, assert_slice));
 }
 
-pub fn make_error_return_trace(env_: env, error_trace: ?*builtin.StackTrace) term {
+pub fn make_exception(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
   if (error_trace) | trace | {
-    var frame_index: usize = 0;
-    var frames_left: usize = std.math.min(trace.index, trace.instruction_addresses.len);
-    var list: term = e.enif_make_list(env_, 0);
-
     const debug_info = std.debug.getSelfDebugInfo() catch return make_nil(env_);
 
+    var frame_index: usize = 0;
+    var frames_left: usize = std.math.min(trace.index, trace.instruction_addresses.len);
+    var ert = e.enif_make_list(env_, 0);
+
     while (frames_left != 0) : ({
-      frames_left -= 1;
-      frame_index = (frame_index + 1) % trace.instruction_addresses.len;
+        frames_left -= 1;
+        frame_index = (frame_index + 1) % trace.instruction_addresses.len;
     }) {
-      const return_address = trace.instruction_addresses[frame_index];
-      var next_term: term = error_trace_info(env_, debug_info, return_address);
-      list = e.enif_make_list_cell(env_, next_term, list);
+        const return_address = trace.instruction_addresses[frame_index];
+        var location = make_location(env_, debug_info, return_address - 1) catch return make_nil(env_);
+        ert = e.enif_make_list_cell(env_, location, ert);
     }
 
-    return list;
+    var exception = e.enif_make_new_map(env_);
+    // define the struct
+    _ = e.enif_make_map_put(
+      env_,
+      exception,
+      make_atom(env_, "__struct__"),
+      make_atom(env_, exception_module),
+      &exception);
+    _ = e.enif_make_map_put(
+      env_,
+      exception,
+      make_atom(env_, "__exception__"),
+      make_bool(env_, true),
+      &exception);
+    // define the error
+    _ = e.enif_make_map_put(
+      env_,
+      exception,
+      make_atom(env_, "message"),
+      make_slice(env_, @errorName(err)),
+      &exception
+    );
+    // store the error return trace
+    _ = e.enif_make_map_put(
+      env_,
+      exception,
+      make_atom(env_, "error_return_trace"),
+      ert,
+      &exception
+    );
+
+    return exception;
+
   } else {
     return make_nil(env_);
   }
 }
 
-fn error_trace_info(env_: env, debug_info: *std.debug.DebugInfo, address: usize) term {
-  const module = debug_info.getModuleForAddress(address) catch return make_error(env_);
-  const symbol_info = module.getSymbolAtAddress(address) catch return make_error(env_);
-  defer symbol_info.deinit();
-
-  var file = symbol_info.compile_unit_name;
-  var fun = symbol_info.symbol_name;
-
-  return make_tuple(env_, .{
-    e.enif_make_string_len(env, file, file.len, e.ErlNifCharEncoding.ERL_NIF_LATIN1),
-    e.enif_make_string_len(env, fun, fun.len, e.ErlNifCharEncoding.ERL_NIF_LATIN1),
-    e.enif_make_uint(env, symbol_info.line_info.line)
-  });
+pub fn raise_exception(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
+  if (error_trace) | trace | {
+    return e.enif_raise_exception(env_, make_exception(env_, exception_module, err, error_trace));
+  } else {
+    return make_nil(env_);
+  }
 }
 
-///////////////////////////////////////////////////////////////////////////////
-// assertation for tests
+fn make_location(env_: env, debug_info: *std.debug.DebugInfo, address: usize) !term {
+  const module = debug_info.getModuleForAddress(address) catch |err| switch (err) {
+      error.MissingDebugInfo, error.InvalidDebugInfo => return make_nil(env_),
+      else => return err,
+  };
 
-/// A function used to return assertion errors to a zigtest.
-///
-/// Zig's std.assert() will panic the Zig runtime and therefore the entire
-/// BEAM VM, making it incompatible with Elixir's Unit tests.  As the VM is
-/// required for certain functionality (like `e.enif_alloc`), a BEAM-compatible
-/// assert is necessary.
-///
-/// When building zigtests, `assert(...)` calls get lexically converted to
-/// `try beam.assert(...)` calls.
-pub fn assert(ok: bool, file: []const u8, line: i64) !void {
-  if (!ok) {
-    error_file = file;
-    error_line = line;
-    return AssertionError.AssertionError; // assertion failure
-  }
+  const symbol_info = try module.getSymbolAtAddress(address);
+  // the following line incurs a resource leak; this function needs to be made public.
+  // usable when: https://github.com/ziglang/zig/pull/9123
+  // defer symbol_info.deinit();
+
+  return make_tuple(env_, &[_]term{
+    make_atom(env_, symbol_info.compile_unit_name),
+    make_atom(env_, symbol_info.symbol_name),
+    make_slice(env_, symbol_info.line_info.?.file_name),
+    make(u64, env_, symbol_info.line_info.?.line),
+  });
 }
 
 /// !value
 /// you can use this value to access the BEAM environment of your unit test.
 pub threadlocal var test_env: env = undefined;
-pub threadlocal var error_file: []const u8 = undefined;
-pub threadlocal var error_line: i64 = 0;
-
-// private function which fetches the threadlocal cache.
-pub fn test_error() term {
-  var tuple_slice: []term = allocator.alloc(term, 3) catch unreachable;
-  defer allocator.free(tuple_slice);
-  tuple_slice[0] = make_atom(test_env, "error");
-  tuple_slice[1] = make_slice(test_env, error_file);
-  tuple_slice[2] = make_i64(test_env, error_line);
-  return make_tuple(test_env, tuple_slice);
-}
 
 ///////////////////////////////////////////////////////////////////////////////
 // NIF LOADING Boilerplate
@@ -1462,5 +1493,3 @@ pub export fn blank_upgrade(
   _info: term) c_int {
   return 0;
 }
-
-pub export fn blank_unload(_env: env, priv: ?*c_void) void {}

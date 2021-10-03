@@ -9,12 +9,13 @@ defmodule Zig.Nif.Test do
   @behaviour Adapter
 
   @impl true
-  def zig_adapter(nif) do
+  def zig_adapter(nif, module) do
     # when it is a test:
     """
     export fn __#{Adapter.shim_name nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
       beam.test_env = env;
-      #{nif.name}() catch return beam.test_error();
+      #{nif.name}() catch |err|
+          return beam.raise_exception(env, "#{module}.ZigError", err, @errorReturnTrace());
       return beam.make_atom(env, "ok");
     }
     """
@@ -35,7 +36,7 @@ defmodule Zig.Nif.Test do
   @impl true
   def beam_adapter(nif) do
     raise_msg = "nif for test #{nif.test} not found"
-    raise_code = quote do
+    raise_code = quote context: Elixir do
       raise unquote(raise_msg)
     end
     {:def, [context: Elixir, import: Kernel],

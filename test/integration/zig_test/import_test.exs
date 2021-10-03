@@ -21,5 +21,4 @@ defmodule ZiglerTest.Integration.ZigTest.TransitiveTest do
     refute function_exported?(__MODULE__, :"non-pub test", 0)
     assert Transitive.foo() == 47
   end
-
 end

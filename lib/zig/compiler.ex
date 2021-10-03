@@ -24,27 +24,22 @@ defmodule Zig.Compiler do
 
   @zig_dir_path Path.expand("../../../zig", __ENV__.file)
 
-  #@release_mode %{
-  #  fast:  ["--release-fast"],
-  #  safe:  ["--release-safe"],
-  #  small: ["--release-small"],
-  #  debug: []
-  #}
-
   defmacro __before_compile__(context) do
 
     ###########################################################################
     # VERIFICATION
 
     module = Module.get_attribute(context.module, :zigler)
+    Module.register_attribute(context.module, :nif_code_map, persist: true)
 
     zig_tree = Path.join(@zig_dir_path, Command.version_name(module.zig_version))
 
-    # check to see if the zig version has been downloaded.  If not,
-    # go ahead and download it.
-    unless module.local_zig or File.dir?(zig_tree) do
-      Command.fetch("#{module.zig_version}")
-    end
+    zig_root_dir = zig_tree
+    |> zig_location(module)
+    |> resolve
+
+    Module.register_attribute(context.module, :zig_root_dir, persist: true)
+    Module.put_attribute(context.module, :zig_root_dir, zig_root_dir)
 
     if module.nifs == [] do
       raise CompileError,
@@ -55,19 +50,21 @@ defmodule Zig.Compiler do
     ###########################################################################
     # COMPILATION STEPS
 
-    compiler = compilation(module, zig_tree)
+    compiled = compilation(module, zig_tree)
 
     ###########################################################################
     # MACRO STEPS
 
-    dependencies = dependencies_for(compiler.assembly)
+    dependencies = dependencies_for(compiled.assembly)
     nif_functions = Enum.map(module.nifs, &function_skeleton/1)
     nif_name = Zig.nif_name(module, false)
 
+    # TODO: merge these two.
     if module.dry_run do
       quote do
         unquote_splicing(dependencies)
         unquote_splicing(nif_functions)
+        unquote(exception_for(module))
         def __load_nifs__, do: :ok
       end
     else
@@ -75,6 +72,7 @@ defmodule Zig.Compiler do
         import Logger
         unquote_splicing(dependencies)
         unquote_splicing(nif_functions)
+        unquote(exception_for(module))
         def __load_nifs__ do
           # LOADS the nifs from :code.lib_dir() <> "ebin", which is
           # a path that has files correctly moved in to release packages.
@@ -111,6 +109,112 @@ defmodule Zig.Compiler do
         @external_resource unquote(assembly.source)
       end
     end)
+  end
+
+  @local_zig Application.compile_env(:zigler, :local_zig, false)
+
+  defp zig_location(zig_tree, module), do: zig_location(zig_tree, module, @local_zig)
+
+  defp zig_location(_, _, true), do: System.find_executable("zig")
+  defp zig_location(zig_tree, module, false) do
+    # check to see if the zig version has been downloaded.  If not,
+    # go ahead and download it.
+    unless File.dir?(zig_tree) do
+      Command.fetch("#{module.zig_version}")
+    end
+
+    Path.join(zig_tree, "zig")
+  end
+  defp zig_location(_, _, path), do: path
+
+  defp resolve(zig_path) do
+    Path.dirname(
+      with {:ok, %{type: :link}} <- File.lstat(zig_path),
+           {:ok, path} <- File.read_link(zig_path) do
+        path
+      else
+        _ -> zig_path
+      end)
+  end
+
+  defp exception_for(mod = %{nifs: nifs}) do
+    if Enum.any?(nifs, &returns_error?/1) do
+      # raise a compile error, if we are running linux and we don't link_libc
+      if {:unix, :linux} == :os.type() do
+        unless mod.link_libc do
+          raise CompileError,
+            file: mod.file,
+            description: "a nif module that has zig error returns compiled with debug symbols must be `link_libc: true`"
+        end
+      end
+
+      quote do
+        defmodule ZigError do
+          defexception [:message, :error_return_trace]
+
+          def blame(exception, stacktrace) do
+            [{m, f, _, _} | _] = stacktrace
+            [%{code: code, nifs: nifs}] = m.__info__(:attributes)[:zigler]
+            a = Enum.find(nifs, &(&1.name == f)).arity
+
+            new_message = "#{inspect m}.#{f}/#{a} returned the zig error `.#{exception.message}`"
+
+            zig_errors =
+              Enum.map(exception.error_return_trace, fn
+                {_, fun, error_file, error_line} ->
+                  code_map = m.__info__(:attributes)[:nif_code_map]
+                  [zig_root] = m.__info__(:attributes)[:zig_root_dir]
+
+                  cond do
+                    String.starts_with?(error_file, zig_root) ->
+                      file = String.replace_leading(error_file, zig_root, "[zig]")
+
+                      {:@, fun, [:...], [file: file, line: error_line]}
+                    String.starts_with?(Path.basename(error_file), "#{m}") ->
+
+                      {src_file, src_line} = code
+                      |> IO.iodata_to_binary
+                      |> String.split("\n")
+                      |> line_lookup(error_line)
+
+                      {:.., fun, [:...], [file: src_file, line: src_line]}
+                    lookup = List.keyfind(code_map, error_file, 0) ->
+                      {_, src_file} = lookup
+
+                      {:.., fun, [:...], [file: src_file, line: error_line]}
+                    true ->
+                      {:.., fun, [:...], [file: error_file, line: error_line]}
+                  end
+              end)
+
+            {%{exception | message: new_message}, Enum.reverse(zig_errors, stacktrace)}
+          end
+
+          defp file_lookup(code_map, dest_file) do
+            :proplists.get_value(dest_file, code_map, dest_file)
+          end
+
+          defp line_lookup(code_cache, dest_line) do
+            code_cache
+            |> Enum.with_index(1)
+            |> Enum.reduce({"", 0}, fn
+              {_, ^dest_line}, fileline -> throw fileline
+              {"// ref: " <> spec, _}, _ ->
+                [file, "line:", line] = String.split(spec)
+                {file, String.to_integer(line) + 1}
+              _, {file, line} ->
+                {file, line + 1}
+            end)
+          catch
+            fileline -> fileline
+          end
+        end
+      end
+    end
+  end
+
+  defp returns_error?(%{retval: retval}) do
+    match?("!" <> _, retval)
   end
 
   #############################################################################
@@ -154,18 +258,34 @@ defmodule Zig.Compiler do
 
   @spec precompile(Zig.Module.t) :: t | no_return
   def precompile(module) do
+    compiler_target = Mix.target()
+
     # build the staging directory.
     assembly_dir = assembly_dir(Mix.env, module.module)
     File.mkdir_p!(assembly_dir)
 
     # create the main code file
     code_file = Path.join(assembly_dir, "#{module.module}.zig")
-    code_content = Zig.Code.generate_main(%{module | zig_file: code_file})
+    code_content = Zig.Code.generate_main(%{module | zig_file: code_file}, compiler_target)
+
+    # store it in the lookup table.  This needs to be guarded for test purposes.
+    try do
+      Module.put_attribute(module.module, :nif_code_map, [{
+        code_file,
+        Path.relative_to_cwd(module.file)
+      }])
+    rescue
+      _ in ArgumentError -> :ok
+    end
 
     # define the code file and build it.
     File.write!(code_file, code_content)
 
-    compiler_target = Mix.target()
+    # store the list of files we have seen in the process dictionary.
+    # this prevents us from going over the same file more than once,
+    # so circular dependencies don't cause infinite loops.  There's
+    # probably a better way to do this, but use this for now.
+    Process.put(:files_so_far, [])
 
     # parse the module code to generate the full list of assets
     # that need to be brought in to the assembly directory
@@ -181,7 +301,7 @@ defmodule Zig.Compiler do
           target: Path.basename(&1)})
 
     Assembler.assemble_kernel!(assembly_dir)
-    Assembler.assemble_assets!(assembly, assembly_dir)
+    Assembler.assemble_assets!(assembly, assembly_dir, for: module.module)
 
     %__MODULE__{
       assembly_dir:    assembly_dir,
@@ -194,8 +314,8 @@ defmodule Zig.Compiler do
 
   @spec cleanup(t) :: :ok | no_return
   defp cleanup(compiler) do
-    # in dev and test we keep our code around for debugging purposes.
-    unless Mix.env in [:dev, :test] do
+    # in Zigler dev and test we keep our code around for debugging purposes.
+    unless Mix.env() in [:dev, :test] do
       File.rm_rf!(compiler.assembly_dir)
     end
     :ok

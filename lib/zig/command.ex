@@ -7,7 +7,7 @@ defmodule Zig.Command do
   `Zig.Builder` module.
   """
 
-  alias Zig.{Builder, Patches}
+  alias Zig.Builder
 
   require Logger
 
@@ -15,15 +15,9 @@ defmodule Zig.Command do
   ## API
 
   def compile(compiler, zig_tree) do
-    zig_executable = if compiler.module_spec.local_zig do
-      System.find_executable("zig")
-    else
-      # apply patches, if applicable
-      Patches.sync(zig_tree)
-      Path.join(zig_tree, "zig")
-    end
+    zig_executable = executable_path(zig_tree)
 
-    opts = [cd: compiler.assembly_dir, stderr_to_stdout: true]
+    opts = Keyword.merge(hacky_envs(), [cd: compiler.assembly_dir, stderr_to_stdout: true])
 
     Logger.debug("compiling nif for module #{inspect compiler.module_spec.module} in path #{compiler.assembly_dir}")
 
@@ -40,13 +34,15 @@ defmodule Zig.Command do
     |> :code.lib_dir()
     |> Path.join("ebin")
 
-    library_filename = Zig.nif_name(compiler.module_spec)
+    source_library_filename = Zig.nif_name(compiler.module_spec)
+
+    library_filename = maybe_rename_library_filename(source_library_filename)
 
     # copy the compiled library over to the lib/nif directory.
     File.mkdir_p!(lib_dir)
 
     compiler.assembly_dir
-    |> Path.join("zig-cache/lib/#{library_filename}")
+    |> Path.join("zig-out/lib/#{source_library_filename}")
     |> File.cp!(Path.join(lib_dir, library_filename))
 
     # link the compiled library to be unversioned.
@@ -60,6 +56,31 @@ defmodule Zig.Command do
     :ok
   end
 
+  @local_zig Application.get_env(:zigler, :local_zig, false)
+
+  defp executable_path(zig_tree), do: executable_path(zig_tree, @local_zig)
+
+  defp executable_path(zig_tree, false), do: Path.join(zig_tree, "zig")
+  defp executable_path(_, true), do: System.find_executable("zig")
+  defp executable_path(_, path), do: path
+
+  defp maybe_rename_library_filename(fullpath) do
+    if Path.extname(fullpath) == ".dylib" do
+      fullpath
+      |> Path.dirname()
+      |> Path.join(Path.basename(fullpath, ".dylib") <> ".so")
+    else
+      fullpath
+    end
+  end
+
+  # REVIEW THIS ON ZIG 1.0.0
+  defp hacky_envs do
+    List.wrap(if :os.type() == {:unix, :darwin} do
+      [env: [{"ZIG_SYSTEM_LINKER_HACK", "true"}]]
+    end)
+  end
+
   #############################################################################
   ## download zig from online sources.
 
@@ -69,13 +90,12 @@ defmodule Zig.Command do
   end
 
   def get_os do
-    case :os.type do
+    case :os.type() do
       {:unix, :linux} ->
         "linux"
       {:unix, :freebsd} ->
         "freebsd"
       {:unix, :darwin} ->
-        Logger.warn("macos support is experimental")
         "macos"
       {_, :nt} ->
         windows_warn()
@@ -153,17 +173,18 @@ defmodule Zig.Command do
     :global.del_lock({__MODULE__, self()})
   end
 
-  # https://ziglang.org/download/#release-0.7.1
+  # https://ziglang.org/download/#release-0.8.1
   @checksums %{
-    "zig-freebsd-x86_64-0.7.1.tar.xz" => "e73c1dca35791a3183fdd5ecde0443ebbe180942efceafe651886034fb8def09",
-    "zig-linux-aarch64-0.7.1.tar.xz" => "48ec90eba407e4587ddef7eecef25fec7e13587eb98e3b83c5f2f5fff2a5cbe7",
-    "zig-linux-armv7a-0.7.1.tar.xz" => "5a0662e07b4c4968665e1f97558f8591f6facec45d2e0ff5715e661743107ceb",
-    "zig-linux-i386-0.7.1.tar.xz" => "4882e052e5f83690bd0334bb4fc1702b5403cb3a3d2aa63fd7d6043d8afecba3",
-    "zig-linux-riscv64-0.7.1.tar.xz" => "187294bfd35983348c3fe042901b42e67e7e36ab7f77a5f969d21c0051f4d21f",
-    "zig-linux-x86_64-0.7.1.tar.xz" => "18c7b9b200600f8bcde1cd8d7f1f578cbc3676241ce36d771937ce19a8159b8d",
-    "zig-macos-x86_64-0.7.1.tar.xz" => "845cb17562978af0cf67e3993f4e33330525eaf01ead9386df9105111e3bc519",
-    "zig-windows-i386-0.7.1.zip" => "a1b9a7421e13153e07fd2e2c93ff29aad64d83105b8fcdafa633dbe689caf1c0",
-    "zig-windows-x86_64-0.7.1.zip" => "4818a8a65b4672bc52c0ae7f14d014e0eb8caf10f12c0745176820384cea296a"
+    "zig-freebsd-x86_64-0.8.1.tar.xz" => "fc4f6478bcf3a9fce1b8ef677a91694f476dd35be6d6c9c4f44a8b76eedbe176",
+    "zig-linux-aarch64-0.8.1.tar.xz" => "2166dc9f2d8df387e8b4122883bb979d739281e1ff3f3d5483fec3a23b957510",
+    "zig-linux-armv7a-0.8.1.tar.xz" => "5ba58141805e2519f38cf8e715933cbf059f4f3dade92c71838cce341045de05",
+    "zig-linux-i386-0.8.1.tar.xz" => "2f3e84f30492b5f1c5f97cecc0166f07a8a8d50c5f85dbb3a6ef2a4ee6f915e6",
+    "zig-linux-riscv64-0.8.1.tar.xz" => "4adfaf147b025917c03367462fe5018aaa9edbc6439ef9cd0da2b074ae960554",
+    "zig-linux-x86_64-0.8.1.tar.xz" => "6c032fc61b5d77a3f3cf781730fa549f8f059ffdb3b3f6ad1c2994d2b2d87983",
+    "zig-macos-x86_64-0.8.1.tar.xz" => "16b0e1defe4c1807f2e128f72863124bffdd906cefb21043c34b673bf85cd57f",
+    "zig-macos-aarch64-0.8.1.tar.xz"	=> "5351297e3b8408213514b29c0a938002c5cf9f97eee28c2f32920e1227fd8423",
+    "zig-windows-i386-0.8.1.zip" => "099605051eb0452a947c8eab8fbbc7e43833c8376d267e94e41131c289a1c535",
+    "zig-windows-x86_64-0.8.1.zip" => "43573db14cd238f7111d6bdf37492d363f11ecd1eba802567a172f277d003926"
   }
 
   defp download_zig_archive(zig_download_path, version, archive) do

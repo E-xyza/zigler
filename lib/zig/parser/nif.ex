@@ -42,9 +42,8 @@ defmodule Zig.Parser.Nif do
   @enforce_keys [:name, :arity]
 
   defstruct @enforce_keys ++ [
-    doc:    nil,
+    :module, :doc, :retval,
     args:   [],
-    retval: nil,
     opts:   [],
     test:   nil # only to be used for tests.  This is the string name
                 # of the test which is going to be bound in.
@@ -98,6 +97,9 @@ defmodule Zig.Parser.Nif do
   @spec validate_retval([String.t], Parser.t, non_neg_integer)
     :: :ok | no_return
   def validate_retval([retval | _], _context, _line) when retval in @valid_retvals, do: :ok
+  def validate_retval(["!" <> retval | rest], context, line) when retval in @valid_retvals do
+    validate_retval([retval | rest], context, line)
+  end
   def validate_retval([retval | _], context, line) do
     raise SyntaxError,
       file: context.file,

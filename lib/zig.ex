@@ -66,6 +66,13 @@ defmodule Zig do
   the `beam.term` type which is equivalent to the `ERLNIFTERM` type.  See
   [`erl_nif`](erl_nif.html).
 
+  ### Guides
+
+  Please consult the following guides for detail topics:
+
+  - [different execution modes](nifs.html)
+  - [how to build BEAM `resources`](resources.html)
+
   ### Nerves Support
 
   Nerves is supported out of the box, and the system should cross-compile
@@ -100,14 +107,17 @@ defmodule Zig do
   ### Bring your own version of Zig
 
   If you would like to use your system's local `zig` command, set the
-  `local_zig` option in your `use Zig` statement.
+  `local_zig` option in `config.exs`, which
 
   ```
-  defmodule UsesLocalZig do
-    use Zig, local_zig: true
+  config :zigler, local_zig: true
+  ```
 
-    ~Z\"""
-    ...
+  This will use `System.find_executable` to obtain the zig command. If
+  you want to specify the zig command manually, use the following:
+
+  ```
+  config :zigler, local_zig: "path/to/zig/command"
   ```
 
   ### External Libraries
@@ -215,12 +225,7 @@ defmodule Zig do
 
   # default release modes.
   # you can override these in your `use Zigler` statement.
-  #@default_release_modes %{prod: :safe, dev: :debug, test: :debug}
-  #@default_release_mode @default_release_modes[Mix.env()]
-
-  @spec __using__(keyword) ::
-          {:__block__, [],
-           [{:@, [...], [...]} | {:import, [...], [...]} | {:require, [...], [...]}, ...]}
+  @spec __using__(keyword) :: Macro.t
   defmacro __using__(opts) do
     #mode = opts[:release_mode] || @default_release_mode
 
@@ -229,15 +234,16 @@ defmodule Zig do
     |> Compiler.assembly_dir(__CALLER__.module)
     |> File.rm_rf!
 
-    user_opts = Keyword.take(opts, ~w(libs resources dry_run c_includes
+    user_opts = opts
+    |> Keyword.take(~w(libs resources dry_run c_includes
     system_include_dirs local link_libc)a)
 
     include_dirs = opts
     |> Keyword.get(:include, [])
     |> Kernel.++(if has_include_dir?(__CALLER__), do: ["include"], else: [])
 
-    zigler = struct(%Zig.Module{
-      file:         __CALLER__.file,
+    zigler! = struct(%Zig.Module{
+      file:         Path.relative_to_cwd(__CALLER__.file),
       module:       __CALLER__.module,
       imports:      Zig.Module.imports(opts[:imports]),
       include_dirs: include_dirs,
@@ -245,8 +251,10 @@ defmodule Zig do
       otp_app:      get_app()},
       user_opts)
 
+    zigler! = %{zigler! | code: Zig.Code.headers(zigler!)}
+
     Module.register_attribute(__CALLER__.module, :zigler, persist: true)
-    Module.put_attribute(__CALLER__.module, :zigler, zigler)
+    Module.put_attribute(__CALLER__.module, :zigler, zigler!)
 
     quote do
       import Zig
@@ -284,7 +292,7 @@ defmodule Zig do
   defp quoted_code(zig_code, meta, caller) do
     line = meta[:line]
     module = caller.module
-    file = caller.file
+    file = Path.relative_to_cwd(caller.file)
     quote bind_quoted: [module: module, zig_code: zig_code, file: file, line: line] do
       zigler = Module.get_attribute(module, :zigler)
 
@@ -308,13 +316,24 @@ defmodule Zig do
     |> Keyword.get(:app)
   end
 
-  @doc false
+  @extension (case :os.type() do
+    {:unix, :linux} -> ".so"
+    {:unix, :freebsd} -> ".so"
+    {:unix, :darwin} -> ".dylib"
+    {_, :nt} -> ".dll"
+  end)
+
+  @doc """
+  outputs a String name for the module.
+
+  note that for filesystem use, you must supply the extension.  For internal (BEAM) use, the
+  filesystem extension will be inferred.  Therefore we provide two versions of this function.
+  """
   def nif_name(module, use_suffixes \\ true) do
     if use_suffixes do
-      "lib#{module.module}.so"
+      "lib#{module.module}#{@extension}"
     else
       "lib#{module.module}"
     end
   end
-
 end

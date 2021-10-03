@@ -99,11 +99,11 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
     test "raises compile error on an invalid return type" do
       # but not if we don't have preloaded nif value
       assert Parser.parse_function_header("""
-        fn foo() !i64 {
-      """)
+        fn foo() *i64 {
+      """) 
 
       assert_raise SyntaxError, fn -> Parser.parse_function_header("""
-          fn foo() !i64 {
+          fn foo() *i64 {
         """, context: %{local: %Nif{name: :foo, arity: 0}})
       end
     end

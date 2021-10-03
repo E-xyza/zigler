@@ -10,12 +10,12 @@ defmodule ZiglerTest.ZigTest.PassingTests do
   }
 
   test "forty seven returns forty seven" {
-    assert(47 == forty_seven());
+    try std.testing.expect(47 == forty_seven());
   }
 
   test "system has access to beam test env" {
     var foo = beam.make_i32(beam.test_env, 47);
-    assert(47 ==
+    try std.testing.expect(47 ==
       beam.get_i32(beam.test_env, foo) catch unreachable
     );
   }

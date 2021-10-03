@@ -54,14 +54,14 @@ defmodule Zig.Assembler do
   assembles zig assets, taking them from their source to and putting them into
   the target directory.
   """
-  def assemble_assets!(assembly, root_dir) do
-    Enum.each(assembly, &assemble_asset!(&1, root_dir))
+  def assemble_assets!(assembly, root_dir, for_whom) do
+    Enum.each(assembly, &assemble_asset!(&1, root_dir, for_whom))
   end
-  def assemble_asset!(instruction = %{type: :library}, root_dir) do
+  def assemble_asset!(instruction = %{type: :library}, root_dir, _for_whom) do
     target_path = Path.join(root_dir, instruction.target)
     File.cp!(instruction.source, target_path)
   end
-  def assemble_asset!(instruction = %{target: {:cinclude, target}}, root_dir) do
+  def assemble_asset!(instruction = %{target: {:cinclude, target}}, root_dir, _for_whom) do
     if File.exists?(instruction.source) do
       # make sure the include directory exists.
       include_dir = Path.join(root_dir, "include")
@@ -72,7 +72,7 @@ defmodule Zig.Assembler do
       Logger.debug("copied #{instruction.source} to #{target_path}")
     end
   end
-  def assemble_asset!(instruction, _) do
+  def assemble_asset!(instruction, _, for: module) do
     # don't assemble it if it's already there.  This lets
     # us easily rewrite test cases.
     unless File.exists?(instruction.target) do
@@ -82,6 +82,11 @@ defmodule Zig.Assembler do
       |> File.mkdir_p!
       # send the file in.
       File.cp!(instruction.source, instruction.target)
+      # save it in the code map.
+      Module.put_attribute(module, :nif_code_map, [{
+        instruction.target,
+        Path.relative_to_cwd(instruction.source)
+      } | Module.get_attribute(module, :nif_code_map)])
       Logger.debug("copied #{instruction.source} to #{instruction.target}")
     end
   end
@@ -106,18 +111,25 @@ defmodule Zig.Assembler do
     ++ transitive_imports
   end
 
-  def parse_code(code, options) do
-    check_options!(options)
+  def parse_code(code, options!) do
+    check_options!(options!)
+
     code
     |> IO.iodata_to_binary
     |> Imports.parse
     |> Enum.reverse
     |> Enum.reject(&standard_components/1)
-    |> Enum.flat_map(&import_to_assembler(&1, options))
+    |> Enum.reject(&in_cache/1)
+    |> Enum.map(&cache_file/1)
+    |> Enum.flat_map(&import_to_assembler(&1, options!))
   end
 
+  #####################################################################
+  # dependency pruning
+  #
   # allows filtering standard components.  These are either in the zig
   # standard libraries or intended to be put into place by the zigler system.
+
   defp standard_components({:pub, _, _}), do: false
   defp standard_components({_, "erl_nif.zig"}), do: true
   defp standard_components({_, "beam.zig"}), do: true
@@ -125,6 +137,26 @@ defmodule Zig.Assembler do
   defp standard_components({_, maybe_standard}) do
     Path.extname(maybe_standard) != ".zig"
   end
+
+  # based on the cache
+
+  defp in_cache({:pub, _, file}), do: file in Process.get(:files_so_far, [])
+  defp in_cache({_, file}), do: file in Process.get(:files_so_far, [])
+
+  defp cache_file(spec = {:pub, _, file}) do
+    cache(file)
+    spec
+  end
+  defp cache_file(spec = {_, file}) do
+    cache(file)
+    spec
+  end
+
+  defp cache(file) do
+    Process.put(:files_so_far, [file | Process.get(:files_so_far, [])])
+  end
+
+  ####################################################################
 
   defp import_to_assembler({:pub, context, file}, options) do
     import_to_assembler({context, file}, options, options[:pub])
@@ -136,7 +168,11 @@ defmodule Zig.Assembler do
       target: {:cinclude, include}
     )]
   end
-  defp import_to_assembler({context, file}, options, pub \\ false) do
+  defp import_to_assembler(spec, options) do
+    import_to_assembler(spec, options, false)
+  end
+
+  defp import_to_assembler({context, file}, options, pub) do
     import_path = options[:parent_dir]
     |> Path.join(file)
     |> Path.expand()

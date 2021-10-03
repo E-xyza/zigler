@@ -8,12 +8,22 @@ defmodule Zig.Module do
 
   @default_imports [std: "std", e: "erl_nif.zig",  beam: "beam.zig"]
 
+  # libc is required to be linked in the case of *bsd based systems
+  # because these operating systems do not have syscall stability and
+  # ensure libc stability.
+  link_libc = case :os.type() do
+    {:unix, :linux} -> false
+    {:unix, :freebsd} -> true
+    {:unix, :darwin} -> true
+    {_, :nt} -> false
+  end
+
   defstruct @enforce_keys ++ [
     zig_file:            "",
     libs:                [],
     nifs:                [],
     resources:           [],
-    zig_version:         Version.parse!("0.7.1"),
+    zig_version:         Version.parse!("0.8.1"),
     imports:             @default_imports,
     c_includes:          [],
     include_dirs:        [],
@@ -21,9 +31,8 @@ defmodule Zig.Module do
     dry_run:             false,
     code:                [],
     version:             Version.parse!("0.0.0"),
-    link_libc:           false,
-    test_dirs:           nil,
-    local_zig:           false
+    link_libc:           link_libc,
+    test_dirs:           nil
   ]
 
   @type t :: %__MODULE__{
@@ -44,7 +53,6 @@ defmodule Zig.Module do
     code:                iodata,
     version:             Version.t,
     test_dirs:           nil | [Path.t],
-    local_zig:           boolean
   }
 
   # takes the zigler imports option and turns it into the imports keyword

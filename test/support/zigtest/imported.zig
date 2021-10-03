@@ -1,6 +1,5 @@
-const beam = @import("beam.zig");
-const assert = beam.assert;
+const std = @import("std");
 
 test "imported test" {
-    assert(1 == 1);
+    try std.testing.expect(1 == 1);
 }

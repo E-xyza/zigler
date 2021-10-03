@@ -19,7 +19,7 @@ defmodule Zigler.MixProject do
 
     [
       app: :zigler,
-      version: "0.7.3",
+      version: "0.8.1",
       elixir: "~> 1.9",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
@@ -62,7 +62,7 @@ defmodule Zigler.MixProject do
      Zig.Parser.ResourceCleanup, Zig.Parser.Nif, Zig.Parser]
   end
 
-  def application, do: [extra_applications: [:logger]]
+  def application, do: [extra_applications: [:logger, :inets]]
 
   defp elixirc_paths(:dev), do: ["lib"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]

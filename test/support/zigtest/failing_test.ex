@@ -1,5 +1,4 @@
 defmodule ZiglerTest.ZigTest.FailingTest do
-
   @moduledoc false
 
   use Zig
@@ -11,20 +10,30 @@ defmodule ZiglerTest.ZigTest.FailingTest do
   }
 
   test "a lie" {
-    assert(one() == 2);
+    try std.testing.expect(one() == 2);
   }
 
   test "a multiline lie" {
-    assert(
+    try std.testing.expect(
       one() == 2
     );
   }
 
   test "a truth and a lie" {
-    assert(1 == 1);
-    assert(
+    try std.testing.expect(1 == 1);
+    try std.testing.expect(
       one() == 2
     );
+  }
+
+  const UnrelatedError = error { Unrelated };
+
+  fn unrelated() !void {
+    return UnrelatedError.Unrelated;
+  }
+
+  test "an unrelated error" {
+    try unrelated();
   }
   """
 end

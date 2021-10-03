@@ -1,8 +1,8 @@
-const beam = @import("beam.zig");
-const assert = beam.assert;
+// note, this is not going to be imported as "public"
+const std = @import("std");
 
-test "non-pub test" {
-    assert(1 == 1);
+test "imported test" {
+    try std.testing.expect(1 == 1);
 }
 
 pub fn foo() i32 {
