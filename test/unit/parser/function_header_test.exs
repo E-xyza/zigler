@@ -100,7 +100,7 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
       # but not if we don't have preloaded nif value
       assert Parser.parse_function_header("""
         fn foo() *i64 {
-      """) 
+      """)
 
       assert_raise SyntaxError, fn -> Parser.parse_function_header("""
           fn foo() *i64 {
