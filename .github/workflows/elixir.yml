@@ -9,12 +9,12 @@ jobs:
     strategy:
       matrix:
         pair:
-          - otp-version: '22.0'
-            elixir-version: '1.9.0'
+          #- otp-version: '22.0'
+          #  elixir-version: '1.9.0'
           #- otp-version: '23.0'
           #  elixir-version: '1.10'
-          #- otp-version: '23.0'
-          #  elixir-version: '1.11'
+          - otp-version: '23.0'
+            elixir-version: '1.11'
 
     steps:
     - uses: actions/checkout@v1
