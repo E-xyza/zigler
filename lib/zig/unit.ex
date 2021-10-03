@@ -160,7 +160,6 @@ defmodule Zig.Unit do
         def unquote(test_name)(_), do: unquote(test)
       end
 
-      # TODO: dry this as a generic function
       defp line_lookup(code_cache, dest_line) do
         code_cache
         |> Enum.with_index(1)

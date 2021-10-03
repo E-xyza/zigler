@@ -59,7 +59,6 @@ defmodule Zig.Compiler do
     nif_functions = Enum.map(module.nifs, &function_skeleton/1)
     nif_name = Zig.nif_name(module, false)
 
-    # TODO: merge these two.
     if module.dry_run do
       quote do
         unquote_splicing(dependencies)
@@ -137,15 +136,14 @@ defmodule Zig.Compiler do
       end)
   end
 
+  # credo:disable-for-next-line
   defp exception_for(mod = %{nifs: nifs}) do
     if Enum.any?(nifs, &returns_error?/1) do
       # raise a compile error, if we are running linux and we don't link_libc
-      if {:unix, :linux} == :os.type() do
-        unless mod.link_libc do
-          raise CompileError,
-            file: mod.file,
-            description: "a nif module that has zig error returns compiled with debug symbols must be `link_libc: true`"
-        end
+      if ({:unix, :linux} == :os.type()) and not mod.link_libc do
+        raise CompileError,
+          file: mod.file,
+          description: "a nif module that has zig error returns compiled with debug symbols must be `link_libc: true`"
       end
 
       quote do
@@ -165,29 +163,33 @@ defmodule Zig.Compiler do
                   code_map = m.__info__(:attributes)[:nif_code_map]
                   [zig_root] = m.__info__(:attributes)[:zig_root_dir]
 
-                  cond do
-                    String.starts_with?(error_file, zig_root) ->
-                      file = String.replace_leading(error_file, zig_root, "[zig]")
-
-                      {:@, fun, [:...], [file: file, line: error_line]}
-                    String.starts_with?(Path.basename(error_file), "#{m}") ->
-
-                      {src_file, src_line} = code
-                      |> IO.iodata_to_binary
-                      |> String.split("\n")
-                      |> line_lookup(error_line)
-
-                      {:.., fun, [:...], [file: src_file, line: src_line]}
-                    lookup = List.keyfind(code_map, error_file, 0) ->
-                      {_, src_file} = lookup
-
-                      {:.., fun, [:...], [file: src_file, line: error_line]}
-                    true ->
-                      {:.., fun, [:...], [file: error_file, line: error_line]}
-                  end
+                  stack_sig(error_file, error_line, zig_root, src_line, code)
               end)
 
             {%{exception | message: new_message}, Enum.reverse(zig_errors, stacktrace)}
+          end
+
+          defp stack_sig(error_file, error_line, zig_root, src_line, code) do
+            cond do
+              String.starts_with?(error_file, zig_root) ->
+                file = String.replace_leading(error_file, zig_root, "[zig]")
+
+                {:@, fun, [:...], [file: file, line: error_line]}
+              String.starts_with?(Path.basename(error_file), "#{m}") ->
+
+                {src_file, src_line} = code
+                |> IO.iodata_to_binary
+                |> String.split("\n")
+                |> line_lookup(error_line)
+
+                {:.., fun, [:...], [file: src_file, line: src_line]}
+              lookup = List.keyfind(code_map, error_file, 0) ->
+                {_, src_file} = lookup
+
+                {:.., fun, [:...], [file: src_file, line: error_line]}
+              true ->
+                {:.., fun, [:...], [file: error_file, line: error_line]}
+            end
           end
 
           defp file_lookup(code_map, dest_file) do
