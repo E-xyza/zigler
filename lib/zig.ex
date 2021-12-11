@@ -247,8 +247,8 @@ defmodule Zig do
       module:       __CALLER__.module,
       imports:      Zig.Module.imports(opts[:imports]),
       include_dirs: include_dirs,
-      version:      get_project_version(),
-      otp_app:      get_app()},
+      version:      get_project_version(opts),
+      otp_app:      get_app(opts)},
       user_opts)
 
     zigler! = %{zigler! | code: Zig.Code.headers(zigler!)}
@@ -303,16 +303,23 @@ defmodule Zig do
     end
   end
 
-  defp get_project_version do
-    Mix.Project.get
-    |> apply(:project, [])
+  defp get_project(opts) do
+    case opts[:project] do
+      nil ->
+        Mix.Project.get()
+        |> apply(:project, [])
+      project -> project
+    end
+  end
+
+  def get_project_version(opts) do
+    get_project(opts)
     |> Keyword.get(:version)
     |> Version.parse!
   end
 
-  defp get_app do
-    Mix.Project.get
-    |> apply(:project, [])
+  defp get_app(opts) do
+    get_project(opts)
     |> Keyword.get(:app)
   end
 
