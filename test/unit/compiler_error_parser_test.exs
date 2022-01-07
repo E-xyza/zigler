@@ -34,4 +34,32 @@ defmodule ZiglerTest.CompilerErrorParserTest do
     end
   end
 
+  describe "parsing errors" do
+    test "parses errors containing Windows paths" do
+      assert {:ok,
+              [
+                "C:\\Somewhere\\erl_nif.zig:24:42: error: use of undeclared identifier 'ERL_NIF_TERM'",
+                24,
+                42,
+                "error: use of undeclared identifier 'ERL_NIF_TERM'"
+              ], "", _,
+              _} =
+               Error.parse_error(
+                 "C:\\Somewhere\\erl_nif.zig:24:42: error: use of undeclared identifier 'ERL_NIF_TERM'\n"
+               )
+    end
+    test "parses errors containing unix paths" do
+      assert {:ok,
+              [
+                "/usr/somewhere/erl_nif.zig:24:42: error: use of undeclared identifier 'ERL_NIF_TERM'",
+                24,
+                42,
+                "error: use of undeclared identifier 'ERL_NIF_TERM'"
+              ], "", _,
+              _} =
+               Error.parse_error(
+                 "/usr/somewhere/erl_nif.zig:24:42: error: use of undeclared identifier 'ERL_NIF_TERM'\n"
+               )
+    end
+  end
 end

@@ -10,9 +10,23 @@ defmodule Zig.Parser.Error do
 
   whitespace = ascii_string([?\s, ?\n], min: 1)
 
+  path =
+    optional(ascii_char([?a..?z, ?A..?Z]) |> string(":\\"))
+    |> ascii_string([not: ?:], min: 1)
+    |> post_traverse(:join_path)
+
+  defp join_path(_rest, [rest, ":\\", drive], context, _line, _offset) when is_integer(drive) do
+    path = <<drive>> <> ":\\#{rest}"
+    {[path], context}
+  end
+
+  defp join_path(_rest, args, context, _line, _offset) do
+    {args, context}
+  end
+
   errormsg =
     ignore(repeat(ascii_char([?\s])))
-    |> ascii_string([not: ?:], min: 1)
+    |> concat(path)
     |> ignore(string(":"))
     |> ascii_string(@numbers, min: 1)
     |> ignore(string(":"))
@@ -57,6 +71,7 @@ defmodule Zig.Parser.Error do
   end
 
   defp find_file(_dir, path = ("/" <> _)), do: path
+  defp find_file(_dir, path = <<_drive::binary-size(1), ":\\", _::binary>>), do: path
   defp find_file(dir, path) do
     dir
     |> Path.join(path)
