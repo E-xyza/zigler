@@ -23,7 +23,7 @@ defmodule Zig.Module do
     libs:                [],
     nifs:                [],
     resources:           [],
-    zig_version:         Version.parse!("0.8.1"),
+    zig_version:         Version.parse!("0.9.0"),
     imports:             @default_imports,
     c_includes:          [],
     include_dirs:        [],

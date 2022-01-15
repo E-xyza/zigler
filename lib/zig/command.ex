@@ -173,18 +173,19 @@ defmodule Zig.Command do
     :global.del_lock({__MODULE__, self()})
   end
 
-  # https://ziglang.org/download/#release-0.8.1
+  # https://ziglang.org/download/#release-0.9.0
   @checksums %{
-    "zig-freebsd-x86_64-0.8.1.tar.xz" => "fc4f6478bcf3a9fce1b8ef677a91694f476dd35be6d6c9c4f44a8b76eedbe176",
-    "zig-linux-aarch64-0.8.1.tar.xz" => "2166dc9f2d8df387e8b4122883bb979d739281e1ff3f3d5483fec3a23b957510",
-    "zig-linux-armv7a-0.8.1.tar.xz" => "5ba58141805e2519f38cf8e715933cbf059f4f3dade92c71838cce341045de05",
-    "zig-linux-i386-0.8.1.tar.xz" => "2f3e84f30492b5f1c5f97cecc0166f07a8a8d50c5f85dbb3a6ef2a4ee6f915e6",
-    "zig-linux-riscv64-0.8.1.tar.xz" => "4adfaf147b025917c03367462fe5018aaa9edbc6439ef9cd0da2b074ae960554",
-    "zig-linux-x86_64-0.8.1.tar.xz" => "6c032fc61b5d77a3f3cf781730fa549f8f059ffdb3b3f6ad1c2994d2b2d87983",
-    "zig-macos-x86_64-0.8.1.tar.xz" => "16b0e1defe4c1807f2e128f72863124bffdd906cefb21043c34b673bf85cd57f",
-    "zig-macos-aarch64-0.8.1.tar.xz"	=> "5351297e3b8408213514b29c0a938002c5cf9f97eee28c2f32920e1227fd8423",
-    "zig-windows-i386-0.8.1.zip" => "099605051eb0452a947c8eab8fbbc7e43833c8376d267e94e41131c289a1c535",
-    "zig-windows-x86_64-0.8.1.zip" => "43573db14cd238f7111d6bdf37492d363f11ecd1eba802567a172f277d003926"
+    "zig-linux-x86_64-0.9.0.tar.xz" => "5c55344a877d557fb1b28939785474eb7f4f2f327aab55293998f501f7869fa6",
+    "zig-linux-i386-0.9.0.tar.xz" => "b0dcf688349268c883292acdd55eaa3c13d73b9146e4b990fad95b84a2ac528b",
+    "zig-linux-riscv64-0.9.0.tar.xz" => "85466de07504767ed37f59782672ad41bbdf43d6480fafd07f45543278b07620",
+    "zig-linux-aarch64-0.9.0.tar.xz" => "1524fedfdbade2dbc9bae1ed98ad38fa7f2114c9a3e94da0d652573c75efbc5a",
+    "zig-linux-armv7a-0.9.0.tar.xz" => "50225dee6e6448a63ee96383a34d9fe3bba34ae8da1a0c8619bde2cdfc1df87d",
+    "zig-macos-x86_64-0.9.0.tar.xz" => "c5280eeec4d6e5ea5ce5b448dc9a7c4bdd85ecfed4c1b96aa0835e48b36eccf0",
+    "zig-macos-aarch64-0.9.0.tar.xz" => "3991c70594d61d09fb4b316157a7c1d87b1d4ec159e7a5ecd11169ff74cad832",
+    "zig-windows-x86_64-0.9.0.zip" => "084ea2646850aaf068234b0f1a92b914ed629be47075e835f8a67d55c21d880e",
+    "zig-windows-i386-0.9.0.zip" => "bb839434afc75092015cf4c33319d31463c18512bc01dd719aedf5dcbc368466",
+    "zig-windows-aarch64-0.9.0.zip" => "f9018725e3fb2e8992b17c67034726971156eb190685018a9ac8c3a9f7a22340",
+    "zig-freebsd-x86_64-0.9.0.tar.xz" => "c95afe679b7cc4110dc2ecd3606c83a699718b7a958d6627f74c20886333e194",
   }
 
   defp download_zig_archive(zig_download_path, version, archive) do
