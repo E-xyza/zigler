@@ -164,7 +164,6 @@ defmodule Zig.Compiler do
                   code_map = m.__info__(:attributes)[:nif_code_map]
                   [zig_root] = m.__info__(:attributes)[:zig_root_dir]
 
-<<<<<<< HEAD
                   cond do
                     String.starts_with?(error_file, zig_root) ->
                       file = String.replace_leading(error_file, zig_root, "[zig]")
@@ -188,14 +187,9 @@ defmodule Zig.Compiler do
               end)
 
             {%{exception | message: new_message}, Enum.reverse(zig_errors, stacktrace)}
-=======
-                  stack_sig(error_file, error_line, zig_root, src_line, code)
-              end)
-
-            {%{exception | message: new_message}, Enum.reverse(zig_errors, stacktrace)}
           end
 
-          defp stack_sig(error_file, error_line, zig_root, src_line, code) do
+          defp stack_sig(fun, m, error_file, error_line, zig_root, code, code_map) do
             cond do
               String.starts_with?(error_file, zig_root) ->
                 file = String.replace_leading(error_file, zig_root, "[zig]")
@@ -216,7 +210,6 @@ defmodule Zig.Compiler do
               true ->
                 {:.., fun, [:...], [file: error_file, line: error_line]}
             end
->>>>>>> master
           end
 
           defp file_lookup(code_map, dest_file) do

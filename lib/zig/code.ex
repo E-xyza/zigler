@@ -166,8 +166,8 @@ defmodule Zig.Code do
       .funcs = &(__exported_nifs__[0]),
       .load = #{nif_load_fn},
       .reload = null,   // currently unsupported
-      .upgrade = beam.blank_upgrade,  // currently unsupported
-      .unload = beam.blank_unload,   // currently unsupported
+      .upgrade = null,  // currently unsupported
+      .unload = null,   // currently unsupported
       .vm_variant = "beam.vanilla",
       .options = 1,
       .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
