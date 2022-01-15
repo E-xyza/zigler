@@ -39,7 +39,7 @@ defmodule Zig.Nif.Adapter do
   the third parameter should be a lambda which describes as a string, how one
   fetches the the index to be converted from a term into a proper value.
   """
-  def get_clauses(%{arity: 0}, _, _), do: ""
+  def get_clauses(%{arity: 0}, _, _), do: "_ = argc; _ = argv; \n"
   def get_clauses(%{args: args, name: name}, bail, fetcher) do
     get_clauses(args, name, bail, fetcher)
   end
