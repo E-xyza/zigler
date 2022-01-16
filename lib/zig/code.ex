@@ -4,9 +4,14 @@ defmodule Zig.Code do
   """
 
   alias Zig.Module
-  alias Zig.Nif.{DirtyCpu, DirtyIO, Synchronous, Test, Threaded, Yielding}
-  alias Zig.Nif.{Synchronous, Test, Threaded, Yielding}
-  alias Zig.Parser.{Nif, Resource}
+  alias Zig.Nif.DirtyCpu
+  alias Zig.Nif.DirtyIO
+  alias Zig.Nif.Synchronous
+  alias Zig.Nif.Test
+  alias Zig.Nif.Threaded
+  alias Zig.Nif.Yielding
+  alias Zig.Parser.Nif
+  alias Zig.Parser.Resource
 
   def headers(module = %Module{}) do
     case module.c_includes do
