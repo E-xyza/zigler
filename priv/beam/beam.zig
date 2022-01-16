@@ -157,6 +157,10 @@ fn raw_beam_alloc(
     _len_align: u29,
     _ret_addr: usize,
 ) Allocator.Error![]u8 {
+  _ = _self;
+  _ = _len_align;
+  _ = _ret_addr;
+
   if (ptr_align > MAX_ALIGN) { return error.OutOfMemory; }
   const ptr = e.enif_alloc(len) orelse return error.OutOfMemory;
   return @ptrCast([*]u8, ptr)[0..len];
@@ -170,6 +174,11 @@ fn raw_beam_resize(
     _len_align: u29,
     _ret_addr: usize,
 ) Allocator.Error!usize {
+  _ = _self;
+  _ = _old_align;
+  _ = _len_align;
+  _ = _ret_addr;
+
   if (new_len == 0) {
     e.enif_free(buf.ptr);
     return 0;
@@ -197,32 +206,38 @@ var large_beam_allocator = Allocator {
 };
 
 fn large_beam_alloc(
-  allocator_: *Allocator,
+  _allocator: *Allocator,
   len: usize,
   alignment: u29,
   len_align: u29,
   return_address: usize
 ) error{OutOfMemory}![]u8 {
+  _ = _allocator;
   var ptr = try alignedAlloc(len, alignment, len_align, return_address);
   if (len_align == 0) { return ptr[0..len]; }
   return ptr[0..std.mem.alignBackwardAnyAlign(len, len_align)];
 }
 
 fn large_beam_resize(
-    allocator_: *Allocator,
+    _allocator: *Allocator,
     buf: []u8,
     buf_align: u29,
     new_len: usize,
     len_align: u29,
-    return_address: usize,
+    _return_address: usize,
 ) Allocator.Error!usize {
+  _ = _allocator;
+  _ = _return_address;
   if (new_len > buf.len) { return error.OutOfMemory; }
   if (new_len == 0) { return alignedFree(buf, buf_align); }
   if (len_align == 0) { return new_len; }
   return std.mem.alignBackwardAnyAlign(new_len, len_align);
 }
 
-fn alignedAlloc(len: usize, alignment: u29, len_align: u29, return_address: usize) ![*]u8 {
+fn alignedAlloc(len: usize, alignment: u29, _len_align: u29, _return_address: usize) ![*]u8 {
+  _ = _len_align;
+  _ = _return_address;
+
   var safe_len = safeLen(len, alignment);
   var alloc_slice: []u8 = try allocator.allocAdvanced(
     u8, MAX_ALIGN, safe_len, std.mem.Allocator.Exact.exact);
@@ -587,7 +602,6 @@ pub fn get_c_string(environment: env, src_term: term) ![*c]u8 {
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:binary/0`
 pub fn get_char_slice(environment: env, src_term: term) ![]u8 {
   var bin: binary = undefined;
-  var result: []u8 = undefined;
 
   if (0 != e.enif_inspect_binary(environment, src_term, &bin)) {
     return bin.data[0..bin.size];
@@ -685,9 +699,9 @@ pub fn send_advanced(c_env: env, to_pid: pid, m_env: env, msg: term) bool {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:tuple/0`
 pub fn get_tuple(environment: env, src_term: term) ![]term {
-  var length: c_int;
-  var term_list: [*c]term;
-  if (0 != enif_get_tuple(env, src_term, &length, &term_list)) {
+  var length: c_int = undefined;
+  var term_list: [*c]term = undefined;
+  if (0 != e.enif_get_tuple(environment, src_term, &length, &term_list)) {
     return term_list[0..(length - 1)];
   } else {return Error.FunctionClauseError; }
 }
@@ -961,6 +975,7 @@ pub fn make_slice(environment: env, val: []const u8) term {
   var bin: [*]u8 = @ptrCast([*]u8, e.enif_make_new_binary(environment, val.len, &result));
 
   for (val) | _chr, i | {
+    _ = _chr;
     bin[i] = val[i];
   }
 
@@ -1218,7 +1233,7 @@ pub const resource = struct {
   };
 
   pub fn create(comptime T : type, environment: env, res_typ: resource_type, val : T) !term {
-    var ptr : ?*c_void = e.enif_alloc_resource(res_typ, @sizeOf(T));
+    var ptr : ?*anyopaque = e.enif_alloc_resource(res_typ, @sizeOf(T));
     var obj : *T = undefined;
 
     if (ptr == null) {
@@ -1232,9 +1247,9 @@ pub const resource = struct {
   }
 
   pub fn update(comptime T : type, environment: env, res_typ: resource_type, res_trm: term, new_val: T) !void {
-    var obj : ?*c_void = undefined;
+    var obj : ?*anyopaque = undefined;
 
-    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
+    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*anyopaque, &obj))) {
       return resource.ResourceError.FetchError;
     }
 
@@ -1246,9 +1261,9 @@ pub const resource = struct {
   }
 
   pub fn fetch(comptime T : type, environment: env, res_typ: resource_type, res_trm: term) !T {
-    var obj : ?*c_void = undefined;
+    var obj : ?*anyopaque = undefined;
 
-    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
+    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*anyopaque, &obj))) {
       return resource.ResourceError.FetchError;
     }
 
@@ -1264,9 +1279,11 @@ pub const resource = struct {
   }
 
   pub fn keep(comptime T: type, environment: env, res_typ: resource_type, res_trm: term) !void {
-    var obj : ?*c_void = undefined;
+    _ = T;
 
-    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
+    var obj : ?*anyopaque = undefined;
+
+    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*anyopaque, &obj))) {
       return resource.ResourceError.FetchError;
     }
 
@@ -1276,7 +1293,7 @@ pub const resource = struct {
   }
 
   pub fn release(environment: env, res_typ: resource_type, res_trm: term) void {
-    var obj : ?*c_void = undefined;
+    var obj : ?*anyopaque = undefined;
     if (0 != e.enif_get_resource(environment, res_trm, res_typ, &obj)) {
       e.enif_release_resource(obj);
     } else { unreachable; }
@@ -1390,19 +1407,18 @@ pub fn raise_assertion_error(env_: env) term {
   return e.enif_raise_exception(env_, make_atom(env_, assert_slice));
 }
 
-pub fn make_exception(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
-  if (error_trace) | trace | {
+pub fn make_exception(env_: env, exception_module: []const u8, err: anyerror, error_trace: *std.builtin.StackTrace) term {
     const debug_info = std.debug.getSelfDebugInfo() catch return make_nil(env_);
 
     var frame_index: usize = 0;
-    var frames_left: usize = std.math.min(trace.index, trace.instruction_addresses.len);
+    var frames_left: usize = std.math.min(error_trace.index, error_trace.instruction_addresses.len);
     var ert = e.enif_make_list(env_, 0);
 
     while (frames_left != 0) : ({
         frames_left -= 1;
-        frame_index = (frame_index + 1) % trace.instruction_addresses.len;
+        frame_index = (frame_index + 1) % error_trace.instruction_addresses.len;
     }) {
-        const return_address = trace.instruction_addresses[frame_index];
+        const return_address = error_trace.instruction_addresses[frame_index];
         var location = make_location(env_, debug_info, return_address - 1) catch return make_nil(env_);
         ert = e.enif_make_list_cell(env_, location, ert);
     }
@@ -1439,15 +1455,11 @@ pub fn make_exception(env_: env, exception_module: []const u8, err: anyerror, er
     );
 
     return exception;
-
-  } else {
-    return make_nil(env_);
-  }
 }
 
 pub fn raise_exception(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
   if (error_trace) | trace | {
-    return e.enif_raise_exception(env_, make_exception(env_, exception_module, err, error_trace));
+    return e.enif_raise_exception(env_, make_exception(env_, exception_module, err, trace));
   } else {
     return make_nil(env_);
   }
@@ -1481,15 +1493,26 @@ pub threadlocal var test_env: env = undefined;
 
 pub export fn blank_load(
   _env: env,
-  _priv: [*c]?*c_void,
+  _priv: [*c]?*anyopaque,
   _info: term) c_int {
+
+  _ = _env;
+  _ = _priv;
+  _ = _info;
+
   return 0;
 }
 
 pub export fn blank_upgrade(
   _env: env,
-  _priv: [*c]?*c_void,
-  _old_priv: [*c]?*c_void,
+  _priv: [*c]?*anyopaque,
+  _old_priv: [*c]?*anyopaque,
   _info: term) c_int {
+
+  _ = _env;
+  _ = _priv;
+  _ = _old_priv;
+  _ = _info;
+
   return 0;
 }

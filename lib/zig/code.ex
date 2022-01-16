@@ -132,7 +132,7 @@ defmodule Zig.Code do
       [] -> ""
       _ ->
         """
-        export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
+        export fn nif_load(env: beam.env, priv: [*c]?*anyopaque, load_info: beam.term) c_int {
         #{resource_inits}  return 0;
         }
 
@@ -242,7 +242,7 @@ defmodule Zig.Code do
         null);
     }
 
-    export fn __destroy_#{name}__(env: beam.env, res: ?*c_void) void {#{cleanup}}
+    export fn __destroy_#{name}__(env: beam.env, res: ?*anyopaque) void {#{cleanup}}
     """
   end
 

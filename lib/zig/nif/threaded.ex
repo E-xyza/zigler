@@ -226,7 +226,7 @@ defmodule Zig.Nif.Threaded do
           cache.name.?,
           &cache.thread,
           #{harness nif.name},
-          @ptrCast(*c_void, cache),
+          @ptrCast(*anyopaque, cache),
           null)) {
 
         return beam.make_ok_term(env, cache_ref);
@@ -286,7 +286,7 @@ defmodule Zig.Nif.Threaded do
     end
 
     """
-    export fn #{harness nif.name}(cache_q: ?*c_void) ?*c_void {
+    export fn #{harness nif.name}(cache_q: ?*anyopaque) ?*anyopaque {
       var cache: *#{cache nif.name} =
         @ptrCast(*#{cache nif.name},
           @alignCast(@alignOf(#{cache nif.name}), cache_q.?));
