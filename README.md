@@ -168,6 +168,11 @@ defmodule Documentation do
 end
 ```
 
+## Formatting
+
+A mix format plugin is available through the `zigler_format` package. 
+[See the installation instructions](https://github.com/v0idpwn/zigler_format#installation)
+
 ## Zigler Principles
 
 1. Make being a good citizen of the BEAM easy.
