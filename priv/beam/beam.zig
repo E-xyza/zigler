@@ -100,13 +100,13 @@
 
 const e = @import("erl_nif.zig");
 const std = @import("std");
-const BeamMutex = @import("beam_mutex.zig").BeamMutex;
+pub const Mutex = @import("beam_mutex.zig").BeamMutex;
+pub const Allocator = @import("beam_allocator.zig").BeamAllocator;
 
 ///////////////////////////////////////////////////////////////////////////////
 // BEAM allocator definitions
 ///////////////////////////////////////////////////////////////////////////////
 
-const Allocator = std.mem.Allocator;
 
 // basic allocator
 
@@ -141,53 +141,8 @@ const Allocator = std.mem.Allocator;
 /// use `beam.general_purpose_allocator`.
 ///
 /// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
-pub const allocator = &raw_beam_allocator;
 
-pub const MAX_ALIGN = 8;
-
-var raw_beam_allocator = Allocator{
-  .allocFn = raw_beam_alloc,
-  .resizeFn = raw_beam_resize,
-};
-
-fn raw_beam_alloc(
-    _self: *Allocator,
-    len: usize,
-    ptr_align: u29,
-    _len_align: u29,
-    _ret_addr: usize,
-) Allocator.Error![]u8 {
-  _ = _self;
-  _ = _len_align;
-  _ = _ret_addr;
-
-  if (ptr_align > MAX_ALIGN) { return error.OutOfMemory; }
-  const ptr = e.enif_alloc(len) orelse return error.OutOfMemory;
-  return @ptrCast([*]u8, ptr)[0..len];
-}
-
-fn raw_beam_resize(
-    _self: *Allocator,
-    buf: []u8,
-    _old_align: u29,
-    new_len: usize,
-    _len_align: u29,
-    _ret_addr: usize,
-) Allocator.Error!usize {
-  _ = _self;
-  _ = _old_align;
-  _ = _len_align;
-  _ = _ret_addr;
-
-  if (new_len == 0) {
-    e.enif_free(buf.ptr);
-    return 0;
-  }
-  if (new_len <= buf.len) {
-    return new_len;
-  }
-  return error.OutOfMemory;
-}
+pub const allocator = BeamAllocator.allocator();
 
 /// !value
 /// provides a BEAM allocator that can perform allocations with greater
