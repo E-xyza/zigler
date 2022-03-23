@@ -192,6 +192,14 @@ defmodule Zig do
   and/or the `link_libcpp: true` options if your code needs the c or c++
   standard libraries
 
+  You can also set these values via config
+  ```
+  config :zigler,
+    libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
+    include: ["/usr/include/x86_64-linux-gnu"]
+  ```
+
+
   ### Compilation assistance
 
   If something should go wrong, Zigler will translate the Zig compiler error
@@ -273,6 +281,9 @@ defmodule Zig do
   alias Zig.Compiler
   alias Zig.Parser
 
+  @includes Application.compile_env(:zigler, :include, [])
+  @libs Application.compile_env(:zigler, :libs, [])
+
   # default release modes.
   # you can override these in your `use Zigler` statement.
   @spec __using__(keyword) :: Macro.t()
@@ -286,13 +297,23 @@ defmodule Zig do
 
     user_opts =
       opts
-      |> Keyword.take(~w(libs resources dry_run c_includes system_include_dirs
-        local link_libc link_libcpp sources system_libs)a)
+      |> Keyword.take(~w(libs resources dry_run c_includes system_include_dirs local link_libc)a)
+      |> then(fn opts ->
+        if @libs == [] do
+          opts
+        else
+          Keyword.put(opts, :libs, @libs)
+        end
+      end)
 
     include_dirs =
-      opts
-      |> Keyword.get(:include, [])
-      |> Kernel.++(if has_include_dir?(__CALLER__), do: ["include"], else: [])
+      if @includes == [] do
+        opts
+        |> Keyword.get(:include, [])
+        |> Kernel.++(if has_include_dir?(__CALLER__), do: ["include"], else: [])
+      else
+        @includes
+      end
 
     zigler! =
       struct(
