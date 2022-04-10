@@ -46,6 +46,7 @@ defmodule Zig.Nif.Threaded do
   @impl true
   def beam_adapter(nif = %Nif{}) do
     typespec = Typespec.from_nif(nif)
+
     quote context: Elixir do
       unquote(typespec)
       unquote(threaded_main_fn(nif))
@@ -139,7 +140,7 @@ defmodule Zig.Nif.Threaded do
     const #{cache_ptr nif.name} = *#{cache nif.name};
 
     /// resource: #{cache_ptr nif.name} cleanup
-    fn #{cache_cleanup nif.name}(env: beam.env, cache_ptr: *#{cache_ptr nif.name}) void {
+    fn #{cache_cleanup nif.name}(_: beam.env, cache_ptr: *#{cache_ptr nif.name}) void {
       // std.debug.assert(beam.yield_info == null);
       var cache = cache_ptr.*;
 
@@ -176,7 +177,7 @@ defmodule Zig.Nif.Threaded do
     # note that this function needs to exist as a separate function to be a seam between the C ABI
     # that the erlang system demands.
     """
-    export fn #{launcher nif.name}(env: beam.env, _argc: c_int, argv: [*c] const beam.term) beam.term {
+    export fn #{launcher nif.name}(env: beam.env, _: c_int, argv: [*c] const beam.term) beam.term {
       return #{packer nif.name}(env, argv) catch beam.make_error_binary(env, "launching nif");
     }
     """
@@ -188,7 +189,7 @@ defmodule Zig.Nif.Threaded do
     const #{name nif.name} = "#{nif.name}-threaded";
     fn #{packer nif.name}(env: beam.env, argv: [*c] const beam.term) !beam.term {
       // std.debug.assert(beam.yield_info == null);
-
+      beam.set_generic_self();
       // allocate space for the cache and obtain its pointer.
       var cache = try beam.allocator.create(#{cache nif.name});
       errdefer beam.allocator.destroy(cache);
@@ -218,7 +219,7 @@ defmodule Zig.Nif.Threaded do
       cache.this = cache_ref;
 
       // transfer the arguments over to the new environment.
-      for (cache.args.?) |*arg, index| {
+      for (cache.args.?) |_, index| {
         cache.args.?[index] = e.enif_make_copy(new_environment, argv[index]);
       }
 
@@ -226,7 +227,7 @@ defmodule Zig.Nif.Threaded do
           cache.name.?,
           &cache.thread,
           #{harness nif.name},
-          @ptrCast(*c_void, cache),
+          @ptrCast(*anyopaque, cache),
           null)) {
 
         return beam.make_ok_term(env, cache_ref);
@@ -238,13 +239,20 @@ defmodule Zig.Nif.Threaded do
   def harness_fn(nif) do
     result_assign = if nif.retval == "void", do: "", else: "var result = "
 
-    get_clauses = Adapter.get_clauses(nif, &bail/1, &"cache.args.?[#{&1}]")
+    get_clauses =
+      if nif.arity != 0, do: Adapter.get_clauses(nif, &bail/1, &"cache.args.?[#{&1}]"), else: ""
 
     result_clause = case nif.retval do
-      "!" <> _type ->
-        result_term = Adapter.make_clause(nif.retval, "__r", "cache.yield_info.environment")
+        "!" <> _type ->
+          {r_used?, result_term} =
+            Adapter.make_clause(nif.retval, "__r", "cache.yield_info.environment")
+
+          capture_name = if nif.arity != 0 and r_used?,
+              do: "__r",
+              else: "_"
+
         """
-        if (result) | __r |
+        if (result) | #{capture_name} |
           beam.make_ok_term(
             env,
             e.enif_make_tuple(
@@ -270,7 +278,7 @@ defmodule Zig.Nif.Threaded do
           );
         """
       _ ->
-        result_term = Adapter.make_clause(nif.retval, "result", "cache.yield_info.environment")
+        {_result_used?, result_term} = Adapter.make_clause(nif.retval, "result", "cache.yield_info.environment")
 
         """
         beam.make_ok_term(
@@ -286,7 +294,7 @@ defmodule Zig.Nif.Threaded do
     end
 
     """
-    export fn #{harness nif.name}(cache_q: ?*c_void) ?*c_void {
+    export fn #{harness nif.name}(cache_q: ?*anyopaque) ?*anyopaque {
       var cache: *#{cache nif.name} =
         @ptrCast(*#{cache nif.name},
           @alignCast(@alignOf(#{cache nif.name}), cache_q.?));

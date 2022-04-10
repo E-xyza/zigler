@@ -44,6 +44,7 @@ pub fn build(b: *Builder) void {
         <% raise "invalid library file" %>
     <% end %>
     <% end %>
+    lib.linker_allow_shlib_undefined = true;
     // strip_symbols option?
     lib.strip = <%= Mix.env() == :prod %>;
     // future feature

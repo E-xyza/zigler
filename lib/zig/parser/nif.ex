@@ -131,4 +131,15 @@ defmodule Zig.Parser.Nif do
     %{context | global: resource ++ [final_nif | context.global]}
   end
 
+  @require_env @float_types ++
+                 @int_types ++
+                 @bool ++
+                 @char ++
+                 @env ++
+                 @void ++
+                 Enum.flat_map(
+                   @float_types ++ @int_types ++ @bool ++ @char,
+                   &["[]#{&1}", "[*c]#{&1}", "[_]#{&1}"]
+                 )
+  def require_env?(type), do: type in @require_env
 end

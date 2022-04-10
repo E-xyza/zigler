@@ -3,7 +3,6 @@ defmodule ZiglerTest.ZigTest.Transitive do
   use Zig
   ~Z"""
   pub const trans = @import("imported.zig");
-  pub usingnamespace @import("namespaced.zig");
   const nonpub = @import("nonpublic.zig");
 
   /// nif: foo/0

@@ -10,7 +10,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   ~Z"""
   const tenth_ms = 100; // in usec.
   const intervals = 20000;
-  const USEC = e.ErlNifTimeUnit.ERL_NIF_USEC;
+  const USEC = e.ERL_NIF_USEC;
 
   /// nif: yielding_forty_seven/0 yielding
   fn yielding_forty_seven() i32 {

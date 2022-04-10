@@ -98,3 +98,5 @@ Thanks to Dave Cottlehuber @dch for testing.
 - better support for 'bring your own zig'; moved to library config function
 - tentative support for MacOS and FreeBSD targets
 - `void` returning functions now output `:ok` instead of `nil`
+
+## 0.9.1

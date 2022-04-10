@@ -1,7 +1,6 @@
 //! general-purpose BEAM mutex wrapped into the zig mutex interface
 
 const e = @import("erl_nif.zig");
-usingnamespace @import("os/bits.zig");
 
 const MutexError = error {
     CreationFail
@@ -42,18 +41,18 @@ pub fn BeamMutex(comptime name: []const u8) type {
         /// the mutex is unavailable. Otherwise returns Held. Call
         /// release on Held.
         pub fn tryAcquire(self: *Self) ?Held {
-            return switch (e.enif_mutex_trylock(mutex)) {
+            return switch (e.enif_mutex_trylock(self)) {
                 0 => Held{.mutex = self},
-                EBUSY => null,
+                e.EBUSY => null,
                 _ => unreachable,
             };
         }
 
         /// Acquire the mutex. Will deadlock if the mutex is already
         /// held by the calling thread.
-        pub fn acquire(self: *Dummy) Held {
-            e.enif_mutex_lock(mutex);
+        pub fn acquire(self: *Self) Held {
+            e.enif_mutex_lock(self);
             return Held{.mutex = self};
         }
     };
-};
+}

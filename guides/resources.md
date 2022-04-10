@@ -130,11 +130,11 @@ fn create_struct_ptr(env: beam.env, first_name: []u8, last_name: []u8) beam.term
 
   resource.first_name = beam.allocator.alloc(u8, first_name.len)
     catch return beam.raise_enomem(env);
-  errdefer beam.allocator.free(resource_fn);
+  errdefer beam.allocator.free(resource.first_name);
 
   resource.last_name = beam.allocator.alloc(u8, last_name.len)
     catch return beam.raise_enomem(env);
-  errdefer beam.allocator.free(resource_ln);
+  errdefer beam.allocator.free(resource.last_name);
 
   std.mem.copy(u8, resource.first_name, first_name);
   std.mem.copy(u8, resource.last_name, last_name);
@@ -410,14 +410,14 @@ that need freeing, you should do it here.
 ```elixir
 ~Z"""
 /// resource: struct_res cleanup
-fn struct_res_cleanup(env: beam.env, resource: *struct_res) void {
+fn struct_res_cleanup(_: beam.env, resource: *struct_res) void {
   beam.allocator.free(resource.first_name);
   beam.allocator.free(resource.last_name);
   // don't clean up the resource pointer itself.
 }
 
-/// resource: struct_res_ptr cleanup
-fn struct_res_ptr_cleanup(env: beam.env, resource: *struct_res_ptr) void {
+/// resource: struct_ptr_res cleanup
+fn struct_res_ptr_cleanup(_: beam.env, resource: *struct_ptr_res) void {
   beam.allocator.free(resource.first_name);
   beam.allocator.free(resource.last_name);
   // DO clean up the pointer in the resource.
