@@ -24,7 +24,7 @@ Docs can be found at [https://hexdocs.pm/zigler](https://hexdocs.pm/zigler).
 
 - Linux
 - FreeBSD (tested, but not subjected to CI)
-- MacOS (I believe it works but is still offically untested)
+- MacOS (I believe it works but is still officially untested)
 
 - Nerves cross-compilation is supported out of the box.
 

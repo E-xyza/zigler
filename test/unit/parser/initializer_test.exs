@@ -6,7 +6,7 @@ defmodule ZiglerTest.Parser.InitializerTest do
 
   @moduletag :parser
 
-  describe "the parser intializer" do
+  describe "the parser initializer" do
     test "produces a parser object" do
       {:ok, [], _rest, context, _, _} = Parser.parser_initializer("")
       assert %Parser{} = context

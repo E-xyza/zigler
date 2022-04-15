@@ -34,7 +34,7 @@
 //! }
 //! ```
 //!
-//! Beacuse Zig features *composable allocators*, you can very easily implement
+//! Because Zig features *composable allocators*, you can very easily implement
 //! custom allocators on top of the existing BEAM allocator.
 //!
 //! ### Getters
@@ -744,7 +744,7 @@ pub fn get_slice_of(comptime T: type, environment: env, list: term) ![]T {
   return get_slice_of_alloc(T, allocator, environment, list);
 }
 
-/// Converts an BEAM `t:list/0` of homogenous type into a Zig slice, but
+/// Converts an BEAM `t:list/0` of homogeneous type into a Zig slice, but
 /// using any allocator you wish.
 ///
 /// ownership is passed to the caller.

@@ -185,7 +185,7 @@ defmodule ZiglerTest.Parser.FunctionHeaderTest do
       end
     end
 
-    test "adds the cleanup struct into the actual resource if the resource definiton already exists" do
+    test "adds the cleanup struct into the actual resource if the resource definition already exists" do
       assert {:ok, _, _, context, _, _} = Parser.parse_function_header("""
         fn bar(env: beam.env, res: *foo) void {
       """, context: %{local: %ResourceCleanup{for: :foo}, global: [%Resource{name: :foo}]})
