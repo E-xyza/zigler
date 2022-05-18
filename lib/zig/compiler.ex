@@ -59,7 +59,6 @@ defmodule Zig.Compiler do
     nif_functions = Enum.map(module.nifs, &function_skeleton/1)
     nif_name = Zig.nif_name(module, false)
 
-    # TODO: merge these two.
     if module.dry_run do
       quote do
         unquote_splicing(dependencies)
@@ -166,38 +165,38 @@ defmodule Zig.Compiler do
 
             new_message = "#{inspect(m)}.#{f}/#{a} returned the zig error `.#{exception.message}`"
 
-            zig_errors =
-              Enum.map(exception.error_return_trace, fn
-                {_, fun, error_file, error_line} ->
-                  code_map = m.__info__(:attributes)[:nif_code_map]
-                  [zig_root] = m.__info__(:attributes)[:zig_root_dir]
-
-                  cond do
-                    String.starts_with?(error_file, zig_root) ->
-                      file = String.replace_leading(error_file, zig_root, "[zig]")
-
-                      {:@, fun, [:...], [file: file, line: error_line]}
-
-                    String.starts_with?(Path.basename(error_file), "#{m}") ->
-                      {src_file, src_line} =
-                        code
-                        |> IO.iodata_to_binary()
-                        |> String.split("\n")
-                        |> line_lookup(error_line)
-
-                      {:.., fun, [:...], [file: src_file, line: src_line]}
-
-                    lookup = List.keyfind(code_map, error_file, 0) ->
-                      {_, src_file} = lookup
-
-                      {:.., fun, [:...], [file: src_file, line: error_line]}
-
-                    true ->
-                      {:.., fun, [:...], [file: error_file, line: error_line]}
-                  end
-              end)
+            zig_errors = Enum.map(exception.error_return_trace, &process_return_trace(m, code, &1))
 
             {%{exception | message: new_message}, Enum.reverse(zig_errors, stacktrace)}
+          end
+
+          defp process_return_trace(m, code, {_, fun, error_file, error_line}) do
+            code_map = m.__info__(:attributes)[:nif_code_map]
+            [zig_root] = m.__info__(:attributes)[:zig_root_dir]
+
+            cond do
+              String.starts_with?(error_file, zig_root) ->
+                file = String.replace_leading(error_file, zig_root, "[zig]")
+
+                {:@, fun, [:...], [file: file, line: error_line]}
+
+              String.starts_with?(Path.basename(error_file), "#{m}") ->
+                {src_file, src_line} =
+                  code
+                  |> IO.iodata_to_binary()
+                  |> String.split("\n")
+                  |> line_lookup(error_line)
+
+                {:.., fun, [:...], [file: src_file, line: src_line]}
+
+              lookup = List.keyfind(code_map, error_file, 0) ->
+                {_, src_file} = lookup
+
+                {:.., fun, [:...], [file: src_file, line: error_line]}
+
+              true ->
+                {:.., fun, [:...], [file: error_file, line: error_line]}
+            end
           end
 
           defp stack_sig(fun, m, error_file, error_line, zig_root, code, code_map) do

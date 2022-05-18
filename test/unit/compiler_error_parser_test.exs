@@ -7,8 +7,7 @@ defmodule ZiglerTest.CompilerErrorParserTest do
 
   describe "when passing code lines to the parser" do
     test "a non-tag line is an error" do
-      assert {:error, _, _, _, _, _} =
-               Error.check_ref("fn foo(x: i64) i64 {")
+      assert {:error, _, _, _, _, _} = Error.check_ref("fn foo(x: i64) i64 {")
     end
 
     test "a tag line is an success" do
