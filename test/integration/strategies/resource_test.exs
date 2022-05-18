@@ -1,5 +1,4 @@
 defmodule ZiglerTest.Integration.Strategies.ResourceTest do
-
   # tests to make sure that the basics of a resource lifecycle works.
 
   use ExUnit.Case, async: true
@@ -126,10 +125,12 @@ defmodule ZiglerTest.Integration.Strategies.ResourceTest do
 
     test "can be cleaned up properly in the more complex case" do
       test_pid = self()
+
       spawn(fn ->
         res = create_pid_resource(test_pid)
         spawn(fn -> wait_200_millis(res) end)
       end)
+
       # wait 100 ms
       Process.sleep(100)
       # hasn't been destroyed yet.
@@ -140,5 +141,4 @@ defmodule ZiglerTest.Integration.Strategies.ResourceTest do
       assert_receive :done
     end
   end
-
 end

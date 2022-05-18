@@ -10,7 +10,8 @@ defmodule Zigler.MixProject do
 
   def project do
     env = Mix.env()
-    if Mix.env in [:unit, :isolated] do
+
+    if Mix.env() in [:unit, :isolated] do
       # elixir doesn't allow us to run tests in any environment besides `:test`.
       # so if we send ourselves into the unit tests, we'll have to ninja
       # ourselves back into the test environment.
@@ -32,7 +33,10 @@ defmodule Zigler.MixProject do
         # we need to package the zig BEAM adapters and the c include files as a part
         # of the hex packaging system.
         files: ~w(lib mix.exs README* LICENSE* VERSIONS* priv),
-        links: %{"GitHub" => "https://github.com/ityonemo/zigler", "Zig" => "https://ziglang.org/"}
+        links: %{
+          "GitHub" => "https://github.com/ityonemo/zigler",
+          "Zig" => "https://ziglang.org/"
+        }
       ],
       dialyzer: [plt_add_deps: :transitive],
       test_coverage: [tool: ExCoveralls],
@@ -43,23 +47,40 @@ defmodule Zigler.MixProject do
         "coveralls.detail": :test,
         "coveralls.post": :test,
         "coveralls.html": :test,
-        dialyzer: :dev],
+        dialyzer: :dev
+      ],
       test_paths: test_paths(env),
       source_url: "https://github.com/ityonemo/zigler/",
       docs: [
         main: "Zig",
         extras: ["README.md", "guides/nifs.md", "guides/resources.md"],
-        groups_for_extras: ["Guides": Path.wildcard("guides/*.md")],
-        groups_for_modules: ["Under the hood": under_the_hood()]]
+        groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
+        groups_for_modules: ["Under the hood": under_the_hood()]
+      ]
     ]
   end
 
   def under_the_hood do
-    [Zig.Assembler, Zig.Code, Zig.Code.LongRunning, Zig.Compiler,
-     Zig.Module, Zig.Parser, Zig.Typespec, Zig.Command, Zig.Doc.Parser,
-     Zig.Doc.Retriever, Zig.Parser.Error, Zig.Parser.Imports,
-     Zig.Patches, Zig.Parser.Unit, Zig.Parser.Resource,
-     Zig.Parser.ResourceCleanup, Zig.Parser.Nif, Zig.Parser]
+    [
+      Zig.Assembler,
+      Zig.Code,
+      Zig.Code.LongRunning,
+      Zig.Compiler,
+      Zig.Module,
+      Zig.Parser,
+      Zig.Typespec,
+      Zig.Command,
+      Zig.Doc.Parser,
+      Zig.Doc.Retriever,
+      Zig.Parser.Error,
+      Zig.Parser.Imports,
+      Zig.Patches,
+      Zig.Parser.Unit,
+      Zig.Parser.Resource,
+      Zig.Parser.ResourceCleanup,
+      Zig.Parser.Nif,
+      Zig.Parser
+    ]
   end
 
   def application, do: [extra_applications: [:logger, :inets]]
@@ -91,7 +112,7 @@ defmodule Zigler.MixProject do
       # to parse the zig JSON
       {:jason, "~> 1.1", runtime: false},
       # documentation
-      {:ex_doc, "~> 0.23", runtime: false},
+      {:ex_doc, "~> 0.23", runtime: false}
     ]
   end
 end

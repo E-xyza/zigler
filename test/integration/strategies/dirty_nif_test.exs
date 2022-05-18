@@ -1,5 +1,4 @@
 defmodule ZiglerTest.Integration.Strategies.DirtyNifTest do
-
   use ExUnit.Case, async: true
 
   use Zig
@@ -14,9 +13,9 @@ defmodule ZiglerTest.Integration.Strategies.DirtyNifTest do
   """
 
   test "dirty_cpu nifs can sleep for a while" do
-    start = DateTime.utc_now
+    start = DateTime.utc_now()
     assert 47 == dirty_cpu_forty_seven()
-    elapsed = DateTime.utc_now |> DateTime.diff(start)
+    elapsed = DateTime.utc_now() |> DateTime.diff(start)
     assert elapsed >= 2 and elapsed < 4
   end
 
@@ -43,9 +42,9 @@ defmodule ZiglerTest.Integration.Strategies.DirtyNifTest do
   """
 
   test "dirty_io nifs can sleep for a while" do
-    start = DateTime.utc_now
+    start = DateTime.utc_now()
     assert 47 == dirty_io_forty_seven()
-    elapsed = DateTime.utc_now |> DateTime.diff(start)
+    elapsed = DateTime.utc_now() |> DateTime.diff(start)
     assert elapsed >= 2 and elapsed < 4
   end
 

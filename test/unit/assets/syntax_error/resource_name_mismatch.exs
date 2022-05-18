@@ -8,5 +8,4 @@ defmodule ZiglerTest.DryRun.ResourceNameMismatch do
   /// resource: bar definition
   const baz = i64;
   """
-
 end

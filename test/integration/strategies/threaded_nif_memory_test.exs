@@ -1,5 +1,6 @@
 defmodule ZiglerTest.Integration.Strategies.ThreadedNifMemoryTest do
-  use ExUnit.Case  # make memory tests non-async
+  # make memory tests non-async
+  use ExUnit.Case
   use Zig, link_libc: true
 
   @moduletag :threaded
@@ -21,6 +22,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifMemoryTest do
     }
   }
   """
+
   test "threaded function can be cancelled" do
     start_memory = :erlang.memory()[:total]
     this = self()
@@ -28,7 +30,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifMemoryTest do
     assert_receive :started
     mid_memory = :erlang.memory()[:total]
 
-    assert (mid_memory - start_memory) > 8_000_000
+    assert mid_memory - start_memory > 8_000_000
 
     Process.exit(child, :kill)
 
@@ -37,7 +39,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifMemoryTest do
     Process.sleep(100)
 
     final_memory = :erlang.memory()[:total]
-    assert (mid_memory - final_memory) > 8_000_000
+    assert mid_memory - final_memory > 8_000_000
   end
 
   ~Z"""
@@ -55,6 +57,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifMemoryTest do
     try beam.yield();
   }
   """
+
   test "threaded function can be abandoned" do
     start_memory = :erlang.memory()[:total]
     this = self()
@@ -62,7 +65,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifMemoryTest do
     assert_receive :started
     mid_memory = :erlang.memory()[:total]
 
-    assert (mid_memory - start_memory) > 8_000_000
+    assert mid_memory - start_memory > 8_000_000
 
     Process.exit(child, :kill)
 
@@ -73,6 +76,6 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifMemoryTest do
     assert_receive :done
 
     final_memory = :erlang.memory()[:total]
-    assert (mid_memory - final_memory) > 8_000_000
+    assert mid_memory - final_memory > 8_000_000
   end
 end

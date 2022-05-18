@@ -27,14 +27,21 @@ defmodule ZiglerTest.Integration.ErrorTest do
           Exception.blame(:error, error, __STACKTRACE__)
       end
 
-    assert Exception.message(error) == "#{inspect __MODULE__}.void_error/1 returned the zig error `.BadInput`"
+    assert Exception.message(error) ==
+             "#{inspect(__MODULE__)}.void_error/1 returned the zig error `.BadInput`"
 
-    assert [{
-      :.., :void_error, [:...],
-    [
-      file: "test/integration/error_test.exs",
-      line: @basic_error_line
-    ]} | _] = stacktrace
+    assert [
+             {
+               :..,
+               :void_error,
+               [:...],
+               [
+                 file: "test/integration/error_test.exs",
+                 line: @basic_error_line
+               ]
+             }
+             | _
+           ] = stacktrace
   end
 
   @nested_error_line __ENV__.line + 4
@@ -56,19 +63,30 @@ defmodule ZiglerTest.Integration.ErrorTest do
           Exception.blame(:error, error, __STACKTRACE__)
       end
 
-    assert Exception.message(error) == "#{inspect __MODULE__}.nested_error/1 returned the zig error `.BadInput`"
+    assert Exception.message(error) ==
+             "#{inspect(__MODULE__)}.nested_error/1 returned the zig error `.BadInput`"
 
-    assert [{
-      :.., :void_error, [:...],
-    [
-      file: "test/integration/error_test.exs",
-      line: @basic_error_line
-    ]}, {
-      :.., :nested_error, [:...],
-    [
-      file: "test/integration/error_test.exs",
-      line: @nested_error_line
-    ]} | _] = stacktrace
+    assert [
+             {
+               :..,
+               :void_error,
+               [:...],
+               [
+                 file: "test/integration/error_test.exs",
+                 line: @basic_error_line
+               ]
+             },
+             {
+               :..,
+               :nested_error,
+               [:...],
+               [
+                 file: "test/integration/error_test.exs",
+                 line: @nested_error_line
+               ]
+             }
+             | _
+           ] = stacktrace
   end
 
   @union_error_line __ENV__.line + 5
@@ -93,14 +111,21 @@ defmodule ZiglerTest.Integration.ErrorTest do
           Exception.blame(:error, error, __STACKTRACE__)
       end
 
-    assert Exception.message(error) == "#{inspect __MODULE__}.union_error/1 returned the zig error `.BadInput`"
+    assert Exception.message(error) ==
+             "#{inspect(__MODULE__)}.union_error/1 returned the zig error `.BadInput`"
 
-    assert [{
-      :.., :union_error, [:...],
-    [
-      file: "test/integration/error_test.exs",
-      line: @union_error_line
-    ]} | _] = stacktrace
+    assert [
+             {
+               :..,
+               :union_error,
+               [:...],
+               [
+                 file: "test/integration/error_test.exs",
+                 line: @union_error_line
+               ]
+             }
+             | _
+           ] = stacktrace
   end
 
   @external_line __ENV__.line + 6
@@ -122,19 +147,30 @@ defmodule ZiglerTest.Integration.ErrorTest do
           Exception.blame(:error, error, __STACKTRACE__)
       end
 
-    assert Exception.message(error) == "#{inspect __MODULE__}.external_error/0 returned the zig error `.ExternalError`"
+    assert Exception.message(error) ==
+             "#{inspect(__MODULE__)}.external_error/0 returned the zig error `.ExternalError`"
 
-    assert [{
-      :.., :"error_external.void_error", [:...],
-    [
-      file: "test/integration/error_external.zig",
-      line: 4
-    ]}, {
-      :.., :external_error, [:...],
-    [
-      file: "test/integration/error_test.exs",
-      line: @external_line
-    ]} | _] = stacktrace
+    assert [
+             {
+               :..,
+               :"error_external.void_error",
+               [:...],
+               [
+                 file: "test/integration/error_external.zig",
+                 line: 4
+               ]
+             },
+             {
+               :..,
+               :external_error,
+               [:...],
+               [
+                 file: "test/integration/error_test.exs",
+                 line: @external_line
+               ]
+             }
+             | _
+           ] = stacktrace
   end
 
   @threaded_line __ENV__.line + 5
@@ -147,6 +183,7 @@ defmodule ZiglerTest.Integration.ErrorTest do
     return input;
   }
   """
+
   test "for threaded" do
     assert 47 == threaded_error(47)
 
@@ -158,14 +195,21 @@ defmodule ZiglerTest.Integration.ErrorTest do
           Exception.blame(:error, error, __STACKTRACE__)
       end
 
-    assert Exception.message(error) == "#{inspect __MODULE__}.threaded_error/1 returned the zig error `.BadInput`"
+    assert Exception.message(error) ==
+             "#{inspect(__MODULE__)}.threaded_error/1 returned the zig error `.BadInput`"
 
-    assert [{
-      :.., :threaded_error, [:...],
-    [
-      file: "test/integration/error_test.exs",
-      line: @threaded_line
-    ]} | _] = stacktrace
+    assert [
+             {
+               :..,
+               :threaded_error,
+               [:...],
+               [
+                 file: "test/integration/error_test.exs",
+                 line: @threaded_line
+               ]
+             }
+             | _
+           ] = stacktrace
   end
 
   @yielding_line __ENV__.line + 5
@@ -190,13 +234,20 @@ defmodule ZiglerTest.Integration.ErrorTest do
           Exception.blame(:error, error, __STACKTRACE__)
       end
 
-    assert Exception.message(error) == "#{inspect __MODULE__}.yielding_error/1 returned the zig error `.BadInput`"
+    assert Exception.message(error) ==
+             "#{inspect(__MODULE__)}.yielding_error/1 returned the zig error `.BadInput`"
 
-    assert [{
-      :.., :yielding_error, [:...],
-    [
-      file: "test/integration/error_test.exs",
-      line: @yielding_line
-    ]} | _] = stacktrace
+    assert [
+             {
+               :..,
+               :yielding_error,
+               [:...],
+               [
+                 file: "test/integration/error_test.exs",
+                 line: @yielding_line
+               ]
+             }
+             | _
+           ] = stacktrace
   end
 end

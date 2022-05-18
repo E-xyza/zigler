@@ -41,9 +41,11 @@ defmodule ZiglerTest.Integration.BeamTypeTest do
   test "generic pid" do
     pass_beam_pid(self())
     assert_receive 47
+
     assert_raise FunctionClauseError, fn ->
       pass_beam_pid(:foo)
     end
+
     assert_raise FunctionClauseError, fn ->
       pass_beam_pid(47)
     end
@@ -59,12 +61,13 @@ defmodule ZiglerTest.Integration.BeamTypeTest do
   test "generic erl_nif_pid" do
     pass_erl_nif_pid(self())
     assert_receive 47
+
     assert_raise FunctionClauseError, fn ->
       pass_erl_nif_pid(:foo)
     end
+
     assert_raise FunctionClauseError, fn ->
       pass_erl_nif_pid(47)
     end
   end
-
 end

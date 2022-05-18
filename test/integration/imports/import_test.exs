@@ -53,5 +53,4 @@ defmodule ZiglerTest.Imports.ImportTest do
     return test_transitive_import.test_47();
   }
   """
-
 end

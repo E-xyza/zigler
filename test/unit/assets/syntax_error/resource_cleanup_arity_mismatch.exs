@@ -12,5 +12,4 @@ defmodule ZiglerTest.DryRun.ResourceArityMismatch do
   fn bar_cleanup(env: beam.env, res: *bar, quux: i64) void {
   }
   """
-
 end

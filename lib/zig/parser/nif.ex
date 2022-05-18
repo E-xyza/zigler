@@ -1,5 +1,4 @@
 defmodule Zig.Parser.Nif do
-
   @moduledoc """
   This datastructure represents structured information about a single nif
   inside of a `Zig.sigil_Z/2` block.  This is used to generate the
@@ -25,81 +24,97 @@ defmodule Zig.Parser.Nif do
 
   alias Zig.Parser.Resource
 
-  @float_types  ~w(f16 f32 f64)
-  @int_types    ~w(u16 i32 u32 i64 u64 c_int c_uint c_long c_ulong isize usize)
-  @bool         ["bool"]
-  @char         ["u8"]
-  @beam_args  ~w(beam.term beam.atom beam.pid)
-  @enif_args  ~w(e.ErlNifTerm e.ErlNifPid)
+  @float_types ~w(f16 f32 f64)
+  @int_types ~w(u16 i32 u32 i64 u64 c_int c_uint c_long c_ulong isize usize)
+  @bool ["bool"]
+  @char ["u8"]
+  @beam_args ~w(beam.term beam.atom beam.pid)
+  @enif_args ~w(e.ErlNifTerm e.ErlNifPid)
   @scalar_types @float_types ++ @int_types ++ @bool ++ @char ++ @beam_args ++ @enif_args
-  @void         ["void"]
-  @env          ~w(?*e.ErlNifEnv beam.env)
-  @array_types  Enum.flat_map(@scalar_types, &["[]#{&1}", "[*c]#{&1}", "[_]#{&1}"])
+  @void ["void"]
+  @env ~w(?*e.ErlNifEnv beam.env)
+  @array_types Enum.flat_map(@scalar_types, &["[]#{&1}", "[*c]#{&1}", "[_]#{&1}"])
 
-  @valid_args  @scalar_types ++ @array_types ++ @env
+  @valid_args @scalar_types ++ @array_types ++ @env
   @valid_retvals @scalar_types ++ @array_types ++ @void
 
   @enforce_keys [:name, :arity]
 
-  defstruct @enforce_keys ++ [
-    :module, :doc, :retval,
-    args:   [],
-    opts:   [],
-    test:   nil # only to be used for tests.  This is the string name
+  defstruct @enforce_keys ++
+              [
+                :module,
+                :doc,
+                :retval,
+                args: [],
+                opts: [],
+                # only to be used for tests.  This is the string name
+                test: nil
                 # of the test which is going to be bound in.
-  ]
+              ]
 
   @type concurrency :: :threaded | :yielding | :dirty_io | :dirty_cpu
   @type option :: {:concurrency, concurrency}
 
   @type t :: %__MODULE__{
-    name:   atom,
-    arity:  arity,
-    doc:    iodata | nil,
-    args:   [String.t],
-    retval: String.t,
-    opts:   [option],
-    test:   atom
-  }
+          name: atom,
+          arity: arity,
+          doc: iodata | nil,
+          args: [String.t()],
+          retval: String.t(),
+          opts: [option],
+          test: atom
+        }
 
   @beam_envs ["beam.env", "?*e.ErlNifEnv"]
 
   # validate_arity/3: checks to make sure the arity of nif declaration matches the function
-  @spec validate_arity([String.t], Parser.t, non_neg_integer)
-    :: :ok | no_return
+  @spec validate_arity([String.t()], Parser.t(), non_neg_integer) ::
+          :ok | no_return
 
   def validate_arity([env | rest], context, line) when env in @beam_envs do
     validate_arity(rest, context, line)
   end
-  def validate_arity(rest, context = %{local: %{arity: arity}}, line) when length(rest) != arity do
+
+  def validate_arity(rest, context = %{local: %{arity: arity}}, line)
+      when length(rest) != arity do
     raise SyntaxError,
       file: context.file,
       line: line + context.zig_block_line - 1,
-      description: "nif declaration arity (#{arity}) doesn't match the expected function arity #{length(rest)}"
+      description:
+        "nif declaration arity (#{arity}) doesn't match the expected function arity #{
+          length(rest)
+        }"
   end
+
   def validate_arity(_, _, _), do: :ok
 
   # validate_args/3 : raises if an invalid argument type is sent to to the function
-  @spec validate_args([String.t], Parser.t, non_neg_integer)
-    :: :ok | no_return
+  @spec validate_args([String.t()], Parser.t(), non_neg_integer) ::
+          :ok | no_return
   def validate_args([], _context, _line), do: :ok
+
   def validate_args([args | rest], context, line) when args in @valid_args do
     validate_args(rest, context, line)
   end
+
   def validate_args([invalid_type | _], context, line) do
     raise SyntaxError,
       file: context.file,
       line: line + context.zig_block_line,
-      description: "nif function #{context.local.name} demands an invalid argument type #{invalid_type}"
+      description:
+        "nif function #{context.local.name} demands an invalid argument type #{invalid_type}"
   end
+
   def validate_args(_, _, _), do: :ok
 
-  @spec validate_retval([String.t], Parser.t, non_neg_integer)
-    :: :ok | no_return
+  @spec validate_retval([String.t()], Parser.t(), non_neg_integer) ::
+          :ok | no_return
   def validate_retval([retval | _], _context, _line) when retval in @valid_retvals, do: :ok
+
   def validate_retval(["!" <> retval | rest], context, line) when retval in @valid_retvals do
     validate_retval([retval | rest], context, line)
   end
+
   def validate_retval([retval | _], context, line) do
     raise SyntaxError,
       file: context.file,
@@ -114,21 +129,30 @@ defmodule Zig.Parser.Nif do
 
     # additional resources that the nif requires to perform correctly.  These are
     # usually references dropped by called nif for a safe callback.
-    resource = case context.local.opts[:concurrency] do
-      # threaded nifs require a resource containing a reference to the thread
-      # callback.
-      :threaded -> [%Resource{
-        name: Threaded.cache_ptr(context.local.name),
-        cleanup: Threaded.cache_cleanup(context.local.name)
-      }]
-      :yielding -> [%Resource{
-        name: Yielding.frame_ptr(context.local.name),
-        cleanup: Yielding.frame_cleanup(context.local.name),
-      }]
-      _ -> []
-    end
+    resource =
+      case context.local.opts[:concurrency] do
+        # threaded nifs require a resource containing a reference to the thread
+        # callback.
+        :threaded ->
+          [
+            %Resource{
+              name: Threaded.cache_ptr(context.local.name),
+              cleanup: Threaded.cache_cleanup(context.local.name)
+            }
+          ]
+
+        :yielding ->
+          [
+            %Resource{
+              name: Yielding.frame_ptr(context.local.name),
+              cleanup: Yielding.frame_cleanup(context.local.name)
+            }
+          ]
+
+        _ ->
+          []
+      end
 
     %{context | global: resource ++ [final_nif | context.global]}
   end
-
 end

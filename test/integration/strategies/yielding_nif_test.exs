@@ -132,5 +132,4 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
       yielding_string(:foobar)
     end
   end
-
 end

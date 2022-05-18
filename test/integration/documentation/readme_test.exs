@@ -1,39 +1,38 @@
 # guard against this cblas.h not existing.
 if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") and
-   File.exists?("/usr/lib/x86_64-linux-gnu/blas/libblas.so") do
+     File.exists?("/usr/lib/x86_64-linux-gnu/blas/libblas.so") do
+  # prevent CI from running this
+  unless System.get_env("RUNNING_CI", nil) do
+    defmodule ZiglerTest.Integration.Documentation.ReadmeTest do
+      use ExUnit.Case, async: true
 
-# prevent CI from running this
-unless System.get_env("RUNNING_CI", nil) do
+      alias ZiglerTest.Support.Parser
+      require Parser
 
-defmodule ZiglerTest.Integration.Documentation.ReadmeTest do
-  use ExUnit.Case, async: true
+      @project Zigler.MixProject.project()
 
-  alias ZiglerTest.Support.Parser
-  require Parser
+      readme_path = Parser.resource("README.md")
+      readme = Parser.code_blocks(readme_path)
 
-  @project Zigler.MixProject.project
+      @readme readme
 
-  readme_path = Parser.resource("README.md")
-  readme = Parser.code_blocks(readme_path)
+      test "the version numbers match" do
+        assert @readme |> hd |> elem(0) =~ @project[:version]
+      end
 
-  @readme readme
+      env = __ENV__
 
-  test "the version numbers match" do
-    assert @readme |> hd |> elem(0) =~ @project[:version]
+      readme
+      |> tl
+      |> Enum.each(
+        &Code.eval_string(
+          elem(&1, 0),
+          [],
+          %{env | file: readme_path, line: elem(&1, 1)}
+        )
+      )
+
+      @external_resource readme_path
+    end
   end
-
-  env = __ENV__
-  readme
-  |> tl
-  |> Enum.each(
-    &Code.eval_string(
-      elem(&1, 0),
-      [],
-      %{env | file: readme_path, line: elem(&1, 1)}))
-
-  @external_resource readme_path
-end
-
-end
-
 end

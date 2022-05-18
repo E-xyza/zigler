@@ -1,5 +1,4 @@
 defmodule Zig do
-
   @moduledoc """
 
   Inline NIF support for [Zig](https://ziglang.org)
@@ -225,31 +224,37 @@ defmodule Zig do
 
   # default release modes.
   # you can override these in your `use Zigler` statement.
-  @spec __using__(keyword) :: Macro.t
+  @spec __using__(keyword) :: Macro.t()
   defmacro __using__(opts) do
-    #mode = opts[:release_mode] || @default_release_mode
+    # mode = opts[:release_mode] || @default_release_mode
 
     # clear out the assembly directory
-    Mix.env
+    Mix.env()
     |> Compiler.assembly_dir(__CALLER__.module)
-    |> File.rm_rf!
+    |> File.rm_rf!()
 
-    user_opts = opts
-    |> Keyword.take(~w(libs resources dry_run c_includes
+    user_opts =
+      opts
+      |> Keyword.take(~w(libs resources dry_run c_includes
     system_include_dirs local link_libc)a)
 
-    include_dirs = opts
-    |> Keyword.get(:include, [])
-    |> Kernel.++(if has_include_dir?(__CALLER__), do: ["include"], else: [])
+    include_dirs =
+      opts
+      |> Keyword.get(:include, [])
+      |> Kernel.++(if has_include_dir?(__CALLER__), do: ["include"], else: [])
 
-    zigler! = struct(%Zig.Module{
-      file:         Path.relative_to_cwd(__CALLER__.file),
-      module:       __CALLER__.module,
-      imports:      Zig.Module.imports(opts[:imports]),
-      include_dirs: include_dirs,
-      version:      get_project_version(),
-      otp_app:      get_app()},
-      user_opts)
+    zigler! =
+      struct(
+        %Zig.Module{
+          file: Path.relative_to_cwd(__CALLER__.file),
+          module: __CALLER__.module,
+          imports: Zig.Module.imports(opts[:imports]),
+          include_dirs: include_dirs,
+          version: get_project_version(),
+          otp_app: get_app()
+        },
+        user_opts
+      )
 
     zigler! = %{zigler! | code: Zig.Code.headers(zigler!)}
 
@@ -268,9 +273,9 @@ defmodule Zig do
 
   defp has_include_dir?(env) do
     env.file
-    |> Path.dirname
+    |> Path.dirname()
     |> Path.join("include")
-    |> File.dir?
+    |> File.dir?()
   end
 
   @doc """
@@ -293,35 +298,37 @@ defmodule Zig do
     line = meta[:line]
     module = caller.module
     file = Path.relative_to_cwd(caller.file)
+
     quote bind_quoted: [module: module, zig_code: zig_code, file: file, line: line] do
       zigler = Module.get_attribute(module, :zigler)
 
-      new_zigler = zig_code
-      |> Parser.parse(zigler, file, line)
+      new_zigler =
+        zig_code
+        |> Parser.parse(zigler, file, line)
 
       @zigler new_zigler
     end
   end
 
   defp get_project_version do
-    Mix.Project.get
+    Mix.Project.get()
     |> apply(:project, [])
     |> Keyword.get(:version)
-    |> Version.parse!
+    |> Version.parse!()
   end
 
   defp get_app do
-    Mix.Project.get
+    Mix.Project.get()
     |> apply(:project, [])
     |> Keyword.get(:app)
   end
 
   @extension (case :os.type() do
-    {:unix, :linux} -> ".so"
-    {:unix, :freebsd} -> ".so"
-    {:unix, :darwin} -> ".dylib"
-    {_, :nt} -> ".dll"
-  end)
+                {:unix, :linux} -> ".so"
+                {:unix, :freebsd} -> ".so"
+                {:unix, :darwin} -> ".dylib"
+                {_, :nt} -> ".dll"
+              end)
 
   @doc """
   outputs a String name for the module.

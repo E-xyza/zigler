@@ -1,6 +1,7 @@
 defmodule ZiglerTest.ZigTest.Transitive do
   @moduledoc false
   use Zig
+
   ~Z"""
   pub const trans = @import("imported.zig");
   pub usingnamespace @import("namespaced.zig");

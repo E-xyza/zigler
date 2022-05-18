@@ -7,5 +7,4 @@ defmodule ZiglerTest.DryRun.NifInvalidReturn do
     return 47;
   }
   """
-
 end

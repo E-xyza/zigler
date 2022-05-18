@@ -23,22 +23,22 @@ defmodule ZiglerTest.DryRun.CodeCheckingTest do
     [zigler] = __MODULE__.__info__(:attributes)[:zigler]
 
     assert IO.iodata_to_binary(zigler.code) =~ """
-    const std = @import("std");
-    const e = @import("erl_nif.zig");
-    const beam = @import("beam.zig");
+           const std = @import("std");
+           const e = @import("erl_nif.zig");
+           const beam = @import("beam.zig");
 
 
-    // ref: test/unit/dry_run/code_checking_test.exs line: 7
-    /// nif: test1/0
-    fn test1() i32 {
-      return 47;
-    }
+           // ref: test/unit/dry_run/code_checking_test.exs line: 7
+           /// nif: test1/0
+           fn test1() i32 {
+             return 47;
+           }
 
-    // ref: test/unit/dry_run/code_checking_test.exs line: 14
-    /// nif: test2/0
-    fn test2() i32 {
-      return 42;
-    }
-    """
+           // ref: test/unit/dry_run/code_checking_test.exs line: 14
+           /// nif: test2/0
+           fn test2() i32 {
+             return 42;
+           }
+           """
   end
 end

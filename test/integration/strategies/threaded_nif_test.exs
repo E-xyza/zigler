@@ -1,5 +1,4 @@
 defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
-
   use ExUnit.Case, async: true
   use Zig, link_libc: true
 
@@ -13,10 +12,11 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     return 47;
   }
   """
+
   test "threaded nifs can sleep for a while" do
-    start = DateTime.utc_now
+    start = DateTime.utc_now()
     assert 47 == threaded_forty_seven()
-    elapsed = DateTime.utc_now |> DateTime.diff(start)
+    elapsed = DateTime.utc_now() |> DateTime.diff(start)
     assert elapsed >= 2 and elapsed < 4
   end
 
@@ -27,6 +27,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     _ = beam.send(env, self, beam.make_atom(env, "self"));
   }
   """
+
   test "self is as you expect" do
     self_test()
     assert_received :self
@@ -41,6 +42,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     _ = beam.send(env, parent, beam.make_atom(env, "threaded"));
   }
   """
+
   test "threaded nifs can have a void return and parameters" do
     assert :ok = threaded_void(self())
     assert_receive :threaded
@@ -59,8 +61,9 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     return result;
   }
   """
+
   test "threaded nifs can have an slice input" do
-    assert 5050 == 1..100 |> Enum.to_list |> threaded_sum
+    assert 5050 == 1..100 |> Enum.to_list() |> threaded_sum
   end
 
   ~Z"""
@@ -69,6 +72,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     return str.len;
   }
   """
+
   test "threaded nifs can have an string input" do
     assert 6 = threaded_string("foobar")
   end
@@ -86,6 +90,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
     return 47;
   }
   """
+
   test "yielding nif code can be run in a threaded fn" do
     assert 47 == threaded_with_yield()
   end

@@ -1,5 +1,4 @@
 defmodule ZiglerTest.Integration.EnvTest do
-
   # tests to make sure that we can include beam.env terms in the nif
   # definition and have them compile correctly.
 
@@ -45,5 +44,4 @@ defmodule ZiglerTest.Integration.EnvTest do
   test "erlnifenv variables are valid first arguments" do
     assert 47 == int_with_erlnifenv(47)
   end
-
 end

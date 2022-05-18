@@ -1,5 +1,4 @@
 defmodule ZiglerTest.Integration.Documentation do
-
   @moduledoc false
 
   # checks which make sure documentation generation is OK.
@@ -12,5 +11,4 @@ defmodule ZiglerTest.Integration.Documentation do
     return 47;
   }
   """
-
 end

@@ -12,10 +12,11 @@ defmodule Zig.Code do
     case module.c_includes do
       [] -> []
       includes -> c_imports(includes) ++ ["\n"]
-    end
-    ++ [
-      zig_imports(module.imports), "\n",
-    ]
+    end ++
+      [
+        zig_imports(module.imports),
+        "\n"
+      ]
   end
 
   def generate_main(module = %Module{}, target) do
@@ -33,37 +34,39 @@ defmodule Zig.Code do
   #############################################################################
   ## C IMPORT HANDLING
 
-  @spec c_imports(keyword(String.t | [String.t])) :: iodata
+  @spec c_imports(keyword(String.t() | [String.t()])) :: iodata
   def c_imports(include_specs) do
     include_specs
     |> aggregate_includes
     |> Enum.map(fn
-      {tgt, includes} -> """
-      const #{tgt} = @cImport({
-      #{c_includes includes}
-      });
-      """
+      {tgt, includes} ->
+        """
+        const #{tgt} = @cImport({
+        #{c_includes(includes)}
+        });
+        """
     end)
   end
 
-  @spec aggregate_includes(keyword(String.t | [String.t])) :: keyword([String.t])
+  @spec aggregate_includes(keyword(String.t() | [String.t()])) :: keyword([String.t()])
   def aggregate_includes(c_includes) do
     c_includes
-    |> Keyword.keys
-    |> Enum.uniq
+    |> Keyword.keys()
+    |> Enum.uniq()
     |> Enum.map(fn key ->
       {key,
-        c_includes
-        |> Enum.filter(fn {k, _} -> k == key end)
-        |> Enum.flat_map(fn
-          {_, v} when is_binary(v) -> [v]
-          {_, v} when is_list(v) -> v
-        end)}
+       c_includes
+       |> Enum.filter(fn {k, _} -> k == key end)
+       |> Enum.flat_map(fn
+         {_, v} when is_binary(v) -> [v]
+         {_, v} when is_list(v) -> v
+       end)}
     end)
   end
 
-  @spec c_includes(String.t | [String.t]) :: String.t
+  @spec c_includes(String.t() | [String.t()]) :: String.t()
   defp c_includes(include) when is_binary(include), do: ~s/  @cInclude("#{include}");/
+
   defp c_includes(includes) when is_list(includes) do
     includes
     |> Enum.map(&c_includes/1)
@@ -77,6 +80,7 @@ defmodule Zig.Code do
     Enum.map(imports, fn
       {k, {v, q}} ->
         ~s/const #{k} = @import("#{v}").#{q};\n/
+
       {k, v} ->
         ~s/const #{k} = @import("#{v}");\n/
     end)
@@ -89,16 +93,21 @@ defmodule Zig.Code do
     case opts[:concurrency] do
       :threaded ->
         Threaded.zig_adapter(nif, module)
+
       :yielding ->
         Yielding.zig_adapter(nif, module)
+
       :dirty_cpu ->
         DirtyCpu.zig_adapter(nif, module)
+
       :dirty_io ->
         DirtyIO.zig_adapter(nif, module)
+
       nil ->
         Synchronous.zig_adapter(nif, module)
     end
   end
+
   def adapter(nif, module), do: Test.zig_adapter(nif, module)
 
   #############################################################################
@@ -110,79 +119,94 @@ defmodule Zig.Code do
     # for now, this only distinguishes between "host" and (nerves).  However,
     # in the long run, when cross-compilation of BEAM systems becomes possible,
     # it will need to take into account target operating systems.
-    os = case {target, :os.type()} do
-      {:host, {_, :nt}} -> :windows
-      _ -> :unix
-    end
+    os =
+      case {target, :os.type()} do
+        {:host, {_, :nt}} -> :windows
+        _ -> :unix
+      end
 
     exports = """
     export var __exported_nifs__ = [_]e.ErlNifFunc{
     #{Enum.map(module.nifs, &nif_table_entries/1)}};
     """
+
     resource_init_defs = Enum.map(module.resources, &resource_init_definition/1)
     resource_inits = Enum.map(module.resources, &resource_initializer/1)
     resource_manager = resource_manager(module.resources)
 
-    nif_loader = case module.resources do
-      [] -> ""
-      _ ->
-        """
-        export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
-        #{resource_inits}  return 0;
-        }
+    nif_loader =
+      case module.resources do
+        [] ->
+          ""
 
-        """
-    end
+        _ ->
+          """
+          export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
+          #{resource_inits}  return 0;
+          }
 
-    nif_load_fn = case module.resources do
-      [] -> "beam.blank_load"
-      _ -> "nif_load"
-    end
+          """
+      end
 
-    nif_init_fn = case os do
-      :windows ->
-        """
-        export var WinDynNifCallbacks: e.TWinDynNifCallbacks;
-        export fn nif_init(callbacks: *?e.TWinDynNifCallbacks) *const e.ErlNifEntry {
-          std.mem.copy(e.TWinDynNifCallbacks, &WinDynNifCallbacks, callbacks.?);
-          return &entry;
-        }
-        """
-      :unix ->
-        """
-        export fn nif_init() *const e.ErlNifEntry{
-          return &entry;
-        }
-        """
-    end
+    nif_load_fn =
+      case module.resources do
+        [] -> "beam.blank_load"
+        _ -> "nif_load"
+      end
 
-    ["// footer for #{module.module} in #{module.file}:\n\n",
-     exports, resource_init_defs, "\n", resource_manager, nif_loader, """
-    const entry = e.ErlNifEntry{
-      .major = #{major},
-      .minor = #{minor},
-      .name = "#{module.module}",
-      .num_of_funcs = __exported_nifs__.len,
-      .funcs = &(__exported_nifs__[0]),
-      .load = #{nif_load_fn},
-      .reload = null,   // currently unsupported
-      .upgrade = null,  // currently unsupported
-      .unload = null,   // currently unsupported
-      .vm_variant = "beam.vanilla",
-      .options = 1,
-      .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
-      .min_erts = "erts-#{:erlang.system_info(:version)}"
-    };
+    nif_init_fn =
+      case os do
+        :windows ->
+          """
+          export var WinDynNifCallbacks: e.TWinDynNifCallbacks;
+          export fn nif_init(callbacks: *?e.TWinDynNifCallbacks) *const e.ErlNifEntry {
+            std.mem.copy(e.TWinDynNifCallbacks, &WinDynNifCallbacks, callbacks.?);
+            return &entry;
+          }
+          """
 
-    #{nif_init_fn}
-    """]
+        :unix ->
+          """
+          export fn nif_init() *const e.ErlNifEntry{
+            return &entry;
+          }
+          """
+      end
+
+    [
+      "// footer for #{module.module} in #{module.file}:\n\n",
+      exports,
+      resource_init_defs,
+      "\n",
+      resource_manager,
+      nif_loader,
+      """
+      const entry = e.ErlNifEntry{
+        .major = #{major},
+        .minor = #{minor},
+        .name = "#{module.module}",
+        .num_of_funcs = __exported_nifs__.len,
+        .funcs = &(__exported_nifs__[0]),
+        .load = #{nif_load_fn},
+        .reload = null,   // currently unsupported
+        .upgrade = null,  // currently unsupported
+        .unload = null,   // currently unsupported
+        .vm_variant = "beam.vanilla",
+        .options = 1,
+        .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
+        .min_erts = "erts-#{:erlang.system_info(:version)}"
+      };
+
+      #{nif_init_fn}
+      """
+    ]
   end
 
   @doc false
   def nif_major_minor do
     :nif_version
-    |> :erlang.system_info
-    |> List.to_string
+    |> :erlang.system_info()
+    |> List.to_string()
     |> String.split(".")
   end
 
@@ -191,12 +215,16 @@ defmodule Zig.Code do
     case opts[:concurrency] do
       :threaded ->
         Threaded.nif_table_entries(nif)
+
       :yielding ->
         Yielding.nif_table_entries(nif)
+
       :dirty_cpu ->
         DirtyCpu.nif_table_entries(nif)
+
       :dirty_io ->
         DirtyIO.nif_table_entries(nif)
+
       nil ->
         Synchronous.nif_table_entries(nif)
     end
@@ -212,16 +240,17 @@ defmodule Zig.Code do
   defp resource_init_definition(res = %Resource{name: original_name}) do
     name = rename(original_name)
 
-    cleanup = if res.cleanup do
-      """
+    cleanup =
+      if res.cleanup do
+        """
 
-        if (res) |__res__| {
-          #{res.cleanup}(env, @ptrCast(*#{original_name}, @alignCast(@alignOf(*#{original_name}), __res__)));
-        } else unreachable;
-      """
-    else
-      ""
-    end
+          if (res) |__res__| {
+            #{res.cleanup}(env, @ptrCast(*#{original_name}, @alignCast(@alignOf(*#{original_name}), __res__)));
+          } else unreachable;
+        """
+      else
+        ""
+      end
 
     """
 
@@ -243,17 +272,20 @@ defmodule Zig.Code do
 
   defp resource_initializer(%Resource{name: original_name}) do
     name = rename(original_name)
+
     """
       __#{name}_resource__ = __init_#{name}_resource__(env);
     """
   end
 
   defp resource_manager(resources) do
-
-    resource_mapping = Enum.map(resources, &"    #{&1.name} => return __#{rename &1.name}_resource__,\n")
+    resource_mapping =
+      Enum.map(resources, &"    #{&1.name} => return __#{rename(&1.name)}_resource__,\n")
 
     case resources do
-      [] -> ""
+      [] ->
+        ""
+
       _ ->
         """
         fn __resource_type__(comptime T: type) beam.resource_type {
@@ -293,19 +325,22 @@ defmodule Zig.Code do
 
   defp rename(name) do
     strname = Atom.to_string(name)
+
     if String.starts_with?(strname, "__") and String.ends_with?(strname, "__") do
       strname
       |> String.trim("__")
-      |> String.to_atom
+      |> String.to_atom()
     else
       name
     end
   end
 
   defp count_lines(iolist), do: count_lines(iolist, 0)
+
   defp count_lines([first | rest], count_so_far) do
     count_lines(rest, count_so_far + count_lines(first))
   end
+
   defp count_lines(<<?\n, rest::binary>>, count_so_far), do: count_lines(rest, count_so_far + 1)
   defp count_lines(<<_, rest::binary>>, count_so_far), do: count_lines(rest, count_so_far)
   defp count_lines(<<>>, count_so_far), do: count_so_far

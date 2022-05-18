@@ -83,5 +83,4 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
     assert true == allocate(2)
     assert :ab == fetch()
   end
-
 end

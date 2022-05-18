@@ -1,5 +1,6 @@
 defmodule ZiglerTest.Integration.Strategies.YieldingNifMemoryTest do
-  use ExUnit.Case  # make memory tests non-async
+  # make memory tests non-async
+  use ExUnit.Case
   use Zig, link_libc: true
 
   @moduletag :yielding
