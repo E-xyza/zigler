@@ -7,5 +7,4 @@ defmodule ZiglerTest.DryRun.NifArityMismatch do
     return 47;
   }
   """
-
 end

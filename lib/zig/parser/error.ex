@@ -17,14 +17,16 @@ defmodule Zig.Parser.Error do
     |> ascii_string(@numbers, min: 1)
     |> ignore(string(":"))
     |> ascii_string(@numbers, min: 1)
-    |> ignore(string(":")
+    |> ignore(
+      string(":")
       |> optional(whitespace)
       |> string("error:")
-      |> optional(whitespace))
+      |> optional(whitespace)
+    )
     |> ascii_string([not: ?\n], min: 1)
     |> ignore(string("\n"))
 
-  defparsec :parse_error, times(errormsg, min: 1)
+  defparsec(:parse_error, times(errormsg, min: 1))
 
   @doc """
   given a zig compiler error message, a directory for the code file, and the temporary
@@ -37,33 +39,38 @@ defmodule Zig.Parser.Error do
   def parse(msg, compiler) do
     case parse_error(msg) do
       {:ok, [path, line, _col | msg], rest, _, _, _} ->
-        {path, line} = compiler.assembly_dir
-        |> find_file(path)
-        |> backreference(String.to_integer(line))
+        {path, line} =
+          compiler.assembly_dir
+          |> find_file(path)
+          |> backreference(String.to_integer(line))
 
         raise CompileError,
           file: path,
           line: line,
           description: IO.iodata_to_binary([msg, "\n" | rest])
+
       _ ->
-        message = """
-        this zig compiler warning hasn't been incorporated into the parser.
-        Please file a report at:
-        https://github.com/ityonemo/zigler/issues
-        """ <> msg
+        message =
+          """
+          this zig compiler warning hasn't been incorporated into the parser.
+          Please file a report at:
+          https://github.com/ityonemo/zigler/issues
+          """ <> msg
+
         raise CompileError,
           description: message
     end
   end
 
-  defp find_file(_dir, path = ("/" <> _)), do: path
+  defp find_file(_dir, path = "/" <> _), do: path
+
   defp find_file(dir, path) do
     dir
     |> Path.join(path)
-    |> Path.expand
+    |> Path.expand()
   end
 
-  @spec backreference(Path.t, non_neg_integer) :: {Path.t, non_neg_integer}
+  @spec backreference(Path.t(), non_neg_integer) :: {Path.t(), non_neg_integer}
   @doc """
   given a code file path and a line number, calculates the file and line number
   of the source document from which it came.  Strongly depends on having
@@ -72,10 +79,10 @@ defmodule Zig.Parser.Error do
   """
   def backreference(path, line) do
     path
-    |> File.stream!
+    |> File.stream!()
     |> Stream.map(&check_ref/1)
     |> Stream.take(line)
-    |> Stream.with_index
+    |> Stream.with_index()
     |> Enum.reduce({path, line}, &trap_last_ref(&1, &2, line))
   end
 
@@ -83,19 +90,23 @@ defmodule Zig.Parser.Error do
   defp trap_last_ref({{:ok, [path, line_number], _, _, _, _}, line_idx}, _, line) do
     {path, line - line_idx + String.to_integer(line_number) - 1}
   end
+
   defp trap_last_ref(_, prev, _), do: prev
 
   path = ascii_string([not: ?\s, not: ?\t], min: 1)
 
-  check_ref = ignore(
-    string("// ref:")
-    |> concat(whitespace))
-  |> concat(path)
-  |> ignore(
-    whitespace
-    |> string("line:")
-    |> concat(whitespace))
-  |> ascii_string(@numbers, min: 1)
+  check_ref =
+    ignore(
+      string("// ref:")
+      |> concat(whitespace)
+    )
+    |> concat(path)
+    |> ignore(
+      whitespace
+      |> string("line:")
+      |> concat(whitespace)
+    )
+    |> ascii_string(@numbers, min: 1)
 
-  defparsec :check_ref, check_ref
+  defparsec(:check_ref, check_ref)
 end

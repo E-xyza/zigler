@@ -57,62 +57,72 @@ defmodule Zig.Nif.Threaded do
   defp threaded_main_fn(%{name: name, arity: arity}) do
     # note that the "define function" args should not take parentheses
     # but the "call" args must take parentheses.
-    args = if arity == 0 do
-      Elixir
-    else
-      for idx <- 1..arity, do: {String.to_atom("arg#{idx}"), [], Elixir}
-    end
-    launcher_call = if arity == 0 do
-      {launcher(name), [], []}
-    else
-      {launcher(name), [], args}
-    end
-
-    internal_code = quote context: Elixir do
-      case unquote(launcher_call) do
-        {:ok, ref} ->
-          receive do
-            {:ok, {^ref, return}} ->
-              return
-            {:error, {^ref, :enomem}} ->
-              raise "no memory"
-            {:error, {^ref, :function_clause}} ->
-              raise %FunctionClauseError{
-                module: __MODULE__,
-                function: unquote(name),
-                arity: unquote(arity)
-              }
-            {:error, {^ref, map}} when is_exception(map) ->
-              raise map
-            {:error, :thread_resource_error} ->
-              raise "thread resource error for #{__ENV__.function}"
-          end
-        {:error, error} ->
-          raise error
+    args =
+      if arity == 0 do
+        Elixir
+      else
+        for idx <- 1..arity, do: {String.to_atom("arg#{idx}"), [], Elixir}
       end
-    end
+
+    launcher_call =
+      if arity == 0 do
+        {launcher(name), [], []}
+      else
+        {launcher(name), [], args}
+      end
+
+    internal_code =
+      quote context: Elixir do
+        case unquote(launcher_call) do
+          {:ok, ref} ->
+            receive do
+              {:ok, {^ref, return}} ->
+                return
+
+              {:error, {^ref, :enomem}} ->
+                raise "no memory"
+
+              {:error, {^ref, :function_clause}} ->
+                raise %FunctionClauseError{
+                  module: __MODULE__,
+                  function: unquote(name),
+                  arity: unquote(arity)
+                }
+
+              {:error, {^ref, map}} when is_exception(map) ->
+                raise map
+
+              {:error, :thread_resource_error} ->
+                raise "thread resource error for #{__ENV__.function}"
+            end
+
+          {:error, error} ->
+            raise error
+        end
+      end
 
     {:def, [context: Elixir, import: Kernel],
-      [
-        {name, [context: Elixir], args},
-        [do: internal_code]
-      ]}
+     [
+       {name, [context: Elixir], args},
+       [do: internal_code]
+     ]}
   end
 
   defp threaded_launch_fn(%{name: name, arity: arity}) do
     text = "nif launcher for function #{name}/#{arity} not bound"
 
-    args = if arity == 0 do
-      Elixir
-    else
-      for _ <- 1..arity, do: {:_, [], Elixir}
-    end
+    args =
+      if arity == 0 do
+        Elixir
+      else
+        for _ <- 1..arity, do: {:_, [], Elixir}
+      end
 
     {:def, [context: Elixir, import: Kernel],
-      [
-        {launcher(name), [context: Elixir], args},
-        [do: {:raise, [context: Elixir, import: Kernel], [text]}]
-      ]}
+     [
+       {launcher(name), [context: Elixir], args},
+       [do: {:raise, [context: Elixir, import: Kernel], [text]}]
+     ]}
   end
 
   #############################################################################
@@ -128,7 +138,7 @@ defmodule Zig.Nif.Threaded do
 
   defp cache_struct(nif) do
     """
-    const #{cache nif.name} = struct {
+    const #{cache(nif.name)} = struct {
       thread: e.ErlNifTid,
       name: ?[:0] u8 = null,
       this: beam.term,
@@ -136,11 +146,11 @@ defmodule Zig.Nif.Threaded do
       yield_info: beam.YieldInfo = undefined,
     };
 
-    /// resource: #{cache_ptr nif.name} definition
-    const #{cache_ptr nif.name} = *#{cache nif.name};
+    /// resource: #{cache_ptr(nif.name)} definition
+    const #{cache_ptr(nif.name)} = *#{cache(nif.name)};
 
-    /// resource: #{cache_ptr nif.name} cleanup
-    fn #{cache_cleanup nif.name}(_: beam.env, cache_ptr: *#{cache_ptr nif.name}) void {
+    /// resource: #{cache_ptr(nif.name)} cleanup
+    fn #{cache_cleanup(nif.name)}(_: beam.env, cache_ptr: *#{cache_ptr(nif.name)}) void {
       // std.debug.assert(beam.yield_info == null);
       var cache = cache_ptr.*;
 
@@ -177,27 +187,28 @@ defmodule Zig.Nif.Threaded do
     # note that this function needs to exist as a separate function to be a seam between the C ABI
     # that the erlang system demands.
     """
-    export fn #{launcher nif.name}(env: beam.env, _: c_int, argv: [*c] const beam.term) beam.term {
-      return #{packer nif.name}(env, argv) catch beam.make_error_binary(env, "launching nif");
+    export fn #{launcher(nif.name)}(env: beam.env, _: c_int, argv: [*c] const beam.term) beam.term {
+      return #{packer(nif.name)}(env, argv) catch beam.make_error_binary(env, "launching nif");
     }
     """
   end
 
   def packer_fn(nif) do
     namelen = :erlang.size(Atom.to_string(nif.name)) + 9
+
     """
-    const #{name nif.name} = "#{nif.name}-threaded";
-    fn #{packer nif.name}(env: beam.env, argv: [*c] const beam.term) !beam.term {
+    const #{name(nif.name)} = "#{nif.name}-threaded";
+    fn #{packer(nif.name)}(env: beam.env, argv: [*c] const beam.term) !beam.term {
       // std.debug.assert(beam.yield_info == null);
       beam.set_generic_self();
       // allocate space for the cache and obtain its pointer.
-      var cache = try beam.allocator.create(#{cache nif.name});
+      var cache = try beam.allocator.create(#{cache(nif.name)});
       errdefer beam.allocator.destroy(cache);
 
       // create a resource that is ready to hold the pointer to the cache.
-      var cache_ref = try __resource__.create(#{cache_ptr nif.name}, env, cache);
+      var cache_ref = try __resource__.create(#{cache_ptr(nif.name)}, env, cache);
       defer {
-        __resource__.release(#{cache_ptr nif.name}, env, cache_ref);
+        __resource__.release(#{cache_ptr(nif.name)}, env, cache_ref);
       }
 
       // allocate space for the argument terms.
@@ -207,7 +218,7 @@ defmodule Zig.Nif.Threaded do
       cache.name = try beam.allocator.allocSentinel(u8, #{namelen}, 0);
 
       // copy the name and null-terminate it.
-      std.mem.copy(u8, cache.name.?, #{name nif.name});
+      std.mem.copy(u8, cache.name.?, #{name(nif.name)});
 
       const new_environment = e.enif_alloc_env() orelse return beam.ThreadError.LaunchError;
       cache.yield_info = .{
@@ -226,7 +237,7 @@ defmodule Zig.Nif.Threaded do
       if (0 == e.enif_thread_create(
           cache.name.?,
           &cache.thread,
-          #{harness nif.name},
+          #{harness(nif.name)},
           @ptrCast(*anyopaque, cache),
           null)) {
 
@@ -242,62 +253,66 @@ defmodule Zig.Nif.Threaded do
     get_clauses =
       if nif.arity != 0, do: Adapter.get_clauses(nif, &bail/1, &"cache.args.?[#{&1}]"), else: ""
 
-    result_clause = case nif.retval do
+    result_clause =
+      case nif.retval do
         "!" <> _type ->
           {r_used?, result_term} =
             Adapter.make_clause(nif.retval, "__r", "cache.yield_info.environment")
 
-          capture_name = if nif.arity != 0 and r_used?,
+          capture_name =
+            if nif.arity != 0 and r_used?,
               do: "__r",
               else: "_"
 
-        """
-        if (result) | #{capture_name} |
-          beam.make_ok_term(
-            env,
-            e.enif_make_tuple(
+          """
+          if (result) | #{capture_name} |
+            beam.make_ok_term(
               env,
-              2,
-              cache.this,
-              #{result_term}
-            )
-          )
-        else | __e |
-          beam.make_error_term(
-            env,
-            e.enif_make_tuple(
-              env,
-              2,
-              cache.this,
-              beam.make_exception(
+              e.enif_make_tuple(
                 env,
-                "#{nif.module}.ZigError",
-                __e,
-                @errorReturnTrace())
+                2,
+                cache.this,
+                #{result_term}
+              )
             )
-          );
-        """
-      _ ->
-        {_result_used?, result_term} = Adapter.make_clause(nif.retval, "result", "cache.yield_info.environment")
-
-        """
-        beam.make_ok_term(
-            env,
-            e.enif_make_tuple(
+          else | __e |
+            beam.make_error_term(
               env,
-              2,
-              cache.this,
-              #{result_term}
-            )
-          );
-        """
-    end
+              e.enif_make_tuple(
+                env,
+                2,
+                cache.this,
+                beam.make_exception(
+                  env,
+                  "#{nif.module}.ZigError",
+                  __e,
+                  @errorReturnTrace())
+              )
+            );
+          """
+
+        _ ->
+          {_result_used?, result_term} =
+            Adapter.make_clause(nif.retval, "result", "cache.yield_info.environment")
+
+          """
+          beam.make_ok_term(
+              env,
+              e.enif_make_tuple(
+                env,
+                2,
+                cache.this,
+                #{result_term}
+              )
+            );
+          """
+      end
 
     """
-    export fn #{harness nif.name}(cache_q: ?*anyopaque) ?*anyopaque {
-      var cache: *#{cache nif.name} =
-        @ptrCast(*#{cache nif.name},
-          @alignCast(@alignOf(#{cache nif.name}), cache_q.?));
+    export fn #{harness(nif.name)}(cache_q: ?*anyopaque) ?*anyopaque {
+      var cache: *#{cache(nif.name)} =
+        @ptrCast(*#{cache(nif.name)},
+          @alignCast(@alignOf(#{cache(nif.name)}), cache_q.?));
 
       // make sure yield_info is clear.
       // std.debug.assert(beam.yield_info == null);
@@ -321,7 +336,7 @@ defmodule Zig.Nif.Threaded do
       beam.set_threaded_self();
 
     #{get_clauses}  // execute the nif function
-      #{result_assign}nosuspend #{nif.name}(#{Adapter.args nif});
+      #{result_assign}nosuspend #{nif.name}(#{Adapter.args(nif)});
       result_term = #{result_clause}
 
       // probably unnecessary, but do it anyways.
@@ -337,53 +352,52 @@ defmodule Zig.Nif.Threaded do
     """
   end
 
-  defp bail(:oom), do: """
-  {
-        result_term =
-          beam.make_error_term(env,
-            e.enif_make_tuple(
-              cache.yield_info.environment,
-              2,
-              cache.this,
-              beam.make_atom(env, "enomem"[0..])
-            )
-          );
-        return null;
-      }
-  """
-  defp bail(:function_clause), do: """
-  {
-        result_term =
-          beam.make_error_term(env,
-            e.enif_make_tuple(
-              cache.yield_info.environment,
-              2,
-              cache.this,
-              beam.make_atom(env, "function_clause"[0..])
-            )
-          );
-        return null;
-      }
-  """
+  defp bail(:oom),
+    do: """
+    {
+          result_term =
+            beam.make_error_term(env,
+              e.enif_make_tuple(
+                cache.yield_info.environment,
+                2,
+                cache.this,
+                beam.make_atom(env, "enomem"[0..])
+              )
+            );
+          return null;
+        }
+    """
+
+  defp bail(:function_clause),
+    do: """
+    {
+          result_term =
+            beam.make_error_term(env,
+              e.enif_make_tuple(
+                cache.yield_info.environment,
+                2,
+                cache.this,
+                beam.make_atom(env, "function_clause"[0..])
+              )
+            );
+          return null;
+        }
+    """
 
   @impl true
   def zig_adapter(nif, _module) do
-    [cache_struct(nif), "\n",
-     launcher_fn(nif), "\n",
-     packer_fn(nif), "\n",
-     harness_fn(nif)]
+    [cache_struct(nif), "\n", launcher_fn(nif), "\n", packer_fn(nif), "\n", harness_fn(nif)]
   end
 
   @impl true
   def nif_table_entries(nif) do
     """
       e.ErlNifFunc{
-        .name = "#{launcher nif.name}",
+        .name = "#{launcher(nif.name)}",
         .arity = #{nif.arity},
-        .fptr = #{launcher nif.name},
+        .fptr = #{launcher(nif.name)},
         .flags = 0,
       },
     """
   end
-
 end

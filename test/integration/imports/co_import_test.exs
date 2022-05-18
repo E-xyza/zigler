@@ -15,5 +15,4 @@ defmodule ZiglerTest.Imports.CoImportTest do
   test "co_imports" do
     assert 47 == test_47()
   end
-
 end

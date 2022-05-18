@@ -7,7 +7,7 @@ defmodule ZiglerTest.Integration.ZigTest.TransitiveTest do
 
   @moduletag :zigtest
 
-  zigtest Transitive
+  zigtest(Transitive)
 
   test "transitive zigtest inclusion via import" do
     assert function_exported?(__MODULE__, :"imported test", 0)

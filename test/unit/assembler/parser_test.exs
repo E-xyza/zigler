@@ -5,9 +5,10 @@ defmodule ZigTest.Assembler.ParseTest do
 
   alias Zig.Assembler
 
-  assets_dir = __ENV__.file
-  |> Path.dirname
-  |> Path.join("assets")
+  assets_dir =
+    __ENV__.file
+    |> Path.dirname()
+    |> Path.join("assets")
 
   @assets_dir assets_dir
   @target_dir "/tmp/bar"
@@ -47,45 +48,56 @@ defmodule ZigTest.Assembler.ParseTest do
       [importer, imported] = Assembler.parse_file("importer1.zig", @basic_defaults)
 
       assert %Assembler{
-        context: [],
-        source: Path.join(@assets_dir, "importer1.zig"),
-        target: Path.join(@target_dir, "importer1.zig"),
-        pub: true, type: :zig} == importer
+               context: [],
+               source: Path.join(@assets_dir, "importer1.zig"),
+               target: Path.join(@target_dir, "importer1.zig"),
+               pub: true,
+               type: :zig
+             } == importer
 
       assert %Assembler{
-        context: ["foo"],
-        source: Path.join(@assets_dir, "imported1.zig"),
-        target: Path.join(@target_dir, "imported1.zig"),
-        pub: false, type: :zig} == imported
+               context: ["foo"],
+               source: Path.join(@assets_dir, "imported1.zig"),
+               target: Path.join(@target_dir, "imported1.zig"),
+               pub: false,
+               type: :zig
+             } == imported
     end
 
     test "a double file is handled correctly" do
       [_, _, imported2] = Assembler.parse_file("importer2.zig", @basic_defaults)
+
       assert %Assembler{
-        context: ["bar"],
-        source: Path.join(@assets_dir, "imported2.zig"),
-        target: Path.join(@target_dir, "imported2.zig"),
-        pub: false, type: :zig} == imported2
+               context: ["bar"],
+               source: Path.join(@assets_dir, "imported2.zig"),
+               target: Path.join(@target_dir, "imported2.zig"),
+               pub: false,
+               type: :zig
+             } == imported2
     end
 
     test "a file in a subdirectory is handled correctly" do
       [_, imported_s] = Assembler.parse_file("importer_s.zig", @basic_defaults)
 
       assert %Assembler{
-        context: ["foo"],
-        source: Path.join(@assets_dir, "subdir/imported_s.zig"),
-        target: Path.join(@target_dir, "subdir/imported_s.zig"),
-        pub: false, type: :zig} == imported_s
+               context: ["foo"],
+               source: Path.join(@assets_dir, "subdir/imported_s.zig"),
+               target: Path.join(@target_dir, "subdir/imported_s.zig"),
+               pub: false,
+               type: :zig
+             } == imported_s
     end
 
     test "transitive relations inside subdirectories are handled correctly" do
       [_, _, imported_st] = Assembler.parse_file("importer_st.zig", @basic_defaults)
 
       assert %Assembler{
-        context: ["foo", "bar"],
-        source: Path.join(@assets_dir, "subdir/transitive.zig"),
-        target: Path.join(@target_dir, "subdir/transitive.zig"),
-        pub: false, type: :zig} == imported_st
+               context: ["foo", "bar"],
+               source: Path.join(@assets_dir, "subdir/transitive.zig"),
+               target: Path.join(@target_dir, "subdir/transitive.zig"),
+               pub: false,
+               type: :zig
+             } == imported_st
     end
   end
 
@@ -94,10 +106,12 @@ defmodule ZigTest.Assembler.ParseTest do
       [_, imported] = Assembler.parse_file("importer_u.zig", @basic_defaults)
 
       assert %Assembler{
-        context: [],
-        source: Path.join(@assets_dir, "imported1.zig"),
-        target: Path.join(@target_dir, "imported1.zig"),
-        pub: false, type: :zig} == imported
+               context: [],
+               source: Path.join(@assets_dir, "imported1.zig"),
+               target: Path.join(@target_dir, "imported1.zig"),
+               pub: false,
+               type: :zig
+             } == imported
     end
   end
 
@@ -106,20 +120,24 @@ defmodule ZigTest.Assembler.ParseTest do
       [_, imported] = Assembler.parse_file("importer_p.zig", @basic_defaults)
 
       assert %Assembler{
-        context: ["foo"],
-        source: Path.join(@assets_dir, "imported1.zig"),
-        target: Path.join(@target_dir, "imported1.zig"),
-        pub: true, type: :zig} == imported
+               context: ["foo"],
+               source: Path.join(@assets_dir, "imported1.zig"),
+               target: Path.join(@target_dir, "imported1.zig"),
+               pub: true,
+               type: :zig
+             } == imported
     end
 
     test "it is not public if its parent is not private" do
       [_, _, imported] = Assembler.parse_file("importer_np.zig", @basic_defaults)
 
       assert %Assembler{
-        context: ["foo", "foo"],
-        source: Path.join(@assets_dir, "imported1.zig"),
-        target: Path.join(@target_dir, "imported1.zig"),
-        pub: false, type: :zig} == imported
+               context: ["foo", "foo"],
+               source: Path.join(@assets_dir, "imported1.zig"),
+               target: Path.join(@target_dir, "imported1.zig"),
+               pub: false,
+               type: :zig
+             } == imported
     end
   end
 end

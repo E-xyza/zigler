@@ -1,5 +1,4 @@
 defmodule ZiglerTest.Types do
-
   @moduledoc false
 
   use Zig, dry_run: true

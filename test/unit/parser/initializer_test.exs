@@ -15,8 +15,8 @@ defmodule ZiglerTest.Parser.InitializerTest do
     test "can be preseeded" do
       {:ok, [], _rest, context, _, _} =
         Parser.parser_initializer("", context: %{local: {:doc, "foo"}})
+
       assert %Parser{local: {:doc, "foo"}} = context
     end
   end
-
 end

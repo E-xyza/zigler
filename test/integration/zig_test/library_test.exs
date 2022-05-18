@@ -1,22 +1,17 @@
 # guard against this cblas.h not existing.
 if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") and
-   File.exists?("/usr/lib/x86_64-linux-gnu/blas/libblas.so") do
+     File.exists?("/usr/lib/x86_64-linux-gnu/blas/libblas.so") do
+  # prevent CI from running this
+  unless System.get_env("RUNNING_CI", nil) do
+    defmodule ZiglerTest.Integration.ZigTest.LibraryTest do
+      use ExUnit.Case
+      use Zig
 
-# prevent CI from running this
-unless System.get_env("RUNNING_CI", nil) do
+      import Zig.Unit
 
-defmodule ZiglerTest.Integration.ZigTest.LibraryTest do
-  use ExUnit.Case
-  use Zig
+      @moduletag :zigtest
 
-  import Zig.Unit
-
-  @moduletag :zigtest
-
-  zigtest ZiglerTest.ZigTest.Blas
-
-end
-
-end
-
+      zigtest(ZiglerTest.ZigTest.Blas)
+    end
+  end
 end

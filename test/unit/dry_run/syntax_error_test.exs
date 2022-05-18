@@ -3,10 +3,10 @@ defmodule ZiglerTest.DryRun.SyntaxErrorTest do
 
   def load(name) do
     __ENV__.file
-    |> Path.dirname
+    |> Path.dirname()
     |> Path.join("../assets/syntax_error/#{name}")
-    |> Path.expand
-    |> Code.eval_file
+    |> Path.expand()
+    |> Code.eval_file()
   end
 
   @moduletag :syntax_error

@@ -10,22 +10,24 @@ defmodule ZiglerTest.Integration.ZigTest do
   # note that this should be precompiled as a result of being in
   # test/support directory.
 
-  zigtest ZiglerTest.ZigTest.PassingTests
+  zigtest(ZiglerTest.ZigTest.PassingTests)
 
   # make sure the existing module recapitulates the code from the
   # tested module
 
   test "this module has the code" do
     [zigler] = __MODULE__.__info__(:attributes)[:zigler]
-    assert IO.iodata_to_binary(zigler.code)
-      =~ "forty_seven()"
+
+    assert IO.iodata_to_binary(zigler.code) =~
+             "forty_seven()"
   end
 
   alias ZiglerTest.Integration.ZigTest.FailShim
+
   test "tests can fail", context do
     __DIR__
     |> Path.join("fail_shim.exs")
-    |> Code.compile_file
+    |> Code.compile_file()
 
     assert_raise ExUnit.AssertionError, fn ->
       apply(FailShim, :"zigtest a lie", [context])
@@ -43,5 +45,4 @@ defmodule ZiglerTest.Integration.ZigTest do
       apply(FailShim, :"zigtest an unrelated error", [context])
     end
   end
-
 end

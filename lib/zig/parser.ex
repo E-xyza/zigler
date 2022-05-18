@@ -15,15 +15,15 @@ defmodule Zig.Parser do
   alias Zig.Parser.{Nif, Resource, ResourceCleanup}
 
   @type t :: %__MODULE__{
-    local: Nif.t | ResourceCleanup.t | {:doc, iodata},
-    file: Path.t,
-    zig_block_line: non_neg_integer,
-    global: [Nif.t],
-    module: module
-  }
+          local: Nif.t() | ResourceCleanup.t() | {:doc, iodata},
+          file: Path.t(),
+          zig_block_line: non_neg_integer,
+          global: [Nif.t()],
+          module: module
+        }
 
   @type line_info :: {non_neg_integer, non_neg_integer}
-  @type parsec_retval :: {[String.t], t}
+  @type parsec_retval :: {[String.t()], t}
 
   @alphanumeric [?a..?z, ?A..?Z, ?0..?9, ?_]
   @number [?0..?9]
@@ -48,19 +48,22 @@ defmodule Zig.Parser do
   number = ascii_string(@number, min: 1)
 
   error_decorator = string("!")
+
   pointer_decorator =
     optional(string("?") |> ignore(optional(whitespace)))
     |> string("*")
 
-  array_decorator = string("[")
+  array_decorator =
+    string("[")
     |> ignore(optional(whitespace))
     |> optional(string("*c") |> optional(whitespace))
     |> string("]")
 
-  decorator = choice([
-    pointer_decorator,
-    array_decorator
-  ])
+  decorator =
+    choice([
+      pointer_decorator,
+      array_decorator
+    ])
 
   type =
     optional(error_decorator |> ignore(optional(whitespace)))
@@ -77,15 +80,15 @@ defmodule Zig.Parser do
 
   initialize = post_traverse(empty(), :initializer)
 
-  @spec initializer(String.t, [String.t], t, line_info, non_neg_integer)
-    :: parsec_retval
+  @spec initializer(String.t(), [String.t()], t, line_info, non_neg_integer) ::
+          parsec_retval
 
   defp initializer(_, _, context, _, _), do: {[], struct(__MODULE__, context)}
 
   # test harness
 
-  if Mix.env == :test do
-    defparsec :parser_initializer, initialize
+  if Mix.env() == :test do
+    defparsec(:parser_initializer, initialize)
   end
 
   #############################################################################
@@ -151,42 +154,48 @@ defmodule Zig.Parser do
 
   # test harness
 
-  if Mix.env == :test do
-    defparsec :parse_docstring_line,       concat(initialize, docstring_line)
-    defparsec :parse_nif_declaration,      concat(initialize, nif_declaration)
-    defparsec :parse_resource_declaration, concat(initialize, resource_declaration)
-    defparsec :parse_docstring,            concat(initialize, docstring)
+  if Mix.env() == :test do
+    defparsec(:parse_docstring_line, concat(initialize, docstring_line))
+    defparsec(:parse_nif_declaration, concat(initialize, nif_declaration))
+    defparsec(:parse_resource_declaration, concat(initialize, resource_declaration))
+    defparsec(:parse_docstring, concat(initialize, docstring))
   end
 
   # warn on bad declarations.
-  bad_declaration = ignore(
-    optional(blankspace)
-    |> string("//")
-    |> optional(blankspace)
-    |> choice([string("nif"), string("resource")])
-    |> string(":")
-    |> optional(ascii_string([not: ?\n], min: 1))
-    |> string("\n"))
-  |> post_traverse(:warn_on_bad_declaration)
+  bad_declaration =
+    ignore(
+      optional(blankspace)
+      |> string("//")
+      |> optional(blankspace)
+      |> choice([string("nif"), string("resource")])
+      |> string(":")
+      |> optional(ascii_string([not: ?\n], min: 1))
+      |> string("\n")
+    )
+    |> post_traverse(:warn_on_bad_declaration)
 
   # registrations
 
-  @spec register_docstring_line(String.t, [String.t], t, line_info, non_neg_integer)
-    :: parsec_retval
+  @spec register_docstring_line(String.t(), [String.t()], t, line_info, non_neg_integer) ::
+          parsec_retval
 
   # empty docstring line.
   defp register_docstring_line(_rest, [], context = %{local: {:doc, doc}}, _, _) do
     {[], %{context | local: {:doc, [doc, ?\n]}}}
   end
+
   defp register_docstring_line(_rest, [], context = %{local: nil}, _, _) do
     {[], %{context | local: nil}}
   end
+
   defp register_docstring_line(_rest, [content], context = %{local: {:doc, doc}}, _, _) do
     {[], %{context | local: {:doc, [doc, ?\n | String.trim(content)]}}}
   end
+
   defp register_docstring_line(_rest, [content], context = %{local: nil}, _, _) do
     {[], %{context | local: {:doc, String.trim(content)}}}
   end
+
   defp register_docstring_line(_rest, [_content], context, {line, _}, _) do
     raise SyntaxError,
       file: context.file,
@@ -195,42 +204,52 @@ defmodule Zig.Parser do
   end
 
   # register_nif_declaration/5: trampolines into register_nif_declaration/3
-  @spec register_nif_declaration(String.t, [String.t], t, line_info, non_neg_integer)
-    :: parsec_retval
+  @spec register_nif_declaration(String.t(), [String.t()], t, line_info, non_neg_integer) ::
+          parsec_retval
   defp register_nif_declaration(_rest, content, context, _, _) do
     register_nif_declaration(content, context, [])
   end
+
   # register_nif_declaration/3
-  @spec register_nif_declaration([String.t], t, keyword)
-    :: parsec_retval
+  @spec register_nif_declaration([String.t()], t, keyword) ::
+          parsec_retval
   defp register_nif_declaration(content, context = %{local: {:doc, doc}}, opts) do
     register_nif_declaration(content, %{context | local: nil}, opts ++ [doc: doc])
   end
+
   defp register_nif_declaration(["yielding" | rest], context, opts) do
     register_nif_declaration(rest, context, opts ++ [concurrency: :yielding])
   end
+
   defp register_nif_declaration(["threaded" | rest], context, opts) do
     register_nif_declaration(rest, context, opts ++ [concurrency: :threaded])
   end
+
   defp register_nif_declaration(["dirty_io" | rest], context, opts) do
     register_nif_declaration(rest, context, opts ++ [concurrency: :dirty_io])
   end
+
   defp register_nif_declaration(["dirty_cpu" | rest], context, opts) do
     register_nif_declaration(rest, context, opts ++ [concurrency: :dirty_cpu])
   end
+
   defp register_nif_declaration([arity, name], context, opts) do
-    local = struct(Nif,
-      module: context.module,
-      name:  String.to_atom(name),
-      arity: String.to_integer(arity),
-      doc:   opts[:doc],
-      opts:  Keyword.take(opts, [:concurrency]))
+    local =
+      struct(Nif,
+        module: context.module,
+        name: String.to_atom(name),
+        arity: String.to_integer(arity),
+        doc: opts[:doc],
+        opts: Keyword.take(opts, [:concurrency])
+      )
+
     {[], %{context | local: local}}
   end
 
   defp register_resource_declaration(_rest, ["definition", name], context, _, _) do
     {[], %{context | local: resource_struct(name, context)}}
   end
+
   defp register_resource_declaration(_rest, ["cleanup", name], context, _, _) do
     {[], %{context | local: resource_cleanup_struct(name, context)}}
   end
@@ -238,6 +257,7 @@ defmodule Zig.Parser do
   defp resource_struct(name, context = %{local: {:doc, doc}}) do
     struct(resource_struct(name, %{context | local: nil}), doc: doc)
   end
+
   defp resource_struct(name, _context) do
     struct(Resource, name: String.to_atom(name))
   end
@@ -245,6 +265,7 @@ defmodule Zig.Parser do
   defp resource_cleanup_struct(name, context = %{local: {:doc, doc}}) do
     struct(resource_cleanup_struct(name, %{context | local: nil}), doc: doc)
   end
+
   defp resource_cleanup_struct(name, _context) do
     struct(ResourceCleanup, for: String.to_atom(name))
   end
@@ -262,7 +283,8 @@ defmodule Zig.Parser do
       identifier
       |> optional(whitespace)
       |> string(":")
-      |> optional(whitespace))
+      |> optional(whitespace)
+    )
     |> concat(type)
 
   argument_list =
@@ -272,14 +294,17 @@ defmodule Zig.Parser do
       ignore(
         optional(whitespace)
         |> string(",")
-        |> optional(whitespace))
-      |> concat(argument))
+        |> optional(whitespace)
+      )
+      |> concat(argument)
+    )
 
   function_header =
     ignore(
       optional(blankspace)
       |> string("fn")
-      |> concat(whitespace))
+      |> concat(whitespace)
+    )
     |> concat(identifier)
     |> post_traverse(:validate_nif_declaration)
     |> ignore(optional(whitespace) |> string("("))
@@ -291,102 +316,123 @@ defmodule Zig.Parser do
     |> post_traverse(:validate_retval)
     |> ignore(
       repeat(ascii_char(not: ?\n))
-      |> string("\n"))
+      |> string("\n")
+    )
     |> post_traverse(:register_function_header)
 
   resource_definition =
     ignore(
       optional(blankspace)
       |> string("const")
-      |> concat(whitespace))
+      |> concat(whitespace)
+    )
     |> concat(identifier)
     |> post_traverse(:validate_resource)
     |> optional(blankspace)
     |> ignore(
       string("=")
       |> repeat(ascii_char(not: ?\n))
-      |> string("\n"))
+      |> string("\n")
+    )
     |> post_traverse(:register_resource_definition)
+
   # test harness
 
-  if Mix.env == :test do
-    defparsec :parse_argument, concat(initialize, argument)
-    defparsec :parse_argument_list, concat(initialize, argument_list)
-    defparsec :parse_function_header, concat(initialize, function_header)
-    defparsec :parse_resource_definition, concat(initialize, resource_definition)
+  if Mix.env() == :test do
+    defparsec(:parse_argument, concat(initialize, argument))
+    defparsec(:parse_argument_list, concat(initialize, argument_list))
+    defparsec(:parse_function_header, concat(initialize, function_header))
+    defparsec(:parse_resource_definition, concat(initialize, resource_definition))
   end
 
   # validations
 
-  @spec validate_nif_declaration(String.t, [String.t], t, line_info, non_neg_integer)
-    :: parsec_retval | no_return
-  defp validate_nif_declaration(_rest, [nif_name], context = %{local: %Nif{name: name}}, {line, _}, _) do
+  @spec validate_nif_declaration(String.t(), [String.t()], t, line_info, non_neg_integer) ::
+          parsec_retval | no_return
+  defp validate_nif_declaration(
+         _rest,
+         [nif_name],
+         context = %{local: %Nif{name: name}},
+         {line, _},
+         _
+       ) do
     unless nif_name == Atom.to_string(name) do
       raise SyntaxError,
         file: context.file,
         line: line + context.zig_block_line - 1,
         description: "nif declaration name #{name} doesn't match function name #{nif_name}"
     end
+
     {[], context}
   end
+
   defp validate_nif_declaration(_, content, context, _, _), do: {content, context}
 
   # validate_arity/5: trampolines into module.validate_arity/3
-  @spec validate_arity(String.t, [String.t], t, line_info, non_neg_integer)
-    :: parsec_retval | no_return
+  @spec validate_arity(String.t(), [String.t()], t, line_info, non_neg_integer) ::
+          parsec_retval | no_return
   defp validate_arity(_rest, args, context = %{local: %module{}}, {line, _}, _) do
     args
-    |> Enum.reverse
+    |> Enum.reverse()
     |> module.validate_arity(context, line)
+
     {args, context}
   end
+
   defp validate_arity(_rest, content, context, _, _), do: {content, context}
 
   # validate_args/5 : trampolines to module.validate_args/3
   # ignore argument validation if we're not in a segment specified by a nif.
-  @spec validate_args(String.t, [String.t], t, line_info, non_neg_integer)
-    :: parsec_retval | no_return
+  @spec validate_args(String.t(), [String.t()], t, line_info, non_neg_integer) ::
+          parsec_retval | no_return
   defp validate_args(_rest, content, context = %{local: %module{}}, {line, _}, _) do
     module.validate_args(content, context, line)
     {content, context}
   end
+
   defp validate_args(_, content, context, _, _), do: {content, context}
 
   # validate_retval/5 : trampolines to module.validate_args/3
-  @spec validate_retval(String.t, [String.t], t, line_info, non_neg_integer)
-    :: parsec_retval | no_return
+  @spec validate_retval(String.t(), [String.t()], t, line_info, non_neg_integer) ::
+          parsec_retval | no_return
   defp validate_retval(_rest, content, context = %{local: %module{}}, {line, _}, _) do
     module.validate_retval(content, context, line)
     {content, context}
   end
+
   defp validate_retval(_, content, context, _, _), do: {content, context}
 
-  @spec validate_resource(String.t, [String.t], t, line_info, non_neg_integer)
-    :: parsec_retval | no_return
+  @spec validate_resource(String.t(), [String.t()], t, line_info, non_neg_integer) ::
+          parsec_retval | no_return
   defp validate_resource(_, [name], context = %{local: resource = %Resource{}}, {line, _}, _) do
     unless Atom.to_string(resource.name) == name do
       raise SyntaxError,
         file: context.file,
         line: line + context.zig_block_line - 1,
-        description: "resource declaration #{resource.name} doesn't match succeeding const identifier #{name}"
+        description:
+          "resource declaration #{resource.name} doesn't match succeeding const identifier #{name}"
     end
+
     {[], context}
   end
+
   defp validate_resource(_, _, context, _, _), do: {[], context}
 
   # registrations
 
-  @spec register_function_header(String.t, [String.t], t, line_info, non_neg_integer)
-    :: parsec_retval
+  @spec register_function_header(String.t(), [String.t()], t, line_info, non_neg_integer) ::
+          parsec_retval
 
   defp register_function_header(_, content, context = %{local: %module{}}, _, _) do
     {[], %{module.register_function_header(content, context) | local: nil}}
   end
+
   defp register_function_header(_, _, context, _, _), do: {[], %{context | local: nil}}
 
   defp register_resource_definition(_, _, context = %{local: %Resource{}}, _, _) do
     {[], %{Resource.register_resource_definition(context) | local: nil}}
   end
+
   defp register_resource_definition(_, _, context, _, _), do: {[], context}
 
   #############################################################################
@@ -399,33 +445,41 @@ defmodule Zig.Parser do
 
   zig_block =
     initialize
-    |> repeat(choice([
-      docstring,
-      function_header,
-      resource_definition,
-      bad_declaration,
-      ignored_line,
-    ]))
+    |> repeat(
+      choice([
+        docstring,
+        function_header,
+        resource_definition,
+        bad_declaration,
+        ignored_line
+      ])
+    )
 
-  defparsec :parse_zig_block, zig_block
+  defparsec(:parse_zig_block, zig_block)
 
-  @spec clear(String.t, [String.t], t, line_info, non_neg_integer) :: parsec_retval
+  @spec clear(String.t(), [String.t()], t, line_info, non_neg_integer) :: parsec_retval
 
   defp clear(_rest, _content, context = %{local: nil}, _, _) do
     {[], context}
   end
+
   defp clear(_rest, _content, context = %{local: {:doc, _}}, _, _) do
     {[], context}
   end
+
   defp clear(_rest, _content, context = %{local: %type{}}, {line, _}, _) do
-    msg = case type do
-      Nif ->
-        "incomplete nif declaration"
-      Resource ->
-        "incomplete resource declaration"
-      ResourceCleanup ->
-        "incomplete resource cleanup declaration"
-    end
+    msg =
+      case type do
+        Nif ->
+          "incomplete nif declaration"
+
+        Resource ->
+          "incomplete resource declaration"
+
+        ResourceCleanup ->
+          "incomplete resource cleanup declaration"
+      end
+
     raise SyntaxError,
       file: context.file,
       line: line + context.zig_block_line - 1,
@@ -435,25 +489,28 @@ defmodule Zig.Parser do
   #############################################################################
   ## API
 
-  @spec parse(String.t, Zig.Module.t, Path.t, non_neg_integer) :: Zig.Module.t
+  @spec parse(String.t(), Zig.Module.t(), Path.t(), non_neg_integer) :: Zig.Module.t()
   def parse(code, old_module, file, line) do
-    context = old_module
-    |> Map.from_struct
-    |> Map.put(:zig_block_line, line)
+    context =
+      old_module
+      |> Map.from_struct()
+      |> Map.put(:zig_block_line, line)
 
     case parse_zig_block(code, context: context) do
       {:ok, [], "", parser, _, _} ->
         append(old_module, parser, code, file, line)
+
       {:error, msg, _rest, _context, {ctx_line, _}, _} ->
         raise SyntaxError,
           file: old_module.file,
           line: ctx_line + context.zig_block_line,
           description: msg
+
       err ->
         raise SyntaxError,
           file: old_module.file,
           line: line + context.zig_block_line,
-          description: "unknown parsing error #{inspect err}"
+          description: "unknown parsing error #{inspect(err)}"
     end
   end
 
@@ -466,9 +523,12 @@ defmodule Zig.Parser do
 
     new_nifs = Enum.filter(global, &match?(%Nif{}, &1))
     new_resources = Enum.filter(global, &match?(%Resource{}, &1))
-    %{old_module |
-      nifs: old_module.nifs ++ new_nifs,
-      resources: old_module.resources ++ new_resources,
-      code: [old_module.code, spacer, anchor, String.trim(code), "\n"]}
+
+    %{
+      old_module
+      | nifs: old_module.nifs ++ new_nifs,
+        resources: old_module.resources ++ new_resources,
+        code: [old_module.code, spacer, anchor, String.trim(code), "\n"]
+    }
   end
 end

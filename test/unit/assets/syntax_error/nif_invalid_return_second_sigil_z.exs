@@ -17,5 +17,4 @@ defmodule ZiglerTest.DryRun.NifInvalidReturnSecondSigilZ do
     return 47;
   }
   """
-
 end

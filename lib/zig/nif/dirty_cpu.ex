@@ -1,5 +1,4 @@
 defmodule Zig.Nif.DirtyCpu do
-
   @moduledoc false
 
   alias Zig.Nif.{Adapter, Synchronous}

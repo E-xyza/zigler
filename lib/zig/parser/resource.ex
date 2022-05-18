@@ -1,5 +1,4 @@
 defmodule Zig.Parser.Resource do
-
   @moduledoc """
   resource parser object
   """
@@ -8,10 +7,10 @@ defmodule Zig.Parser.Resource do
   defstruct @enforce_keys ++ [:doc, :cleanup]
 
   @type t :: %__MODULE__{
-    name: atom,
-    cleanup: atom,
-    doc: String.t
-  }
+          name: atom,
+          cleanup: atom,
+          doc: String.t()
+        }
 
   alias Zig.Parser.ResourceCleanup
 
@@ -31,6 +30,6 @@ defmodule Zig.Parser.Resource do
   defp replace_cleanup([%ResourceCleanup{for: res, name: cleanup} | rest], r = %{name: res}) do
     [%{r | cleanup: cleanup} | rest]
   end
-  defp replace_cleanup([any | rest], res), do: [any | replace_cleanup(rest, res)]
 
+  defp replace_cleanup([any | rest], res), do: [any | replace_cleanup(rest, res)]
 end

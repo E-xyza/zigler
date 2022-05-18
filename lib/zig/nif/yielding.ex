@@ -41,17 +41,18 @@ defmodule Zig.Nif.Yielding do
   defp basic_fn(%{name: name, arity: arity}) do
     text = "nif for function #{name}/#{arity} not bound"
 
-    args = if arity == 0 do
-      Elixir
-    else
-      for _ <- 1..arity, do: {:_, [], Elixir}
-    end
+    args =
+      if arity == 0 do
+        Elixir
+      else
+        for _ <- 1..arity, do: {:_, [], Elixir}
+      end
 
     {:def, [context: Elixir, import: Kernel],
-      [
-        {name, [context: Elixir], args},
-        [do: {:raise, [context: Elixir, import: Kernel], [text]}]
-      ]}
+     [
+       {name, [context: Elixir], args},
+       [do: {:raise, [context: Elixir, import: Kernel], [text]}]
+     ]}
   end
 
   #############################################################################
@@ -67,14 +68,14 @@ defmodule Zig.Nif.Yielding do
   def rescheduler(fn_name), do: String.to_atom("__#{fn_name}_rescheduler__")
   def harness(fn_name), do: String.to_atom("__#{fn_name}_harness__")
 
-  @spec frame_resources(Nif.t) :: iodata
+  @spec frame_resources(Nif.t()) :: iodata
   def frame_resources(nif) do
     """
-    /// resource: #{frame_ptr nif.name} definition
-    const #{frame_ptr nif.name} = *beam.Frame(#{harness nif.name});
+    /// resource: #{frame_ptr(nif.name)} definition
+    const #{frame_ptr(nif.name)} = *beam.Frame(#{harness(nif.name)});
 
-    /// resource: #{frame_type nif.name} cleanup
-    fn #{frame_cleanup nif.name}(_: beam.env, beam_frame_ptr: *#{frame_ptr nif.name}) void {
+    /// resource: #{frame_type(nif.name)} cleanup
+    fn #{frame_cleanup(nif.name)}(_: beam.env, beam_frame_ptr: *#{frame_ptr(nif.name)}) void {
       const allocator = beam.large_allocator;
 
       var beam_frame = beam_frame_ptr.*;
@@ -102,30 +103,30 @@ defmodule Zig.Nif.Yielding do
     """
   end
 
-  @spec launcher_fns(Nif.t) :: iodata
+  @spec launcher_fns(Nif.t()) :: iodata
   def launcher_fns(nif) do
     """
-    export fn #{launcher nif.name}(env: beam.env, _: c_int, argv: [*c] const beam.term) beam.term {
-      return #{launcher_shim nif.name}(env, argv) catch | err | switch (err) {
+    export fn #{launcher(nif.name)}(env: beam.env, _: c_int, argv: [*c] const beam.term) beam.term {
+      return #{launcher_shim(nif.name)}(env, argv) catch | err | switch (err) {
         error.LaunchError => beam.raise(env, beam.make_atom(env, "launch_error")),
         error.OutOfMemory => beam.raise_enomem(env),
         error.Cancelled => unreachable,
       };
     }
 
-    fn #{launcher_shim nif.name}(env: beam.env, argv: [*c] const beam.term) !beam.term {
+    fn #{launcher_shim(nif.name)}(env: beam.env, argv: [*c] const beam.term) !beam.term {
       const allocator = beam.large_allocator;
 
       // first, create the beam.Frame on the heap.  this needs to be resource that we can jam
       // into the rescheduler tail-call's argument list.
-      var beam_frame = try allocator.create(beam.Frame(#{harness nif.name}));
+      var beam_frame = try allocator.create(beam.Frame(#{harness(nif.name)}));
       errdefer allocator.destroy(beam_frame);
 
       // next create the zig frame for the scheduler on the heap.
-      beam_frame.zig_frame = try allocator.create(@Frame(#{harness nif.name}));
+      beam_frame.zig_frame = try allocator.create(@Frame(#{harness(nif.name)}));
       errdefer allocator.destroy(beam_frame.zig_frame);
 
-      var frame_resource = try __resource__.create(#{frame_ptr nif.name}, env, beam_frame);
+      var frame_resource = try __resource__.create(#{frame_ptr(nif.name)}, env, beam_frame);
 
       // create a new environment for the yielding nif.
       var yield_env = e.enif_alloc_env() orelse return beam.YieldError.LaunchError;
@@ -137,13 +138,13 @@ defmodule Zig.Nif.Yielding do
       beam.yield_info = &(beam_frame.yield_info);
 
       // run the desired function.
-      beam_frame.zig_frame.* = async #{harness nif.name}(yield_env, env, argv);
+      beam_frame.zig_frame.* = async #{harness(nif.name)}(yield_env, env, argv);
 
       // mark the resource for releasing here.
-      __resource__.release(#{frame_ptr nif.name}, env, frame_resource);
+      __resource__.release(#{frame_ptr(nif.name)}, env, frame_resource);
 
       if (beam.yield_info.?.yield_frame) | _ | {
-        return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler nif.name}, 1, &frame_resource);
+        return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler(nif.name)}, 1, &frame_resource);
       } else {
         if (beam_frame.yield_info.errored) {
           // is this correct?  Should we be only copying if it's errored?  Or should we
@@ -159,14 +160,14 @@ defmodule Zig.Nif.Yielding do
     """
   end
 
-  @spec rescheduler_fn(Nif.t) :: iodata
+  @spec rescheduler_fn(Nif.t()) :: iodata
   @doc """
   the rescheduler fn is a seam between the tail-call reentrancy of the BEAM FFI.
   """
   def rescheduler_fn(nif) do
     """
-    export fn #{rescheduler nif.name}(env: beam.env, _: c_int, argv: [*c] const beam.term) beam.term {
-      var beam_frame = __resource__.fetch(#{frame_ptr nif.name}, env, argv[0]) catch
+    export fn #{rescheduler(nif.name)}(env: beam.env, _: c_int, argv: [*c] const beam.term) beam.term {
+      var beam_frame = __resource__.fetch(#{frame_ptr(nif.name)}, env, argv[0]) catch
         return beam.raise_resource_error(env);
 
       var start_time = e.enif_monotonic_time(e.ERL_NIF_USEC);
@@ -197,40 +198,45 @@ defmodule Zig.Nif.Yielding do
         return beam.yield_info.?.response;
       }
 
-      return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler nif.name}, 1, argv);
+      return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler(nif.name)}, 1, argv);
     }
     """
   end
 
-  @spec harness_fns(Nif.t) :: iodata
+  @spec harness_fns(Nif.t()) :: iodata
   def harness_fns(nif) do
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"argv[#{&1}]")
 
     argv = if Adapter.uses_argv?(nif), do: "argv", else: "_"
-    result_term = case nif.retval do
-      "void" -> "beam.make_ok(env); _ = result"
-      "!" <> _ ->
-        {_r_used?, r} = Adapter.make_clause(nif.retval, "__r", "beam.yield_info.?.environment")
 
-        """
-        if (result) | __r |
-          #{r}
-        else | __e | res: {
-          beam.yield_info.?.errored = true;
-          break :res beam.make_exception(
-            beam.yield_info.?.environment,
-            "#{nif.module}.ZigError",
-            __e,
-            @errorReturnTrace());
-        }
+    result_term =
+      case nif.retval do
+        "void" ->
+          "beam.make_ok(env); _ = result"
 
-        """
-      _ ->
-        {_result_used?, result} =
-          Adapter.make_clause(nif.retval, "result", "beam.yield_info.?.environment")
+        "!" <> _ ->
+          {_r_used?, r} = Adapter.make_clause(nif.retval, "__r", "beam.yield_info.?.environment")
 
-        result
-    end
+          """
+          if (result) | __r |
+            #{r}
+          else | __e | res: {
+            beam.yield_info.?.errored = true;
+            break :res beam.make_exception(
+              beam.yield_info.?.environment,
+              "#{nif.module}.ZigError",
+              __e,
+              @errorReturnTrace());
+          }
+
+          """
+
+        _ ->
+          {_result_used?, result} =
+            Adapter.make_clause(nif.retval, "result", "beam.yield_info.?.environment")
+
+          result
+      end
 
     """
     fn #{harness(nif.name)}(env: beam.env, parent_env: beam.env, #{argv}: [*c] const beam.term) callconv(.Async) void {
@@ -240,7 +246,7 @@ defmodule Zig.Nif.Yielding do
     #{get_clauses}
 
       // launch the nif frame.
-      const result = #{nif.name}(#{Adapter.args nif});
+      const result = #{nif.name}(#{Adapter.args(nif)});
 
       const result_term = #{result_term};
       // join the result, since it finished.
@@ -249,25 +255,33 @@ defmodule Zig.Nif.Yielding do
     """
   end
 
-  def bail(:oom), do: """
-  {
-        beam.yield_info.?.response = beam.raise_enomem(parent_env);
-        return;
-      }
-  """
-  def bail(:function_clause), do: """
-  {
-        beam.yield_info.?.response = beam.raise_function_clause_error(parent_env);
-        return;
-      }
-  """
+  def bail(:oom),
+    do: """
+    {
+          beam.yield_info.?.response = beam.raise_enomem(parent_env);
+          return;
+        }
+    """
+
+  def bail(:function_clause),
+    do: """
+    {
+          beam.yield_info.?.response = beam.raise_function_clause_error(parent_env);
+          return;
+        }
+    """
 
   @impl true
   def zig_adapter(nif, _module) do
-    [frame_resources(nif), "\n",
-     launcher_fns(nif), "\n",
-     rescheduler_fn(nif), "\n",
-     harness_fns(nif)]
+    [
+      frame_resources(nif),
+      "\n",
+      launcher_fns(nif),
+      "\n",
+      rescheduler_fn(nif),
+      "\n",
+      harness_fns(nif)
+    ]
   end
 
   @impl true
@@ -276,7 +290,7 @@ defmodule Zig.Nif.Yielding do
       e.ErlNifFunc{
         .name = "#{nif.name}",
         .arity = #{nif.arity},
-        .fptr = #{launcher nif.name},
+        .fptr = #{launcher(nif.name)},
         .flags = 0,
       },
     """

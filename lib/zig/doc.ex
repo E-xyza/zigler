@@ -1,5 +1,4 @@
 defmodule Zig.Doc do
-
   @moduledoc """
   Translates the docstrings from your Zig code into Elixir documentation.
 

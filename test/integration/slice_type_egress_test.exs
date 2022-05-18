@@ -59,5 +59,4 @@ defmodule ZiglerTest.Integration.SliceTypeEgressTest do
     assert [47.0, 47.0, 47.0, 47.0] == egress_f32_slice()
     assert [47.0, 47.0, 47.0, 47.0] == egress_f64_slice()
   end
-
 end

@@ -18,26 +18,40 @@ defmodule ZiglerTest.Integration.TypespecTest do
   defp assert_typespec(fn_name, arity, args, return) do
     assert {_, [spec]} = Enum.find(@types, &match?({{^fn_name, ^arity}, _}, &1))
     assert {:type, _, :fun, [{:type, _, :product, ts_args}, ts_return]} = spec
+
     args
     |> Enum.zip(ts_args)
     |> Enum.each(&compare_type/1)
+
     compare_type(return, ts_return)
   end
 
   defp compare_type({type, target}), do: compare_type(type, target)
-  defp compare_type(type, target) when is_atom(type), do: assert match?({:type, _, ^type, _}, target)
-  defp compare_type({:atom, atom}, target), do: assert match?({:atom, _, ^atom}, target)
+
+  defp compare_type(type, target) when is_atom(type),
+    do: assert(match?({:type, _, ^type, _}, target))
+
+  defp compare_type({:atom, atom}, target), do: assert(match?({:atom, _, ^atom}, target))
+
   defp compare_type({:list, type}, target) do
     assert match?({:type, _, :list, [{:type, _, ^type, _}]}, target)
   end
+
   defp compare_type(first..last, target) when first >= 0 do
     assert match?({:type, _, :range, [{:integer, _, ^first}, {:integer, _, ^last}]}, target)
   end
+
   defp compare_type(first..last, target) do
     neg_first = -first
-    assert match?({:type, _, :range, [
-      {:op, _, :-, {:integer, _, ^neg_first}},
-      {:integer, _, ^last}]}, target)
+
+    assert match?(
+             {:type, _, :range,
+              [
+                {:op, _, :-, {:integer, _, ^neg_first}},
+                {:integer, _, ^last}
+              ]},
+             target
+           )
   end
 
   describe "the dummy elixir typespec matches" do

@@ -16,6 +16,7 @@ defmodule ZiglerTest.Integration.ScalarTypeIngressTest do
     assert_raise FunctionClauseError, fn ->
       ingress_bool("true")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_bool("false")
     end
@@ -23,12 +24,13 @@ defmodule ZiglerTest.Integration.ScalarTypeIngressTest do
     assert_raise FunctionClauseError, fn ->
       ingress_bool(1)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_bool(0)
     end
 
     assert_raise FunctionClauseError, fn ->
-      ingress_bool(:nil)
+      ingress_bool(nil)
     end
   end
 
@@ -52,12 +54,15 @@ defmodule ZiglerTest.Integration.ScalarTypeIngressTest do
     assert_raise FunctionClauseError, fn ->
       ingress_i32("47")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_i64("47")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_i32(47.0)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_i64(47.0)
     end
@@ -66,12 +71,15 @@ defmodule ZiglerTest.Integration.ScalarTypeIngressTest do
     assert_raise FunctionClauseError, fn ->
       ingress_i32(0x8000_0000)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_i32(-0x8000_0001)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_i64(0x8000_0000_0000_0000)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_i64(-0x8000_0000_0000_0001)
     end
@@ -109,24 +117,31 @@ defmodule ZiglerTest.Integration.ScalarTypeIngressTest do
     assert_raise FunctionClauseError, fn ->
       ingress_u8("47")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u16("47")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u32("47")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u64("47")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u8(47.0)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u16(47.0)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u32(47.0)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u64(47.0)
     end
@@ -135,12 +150,15 @@ defmodule ZiglerTest.Integration.ScalarTypeIngressTest do
     assert_raise FunctionClauseError, fn ->
       ingress_u8(-1)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u16(-1)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u32(-1)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u64(-1)
     end
@@ -149,12 +167,15 @@ defmodule ZiglerTest.Integration.ScalarTypeIngressTest do
     assert_raise FunctionClauseError, fn ->
       ingress_u8(0x100)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u16(0x1_0000)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u32(0x1_0000_0000)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_u64(0x1_0000_0000_0000_0000)
     end
@@ -192,24 +213,31 @@ defmodule ZiglerTest.Integration.ScalarTypeIngressTest do
     assert_raise FunctionClauseError, fn ->
       ingress_c_int("47")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_c_uint("47")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_c_long("47")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_c_ulong("47")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_c_int(47.0)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_c_uint(47.0)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_c_long(47.0)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_c_ulong(47.0)
     end
@@ -241,9 +269,11 @@ defmodule ZiglerTest.Integration.ScalarTypeIngressTest do
     assert_raise FunctionClauseError, fn ->
       ingress_f16("47")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_f32("47")
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_f64("47")
     end
@@ -251,9 +281,11 @@ defmodule ZiglerTest.Integration.ScalarTypeIngressTest do
     assert_raise FunctionClauseError, fn ->
       ingress_f16(47)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_f32(47)
     end
+
     assert_raise FunctionClauseError, fn ->
       ingress_f64(47)
     end
