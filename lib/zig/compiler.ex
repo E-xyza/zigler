@@ -165,7 +165,8 @@ defmodule Zig.Compiler do
 
             new_message = "#{inspect(m)}.#{f}/#{a} returned the zig error `.#{exception.message}`"
 
-            zig_errors = Enum.map(exception.error_return_trace, &process_return_trace(m, code, &1))
+            zig_errors =
+              Enum.map(exception.error_return_trace, &process_return_trace(m, code, &1))
 
             {%{exception | message: new_message}, Enum.reverse(zig_errors, stacktrace)}
           end
