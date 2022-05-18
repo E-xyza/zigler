@@ -11,34 +11,32 @@ defmodule Zig.Nif.Synchronous do
   @impl true
   def zig_adapter(nif, module) do
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"argv[#{&1}]")
+    env = if Adapter.uses_env?(nif), do: "env", else: "_"
+    argv = if Adapter.uses_argv?(nif), do: "argv", else: "_"
 
     head = """
-    export fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+    export fn __#{nif.name}_shim__(#{env}: beam.env, _: c_int, #{argv}: [*c] const beam.term) beam.term {
       beam.yield_info = null;
     """
-
-    result =
-      case nif.retval do
-        v when v in ["beam.term", "e.ErlNifTerm", "!beam.term", "!e.ErlNifTerm"] ->
-          """
-            return nosuspend #{function_call(nif, module)}}
-          """
-
-        v when v in ["void", "!void"] ->
-          """
-            nosuspend #{function_call(nif, module)}  return beam.make_ok(env);
-          }
-          """
-
-        other ->
-          """
-            var #{result_var(nif)} = nosuspend #{function_call(nif, module)}  return #{
-            Adapter.make_clause(other, result_var(nif))
-          };
-          }
-          """
-      end
-
+    
+    result = case nif.retval do
+      v when v in ["beam.term", "e.ErlNifTerm", "!beam.term", "!e.ErlNifTerm"] ->
+        """
+          return nosuspend #{function_call(nif, module)}}
+        """
+      v when v in ["void", "!void"] ->
+        """
+          nosuspend #{function_call(nif, module)}  return beam.make_ok(env);
+        }
+        """
+      other ->
+        {_used?, result_var} = Adapter.make_clause(other, result_var(nif))
+        """
+          var #{result_var(nif)} = nosuspend #{function_call(nif, module)}  return #{result_var};
+        }
+        """
+    end
+    
     [head, "\n", get_clauses, result, "\n"]
   end
 

@@ -75,7 +75,7 @@ defmodule Zig do
   ### Nerves Support
 
   Nerves is supported out of the box, and the system should cross-compile
-  to arm ABI as necessary depening on what your nerves `:target` is.  You
+  to arm ABI as necessary depending on what your nerves `:target` is.  You
   may also directly specify a zig target using the
   `use Zig, target: <target>` option.
 

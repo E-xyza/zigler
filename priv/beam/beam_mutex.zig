@@ -37,6 +37,7 @@ pub fn BeamMutex(comptime name: []const u8) type {
                 },
                 e.EBUSY => false,
                 _ => unreachable
+
             };
         }
 

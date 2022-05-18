@@ -7,12 +7,12 @@ defmodule ZiglerTest.Integration.EnvTest do
 
   ~Z"""
   /// nif: zeroarity_with_env/0
-  fn zeroarity_with_env(env: beam.env) i64 {
+  fn zeroarity_with_env(_: beam.env) i64 {
     return 47;
   }
 
   /// nif: zeroarity_with_erlnifenv/0
-  fn zeroarity_with_erlnifenv(env: ?*e.ErlNifEnv) i64 {
+  fn zeroarity_with_erlnifenv(_: ?*e.ErlNifEnv) i64 {
     return 47;
   }
   """
@@ -27,12 +27,12 @@ defmodule ZiglerTest.Integration.EnvTest do
 
   ~Z"""
   /// nif: int_with_env/1
-  fn int_with_env(env: beam.env, val: i64) i64 {
+  fn int_with_env(_: beam.env, val: i64) i64 {
     return val;
   }
 
   /// nif: int_with_erlnifenv/1
-  fn int_with_erlnifenv(env: ?*e.ErlNifEnv, val: i64) i64 {
+  fn int_with_erlnifenv(_: ?*e.ErlNifEnv, val: i64) i64 {
     return val;
   }
   """

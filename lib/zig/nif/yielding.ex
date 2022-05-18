@@ -170,7 +170,7 @@ defmodule Zig.Nif.Yielding do
       var beam_frame = __resource__.fetch(#{frame_ptr(nif.name)}, env, argv[0]) catch
         return beam.raise_resource_error(env);
 
-      var start_time = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
+      var start_time = e.enif_monotonic_time(e.ERL_NIF_USEC);
       var tick_time: e.ErlNifTime = undefined;
       var elapsed_time: e.ErlNifTime = undefined;
 
@@ -181,7 +181,7 @@ defmodule Zig.Nif.Yielding do
         // stash the yielding frame and resume it:
         beam.yield_info.?.yield_frame = null;
         resume next_frame;
-        tick_time = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
+        tick_time = e.enif_monotonic_time(e.ERL_NIF_USEC);
         elapsed_time = tick_time - start_time;
 
         if (elapsed_time >= 100) {
@@ -206,35 +206,36 @@ defmodule Zig.Nif.Yielding do
   @spec harness_fns(Nif.t()) :: iodata
   def harness_fns(nif) do
     get_clauses = Adapter.get_clauses(nif, &bail/1, &"argv[#{&1}]")
+    argv = if Adapter.uses_argv?(nif), do: "argv", else: "_"
+    result_term = case nif.retval do
+      "void" -> "beam.make_ok(env); _ = result"
+      "!" <> _ ->
+        {_r_used?, r} = Adapter.make_clause(nif.retval, "__r", "beam.yield_info.?.environment")
 
-    result_term =
-      case nif.retval do
-        "void" ->
-          "beam.make_ok(env)"
+        """
+        if (result) | __r |
+          #{r}
+        else | __e | res: {
+          beam.yield_info.?.errored = true;
+          break :res beam.make_exception(
+            beam.yield_info.?.environment,
+            "#{nif.module}.ZigError",
+            __e,
+            @errorReturnTrace());
+        }
 
-        "!" <> _ ->
-          r = Adapter.make_clause(nif.retval, "__r", "beam.yield_info.?.environment")
-
-          """
-          if (result) | __r |
-            #{r}
-          else | __e | res: {
-            beam.yield_info.?.errored = true;
-            break :res beam.make_exception(
-              beam.yield_info.?.environment,
-              "#{nif.module}.ZigError",
-              __e,
-              @errorReturnTrace());
-          }
-
-          """
-
-        _ ->
+        """
+      _ ->
+        {_result_used?, result} =
           Adapter.make_clause(nif.retval, "result", "beam.yield_info.?.environment")
-      end
+
+        result
+    end
 
     """
-    fn #{harness(nif.name)}(env: beam.env, parent_env: beam.env, argv: [*c] const beam.term) callconv(.Async) void {
+    fn #{harness(nif.name)}(env: beam.env, parent_env: beam.env, #{argv}: [*c] const beam.term) callconv(.Async) void {
+      _ = env;
+      _ = parent_env;
       // decode parameters
     #{get_clauses}
 

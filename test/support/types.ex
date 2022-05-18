@@ -62,15 +62,15 @@ defmodule ZiglerTest.Types do
   fn multiarg(a: i64, b: f64) f64 { return a * b; }
 
   /// nif: env_zero/0
-  fn env_zero(env: beam.env) i64 { return 47; }
+  fn env_zero(_: beam.env) i64 { return 47; }
 
   /// nif: eenv_zero/0
-  fn eenv_zero(env: ?*e.ErlNifEnv) i64 { return 47; }
+  fn eenv_zero(_: ?*e.ErlNifEnv) i64 { return 47; }
 
   /// nif: env_one/1
-  fn env_one(env: beam.env, x: i64) i64 { return x; }
+  fn env_one(_: beam.env, x: i64) i64 { return x; }
 
   /// nif: eenv_one/1
-  fn eenv_one(env: ?*e.ErlNifEnv, x: i64) i64 { return x; }
+  fn eenv_one(_: ?*e.ErlNifEnv, x: i64) i64 { return x; }
   """
 end

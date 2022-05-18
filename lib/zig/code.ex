@@ -138,7 +138,6 @@ defmodule Zig.Code do
       case module.resources do
         [] ->
           ""
-
         _ ->
           """
           export fn nif_load(env: beam.env, priv: [*c]?*c_void, load_info: beam.term) c_int {
@@ -262,11 +261,11 @@ defmodule Zig.Code do
         null,
         \"#{name}\",
         __destroy_#{name}__,
-        @intToEnum(e.ErlNifResourceFlags, 3),
+        e.ERL_NIF_RT_CREATE | e.ERL_NIF_RT_TAKEOVER,
         null);
     }
 
-    export fn __destroy_#{name}__(env: beam.env, res: ?*c_void) void {#{cleanup}}
+    export fn __destroy_#{name}__(env: beam.env, res: ?*anyopaque) void {_ = env; _ = res; #{cleanup}}
     """
   end
 

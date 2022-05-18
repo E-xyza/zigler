@@ -190,7 +190,7 @@ defmodule Zig.Command do
     :global.del_lock({__MODULE__, self()})
   end
 
-  # https://ziglang.org/download/#release-0.8.1
+  # https://ziglang.org/download/#release-0.9.0
   @checksums %{
     "zig-freebsd-x86_64-0.8.1.tar.xz" =>
       "fc4f6478bcf3a9fce1b8ef677a91694f476dd35be6d6c9c4f44a8b76eedbe176",

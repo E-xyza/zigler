@@ -200,7 +200,7 @@ defmodule Zig.Nif.Threaded do
     const #{name(nif.name)} = "#{nif.name}-threaded";
     fn #{packer(nif.name)}(env: beam.env, argv: [*c] const beam.term) !beam.term {
       // std.debug.assert(beam.yield_info == null);
-
+      beam.set_generic_self();
       // allocate space for the cache and obtain its pointer.
       var cache = try beam.allocator.create(#{cache(nif.name)});
       errdefer beam.allocator.destroy(cache);
@@ -230,7 +230,7 @@ defmodule Zig.Nif.Threaded do
       cache.this = cache_ref;
 
       // transfer the arguments over to the new environment.
-      for (cache.args.?) |*arg, index| {
+      for (cache.args.?) |_, index| {
         cache.args.?[index] = e.enif_make_copy(new_environment, argv[index]);
       }
 
@@ -238,7 +238,7 @@ defmodule Zig.Nif.Threaded do
           cache.name.?,
           &cache.thread,
           #{harness(nif.name)},
-          @ptrCast(*c_void, cache),
+          @ptrCast(*anyopaque, cache),
           null)) {
 
         return beam.make_ok_term(env, cache_ref);
@@ -250,16 +250,23 @@ defmodule Zig.Nif.Threaded do
   def harness_fn(nif) do
     result_assign = if nif.retval == "void", do: "", else: "var result = "
 
-    get_clauses = Adapter.get_clauses(nif, &bail/1, &"cache.args.?[#{&1}]")
+    get_clauses =
+      if nif.arity != 0, do: Adapter.get_clauses(nif, &bail/1, &"cache.args.?[#{&1}]"), else: ""
 
-    result_clause =
-      case nif.retval do
+    result_clause = case nif.retval do
         "!" <> _type ->
-          result_term = Adapter.make_clause(nif.retval, "__r", "cache.yield_info.environment")
+          {r_used?, result_term} =
+            Adapter.make_clause(nif.retval, "__r", "cache.yield_info.environment")
 
-          """
-          if (result) | __r |
-            beam.make_ok_term(
+          capture_name = if nif.arity != 0 and r_used?,
+              do: "__r",
+              else: "_"
+
+        """
+        if (result) | #{capture_name} |
+          beam.make_ok_term(
+            env,
+            e.enif_make_tuple(
               env,
               e.enif_make_tuple(
                 env,
@@ -273,22 +280,19 @@ defmodule Zig.Nif.Threaded do
               env,
               e.enif_make_tuple(
                 env,
-                2,
-                cache.this,
-                beam.make_exception(
-                  env,
-                  "#{nif.module}.ZigError",
-                  __e,
-                  @errorReturnTrace())
-              )
-            );
-          """
+                "#{nif.module}.ZigError",
+                __e,
+                @errorReturnTrace())
+            )
+          );
+        """
+      _ ->
+        {_result_used?, result_term} = Adapter.make_clause(nif.retval, "result", "cache.yield_info.environment")
 
-        _ ->
-          result_term = Adapter.make_clause(nif.retval, "result", "cache.yield_info.environment")
-
-          """
-          beam.make_ok_term(
+        """
+        beam.make_ok_term(
+            env,
+            e.enif_make_tuple(
               env,
               e.enif_make_tuple(
                 env,
@@ -301,7 +305,7 @@ defmodule Zig.Nif.Threaded do
       end
 
     """
-    export fn #{harness(nif.name)}(cache_q: ?*c_void) ?*c_void {
+    export fn #{harness(nif.name)}(cache_q: ?*anyopaque) ?*anyopaque {
       var cache: *#{cache(nif.name)} =
         @ptrCast(*#{cache(nif.name)},
           @alignCast(@alignOf(#{cache(nif.name)}), cache_q.?));

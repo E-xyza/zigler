@@ -115,7 +115,7 @@ defmodule ZigTest.Assembler.ParseTest do
     end
   end
 
-  describe "when a zig file is imported publically" do
+  describe "when a zig file is imported publicly" do
     test "it is tagged as public" do
       [_, imported] = Assembler.parse_file("importer_p.zig", @basic_defaults)
 
