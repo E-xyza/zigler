@@ -5,6 +5,7 @@ defmodule ZiglerTest.Integration.StringTest do
   ~Z"""
   /// nif: ingress_string/1
   fn ingress_string(string: []u8) i64 {
+    _ = string;
     return 47;
   }
   """

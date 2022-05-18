@@ -100,13 +100,15 @@
 
 const e = @import("erl_nif.zig");
 const std = @import("std");
+const a = @import("beam_allocator.zig");
 pub const Mutex = @import("beam_mutex.zig").BeamMutex;
-pub const Allocator = @import("beam_allocator.zig").BeamAllocator;
+
+// general zig imports
+const Allocator = std.mem.Allocator;
 
 ///////////////////////////////////////////////////////////////////////////////
 // BEAM allocator definitions
 ///////////////////////////////////////////////////////////////////////////////
-
 
 // basic allocator
 
@@ -142,7 +144,7 @@ pub const Allocator = @import("beam_allocator.zig").BeamAllocator;
 ///
 /// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
 
-pub const allocator = BeamAllocator.allocator();
+pub const allocator = a.beam_allocator;
 
 /// !value
 /// provides a BEAM allocator that can perform allocations with greater
@@ -152,88 +154,19 @@ pub const allocator = BeamAllocator.allocator();
 /// currently does not release memory that is resized.  For this behaviour
 /// use `beam.general_purpose_allocator`.
 ///
+/// currently does not use beam.Mutex; though this may change in the future.
+///
 /// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
-pub const large_allocator = &large_beam_allocator;
+/// or implement your own.
+pub const large_allocator = a.large_beam_allocator;
 
-var large_beam_allocator = Allocator {
-  .allocFn = large_beam_alloc,
-  .resizeFn = large_beam_resize,
-};
-
-fn large_beam_alloc(
-  _allocator: *Allocator,
-  len: usize,
-  alignment: u29,
-  len_align: u29,
-  return_address: usize
-) error{OutOfMemory}![]u8 {
-  _ = _allocator;
-  var ptr = try alignedAlloc(len, alignment, len_align, return_address);
-  if (len_align == 0) { return ptr[0..len]; }
-  return ptr[0..std.mem.alignBackwardAnyAlign(len, len_align)];
-}
-
-fn large_beam_resize(
-    _allocator: *Allocator,
-    buf: []u8,
-    buf_align: u29,
-    new_len: usize,
-    len_align: u29,
-    _return_address: usize,
-) Allocator.Error!usize {
-  _ = _allocator;
-  _ = _return_address;
-  if (new_len > buf.len) { return error.OutOfMemory; }
-  if (new_len == 0) { return alignedFree(buf, buf_align); }
-  if (len_align == 0) { return new_len; }
-  return std.mem.alignBackwardAnyAlign(new_len, len_align);
-}
-
-fn alignedAlloc(len: usize, alignment: u29, _len_align: u29, _return_address: usize) ![*]u8 {
-  _ = _len_align;
-  _ = _return_address;
-
-  var safe_len = safeLen(len, alignment);
-  var alloc_slice: []u8 = try allocator.allocAdvanced(
-    u8, MAX_ALIGN, safe_len, std.mem.Allocator.Exact.exact);
-
-  const unaligned_addr = @ptrToInt(alloc_slice.ptr);
-  const aligned_addr = reAlign(unaligned_addr, alignment);
-
-  getPtrPtr(aligned_addr).* = unaligned_addr;
-  return aligned_addr;
-}
-
-fn alignedFree(buf: []u8, alignment: u29) usize {
-  var ptr = getPtrPtr(buf.ptr).*;
-  allocator.free(@intToPtr([*]u8, ptr)[0..safeLen(buf.len, alignment)]);
-  return 0;
-}
-
-fn reAlign(unaligned_addr: usize, alignment: u29) [*]u8 {
-  return @intToPtr(
-    [*]u8,
-    std.mem.alignForward(
-      unaligned_addr + @sizeOf(usize),
-      alignment));
-}
-
-fn safeLen(len: usize, alignment: u29) usize {
-  return len + alignment - @sizeOf(usize) + MAX_ALIGN;
-}
-
-fn getPtrPtr(aligned_ptr: [*]u8) *usize {
-  return @intToPtr(*usize, @ptrToInt(aligned_ptr) - @sizeOf(usize));
-}
-
-/// !value
-/// wraps the zig GeneralPurposeAllocator into the standard BEAM allocator.
-var general_purpose_allocator_instance = std.heap.GeneralPurposeAllocator(
-.{.thread_safe = true}) {
+var general_purpose_allocator_instance = std.heap.GeneralPurposeAllocator(.{.thread_safe = true}) {
   .backing_allocator = large_allocator,
 };
 
-pub var general_purpose_allocator = &general_purpose_allocator_instance.allocator;
+/// !value
+/// wraps the zig GeneralPurposeAllocator into the standard BEAM allocator.
+pub var general_purpose_allocator = general_purpose_allocator_instance.allocator();
 
 ///////////////////////////////////////////////////////////////////////////////
 // syntactic sugar: important elixir terms
@@ -496,7 +429,7 @@ pub fn get_f64(environment: env, src_term: term) !f64 {
 /// `get_atom_slice/2`
 pub const atom = term;
 
-const __latin1 = e.ErlNifCharEncoding.ERL_NIF_LATIN1;
+const __latin1 = e.ERL_NIF_LATIN1;
 
 /// Takes a BEAM atom term and retrieves it as a slice `[]u8` value.
 /// it's the caller's responsibility to make sure that the value is freed.
@@ -513,11 +446,11 @@ pub fn get_atom_slice(environment: env, src_term: atom) ![]u8 {
 /// any allocator.
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:atom/0`
-pub fn get_atom_slice_alloc(a: *Allocator, environment: env, src_term: atom) ![]u8 {
+pub fn get_atom_slice_alloc(alloc: Allocator, environment: env, src_term: atom) ![]u8 {
   var len: c_uint = undefined;
   var result: []u8 = undefined;
   if (0 != e.enif_get_atom_length(environment, src_term, @ptrCast([*c]c_uint, &len), __latin1)) {
-    result = try a.alloc(u8, len + 1);
+    result = try alloc.alloc(u8, len + 1);
 
     // pull the value from the beam.
     if (0 != e.enif_get_atom(environment, src_term, @ptrCast([*c]u8, &result[0]), len + 1, __latin1)) {
@@ -733,14 +666,14 @@ pub fn get_slice_of(comptime T: type, environment: env, list: term) ![]T {
 /// - `f16`
 /// - `f32`
 /// - `f64`
-pub fn get_slice_of_alloc(comptime T: type, a: *Allocator, environment: env, list: term) ![]T {
+pub fn get_slice_of_alloc(comptime T: type, alloc: Allocator, environment: env, list: term) ![]T {
   const size = try get_list_length(environment, list);
 
   var idx: usize = 0;
   var head: term = undefined;
 
   // allocate memory for the Zig list.
-  var result = try a.alloc(T, size);
+  var result = try alloc.alloc(T, size);
   var movable_list = list;
 
   while (idx < size){
@@ -748,7 +681,7 @@ pub fn get_slice_of_alloc(comptime T: type, a: *Allocator, environment: env, lis
     result[idx] = try get(T, environment, head);
     idx += 1;
   }
-  errdefer a.free(result);
+  errdefer alloc.free(result);
 
   return result;
 }
@@ -1024,9 +957,9 @@ pub fn make_list(comptime T: type, environment: env, val: []T) !term {
 /// - `f16`
 /// - `f32`
 /// - `f64`
-pub fn make_list_alloc(comptime T: type, a: *Allocator, environment: env, val: []T) !term {
-  var term_slice: []term = try a.alloc(term, val.len);
-  defer a.free(term_slice);
+pub fn make_list_alloc(comptime T: type, alloc: Allocator, environment: env, val: []T) !term {
+  var term_slice: []term = try alloc.alloc(term, val.len);
+  defer alloc.free(term_slice);
 
   for (val) | item, idx | {
     term_slice[idx] = make(T, environment, item);
@@ -1362,8 +1295,9 @@ pub fn raise_assertion_error(env_: env) term {
   return e.enif_raise_exception(env_, make_atom(env_, assert_slice));
 }
 
-pub fn make_exception(env_: env, exception_module: []const u8, err: anyerror, error_trace: *std.builtin.StackTrace) term {
+pub fn make_exception(env_: env, exception_module: []const u8, err: anyerror, maybe_error_trace: ?*std.builtin.StackTrace) term {
     const debug_info = std.debug.getSelfDebugInfo() catch return make_nil(env_);
+    const error_trace = if (maybe_error_trace) |error_trace| error_trace else return make_nil(env_);
 
     var frame_index: usize = 0;
     var frames_left: usize = std.math.min(error_trace.index, error_trace.instruction_addresses.len);

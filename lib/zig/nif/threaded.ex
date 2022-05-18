@@ -140,6 +140,8 @@ defmodule Zig.Nif.Threaded do
 
     /// resource: #{cache_ptr nif.name} cleanup
     fn #{cache_cleanup nif.name}(env: beam.env, cache_ptr: *#{cache_ptr nif.name}) void {
+      _ = env;
+
       // std.debug.assert(beam.yield_info == null);
       var cache = cache_ptr.*;
 
@@ -177,6 +179,7 @@ defmodule Zig.Nif.Threaded do
     # that the erlang system demands.
     """
     export fn #{launcher nif.name}(env: beam.env, _argc: c_int, argv: [*c] const beam.term) beam.term {
+      _ = _argc;
       return #{packer nif.name}(env, argv) catch beam.make_error_binary(env, "launching nif");
     }
     """
@@ -218,7 +221,7 @@ defmodule Zig.Nif.Threaded do
       cache.this = cache_ref;
 
       // transfer the arguments over to the new environment.
-      for (cache.args.?) |*arg, index| {
+      for (cache.args.?) |_, index| {
         cache.args.?[index] = e.enif_make_copy(new_environment, argv[index]);
       }
 
@@ -238,22 +241,44 @@ defmodule Zig.Nif.Threaded do
   def harness_fn(nif) do
     result_assign = if nif.retval == "void", do: "", else: "var result = "
 
-    get_clauses = Adapter.get_clauses(nif, &bail/1, &"cache.args.?[#{&1}]")
+    # SUPER HACKY.
+    nif_def = %{nif | arity: :ignore_argc, args: {:no_argv, nif.args}}
+    get_clauses = Adapter.get_clauses(nif_def, &bail/1, &"cache.args.?[#{&1}]")
 
     result_clause = case nif.retval do
-      "!" <> _type ->
+      "!" <> type ->
         result_term = Adapter.make_clause(nif.retval, "__r", "cache.yield_info.environment")
-        """
-        if (result) | __r |
-          beam.make_ok_term(
-            env,
-            e.enif_make_tuple(
-              env,
-              2,
-              cache.this,
-              #{result_term}
-            )
-          )
+
+        if_clause = case type do
+          "void" ->
+            """
+            if (result) | _ |
+              beam.make_ok_term(
+                env,
+                e.enif_make_tuple(
+                  env,
+                  2,
+                  cache.this,
+                  #{result_term}
+                )
+              )
+            """
+          _ ->
+            """
+            if (result) | __r |
+              beam.make_ok_term(
+                env,
+                e.enif_make_tuple(
+                  env,
+                  2,
+                  cache.this,
+                  #{result_term}
+                )
+              )
+            """
+        end
+
+        [if_clause, """
         else | __e |
           beam.make_error_term(
             env,
@@ -268,7 +293,7 @@ defmodule Zig.Nif.Threaded do
                 @errorReturnTrace())
             )
           );
-        """
+        """]
       _ ->
         result_term = Adapter.make_clause(nif.retval, "result", "cache.yield_info.environment")
 

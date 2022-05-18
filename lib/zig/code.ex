@@ -133,6 +133,8 @@ defmodule Zig.Code do
       _ ->
         """
         export fn nif_load(env: beam.env, priv: [*c]?*anyopaque, load_info: beam.term) c_int {
+          _ = priv;
+          _ = load_info;
         #{resource_inits}  return 0;
         }
 
@@ -225,7 +227,10 @@ defmodule Zig.Code do
         } else unreachable;
       """
     else
-      ""
+      """
+        _ = env;
+        _ = res;
+      """
     end
 
     """
@@ -238,7 +243,7 @@ defmodule Zig.Code do
         null,
         \"#{name}\",
         __destroy_#{name}__,
-        @intToEnum(e.ErlNifResourceFlags, 3),
+        @intCast(e.ErlNifResourceFlags, 3),
         null);
     }
 

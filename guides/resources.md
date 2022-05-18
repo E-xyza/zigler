@@ -119,8 +119,8 @@ end
 
 ```elixir
 ~Z"""
-/// resource: struct_ptr_res definition
-const struct_ptr_res = *struct_res;
+/// resource: struct_res_ptr definition
+const struct_res_ptr = *struct_res;
 
 /// nif: create_struct_ptr/2
 fn create_struct_ptr(env: beam.env, first_name: []u8, last_name: []u8) beam.term {
@@ -130,17 +130,17 @@ fn create_struct_ptr(env: beam.env, first_name: []u8, last_name: []u8) beam.term
 
   resource.first_name = beam.allocator.alloc(u8, first_name.len)
     catch return beam.raise_enomem(env);
-  errdefer beam.allocator.free(resource_fn);
+  errdefer beam.allocator.free(resource.first_name);
 
   resource.last_name = beam.allocator.alloc(u8, last_name.len)
     catch return beam.raise_enomem(env);
-  errdefer beam.allocator.free(resource_ln);
+  errdefer beam.allocator.free(resource.last_name);
 
   std.mem.copy(u8, resource.first_name, first_name);
   std.mem.copy(u8, resource.last_name, last_name);
 
   // note the signature        vv here vv
-  return __resource__.create(struct_ptr_res, env, resource)
+  return __resource__.create(struct_res_ptr, env, resource)
     catch return beam.raise_resource_error(env);
 }
 """
@@ -211,14 +211,14 @@ fn fetch_struct_ln(env: beam.env, res: beam.term) beam.term {
 
 /// nif: fetch_struct_ptr_fn/1
 fn fetch_struct_ptr_fn(env: beam.env, res: beam.term) beam.term {
-  var result = __resource__.fetch(struct_ptr_res, env, res)
+  var result = __resource__.fetch(struct_res_ptr, env, res)
     catch return beam.raise_resource_error(env);
   return beam.make_slice(env, result.first_name);
 }
 
 /// nif: fetch_struct_ptr_ln/1
 fn fetch_struct_ptr_ln(env: beam.env, res: beam.term) beam.term {
-  var result = __resource__.fetch(struct_ptr_res, env, res)
+  var result = __resource__.fetch(struct_res_ptr, env, res)
     catch return beam.raise_resource_error(env);
   return beam.make_slice(env, result.last_name);
 }
@@ -298,7 +298,7 @@ fn update_struct_ln(env: beam.env, res: beam.term, update_value: []u8) beam.term
 
 /// nif: update_struct_ptr_fn/2
 fn update_struct_ptr_fn(env: beam.env, res: beam.term, update_value: []u8) beam.term {
-  var struct_ptr = __resource__.fetch(struct_ptr_res, env, res)
+  var struct_ptr = __resource__.fetch(struct_res_ptr, env, res)
     catch return beam.raise_resource_error(env);
 
   beam.allocator.free(struct_ptr.first_name);
@@ -313,7 +313,7 @@ fn update_struct_ptr_fn(env: beam.env, res: beam.term, update_value: []u8) beam.
 
 /// nif: update_struct_ptr_ln/2
 fn update_struct_ptr_ln(env: beam.env, res: beam.term, update_value: []u8) beam.term {
-  var struct_ptr = __resource__.fetch(struct_ptr_res, env, res)
+  var struct_ptr = __resource__.fetch(struct_res_ptr, env, res)
     catch return beam.raise_resource_error(env);
 
   beam.allocator.free(struct_ptr.last_name);
@@ -411,6 +411,8 @@ that need freeing, you should do it here.
 ~Z"""
 /// resource: struct_res cleanup
 fn struct_res_cleanup(env: beam.env, resource: *struct_res) void {
+  _ = env;
+
   beam.allocator.free(resource.first_name);
   beam.allocator.free(resource.last_name);
   // don't clean up the resource pointer itself.
@@ -418,6 +420,7 @@ fn struct_res_cleanup(env: beam.env, resource: *struct_res) void {
 
 /// resource: struct_res_ptr cleanup
 fn struct_res_ptr_cleanup(env: beam.env, resource: *struct_res_ptr) void {
+  _ = env;
   beam.allocator.free(resource.first_name);
   beam.allocator.free(resource.last_name);
   // DO clean up the pointer in the resource.

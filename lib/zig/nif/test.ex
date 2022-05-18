@@ -14,6 +14,8 @@ defmodule Zig.Nif.Test do
     """
     export fn __#{Adapter.shim_name nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
       beam.test_env = env;
+      _ = argv;
+      _ = argc;
       #{nif.name}() catch |err|
           return beam.raise_exception(env, "#{module}.ZigError", err, @errorReturnTrace());
       return beam.make_atom(env, "ok");

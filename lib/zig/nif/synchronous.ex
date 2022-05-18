@@ -15,12 +15,14 @@ defmodule Zig.Nif.Synchronous do
 
     head = """
     export fn __#{nif.name}_shim__(env: beam.env, argc: c_int, argv: [*c] const beam.term) beam.term {
+      _ = argc;
       beam.yield_info = null;
     """
 
     result = case nif.retval do
       v when v in ["beam.term", "e.ErlNifTerm", "!beam.term", "!e.ErlNifTerm"] ->
         """
+          _ = env;
           return nosuspend #{function_call nif, module}}
         """
       v when v in ["void", "!void"] ->
@@ -30,6 +32,7 @@ defmodule Zig.Nif.Synchronous do
         """
       other ->
         """
+          _ = env;
           var #{result_var nif} = nosuspend #{function_call nif, module}  return #{Adapter.make_clause other, result_var(nif)};
         }
         """

@@ -74,6 +74,8 @@ defmodule Zig.Nif.Yielding do
 
     /// resource: #{frame_type nif.name} cleanup
     fn #{frame_cleanup nif.name}(env: beam.env, beam_frame_ptr: *#{frame_ptr nif.name}) void {
+      _ = env;
+
       const allocator = beam.large_allocator;
 
       var beam_frame = beam_frame_ptr.*;
@@ -105,6 +107,7 @@ defmodule Zig.Nif.Yielding do
   def launcher_fns(nif) do
     """
     export fn #{launcher nif.name}(env: beam.env, _argc: c_int, argv: [*c] const beam.term) beam.term {
+      _ = _argc;
       return #{launcher_shim nif.name}(env, argv) catch | err | switch (err) {
         error.LaunchError => beam.raise(env, beam.make_atom(env, "launch_error")),
         error.OutOfMemory => beam.raise_enomem(env),
@@ -165,10 +168,12 @@ defmodule Zig.Nif.Yielding do
   def rescheduler_fn(nif) do
     """
     export fn #{rescheduler nif.name}(env: beam.env, _argc: c_int, argv: [*c] const beam.term) beam.term {
+      _ = _argc;
+
       var beam_frame = __resource__.fetch(#{frame_ptr nif.name}, env, argv[0]) catch
         return beam.raise_resource_error(env);
 
-      var start_time = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
+      var start_time = e.enif_monotonic_time(e.ERL_NIF_USEC);
       var tick_time: e.ErlNifTime = undefined;
       var elapsed_time: e.ErlNifTime = undefined;
 
@@ -179,7 +184,7 @@ defmodule Zig.Nif.Yielding do
         // stash the yielding frame and resume it:
         beam.yield_info.?.yield_frame = null;
         resume next_frame;
-        tick_time = e.enif_monotonic_time(e.ErlNifTimeUnit.ERL_NIF_USEC);
+        tick_time = e.enif_monotonic_time(e.ERL_NIF_USEC);
         elapsed_time = tick_time - start_time;
 
         if (elapsed_time >= 100) {
@@ -203,7 +208,11 @@ defmodule Zig.Nif.Yielding do
 
   @spec harness_fns(Nif.t) :: iodata
   def harness_fns(nif) do
-    get_clauses = Adapter.get_clauses(nif, &bail/1, &"argv[#{&1}]")
+    get_clauses = if nif.arity == 0 do
+      "_ = argv;\n_ = env;"
+    else
+      Adapter.get_clauses(%{nif | arity: :ignore_argc}, &bail/1, &"argv[#{&1}]")
+    end
 
     result_term = case nif.retval do
       "void" -> "beam.make_ok(env)"
@@ -226,13 +235,21 @@ defmodule Zig.Nif.Yielding do
         Adapter.make_clause(nif.retval, "result", "beam.yield_info.?.environment")
     end
 
+    call_statement = case nif.retval do
+      "void" -> "#{nif.name}(#{Adapter.args nif});"
+      _ ->
+        "const result = #{nif.name}(#{Adapter.args nif});"
+    end
+
     """
     fn #{harness nif.name}(env: beam.env, parent_env: beam.env, argv: [*c] const beam.term) callconv(.Async) void {
+      _ = parent_env;
+
       // decode parameters
     #{get_clauses}
 
       // launch the nif frame.
-      const result = #{nif.name}(#{Adapter.args nif});
+      #{call_statement}
 
       const result_term = #{result_term};
       // join the result, since it finished.

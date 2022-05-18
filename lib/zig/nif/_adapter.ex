@@ -28,6 +28,8 @@ defmodule Zig.Nif.Adapter do
     |> Enum.join(", ")
   end
 
+  @empty_args [[], ["beam.env"]]
+
   @type bail_reasons :: :oom | :function_clause
   @spec get_clauses(Nif.t, (bail_reasons -> String.t), (non_neg_integer -> String.t)) :: iodata
   @doc """
@@ -39,6 +41,16 @@ defmodule Zig.Nif.Adapter do
   the third parameter should be a lambda which describes as a string, how one
   fetches the the index to be converted from a term into a proper value.
   """
+  def get_clauses(%{arity: :ignore_argc, args: args, name: name}, bail, fetcher) do
+    # SUPER HACKISH.  FIX LATER.
+    {args, discard_argv} = case args do
+      {:no_argv, args} -> {args, ""}
+      args when args in @empty_args ->
+        {args, "_ = argv;\n"}
+      _ -> {args, ""}
+    end
+    [discard_argv, get_clauses(args, name, bail, fetcher)]
+  end
   def get_clauses(%{arity: 0}, _, _), do: "_ = argc;\n _ = argv;\n"
   def get_clauses(%{args: args, name: name}, bail, fetcher) do
     ["_ = argc;\n", get_clauses(args, name, bail, fetcher)]

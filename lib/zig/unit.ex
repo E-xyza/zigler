@@ -49,7 +49,6 @@ defmodule Zig.Unit do
   zigtest will run tests from the following sources:
   - any tests inside of a sigil Z or sigil z construction
   - any tests inside `pub` `@import` zig sources.
-  - any tests inside `pub usingnamespace` zig sources.
   - recursively discovered `pub` structs.
   """
 

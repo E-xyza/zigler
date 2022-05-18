@@ -55,7 +55,7 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
   var global_slice : []u8 = undefined;
 
   /// nif: allocate/1
-  fn allocate(env: ?*e.ErlNifEnv, length: i64) bool {
+  fn allocate(length: i64) bool {
 
     var usize_length = @intCast(usize, length);
 
@@ -67,6 +67,7 @@ defmodule ZiglerTest.Integration.Strategies.AllocatorsTest do
 
     // fill the slice with letters
     for (global_slice) | _char, i | {
+      _ = _char;
       global_slice[i] = 97 + @intCast(u8, i);
     }
 

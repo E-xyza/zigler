@@ -23,7 +23,7 @@ defmodule Zig.Assembler do
 
   alias Zig.Parser.Imports
 
-  defp pr(file) do
+  defp priv_dir(file) do
     :zigler
     |> :code.priv_dir
     |> Path.join(file)
@@ -35,12 +35,18 @@ defmodule Zig.Assembler do
   the runtime by default.
   """
   def assemble_kernel!(assembly_dir) do
-    # copy in beam.zig
-    File.cp!(pr("beam/beam.zig"), Path.join(assembly_dir, "beam.zig"))
-    # copy in nif.zig
-    File.cp!(pr("beam/erl_nif.zig"), Path.join(assembly_dir, "erl_nif.zig"))
-    # other accessories
-    File.cp!(pr("beam/beam_mutex.zig"), Path.join(assembly_dir, "beam_mutex.zig"))
+    "beam"
+    |> priv_dir
+    |> File.ls!
+    |> Enum.each(fn filename ->
+      src = priv_dir("beam/" <> filename)
+      dst = Path.join(assembly_dir, filename)
+
+      Logger.debug("wrote #{filename} to #{assembly_dir}")
+
+      File.cp!(src, dst)
+    end)
+    
     # copy in erl_nif_zig.h
     File.mkdir_p!(Path.join(assembly_dir, "include"))
 
