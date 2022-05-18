@@ -141,21 +141,26 @@ const Allocator = std.mem.Allocator;
 /// use `beam.general_purpose_allocator`.
 ///
 /// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
-pub const allocator = &raw_beam_allocator;
+pub const allocator = raw_beam_allocator;
 
 pub const MAX_ALIGN = 8;
 
-var raw_beam_allocator = Allocator{
-  .allocFn = raw_beam_alloc,
-  .resizeFn = raw_beam_resize,
+const raw_beam_allocator = Allocator{
+    .ptr = undefined,
+    .vtable = &raw_beam_allocator_vtable,
+};
+const raw_beam_allocator_vtable = Allocator.VTable{
+    .alloc = raw_beam_alloc,
+    .resize = raw_beam_resize,
+    .free = raw_beam_free,
 };
 
 fn raw_beam_alloc(
-    _self: *Allocator,
+    _: *anyopaque,
     len: usize,
     ptr_align: u29,
-    _len_align: u29,
-    _ret_addr: usize,
+    _: u29,
+    _: usize,
 ) Allocator.Error![]u8 {
   if (ptr_align > MAX_ALIGN) { return error.OutOfMemory; }
   const ptr = e.enif_alloc(len) orelse return error.OutOfMemory;
@@ -163,13 +168,13 @@ fn raw_beam_alloc(
 }
 
 fn raw_beam_resize(
-    _self: *Allocator,
+    _: *anyopaque,
     buf: []u8,
-    _old_align: u29,
+    _: u29,
     new_len: usize,
-    _len_align: u29,
-    _ret_addr: usize,
-) Allocator.Error!usize {
+    _: u29,
+    _: usize,
+) ?usize {
   if (new_len == 0) {
     e.enif_free(buf.ptr);
     return 0;
@@ -177,7 +182,17 @@ fn raw_beam_resize(
   if (new_len <= buf.len) {
     return new_len;
   }
-  return error.OutOfMemory;
+  // Is this the right thing to do???
+  return null;
+}
+
+fn raw_beam_free(
+    _: *anyopaque,
+    buf: []u8,
+    _: u29,
+    _: usize,
+) void {
+    e.enif_free(buf.ptr);
 }
 
 /// !value
@@ -189,43 +204,43 @@ fn raw_beam_resize(
 /// use `beam.general_purpose_allocator`.
 ///
 /// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
-pub const large_allocator = &large_beam_allocator;
+pub const large_allocator = large_beam_allocator;
 
-var large_beam_allocator = Allocator {
-  .allocFn = large_beam_alloc,
-  .resizeFn = large_beam_resize,
+const large_beam_allocator = Allocator{
+    .ptr = undefined,
+    .vtable = &large_beam_allocator_vtable,
+};
+const large_beam_allocator_vtable = Allocator.VTable{
+    .alloc = large_beam_alloc,
+    .resize = large_beam_resize,
+    .free = Allocator.NoOpFree(anyopaque).noOpFree,
 };
 
-fn large_beam_alloc(
-  allocator_: *Allocator,
-  len: usize,
-  alignment: u29,
-  len_align: u29,
-  return_address: usize
-) error{OutOfMemory}![]u8 {
-  var ptr = try alignedAlloc(len, alignment, len_align, return_address);
-  if (len_align == 0) { return ptr[0..len]; }
-  return ptr[0..std.mem.alignBackwardAnyAlign(len, len_align)];
+fn large_beam_alloc(_: *anyopaque, len: usize, alignment: u29, len_align: u29, return_address: usize) error{OutOfMemory}![]u8 {
+    var ptr = try alignedAlloc(len, alignment, len_align, return_address);
+    if (len_align == 0) {
+        return ptr[0..len];
+    }
+    return ptr[0..std.mem.alignBackwardAnyAlign(len, len_align)];
 }
 
 fn large_beam_resize(
-    allocator_: *Allocator,
+    _: *anyopaque,
     buf: []u8,
     buf_align: u29,
     new_len: usize,
     len_align: u29,
-    return_address: usize,
-) Allocator.Error!usize {
-  if (new_len > buf.len) { return error.OutOfMemory; }
+    _: usize,
+) ?usize {
+  if (new_len > buf.len) { return null; }
   if (new_len == 0) { return alignedFree(buf, buf_align); }
   if (len_align == 0) { return new_len; }
   return std.mem.alignBackwardAnyAlign(new_len, len_align);
 }
 
-fn alignedAlloc(len: usize, alignment: u29, len_align: u29, return_address: usize) ![*]u8 {
+fn alignedAlloc(len: usize, alignment: u29, _: u29, _: usize) ![*]u8 {
   var safe_len = safeLen(len, alignment);
-  var alloc_slice: []u8 = try allocator.allocAdvanced(
-    u8, MAX_ALIGN, safe_len, std.mem.Allocator.Exact.exact);
+  var alloc_slice: []u8 = try allocator.allocAdvanced(u8, MAX_ALIGN, safe_len, std.mem.Allocator.Exact.exact);
 
   const unaligned_addr = @ptrToInt(alloc_slice.ptr);
   const aligned_addr = reAlign(unaligned_addr, alignment);
@@ -263,14 +278,14 @@ var general_purpose_allocator_instance = std.heap.GeneralPurposeAllocator(
   .backing_allocator = large_allocator,
 };
 
-pub var general_purpose_allocator = &general_purpose_allocator_instance.allocator;
+pub var general_purpose_allocator = general_purpose_allocator_instance.allocator();
 
 ///////////////////////////////////////////////////////////////////////////////
 // syntactic sugar: important elixir terms
 ///////////////////////////////////////////////////////////////////////////////
 
 /// errors for nif translation
-pub const Error = error {
+pub const Error = error{
   /// Translates to Elixir `FunctionClauseError`.
   ///
   /// This is the default mechanism for reporting that a Zigler nif function has
@@ -283,8 +298,8 @@ pub const Error = error {
 };
 
 /// errors for launching nif errors
+/// LaunchError Occurs when there's a problem launching a threaded nif.
 pub const ThreadError = error {
-  /// Occurs when there's a problem launching a threaded nif.
   LaunchError
 };
 
@@ -526,7 +541,7 @@ pub fn get_f64(environment: env, src_term: term) !f64 {
 /// `get_atom_slice/2`
 pub const atom = term;
 
-const __latin1 = e.ErlNifCharEncoding.ERL_NIF_LATIN1;
+const __latin1 = e.ERL_NIF_LATIN1;
 
 /// Takes a BEAM atom term and retrieves it as a slice `[]u8` value.
 /// it's the caller's responsibility to make sure that the value is freed.
@@ -543,7 +558,7 @@ pub fn get_atom_slice(environment: env, src_term: atom) ![]u8 {
 /// any allocator.
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:atom/0`
-pub fn get_atom_slice_alloc(a: *Allocator, environment: env, src_term: atom) ![]u8 {
+pub fn get_atom_slice_alloc(a: Allocator, environment: env, src_term: atom) ![]u8 {
   var len: c_uint = undefined;
   var result: []u8 = undefined;
   if (0 != e.enif_get_atom_length(environment, src_term, @ptrCast([*c]c_uint, &len), __latin1)) {
@@ -586,8 +601,7 @@ pub fn get_c_string(environment: env, src_term: term) ![*c]u8 {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:binary/0`
 pub fn get_char_slice(environment: env, src_term: term) ![]u8 {
-  var bin: binary = undefined;
-  var result: []u8 = undefined;
+ var bin: binary = undefined;
 
   if (0 != e.enif_inspect_binary(environment, src_term, &bin)) {
     return bin.data[0..bin.size];
@@ -638,6 +652,10 @@ pub fn get_pid(environment: env, src_term: term) !pid {
 /// if you need the process mailbox for the actual spawned thread, use `e.enif_self`
 pub threadlocal var self: fn (env) Error!pid = generic_self;
 
+pub fn set_generic_self() void {
+    self = generic_self;
+}
+
 fn generic_self(environment: env) !pid {
   var p: pid = undefined;
   if (e.enif_self(environment, @ptrCast([*c] pid, &p))) |self_val| {
@@ -685,9 +703,9 @@ pub fn send_advanced(c_env: env, to_pid: pid, m_env: env, msg: term) bool {
 ///
 /// Raises `beam.Error.FunctionClauseError` if the term is not `t:tuple/0`
 pub fn get_tuple(environment: env, src_term: term) ![]term {
-  var length: c_int;
-  var term_list: [*c]term;
-  if (0 != enif_get_tuple(env, src_term, &length, &term_list)) {
+  var length: c_int = 0;
+  var term_list: [*c]term = null;
+  if (0 != e.enif_get_tuple(environment, src_term, &length, &term_list)) {
     return term_list[0..(length - 1)];
   } else {return Error.FunctionClauseError; }
 }
@@ -764,7 +782,7 @@ pub fn get_slice_of(comptime T: type, environment: env, list: term) ![]T {
 /// - `f16`
 /// - `f32`
 /// - `f64`
-pub fn get_slice_of_alloc(comptime T: type, a: *Allocator, environment: env, list: term) ![]T {
+pub fn get_slice_of_alloc(comptime T: type, a: Allocator, environment: env, list: term) ![]T {
   const size = try get_list_length(environment, list);
 
   var idx: usize = 0;
@@ -960,7 +978,7 @@ pub fn make_slice(environment: env, val: []const u8) term {
 
   var bin: [*]u8 = @ptrCast([*]u8, e.enif_make_new_binary(environment, val.len, &result));
 
-  for (val) | _chr, i | {
+  for (val) |_, i| {
     bin[i] = val[i];
   }
 
@@ -1054,7 +1072,7 @@ pub fn make_list(comptime T: type, environment: env, val: []T) !term {
 /// - `f16`
 /// - `f32`
 /// - `f64`
-pub fn make_list_alloc(comptime T: type, a: *Allocator, environment: env, val: []T) !term {
+pub fn make_list_alloc(comptime T: type, a: Allocator, environment: env, val: []T) !term {
   var term_slice: []term = try a.alloc(term, val.len);
   defer a.free(term_slice);
 
@@ -1218,7 +1236,7 @@ pub const resource = struct {
   };
 
   pub fn create(comptime T : type, environment: env, res_typ: resource_type, val : T) !term {
-    var ptr : ?*c_void = e.enif_alloc_resource(res_typ, @sizeOf(T));
+    var ptr : ?*anyopaque = e.enif_alloc_resource(res_typ, @sizeOf(T));
     var obj : *T = undefined;
 
     if (ptr == null) {
@@ -1232,9 +1250,9 @@ pub const resource = struct {
   }
 
   pub fn update(comptime T : type, environment: env, res_typ: resource_type, res_trm: term, new_val: T) !void {
-    var obj : ?*c_void = undefined;
+    var obj: ?*anyopaque = undefined;
 
-    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
+    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*anyopaque, &obj))) {
       return resource.ResourceError.FetchError;
     }
 
@@ -1245,10 +1263,10 @@ pub const resource = struct {
     val.* = new_val;
   }
 
-  pub fn fetch(comptime T : type, environment: env, res_typ: resource_type, res_trm: term) !T {
-    var obj : ?*c_void = undefined;
+  pub fn fetch(comptime T: type, environment: env, res_typ: resource_type, res_trm: term) !T {
+    var obj: ?*anyopaque = undefined;
 
-    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
+    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*anyopaque, &obj))) {
       return resource.ResourceError.FetchError;
     }
 
@@ -1256,27 +1274,27 @@ pub const resource = struct {
     // the pointer received in *objp is guaranteed to be valid at least as long as the
     // resource handle term is valid.
 
-    if (obj == null) { unreachable; }
+    if (obj == null) {unreachable;}
 
     var val : *T = @ptrCast(*T, @alignCast(@alignOf(*T), obj));
 
     return val.*;
   }
 
-  pub fn keep(comptime T: type, environment: env, res_typ: resource_type, res_trm: term) !void {
-    var obj : ?*c_void = undefined;
+  pub fn keep(comptime _: type, environment: env, res_typ: resource_type, res_trm: term) !void {
+    var obj: ?*anyopaque = undefined;
 
-    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*c_void, &obj))) {
+    if (0 == e.enif_get_resource(environment, res_trm, res_typ, @ptrCast([*c]?*anyopaque, &obj))) {
       return resource.ResourceError.FetchError;
     }
 
-    if (obj == null) { unreachable; }
+    if (obj == null) {unreachable;}
 
     e.enif_keep_resource(obj);
   }
 
   pub fn release(environment: env, res_typ: resource_type, res_trm: term) void {
-    var obj : ?*c_void = undefined;
+    var obj: ?*anyopaque = undefined;
     if (0 != e.enif_get_resource(environment, res_trm, res_typ, &obj)) {
       e.enif_release_resource(obj);
     } else { unreachable; }
@@ -1306,7 +1324,7 @@ pub const YieldError = error {
 /// serves as a potential cancellation point.
 pub fn yield() !void {
   // only suspend if we are inside of a yielding nif
-  if (yield_info) | info | { // null, for synchronous nifs.
+  if (yield_info) |info| { // null, for synchronous nifs.
     if (info.threaded) {
       const should_cancel = @atomicLoad(YieldState, &info.state, .Monotonic) == .Cancelled;
       if (should_cancel) {
@@ -1446,7 +1464,7 @@ pub fn make_exception(env_: env, exception_module: []const u8, err: anyerror, er
 }
 
 pub fn raise_exception(env_: env, exception_module: []const u8, err: anyerror, error_trace: ?*std.builtin.StackTrace) term {
-  if (error_trace) | trace | {
+  if (error_trace) |_| {
     return e.enif_raise_exception(env_, make_exception(env_, exception_module, err, error_trace));
   } else {
     return make_nil(env_);
@@ -1480,16 +1498,16 @@ pub threadlocal var test_env: env = undefined;
 // NIF LOADING Boilerplate
 
 pub export fn blank_load(
-  _env: env,
-  _priv: [*c]?*c_void,
-  _info: term) c_int {
+  _: env,
+  _: [*c]?*anyopaque,
+  _: term) c_int {
   return 0;
 }
 
 pub export fn blank_upgrade(
-  _env: env,
-  _priv: [*c]?*c_void,
-  _old_priv: [*c]?*c_void,
-  _info: term) c_int {
-  return 0;
+  _: env,
+  _: [*c]?*anyopaque,
+  _: [*c]?*anyopaque,
+  _: term) c_int {
+    return 0;
 }

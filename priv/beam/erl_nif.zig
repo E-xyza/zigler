@@ -17,9 +17,10 @@
 //! refer to the [erlang documentation](https://erlang.org/doc/man/erl_nif.html)
 //! for available functions
 
-
-usingnamespace @cImport({
-  @cInclude("erl_nif.h");
+pub const e = @cImport({
+    @cInclude("erl_nif.h");
 });
 
-pub const ErlNifTerm = ERL_NIF_TERM;
+pub const ErlNifTerm = e.ERL_NIF_TERM;
+
+usingnamespace e;

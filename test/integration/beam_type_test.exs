@@ -34,16 +34,18 @@ defmodule ZiglerTest.Integration.BeamTypeTest do
   ~Z"""
   /// nif: pass_beam_pid/1
   fn pass_beam_pid(env: beam.env, val: beam.pid) void {
-    var res = beam.send(env, val, beam.make_i64(env, 47));
+    _ = beam.send(env, val, beam.make_i64(env, 47));
   }
   """
 
   test "generic pid" do
     pass_beam_pid(self())
     assert_receive 47
+
     assert_raise FunctionClauseError, fn ->
       pass_beam_pid(:foo)
     end
+
     assert_raise FunctionClauseError, fn ->
       pass_beam_pid(47)
     end
@@ -52,19 +54,20 @@ defmodule ZiglerTest.Integration.BeamTypeTest do
   ~Z"""
   /// nif: pass_erl_nif_pid/1
   fn pass_erl_nif_pid(env: beam.env, val: e.ErlNifPid) void {
-    var res = beam.send(env, val, beam.make_i64(env, 47));
+    _ = beam.send(env, val, beam.make_i64(env, 47));
   }
   """
 
   test "generic erl_nif_pid" do
     pass_erl_nif_pid(self())
     assert_receive 47
+
     assert_raise FunctionClauseError, fn ->
       pass_erl_nif_pid(:foo)
     end
+
     assert_raise FunctionClauseError, fn ->
       pass_erl_nif_pid(47)
     end
   end
-
 end

@@ -49,7 +49,7 @@ defmodule Zig.Nif.Adapter do
   end
   defp get_clauses(args, name, bail, fetcher) do
     [args
-    |> Enum.with_index
+    |> Enum.with_index()
     |> Enum.map(&get_clause(&1, name, bail, fetcher)),
     "\n"]
   end
@@ -81,21 +81,46 @@ defmodule Zig.Nif.Adapter do
   end
 
   def make_clause(type, var, env \\ "env")
-  def make_clause("beam.term", var, _), do: var
+  def make_clause("beam.term", var, _), do: {true, var}
+
   def make_clause("void", _var, env) do
-    "beam.make_ok(#{env})"
+    {false, "beam.make_ok(#{env})"}
   end
+
   def make_clause("[]u8", var, env) do
-    "beam.make_slice(#{env}, #{var})"
+    {true, "beam.make_slice(#{env}, #{var})"}
   end
+
   def make_clause("[]" <> type, var, env) do
-    "beam.make_#{type}_list(#{env}, #{var}) catch return beam.raise_enomem(env)"
+    {true, "beam.make_#{type}_list(#{env}, #{var}) catch return beam.raise_enomem(env)"}
   end
   def make_clause("!" <> type, var, env) do
     make_clause(type, var, env)
   end
   def make_clause(type, var, env) do
-    "beam.make_#{short_name type}(#{env}, #{var})"
+    {true, "beam.make_#{short_name(type)}(#{env}, #{var})"}
+  end
+
+  def uses_argv?(%{arity: arity}), do: arity != 0
+
+  def uses_env?(nif) do
+    cond do
+      nif.args == "env" ->
+        true
+
+      is_list(nif.args) and
+          Enum.any?(
+            nif.args,
+            &Nif.require_env?(&1)
+          ) ->
+        true
+
+      Nif.require_env?(nif.retval) ->
+        true
+
+      true ->
+        false
+    end
   end
 
   defp short_name("beam.pid"), do: "pid"
