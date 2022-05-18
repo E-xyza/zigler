@@ -1,7 +1,6 @@
 //! general-purpose BEAM mutex wrapped into the zig mutex interface
 
 const e = @import("erl_nif.zig");
-usingnamespace @import("os/bits.zig");
 
 const MutexError = error {
     CreationFail
@@ -28,32 +27,27 @@ pub fn BeamMutex(comptime name: []const u8) type {
             }
         }
 
-        pub const Held = struct {
-            mutex: *Self,
-
-            pub fn release(self: Held) void {
-                if (self.mutex.mutex_ref) |mutex| {
-                    e.enif_mutex_unlock(mutex);
-                } else unreachable;
-            }
-        };
-
-        /// Try to acquire the mutex without blocking. Returns null if
-        /// the mutex is unavailable. Otherwise returns Held. Call
-        /// release on Held.
-        pub fn tryAcquire(self: *Self) ?Held {
-            return switch (e.enif_mutex_trylock(mutex)) {
-                0 => Held{.mutex = self},
-                EBUSY => null,
-                _ => unreachable,
+        /// Try to acquire the mutex without blocking. Returns false
+        /// if the mutex is unavailable.
+        pub fn tryLock(self: *Self) bool {
+            return switch (e.enif_mutex_trylock(self.mutex_ref)) {
+                0 => zero: {
+                    e.enif_mutex_lock(self.mutex_ref);
+                    break :zero true;
+                },
+                e.EBUSY => false,
+                _ => unreachable
             };
         }
 
         /// Acquire the mutex. Will deadlock if the mutex is already
         /// held by the calling thread.
-        pub fn acquire(self: *Dummy) Held {
-            e.enif_mutex_lock(mutex);
-            return Held{.mutex = self};
+        pub fn lock(self: *Self) void {
+            e.enif_mutex_lock(self.mutex_ref);
+        }
+
+        pub fn unlock(self: *Self) void {
+            e.enif_mutex_unlock(self.mutex_ref);
         }
     };
-};
+}
