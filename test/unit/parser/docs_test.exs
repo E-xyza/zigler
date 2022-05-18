@@ -6,12 +6,12 @@ defmodule ZiglerTest.Parser.DocsTest do
   @moduletag :parser
 
   test "error structs are parsed correctly" do
-    assert {:ok, [err: ["Foo", {:doc, ["an error enum\n"]}, "FooError"]], ";\n", _, _, _}
-      = Parser.error_head("""
-    pub const Foo = error {
-      /// an error enum
-      FooError
-    };
-    """)
+    assert {:ok, [err: ["Foo", {:doc, ["an error enum\n"]}, "FooError"]], ";\n", _, _, _} =
+             Parser.error_head("""
+             pub const Foo = error {
+               /// an error enum
+               FooError
+             };
+             """)
   end
 end

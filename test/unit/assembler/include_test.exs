@@ -5,9 +5,10 @@ defmodule ZigTest.Assembler.IncludeTest do
 
   alias Zig.Assembler
 
-  assets_dir = __ENV__.file
-  |> Path.dirname
-  |> Path.join("assets")
+  assets_dir =
+    __ENV__.file
+    |> Path.dirname()
+    |> Path.join("assets")
 
   @target_dir "/tmp/bar"
   @basic_defaults [

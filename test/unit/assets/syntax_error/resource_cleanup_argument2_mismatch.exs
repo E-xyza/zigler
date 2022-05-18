@@ -12,5 +12,4 @@ defmodule ZiglerTest.DryRun.ResourceArgument2Mismatch do
   fn bar_cleanup(env: beam.env, res: bar) void {
   }
   """
-
 end

@@ -5,8 +5,9 @@ defmodule Zig.Doc.Parser do
 
   def docs_from_dir(dir, config) do
     dir
-    |> File.ls!
-    |> Enum.filter(&Regex.match?(~r/\.zig$/, &1))  # only read .zig files
+    |> File.ls!()
+    # only read .zig files
+    |> Enum.filter(&Regex.match?(~r/\.zig$/, &1))
     |> Enum.flat_map(&moduledocs_from_file(dir, &1, config))
   end
 
@@ -26,9 +27,10 @@ defmodule Zig.Doc.Parser do
   def moduledocs_from_file(dir, file, config) do
     file_path = Path.join(dir, file)
     base = Path.basename(file_path, ".zig")
-    rel_path = Path.relative_to(file_path, File.cwd!)
+    rel_path = Path.relative_to(file_path, File.cwd!())
     source_url_pattern = config.source_url_pattern
-    init_mod =  %ExDoc.ModuleNode{
+
+    init_mod = %ExDoc.ModuleNode{
       doc_line: 1,
       function_groups: ["Functions", "Values"],
       group: "Zig Structs",
@@ -49,15 +51,21 @@ defmodule Zig.Doc.Parser do
     {:ok, _, _, parsed_module, _, _} = file_parser(File.read!(file_path))
 
     # split out the error modules from the parsed module.
-    {types, exceptions} = Enum.split_with(
-      parsed_module.typespecs,
-      &(match?(%ExDoc.TypeNode{}, &1)))
+    {types, exceptions} =
+      Enum.split_with(
+        parsed_module.typespecs,
+        &match?(%ExDoc.TypeNode{}, &1)
+      )
 
-    [%{parsed_module |
-        docs: Enum.reverse(parsed_module.docs),
-        doc: doc_ast(parsed_module),
-        typespecs: Enum.reverse(types)}
-    | exceptions]
+    [
+      %{
+        parsed_module
+        | docs: Enum.reverse(parsed_module.docs),
+          doc: doc_ast(parsed_module),
+          typespecs: Enum.reverse(types)
+      }
+      | exceptions
+    ]
   end
 
   import NimbleParsec
@@ -91,12 +99,14 @@ defmodule Zig.Doc.Parser do
       string("pub")
       |> concat(whitespace)
       |> string("const")
-      |> concat(whitespace))
+      |> concat(whitespace)
+    )
     |> concat(identifier)
     |> ignore(
       optional(whitespace)
       |> string("=")
-      |> optional(whitespace))
+      |> optional(whitespace)
+    )
     |> lookahead_not(string("error"))
     |> concat(ascii_string([not: ?;], min: 1))
     |> ignore(string(";"))
@@ -110,12 +120,14 @@ defmodule Zig.Doc.Parser do
       string("pub")
       |> concat(whitespace)
       |> string("var")
-      |> concat(whitespace))
+      |> concat(whitespace)
+    )
     |> concat(identifier)
     |> ignore(
       optional(whitespace)
       |> string("=")
-      |> optional(whitespace))
+      |> optional(whitespace)
+    )
     |> ignore(ascii_string([not: ?\n], min: 1))
     |> ignore(string("\n"))
     |> tag(:val)
@@ -126,7 +138,8 @@ defmodule Zig.Doc.Parser do
       string("pub")
       |> concat(whitespace)
       |> string("const")
-      |> concat(whitespace))
+      |> concat(whitespace)
+    )
     |> concat(identifier)
     |> ignore(
       optional(whitespace)
@@ -134,18 +147,21 @@ defmodule Zig.Doc.Parser do
       |> optional(whitespace)
       |> string("error")
       |> optional(whitespace)
-      |> string("{"))
+      |> string("{")
+    )
     |> repeat(
       ignore(optional(whitespace))
       |> optional(repeat(docstring) |> tag(:doc) |> ignore(optional(whitespace)))
       |> concat(identifier)
-      |> ignore(optional(whitespace |> string(","))))
+      |> ignore(optional(whitespace |> string(",")))
+    )
     |> ignore(
       optional(whitespace)
-      |> string("}"))
+      |> string("}")
+    )
     |> tag(:err)
 
-  if Mix.env == :test do
+  if Mix.env() == :test do
     defparsec(:error_head, error_head)
   end
 
@@ -155,7 +171,8 @@ defmodule Zig.Doc.Parser do
       string("pub")
       |> concat(whitespace)
       |> string("fn")
-      |> concat(whitespace))
+      |> concat(whitespace)
+    )
     |> concat(identifier)
     |> concat(ascii_string([not: ?{], min: 1))
     |> ignore(string("{"))
@@ -174,10 +191,12 @@ defmodule Zig.Doc.Parser do
       |> concat(docstring)
       |> post_traverse(:moduledoc)
     )
-    |> repeat(choice([
-      typed_docstring,
-      line
-    ]))
+    |> repeat(
+      choice([
+        typed_docstring,
+        line
+      ])
+    )
 
   defparsec(:file_parser, file_parser)
 
@@ -190,18 +209,19 @@ defmodule Zig.Doc.Parser do
     line
     |> Enum.map(fn
       str = "///" <> _ -> trim_slashes(str)
-      any -> any |> String.trim_leading |> trim_slashes
+      any -> any |> String.trim_leading() |> trim_slashes
     end)
-    |> Enum.join
+    |> Enum.join()
   end
 
-  defp initialize(_rest, content, _context, _line , _offset) do
+  defp initialize(_rest, content, _context, _line, _offset) do
     {content, Process.get(:"$init_mod")}
   end
 
   defp moduledoc(_rest, [content], context, _line, _offset) do
     {[], struct(context, doc: content)}
   end
+
   defp moduledoc(_rest, [], context, _line, _offset) do
     {[], struct(context, doc: nil)}
   end
@@ -209,7 +229,8 @@ defmodule Zig.Doc.Parser do
   head_parser =
     ignore(
       optional(whitespace)
-      |> string("("))
+      |> string("(")
+    )
     |> repeat(
       ignore(optional(whitespace))
       |> choice([
@@ -221,70 +242,72 @@ defmodule Zig.Doc.Parser do
       |> ignore(
         optional(whitespace)
         |> string(":")
-        |> optional(whitespace))
+        |> optional(whitespace)
+      )
       |> ascii_string([not: ?,, not: ?\n, not: ?)], min: 1)
-      |> ignore(optional(string(","))))
+      |> ignore(optional(string(",")))
+    )
     |> ignore(string(")"))
 
   defparsec(:head_parser, head_parser)
 
   # unsure of why this hack is necessary.
   defp typed_docstring(str, [{type, ["\n" | rest1]}, rest2], context, line, offset)
-      when is_atom(type) do
+       when is_atom(type) do
     typed_docstring(str, [{type, rest1}, rest2], context, line, offset)
   end
 
   defp typed_docstring(_rest, [{:type, [name, _]}, "!value" <> doc], context, {line, _}, _offset) do
-    this_value =
-      %ExDoc.FunctionNode{
-        arity: 0,
-        doc: doc_ast(String.trim(doc), context.source_path, line),
-        doc_line: line,
-        group: "Values",
-        id: "#{name}",
-        name: String.to_atom(name),
-        signature: "#{name}",
-        source_path: context.source_path,
-        specs: [],
-        source_url: interpolate_line(line),
-        type: :function
-      }
+    this_value = %ExDoc.FunctionNode{
+      arity: 0,
+      doc: doc_ast(String.trim(doc), context.source_path, line),
+      doc_line: line,
+      group: "Values",
+      id: "#{name}",
+      name: String.to_atom(name),
+      signature: "#{name}",
+      source_path: context.source_path,
+      specs: [],
+      source_url: interpolate_line(line),
+      type: :function
+    }
+
     {[], %{context | docs: [this_value | context.docs]}}
   end
 
   defp typed_docstring(_rest, [{:type, [name, defn]}, doc], context, {line, _}, _offset) do
-    this_type =
-      %ExDoc.TypeNode{
-        arity: 0,
-        doc: doc_ast(doc, context.source_path, line),
-        doc_line: line,
-        id: "#{name}/0",
-        name: String.to_atom(name),
-        signature: name,
-        source_path: context.source_path,
-        source_url: interpolate_line(line),
-        spec: defn,
-        type: :type
-      }
+    this_type = %ExDoc.TypeNode{
+      arity: 0,
+      doc: doc_ast(doc, context.source_path, line),
+      doc_line: line,
+      id: "#{name}/0",
+      name: String.to_atom(name),
+      signature: name,
+      source_path: context.source_path,
+      source_url: interpolate_line(line),
+      spec: defn,
+      type: :type
+    }
+
     {[], %{context | typespecs: [this_type | context.typespecs]}}
   end
 
   defp typed_docstring(_rest, [{:val, [name | _]}, doc], context, {line, _}, _offset) do
-    this_value =
-      %ExDoc.FunctionNode{
-        annotations: "mutable",
-        arity: 0,
-        doc: doc_ast(doc, context.source_path, line),
-        doc_line: line,
-        group: "Values",
-        id: "#{name}",
-        name: String.to_atom(name),
-        signature: "#{name}",
-        source_path: context.source_path,
-        source_url: interpolate_line(line),
-        specs: [],
-        type: :function
-      }
+    this_value = %ExDoc.FunctionNode{
+      annotations: "mutable",
+      arity: 0,
+      doc: doc_ast(doc, context.source_path, line),
+      doc_line: line,
+      group: "Values",
+      id: "#{name}",
+      name: String.to_atom(name),
+      signature: "#{name}",
+      source_path: context.source_path,
+      source_url: interpolate_line(line),
+      specs: [],
+      type: :function
+    }
+
     {[], %{context | docs: [this_value | context.docs]}}
   end
 
@@ -297,21 +320,21 @@ defmodule Zig.Doc.Parser do
     arity = div(Enum.count(types), 2)
     comptime = Enum.any?(types, &match?({:comptime, _}, &1))
 
-    this_fn =
-      %ExDoc.FunctionNode{
-        annotations: (if comptime, do: ["comptime"], else: []),
-        arity: arity,
-        doc: doc_ast(doc, context.source_path, line),
-        doc_line: line,
-        group: "Functions",
-        id: "#{name}/#{arity}",
-        name: String.to_atom(name),
-        signature: "#{name}#{defn}",
-        source_path: context.source_path,
-        source_url: interpolate_line(line),
-        specs: [],
-        type: :function
-      }
+    this_fn = %ExDoc.FunctionNode{
+      annotations: if(comptime, do: ["comptime"], else: []),
+      arity: arity,
+      doc: doc_ast(doc, context.source_path, line),
+      doc_line: line,
+      group: "Functions",
+      id: "#{name}/#{arity}",
+      name: String.to_atom(name),
+      signature: "#{name}#{defn}",
+      source_path: context.source_path,
+      source_url: interpolate_line(line),
+      specs: [],
+      type: :function
+    }
+
     {[], %{context | docs: [this_fn | context.docs]}}
   end
 
@@ -321,35 +344,48 @@ defmodule Zig.Doc.Parser do
   end
 
   defp exceptions_from([], _, _, _), do: []
+
   defp exceptions_from([{:doc, doc}, error | rest], group, context, line) do
     errname = "#{context.id}.#{group}.#{error}"
-    [%ExDoc.ModuleNode{
-      doc: doc_ast(IO.iodata_to_binary(doc), context.source_path, 1),
-      doc_line: 1,
-      function_groups: [],
-      group: "Zig Errors",
-      type: :exception,
-      id: errname,
-      module: String.to_atom(errname),
-      source_path: context.source_path,
-      source_url: interpolate_line(line),
-      title: errname} | exceptions_from(rest, group, context, line)]
+
+    [
+      %ExDoc.ModuleNode{
+        doc: doc_ast(IO.iodata_to_binary(doc), context.source_path, 1),
+        doc_line: 1,
+        function_groups: [],
+        group: "Zig Errors",
+        type: :exception,
+        id: errname,
+        module: String.to_atom(errname),
+        source_path: context.source_path,
+        source_url: interpolate_line(line),
+        title: errname
+      }
+      | exceptions_from(rest, group, context, line)
+    ]
   end
+
   defp exceptions_from([error | rest], group, context, line) do
     errname = "#{context.id}.#{group}.#{error}"
-    [%ExDoc.ModuleNode{
-      doc_line: 1,
-      function_groups: [],
-      group: "Zig Errors",
-      type: :exception,
-      id: errname,
-      module: String.to_atom(errname),
-      source_path: context.source_path,
-      source_url: interpolate_line(line),
-      title: errname} | exceptions_from(rest, group, context, line)]
+
+    [
+      %ExDoc.ModuleNode{
+        doc_line: 1,
+        function_groups: [],
+        group: "Zig Errors",
+        type: :exception,
+        id: errname,
+        module: String.to_atom(errname),
+        source_path: context.source_path,
+        source_url: interpolate_line(line),
+        title: errname
+      }
+      | exceptions_from(rest, group, context, line)
+    ]
   end
 
   defp doc_ast(parsed), do: doc_ast(parsed.doc, parsed.source_path, parsed.doc_line)
+
   defp doc_ast(markdown, path, line) do
     alias ExDoc.Markdown
     Markdown.to_ast(markdown, file: path, line: line)

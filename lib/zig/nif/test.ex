@@ -11,7 +11,7 @@ defmodule Zig.Nif.Test do
   def zig_adapter(nif, module) do
     # when it is a test:
     """
-    export fn __#{Adapter.shim_name nif.name}_shim__(env: beam.env, _: c_int, _: [*c] const beam.term) beam.term {
+    export fn __#{Adapter.shim_name(nif.name)}_shim__(env: beam.env, _: c_int, _: [*c] const beam.term) beam.term {
       beam.test_env = env;
       #{nif.name}() catch |err|
           return beam.raise_exception(env, "#{module}.ZigError", err, @errorReturnTrace());
@@ -26,7 +26,7 @@ defmodule Zig.Nif.Test do
       e.ErlNifFunc{
         .name = "#{nif.test}",
         .arity = 0,
-        .fptr = __#{Adapter.shim_name nif.name}_shim__,
+        .fptr = __#{Adapter.shim_name(nif.name)}_shim__,
         .flags = 0,
       },
     """
@@ -35,13 +35,16 @@ defmodule Zig.Nif.Test do
   @impl true
   def beam_adapter(nif) do
     raise_msg = "nif for test #{nif.test} not found"
-    raise_code = quote context: Elixir do
-      raise unquote(raise_msg)
-    end
+
+    raise_code =
+      quote context: Elixir do
+        raise unquote(raise_msg)
+      end
+
     {:def, [context: Elixir, import: Kernel],
-      [
-        {nif.test, [context: Elixir], Elixir},
-        [do: raise_code]
-      ]}
+     [
+       {nif.test, [context: Elixir], Elixir},
+       [do: raise_code]
+     ]}
   end
 end

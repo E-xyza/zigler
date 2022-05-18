@@ -35,5 +35,4 @@ defmodule ZiglerTest.Integration.SliceTypeIngressTest do
     assert [47.0, 47.0, 47.0, 47.0] == ingress_f32_slice([47.0, 47.0, 47.0, 47.0])
     assert [47.0, 47.0, 47.0, 47.0] == ingress_f64_slice([47.0, 47.0, 47.0, 47.0])
   end
-
 end

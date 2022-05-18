@@ -1,5 +1,4 @@
 defmodule ZiglerTest.Include.ZiglerMultiIncludeTest do
-
   #
   # tests to see if c_includes can be used with multiple .h files
   #

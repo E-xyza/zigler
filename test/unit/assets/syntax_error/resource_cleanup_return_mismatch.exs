@@ -13,5 +13,4 @@ defmodule ZiglerTest.DryRun.ResourceReturnMismatch do
     return 47;
   }
   """
-
 end

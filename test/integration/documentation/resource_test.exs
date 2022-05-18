@@ -15,7 +15,9 @@ defmodule ZiglerTest.Integration.Documentation.ResourceTest do
     &Code.eval_string(
       elem(&1, 0),
       [],
-      %{env | file: resource_path, line: elem(&1, 1)}))
+      %{env | file: resource_path, line: elem(&1, 1)}
+    )
+  )
 
   @external_resource resource_path
 end

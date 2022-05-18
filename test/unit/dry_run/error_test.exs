@@ -46,7 +46,7 @@ defmodule ZiglerTest.DryRunErrorTest do
           __DIR__
           |> Path.join("../assets/compiler_error/linux_error_without_link_libc.exs")
           |> Path.expand()
-          |> Code.compile_file
+          |> Code.compile_file()
         end
       end
 

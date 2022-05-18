@@ -7,5 +7,4 @@ defmodule ZiglerTest.DryRun.NifInvalidArgument do
     return 47;
   }
   """
-
 end

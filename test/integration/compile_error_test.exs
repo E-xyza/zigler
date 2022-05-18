@@ -3,9 +3,9 @@ defmodule ZiglerTest.Integration.CompileErrorTest do
 
   def load(name) do
     __ENV__.file
-    |> Path.dirname
+    |> Path.dirname()
     |> Path.join("assets/compile_error/#{name}")
-    |> Code.eval_file
+    |> Code.eval_file()
   end
 
   test "zig compiler errors are bound to the correct line number" do
@@ -29,5 +29,4 @@ defmodule ZiglerTest.Integration.CompileErrorTest do
     assert error.description =~ "no nifs"
     assert Path.basename(error.file) == file
   end
-
 end

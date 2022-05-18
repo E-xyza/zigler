@@ -7,5 +7,4 @@ defmodule ZiglerTest.DryRun.NifNameMismatch do
     return 47;
   }
   """
-
 end

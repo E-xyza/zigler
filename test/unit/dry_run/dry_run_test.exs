@@ -26,7 +26,7 @@ defmodule ZiglerTest.DryRunTest do
     assert function_exported?(BasicZeroArity, :zeroarity, 0)
 
     # make sure it crashes if we try to run it
-    assert_raise RuntimeError, fn -> BasicZeroArity.zeroarity end
+    assert_raise RuntimeError, fn -> BasicZeroArity.zeroarity() end
   end
 
   defmodule BasicFortySeven do
@@ -50,5 +50,4 @@ defmodule ZiglerTest.DryRunTest do
 
     assert_raise RuntimeError, fn -> BasicFortySeven.fortyseven(2) end
   end
-
 end
