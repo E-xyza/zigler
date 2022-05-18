@@ -1,6 +1,5 @@
 defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
-
-  use ExUnit.Case, async: true
+  use ExUnit.Case
   use Zig, link_libc: true
 
   @moduletag :threaded
