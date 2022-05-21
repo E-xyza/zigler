@@ -35,7 +35,7 @@ pub fn build(b: *Builder) void {
     <%= for source <- @module_spec.sources do %>
     <%= case source do %>
       <% {file, opts} -> %>
-        lib.addCSourceFile("<%= file %>", &[_][]const u8{<%= Enum.map_join(opts, ", ", &"#{&1}") %>})
+        lib.addCSourceFile("<%= file %>", &[_][]const u8{<%= Enum.map_join(opts, ", ", &~s("#{&1}")) %>});
       <% file -> %>
         lib.addCSourceFile("<%= file %>", &[_][]const u8{});
     <% end %>
