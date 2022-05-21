@@ -29,7 +29,7 @@ jobs:
     - name: Run Tests
       env:
         RUNNING_CI: "true"
-      run: mix test
+      run: mix test --exclude no_ci
   macos:
     runs-on: macos-latest
     name: MacOS OTP ${{matrix.pair.otp-version}} / Elixir ${{matrix.pair.elixir-version}}
@@ -53,4 +53,4 @@ jobs:
     - name: Run Tests
       env:
         RUNNING_CI: "true"
-      run: mix test
+      run: mix test --exclude no_ci

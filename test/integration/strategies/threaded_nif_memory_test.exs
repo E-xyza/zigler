@@ -1,5 +1,7 @@
 defmodule ZiglerTest.Integration.Strategies.ThreadedNifMemoryTest do
   use ExUnit.Case
+  use MacOS.NoCI
+
   use Zig, link_libc: true
 
   @moduletag :integration

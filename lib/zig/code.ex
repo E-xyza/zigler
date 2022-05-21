@@ -266,7 +266,9 @@ defmodule Zig.Code do
         null);
     }
 
-    export fn __destroy_#{name}__(env: beam.env, res: ?*anyopaque) void {_ = env; _ = res; #{cleanup}}
+    export fn __destroy_#{name}__(env: beam.env, res: ?*anyopaque) void {_ = env; _ = res; #{
+      cleanup
+    }}
     """
   end
 

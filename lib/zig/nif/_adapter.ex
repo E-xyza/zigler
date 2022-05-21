@@ -76,7 +76,9 @@ defmodule Zig.Nif.Adapter do
 
   defp get_clause({"[]" <> type, index}, function, bail, fetcher) do
     """
-      var __#{function}_arg#{index}__ = beam.get_slice_of(#{short_name(type)}, env, #{fetcher.(index)}) catch |err| switch (err) {
+      var __#{function}_arg#{index}__ = beam.get_slice_of(#{short_name(type)}, env, #{
+      fetcher.(index)
+    }) catch |err| switch (err) {
         error.OutOfMemory => #{String.trim(bail.(:oom))},
         beam.Error.FunctionClauseError => #{String.trim(bail.(:function_clause))}
       };

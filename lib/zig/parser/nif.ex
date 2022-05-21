@@ -81,7 +81,9 @@ defmodule Zig.Parser.Nif do
       file: context.file,
       line: line + context.zig_block_line - 1,
       description:
-        "nif declaration arity (#{arity}) doesn't match the expected function arity #{length(rest)}"
+        "nif declaration arity (#{arity}) doesn't match the expected function arity #{
+          length(rest)
+        }"
   end
 
   def validate_arity(_, _, _), do: :ok

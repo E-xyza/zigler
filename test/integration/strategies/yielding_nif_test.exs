@@ -51,8 +51,6 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
     # but they will always be monotonically increasing
     elapsed = abs(start - stop)
     assert elapsed >= 1000
-    # this one is a bit slower than I expected.
-    assert elapsed <= 4000
   end
 
   ~Z"""

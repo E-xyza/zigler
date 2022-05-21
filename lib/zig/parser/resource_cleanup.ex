@@ -37,7 +37,9 @@ defmodule Zig.Parser.ResourceCleanup do
         file: context.file,
         line: line + context.zig_block_line,
         description:
-          "resource cleanup function #{name} for #{context.local.for} must have second argument be of type *#{context.local.for}. (got #{ptype})"
+          "resource cleanup function #{name} for #{context.local.for} must have second argument be of type *#{
+            context.local.for
+          }. (got #{ptype})"
     end
 
     :ok
@@ -48,7 +50,9 @@ defmodule Zig.Parser.ResourceCleanup do
       file: context.file,
       line: line + context.zig_block_line,
       description:
-        "resource cleanup function #{name} for #{context.local.for} must have first argument be of type `beam.env` or `?*e.ErlNifEnv`. (got #{env})"
+        "resource cleanup function #{name} for #{context.local.for} must have first argument be of type `beam.env` or `?*e.ErlNifEnv`. (got #{
+          env
+        })"
   end
 
   # validate_args/3 : raises if the return value doesn't have type "void"
@@ -61,7 +65,9 @@ defmodule Zig.Parser.ResourceCleanup do
       file: context.file,
       line: line + context.zig_block_line,
       description:
-        "resource cleanup function #{name} for resource #{context.local.for} must return `void` (currently returns `#{retval}`)"
+        "resource cleanup function #{name} for resource #{context.local.for} must return `void` (currently returns `#{
+          retval
+        }`)"
   end
 
   def register_function_header([_, _, _, name], context = %{local: %{for: res}}) do

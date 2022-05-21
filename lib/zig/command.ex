@@ -19,7 +19,9 @@ defmodule Zig.Command do
     opts = Keyword.merge(hacky_envs(), cd: compiler.assembly_dir, stderr_to_stdout: true)
 
     Logger.debug(
-      "compiling nif for module #{inspect(compiler.module_spec.module)} in path #{compiler.assembly_dir}"
+      "compiling nif for module #{inspect(compiler.module_spec.module)} in path #{
+        compiler.assembly_dir
+      }"
     )
 
     Builder.build(compiler, zig_tree)
