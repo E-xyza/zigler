@@ -23,6 +23,7 @@ defmodule Zig.Module do
               [
                 zig_file: "",
                 libs: [],
+                system_libs: [],
                 nifs: [],
                 resources: [],
                 zig_version: Version.parse!("0.9.1"),
@@ -45,6 +46,7 @@ defmodule Zig.Module do
           otp_app: atom,
           zig_file: Path.t(),
           libs: [Path.t()],
+          system_libs: [String.t()],
           nifs: [Zig.Parser.Function.t()],
           resources: [Zig.Parser.Resource.t()],
           zig_version: Version.t(),

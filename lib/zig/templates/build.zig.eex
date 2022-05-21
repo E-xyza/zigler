@@ -32,6 +32,9 @@ pub fn build(b: *Builder) void {
     // use libcpp if it has been asked for
     lib.linkLibCpp();
     <% end %>
+    <%= for system_lib <- @module_spec.system_libs do %>
+    lib.linkSystemLibrary("<%= system_lib %>");
+    <% end %>
     <%= for source <- @module_spec.sources do %>
     <%= case source do %>
       <% {file, opts} -> %>

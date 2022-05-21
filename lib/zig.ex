@@ -235,8 +235,8 @@ defmodule Zig do
 
     user_opts =
       opts
-      |> Keyword.take(~w(libs resources dry_run c_includes
-    system_include_dirs local link_libc link_libcpp sources)a)
+      |> Keyword.take(~w(libs resources dry_run c_includes system_include_dirs
+        local link_libc link_libcpp sources system_libs)a)
 
     include_dirs =
       opts
