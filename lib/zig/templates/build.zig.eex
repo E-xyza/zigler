@@ -32,6 +32,14 @@ pub fn build(b: *Builder) void {
     // use libcpp if it has been asked for
     lib.linkLibCpp();
     <% end %>
+    <%= for source <- @module_spec.sources do %>
+    <%= case source do %>
+      <% {file, opts} -> %>
+        lib.addCSourceFile("<%= file %>", &[_][]const u8{<%= Enum.map_join(opts, ", ", &"#{&1}") %>})
+      <% file -> %>
+        lib.addCSourceFile("<%= file %>", &[_][]const u8{});
+    <% end %>
+    <% end %>
     <%= for lib <- @module_spec.libs do %>
     <%= cond do %>
       <% String.ends_with?(lib, ".so") -> %>

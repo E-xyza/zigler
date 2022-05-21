@@ -35,7 +35,7 @@ defmodule Zig.Module do
                 version: Version.parse!("0.0.0"),
                 link_libc: link_libc,
                 link_libcpp: false,
-                source: [],
+                sources: [],
                 test_dirs: nil
               ]
 
@@ -55,7 +55,7 @@ defmodule Zig.Module do
           link_libc: boolean,
           link_libcpp: boolean,
           dry_run: boolean,
-          source: [source],
+          sources: [source],
           code: iodata,
           version: Version.t(),
           test_dirs: nil | [Path.t()]
