@@ -3,6 +3,8 @@ defmodule ZiglerTest.Integration.DocumentationTest do
 
   use ExUnit.Case, async: true
 
+  @moduletag :integration
+
   test "documentation works" do
     {:docs_v1, _, _, _, _, _, docs} = Code.fetch_docs(ZiglerTest.Integration.Documentation)
 

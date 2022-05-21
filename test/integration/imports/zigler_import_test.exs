@@ -4,6 +4,9 @@ defmodule ZiglerTest.Imports.ZiglerImportTest do
   #
 
   use ExUnit.Case, async: true
+
+  @moduletag :integration
+
   use Zig, imports: [:defaults, test_import: "test_import.zig"]
 
   ~Z"""

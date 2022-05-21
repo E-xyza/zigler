@@ -9,6 +9,7 @@ if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") and
 
       import Zig.Unit
 
+      @moduletag :integration
       @moduletag :zigtest
 
       zigtest(ZiglerTest.ZigTest.Blas)

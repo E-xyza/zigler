@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Integration.Strategies.DirtyNifTest do
   use ExUnit.Case, async: true
 
+  @moduletag :integration
+
   use Zig
 
   ~Z"""

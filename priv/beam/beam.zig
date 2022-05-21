@@ -100,6 +100,7 @@
 
 const e = @import("erl_nif.zig");
 const std = @import("std");
+const builtin = @import("builtin");
 const BeamMutex = @import("beam_mutex.zig").BeamMutex;
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1416,6 +1417,10 @@ pub fn make_exception(env_: env, exception_module: []const u8, err: anyerror, er
     var frames_left: usize = std.math.min(trace.index, trace.instruction_addresses.len);
     var ert = e.enif_make_list(env_, 0);
 
+    // currently macos has a bug where the error return trace is sometimes bogus.
+    // skip returning extra stuff onto the stack if you're using macos.
+    if (builtin.os.tag != .macos) {
+
     while (frames_left != 0) : ({
         frames_left -= 1;
         frame_index = (frame_index + 1) % trace.instruction_addresses.len;
@@ -1423,6 +1428,8 @@ pub fn make_exception(env_: env, exception_module: []const u8, err: anyerror, er
         const return_address = trace.instruction_addresses[frame_index];
         var location = make_location(env_, debug_info, return_address - 1) catch return make_nil(env_);
         ert = e.enif_make_list_cell(env_, location, ert);
+    }
+
     }
 
     var exception = e.enif_make_new_map(env_);
@@ -1447,6 +1454,7 @@ pub fn make_exception(env_: env, exception_module: []const u8, err: anyerror, er
       make_slice(env_, @errorName(err)),
       &exception
     );
+
     // store the error return trace
     _ = e.enif_make_map_put(
       env_,

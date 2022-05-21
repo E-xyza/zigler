@@ -3,8 +3,10 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifMemoryTest do
   # segfault.
 
   use ExUnit.Case
+  use MacOS.NoCI
   use Zig
 
+  @moduletag :integration
   @moduletag :yielding
 
   @one_m 1024 * 1024

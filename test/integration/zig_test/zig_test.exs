@@ -4,6 +4,7 @@ defmodule ZiglerTest.Integration.ZigTest do
   use Zig
   import Zig.Unit
 
+  @moduletag :integration
   @moduletag :zigtest
 
   # imports module support/passing_tests.ex into zigler.
@@ -24,6 +25,7 @@ defmodule ZiglerTest.Integration.ZigTest do
 
   alias ZiglerTest.Integration.ZigTest.FailShim
 
+  @tag :error_return
   test "tests can fail", context do
     __DIR__
     |> Path.join("fail_shim.exs")

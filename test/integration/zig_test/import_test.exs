@@ -5,6 +5,7 @@ defmodule ZiglerTest.Integration.ZigTest.TransitiveTest do
 
   alias ZiglerTest.ZigTest.Transitive
 
+  @moduletag :integration
   @moduletag :zigtest
 
   zigtest(Transitive)

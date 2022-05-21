@@ -1,8 +1,11 @@
 defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
   use ExUnit.Case, async: true
-  use Zig, link_libc: true
+  use MacOS.NoCI
 
+  @moduletag :integration
   @moduletag :threaded
+
+  use Zig, link_libc: true
 
   ~Z"""
   /// nif: threaded_forty_seven/0 threaded

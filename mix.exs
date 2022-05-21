@@ -1,22 +1,8 @@
 defmodule Zigler.MixProject do
   use Mix.Project
 
-  # for the Zig application, tests are divided into two groups:  Unit tests
-  # are all tests which don't require any sort of zig compilation and
-  # integration tests are all tests which do.
-  #
-  # `mix test` will run the full suite of tests.
-  # `mix test.unit` will only run the unit tests.
-
   def project do
     env = Mix.env()
-
-    if Mix.env() in [:unit, :isolated] do
-      # elixir doesn't allow us to run tests in any environment besides `:test`.
-      # so if we send ourselves into the unit tests, we'll have to ninja
-      # ourselves back into the test environment.
-      Mix.env(:test)
-    end
 
     [
       app: :zigler,
@@ -25,8 +11,7 @@ defmodule Zigler.MixProject do
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
       deps: deps(),
-      aliases: [docs: "zig_doc", "test.unit": "test", "test.isolated": "test"],
-      aliases: ["test.unit": "test", "test.isolated": "test"],
+      aliases: [docs: "zig_doc", test: test_alias()],
       package: [
         description: "Zig nif library",
         licenses: ["MIT"],
@@ -39,17 +24,7 @@ defmodule Zigler.MixProject do
         }
       ],
       dialyzer: [plt_add_deps: :transitive],
-      test_coverage: [tool: ExCoveralls],
-      preferred_cli_env: [
-        "test.unit": :unit,
-        "test.isolated": :isolated,
-        coveralls: :test,
-        "coveralls.detail": :test,
-        "coveralls.post": :test,
-        "coveralls.html": :test,
-        dialyzer: :dev
-      ],
-      test_paths: test_paths(env),
+      preferred_cli_env: [dialyzer: :dev],
       source_url: "https://github.com/ityonemo/zigler/",
       docs: [
         main: "Zig",
@@ -87,17 +62,14 @@ defmodule Zigler.MixProject do
 
   defp elixirc_paths(:dev), do: ["lib"]
   defp elixirc_paths(:test), do: ["lib", "test/support"]
-  defp elixirc_paths(:unit), do: ["lib"]
-  defp elixirc_paths(:isolated), do: ["lib", "test/isolated/support"]
   defp elixirc_paths(_), do: ["lib"]
 
-  # running `mix test` executes both integration tests and unit tests.
-  # running `mix test.unit` executes just the unit tests.
-  # comment-twiddle next lines to run a single test in isolation
-  defp test_paths(:test), do: ["test/integration", "test/unit"]
-  defp test_paths(:unit), do: ["test/unit"]
-  defp test_paths(:isolated), do: ["test/isolated"]
-  defp test_paths(_), do: []
+  defp test_alias do
+    case :os.type() do
+      {:unix, :darwin} -> ["clean", "test"]
+      _ -> "test"
+    end
+  end
 
   def deps do
     [
@@ -105,8 +77,6 @@ defmodule Zigler.MixProject do
       {:credo, "~> 1.4.0", only: [:dev, :test], runtime: false},
       # dialyzer
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
-      # coverage testing
-      {:excoveralls, "~> 0.12", only: :test, runtime: false},
       # zigler's parsing is done using nimble_parsec
       {:nimble_parsec, "~> 1.1", runtime: false},
       # to parse the zig JSON
