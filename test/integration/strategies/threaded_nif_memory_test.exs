@@ -6,8 +6,6 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifMemoryTest do
   @moduletag :threaded
   @moduletag :error_return
 
-  # TODO: also implement these as beam.yield() catch return
-
   ~Z"""
   /// nif: threaded_with_yield_cancel/1 threaded
   fn threaded_with_yield_cancel(env: beam.env, pid: beam.pid) !void {
