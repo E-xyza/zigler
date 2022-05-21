@@ -13,10 +13,8 @@ pub fn build(b: *Builder) void {
                           .minor = <%= @module_spec.version.minor %>,
                           .patch = <%= @module_spec.version.patch %>}});
     lib.addSystemIncludeDir("<%= :code.root_dir %>/erts-<%= :erlang.system_info(:version) %>/include");
-    <%= unless @module_spec.link_libc do %>
     <%= for dir <- dirs_for(target) do %>
     lib.addSystemIncludeDir("<%= Path.join(zig_tree, dir) %>");
-    <% end %>
     <% end %>
     <%= for system_include_dir <- @module_spec.system_include_dirs do %>
     lib.addSystemIncludeDir("<%= system_include_dir %>");
@@ -28,7 +26,11 @@ pub fn build(b: *Builder) void {
     lib.setTarget(target);
     <%= if @module_spec.link_libc do %>
     // use libc if it has been asked for
-    lib.linkSystemLibrary("c");
+    lib.linkLibC();
+    <% end %>
+    <%= if @module_spec.link_libcpp do %>
+    // use libcpp if it has been asked for
+    lib.linkLibCpp();
     <% end %>
     <%= for lib <- @module_spec.libs do %>
     <%= cond do %>
