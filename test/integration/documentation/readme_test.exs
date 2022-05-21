@@ -6,6 +6,8 @@ if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") and
     defmodule ZiglerTest.Integration.Documentation.ReadmeTest do
       use ExUnit.Case, async: true
 
+      @moduletag :integration
+
       alias ZiglerTest.Support.Parser
       require Parser
 

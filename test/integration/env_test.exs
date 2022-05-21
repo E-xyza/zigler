@@ -5,6 +5,8 @@ defmodule ZiglerTest.Integration.EnvTest do
   use ExUnit.Case, async: true
   use Zig
 
+  @moduletag :integration
+
   ~Z"""
   /// nif: zeroarity_with_env/0
   fn zeroarity_with_env(_: beam.env) i64 {

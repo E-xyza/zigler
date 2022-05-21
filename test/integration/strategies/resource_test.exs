@@ -4,6 +4,7 @@ defmodule ZiglerTest.Integration.Strategies.ResourceTest do
   use ExUnit.Case, async: true
   use Zig
 
+  @moduletag :integration
   @moduletag :resources
 
   ~Z"""

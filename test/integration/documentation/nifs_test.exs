@@ -2,6 +2,8 @@ defmodule ZiglerTest.Integration.Documentation.NifsTest do
   # don't async this because there is a big memory allocation.
   use ExUnit.Case
 
+  @moduletag :integration
+
   alias ZiglerTest.Support.Parser
   require Parser
 

@@ -2,6 +2,8 @@ defmodule ZiglerTest.Include.IncludeTest do
   use ExUnit.Case, async: true
   use Zig
 
+  @moduletag :integration
+
   ~Z"""
   const c = @cImport({
     @cInclude("fortyseven.h");

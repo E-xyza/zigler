@@ -2,6 +2,8 @@ defmodule ZiglerTest.Integration.ScalarTypeEgressTest do
   use ExUnit.Case, async: true
   use Zig
 
+  @moduletag :integration
+
   ~Z"""
   /// nif: egress_true/0
   fn egress_true() bool {

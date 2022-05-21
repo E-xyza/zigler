@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Integration.CompileErrorTest do
   use ExUnit.Case, async: true
 
+  @moduletag :integration
+
   def load(name) do
     __ENV__.file
     |> Path.dirname()

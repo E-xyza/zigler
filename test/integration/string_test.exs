@@ -2,6 +2,8 @@ defmodule ZiglerTest.Integration.StringTest do
   use ExUnit.Case, async: true
   use Zig
 
+  @moduletag :integration
+
   ~Z"""
   /// nif: ingress_string/1
   fn ingress_string(_: []u8) i64 {

@@ -2,7 +2,11 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifMemoryTest do
   use ExUnit.Case
   use Zig, link_libc: true
 
+  @moduletag :integration
   @moduletag :threaded
+  @moduletag :error_return
+
+  # TODO: also implement these as beam.yield() catch return
 
   ~Z"""
   /// nif: threaded_with_yield_cancel/1 threaded

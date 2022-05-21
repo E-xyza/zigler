@@ -5,6 +5,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifTest do
   use ExUnit.Case, async: true
   use Zig
 
+  @moduletag :integration
   @moduletag :yielding
 
   ~Z"""

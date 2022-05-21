@@ -4,6 +4,9 @@ defmodule ZiglerTest.Include.ZiglerIncludeTest do
   #
 
   use ExUnit.Case, async: true
+
+  @moduletag :integration
+
   use Zig, c_includes: [c: "fortyseven.h"]
 
   ~Z"""

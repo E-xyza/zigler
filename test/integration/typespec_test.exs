@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Integration.TypespecTest do
   use ExUnit.Case, async: true
 
+  @moduletag :integration
+
   #
   # note that this module doesn't make sense unless you have the context of the
   # support module `ZiglerTest.Types`.  This support module can be found in the

@@ -4,6 +4,7 @@ if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") and
   defmodule ZiglerTest.Integration.Strategies.LibraryTest do
     use ExUnit.Case, async: true
 
+    @moduletag :integration
     @moduletag :library
 
     defmodule BlasDynamic do

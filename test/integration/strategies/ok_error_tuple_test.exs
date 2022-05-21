@@ -4,6 +4,7 @@ defmodule ZiglerTest.OkErrorTupleTest do
   use ExUnit.Case, async: true
   use Zig
 
+  @moduletag :integration
   @moduletag :okerror
 
   ~Z"""

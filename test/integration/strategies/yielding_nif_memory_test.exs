@@ -5,6 +5,7 @@ defmodule ZiglerTest.Integration.Strategies.YieldingNifMemoryTest do
   use ExUnit.Case
   use Zig
 
+  @moduletag :integration
   @moduletag :yielding
 
   @one_m 1024 * 1024

@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Integration.Documentation.ResourceTest do
   use ExUnit.Case, async: true
 
+  @moduletag :integration
+
   alias ZiglerTest.Support.Parser
   require Parser
 

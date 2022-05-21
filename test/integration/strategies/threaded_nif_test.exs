@@ -2,6 +2,7 @@ defmodule ZiglerTest.Integration.Strategies.ThreadedNifTest do
   use ExUnit.Case, async: true
   use Zig, link_libc: true
 
+  @moduletag :integration
   @moduletag :threaded
 
   ~Z"""

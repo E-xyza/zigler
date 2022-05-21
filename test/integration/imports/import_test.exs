@@ -2,6 +2,8 @@ defmodule ZiglerTest.Imports.ImportTest do
   use ExUnit.Case, async: true
   use Zig
 
+  @moduletag :integration
+
   # basic importing
   ~Z"""
   const test_import = @import("test_import.zig");
