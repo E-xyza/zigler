@@ -119,6 +119,9 @@ defmodule Zig do
   config :zigler, local_zig: "path/to/zig/command"
   ```
 
+  Note that for minor versions prior to 1.0, zigler doesn't plan on
+  maintaining backward compatibility due to large architectural changes.
+
   ### External Libraries
 
   If you need to bind static (`*.a`) or dynamic (`*.so`) libraries into your
@@ -127,12 +130,31 @@ defmodule Zig do
   Note that zig statically binds shared libraries into the assets it creates.
   This simplifies deployment for you.
 
-  #### Example
+  #### Example (explicit library path)
 
   ```
   defmodule Blas do
     use Zig,
       libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
+      include: ["/usr/include/x86_64-linux-gnu"]
+
+    ~Z\"""
+    const blas = @cImport({
+      @cInclude("cblas.h");
+    ...
+  ```
+
+  You can also link system libraries.  This relies on `zig build`'s ability
+  to locate system libraries.  Note that you will need to follow your system's
+  library convention, for example in the case of linux, that means removing the
+  "lib" prefix and the ".so" extension.
+
+  #### Example (system libraries)
+
+  ```
+  defmodule Blas do
+    use Zig,
+      system_libs: ["blas"],
       include: ["/usr/include/x86_64-linux-gnu"]
 
     ~Z\"""
