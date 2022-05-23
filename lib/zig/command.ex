@@ -16,7 +16,7 @@ defmodule Zig.Command do
   def compile(compiler, zig_tree) do
     zig_executable = executable_path(zig_tree)
 
-    opts = Keyword.merge(hacky_envs(), cd: compiler.assembly_dir, stderr_to_stdout: true)
+    opts = [cd: compiler.assembly_dir, stderr_to_stdout: true]
 
     Logger.debug(
       "compiling nif for module #{inspect(compiler.module_spec.module)} in path #{
@@ -79,15 +79,6 @@ defmodule Zig.Command do
     else
       fullpath
     end
-  end
-
-  # REVIEW THIS ON ZIG 1.0.0
-  defp hacky_envs do
-    List.wrap(
-      if :os.type() == {:unix, :darwin} do
-        [env: [{"ZIG_SYSTEM_LINKER_HACK", "true"}]]
-      end
-    )
   end
 
   #############################################################################

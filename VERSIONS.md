@@ -64,14 +64,16 @@ Thanks to Dave Cottlehuber @dch for testing.
 - fixed documentation linking for bootstrap
 
 ## 0.7.1
-- upgraded to zig 0.7.1.  From now on zigler version numbers will track Zig releases.
+- upgraded to zig 0.7.1.  From now on zigler version numbers will track Zig
+  releases.
 - completed implementation of `threaded` nifs.
 - makes the interface to `beam.send` simpler and less confusing.
 - adds extra atom/tuple directives
 - **important:** changes the base module namespace from `Zigler` to `Zig`
 - readme and guides are now checked.
 - libraries are now brought into the staging directory.
-- unblocked windows compilation path.  There are still some bugs. Thanks @seomwan
+- unblocked windows compilation path.  There are still some bugs. Thanks
+  @seomwan
 - regressions:
   - Nerves support will have to be dropped until arm32 is tier 1.  Use 0.3.2.
   - zigtests do not seem to work when libraries are loaded
@@ -93,10 +95,24 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 ## 0.8.1
 - `beam.assert` deprecated.  Use `std.testing` functions.
-- support for error-returning functions and error return traces merged with stacktraces.
+- support for error-returning functions and error return traces merged with
+  stacktraces.
 - support for cancellation of threaded nifs with `beam.yield`
 - better support for 'bring your own zig'; moved to library config function
 - tentative support for MacOS and FreeBSD targets
 - `void` returning functions now output `:ok` instead of `nil`
 
 ## 0.9.1
+- updated to zig 0.9.1, after allocgate
+- support for compling C and C++ files using `zig cc`
+- support for `link_libcpp` in addition to `link_libc`
+- special thanks to @jeremyowensboggs, who had a nicer upgrade implementation
+  than mine.
+
+## Upcoming
+- more intelligent support for FunctionCallError reporting
+- support for more types (zig tuples <-> beam tuples, arrays, optionals)
+- `beam.call` which will call erlang or elixir modules (but only in yielding or
+  threaded contexts)
+- massive refactor of making terms.  Expect beam.make_* functions to be
+  completely overhauled.
