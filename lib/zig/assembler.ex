@@ -59,7 +59,8 @@ defmodule Zig.Assembler do
   end
 
   @direct_copy [:source, :library]
-  def assemble_asset!(instruction = %{type: type}, root_dir, _for_whom) when type in @direct_copy do
+  def assemble_asset!(instruction = %{type: type}, root_dir, _for_whom)
+      when type in @direct_copy do
     target_path = Path.join(root_dir, instruction.target)
     File.cp!(instruction.source, target_path)
   end

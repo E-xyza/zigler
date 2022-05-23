@@ -354,10 +354,11 @@ defmodule Zig.Compiler do
         Enum.map(
           module.sources,
           fn source ->
-            path = case source do
-              {path, _} -> path
-              path -> path
-            end
+            path =
+              case source do
+                {path, _} -> path
+                path -> path
+              end
 
             module_dir = Path.dirname(module.file)
 
@@ -366,9 +367,8 @@ defmodule Zig.Compiler do
               source: Path.join(module_dir, path),
               target: path
             }
-
-          end)
-
+          end
+        )
 
     Assembler.assemble_kernel!(assembly_dir)
     Assembler.assemble_assets!(assembly, assembly_dir, for: module.module)

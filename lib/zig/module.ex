@@ -63,7 +63,7 @@ defmodule Zig.Module do
           test_dirs: nil | [Path.t()]
         }
 
-  @type source :: String.t | {String.t, [String.t]}
+  @type source :: String.t() | {String.t(), [String.t()]}
 
   # takes the zigler imports option and turns it into the imports keyword
 
