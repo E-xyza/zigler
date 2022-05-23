@@ -11,7 +11,7 @@ defmodule Zig.Assembler do
 
   defstruct [:type, :source, :target, context: [], pub: false]
 
-  @type file_type :: :zig | :cinclude | :library
+  @type file_type :: :zig | :cinclude | :library | :source
 
   @type t :: %__MODULE__{
           type: file_type,
@@ -58,7 +58,9 @@ defmodule Zig.Assembler do
     Enum.each(assembly, &assemble_asset!(&1, root_dir, for_whom))
   end
 
-  def assemble_asset!(instruction = %{type: :library}, root_dir, _for_whom) do
+  @direct_copy [:source, :library]
+  def assemble_asset!(instruction = %{type: type}, root_dir, _for_whom)
+      when type in @direct_copy do
     target_path = Path.join(root_dir, instruction.target)
     File.cp!(instruction.source, target_path)
   end

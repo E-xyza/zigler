@@ -23,6 +23,7 @@ defmodule Zig.Module do
               [
                 zig_file: "",
                 libs: [],
+                system_libs: [],
                 nifs: [],
                 resources: [],
                 zig_version: Version.parse!("0.9.1"),
@@ -34,6 +35,8 @@ defmodule Zig.Module do
                 code: [],
                 version: Version.parse!("0.0.0"),
                 link_libc: link_libc,
+                link_libcpp: false,
+                sources: [],
                 test_dirs: nil
               ]
 
@@ -43,6 +46,7 @@ defmodule Zig.Module do
           otp_app: atom,
           zig_file: Path.t(),
           libs: [Path.t()],
+          system_libs: [String.t()],
           nifs: [Zig.Parser.Function.t()],
           resources: [Zig.Parser.Resource.t()],
           zig_version: Version.t(),
@@ -51,11 +55,15 @@ defmodule Zig.Module do
           include_dirs: [Path.t()],
           system_include_dirs: [Path.t()],
           link_libc: boolean,
+          link_libcpp: boolean,
           dry_run: boolean,
+          sources: [source],
           code: iodata,
           version: Version.t(),
           test_dirs: nil | [Path.t()]
         }
+
+  @type source :: String.t() | {String.t(), [String.t()]}
 
   # takes the zigler imports option and turns it into the imports keyword
 

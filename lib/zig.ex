@@ -119,6 +119,9 @@ defmodule Zig do
   config :zigler, local_zig: "path/to/zig/command"
   ```
 
+  Note that for minor versions prior to 1.0, zigler doesn't plan on
+  maintaining backward compatibility due to large architectural changes.
+
   ### External Libraries
 
   If you need to bind static (`*.a`) or dynamic (`*.so`) libraries into your
@@ -127,7 +130,7 @@ defmodule Zig do
   Note that zig statically binds shared libraries into the assets it creates.
   This simplifies deployment for you.
 
-  #### Example
+  #### Example (explicit library path)
 
   ```
   defmodule Blas do
@@ -140,6 +143,54 @@ defmodule Zig do
       @cInclude("cblas.h");
     ...
   ```
+
+  You can also link system libraries.  This relies on `zig build`'s ability
+  to locate system libraries.  Note that you will need to follow your system's
+  library convention, for example in the case of linux, that means removing the
+  "lib" prefix and the ".so" extension.
+
+  #### Example (system libraries)
+
+  ```
+  defmodule Blas do
+    use Zig,
+      system_libs: ["blas"],
+      include: ["/usr/include/x86_64-linux-gnu"]
+
+    ~Z\"""
+    const blas = @cImport({
+      @cInclude("cblas.h");
+    ...
+  ```
+
+  ### Compiling C/C++ files
+
+  You can direct zigler to use zig cc to compile C or C++ files that are in
+  your directory tree.  Currently, you must explicitly pick each file, in the
+  future, there may be support for directories (and selecting compile options)
+  based on customizeable rules.
+
+  To do this, fill the "sources" option with a list of files (represented as
+  strings), or a file/options pair (represented as a tuple).
+
+  ```
+  defmodule UsesCOrCpp do
+    use Zig,
+      link_libc: true,
+      link_libcpp: true,
+      include: ["my_header.h"],
+      sources: [
+        "some_c_source.c",
+        {"some_cpp_source.cpp", ["-std=c++17"]}
+      ]
+
+    ~Z\"""
+    ...
+  ```
+
+  Don't forget to include relevant h files, and set the `link_libc: true`
+  and/or the `link_libcpp: true` options if your code needs the c or c++
+  standard libraries
 
   ### Compilation assistance
 
@@ -235,8 +286,8 @@ defmodule Zig do
 
     user_opts =
       opts
-      |> Keyword.take(~w(libs resources dry_run c_includes
-    system_include_dirs local link_libc)a)
+      |> Keyword.take(~w(libs resources dry_run c_includes system_include_dirs
+        local link_libc link_libcpp sources system_libs)a)
 
     include_dirs =
       opts

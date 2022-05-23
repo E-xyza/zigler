@@ -350,6 +350,24 @@ defmodule Zig.Compiler do
             source: &1,
             target: Path.basename(&1)
           }
+        ) ++
+        Enum.map(
+          module.sources,
+          fn source ->
+            path =
+              case source do
+                {path, _} -> path
+                path -> path
+              end
+
+            module_dir = Path.dirname(module.file)
+
+            %Assembler{
+              type: :source,
+              source: Path.join(module_dir, path),
+              target: path
+            }
+          end
         )
 
     Assembler.assemble_kernel!(assembly_dir)
