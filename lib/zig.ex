@@ -174,11 +174,11 @@ defmodule Zig do
   strings), or a file/options pair (represented as a tuple).
 
   ```
-  defmodule Blas do
+  defmodule UsesCOrCpp do
     use Zig,
       link_libc: true,
       link_libcpp: true,
-      include: ["my_header.h"]
+      include: ["my_header.h"],
       sources: [
         "some_c_source.c",
         {"some_cpp_source.cpp", ["-std=c++17"]}
