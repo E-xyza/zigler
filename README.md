@@ -11,7 +11,7 @@ by adding `zigler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:zigler, "~> 0.9.1", runtime: false}
+    {:zigler, "~> 0.10.0", runtime: false}
   ]
 end
 ```
@@ -24,7 +24,7 @@ Docs can be found at [https://hexdocs.pm/zigler](https://hexdocs.pm/zigler).
 
 - Linux
 - FreeBSD (tested, but not subjected to CI)
-- MacOS (I believe it works but is still officially untested)
+- MacOS
 
 - Nerves cross-compilation is supported out of the box.
 
@@ -170,7 +170,7 @@ end
 
 ## Formatting
 
-A mix format plugin is available through the `zigler_format` package. 
+A mix format plugin is available through the `zigler_format` package.
 [See the installation instructions](https://github.com/v0idpwn/zigler_format#installation)
 
 ## Zigler Principles

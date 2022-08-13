@@ -109,6 +109,9 @@ Thanks to Dave Cottlehuber @dch for testing.
 - special thanks to @jeremyowensboggs, who had a nicer upgrade implementation
   than mine.
 
+## 0.10.0
+- Breaking changes:
+
 ## Upcoming
 - more intelligent support for FunctionCallError reporting
 - support for more types (zig tuples <-> beam tuples, arrays, optionals)
