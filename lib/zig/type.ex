@@ -19,6 +19,16 @@ defprotocol Zig.Type do
         Integer.parse(string)
       "i" <> _ ->
         Integer.parse(string)
+      "?*.cimport" <> rest ->
+        if String.ends_with?(rest, "struct_enif_environment_t") do
+          Env
+        else
+          unknown = rest
+          |> String.split(".")
+          |> List.last()
+
+          raise "unknown type #{unknown}"
+        end
     end
   end
 

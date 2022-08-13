@@ -26,17 +26,22 @@ defmodule Zig.Sema do
 
     opts = Keyword.merge([file: Path.basename(file)], opts)
 
+    system_dir="#{:code.root_dir}/erts-#{:erlang.system_info(:version)}/include"
+
     File.write!(shim_file, file_for(opts))
-    {result, 0} = System.cmd("zig", ["run", shim_file])
+    {result, 0} = System.cmd("zig", ["run", "-I#{system_dir}", "-lc", shim_file])
     result
     |> String.trim
     |> String.split("\n")
     |> Enum.map(fn line ->
       [name, return | params] = String.split(line)
 
-      arity = length(params) # for now, we will need to take out beam.env's.
       return = Type.parse(return)
-      params = Enum.map(params, &Type.parse/1)
+      params = case Enum.map(params, &Type.parse/1) do
+        [Env | params] -> params
+        params -> params
+      end
+      arity = length(params) # for now, we will need to take out beam.env's.
 
       %Zig.Type.Function{name: String.to_atom(name), arity: arity, params: params, return: return}
     end)
