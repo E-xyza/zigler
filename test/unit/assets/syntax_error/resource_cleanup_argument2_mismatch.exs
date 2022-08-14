@@ -1,5 +1,5 @@
 defmodule ZiglerTest.DryRun.ResourceArgument2Mismatch do
-  use Zig, dry_run: true
+  use Zig
 
   ~Z"""
   /// nif: foo/0

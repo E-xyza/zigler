@@ -4,7 +4,7 @@ defmodule ZiglerTest.DryRunTest do
   @moduletag :dry_run
 
   defmodule BasicZeroArity do
-    use Zig, dry_run: true
+    use Zig
 
     ~Z"""
     /// nif: zeroarity/0
@@ -30,7 +30,7 @@ defmodule ZiglerTest.DryRunTest do
   end
 
   defmodule BasicFortySeven do
-    use Zig, dry_run: true
+    use Zig
 
     ~Z"""
     /// nif: fortyseven/1

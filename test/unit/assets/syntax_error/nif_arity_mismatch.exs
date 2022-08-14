@@ -1,5 +1,5 @@
 defmodule ZiglerTest.DryRun.NifArityMismatch do
-  use Zig, dry_run: true
+  use Zig
 
   ~Z"""
   /// nif: foo/1

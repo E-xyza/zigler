@@ -271,7 +271,6 @@ defmodule Zig do
   """
 
   alias Zig.Compiler
-  alias Zig.Parser
 
   # default release modes.
   # you can override these in your `use Zigler` statement.
@@ -284,54 +283,36 @@ defmodule Zig do
     |> Compiler.assembly_dir(__CALLER__.module)
     |> File.rm_rf!()
 
-    user_opts =
-      opts
-      |> Keyword.take(~w(libs resources dry_run c_includes system_include_dirs
-        local link_libc link_libcpp sources system_libs)a)
+    #user_opts =
+    #  opts
+    #  |> Keyword.take(~w(libs resources c_includes system_include_dirs
+    #    local link_libc link_libcpp sources system_libs)a)
 
-    include_dirs =
-      opts
-      |> Keyword.get(:include, [])
-      |> Kernel.++(if has_include_dir?(__CALLER__), do: ["include"], else: [])
+    #include_dirs =
+    #  opts
+    #  |> Keyword.get(:include, [])
+    #  |> Kernel.++(if has_include_dir?(__CALLER__), do: ["include"], else: [])
 
-    zigler! =
-      struct(
-        %Zig.Module{
-          file: Path.relative_to_cwd(__CALLER__.file),
-          module: __CALLER__.module,
-          imports: Zig.Module.imports(opts[:imports]),
-          include_dirs: include_dirs,
-          version: get_project_version(),
-          otp_app: get_app()
-        },
-        user_opts
-      )
-
-    zigler! = %{zigler! | code: Zig.Code.headers(zigler!)}
-
-    Module.register_attribute(__CALLER__.module, :zigler, persist: true)
-    Module.put_attribute(__CALLER__.module, :zigler, zigler!)
+    Module.register_attribute(__CALLER__.module, :zig_code_parts, accumulate: true)
+    Module.register_attribute(__CALLER__.module, :zig_code, persist: true)
 
     quote do
-      import Zig
-      require Zig.Compiler
-
+      import Zig, only: [sigil_Z: 2, sigil_z: 2]
       @on_load :__load_nifs__
-
       @before_compile Zig.Compiler
+      @zigler_opts unquote(opts)
     end
   end
 
-  defp has_include_dir?(env) do
-    env.file
-    |> Path.dirname()
-    |> Path.join("include")
-    |> File.dir?()
-  end
+  #defp has_include_dir?(env) do
+  #  env.file
+  #  |> Path.dirname()
+  #  |> Path.join("include")
+  #  |> File.dir?()
+  #end
 
   @doc """
-  declares a string block to be included in the module's .zig source
-  file.  At least one of these blocks must define a nif.
+  declares a string block to be included in the module's .zig source file.
   """
   defmacro sigil_Z({:<<>>, meta, [zig_code]}, []) do
     quoted_code(zig_code, meta, __CALLER__)
@@ -351,27 +332,15 @@ defmodule Zig do
     file = Path.relative_to_cwd(caller.file)
 
     quote bind_quoted: [module: module, zig_code: zig_code, file: file, line: line] do
-      zigler = Module.get_attribute(module, :zigler)
-
-      new_zigler =
-        zig_code
-        |> Parser.parse(zigler, file, line)
-
-      @zigler new_zigler
+      @zig_code_parts "// ref #{file}:#{line}\n"
+      @zig_code_parts zig_code
+      :nothing
     end
   end
 
-  defp get_project_version do
-    Mix.Project.get()
-    |> apply(:project, [])
-    |> Keyword.get(:version)
-    |> Version.parse!()
-  end
-
-  defp get_app do
-    Mix.Project.get()
-    |> apply(:project, [])
-    |> Keyword.get(:app)
+  def code(module) do
+    [code] = Keyword.fetch!(module.__info__(:attributes), :zig_code)
+    code
   end
 
   @extension (case :os.type() do

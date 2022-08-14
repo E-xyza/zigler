@@ -1,5 +1,5 @@
 defmodule ZiglerTest.DryRun.NifInvalidReturnSecondSigilZ do
-  use Zig, dry_run: true
+  use Zig
 
   ~Z"""
   /// nif: baz/0

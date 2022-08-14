@@ -3,9 +3,9 @@ defmodule Zig.Type.Function do
   alias Zig.Type
 
   @type t :: %__MODULE__{
-    name: atom(),
-    arity: non_neg_integer(),
-    params: [Type.t],
-    return: Type.t
-  }
+          name: atom(),
+          arity: non_neg_integer(),
+          params: [Type.t()],
+          return: Type.t()
+        }
 end

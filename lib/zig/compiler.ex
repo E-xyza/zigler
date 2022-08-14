@@ -3,16 +3,12 @@ defmodule Zig.Compiler do
   handles instrumenting elixir code with hooks for zig NIFs.
   """
 
-  @enforce_keys [:assembly_dir, :code_file, :assembly, :module_spec]
+  @enforce_keys [:code_file, :module_spec]
 
   # contains critical information for the compilation.
-  defstruct @enforce_keys ++ [compiler_target: nil, test_dirs: []]
-
-  alias Zig.Assembler
+  defstruct @enforce_keys ++ [compiler_target: nil]
 
   @type t :: %__MODULE__{
-          assembly_dir: Path.t(),
-          assembly: [Assembler.t()],
           code_file: Path.t(),
           module_spec: Zig.Module.t(),
           compiler_target: atom
@@ -22,74 +18,70 @@ defmodule Zig.Compiler do
 
   alias Zig.Command
 
-  @zig_dir_path Path.expand("../../../zig", __ENV__.file)
-
   defmacro __before_compile__(context) do
+    # obtain the code
+    code = context.module
+    |> Module.get_attribute(:zig_code_parts)
+    |> Enum.reverse
+    |> Enum.join
+
     ###########################################################################
     # VERIFICATION
 
-    module = Module.get_attribute(context.module, :zigler)
-    Module.register_attribute(context.module, :nif_code_map, persist: true)
-
-    zig_tree = Path.join(@zig_dir_path, Command.version_name(module.zig_version))
-
-    zig_root_dir =
-      zig_tree
-      |> zig_location(module)
-      |> resolve
-
-    Module.register_attribute(context.module, :zig_root_dir, persist: true)
-    Module.put_attribute(context.module, :zig_root_dir, zig_root_dir)
-
-    if module.nifs == [] do
-      raise CompileError,
-        file: context.file,
-        description: "no nifs found in the module #{context.module}"
-    end
+    #Module.put_attribute(context.module, :zig_root_dir, zig_root_dir)
 
     ###########################################################################
     # COMPILATION STEPS
 
-    compiled = compilation(module, zig_tree)
+    #compiled = compilation(module, zig_tree)
 
     ###########################################################################
     # MACRO STEPS
 
-    dependencies = dependencies_for(compiled.assembly)
-    nif_functions = Enum.map(module.nifs, &function_skeleton/1)
-    nif_name = Zig.nif_name(module, false)
+    #dependencies = dependencies_for(compiled.assembly)
+    ##nif_functions = Enum.map(module.nifs, &function_skeleton/1)
+    #nif_name = Zig.nif_name(module, false)
 
-    if module.dry_run do
-      quote do
-        unquote_splicing(dependencies)
-        unquote_splicing(nif_functions)
-        unquote(exception_for(module))
-        def __load_nifs__, do: :ok
+    zigler_opts = Module.get_attribute(context.module, :zigler_opts)
+
+    compiled = Keyword.get(zigler_opts, :compile, true)
+
+    if compiled do
+    quote do
+      @zig_code unquote(code)
+      #unquote_splicing(dependencies)
+      ##unquote_splicing(nif_functions)
+      #unquote(exception_for(module))
+
+      def __load_nifs__ do
+        IO.puts("nothing yet")
+      #  # LOADS the nifs from :code.lib_dir() <> "ebin", which is
+      #  # a path that has files correctly moved in to release packages.
+#
+      #  require Logger
+#
+      #  unquote(module.otp_app)
+      #  |> :code.lib_dir()
+      #  |> Path.join("ebin")
+      #  |> Path.join(unquote(nif_name))
+      #  |> String.to_charlist()
+      #  |> :erlang.load_nif(0)
+      #  |> case do
+      #    :ok ->
+      #      Logger.debug("loaded module at #{unquote(nif_name)}")
+#
+      #    error = {:error, any} ->
+      #      Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
+      #  end
       end
+    end
     else
+      logger_msg = "module #{inspect context.module} does not compile its nifs"
       quote do
-        import Logger
-        unquote_splicing(dependencies)
-        unquote_splicing(nif_functions)
-        unquote(exception_for(module))
-
+        @zig_code unquote(code)
         def __load_nifs__ do
-          # LOADS the nifs from :code.lib_dir() <> "ebin", which is
-          # a path that has files correctly moved in to release packages.
-
-          unquote(module.otp_app)
-          |> :code.lib_dir()
-          |> Path.join("ebin")
-          |> Path.join(unquote(nif_name))
-          |> String.to_charlist()
-          |> :erlang.load_nif(0)
-          |> case do
-            :ok ->
-              Logger.debug("loaded module at #{unquote(nif_name)}")
-
-            error = {:error, any} ->
-              Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
-          end
+          require Logger
+          Logger.info(unquote(logger_msg))
         end
       end
     end
@@ -98,9 +90,7 @@ defmodule Zig.Compiler do
   defp compilation(module, zig_tree) do
     compiler = precompile(module)
 
-    unless module.dry_run do
-      Command.compile(compiler, zig_tree)
-    end
+    Command.compile(compiler, zig_tree)
 
     cleanup(compiler)
     compiler
@@ -257,42 +247,6 @@ defmodule Zig.Compiler do
   end
 
   #############################################################################
-  ## FUNCTION SKELETONS
-
-  alias Zig.Nif.{DirtyCpu, DirtyIO, Synchronous, Test, Threaded, Yielding}
-  alias Zig.Parser.Nif
-
-  def function_skeleton(nif = %Nif{doc: doc}) when not is_nil(doc) do
-    quote do
-      @doc unquote(doc)
-      unquote(function_skeleton(%{nif | doc: nil}))
-    end
-  end
-
-  def function_skeleton(nif = %Nif{opts: opts, test: nil}) do
-    case opts[:concurrency] do
-      :threaded ->
-        Threaded.beam_adapter(nif)
-
-      :yielding ->
-        Yielding.beam_adapter(nif)
-
-      :dirty_cpu ->
-        DirtyCpu.beam_adapter(nif)
-
-      :dirty_io ->
-        DirtyIO.beam_adapter(nif)
-
-      nil ->
-        Synchronous.beam_adapter(nif)
-    end
-  end
-
-  def function_skeleton(nif) do
-    Test.beam_adapter(nif)
-  end
-
-  #############################################################################
   ## STEPS
 
   def assembly_dir(env, module) do
@@ -334,48 +288,7 @@ defmodule Zig.Compiler do
     # probably a better way to do this, but use this for now.
     Process.put(:files_so_far, [])
 
-    # parse the module code to generate the full list of assets
-    # that need to be brought in to the assembly directory
-    assembly =
-      Assembler.parse_code(code_content,
-        parent_dir: Path.dirname(module.file),
-        target_dir: assembly_dir,
-        pub: true,
-        context: []
-      ) ++
-        Enum.map(
-          module.libs,
-          &%Assembler{
-            type: :library,
-            source: &1,
-            target: Path.basename(&1)
-          }
-        ) ++
-        Enum.map(
-          module.sources,
-          fn source ->
-            path =
-              case source do
-                {path, _} -> path
-                path -> path
-              end
-
-            module_dir = Path.dirname(module.file)
-
-            %Assembler{
-              type: :source,
-              source: Path.join(module_dir, path),
-              target: path
-            }
-          end
-        )
-
-    Assembler.assemble_kernel!(assembly_dir)
-    Assembler.assemble_assets!(assembly, assembly_dir, for: module.module)
-
     %__MODULE__{
-      assembly_dir: assembly_dir,
-      assembly: assembly,
       code_file: code_file,
       module_spec: module,
       compiler_target: compiler_target

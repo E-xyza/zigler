@@ -14,7 +14,7 @@ defmodule ZiglerTest.Unit.Type.IntegerTest do
 
     test "can be generated using sigil t" do
       assert %Integer{signedness: :signed, bits: 8} = ~t"i8"
-      assert %Integer{signedness: :signed, bits: 15} =  ~t"i15"
+      assert %Integer{signedness: :signed, bits: 15} = ~t"i15"
     end
 
     test "inspect as the expected sigil t" do
@@ -36,7 +36,7 @@ defmodule ZiglerTest.Unit.Type.IntegerTest do
 
     test "can be generated using sigil t" do
       assert %Integer{signedness: :unsigned, bits: 8} = ~t"u8"
-      assert %Integer{signedness: :unsigned, bits: 15} =  ~t"u15"
+      assert %Integer{signedness: :unsigned, bits: 15} = ~t"u15"
     end
 
     test "inspect as the expected sigil t" do

@@ -1,7 +1,7 @@
 defprotocol Zig.Type do
   alias Zig.Type.Integer
 
-  @type t :: Integer.t
+  @type t :: Integer.t()
 
   import Kernel
 
@@ -17,15 +17,18 @@ defprotocol Zig.Type do
     case string do
       "u" <> _ ->
         Integer.parse(string)
+
       "i" <> _ ->
         Integer.parse(string)
+
       "?*.cimport" <> rest ->
         if String.ends_with?(rest, "struct_enif_environment_t") do
           Env
         else
-          unknown = rest
-          |> String.split(".")
-          |> List.last()
+          unknown =
+            rest
+            |> String.split(".")
+            |> List.last()
 
           raise "unknown type #{unknown}"
         end
@@ -34,6 +37,7 @@ defprotocol Zig.Type do
 
   defmacro __using__(_) do
     module = __CALLER__.module
+
     quote do
       import Inspect.Algebra
       import Kernel, except: [to_string: 1]

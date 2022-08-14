@@ -4,7 +4,7 @@ defmodule ZiglerTest.DryRunErrorTest do
   @moduletag :dry_run
 
   defmodule ZeroArityError do
-    use Zig, dry_run: true, link_libc: true
+    use Zig, link_libc: true
 
     ~Z"""
     /// nif: void_error/1
@@ -17,7 +17,7 @@ defmodule ZiglerTest.DryRunErrorTest do
   end
 
   defmodule NoError do
-    use Zig, dry_run: true
+    use Zig
 
     ~Z"""
     /// nif: void/0

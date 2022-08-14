@@ -8,5 +8,4 @@ defmodule Zig.Type.ParseError do
   def message(error) do
     "the type #{error.source} is not a type usable by zigler (#{error.reason})"
   end
-
 end

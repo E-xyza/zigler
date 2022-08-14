@@ -111,6 +111,9 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 ## 0.10.0
 - Breaking changes:
+  - deprecated the `dry_run` feature
+  - nif selection is no longer done using inline docstrings
+    - select nifs using `use Zig` options.
 
 ## Upcoming
 - more intelligent support for FunctionCallError reporting

@@ -2,10 +2,11 @@ defmodule Zig.Type.Integer do
   use Zig.Type
 
   defstruct [:signedness, :bits]
+
   @type t :: %__MODULE__{
-    signedness: :unsigned | :signed,
-    bits: 0..65535
-  }
+          signedness: :unsigned | :signed,
+          bits: 0..65535
+        }
 
   def parse("u" <> number_str) do
     %__MODULE__{signedness: :unsigned, bits: get_bits!(number_str)}
@@ -15,14 +16,18 @@ defmodule Zig.Type.Integer do
     %__MODULE__{signedness: :signed, bits: get_bits!(number_str)}
   end
 
-  def parse(other), do: raise Zig.Type.ParseError, source: other
+  def parse(other), do: raise(Zig.Type.ParseError, source: other)
 
   def get_bits!(number_str) do
     case Integer.parse(number_str) do
       {n, ""} when n in 0..65535 ->
         n
+
       {n, ""} ->
-        raise Zig.Type.ParseError, source: number_str, reason: "#{n} is out of range of zig bit lengths"
+        raise Zig.Type.ParseError,
+          source: number_str,
+          reason: "#{n} is out of range of zig bit lengths"
+
       _ ->
         raise Zig.Type.ParseError, source: number_str
     end
