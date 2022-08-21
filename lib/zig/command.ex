@@ -7,69 +7,101 @@ defmodule Zig.Command do
   """
 
   alias Zig.Builder
+  alias Zig.Assembler
+  alias Zig.Target
 
   require Logger
 
   #############################################################################
   ## API
 
-  def compile(compiler, zig_tree) do
-    zig_executable = executable_path(zig_tree)
+  defp run_zig(command, opts) do
+    args = String.split(command)
+    cmd_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
+    zig_cmd = executable_path(opts)
 
-    opts = [cd: compiler.assembly_dir, stderr_to_stdout: true]
-
-    Logger.debug(
-      "compiling nif for module #{inspect(compiler.module_spec.module)} in path #{
-        compiler.assembly_dir
-      }"
-    )
-
-    Builder.build(compiler, zig_tree)
-
-    case System.cmd(zig_executable, ["build"], opts) do
+    case System.cmd(zig_cmd, args, cmd_opts) do
       {_, 0} ->
         :ok
 
-      {err, _} ->
-        alias Zig.Parser.Error
-        Error.parse(err, compiler)
+      # TODO: better error parsing here
+      {other, _} ->
+        Logger.error(other)
+        raise "failed"
     end
+  end
 
-    lib_dir =
-      compiler.module_spec.otp_app
+  def compile(module, opts) do
+    assembly_dir = Assembler.directory(module)
+
+    ebin_dir =
+      opts[:otp_app]
       |> :code.lib_dir()
       |> Path.join("ebin")
 
-    source_library_filename = Zig.nif_name(compiler.module_spec)
+    compile_opts =
+      Keyword.merge(
+        opts,
+        stderr_to_stdout: true,
+        cd: assembly_dir
+      )
 
-    library_filename = maybe_rename_library_filename(source_library_filename)
+    run_zig("build --prefix #{ebin_dir}", compile_opts)
 
-    # copy the compiled library over to the lib/nif directory.
-    File.mkdir_p!(lib_dir)
+    lib_name = Path.join(ebin_dir, "lib/lib#{module}.so")
+    naked_name = Path.join(ebin_dir, "lib/#{module}.so")
 
-    compiler.assembly_dir
-    |> Path.join("zig-out/lib/#{source_library_filename}")
-    |> File.cp!(Path.join(lib_dir, library_filename))
+    File.rename!(lib_name, naked_name)
 
-    # link the compiled library to be unversioned.
-    symlink_filename = Path.join(lib_dir, "#{library_filename}")
-
-    unless File.exists?(symlink_filename) do
-      lib_dir
-      |> Path.join(library_filename)
-      |> File.ln_s!(symlink_filename)
-    end
-
-    :ok
+    # Logger.debug(
+    #  "compiling nif for module #{inspect(compiler.module_spec.module)} in path #{
+    #    compiler.assembly_dir
+    #  }"
+    # )
+    #
+    # Builder.build(compiler, zig_tree)
+    #
+    # case System.cmd(zig_executable, ["build"], opts) do
+    #  {_, 0} ->
+    #    :ok
+    #
+    #  {err, _} ->
+    #    Error.parse(err, compiler)
+    # end
+    #
+    #
+    # source_library_filename = Zig.nif_name(compiler.module_spec)
+    #
+    # library_filename = maybe_rename_library_filename(source_library_filename)
+    #
+    ## copy the compiled library over to the lib/nif directory.
+    # File.mkdir_p!(lib_dir)
+    #
+    # compiler.assembly_dir
+    # |> Path.join("zig-out/lib/#{source_library_filename}")
+    # |> File.cp!(Path.join(lib_dir, library_filename))
+    #
+    ## link the compiled library to be unversioned.
+    # symlink_filename = Path.join(lib_dir, "#{library_filename}")
+    #
+    # unless File.exists?(symlink_filename) do
+    #  lib_dir
+    #  |> Path.join(library_filename)
+    #  |> File.ln_s!(symlink_filename)
+    # end
+    #
+    # :ok
   end
 
   @local_zig Application.get_env(:zigler, :local_zig, false)
 
-  defp executable_path(zig_tree), do: executable_path(zig_tree, @local_zig)
-
-  defp executable_path(zig_tree, false), do: Path.join(zig_tree, "zig")
-  defp executable_path(_, true), do: System.find_executable("zig")
-  defp executable_path(_, path), do: path
+  defp executable_path(opts) do
+    cond do
+      opts[:local_zig] -> System.find_executable("zig")
+      path = opts[:zig_path] -> path
+      true -> Path.join(directory(), "zig")
+    end
+  end
 
   defp maybe_rename_library_filename(fullpath) do
     if Path.extname(fullpath) == ".dylib" do
@@ -150,6 +182,12 @@ defmodule Zig.Command do
 
   @zig_dir_path Path.expand("../../zig", Path.dirname(__ENV__.file))
 
+  defp directory do
+    target_string = "zig-#{Target.string(:aaa)}-0.9.1"
+    Path.join(@zig_dir_path, target_string)
+  end
+
+  # rename this.
   def fetch(version) do
     zig_dir = Path.join(@zig_dir_path, version_name(version))
     zig_executable = Path.join(zig_dir, "zig")
@@ -169,6 +207,7 @@ defmodule Zig.Command do
 
       archive = version_name(version) <> extension
 
+      # TODO: clean this up.
       Logger.configure(level: :info)
 
       zig_download_path = Path.join(@zig_dir_path, archive)

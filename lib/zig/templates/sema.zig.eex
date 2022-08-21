@@ -1,0 +1,18 @@
+const beam = @import("beam");
+const std = @import("std");
+const nif = @import("nif");
+const json = std.json;
+
+// probably 10 is an over-conservative choice for function depth here.
+const JSON_DEPTH = 10;
+
+pub fn main() !void {
+    const stdout = std.io.getStdOut().writer();
+    var stream = json.writeStream(stdout, JSON_DEPTH);
+    <%= if opts[:nifs] == :all do %> <% # TODO: consider moving this conditional to build.zig %>
+    try beam.sema.streamModule(&stream, nif);
+    <% else %><%= for {nif, _nif_opt} <- opts[:nifs] do %>
+    const <%= nif %> = @typeInfo(@TypeOf(nif.<%= nif %>)).Fn;
+    try beam.sema.streamFun(&stream, "<%= nif %>", <%= nif %>);
+    <% end %><% end %>
+}

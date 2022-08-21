@@ -1,0 +1,7 @@
+export fn <%= @name %>(env: beam.env, _: c_int, arg: [*c] const beam.term) beam.term {
+    <%= for {param, index} <- Nif.indexed_parameters(@params) do %>
+    const arg<%= index %> = beam.get(<%= param %>, env, arg[<%= index %>]) catch unreachable;
+    <% end %>
+    const result = nif.<%= @name %>(<%= Nif.indexed_args(@params) %>);
+    return beam.make(env, result);
+}

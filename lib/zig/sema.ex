@@ -2,58 +2,40 @@ defmodule Zig.Sema do
   alias Zig.Type
 
   require EEx
+  alias Zig.Assembler
 
-  EEx.function_from_string(
-    :defp,
-    :file_for,
-    """
-    const std = @import("std");
-    const tgt = @import("<%= opts[:file] %>");
+  sema_zig_template = Path.join(__DIR__, "templates/sema.zig.eex")
+  EEx.function_from_file(:defp, :file_for, sema_zig_template, [:opts])
 
-    pub fn main() !void {
-      const stdout = std.io.getStdOut().writer();
-      <%= for nif <- opts[:nifs] do %>
-      const <%= nif %> = @typeInfo(@TypeOf(tgt.<%= nif %>)).Fn;
-      try stdout.print("<%= nif %> {any}", .{<%= nif %>.return_type});
-      inline for (<%= nif %>.args) |param| {
-        try stdout.print(" {any}", .{param.arg_type});
-      }
-      try stdout.print("\\n", .{});
-      <% end %>
-    }
-    """,
-    [:opts]
-  )
+  def analyze_file!(module, opts) do
+    dir = Assembler.directory(module)
+    sema_file = Path.join(dir, "sema.zig")
 
-  def analyze_file!(file, opts) do
-    dir = Path.dirname(file)
-    shim_file = Path.join(dir, "shim.zig")
-
-    opts = Keyword.merge([file: Path.basename(file)], opts)
-
-    system_dir = "#{:code.root_dir()}/erts-#{:erlang.system_info(:version)}/include"
-
-    File.write!(shim_file, file_for(opts))
-    {result, 0} = System.cmd("zig", ["run", "-I#{system_dir}", "-lc", shim_file])
+    File.write!(sema_file, file_for(opts))
+    {result, 0} = System.cmd("zig", ["build", "sema"], cd: dir)
 
     result
-    |> String.trim()
-    |> String.split("\n")
-    |> Enum.map(fn line ->
-      [name, return | params] = String.split(line)
+    |> Jason.decode!()
+    |> Enum.map(&Type.Function.from_json/1)
 
-      return = Type.parse(return)
-
-      params =
-        case Enum.map(params, &Type.parse/1) do
-          [Env | params] -> params
-          params -> params
-        end
-
-      # for now, we will need to take out beam.env's.
-      arity = length(params)
-
-      %Zig.Type.Function{name: String.to_atom(name), arity: arity, params: params, return: return}
-    end)
+    # result
+    # |> String.trim()
+    # |> String.split("\n")
+    # |> Enum.map(fn line ->
+    #  [name, return | params] = String.split(line)
+    #
+    #  return = Type.parse(return)
+    #
+    #  params =
+    #    case Enum.map(params, &Type.parse/1) do
+    #      [Env | params] -> params
+    #      params -> params
+    #    end
+    #
+    #  # for now, we will need to take out beam.env's.
+    #  arity = length(params)
+    #
+    #  %Zig.Type.Function{name: String.to_atom(name), arity: arity, params: params, return: return}
+    # end)
   end
 end

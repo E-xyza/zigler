@@ -1,70 +1,55 @@
 const std = @import("std");
 const Builder = std.build.Builder;
-<% target = target_struct(@compiler_target, zig_tree) %>
-const for_wasm = true;
+const Pkg = std.build.Pkg;
+
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
-    const target = b.standardTargetOptions(<%= to_structdef target %>);
-    //const cflags = [_][]const u8{};
+    const target = b.standardTargetOptions(.{});
+
+    const beam_pkg = Pkg{
+        .name = "beam",
+        .source = .{ .path = "<%= Path.join(@beam_dir, "beam.zig") %>"}
+    };
+
+    const erl_nif_pkg = Pkg{
+        .name = "erl_nif",
+        .source = .{ .path = "<%= Path.join(@beam_dir, "erl_nif.zig") %>"}
+    };
+
+    const core_pkg = Pkg{
+        .name = "nif",
+        .source = .{ .path = "<%= @nif_path %>" },
+        .dependencies = &.{beam_pkg, erl_nif_pkg},
+    };
+
+    const beam_system_dir = "<%= :code.root_dir() %>/erts-<%= :erlang.system_info(:version) %>/include";
+
     const lib = b.addSharedLibrary(
-        "<%= @module_spec.module %>",
-        "<%= @code_file %>",
-        .{ .versioned = .{.major = <%= @module_spec.version.major %>,
-                          .minor = <%= @module_spec.version.minor %>,
-                          .patch = <%= @module_spec.version.patch %>}});
-    lib.addSystemIncludeDir("<%= :code.root_dir %>/erts-<%= :erlang.system_info(:version) %>/include");
-    <%= for dir <- dirs_for(target) do %>
-    lib.addSystemIncludeDir("<%= Path.join(zig_tree, dir) %>");
-    <% end %>
-    <%= for system_include_dir <- @module_spec.system_include_dirs do %>
-    lib.addSystemIncludeDir("<%= system_include_dir %>");
-    <% end %>
-    <%= for include_dir <- @module_spec.include_dirs do %>
-    lib.addIncludeDir("<%= include_dir %>");
-    <% end %>
+        "<%= @module %>",
+        "nif.zig",
+        .{ .versioned = .{.major = <%= @version.major %>,
+                          .minor = <%= @version.minor %>,
+                          .patch = <%= @version.patch %>}});
+
+    lib.addSystemIncludeDir(beam_system_dir);
+    lib.linkLibC();
+    lib.addPackage(core_pkg);
+    lib.addPackage(beam_pkg);
+    lib.addPackage(erl_nif_pkg);
     lib.setBuildMode(mode);
     lib.setTarget(target);
-    <%= if @module_spec.link_libc do %>
-    // use libc if it has been asked for
-    lib.linkLibC();
-    <% end %>
-    <%= if @module_spec.link_libcpp do %>
-    // use libcpp if it has been asked for
-    lib.linkLibCpp();
-    <% end %>
-    <%= for system_lib <- @module_spec.system_libs do %>
-    lib.linkSystemLibrary("<%= system_lib %>");
-    <% end %>
-    <%= for source <- @module_spec.sources do %>
-    <%= case source do %>
-      <% {file, opts} -> %>
-        lib.addCSourceFile("<%= file %>", &[_][]const u8{<%= Enum.map_join(opts, ", ", &~s("#{&1}")) %>});
-      <% file -> %>
-        lib.addCSourceFile("<%= file %>", &[_][]const u8{});
-    <% end %>
-    <% end %>
-    <%= for lib <- @module_spec.libs do %>
-    <%= cond do %>
-      <% String.ends_with?(lib, ".so") -> %>
-    lib.linkSystemLibrary("<%= Path.basename(lib) %>");
-      <% String.ends_with?(lib, ".dll") -> %>
-    lib.linkSystemLibrary("<%= Path.basename(lib) %>");
-      <% String.ends_with?(lib, ".dylib") -> %>
-    lib.linkSystemLibrary("<%= Path.basename(lib) %>");
-      <% String.ends_with?(lib, ".a") -> %>
-    lib.addObjectFile("<%= Path.basename(lib) %>");
-      <% true -> %>
-        <% raise "invalid library file" %>
-    <% end %>
-    <% end %>
+
     lib.linker_allow_shlib_undefined = true;
-    // strip_symbols option?
-    lib.strip = <%= Mix.env() == :prod %>;
-    // future feature
-    //
-    // c files
-    // for (cfiles) |c_file| {
-    //     lib.addCSourceFile(c_file, &cflags);
-    // }
     lib.install();
+
+    const exe = b.addExecutable("sema", "sema.zig");
+    exe.addSystemIncludeDir(beam_system_dir);
+    exe.linkLibC();
+    exe.addPackage(core_pkg);
+    exe.addPackage(beam_pkg);
+    exe.install();
+
+    const sema_step = b.step("sema", "Semantic Analysis");
+    const sema_cmd = exe.run();
+    sema_step.dependOn(&sema_cmd.step);
 }

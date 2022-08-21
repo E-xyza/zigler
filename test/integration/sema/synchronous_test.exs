@@ -2,8 +2,7 @@ defmodule ZiglerTest.Sema.SynchronousTest do
   use ExUnit.Case, async: true
 
   use Zig,
-    compile: false,
-    nifs: [:synchronous]
+    compile: false
 
   ~Z"""
   fn synchronous() u8 { return 47; }

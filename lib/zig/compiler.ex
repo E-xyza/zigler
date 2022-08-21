@@ -16,84 +16,106 @@ defmodule Zig.Compiler do
 
   require Logger
 
+  alias Zig.Assembler
   alias Zig.Command
+  alias Zig.Nif
+  alias Zig.Sema
 
   defmacro __before_compile__(context) do
+    # TODO: verify that :otp_app exists
+
+    opts = Module.get_attribute(context.module, :zigler_opts)
+
+    assembled = Keyword.get(opts, :assemble, true)
+    precompiled = Keyword.get(opts, :precompile, true)
+    compiled = precompiled and Keyword.get(opts, :compile, true)
+
+    _ = assembled
+
+    this_dir = Path.dirname(context.file)
+    module_nif_zig = Path.join(this_dir, ".#{context.module}.zig")
+
     # obtain the code
-    code = context.module
-    |> Module.get_attribute(:zig_code_parts)
-    |> Enum.reverse
-    |> Enum.join
+    code =
+      context.module
+      |> Module.get_attribute(:zig_code_parts)
+      |> Enum.reverse()
+      |> Enum.join()
 
-    ###########################################################################
-    # VERIFICATION
+    File.write!(module_nif_zig, code)
 
-    #Module.put_attribute(context.module, :zig_root_dir, zig_root_dir)
+    directory = Assembler.directory(context.module)
 
-    ###########################################################################
-    # COMPILATION STEPS
+    _ = directory
 
-    #compiled = compilation(module, zig_tree)
+    if assembled do
+      # TODO: this should do all the things: build out the nif.zig and sema.zig files.
+      # should also make a cnode.zig (if applicable)
+      Assembler.assemble(context.module, from: this_dir)
 
-    ###########################################################################
-    # MACRO STEPS
+      if precompiled do
+        sema = Sema.analyze_file!(context.module, opts)
 
-    #dependencies = dependencies_for(compiled.assembly)
-    ##nif_functions = Enum.map(module.nifs, &function_skeleton/1)
-    #nif_name = Zig.nif_name(module, false)
+        nif_functions = Nif.from_sema(sema, opts[:nifs])
 
-    zigler_opts = Module.get_attribute(context.module, :zigler_opts)
+        function_code = Enum.map(nif_functions, &Nif.render_elixir/1)
 
-    compiled = Keyword.get(zigler_opts, :compile, true)
+        nif_name = "#{context.module}"
 
-    if compiled do
-    quote do
-      @zig_code unquote(code)
-      #unquote_splicing(dependencies)
-      ##unquote_splicing(nif_functions)
-      #unquote(exception_for(module))
+        directory
+        |> Path.join("nif.zig")
+        |> File.write!(Nif.render_zig(nif_functions, context.module))
 
-      def __load_nifs__ do
-        IO.puts("nothing yet")
-      #  # LOADS the nifs from :code.lib_dir() <> "ebin", which is
-      #  # a path that has files correctly moved in to release packages.
-#
-      #  require Logger
-#
-      #  unquote(module.otp_app)
-      #  |> :code.lib_dir()
-      #  |> Path.join("ebin")
-      #  |> Path.join(unquote(nif_name))
-      #  |> String.to_charlist()
-      #  |> :erlang.load_nif(0)
-      #  |> case do
-      #    :ok ->
-      #      Logger.debug("loaded module at #{unquote(nif_name)}")
-#
-      #    error = {:error, any} ->
-      #      Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
-      #  end
-      end
-    end
-    else
-      logger_msg = "module #{inspect context.module} does not compile its nifs"
-      quote do
-        @zig_code unquote(code)
-        def __load_nifs__ do
-          require Logger
-          Logger.info(unquote(logger_msg))
+        if compiled do
+          Command.compile(context.module, opts)
+
+          quote do
+            @zig_code unquote(code)
+
+            unquote_splicing(function_code)
+
+            def __load_nifs__ do
+              # LOADS the nifs from :code.lib_dir() <> "ebin", which is
+              # a path that has files correctly moved in to release packages.
+
+              require Logger
+
+              unquote(opts[:otp_app])
+              |> :code.lib_dir()
+              |> Path.join("ebin/lib")
+              |> Path.join(unquote(nif_name))
+              |> String.to_charlist()
+              |> :erlang.load_nif(0)
+              |> case do
+                :ok ->
+                  Logger.debug("loaded module at #{unquote(nif_name)}")
+
+                error = {:error, any} ->
+                  Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
+              end
+            end
+          end
+        else
+          dead_module(code, context)
         end
+      else
+        dead_module(code, context)
       end
+    else
+      dead_module(code, context)
     end
   end
 
-  defp compilation(module, zig_tree) do
-    compiler = precompile(module)
+  defp dead_module(code, context) do
+    logger_msg = "module #{inspect(context.module)} does not compile its nifs"
 
-    Command.compile(compiler, zig_tree)
-
-    cleanup(compiler)
-    compiler
+    quote do
+      @zig_code unquote(code)
+      def __load_nifs__ do
+        require Logger
+        Logger.info(unquote(logger_msg))
+      end
+    end
   end
 
   defp dependencies_for(assemblies) do

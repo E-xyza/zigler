@@ -30,3 +30,6 @@ zigler-*.tar
 
 # ignore zig version downloads
 /zig/zig-*
+
+# module zig files
+.Elixir.*.zig
