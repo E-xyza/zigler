@@ -1,5 +1,5 @@
 defmodule Zig.Nif do
-  defstruct [:type, :concurrency, :name, :function]
+  defstruct [:type, :concurrency, :function, :entrypoint, marshalling_macros: nil]
 
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
@@ -12,8 +12,17 @@ defmodule Zig.Nif do
   @type t :: %__MODULE__{
           type: :def | :defp,
           concurrency: Synchronous | Threaded | Yielding | DirtyCpu | DirtyIo,
-          function: Function.t()
+          function: Function.t(),
+          # calculated details.
+          entrypoint: atom,
+          marshalling_macros: nil | [(Macro.t -> Macro.t)],
         }
+
+  defmodule Concurrency do
+    @callback render_elixir(Zig.Nif.t) :: Macro.t
+    @callback render_zig(Zig.Nif.t) :: iodata
+    @callback set_entrypoint(Zig.Nif.t) :: Zig.Nif.t
+  end
 
   defp normalize_all(:all, functions) do
     Enum.map(functions, &{&1.name, []})
@@ -21,16 +30,26 @@ defmodule Zig.Nif do
 
   defp normalize_all(list, _) when is_list(list), do: list
 
+  @doc """
+  obtains a list of Nif structs from the semantically analyzed content and
+  the nif options that are a part of
+  """
+  # TODO: unit test this function directly.
   def from_sema(sema_list, nif_opts) do
     nif_opts
     |> normalize_all(sema_list)
     |> Enum.map(fn
       {name, opts} ->
-        %__MODULE__{
+        # "calculated" details.
+        function = find_function(name, sema_list)
+        concurrency = Synchronous
+
+        concurrency.set_entrypoint(%__MODULE__{
           type: Keyword.get(opts, :defp) || :def,
-          concurrency: Synchronous,
-          function: find_function(name, sema_list)
-        }
+          concurrency: concurrency,
+          marshalling_macros: Function.marshalling_macros(function),
+          function: function,
+        })
     end)
   end
 
@@ -38,34 +57,27 @@ defmodule Zig.Nif do
     Enum.find(sema_list, &(&1.name == name)) || raise "unreachable"
   end
 
-  def render_elixir(nif) do
-    # for now.
-    typespec = nil
+  # for now, don't implement.
+  def typespec(_), do: nil
 
-    marshalling = [
-      Type.marshal_zig(nif.function.return)
-      | Enum.flat_map(nif.function.params, &List.wrap(Type.marshal_elixir(&1)))
-    ]
+  def render_elixir(nif, opts \\ []) do
+    typespec = List.wrap(if Keyword.get(opts, :typespec?, true), do: typespec(nif))
 
-    needs_marshalling? = Enum.any?(marshalling)
+    marshalling = List.wrap(if nif.marshalling_macros, do: render_marshal(nif))
 
-    function = nif.concurrency.render_elixir(nif)
+    function = nif
+    |> nif.concurrency.render_elixir
+    |> List.wrap
 
-    if needs_marshalling? do
-      quote context: Elixir do
-        unquote(typespec)
-        unquote(marshalled(marshalling, nif.function.name))
-        unquote(function)
-      end
-    else
-      quote context: Elixir do
-        unquote(typespec)
-        unquote(function)
-      end
+    quote context: Elixir do
+      unquote_splicing(Enum.flat_map([typespec, marshalling, function], &(&1)))
     end
   end
 
-  defp marshalled([rfunc | pfuncs], name) do
+  defp render_marshal(nif) do
+    [rfunc | pfuncs] = nif.marshalling_macros
+    name = nif.function.name
+
     return = {:return, [], Elixir}
     return_clause = if rfunc, do: rfunc.(return), else: return
 
@@ -81,9 +93,9 @@ defmodule Zig.Nif do
       |> Enum.unzip()
 
     quote do
-      defp unquote(:"marshalling_#{name}")(unquote_splicing(args)) do
+      defp unquote(name)(unquote_splicing(args)) do
         unquote_splicing(args_clauses)
-        unquote(return) = unquote(name)(unquote_splicing(args))
+        unquote(return) = unquote(nif.entrypoint)(unquote_splicing(args))
         unquote(return_clause)
       end
     end
@@ -113,12 +125,12 @@ defmodule Zig.Nif do
   end
 
   # internal helpers
-  defp table_entries(nifs) do
-    Enum.map_join(nifs, ", ", &table_entry/1)
+  defp table_entries(nifs) when is_list(nifs) do
+    Enum.map_join(nifs, ", ", &table_entries/1)
   end
 
-  defp table_entry(nif) do
-    nif.concurrency.table_entry(nif)
+  defp table_entries(nif) do
+    nif.concurrency.table_entries(nif)
   end
 
   @index_of %{major: 0, minor: 1}

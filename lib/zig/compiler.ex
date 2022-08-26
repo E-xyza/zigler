@@ -3,17 +3,6 @@ defmodule Zig.Compiler do
   handles instrumenting elixir code with hooks for zig NIFs.
   """
 
-  @enforce_keys [:code_file, :module_spec]
-
-  # contains critical information for the compilation.
-  defstruct @enforce_keys ++ [compiler_target: nil]
-
-  @type t :: %__MODULE__{
-          code_file: Path.t(),
-          module_spec: Zig.Module.t(),
-          compiler_target: atom
-        }
-
   require Logger
 
   alias Zig.Assembler
@@ -275,55 +264,5 @@ defmodule Zig.Compiler do
     System.tmp_dir()
     |> String.replace("\\", "/")
     |> Path.join(".zigler_compiler/#{env}/#{module}")
-  end
-
-  @spec precompile(Zig.Module.t()) :: t | no_return
-  def precompile(module) do
-    compiler_target = Mix.target()
-
-    # build the staging directory.
-    assembly_dir = assembly_dir(Mix.env(), module.module)
-    File.mkdir_p!(assembly_dir)
-
-    # create the main code file
-    code_file = Path.join(assembly_dir, "#{module.module}.zig")
-    code_content = Zig.Code.generate_main(%{module | zig_file: code_file}, compiler_target)
-
-    # store it in the lookup table.  This needs to be guarded for test purposes.
-    try do
-      Module.put_attribute(module.module, :nif_code_map, [
-        {
-          code_file,
-          Path.relative_to_cwd(module.file)
-        }
-      ])
-    rescue
-      _ in ArgumentError -> :ok
-    end
-
-    # define the code file and build it.
-    File.write!(code_file, code_content)
-
-    # store the list of files we have seen in the process dictionary.
-    # this prevents us from going over the same file more than once,
-    # so circular dependencies don't cause infinite loops.  There's
-    # probably a better way to do this, but use this for now.
-    Process.put(:files_so_far, [])
-
-    %__MODULE__{
-      code_file: code_file,
-      module_spec: module,
-      compiler_target: compiler_target
-    }
-  end
-
-  @spec cleanup(t) :: :ok | no_return
-  defp cleanup(compiler) do
-    # in Zigler dev and test we keep our code around for debugging purposes.
-    unless Mix.env() in [:dev, :test] do
-      File.rm_rf!(compiler.assembly_dir)
-    end
-
-    :ok
   end
 end

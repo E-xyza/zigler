@@ -5,20 +5,7 @@ defmodule ZiglerTest.Types.IntegerTest do
 
   use Zig,
     otp_app: :zigler,
-    local_zig: true,
-    dump: true,
-    nifs: [
-      :addone_u7,
-      :addone_i7,
-      :addone_u8,
-      :addone_i8,
-      :addone_u32,
-      :addone_i32,
-      :addone_u48,
-      :addone_i48,
-      :addone_u64,
-      :addone_i64
-    ]
+    local_zig: true
 
   generated_addone_functions =
     Enum.map_join(
@@ -47,9 +34,13 @@ defmodule ZiglerTest.Types.IntegerTest do
     end
   end
 
-  describe "for 64-bit unsigned very large integers" do
-    test "it does the right thing" do
-      assert 0x8000_0000_0000_0001 = addone_u64(0x8000_0000_0000_0000)
+  describe "for 64-bit very large integers" do
+    test "signed integers it do the right thing" do
+      assert -0x7FFF_FFFF_FFFF_FFFF = addone_i64(-0x8000_0000_0000_0000)
+    end
+
+    test "unsigned integers it does the right thing" do
+      assert 0x8000_0000_0000_0000 = addone_u64(0x7FFF_FFFF_FFFF_FFFF)
     end
   end
 

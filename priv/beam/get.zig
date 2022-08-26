@@ -43,7 +43,7 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
     unreachable;
 }
 
-fn lower_int(comptime T: type, result: anytype) !T {
+inline fn lower_int(comptime T: type, result: anytype) !T {
     // safety check this.  Consider making this able to be disabled.
     if (result <= std.math.maxInt(T)) {
         return @intCast(T, result);

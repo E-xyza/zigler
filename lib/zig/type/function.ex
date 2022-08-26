@@ -30,4 +30,8 @@ defmodule Zig.Type.Function do
       return: Type.from_json(return)
     }
   end
+
+  def marshalling_macros(%{params: params, return: return}) do
+    [Type.marshal_zig(return) | Enum.map(params, &Type.marshal_elixir/1)]
+  end
 end

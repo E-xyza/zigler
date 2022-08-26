@@ -1,17 +1,19 @@
 defmodule Zig.Nif.Synchronous do
   alias Zig.Nif
 
-  def render_elixir(%Nif{type: type, function: function}) do
+  @behaviour Zig.Nif.Concurrency
+
+  def render_elixir(%Nif{type: type, entrypoint: entrypoint, function: function}) do
     params =
       case function.arity do
         0 -> []
         n -> Enum.map(1..n, &{:"_arg#{&1}", [], Elixir})
       end
 
-    error_text = "nif for function #{function.name}/#{function.arity} not bound"
+    error_text = "nif for function #{entrypoint}/#{function.arity} not bound"
 
     quote context: Elixir do
-      unquote(type)(unquote(function.name)(unquote_splicing(params))) do
+      unquote(type)(unquote(entrypoint)(unquote_splicing(params))) do
         raise unquote(error_text)
       end
     end
@@ -28,7 +30,12 @@ defmodule Zig.Nif.Synchronous do
     length(nif.function.params)
   end
 
-  def table_entry(nif) do
-    ~s(.{.name = "#{nif.function.name}", .arity = #{arity(nif)}, .fptr = #{nif.function.name}, .flags = 0})
+  def table_entries(nif) do
+    [~s(.{.name = "#{nif.entrypoint}", .arity = #{arity(nif)}, .fptr = #{nif.function.name}, .flags = 0})]
+  end
+
+  def set_entrypoint(nif = %{function: %{name: name}}) do
+    entrypoint = if nif.marshalling_macros, do: :"marshalling_#{name}", else: name
+    %{nif | entrypoint: entrypoint}
   end
 end

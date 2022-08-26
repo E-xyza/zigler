@@ -52,8 +52,8 @@ defmodule Zig.Type.Integer do
   def marshal_elixir(%{signedness: :unsigned, bits: 64}) do
     fn arg ->
       quote bind_quoted: [arg: arg] do
-        <<arg::signed-integer-size(64)>> = <<arg::64>>
-        arg
+        <<new_arg::signed-integer-size(64)>> = <<arg::unsigned-integer-size(64)>>
+        new_arg
       end
     end
   end
@@ -63,7 +63,8 @@ defmodule Zig.Type.Integer do
   def marshal_zig(%{signedness: :unsigned, bits: 64}) do
     fn arg ->
       quote bind_quoted: [arg: arg] do
-        <<arg::64>> = <<arg>>
+        <<new_arg::unsigned-integer-size(64)>> = <<arg::signed-integer-size(64)>>
+        new_arg
       end
     end
   end
