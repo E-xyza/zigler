@@ -1,5 +1,6 @@
 defmodule Zig.Nif.Synchronous do
   alias Zig.Nif
+  alias Zig.Type
 
   @behaviour Zig.Nif.Concurrency
 
@@ -26,12 +27,8 @@ defmodule Zig.Nif.Synchronous do
 
   def render_zig(%Nif{function: function}), do: synchronous(function)
 
-  def arity(nif) do
-    length(nif.function.params)
-  end
-
   def table_entries(nif) do
-    [~s(.{.name = "#{nif.entrypoint}", .arity = #{arity(nif)}, .fptr = #{nif.function.name}, .flags = 0})]
+    [~s(.{.name = "#{nif.entrypoint}", .arity = #{nif.function.arity}, .fptr = #{nif.function.name}, .flags = 0})]
   end
 
   def set_entrypoint(nif = %{function: %{name: name}}) do

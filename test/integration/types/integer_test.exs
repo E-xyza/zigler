@@ -44,6 +44,22 @@ defmodule ZiglerTest.Types.IntegerTest do
     end
   end
 
+  describe "for super large integers" do
+    ~Z"
+    pub fn test_u128(x: u128) u128 { return (x << 4) + x - 0x0101_0101_0101_0101_0101_0101_0101; }
+    // because we can.
+    pub fn test_u129(x: u129) u129 { return (x << 4) + x - 0x0101_0101_0101_0101_0101_0101_0101; }
+    pub fn test_u256(x: u256) u256 { return (x << 4) + x - 0x0101_0101_0101_0101_0101_0101_0101; }
+    "
+
+    # NB these numbers and transformations were selected to debug endianness issues.
+    test "zigler can marshal in and out correctly" do
+      assert 0x1021_3243_5465_7687_98A9_BACB_DCED = test_u128(0x102_0304_0506_0708_090A_0B0C_0D0E)
+      assert 0x1021_3243_5465_7687_98A9_BACB_DCED = test_u129(0x102_0304_0506_0708_090A_0B0C_0D0E)
+      assert 0x1021_3243_5465_7687_98A9_BACB_DCED = test_u256(0x102_0304_0506_0708_090A_0B0C_0D0E)
+    end
+  end
+
   describe "for big integers" do
   end
 

@@ -17,25 +17,5 @@ defmodule Zig.Sema do
     result
     |> Jason.decode!()
     |> Enum.map(&Type.Function.from_json/1)
-
-    # result
-    # |> String.trim()
-    # |> String.split("\n")
-    # |> Enum.map(fn line ->
-    #  [name, return | params] = String.split(line)
-    #
-    #  return = Type.parse(return)
-    #
-    #  params =
-    #    case Enum.map(params, &Type.parse/1) do
-    #      [Env | params] -> params
-    #      params -> params
-    #    end
-    #
-    #  # for now, we will need to take out beam.env's.
-    #  arity = length(params)
-    #
-    #  %Zig.Type.Function{name: String.to_atom(name), arity: arity, params: params, return: return}
-    # end)
   end
 end

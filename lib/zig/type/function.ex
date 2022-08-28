@@ -32,6 +32,7 @@ defmodule Zig.Type.Function do
   end
 
   def marshalling_macros(%{params: params, return: return}) do
-    [Type.marshal_zig(return) | Enum.map(params, &Type.marshal_elixir/1)]
+    list = [Type.marshal_zig(return) | Enum.map(params, &Type.marshal_elixir/1)]
+    if Enum.any?(list), do: list, else: nil
   end
 end

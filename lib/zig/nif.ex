@@ -6,7 +6,6 @@ defmodule Zig.Nif do
   alias Zig.Nif.Synchronous
   alias Zig.Nif.Threaded
   alias Zig.Nif.Yielding
-  alias Zig.Type
   alias Zig.Type.Function
 
   @type t :: %__MODULE__{
@@ -87,7 +86,9 @@ defmodule Zig.Nif do
       |> Enum.map(fn
         {maybe_func, index} ->
           arg = {:"arg#{index}", [], Elixir}
-          clause = if maybe_func, do: maybe_func.(arg)
+          clause = if maybe_func do
+            quote do unquote(arg) = unquote(maybe_func.(arg)) end
+          end
           {arg, clause}
       end)
       |> Enum.unzip()
@@ -114,8 +115,19 @@ defmodule Zig.Nif do
     nif.concurrency.render_zig(nif)
   end
 
+  def indexed_parameters([:env | rest]) do
+    indexed_parameters(rest)
+  end
+
   def indexed_parameters(params_list) do
     Enum.with_index(params_list)
+  end
+
+  def indexed_args([:env | rest]) do
+    case indexed_args(rest) do
+      "" -> "env"
+      argstrs -> "env, #{argstrs}"
+    end
   end
 
   def indexed_args(params_list) do
