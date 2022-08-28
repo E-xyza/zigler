@@ -1,0 +1,278 @@
+//! stubs erl_nif functions.  This is necessary so that the linker doesn't scream at you when
+//! you are doing semantic analysis, which needs to be linked at them.
+
+const builtin = @import("builtin");
+
+// size zero types
+pub const ERL_NIF_TERM = extern struct {};
+pub const ERL_NIF_MODULE = extern struct {};
+pub const ErlNifEnv = extern struct {};
+pub const ErlNifBinary = extern struct {};
+pub const ErlNifResourceType = extern struct {};
+pub const ErlNifBinaryToTerm = extern struct {};
+pub const ErlNifMonitor = extern struct {};
+pub const ErlNifPid = extern struct {};
+pub const ErlNifPort = extern struct {};
+pub const ErlNifCond = extern struct {};
+pub const ErlNifMutex = extern struct {};
+pub const ErlNifTime = extern struct {};
+pub const ErlNifTimeUnit = extern struct {};
+pub const ErlNifTid = extern struct {};
+pub const ErlNifThreadOpts = extern struct {};
+pub const ErlNifIOVec = extern struct {};
+pub const ErlNifCharEncoding = extern struct {};
+pub const ErlNifHash = extern struct {};
+pub const ErlNifIOQueue = extern struct {};
+pub const ErlNifIOQueueOpts = extern struct {};
+pub const ErlNifUniqueInteger = extern struct {};
+pub const ErlNifMapIterator = extern struct {};
+pub const ErlNifMapIteratorEntry = extern struct {};
+pub const ErlNifResourceFlags = extern struct {};
+pub const ErlNifResourceTypeInit = extern struct {};
+pub const ErlNifSelectFlags = extern struct {};
+pub const ErlNifEvent = extern struct {};
+pub const ErlNifRWLock = extern struct {};
+pub const ErlNifSysInfo = extern struct {};
+pub const ErlNifTermType = extern struct {};
+pub const ErlNifTSDKey = extern struct {};
+pub const SysIOVec = extern struct {};
+
+// convenience abbreviations for this document only.
+// three letters is for types that are always used as pointers.
+const env = ?*ErlNifEnv;
+const bin = ?*ErlNifBinary;
+const res = ?*ErlNifResourceType;
+const ini = ?*ErlNifResourceTypeInit;
+const mon = ?*ErlNifMonitor;
+const pid = ?*ErlNifPid;
+const prt = ?*ErlNifPort;
+const cnd = ?*ErlNifCond;
+const mtx = ?*ErlNifMutex;
+const ioq = ?*ErlNifIOQueue;
+const iov = ?*ErlNifIOVec;
+const mpi = ?*ErlNifMapIterator;
+const lck = ?*ErlNifRWLock;
+const inf = ?*ErlNifSysInfo;
+const top = ?*ErlNifThreadOpts;
+const trm = ?*ERL_NIF_TERM;
+const siv = ?*SysIOVec;
+// more than four characters is not a pointer type.
+const term = ERL_NIF_TERM;
+const modl = ERL_NIF_MODULE;
+const cenc = ErlNifCharEncoding;
+const time = ErlNifTime;
+const timeu = ErlNifTimeUnit;
+const tid_ = ErlNifTid;
+const hash = ErlNifHash;
+const ioqo = ErlNifIOQueueOpts;
+const mpie = ErlNifMapIteratorEntry;
+const unqi = ErlNifUniqueInteger;
+const rflags = ErlNifResourceFlags;
+const sflags = ErlNifSelectFlags;
+const event = ErlNifEvent;
+const ttyp = ErlNifTermType;
+const tsdk = ErlNifTSDKey;
+
+// depentdent function types.
+pub const ErlNifResourceDtor = fn (env, ?*anyopaque) void;
+pub const ErlNifResourceDown = fn (env, ?*anyopaque, pid, mon) void;
+pub const ErlNifResourceStop = fn (env, ?*anyopaque, event, c_int) void;
+pub const ErlNifResourceDynCall = fn (env, ?*anyopaque, ?*anyopaque) void;
+
+const dtor = ErlNifResourceDtor;
+const down = ErlNifResourceDown;
+const stop = ErlNifResourceStop;
+const dcll = ErlNifResourceDynCall;
+
+const reentry = fn (env, c_int, [*c]const term) term;
+
+pub fn enif_alloc(_: isize) void {}
+pub fn enif_alloc_binary(_: isize, _: bin) c_int { return 0; }
+pub fn enif_alloc_env() env { return null; }
+pub fn enif_alloc_resource(_: res, _: c_uint) ?*anyopaque { return null; }
+pub fn enif_binary_to_term(_: env, _: [*c]u8, _: isize, _: *term, _: ErlNifBinaryToTerm) usize { return 0; }
+pub fn enif_clear_env(_: env) void {}
+pub fn enif_compare(_: term, _: term) c_int { return 0; }
+pub fn enif_compare_monitors(_: mon, _: mon) c_int { return 0; }
+pub fn enif_compare_pids(_: pid, _: pid) c_int { return 0; }
+pub fn enif_cond_broadcast(_: cnd) void {}
+pub fn enif_cond_create(_: [*c]u8) cnd { return null; }
+pub fn enif_cond_destroy(_: cnd) void {}
+pub fn enif_cond_name(_: cnd) [*c]u8 {}
+pub fn enif_cond_signal(_: cnd) void {}
+pub fn enif_cond_wait(_: cnd, _: mtx) void {}
+pub fn enif_consume_timeslice(_: env, _: c_int) c_int { return 0; }
+pub fn enif_convert_time_unit(_: time, _: timeu, _: timeu) time { return .{}; }
+pub fn enif_cpu_time(_: env) term { return .{}; }
+pub fn enif_demonitor_process(_: env, _: ?*anyopaque, _: mon) c_int { return 0; }
+pub fn enif_dynamic_resource_call(_: env, _: modl, _: modl, _: term, _: ?*anyopaque) c_int { return 0; }
+pub fn enif_equal_tids(_: tid_, _: tid_) c_int { return 0; }
+// pub fn enif_fprintf <-- variadic function.  can't stub.
+pub fn enif_free(_: ?*anyopaque) void {}
+pub fn enif_free_env(_: env) void {}
+pub fn enif_free_iovec(_: iov) void {}
+pub fn enif_get_atom(_: env, _: term, _: [*c]u8, _: c_uint, _: cenc) c_int { return 0; }
+pub fn enif_get_atom_length(_: env, _: term, _: ?*c_uint, _: cenc) c_int { return 0; }
+pub fn enif_get_double(_: env, _: term, _: ?*f64) c_int { return 0; }
+pub fn enif_get_int(_: env, _: term, _: ?*c_int) c_int { return 0; }
+pub fn enif_get_int64(_: env, _: term, _: ?*i64) c_int { return 0; }
+pub fn enif_get_local_pid(_: env, _: term, _: pid) c_int { return 0; }
+pub fn enif_get_local_port(_: env, _: term, _: prt) c_int { return 0; }
+pub fn enif_get_list_cell(_: env, _: term, _: trm, _: trm) c_int { return 0; }
+pub fn enif_get_list_length(_: env, _: term, _: ?*c_uint) c_int { return 0; }
+pub fn enif_get_long(_: env, _: term, _: ?*c_long) c_int { return 0; }
+pub fn enif_get_map_size(_: env, _: term, _: ?*isize) c_int { return 0; }
+pub fn enif_get_map_value(_: env, _: term, _: term, _: trm) c_int { return 0; }
+pub fn enif_get_resource(_: env, _: term, _: res, _: ?*?*anyopaque) c_int { return 0; }
+pub fn enif_get_string(_: env, _: term, _: [*c]u8, _: c_uint, _: cenc) c_int { return 0; }
+pub fn enif_get_tuple(_: env, _: term, _: ?*c_int, _: ?*trm) c_int { return 0; }
+pub fn enif_get_uint(_: env, _: term, _: ?*c_uint) c_int { return 0; }
+pub fn enif_get_uint64(_: env, _: term, _: ?*u64) c_int { return 0; }
+pub fn enif_get_ulong(_: env, _: term, _: ?*c_ulong) c_int { return 0; }
+pub fn enif_getenv(_: [*c]const u8, _: [*c]u8, _: ?*isize) c_int { return 0; }
+pub fn enif_has_pending_exception(_: env, _: trm) c_int { return 0; }
+pub fn enif_hash(_: hash, _: term, _: u64) u64 { return 0; }
+pub fn enif_inspect_binary(_: env, _: term, _: bin) c_int { return 0; }
+pub fn enif_inspect_iolist_as_binary(_: env, _: term, _: bin) c_int { return 0; }
+pub fn enif_inspect_iovec(_: env, _: isize, _: term, _: trm, _: ?*iov) c_int { return 0; }
+pub fn enif_ioq_create(_: ioqo) ioq { return null; }
+pub fn enif_ioq_destroy(_: ioq) void {}
+pub fn enif_ioq_deq(_: ioq, _: isize, _: ?*isize) c_int { return 0; }
+pub fn enif_ioq_enq_binary(_: ioq, _: bin, _: isize) c_int { return 0; }
+pub fn enif_ioq_enqv(_: ioq, _: iov, _: isize) c_int { return 0; }
+pub fn enif_ioq_peek(_: ioq, _: ?*c_int) siv { return 0; }
+pub fn enif_ioq_peek_head(_: env, _: ioq, _: ?*c_int, _: trm) siv { return 0; }
+pub fn enif_ioq_size(_: ioq) isize { return 0; }
+pub fn enif_is_atom(_: env, _: term) c_int { return 0; }
+pub fn enif_is_binary(_: env, _: term) c_int { return 0; }
+pub fn enif_is_current_process_alive(_: env) c_int { return 0; }
+pub fn enif_is_empty_list(_: env, _: term) c_int { return 0; }
+pub fn enif_is_exception(_: env, _: term) c_int { return 0; }
+pub fn enif_is_fun(_: env, _: term) c_int { return 0; }
+pub fn enif_is_identical(_: term, _: term) c_int { return 0; }
+pub fn enif_is_list(_: env, _: term) c_int { return 0; }
+pub fn enif_is_map(_: env, _: term) c_int { return 0; }
+pub fn enif_is_number(_: env, _: term) c_int { return 0; }
+pub fn enif_is_pid(_: env, _: term) c_int { return 0; }
+pub fn enif_is_pid_undefined(_: env, _: term) c_int { return 0; }
+pub fn enif_is_port(_: env, _: term) c_int { return 0; }
+pub fn enif_is_port_alive(_: env, _: prt) c_int { return 0; }
+pub fn enif_is_process_alive(_: env, _: pid) c_int { return 0; }
+pub fn enif_is_ref(_: env, _: term) c_int { return 0; }
+pub fn enif_is_tuple(_: env, _: term) c_int { return 0; }
+pub fn enif_keep_resource(_: ?*anyopaque) c_int { return 0; }
+pub fn enif_make_atom(_: env, _: [*c]const u8) term { return .{}; }
+pub fn enif_make_atom_len(_: env, _: [*c]const u8, _: isize) term { return .{}; }
+pub fn enif_make_badarg(_: env) term { return .{}; }
+pub fn enif_make_binary(_: env, _: bin) term { return .{}; }
+pub fn enif_make_copy(_: env, _: term) term { return .{}; }
+pub fn enif_make_double(_: env, _: f64) term { return .{}; }
+pub fn enif_make_existing_atom(_: env, _: [*c]const u8, _: trm, _: cenc) c_int { return 0; }
+pub fn enif_make_existing_atom_len(_: env, _: [*c]const u8, _: isize, _: trm, _: cenc) c_int { return 0; }
+pub fn enif_make_int(_: env, _: c_int) term { return .{}; }
+pub fn enif_make_int64(_: env, _: u64) term { return .{}; }
+// don't use the variadic list functions.
+// pub fn enif_make_list(...)
+// pub fn enif_make_list1(...)
+// ...
+// pub fn enif_make_list9(...)
+pub fn enif_make_list_cell(_: env, _: term, _: term) term { return .{}; }
+pub fn enif_make_list_from_array(_: env, _: [*c]const term, _: c_int) term { return .{}; }
+pub fn enif_make_long(_: env, _: c_long) term { return .{}; }
+pub fn enif_make_map_put(_: env, _: term, _: term, _: term, _: trm) c_int { return 0; }
+pub fn enif_make_map_remove(_: env, _: term, _: term, _: trm) c_int { return 0; }
+pub fn enif_make_map_update(_: env, _: term, _: term, _: term, _: trm) c_int { return 0; }
+pub fn enif_make_map_from_arrays(_: env, _: [*c]const term, _: [*c]const term, _: isize, _: trm) c_int { return 0; }
+pub fn enif_make_monitor_term(_: env, _: mon) term { return .{}; }
+pub fn enif_make_new_binary(_: env, _: isize, _: trm) [*c]u8 { return null; }
+pub fn enif_make_new_map(_: env) term { return .{}; }
+pub fn enif_make_pid(_: env, _: pid) term { return .{}; }
+pub fn enif_make_ref(_: env) term { return .{}; }
+pub fn enif_make_resource(_: env, _: ?*anyopaque) term { return .{}; }
+pub fn enif_make_resource_binary(_: env, _: ?*anyopaque, _: ?*const anyopaque, _: isize) term { return .{}; }
+pub fn enif_make_reverse_list(_: env, _: term, _: trm) c_int { return 0; }
+pub fn enif_make_string(_: env, _: [*c]const u8, _: cenc) term { return .{}; }
+pub fn enif_make_string_len(_: env, _: [*c]const u8, _: isize, _: cenc) term { return .{}; }
+pub fn enif_make_sub_binary(_: env, _: term, _: isize, _: isize) term { return .{}; }
+// don't use the variadic tuple functions.
+// pub fn enif_make_tuple(...)
+// pub fn enif_make_tuple1(...)
+// ...
+// pub fn enif_make_tuple9(...)
+pub fn enif_make_tuple_from_array(_: env, _: [*c]const term, _: c_uint) term { return .{}; }
+pub fn enif_make_uint(_: env, _: c_uint) term { return .{}; }
+pub fn enif_make_uint64(_: env, _: c_uint) term { return .{}; }
+pub fn enif_make_ulong(_: env, _: c_ulong) term { return .{}; }
+pub fn enif_make_unique_integer(_: env, _: unqi) term { return .{}; }
+pub fn enif_map_iterator_create(_: env, _: term, _: mpi, _: mpie) c_int { return 0; }
+pub fn enif_map_iterator_destroy(_: env, _: mpi) void {}
+pub fn enif_map_iterator_get_pair(_: env, _: mpi, _: trm, _: trm) c_int { return 0; }
+pub fn enif_map_iterator_is_head(_: env, _: mpi) c_int { return 0; }
+pub fn enif_map_iterator_is_tail(_: env, _: mpi) c_int { return 0; }
+pub fn enif_map_iterator_next(_: env, _: mpi) c_int { return 0; }
+pub fn enif_map_iterator_prev(_: env, _: mpi) c_int { return 0; }
+pub fn enif_monitor_process(_: env, _: ?*anyopaque, _: pid, _: mon) c_int { return 0; }
+pub fn enif_monotonic_time(_: timeu) time { return .{}; }
+pub fn enif_mutex_create(_: [*c]u8) mtx { return null; }
+pub fn enif_mutex_destroy(_: mtx) void {}
+pub fn enif_mutex_lock(_: mtx) void {}
+pub fn enif_mutex_name(_: mtx) [*c]u8 { return null; }
+pub fn enif_mutex_trylock(_: mtx) c_int { return 0; }
+pub fn enif_mutex_unlock(_: mtx) void {}
+// next function is deprecated
+// pub fn enif_now_time(...)
+pub fn enif_open_resource_type(_: env, _: [*c]const u8, _: [*c]const u8, _: dtor, _: rflags, _: ?*rflags) res {
+    return null;
+}
+pub fn enif_open_resource_type_x(_: env, _: [*c]const u8, _: ini, _: rflags, _: ?*rflags) res {
+    return null;
+}
+pub fn enif_init_resource_type(_: env, _: [*c]const u8, _: ini, _: rflags, _: ?*rflags) res {
+    return null;
+}
+pub fn enif_port_command(_: env, _: prt, _: env, _: term) c_int { return .{}; }
+pub fn enif_priv_data(_: env) ?*anyopaque { return null; }
+pub fn enif_raise_exception(_: env, _: term) term { return .{}; }
+pub fn enif_realloc(_: ?*anyopaque, _: isize) ?*anyopaque { return null; }
+pub fn enif_realloc_binary(_: bin, _: isize) c_int { return null; }
+pub fn enif_release_binary(_: bin) void {}
+pub fn enif_release_resource(_: ?*anyopaque) void {}
+pub fn enif_rwlock_create(_: [*c]u8) lck { return null; }
+pub fn enif_rwlock_destroy(_: lck) void {}
+pub fn enif_rwlock_name(_: lck) [*c]u8 {}
+pub fn enif_rwlock_rlock(_: lck) void {}
+pub fn enif_rwlock_runlock(_: lck) void {}
+pub fn enif_rwlock_rwunlock(_: lck) void {}
+pub fn enif_rwlock_tryrlock(_: lck) c_int { return 0; }
+pub fn enif_rwlock_tryrwlock(_: lck) c_int { return 0; }
+pub fn enif_schedule_nif(_: env, _: [*c]const u8, _: c_int, _: reentry, _: c_int, _: [*c]const term) term { return .{}; }
+pub fn enif_select(_: env, _: event, _: sflags, _: ?*anyopaque, _: pid, _: term) c_int { return 0; }
+pub fn enif_select_read(_: env, _: event, _: ?*anyopaque, _: pid, _: term, _: env) c_int { return 0; }
+pub fn enif_select_write(_: env, _: event, _: ?*anyopaque, _: pid, _: term, _: env) c_int { return 0; }
+pub fn enif_self(_: env, _: pid) pid { return null; }
+pub fn enif_send(_: env, _: pid, _: env, _: term) c_int { return 0; }
+pub fn enif_set_pid_undefined(_: pid) void {}
+pub fn enif_sizeof_resource(_: ?*anyopaque) c_uint { return 0; }
+// not usable since it's variadic
+// pub fn enif_snprintf(...)
+pub fn enif_system_info(_: inf, _: isize) void {}
+pub fn enif_term_to_binary(_: env, _: term, _: bin) c_int { return 0; }
+pub fn enif_term_type(_: env, _: term) ttyp { return .{}; }
+pub fn enif_thread_create(_: [*c]u8, _: ?*tid_, _: fn (?*anyopaque) ?*anyopaque, _: ?*anyopaque, _: top) c_int {
+    return 0;
+}
+pub fn enif_thread_exit(_: ?*anyopaque) void {}
+pub fn enif_thread_join(_: tid_, _: ?*?*anyopaque) c_int { return 0; }
+pub fn enif_thread_name(_: tid_) [*c]u8 { return null; }
+pub fn enif_therad_opts_create(_: [*c]u8) top { return null; }
+pub fn enif_thread_opts_destroy(_: top) void {}
+pub fn enif_thread_self() tid_ { return .{}; }
+pub fn enif_thread_type() c_int { return 0; }
+pub fn enif_time_offset(_: timeu) time { return .{}; }
+pub fn enif_tsd_get(_: tsdk) c_int { return 0; }
+pub fn enif_tsd_key_destroy(_: tsdk) void {}
+pub fn enif_tsd_set(_: tsdk, _: ?*anyopaque) void {}
+// pub fn enif_vfprintf(...)
+// pub fn enif_vsnprintf(...)
+pub fn enif_whereis_pid(_: env, _: term, _: pid) c_int { return 0; }
+pub fn enif_whereis_port(_: env, _: term, _: pid) c_int { return 0; }

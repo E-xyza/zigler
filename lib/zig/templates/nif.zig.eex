@@ -13,7 +13,7 @@ const entry = e.ErlNifEntry{
     .name = "<%= @module %>",
     .num_of_funcs = exported_nifs.len,
     .funcs = &(exported_nifs[0]),
-    .load = beam.blank_load,
+    .load = beam.loader.blank_load,
     .reload = null,   // currently unsupported
     .upgrade = null,  // currently unsupported
     .unload = null,   // currently unsupported

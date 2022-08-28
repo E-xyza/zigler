@@ -1,7 +1,7 @@
 defprotocol Zig.Type do
   alias Zig.Type.Integer
 
-  @type t :: Integer.t()
+  @type t :: Integer.t() | :env | :term
 
   @spec marshal_elixir(t) :: (Macro.t() -> Macro.t())
   @doc "elixir-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
@@ -45,17 +45,21 @@ defprotocol Zig.Type do
 
   def from_json(json) do
     case json do
-      "?*" <> rest ->
-        if String.ends_with?(rest, "struct_enif_environment_t") do
-          :env
-        else
-          raise "unknown type #{json}"
-        end
-
+      "?*.beam.stub_erl_nif.ErlNifEnv" ->
+        :env
+      ".beam.stub_erl_nif.ERL_NIF_TERM" ->
+        :erl_nif_term
+      ".beam.term" ->
+        :term
       %{"type" => "integer"} ->
         Integer.from_json(json)
     end
   end
+
+  @spec to_zig(t) :: String.t
+  def to_zig(:env), do: "beam.env"
+  def to_zig(:term), do: "beam.term"
+  def to_zig(type), do: to_string(type)
 
   defmacro __using__(_) do
     module = __CALLER__.module
@@ -82,10 +86,13 @@ end
 
 defimpl Zig.Type, for: Atom do
   def marshal_elixir(:env), do: nil
+  def marshal_elixir(:term), do: nil
 
   def marshal_elixir(type) do
     raise "#{type} should not be a call type for elixir."
   end
+
+  def marshal_zig(:term), do: nil
 
   def marshal_zig(type) do
     raise "#{type} should not be a return type for elixir."

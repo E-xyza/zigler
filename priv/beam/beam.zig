@@ -101,10 +101,13 @@
 const e = @import("erl_nif.zig");
 const std = @import("std");
 const builtin = @import("builtin");
-const BeamMutex = @import("beam_mutex.zig").BeamMutex;
+const BeamMutex = @import("mutex.zig").BeamMutex;
 
 // semantic analysis
-pub const sema = @import("sema.zig");
+pub const sema = if (builtin.output_mode == .Exe) @import("sema.zig") else void;
+
+// loading boilerplate
+pub const loader = if (builtin.output_mode == .Lib) @import("loader.zig") else void;
 
 ///////////////////////////////////////////////////////////////////////////////
 // BEAM allocator definitions
@@ -312,8 +315,12 @@ pub const ThreadError = error {
 /// pointer to an opaque struct around without accessing it.
 pub const env = ?*e.ErlNifEnv;
 
-/// syntactic sugar for the BEAM term struct (`e.ErlNifTerm`)
-pub const term = e.ErlNifTerm;
+/// wrapped term struct.  This lets us typecheck terms on the way in and out.
+/// many things will still if you use the "original" e.ErlNifTerm, but some things
+/// will require you to use `beam.term` instead.
+pub const term = struct {
+  v: e.ErlNifTerm
+};
 
 ///////////////////////////////////////////////////////////////////////////////
 // syntactic sugar: gets
@@ -634,20 +641,3 @@ pub const make = @import("make.zig").make;
 /// you can use this value to access the BEAM environment of your unit test.
 pub threadlocal var test_env: env = undefined;
 
-///////////////////////////////////////////////////////////////////////////////
-// NIF LOADING Boilerplate
-
-pub export fn blank_load(
-  _: env,
-  _: [*c]?*anyopaque,
-  _: term) c_int {
-  return 0;
-}
-
-pub export fn blank_upgrade(
-  _: env,
-  _: [*c]?*anyopaque,
-  _: [*c]?*anyopaque,
-  _: term) c_int {
-    return 0;
-}
