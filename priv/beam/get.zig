@@ -12,6 +12,13 @@ pub fn get(comptime T: type, env: beam.env, src: beam.term) !T {
     }
 }
 
+const c_int_size = @bitSizeOf(c_int);
+const c_long_size = @bitSizeOf(c_long);
+const i32_t = if (c_int_size == 32) c_int else if (c_long_size == 32) c_long;
+const enif_get_i32 = if (c_int_size == 32) e.enif_get_int else if (c_long_size == 32) e.enif_get_long;
+const u32_t = if (c_int_size == 32) c_uint else if (c_long_size == 32) c_ulong;
+const enif_get_u32 = if (c_int_size == 32) e.enif_get_uint else if (c_long_size == 32) e.enif_get_ulong;
+
 pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
     const int = @typeInfo(T).Int;
     switch (int.signedness) {
@@ -19,9 +26,9 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
             // TODO: make sure it's nil.
             0 => return @as(u0, void),
             1...32 => {
-                var result: c_int = 0;
+                var result: i32_t = 0;
                 // TODO: check to make sure this doesn't get weird
-                _ = e.enif_get_int(env, src.v, &result);
+                _ = enif_get_i32(env, src.v, &result);
                 return lowerInt(T, result);
             },
             33...64 => {
@@ -37,9 +44,9 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
             // TODO: make sure it's nil.
             0 => return @as(u0, void),
             1...32 => {
-                var result: c_uint = 0;
+                var result: u32_t = 0;
                 // TODO: check to make sure this doesn't get weird
-                _ = e.enif_get_uint(env, src.v, &result);
+                _ = enif_get_u32(env, src.v, &result);
                 return lowerInt(T, result);
             },
             33...64 => {

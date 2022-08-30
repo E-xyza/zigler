@@ -1,6 +1,6 @@
 export fn <%= @name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) e.ErlNifTerm {
     <%= for {param, index} <- Nif.indexed_parameters(@params) do %>
-    const arg<%= index %> = beam.get(<%= Type.to_zig(param) %>, env, arg[<%= index %>]) catch unreachable;
+    const arg<%= index %> = beam.get(<%= Type.to_zig(param) %>, env, .{.v = arg[<%= index %>]}) catch unreachable;
     <% end %>
     <%= case @params do %>
       <% [] -> %> _ = arg;
@@ -14,6 +14,6 @@ export fn <%= @name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) e.
       <% :term -> %>
         return result.v;
       <% _ ->%>
-        return beam.make(env, result);
+        return beam.make(env, result).v;
     <% end %>
 }
