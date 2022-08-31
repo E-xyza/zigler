@@ -114,7 +114,6 @@ defmodule Zig.Type.Integer do
          quote do
            case __STACKTRACE__ do
              [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
-
                new_opts =
                  Keyword.merge(opts,
                    error_info: %{module: __MODULE__, function: :_format_error},
@@ -165,7 +164,6 @@ defmodule Zig.Type.Integer do
          quote do
            case __STACKTRACE__ do
              [{m, f, a, opts} | rest] ->
-
                new_opts =
                  Keyword.merge(opts,
                    error_info: %{module: __MODULE__, function: :_format_error},

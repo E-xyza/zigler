@@ -30,6 +30,7 @@ defmodule ZiglerTest.Types.IntegerTest do
 
       test "non-integer for size #{size} fails" do
         size = unquote(size)
+
         assert_raise ArgumentError,
                      "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (i#{size})\n     got: \"foo\"\n",
                      fn ->

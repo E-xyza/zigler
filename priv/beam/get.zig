@@ -14,6 +14,7 @@ pub fn get(comptime T: type, env: beam.env, src: beam.term) !T {
 
     switch (@typeInfo(T)) {
         .Int => return get_int(T, env, src),
+        .Enum => return get_enum(T, env, src),
         else => @panic("unknown type encountered"),
     }
 }
@@ -32,7 +33,7 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
             0...32 => {
                 var result: i32_t = 0;
 
-                if (e.enif_term_type(env, src.v) != e.ERL_NIF_TERM_TYPE_INTEGER) {
+                if (src.term_type(env) != .integer) {
                     return Error.nif_argument_type_error;
                 }
 
@@ -43,7 +44,7 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
             33...64 => {
                 var result: i64 = 0;
 
-                if (e.enif_term_type(env, src.v) != e.ERL_NIF_TERM_TYPE_INTEGER) {
+                if (src.term_type(env) != .integer) {
                     return Error.nif_argument_type_error;
                 }
 
@@ -77,7 +78,7 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
             0...32 => {
                 var result: u32_t = 0;
 
-                if (e.enif_term_type(env, src.v) != e.ERL_NIF_TERM_TYPE_INTEGER) {
+                if (src.term_type(env) != .integer) {
                     return Error.nif_argument_type_error;
                 }
 
@@ -89,7 +90,7 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
             33...64 => {
                 var result: u64 = 0;
 
-                if (e.enif_term_type(env, src.v) != e.ERL_NIF_TERM_TYPE_INTEGER) {
+                if (src.term_type(env) != .integer) {
                     return Error.nif_argument_type_error;
                 }
 
@@ -137,4 +138,14 @@ inline fn lowerInt(comptime T: type, result: anytype) !T {
     }
 
     return @intCast(T, result);
+}
+
+pub fn get_enum(comptime T: type, env: beam.env, src: beam.term) !T {
+    const IntType = @typeInfo(T).Enum.tag_type;
+    // there is really nothing we can do if it gets sent in as something not
+    // an integer.
+    if (src.term_type(env) != .integer) return Error.nif_marshalling_error;
+
+    // retrieve it as the integer form.
+    return @intToEnum(T, try get_int(IntType, env, src));
 }

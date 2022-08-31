@@ -1,6 +1,6 @@
 const std = @import("std");
 
-fn streamInt(stream: anytype, comptime i: anytype) !void {
+fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
     try stream.beginObject();
     try stream.objectField("type");
     try stream.emitString("integer");
@@ -16,10 +16,28 @@ fn streamInt(stream: anytype, comptime i: anytype) !void {
     try stream.endObject();
 }
 
+fn streamEnum(stream: anytype, comptime e: std.builtin.Type.Enum, comptime T: type) !void {
+    try stream.beginObject();
+    try stream.objectField("type");
+    try stream.emitString("enum");
+    try stream.objectField("name");
+    try stream.emitString(@typeName(T));
+    try stream.objectField("tags");
+    try stream.beginObject();
+    inline for (e.fields) |field| {
+        try stream.objectField(field.name);
+        try stream.emitNumber(field.value);
+    }
+    try stream.endObject();
+    try stream.endObject();
+}
+
 fn streamType(stream: anytype, comptime T: type) !void {
     switch (@typeInfo(T)) {
         .Int => |i|
             try streamInt(stream, i),
+        .Enum => |e|
+            try streamEnum(stream, e, T),
         else =>
             try stream.emitString(std.fmt.comptimePrint("{}", .{T})),
     }
@@ -46,8 +64,14 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
     try stream.beginArray();
     inline for (mod_info.decls) |decl| {
         if (decl.is_pub) {
-            try stream.arrayElem();
-            try streamFun(stream, decl.name, @typeInfo(@TypeOf(@field(Mod, decl.name))).Fn);
+            switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
+                .Fn => |fun| {
+                    try stream.arrayElem();
+                    try streamFun(stream, decl.name, fun);
+                },
+                // do something about types.
+                else => {}
+            }
         }
     }
     try stream.endArray();

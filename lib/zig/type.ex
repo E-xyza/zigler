@@ -1,4 +1,5 @@
 defprotocol Zig.Type do
+  alias Zig.Type.Enum
   alias Zig.Type.Integer
 
   @type t :: Integer.t() | :env | :term
@@ -60,6 +61,9 @@ defprotocol Zig.Type do
 
       %{"type" => "integer"} ->
         Integer.from_json(json)
+
+      %{"type" => "enum"} ->
+        Enum.from_json(json)
     end
   end
 
@@ -105,4 +109,6 @@ defimpl Zig.Type, for: Atom do
   def marshal_return(type) do
     raise "#{type} should not be a return type for elixir."
   end
+
+  def param_errors(_type), do: nil
 end

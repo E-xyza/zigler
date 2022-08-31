@@ -37,10 +37,14 @@ defmodule Zig.Nif.Marshaller do
         maybe_expr_func, index ->
           arg = {:"arg#{index}", [], Elixir}
 
-          assignment = if maybe_expr_func do
-            expr = maybe_expr_func.(arg, index)
-            quote do unquote(arg) = unquote(expr) end
-          end
+          assignment =
+            if maybe_expr_func do
+              expr = maybe_expr_func.(arg, index)
+
+              quote do
+                unquote(arg) = unquote(expr)
+              end
+            end
 
           {arg, List.wrap(assignment)}
       end)
