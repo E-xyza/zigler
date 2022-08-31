@@ -28,11 +28,13 @@ defmodule Zig.Nif.Synchronous do
   def render_zig(%Nif{function: function}), do: synchronous(function)
 
   def table_entries(nif) do
-    [~s(.{.name = "#{nif.entrypoint}", .arity = #{nif.function.arity}, .fptr = #{nif.function.name}, .flags = 0})]
+    [
+      ~s(.{.name = "#{nif.entrypoint}", .arity = #{nif.function.arity}, .fptr = #{nif.function.name}, .flags = 0})
+    ]
   end
 
   def set_entrypoint(nif = %{function: %{name: name}}) do
-    entrypoint = if nif.marshalling_macros, do: :"marshalling_#{name}", else: name
+    entrypoint = if Nif.needs_marshal?(nif), do: :"marshalling_#{name}", else: name
     %{nif | entrypoint: entrypoint}
   end
 end

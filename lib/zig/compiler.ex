@@ -83,6 +83,10 @@ defmodule Zig.Compiler do
                   Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
               end
             end
+
+            def _format_error(_, [{_, _, _, opts} | _rest] = _stacktrace) do
+              if formatted = opts[:zigler_error], do: formatted, else: %{}
+            end
           end
         else
           dead_module(code, context)

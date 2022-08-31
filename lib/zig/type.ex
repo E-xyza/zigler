@@ -3,13 +3,17 @@ defprotocol Zig.Type do
 
   @type t :: Integer.t() | :env | :term
 
-  @spec marshal_elixir(t) :: (Macro.t() -> Macro.t())
+  @spec marshal_param(t) :: (Macro.t() -> Macro.t())
   @doc "elixir-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
-  def marshal_elixir(type)
+  def marshal_param(type)
 
-  @spec marshal_zig(t) :: (Macro.t() -> Macro.t())
+  @spec marshal_return(t) :: (Macro.t() -> Macro.t())
   @doc "elixir-side type conversions that might be necessary to get a zig return into an elixir return"
-  def marshal_zig(type)
+  def marshal_return(type)
+
+  @doc "generates clauses to trap errors and convert them to expected errors"
+  @spec param_errors(t) :: (integer -> [Macro.t()])
+  def param_errors(type)
 
   import Kernel
 
@@ -47,16 +51,19 @@ defprotocol Zig.Type do
     case json do
       "?*.beam.stub_erl_nif.ErlNifEnv" ->
         :env
+
       ".beam.stub_erl_nif.ERL_NIF_TERM" ->
         :erl_nif_term
+
       ".beam.term" ->
         :term
+
       %{"type" => "integer"} ->
         Integer.from_json(json)
     end
   end
 
-  @spec to_zig(t) :: String.t
+  @spec to_zig(t) :: String.t()
   def to_zig(:env), do: "beam.env"
   def to_zig(:term), do: "beam.term"
   def to_zig(type), do: to_string(type)
@@ -77,24 +84,25 @@ defprotocol Zig.Type do
       end
 
       defimpl Zig.Type do
-        defdelegate marshal_elixir(type), to: unquote(module)
-        defdelegate marshal_zig(type), to: unquote(module)
+        defdelegate marshal_param(type), to: unquote(module)
+        defdelegate marshal_return(type), to: unquote(module)
+        defdelegate param_errors(type), to: unquote(module)
       end
     end
   end
 end
 
 defimpl Zig.Type, for: Atom do
-  def marshal_elixir(:env), do: nil
-  def marshal_elixir(:term), do: nil
+  def marshal_param(:env), do: nil
+  def marshal_param(:term), do: nil
 
-  def marshal_elixir(type) do
+  def marshal_param(type) do
     raise "#{type} should not be a call type for elixir."
   end
 
-  def marshal_zig(:term), do: nil
+  def marshal_return(:term), do: nil
 
-  def marshal_zig(type) do
+  def marshal_return(type) do
     raise "#{type} should not be a return type for elixir."
   end
 end

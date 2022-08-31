@@ -2,6 +2,11 @@ const beam = @import("beam.zig");
 const e = @import("erl_nif.zig");
 const std = @import("std");
 
+pub const Error = error {
+    nif_argument_type_error,
+    nif_argument_range_error
+};
+
 pub fn get(comptime T: type, env: beam.env, src: beam.term) !T {
     // passthrough on beam.env and beam.term
     if (T == beam.term) return src;
@@ -27,13 +32,24 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
             0 => return @as(u0, void),
             1...32 => {
                 var result: i32_t = 0;
-                // TODO: check to make sure this doesn't get weird
-                _ = enif_get_i32(env, src.v, &result);
+
+                if (e.enif_term_type(env, src.v) != e.ERL_NIF_TERM_TYPE_INTEGER) {
+                    return Error.nif_argument_type_error;
+                }
+
+                if (enif_get_i32(env, src.v, &result) == 0) return Error.nif_argument_range_error;
+
                 return lowerInt(T, result);
             },
             33...64 => {
                 var result: i64 = 0;
-                _ = e.enif_get_int64(env, src.v, &result);
+
+                if (e.enif_term_type(env, src.v) != e.ERL_NIF_TERM_TYPE_INTEGER) {
+                    return Error.nif_argument_type_error;
+                }
+
+                if (e.enif_get_int64(env, src.v, &result) == 0) return Error.nif_argument_range_error;
+
                 return lowerInt(T, result);
             },
             else => {
@@ -45,20 +61,38 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
             0 => return @as(u0, void),
             1...32 => {
                 var result: u32_t = 0;
+
+                if (e.enif_term_type(env, src.v) != e.ERL_NIF_TERM_TYPE_INTEGER) {
+                    return Error.nif_argument_type_error;
+                }
+
                 // TODO: check to make sure this doesn't get weird
-                _ = enif_get_u32(env, src.v, &result);
-                return lowerInt(T, result);
+                if (enif_get_u32(env, src.v, &result) == 0) return Error.nif_argument_range_error;
+
+                return try lowerInt(T, result);
             },
             33...64 => {
                 var result: u64 = 0;
-                _ = e.enif_get_uint64(env, src.v, &result);
-                return lowerInt(T, result);
+
+                if (e.enif_term_type(env, src.v) != e.ERL_NIF_TERM_TYPE_INTEGER) {
+                    return Error.nif_argument_type_error;
+                }
+
+                if (e.enif_get_uint64(env, src.v, &result) == 0) return Error.nif_argument_range_error;
+
+                return try lowerInt(T, result);
             },
             else => {
                 // for integers bigger than 64-bytes the number
                 // is imported as a binary.
                 const Bigger = std.meta.Int(.unsigned, comptime try std.math.ceilPowerOfTwo(u16, int.bits));
                 const bytes = @sizeOf(Bigger);
+
+                if (e.enif_term_type(env, src.v) != e.ERL_NIF_TERM_TYPE_INTEGER) {
+                    return Error.nif_argument_type_error;
+                }
+
+                // TODO: double check range.
 
                 // TODO: punt to get_binary
                 var result: e.ErlNifBinary = undefined;
@@ -78,9 +112,16 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
 }
 
 inline fn lowerInt(comptime T: type, result: anytype) !T {
-    // safety check this.  Consider making this able to be disabled.
-    if (result <= std.math.maxInt(T)) {
-        return @intCast(T, result);
+    const int = @typeInfo(T).Int;
+    if (int.signedness == .signed) {
+        if (result < std.math.minInt(T)) {
+            return Error.nif_argument_range_error;
+        }
     }
-    unreachable; // panic, for now.
+
+    if (result > std.math.maxInt(T)) {
+        return Error.nif_argument_range_error;
+    }
+
+    return @intCast(T, result);
 }

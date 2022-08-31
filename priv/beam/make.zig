@@ -12,6 +12,8 @@ pub fn make(env: beam.env, value: anytype) beam.term {
         .ComptimeInt => return make_comptime_int(env, value),
         .Struct => return make_struct(env, value),
         .EnumLiteral => return make_enum_literal(env, value),
+        .Enum => return make_enum(env, value),
+        .ErrorSet => return make_error(env, value),
         .Null => return make_nil(env),
         else => {
             std.debug.print("{}\n", .{@typeInfo(T)});
@@ -120,11 +122,13 @@ fn make_struct(env: beam.env, value: anytype) beam.term {
             @compileError("The tuple size is too large for the erlang virtual machine");
         }
         var tuple_list: [value.len]e.ErlNifTerm = undefined;
-        inline for (value) |term, index| {
-            if (@TypeOf(value) == beam.term) {
-                tuple_list[index] = term.v;
+        comptime var index = 0;
+        inline while (index < value.len) : (index += 1) {
+            const tuple_term = value[index];
+            if (@TypeOf(tuple_term) == beam.term) {
+                tuple_list[index] = tuple_term.v;
             } else {
-                tuple_list[index] = make(env, term).v;
+                tuple_list[index] = make(env, tuple_term).v;
             }
         }
         return .{ .v = e.enif_make_tuple_from_array(env, &tuple_list, value.len) };
@@ -153,4 +157,15 @@ fn make_enum_literal(env: beam.env, value: anytype) beam.term {
         @compileError("the length of this enum literal is too large for the erlang virtual machine");
     }
     return .{ .v = e.enif_make_atom_len(env, tag_name, tag_name.len) };
+}
+
+fn make_enum(env: beam.env, value: anytype) beam.term {
+    const tag_name = @tagName(value);
+    return .{ .v = e.enif_make_atom_len(env, tag_name, tag_name.len) };
+}
+
+fn make_error(env: beam.env, value: anytype) beam.term {
+    const tag_name = @errorName(value);
+    const len: u32 = @truncate(u32, tag_name.len);
+    return .{ .v = e.enif_make_atom_len(env, tag_name, len) };
 }

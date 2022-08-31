@@ -31,8 +31,17 @@ defmodule Zig.Type.Function do
     }
   end
 
-  def marshalling_macros(%{params: params, return: return}) do
-    list = [Type.marshal_zig(return) | Enum.map(params, &Type.marshal_elixir/1)]
+  def param_marshalling_macros(%{params: params}) do
+    list = Enum.map(params, &Type.marshal_param/1)
+    if Enum.any?(list), do: list, else: nil
+  end
+
+  def return_marshalling_macro(%{return: return}) do
+    Type.marshal_return(return)
+  end
+
+  def param_error_macros(%{params: params}) do
+    list = Enum.map(params, &Type.param_errors/1)
     if Enum.any?(list), do: list, else: nil
   end
 end

@@ -1,8 +1,18 @@
 defmodule Zig.Nif do
-  defstruct [:type, :concurrency, :function, :entrypoint, marshalling_macros: nil]
+  # TODO: distinguish Nif from Module.
+  @enforce_keys [:type, :concurrency, :function]
+
+  defstruct @enforce_keys ++
+              [
+                :entrypoint,
+                :param_marshalling_macros,
+                :return_marshalling_macro,
+                :param_error_macros
+              ]
 
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
+  alias Zig.Nif.Marshaller
   alias Zig.Nif.Synchronous
   alias Zig.Nif.Threaded
   alias Zig.Nif.Yielding
@@ -14,13 +24,15 @@ defmodule Zig.Nif do
           function: Function.t(),
           # calculated details.
           entrypoint: atom,
-          marshalling_macros: nil | [(Macro.t -> Macro.t)],
+          param_marshalling_macros: nil | [nil | (Macro.t() -> Macro.t())],
+          return_marshalling_macro: nil | (Macro.t() -> Macro.t()),
+          param_error_macros: nil | [nil | (Macro.t() -> Macro.t())]
         }
 
   defmodule Concurrency do
-    @callback render_elixir(Zig.Nif.t) :: Macro.t
-    @callback render_zig(Zig.Nif.t) :: iodata
-    @callback set_entrypoint(Zig.Nif.t) :: Zig.Nif.t
+    @callback render_elixir(Zig.Nif.t()) :: Macro.t()
+    @callback render_zig(Zig.Nif.t()) :: iodata
+    @callback set_entrypoint(Zig.Nif.t()) :: Zig.Nif.t()
   end
 
   defp normalize_all(:all, functions) do
@@ -46,8 +58,10 @@ defmodule Zig.Nif do
         concurrency.set_entrypoint(%__MODULE__{
           type: Keyword.get(opts, :defp) || :def,
           concurrency: concurrency,
-          marshalling_macros: Function.marshalling_macros(function),
           function: function,
+          param_marshalling_macros: Function.param_marshalling_macros(function),
+          return_marshalling_macro: Function.return_marshalling_macro(function),
+          param_error_macros: Function.param_error_macros(function)
         })
     end)
   end
@@ -62,44 +76,21 @@ defmodule Zig.Nif do
   def render_elixir(nif, opts \\ []) do
     typespec = List.wrap(if Keyword.get(opts, :typespec?, true), do: typespec(nif))
 
-    marshalling = List.wrap(if nif.marshalling_macros, do: render_marshal(nif))
+    marshalling = List.wrap(Marshaller.render(nif))
 
-    function = nif
-    |> nif.concurrency.render_elixir
-    |> List.wrap
+    function =
+      nif
+      |> nif.concurrency.render_elixir
+      |> List.wrap()
 
     quote context: Elixir do
-      unquote_splicing(Enum.flat_map([typespec, marshalling, function], &(&1)))
+      (unquote_splicing(Enum.flat_map([typespec, marshalling, function], & &1)))
     end
   end
 
-  defp render_marshal(nif) do
-    [rfunc | pfuncs] = nif.marshalling_macros
-    name = nif.function.name
-
-    return = {:return, [], Elixir}
-    return_clause = if rfunc, do: rfunc.(return), else: return
-
-    {args, args_clauses} =
-      pfuncs
-      |> Enum.with_index()
-      |> Enum.map(fn
-        {maybe_func, index} ->
-          arg = {:"arg#{index}", [], Elixir}
-          clause = if maybe_func do
-            quote do unquote(arg) = unquote(maybe_func.(arg)) end
-          end
-          {arg, clause}
-      end)
-      |> Enum.unzip()
-
-    quote do
-      defp unquote(name)(unquote_splicing(args)) do
-        unquote_splicing(args_clauses)
-        unquote(return) = unquote(nif.entrypoint)(unquote_splicing(args))
-        unquote(return_clause)
-      end
-    end
+  @spec needs_marshal?(t) :: boolean
+  def needs_marshal?(nif) do
+    !!nif.param_marshalling_macros or !!nif.return_marshalling_macro or !!nif.param_error_macros
   end
 
   require EEx

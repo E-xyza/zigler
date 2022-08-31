@@ -66,9 +66,7 @@ defmodule Zig.Target do
   defp to_structdef(t = %{cpu: cpu}) do
     # NB: this uses zig's duck-typing facilities to only set the cpu_model field when cpu is provided.
     # .explicit field is only available when it's arm; x86 will ignore this extra field.
-    ".{.default_target = .{.cpu_arch = .#{t.arch}, .os_tag = .#{t.os}, .abi = .#{t.abi}, .cpu_model = .{ .explicit = &std.Target.arm.cpu.#{
-      cpu
-    }}}}"
+    ".{.default_target = .{.cpu_arch = .#{t.arch}, .os_tag = .#{t.os}, .abi = .#{t.abi}, .cpu_model = .{ .explicit = &std.Target.arm.cpu.#{cpu}}}}"
   end
 
   defp to_structdef(t) do
