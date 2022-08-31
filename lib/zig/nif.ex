@@ -56,7 +56,7 @@ defmodule Zig.Nif do
         concurrency = Synchronous
 
         concurrency.set_entrypoint(%__MODULE__{
-          type: Keyword.get(opts, :defp) || :def,
+          type: Keyword.get(opts, :type) || :def,
           concurrency: concurrency,
           function: function,
           param_marshalling_macros: Function.param_marshalling_macros(function),

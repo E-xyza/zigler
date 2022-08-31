@@ -4,7 +4,8 @@ const std = @import("std");
 
 pub const Error = error {
     nif_argument_type_error,
-    nif_argument_range_error
+    nif_argument_range_error,
+    nif_marshalling_error  // this should really not happen.
 };
 
 pub fn get(comptime T: type, env: beam.env, src: beam.term) !T {
@@ -28,9 +29,7 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
     const int = @typeInfo(T).Int;
     switch (int.signedness) {
         .signed => switch (int.bits) {
-            // TODO: make sure it's nil.
-            0 => return @as(u0, void),
-            1...32 => {
+            0...32 => {
                 var result: i32_t = 0;
 
                 if (e.enif_term_type(env, src.v) != e.ERL_NIF_TERM_TYPE_INTEGER) {
@@ -53,13 +52,29 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
                 return lowerInt(T, result);
             },
             else => {
-                unreachable;
+                // for integers bigger than 64-bytes the number
+                // is imported as a binary.
+                const Bigger = std.meta.Int(.unsigned, comptime try std.math.ceilPowerOfTwo(u16, int.bits));
+                const bytes = @sizeOf(Bigger);
+
+                var result: e.ErlNifBinary = undefined;
+
+                // This should fail if it's not a binary.  Note there isn't much we can do here because
+                // it is *supposed* to be marshalled into the nif.
+                if (e.enif_inspect_binary(env, src.v, &result) == 0) return Error.nif_marshalling_error;
+
+
+                var buf: Bigger = 0;
+                std.mem.copy(u8, @ptrCast([*]u8, &buf)[0..bytes], result.data[0..bytes]);
+                // check to make sure that the top bits are all zeros.
+                const top_bit_count = (bytes * 8 - int.bits);
+                if (@clz(Bigger, buf) < top_bit_count) return Error.nif_argument_range_error;
+
+                return @intCast(T, buf);
             },
         },
         .unsigned => switch (int.bits) {
-            // TODO: make sure it's nil.
-            0 => return @as(u0, void),
-            1...32 => {
+            0...32 => {
                 var result: u32_t = 0;
 
                 if (e.enif_term_type(env, src.v) != e.ERL_NIF_TERM_TYPE_INTEGER) {
@@ -88,20 +103,18 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) !T {
                 const Bigger = std.meta.Int(.unsigned, comptime try std.math.ceilPowerOfTwo(u16, int.bits));
                 const bytes = @sizeOf(Bigger);
 
-                if (e.enif_term_type(env, src.v) != e.ERL_NIF_TERM_TYPE_INTEGER) {
-                    return Error.nif_argument_type_error;
-                }
-
-                // TODO: double check range.
-
-                // TODO: punt to get_binary
                 var result: e.ErlNifBinary = undefined;
-                // TODO: do things to check these.
-                _ = e.enif_is_binary(env, src.v);
-                _ = e.enif_inspect_binary(env, src.v, &result);
+
+                // This should fail if it's not a binary.  Note there isn't much we can do here because
+                // it is *supposed* to be marshalled into the nif.
+                if (e.enif_inspect_binary(env, src.v, &result) == 0) return Error.nif_marshalling_error;
+
 
                 var buf: Bigger = 0;
                 std.mem.copy(u8, @ptrCast([*]u8, &buf)[0..bytes], result.data[0..bytes]);
+                // check to make sure that the top bits are all zeros.
+                const top_bit_count = (bytes * 8 - int.bits);
+                if (@clz(Bigger, buf) < top_bit_count) return Error.nif_argument_range_error;
 
                 return @intCast(T, buf);
             },

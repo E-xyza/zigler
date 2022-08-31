@@ -4,17 +4,19 @@ defmodule Zig.Nif.Synchronous do
 
   @behaviour Zig.Nif.Concurrency
 
-  def render_elixir(%Nif{type: type, entrypoint: entrypoint, function: function}) do
+  def render_elixir(nif = %{function: function}) do
     params =
       case function.arity do
         0 -> []
         n -> Enum.map(1..n, &{:"_arg#{&1}", [], Elixir})
       end
 
-    error_text = "nif for function #{entrypoint}/#{function.arity} not bound"
+    error_text = "nif for function #{nif.entrypoint}/#{function.arity} not bound"
+
+    type = if Nif.needs_marshal?(nif), do: :defp, else: nif.type
 
     quote context: Elixir do
-      unquote(type)(unquote(entrypoint)(unquote_splicing(params))) do
+      unquote(type)(unquote(nif.entrypoint)(unquote_splicing(params))) do
         raise unquote(error_text)
       end
     end

@@ -3,7 +3,7 @@ defprotocol Zig.Type do
 
   @type t :: Integer.t() | :env | :term
 
-  @spec marshal_param(t) :: (Macro.t() -> Macro.t())
+  @spec marshal_param(t) :: (Macro.t(), index :: non_neg_integer -> Macro.t())
   @doc "elixir-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
   def marshal_param(type)
 

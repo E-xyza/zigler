@@ -67,13 +67,13 @@ fn make_int(env: beam.env, value: anytype) beam.term {
     const int = @typeInfo(@TypeOf(value)).Int;
     switch (int.signedness) {
         .signed => switch (int.bits) {
-            0 => return make_nil(env),
+            0 => return make(env, 0),
             1...32 => return .{ .v = e.enif_make_int(env, @intCast(i32, value)) },
             33...64 => return .{ .v = e.enif_make_int64(env, @intCast(i64, value)) },
             else => {},
         },
         .unsigned => switch (int.bits) {
-            0 => return make_nil(env),
+            0 => return make(env, 0),
             1...32 => return .{ .v = e.enif_make_uint(env, @intCast(u32, value)) },
             33...64 => return .{ .v = e.enif_make_uint64(env, @intCast(u64, value)) },
             else => {

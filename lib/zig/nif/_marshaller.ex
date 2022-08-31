@@ -3,10 +3,11 @@ defmodule Zig.Nif.Marshaller do
   renders a nif marshalling function into an elixir macro.
   """
 
-  @enforce_keys [:name, :args, :arg_exprs, :entrypoint, :return_expr, :param_error_clauses]
+  @enforce_keys [:type, :name, :args, :arg_exprs, :entrypoint, :return_expr, :param_error_clauses]
   defstruct @enforce_keys
 
   @type t :: %__MODULE__{
+          type: :def | :defp,
           name: atom,
           args: [{atom, [], Elixir}],
           arg_exprs: [Macro.t()],
@@ -16,10 +17,6 @@ defmodule Zig.Nif.Marshaller do
         }
 
   @return {:return, [], Elixir}
-
-  defp maybe_apply(function, argument, orelse \\ nil) do
-    if function, do: function.(argument), else: orelse
-  end
 
   def render(%{
         param_marshalling_macros: nil,
@@ -31,19 +28,25 @@ defmodule Zig.Nif.Marshaller do
   def render(nif) do
     name = nif.function.name
 
-    return_expr = maybe_apply(nif.return_marshalling_macro, @return, @return)
+    return_fn = nif.return_marshalling_macro
+    return_expr = if return_fn, do: return_fn.(@return), else: @return
 
     {args, arg_exprs_lists} =
       (nif.param_marshalling_macros || List.duplicate(nil, nif.function.arity))
       |> Enum.with_index(fn
-        maybe_func, index ->
+        maybe_expr_func, index ->
           arg = {:"arg#{index}", [], Elixir}
-          expr = maybe_apply(maybe_func, arg)
-          {arg, List.wrap(expr)}
+
+          assignment = if maybe_expr_func do
+            expr = maybe_expr_func.(arg, index)
+            quote do unquote(arg) = unquote(expr) end
+          end
+
+          {arg, List.wrap(assignment)}
       end)
       |> Enum.unzip()
 
-    arg_exprs = Enum.flat_map(arg_exprs_lists, &(&1))
+    arg_exprs = Enum.flat_map(arg_exprs_lists, & &1)
 
     param_error_clauses =
       case Enum.reduce(
@@ -79,6 +82,7 @@ defmodule Zig.Nif.Marshaller do
       end
 
     do_render(%__MODULE__{
+      type: nif.type,
       name: name,
       args: args,
       arg_exprs: arg_exprs,
@@ -90,7 +94,7 @@ defmodule Zig.Nif.Marshaller do
 
   defp do_render(r = %__MODULE__{param_error_clauses: nil}) do
     quote do
-      defp unquote(r.name)(unquote_splicing(r.args)) do
+      unquote(r.type)(unquote(r.name)(unquote_splicing(r.args))) do
         unquote_splicing(r.arg_exprs)
         unquote(@return) = unquote(r.entrypoint)(unquote_splicing(r.args))
         unquote(r.return_expr)
@@ -100,7 +104,7 @@ defmodule Zig.Nif.Marshaller do
 
   defp do_render(r) do
     quote do
-      defp unquote(r.name)(unquote_splicing(r.args)) do
+      unquote(r.type)(unquote(r.name)(unquote_splicing(r.args))) do
         unquote_splicing(r.arg_exprs)
         unquote(@return) = unquote(r.entrypoint)(unquote_splicing(r.args))
         unquote(r.return_expr)
