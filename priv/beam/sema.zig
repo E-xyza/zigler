@@ -32,12 +32,23 @@ fn streamEnum(stream: anytype, comptime e: std.builtin.Type.Enum, comptime T: ty
     try stream.endObject();
 }
 
+fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) !void {
+    try stream.beginObject();
+    try stream.objectField("type");
+    try stream.emitString("float");
+    try stream.objectField("bits");
+    try stream.emitNumber(f.bits);
+    try stream.endObject();
+}
+
 fn streamType(stream: anytype, comptime T: type) !void {
     switch (@typeInfo(T)) {
         .Int => |i|
             try streamInt(stream, i),
         .Enum => |e|
             try streamEnum(stream, e, T),
+        .Float => |f|
+            try streamFloat(stream, f),
         else =>
             try stream.emitString(std.fmt.comptimePrint("{}", .{T})),
     }

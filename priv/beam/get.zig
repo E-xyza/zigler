@@ -5,6 +5,7 @@ const std = @import("std");
 pub const Error = error {
     nif_argument_type_error,
     nif_argument_range_error,
+    nif_argument_enum_not_found_error,
     nif_marshalling_error  // this should really not happen.
 };
 
@@ -15,6 +16,7 @@ pub fn get(comptime T: type, env: beam.env, src: beam.term) !T {
     switch (@typeInfo(T)) {
         .Int => return get_int(T, env, src),
         .Enum => return get_enum(T, env, src),
+        .Float => return get_float(T, env, src),
         else => @panic("unknown type encountered"),
     }
 }
@@ -141,11 +143,57 @@ inline fn lowerInt(comptime T: type, result: anytype) !T {
 }
 
 pub fn get_enum(comptime T: type, env: beam.env, src: beam.term) !T {
-    const IntType = @typeInfo(T).Enum.tag_type;
-    // there is really nothing we can do if it gets sent in as something not
-    // an integer.
-    if (src.term_type(env) != .integer) return Error.nif_marshalling_error;
+    const enumInfo = @typeInfo(T).Enum;
+    const IntType = enumInfo.tag_type;
+    // prefer the integer form, fallback to string searches.
+    switch (src.term_type(env)) {
+        .integer =>
+            return @intToEnum(T, try get_int(IntType, env, src)),
+        .atom => {
+            // atoms cannot be longer than 256 characters.
+            var buf: [256]u8 = undefined;
+            const slice = try get_atom(env, src, &buf);
 
-    // retrieve it as the integer form.
-    return @intToEnum(T, try get_int(IntType, env, src));
+            inline for (enumInfo.fields) |field| {
+                if (std.mem.eql(u8, field.name[0..], slice)) return @field(T, field.name);
+            }
+            return Error.nif_argument_enum_not_found_error;
+        },
+        else => return Error.nif_argument_type_error
+    }
+}
+
+const FloatAtoms = enum {
+    infinity, neg_infinity, NaN
+};
+
+pub fn get_float(comptime T: type, env: beam.env, src: beam.term) !T {
+    // all floats in the beam are f64 types so this is a relatively easy
+    // job.
+    switch (src.term_type(env)) {
+        .float => {
+          var float: f64 = undefined;
+
+          // this is not failable.
+          _ = e.enif_get_double(env, src.v, &float);
+
+          return @floatCast(T, float);
+        },
+        .atom => {
+            const special_form = get_enum(FloatAtoms, env, src) catch return Error.nif_argument_type_error;
+            return switch (special_form) {
+                .infinity => std.math.inf(T),
+                .neg_infinity => - std.math.inf(T),
+                .NaN => std.math.nan(T),
+            };
+        },
+        else =>
+          return Error.nif_argument_type_error
+    }
+}
+
+pub fn get_atom(env: beam.env, src: beam.term, buf: *[256]u8) ![]u8 {
+    const len = @intCast(usize, e.enif_get_atom(env, src.v, buf, 256, e.ERL_NIF_LATIN1));
+    if (len == 0) return Error.nif_argument_type_error;
+    return buf[0..len - 1];
 }

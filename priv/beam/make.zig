@@ -15,8 +15,8 @@ pub fn make(env: beam.env, value: anytype) beam.term {
         .Enum => return make_enum(env, value),
         .ErrorSet => return make_error(env, value),
         .Null => return make_nil(env),
+        .Float => return make_float(env, value),
         else => {
-            std.debug.print("{}\n", .{@typeInfo(T)});
             @panic("unknown type encountered");
         },
     }
@@ -168,4 +168,12 @@ fn make_error(env: beam.env, value: anytype) beam.term {
     const tag_name = @errorName(value);
     const len: u32 = @truncate(u32, tag_name.len);
     return .{ .v = e.enif_make_atom_len(env, tag_name, len) };
+}
+
+fn make_float(env: beam.env, value: anytype) beam.term {
+    const floatval = @floatCast(f64, value);
+    if (std.math.isNan(value)) return make_enum(env, .NaN);
+    if (std.math.isPositiveInf(value)) return make_enum(env, .infinity);
+    if (std.math.isNegativeInf(value)) return make_enum(env, .neg_infinity);
+    return .{ .v = e.enif_make_double(env, floatval) };
 }

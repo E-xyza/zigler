@@ -1,5 +1,6 @@
 defprotocol Zig.Type do
   alias Zig.Type.Enum
+  alias Zig.Type.Float
   alias Zig.Type.Integer
 
   @type t :: Integer.t() | :env | :term
@@ -64,6 +65,9 @@ defprotocol Zig.Type do
 
       %{"type" => "enum"} ->
         Enum.from_json(json)
+
+      %{"type" => "float"} ->
+        Float.from_json(json)
     end
   end
 
