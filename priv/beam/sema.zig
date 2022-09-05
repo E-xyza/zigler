@@ -41,6 +41,34 @@ fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) !void {
     try stream.endObject();
 }
 
+fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime name: []const u8) !void {
+    try stream.beginObject();
+    try stream.objectField("name");
+    try stream.emitString(name);
+    try stream.objectField("type");
+    try stream.emitString("struct");
+    try stream.objectField("fields");
+    try stream.beginArray();
+    inline for (s.fields) |field| {
+        try stream.arrayElem();
+        try stream.beginObject();
+        try stream.objectField("name");
+        try stream.emitString(field.name);
+        try stream.objectField("type");
+        try streamType(stream, field.field_type);
+        if (field.default_value) |default_value| {
+            _ = default_value;
+            try stream.objectField("default");
+            try stream.emitString("not yet");
+        }
+        try stream.objectField("alignment");
+        try stream.emitNumber(field.alignment);
+        try stream.endObject();
+    }
+    try stream.endArray();
+    try stream.endObject();
+}
+
 fn streamType(stream: anytype, comptime T: type) !void {
     switch (@typeInfo(T)) {
         .Int => |i|
@@ -49,6 +77,8 @@ fn streamType(stream: anytype, comptime T: type) !void {
             try streamEnum(stream, e, T),
         .Float => |f|
             try streamFloat(stream, f),
+        .Struct => |s|
+            try streamStruct(stream, s, @typeName(T)),
         else =>
             try stream.emitString(std.fmt.comptimePrint("{}", .{T})),
     }

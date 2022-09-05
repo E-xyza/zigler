@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Make.MapTest do
+defmodule ZiglerTest.Make.StructTest do
   use ExUnit.Case, async: true
 
   use Zig,

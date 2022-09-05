@@ -14,8 +14,9 @@ pub fn make(env: beam.env, value: anytype) beam.term {
         .EnumLiteral => return make_enum_literal(env, value),
         .Enum => return make_enum(env, value),
         .ErrorSet => return make_error(env, value),
-        .Null => return make_nil(env),
+        .Null => return make_null(env),
         .Float => return make_float(env, value),
+        .Bool => return make_bool(env, value),
         else => {
             @panic("unknown type encountered");
         },
@@ -23,7 +24,7 @@ pub fn make(env: beam.env, value: anytype) beam.term {
 }
 
 // TODO: put this in the main namespace.
-fn make_nil(env: beam.env) beam.term {
+fn make_null(env: beam.env) beam.term {
     return .{ .v = e.enif_make_atom(env, "nil") };
 }
 
@@ -176,4 +177,12 @@ fn make_float(env: beam.env, value: anytype) beam.term {
     if (std.math.isPositiveInf(value)) return make_enum(env, .infinity);
     if (std.math.isNegativeInf(value)) return make_enum(env, .neg_infinity);
     return .{ .v = e.enif_make_double(env, floatval) };
+}
+
+fn make_bool(env: beam.env, value: bool) beam.term {
+    return make_into_atom(env, if (value) "true" else "false");
+}
+
+fn make_into_atom(env: beam.env, atom_string: []const u8) beam.term {
+    return .{.v = e.enif_make_atom_len(env, atom_string.ptr, atom_string.len)};
 }

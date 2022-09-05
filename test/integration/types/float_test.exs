@@ -6,7 +6,6 @@ defmodule ZiglerTest.Types.FloatTest do
     local_zig: true
 
   ~Z"""
-  const std = @import("std");
   pub fn f64_div2(value: f64) f64 { return value / 2; }
 
   pub fn f32_div2(value: f32) f32 { return value / 2; }

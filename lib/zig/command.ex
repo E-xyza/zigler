@@ -6,7 +6,6 @@ defmodule Zig.Command do
   `Zig.Builder` module.
   """
 
-  alias Zig.Builder
   alias Zig.Assembler
   alias Zig.Target
 

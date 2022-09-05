@@ -17,6 +17,8 @@ pub fn get(comptime T: type, env: beam.env, src: beam.term) !T {
         .Int => return get_int(T, env, src),
         .Enum => return get_enum(T, env, src),
         .Float => return get_float(T, env, src),
+        .Struct => return get_struct(T, env, src),
+        .Bool => return get_bool(T, env, src),
         else => @panic("unknown type encountered"),
     }
 }
@@ -196,4 +198,35 @@ pub fn get_atom(env: beam.env, src: beam.term, buf: *[256]u8) ![]u8 {
     const len = @intCast(usize, e.enif_get_atom(env, src.v, buf, 256, e.ERL_NIF_LATIN1));
     if (len == 0) return Error.nif_argument_type_error;
     return buf[0..len - 1];
+}
+
+pub fn get_struct(comptime T: type, env: beam.env, src: beam.term) !T {
+    var result: T = undefined;
+    switch (src.term_type(env)) {
+        .map => {
+            return result;
+        },
+        .list => {
+            return result;
+        },
+        .bitstring => {
+            return result;
+        },
+        else => return Error.nif_argument_type_error,
+    }
+    return Error.nif_argument_type_error;
+}
+
+pub fn get_bool(comptime T: type, env: beam.env, src: beam.term) !bool {
+    if (T != bool) @compileError("get_bool may only be called with the bool type");
+    switch (src.term_type(env)) {
+        .atom => {
+            var buf: [256]u8 = undefined;
+            const atom = try get_atom(env, src, &buf);
+            if (std.mem.eql(u8, "true", atom)) { return true; }
+            if (std.mem.eql(u8, "false", atom)) { return false; }
+            return Error.nif_argument_type_error;
+        },
+        else => return Error.nif_argument_type_error,
+    }
 }

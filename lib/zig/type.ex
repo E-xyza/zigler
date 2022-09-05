@@ -1,7 +1,9 @@
 defprotocol Zig.Type do
+  alias Zig.Type.Bool
   alias Zig.Type.Enum
   alias Zig.Type.Float
   alias Zig.Type.Integer
+  alias Zig.Type.Struct
 
   @type t :: Integer.t() | :env | :term
 
@@ -60,6 +62,9 @@ defprotocol Zig.Type do
       ".beam.term" ->
         :term
 
+      "bool" ->
+        Bool.from_json(json)
+
       %{"type" => "integer"} ->
         Integer.from_json(json)
 
@@ -68,6 +73,9 @@ defprotocol Zig.Type do
 
       %{"type" => "float"} ->
         Float.from_json(json)
+
+      %{"type" => "struct"} ->
+        Struct.from_json(json)
     end
   end
 
