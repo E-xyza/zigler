@@ -79,11 +79,11 @@ defmodule ZiglerTest.Types.StructTest do
     end
 
     test "missing default values in a map are tolerated" do
-      assert_raise %{value: 47}, "", fn -> default_struct_test(%{}) end
+      assert %{value: 48} == default_struct_test(%{})
     end
 
     test "missing default values in a keyword list are tolerated" do
-      assert_raise %{value: 47}, "", default_struct_test([])
+      assert %{value: 48} == default_struct_test([])
     end
 
     test "incorrect value types in a map are not tolerated" do
@@ -96,7 +96,7 @@ defmodule ZiglerTest.Types.StructTest do
   end
 
   ~Z"""
-  pub const packed_struct = struct {
+  pub const packed_struct = packed struct {
     flag: bool = false,
     name: [3]u8,
     thing: u5
@@ -111,8 +111,8 @@ defmodule ZiglerTest.Types.StructTest do
 
   describe "a packed struct" do
     test "can be delivered as a bitstring" do
-      assert %{flag: true, thing: 47, name: "foo"} = packed_struct_test(<<0::1, "foo"::binary, 47::5>>)
+      assert %{flag: false, thing: 15, name: "foo"} =
+               packed_struct_test(<<15::5, "oof"::binary, 1::1>>)
     end
   end
-
 end

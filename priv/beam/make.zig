@@ -183,6 +183,6 @@ fn make_bool(env: beam.env, value: bool) beam.term {
     return make_into_atom(env, if (value) "true" else "false");
 }
 
-fn make_into_atom(env: beam.env, atom_string: []const u8) beam.term {
+pub fn make_into_atom(env: beam.env, atom_string: []const u8) beam.term {
     return .{.v = e.enif_make_atom_len(env, atom_string.ptr, atom_string.len)};
 }

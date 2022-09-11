@@ -47,6 +47,11 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
     try stream.emitString(name);
     try stream.objectField("type");
     try stream.emitString("struct");
+    if (s.layout == .Packed) {
+        const OriginalType = @Type(.{.Struct = s});
+        try stream.objectField("packed_size");
+        try stream.emitNumber(@bitSizeOf(OriginalType));
+    }
     try stream.objectField("fields");
     try stream.beginArray();
     inline for (s.fields) |field| {
@@ -102,6 +107,8 @@ pub fn streamFun(stream: anytype, comptime name: anytype, fun: std.builtin.Type.
 
 pub fn streamModule(stream: anytype, comptime Mod: type) !void {
     const mod_info = @typeInfo(Mod).Struct;
+    try stream.beginObject();
+    try stream.objectField("functions");
     try stream.beginArray();
     inline for (mod_info.decls) |decl| {
         if (decl.is_pub) {
@@ -116,4 +123,28 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
         }
     }
     try stream.endArray();
+    //try stream.objectField("structs");
+    //try stream.beginArray();
+    //inline for (mod_info.decls) |decl| {
+    //    if (decl.is_pub) {
+    //        switch(@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
+    //            .Struct => {
+    //                try stream.arrayElem();
+    //                try stream.emitString(decl.name);
+    //            },
+    //            else => {}
+    //        }
+    //    }
+    //}
+    //try stream.endArray();
+    try stream.objectField("privates");
+    try stream.beginArray();
+    inline for (mod_info.decls) |decl| {
+        if (!decl.is_pub) {
+            try stream.arrayElem();
+            try stream.emitString(decl.name);
+        }
+    }
+    try stream.endArray();
+    try stream.endObject();
 }

@@ -1,4 +1,6 @@
 defmodule Zig.Type.Function do
+  # function gets an access behaviour so that it can be easily used in EEx
+  # files.
   @behaviour Access
 
   defstruct [:name, :arity, :params, :return]
@@ -44,4 +46,10 @@ defmodule Zig.Type.Function do
     list = Enum.map(params, &Type.param_errors/1)
     if Enum.any?(list), do: list, else: nil
   end
+
+  @impl true
+  def get_and_update(_, _, _), do: raise("you should not update a function")
+
+  @impl true
+  def pop(_, _), do: raise("you should not pop a function")
 end

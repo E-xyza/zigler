@@ -5,6 +5,8 @@ const std = @import("std");
 pub const Error = error {
     nif_argument_type_error,
     nif_argument_range_error,
+    nif_struct_field_error,
+    nif_struct_missing_field_error,
     nif_argument_enum_not_found_error,
     nif_marshalling_error  // this should really not happen.
 };
@@ -170,8 +172,7 @@ const FloatAtoms = enum {
 };
 
 pub fn get_float(comptime T: type, env: beam.env, src: beam.term) !T {
-    // all floats in the beam are f64 types so this is a relatively easy
-    // job.
+    // all floats in the beam are f64 types so this is relatively easy.
     switch (src.term_type(env)) {
         .float => {
           var float: f64 = undefined;
@@ -201,20 +202,122 @@ pub fn get_atom(env: beam.env, src: beam.term, buf: *[256]u8) ![]u8 {
 }
 
 pub fn get_struct(comptime T: type, env: beam.env, src: beam.term) !T {
+    const struct_info = @typeInfo(T).Struct;
     var result: T = undefined;
     switch (src.term_type(env)) {
         .map => {
+            var failed: bool = false;
+            // look for each of the fields:
+            inline for (struct_info.fields) |field| {
+                const F = field.field_type;
+                const field_atom = beam.make_into_atom(env, field.name);
+                var map_value: e.ErlNifTerm = undefined;
+                if (e.enif_get_map_value(env, src.v, field_atom.v, &map_value) == 1) {
+                    @field(result, field.name) = get(F, env, .{.v = map_value}) catch return Error.nif_struct_field_error;
+                } else {
+                    // note that this is a comptime if.
+                    if (field.default_value) |default_value| {
+                        @field(result, field.name) = @ptrCast(*const F, @alignCast(@alignOf(F), default_value)).*;
+                    } else {
+                        // can't return this directly due to compilation error.
+                        failed = true;
+                    }
+                }
+
+                if (failed) return Error.nif_struct_missing_field_error;
+            }
             return result;
         },
         .list => {
+            var head: e.ErlNifTerm = undefined;
+            var tail: e.ErlNifTerm = undefined;
+            var list: e.ErlNifTerm = src.v;
+            var tuple_buf: [2]beam.term = undefined;
+            var atom_buf: [256]u8 = undefined;
+            var registry: StructRegistry(T) = .{};
+
+            while (e.enif_get_list_cell(env, list, &head, &tail) == 1) : (list = tail) {
+                var item: beam.term = .{.v = head};
+                try get_tuple(env, item, &tuple_buf);
+                const key = tuple_buf[0];
+                const value = tuple_buf[1];
+                const atom_name = try get_atom(env, key, &atom_buf);
+
+                // scan the list of fields to see if we have found one.
+                scan_fields: inline for (struct_info.fields) |field| {
+                    if (std.mem.eql(u8, atom_name, field.name)) {
+                        @field(result, field.name) = try get(field.field_type, env, value);
+                        // label the registry as complete.
+                        @field(registry, field.name) = true;
+                        break :scan_fields;
+                    }
+                }
+            }
+
+            inline for (struct_info.fields) |field| {
+                // skip anything that was defined in the last section.
+                if (!@field(registry, field.name)) {
+                    const Tf = field.field_type;
+                    if (field.default_value) |defaultptr| {
+                        @field(result, field.name) = @ptrCast(*const Tf, @alignCast(@alignOf(Tf), defaultptr)).*;
+                    } else {
+                        return Error.nif_struct_missing_field_error;
+                    }
+                }
+            }
+
             return result;
         },
         .bitstring => {
-            return result;
+            if (struct_info.layout == .Packed) {
+                // the bitstring is going to be *padded*, so we need to take this into account.
+                var str_res: e.ErlNifBinary = undefined;
+                const bytes = bytesFor(T);
+                const String = [bytes]u8;
+
+                // This should fail if it's not a binary.  Note there isn't much we can do here because
+                // it is *supposed* to be marshalled into the nif.
+                if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return Error.nif_marshalling_error;
+
+                var buf: String = undefined;
+                std.mem.copy(u8, &buf, str_res.data[0..buf.len]);
+
+                var big_int = @bitCast(IntFor(bytes * 8), buf);
+                return @bitCast(T, @intCast(IntFor(@bitSizeOf(T)), big_int));
+            } else {
+                return Error.nif_argument_type_error;
+            }
         },
         else => return Error.nif_argument_type_error,
     }
     return Error.nif_argument_type_error;
+}
+
+pub fn get_tuple(env: beam.env, src: beam.term, buf: anytype) !void{
+    // compile-time type checking on the buf variable
+    const type_info = @typeInfo(@TypeOf(buf));
+    if (type_info != .Pointer) @compileError("get_tuple buffer must be a pointer to an array of beam.term");
+    if (type_info.Pointer.size != .One) @compileError("get_tuple buffer must be a pointer to an array of beam.term");
+    if (type_info.Pointer.sentinel != null) @compileError("get_tuple buffer must be a pointer to an array of beam.term");
+    if (type_info.Pointer.is_const) @compileError("get_tuple buffer must be a pointer to an array of beam.term");
+    const child_type_info = @typeInfo(type_info.Pointer.child);
+    if (child_type_info != .Array) @compileError("get_tuple buffer must be a pointer to an array of beam.term");
+    if (child_type_info.Array.child != beam.term) @compileError("get_tuple buffer must be a pointer to an array of beam.term");
+    // compile-time type checking on the buf variable
+
+    if (src.term_type(env) != .tuple) return Error.nif_argument_type_error;
+
+    var arity: c_int = undefined;
+    var src_array: [*c]e.ErlNifTerm = undefined;
+
+    const result = e.enif_get_tuple(env, src.v, &arity, &src_array);
+
+    if (result == 0) return Error.nif_argument_type_error;
+    if (arity != child_type_info.Array.len) return Error.nif_argument_type_error;
+
+    for (buf) | *slot, index | {
+        slot.* = .{.v = src_array[index]};
+    }
 }
 
 pub fn get_bool(comptime T: type, env: beam.env, src: beam.term) !bool {
@@ -229,4 +332,43 @@ pub fn get_bool(comptime T: type, env: beam.env, src: beam.term) !bool {
         },
         else => return Error.nif_argument_type_error,
     }
+}
+
+pub fn StructRegistry(comptime SourceStruct: type) type {
+    const source_info = @typeInfo(SourceStruct);
+    if (source_info != .Struct) @compileError("StructRegistry may only be called with a struct type");
+    const source_fields = source_info.Struct.fields;
+    const default = false;
+
+    var fields: [source_fields.len]std.builtin.Type.StructField = undefined;
+
+    for (source_fields) |source_field, index| {
+        fields[index] = .{
+            .name = source_field.name,
+            .field_type = bool,
+            .default_value = &default,
+            .is_comptime = false,
+            .alignment = @alignOf(*bool)
+        };
+    }
+
+    const decls = [0]std.builtin.Type.Declaration{};
+    const constructed_struct = std.builtin.Type.Struct{
+        .layout = .Auto,
+        .fields = fields[0..],
+        .decls = decls[0..],
+        .is_tuple = false,
+    };
+
+    return @Type(.{.Struct = constructed_struct});
+}
+
+fn bytesFor(comptime T: type) comptime_int {
+    const bitsize = @bitSizeOf(T);
+    return bitsize / 8 + if (bitsize % 8 == 0) 0 else 1;
+}
+
+// there's probably a std function for this.
+fn IntFor(comptime bits: comptime_int) type {
+    return @Type(.{.Int = .{.signedness = .unsigned, .bits = bits}});
 }

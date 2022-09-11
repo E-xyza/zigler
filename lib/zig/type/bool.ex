@@ -7,10 +7,11 @@ defmodule Zig.Type.Bool do
 
   def from_json(_), do: %__MODULE__{}
 
-  def to_string(float), do: "bool"
+  def to_string(_), do: "bool"
 
   def marshal_param(_), do: nil
   def marshal_return(_), do: nil
+
   def param_errors(_) do
     fn index ->
       [

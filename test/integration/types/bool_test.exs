@@ -18,7 +18,9 @@ defmodule ZiglerTest.Types.BoolTest do
     end
 
     test "non boolean types are not allowed" do
-      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: boolean\n     got: 1\n", fn -> bool_test(1) end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: boolean\n     got: 1\n",
+                   fn -> bool_test(1) end
     end
   end
 end
