@@ -1,90 +1,34 @@
 defmodule Zig.Parser do
-  @moduledoc """
-  Zigler still needs a parser to get line/file numbers of some things:
+  defstruct [:doc_comment]
 
-  - function declarations
-  - struct declarations
-  - documentation comments
-  - imports
-
-  In the long run, the need for this will be mitigated by access to ZIR/AIR.
-  """
-
+  require Pegasus
   import NimbleParsec
 
-  context_to_struct = post_traverse(empty(), :context_to_struct)
-  whitespace = ignore(ascii_string([?\n, ?\s], min: 1))
-  alpha = ascii_char([?a..?z, ?A..?Z, ?_])
-  alphanum = ascii_char([?a..?z, ?A..?Z, ?0..?9, ?_])
+  Pegasus.parser_from_file(Path.join(__DIR__, "grammar/grammar.y"),
+    container_doc_comment: [post_traverse: :container_doc_comment, tag: true, collect: true]
+  )
 
-  identifier =
-    alpha
-    |> repeat(alphanum)
-    |> post_traverse(:coalesce_args)
+  defparsecp :parser, post_traverse(empty(), :init) |> parsec(:Root)
 
-  function_decl =
-    string("fn")
-    |> concat(whitespace)
-    |> post_traverse(:purge)
-    |> concat(identifier)
-    |> post_traverse(:record_fun)
-
-  _ = function_decl
-
-  zig_file =
-    context_to_struct
-    |> optional(whitespace)
-    |> repeat(choice([function_decl, whitespace]))
-
-  defparsecp(:parse, zig_file)
-
-  @tested_parsers [identifier: identifier, function_decl: function_decl]
-
-  def parse_decls(content, opts) do
-    file_name = Keyword.fetch!(opts, :file)
-    case parse(content) do
-      {:ok, _, _, context, _, _} ->
-        Enum.map(context.items, &Enum.into([file: file_name], &1))
-
-      _ ->
-        raise CompileError, description: "something went wrong while parsing #{file_name}"
+  def parse(string) do
+    case parser(string) do
+      {:ok, _, "", parser, _, _} -> parser
     end
   end
 
-  defstruct items: []
+  # parser combinators
 
-  # generic tools
-  defp context_to_struct(content, args, _context, _, _) do
-    {content, args, %__MODULE__{}}
+  defp init(code, args, context, _, _) do
+    {code, args, struct(__MODULE__, context)}
   end
 
-  defp purge(content, _args, context, _, _) do
-    {content, [], context}
+  defp container_doc_comment(rest, [{:container_doc_comment, [comment]} | rest_args], context, _, _) do
+    doc_comment = comment
+    |> String.split("\n")
+    |> Enum.map(&String.trim_leading(&1, "//!"))
+    |> Enum.join("\n")
+
+    {rest, rest_args, %{context | doc_comment: doc_comment}}
   end
 
-  defp coalesce_args(rest, args, context, _, _) do
-    coalesced =
-      args
-      |> Enum.reverse()
-      |> IO.iodata_to_binary()
-
-    {rest, [coalesced], context}
-  end
-
-  # stateful tools for specific parts
-  defp record_fun(rest, [identifier], context, {line, _col}, _bytes) do
-    new_item = %{
-      type: :fun,
-      name: identifier,
-      line: line
-    }
-    {rest, [], %{context | items: [new_item | context.items]}}
-  end
-
-  # TESTING
-  if Mix.env() == :test do
-    for {fun, parser} <- @tested_parsers do
-      defparsec(fun, concat(context_to_struct, parser))
-    end
-  end
 end

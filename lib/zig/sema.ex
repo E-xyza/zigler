@@ -28,18 +28,17 @@ defmodule Zig.Sema do
       parsed_file =
         opts
         |> Keyword.fetch!(:file)
-        |> Parser.parse_decls()
+        |> Parser.parse
+
+      raise "foo"
 
       "nif." <> struct_name = name
 
-      {fn_file, fn_line} = Parser.get_decls(parsed_file, function.name)
-      {struct_file, struct_line} = Parser.get_decls(parsed_file, struct_name)
-
-      raise CompileError,
-        file: fn_file,
-        line: fn_line,
-        description:
-          "the function #{function.name} returns the struct #{struct_name} which is not public"
+      #raise CompileError,
+      #  file: fn_file,
+      #  line: fn_line,
+      #  description:
+      #    "the function #{function.name} returns the struct #{struct_name} which is not public"
     end
 
     function

@@ -84,25 +84,29 @@ defprotocol Zig.Type do
   def to_zig(:term), do: "beam.term"
   def to_zig(type), do: to_string(type)
 
-  defmacro __using__(_) do
+  defmacro __using__(opts) do
     module = __CALLER__.module
 
-    quote do
+    inspect? = Keyword.get(opts, :inspect?, true)
+
+    quote bind_quoted: [inspect?: inspect?, module: module] do
       import Inspect.Algebra
       import Kernel, except: [to_string: 1]
 
       defimpl String.Chars do
-        defdelegate to_string(type), to: unquote(module)
+        defdelegate to_string(type), to: module
       end
 
-      defimpl Inspect do
-        defdelegate inspect(type, opts), to: unquote(module)
+      if inspect? do
+        defimpl Inspect do
+          defdelegate inspect(type, opts), to: module
+        end
       end
 
       defimpl Zig.Type do
-        defdelegate marshal_param(type), to: unquote(module)
-        defdelegate marshal_return(type), to: unquote(module)
-        defdelegate param_errors(type), to: unquote(module)
+        defdelegate marshal_param(type), to: module
+        defdelegate marshal_return(type), to: module
+        defdelegate param_errors(type), to: module
       end
     end
   end

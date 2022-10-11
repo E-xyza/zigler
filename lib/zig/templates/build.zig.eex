@@ -32,7 +32,7 @@ pub fn build(b: *Builder) void {
                           .minor = <%= @version.minor %>,
                           .patch = <%= @version.patch %>}});
 
-    lib.addSystemIncludeDir(beam_system_dir);
+    lib.addSystemIncludePath(beam_system_dir);
     lib.linkLibC();
     lib.addPackage(erl_nif_pkg);
     lib.addPackage(beam_pkg);
@@ -44,7 +44,7 @@ pub fn build(b: *Builder) void {
     lib.install();
 
     const exe = b.addExecutable("sema", "sema.zig");
-    exe.addSystemIncludeDir(beam_system_dir);
+    exe.addSystemIncludePath(beam_system_dir);
     exe.linkLibC();
     exe.addPackage(erl_nif_pkg);
     exe.addPackage(beam_pkg);
