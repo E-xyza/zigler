@@ -61,7 +61,7 @@ defmodule Zigler.MixProject do
   def application, do: [extra_applications: [:logger, :inets]]
 
   defp elixirc_paths(:dev), do: ["lib"]
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:test), do: ["lib", "test/_support"]
   defp elixirc_paths(_), do: ["lib"]
 
   defp test_alias do
