@@ -23,5 +23,15 @@ defmodule ZiglerTest.Parser.FileTest do
         code: %Block{code: []}
       }, parser(~S(test "foobar" {})))
     end
+
+    test "parse a test with a doc comment" do
+      assert_arg(%TestDecl{
+        name: "foobar",
+        comment: " this is a test\n"
+      }, parser("""
+      /// this is a test
+      test "foobar" {}
+      """))
+    end
   end
 end

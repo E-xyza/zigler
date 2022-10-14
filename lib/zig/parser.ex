@@ -17,6 +17,7 @@ defmodule Zig.Parser do
 
   @parser_options [
     container_doc_comment: [post_traverse: :container_doc_comment, tag: true, collect: true],
+    doc_comment: [post_traverse: :doc_comment, tag: true, collect: true],
     TestDecl: [tag: TestDecl, post_traverse: {TestDecl, :post_traverse, []}, export: @test],
     skip: [ignore: true],
     STRINGLITERALSINGLE: [tag: true, post_traverse: :string_literal_single, collect: true],
@@ -40,12 +41,19 @@ defmodule Zig.Parser do
   end
 
   defp container_doc_comment(rest, [{:container_doc_comment, [comment]} | rest_args], context, _, _) do
-    doc_comment = comment
-    |> String.split("\n")
-    |> Enum.map(&String.trim_leading(&1, "//!"))
-    |> Enum.join("\n")
+    {rest, rest_args, %{context | doc_comment: trim_doc_comment(comment, "//!")}}
+  end
 
-    {rest, rest_args, %{context | doc_comment: doc_comment}}
+  defp doc_comment(rest, [{:doc_comment, [comment]} | rest_args], context, _, _) do
+    {rest, [{:doc_comment, trim_doc_comment(comment, "///")} |rest_args], context}
+  end
+
+  defp trim_doc_comment(comment, separator) do
+    comment
+    |> String.split("\n")
+    |> Enum.map(&String.trim/1)
+    |> Enum.map(&String.trim_leading(&1, separator))
+    |> Enum.join("\n")
   end
 
   defp string_literal_single(rest, [{:STRINGLITERALSINGLE, [literal]} | rest_args], context, _, _) do

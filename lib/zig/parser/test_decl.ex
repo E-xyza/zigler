@@ -1,7 +1,7 @@
 defmodule Zig.Parser.TestDecl do
 
   @enforce_keys [:linecol]
-  defstruct @enforce_keys ++ [:name, code: []]
+  defstruct @enforce_keys ++ [:name, :comment, code: []]
 
   alias Zig.Parser.Block
 
@@ -15,5 +15,11 @@ defmodule Zig.Parser.TestDecl do
 
   defp structure([:test, name, block = %Block{}], linecol) when is_binary(name) do
     %__MODULE__{linecol: linecol, code: block, name: name}
+  end
+
+  defp structure([{:doc_comment, comment} | rest], linecol) do
+    rest
+    |> structure(linecol)
+    |> Map.put(:comment, comment)
   end
 end
