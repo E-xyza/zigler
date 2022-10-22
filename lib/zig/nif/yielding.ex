@@ -143,6 +143,12 @@ defmodule Zig.Nif.Yielding do
       // mark the resource for releasing here.
       __resource__.release(#{frame_ptr(nif.name)}, env, frame_resource);
 
+      var exception_reason: beam.term = undefined;
+      if (e.enif_has_pending_exception(yield_env, &exception_reason) == 1) {
+        // Propagate exceptions from yield_env
+        return e.enif_raise_exception(env, exception_reason);
+      }
+
       if (beam.yield_info.?.yield_frame) | _ | {
         return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler(nif.name)}, 1, &frame_resource);
       } else {
