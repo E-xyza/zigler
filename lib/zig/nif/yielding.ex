@@ -152,14 +152,16 @@ defmodule Zig.Nif.Yielding do
       if (beam.yield_info.?.yield_frame) | _ | {
         return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler(nif.name)}, 1, &frame_resource);
       } else {
-        if (beam_frame.yield_info.errored) {
-          // is this correct?  Should we be only copying if it's errored?  Or should we
-          // be copying depending on what the datatype is?
 
-          const __response = e.enif_make_copy(env, beam_frame.yield_info.response);
+        // The response was created using yield_env, so it has to be copied back in the process env
+        // TODO: this does not cover lists and maps, because enif_make_copy will just take care
+        // of copying the outer term but the inner terms will still point to the old env
+        const __response = e.enif_make_copy(env, beam_frame.yield_info.response);
+
+        if (beam_frame.yield_info.errored) {
           return e.enif_raise_exception(env, __response);
         } else {
-          return beam_frame.yield_info.response;
+          return __response;
         }
       }
     }
