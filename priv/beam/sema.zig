@@ -89,7 +89,7 @@ fn streamType(stream: anytype, comptime T: type) !void {
     }
 }
 
-pub fn streamFun(stream: anytype, comptime name: anytype, fun: std.builtin.Type.Fn) !void {
+pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.Fn) !void {
     try stream.beginObject();
     try stream.objectField("name");
     try stream.emitString(name);
@@ -120,29 +120,6 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
                 // do something about types.
                 else => {}
             }
-        }
-    }
-    try stream.endArray();
-    //try stream.objectField("structs");
-    //try stream.beginArray();
-    //inline for (mod_info.decls) |decl| {
-    //    if (decl.is_pub) {
-    //        switch(@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
-    //            .Struct => {
-    //                try stream.arrayElem();
-    //                try stream.emitString(decl.name);
-    //            },
-    //            else => {}
-    //        }
-    //    }
-    //}
-    //try stream.endArray();
-    try stream.objectField("privates");
-    try stream.beginArray();
-    inline for (mod_info.decls) |decl| {
-        if (!decl.is_pub) {
-            try stream.arrayElem();
-            try stream.emitString(decl.name);
         }
     }
     try stream.endArray();

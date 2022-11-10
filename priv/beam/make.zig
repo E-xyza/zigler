@@ -85,7 +85,7 @@ fn make_int(env: beam.env, value: anytype) beam.term {
                 var buf = e.enif_make_new_binary(env, buf_size, &result);
 
                 // transfer content.
-                std.mem.copy(u8, buf.?[0..buf_size], @ptrCast([*]u8, &intermediate)[0..buf_size]);
+                std.mem.copy(u8, buf[0..buf_size], @ptrCast([*]u8, &intermediate)[0..buf_size]);
 
                 return .{ .v = result };
             },
@@ -117,7 +117,6 @@ const EMPTY_TUPLE_LIST = [_]beam.term{};
 
 fn make_struct(env: beam.env, value: anytype) beam.term {
     const struct_info = @typeInfo(@TypeOf(value)).Struct;
-    _ = env;
     if (struct_info.is_tuple) {
         if (value.len > 16_777_215) {
             @compileError("The tuple size is too large for the erlang virtual machine");
@@ -157,18 +156,17 @@ fn make_enum_literal(env: beam.env, value: anytype) beam.term {
     if (tag_name.len > 255) {
         @compileError("the length of this enum literal is too large for the erlang virtual machine");
     }
-    return .{ .v = e.enif_make_atom_len(env, tag_name, tag_name.len) };
+    return make_into_atom(env, tag_name);
 }
 
 fn make_enum(env: beam.env, value: anytype) beam.term {
     const tag_name = @tagName(value);
-    return .{ .v = e.enif_make_atom_len(env, tag_name, tag_name.len) };
+    return make_into_atom(env, tag_name);
 }
 
 fn make_error(env: beam.env, value: anytype) beam.term {
     const tag_name = @errorName(value);
-    const len: u32 = @truncate(u32, tag_name.len);
-    return .{ .v = e.enif_make_atom_len(env, tag_name, len) };
+    return make_into_atom(env, tag_name);
 }
 
 fn make_float(env: beam.env, value: anytype) beam.term {

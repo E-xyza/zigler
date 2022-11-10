@@ -3,8 +3,7 @@ defmodule ZiglerTest.Make.ElixirStructTest do
 
   use Zig,
     otp_app: :zigler,
-    import: [structs: [NaiveDateTime]],
-    local_zig: true
+    import: [structs: [NaiveDateTime]]
 
   ~Z"""
   const beam = @import("beam");

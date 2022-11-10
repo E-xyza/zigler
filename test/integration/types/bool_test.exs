@@ -2,8 +2,7 @@ defmodule ZiglerTest.Types.BoolTest do
   use ExUnit.Case, async: true
 
   use Zig,
-    otp_app: :zigler,
-    local_zig: true
+    otp_app: :zigler
 
   ~Z"""
   pub fn bool_test(b: bool) bool {

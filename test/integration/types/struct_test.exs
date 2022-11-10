@@ -2,8 +2,7 @@ defmodule ZiglerTest.Types.StructTest do
   use ExUnit.Case, async: true
 
   use Zig,
-    otp_app: :zigler,
-    local_zig: true
+    otp_app: :zigler
 
   # TODO: validations that the structs are defined "pub"
 
@@ -92,27 +91,6 @@ defmodule ZiglerTest.Types.StructTest do
 
     test "incorrect value types in a keyword list are not tolerated" do
       assert_raise ArgumentError, "", fn -> default_struct_test(value: "foo") end
-    end
-  end
-
-  ~Z"""
-  pub const packed_struct = packed struct {
-    flag: bool = false,
-    name: [3]u8,
-    thing: u5
-  };
-
-  pub fn packed_struct_test(s: packed_struct) packed_struct {
-    var result = s;
-    result.flag = !s.flag;
-    return result;
-  }
-  """
-
-  describe "a packed struct" do
-    test "can be delivered as a bitstring" do
-      assert %{flag: false, thing: 15, name: "foo"} =
-               packed_struct_test(<<15::5, "oof"::binary, 1::1>>)
     end
   end
 end

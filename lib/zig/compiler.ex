@@ -8,21 +8,13 @@ defmodule Zig.Compiler do
   alias Zig.Assembler
   alias Zig.Command
   alias Zig.Nif
+  alias Zig.Parser
   alias Zig.Sema
 
   defmacro __before_compile__(context) do
     # TODO: verify that :otp_app exists
     this_dir = Path.dirname(context.file)
     module_nif_zig = Path.join(this_dir, ".#{context.module}.zig")
-
-    opts =
-      context.module
-      |> Module.get_attribute(:zigler_opts)
-      |> Keyword.put(:file, module_nif_zig)
-
-    assembled = Keyword.get(opts, :assemble, true)
-    precompiled = Keyword.get(opts, :precompile, true)
-    compiled = Keyword.get(opts, :compile, true)
 
     # obtain the code
     code =
@@ -32,6 +24,17 @@ defmodule Zig.Compiler do
       |> Enum.join()
 
     File.write!(module_nif_zig, code)
+
+    parsed = Zig.Parser.parse(code)
+
+    opts =
+      context.module
+      |> Module.get_attribute(:zigler_opts)
+      |> Keyword.merge(file: module_nif_zig, parsed: parsed)
+
+    assembled = Keyword.get(opts, :assemble, true)
+    precompiled = Keyword.get(opts, :precompile, true)
+    compiled = Keyword.get(opts, :compile, true)
 
     directory = Assembler.directory(context.module)
 

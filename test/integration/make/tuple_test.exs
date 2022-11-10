@@ -2,8 +2,7 @@ defmodule ZiglerTest.Make.TupleTest do
   use ExUnit.Case, async: true
 
   use Zig,
-    otp_app: :zigler,
-    local_zig: true
+    otp_app: :zigler
 
   ~Z"""
   const beam = @import("beam");

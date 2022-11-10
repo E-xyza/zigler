@@ -79,9 +79,9 @@ defmodule Zigler.MixProject do
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       # zigler's parsing is done using nimble_parsec
       {:nimble_parsec, "~> 1.2.3", runtime: false},
-      {:pegasus, "~> 0.2.0", runtime: false},
       # to parse the zig JSON
       {:jason, "~> 1.1"},
+      {:zig_parser, "~> 0.1"},
       # documentation
       {:ex_doc, "~> 0.23", runtime: false}
     ]

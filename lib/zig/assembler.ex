@@ -5,7 +5,6 @@ defmodule Zig.Assembler do
   The staging directory contains:
 
   - `build.zig` for the library file.
-  - `<MODULE_NAME>.zig` which is the library file.
   """
 
   alias Zig.Builder

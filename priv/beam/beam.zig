@@ -148,6 +148,5 @@ pub const term = struct {
 // generics
 
 pub const get = @import("get.zig").get;
-
 pub const make = @import("make.zig").make;
 pub const make_into_atom = @import("make.zig").make_into_atom;

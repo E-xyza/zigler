@@ -2,8 +2,7 @@ defmodule ZiglerTest.Types.EnumTest do
   use ExUnit.Case, async: true
 
   use Zig,
-    otp_app: :zigler,
-    local_zig: true
+    otp_app: :zigler
 
   ~Z"""
   pub const EnumType = enum{ foo, bar };

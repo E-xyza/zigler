@@ -7,16 +7,16 @@ defprotocol Zig.Type do
 
   @type t :: Integer.t() | :env | :term
 
-  @spec marshal_param(t) :: (Macro.t(), index :: non_neg_integer -> Macro.t())
+  @spec marshal_param(t) :: (Macro.t(), index :: non_neg_integer -> Macro.t()) | nil
   @doc "elixir-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
   def marshal_param(type)
 
-  @spec marshal_return(t) :: (Macro.t() -> Macro.t())
+  @spec marshal_return(t) :: (Macro.t() -> Macro.t()) | nil
   @doc "elixir-side type conversions that might be necessary to get a zig return into an elixir return"
   def marshal_return(type)
 
   @doc "generates clauses to trap errors and convert them to expected errors"
-  @spec param_errors(t) :: (integer -> [Macro.t()])
+  @spec param_errors(t) :: (integer -> [Macro.t()]) | nil
   def param_errors(type)
 
   import Kernel
@@ -53,13 +53,13 @@ defprotocol Zig.Type do
 
   def from_json(json) do
     case json do
-      "?*.beam.stub_erl_nif.ErlNifEnv" ->
+      "?*stub_erl_nif.ErlNifEnv" ->
         :env
 
-      ".beam.stub_erl_nif.ERL_NIF_TERM" ->
+      "stub_erl_nif.ERL_NIF_TERM" ->
         :erl_nif_term
 
-      ".beam.term" ->
+      %{"type" => "struct", "name" => "beam.term"} ->
         :term
 
       "bool" ->

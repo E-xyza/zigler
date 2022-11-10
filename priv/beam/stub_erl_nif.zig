@@ -162,7 +162,7 @@ pub fn enif_is_ref(_: env, _: term) c_int { return 0; }
 pub fn enif_is_tuple(_: env, _: term) c_int { return 0; }
 pub fn enif_keep_resource(_: ?*anyopaque) c_int { return 0; }
 pub fn enif_make_atom(_: env, _: [*c]const u8) term { return .{}; }
-pub fn enif_make_atom_len(_: env, _: [*c]const u8, _: isize) term { return .{}; }
+pub fn enif_make_atom_len(_: env, _: [*c]const u8, _: usize) term { return .{}; }
 pub fn enif_make_badarg(_: env) term { return .{}; }
 pub fn enif_make_binary(_: env, _: bin) term { return .{}; }
 pub fn enif_make_copy(_: env, _: term) term { return .{}; }
