@@ -3,14 +3,16 @@ defmodule Zig.Type.Enum do
 
   defstruct [:tags, :name]
 
-  def from_json(%{"tags" => tags, "name" => "." <> name}) do
+  def from_json(%{"tags" => tags, "name" => name}, module) do
     %__MODULE__{
       tags: Map.new(tags, fn {key, val} -> {String.to_atom(key), val} end),
-      name: name
+      name: String.trim_leading(name, ".#{module}.")
     }
   end
 
-  def to_string(%{name: name}), do: name
+  def to_string(enum), do: enum.name
+
+  def to_call(enum), do: "nif." <> enum.name
 
   def inspect(enum, opts) do
     ~s(%Zig.Type.Enum{name: "#{enum.name}", tags: #{Kernel.inspect(enum.tags, opts)}})
@@ -48,8 +50,7 @@ defmodule Zig.Type.Enum do
   @arg {:arg, [], Elixir}
 
   def param_errors(enum) do
-    # for human reading, drop the nif. which is necessary for code
-    "nif." <> type_str = to_string(enum)
+    type_str = to_string(enum)
 
     tags =
       enum.tags

@@ -20,8 +20,7 @@ defmodule Zig.Sema do
 
     Enum.map(functions, fn function ->
       function
-      |> Type.Function.from_json()
-      |> Type.Function.scrub_structs(module)
+      |> Type.Function.from_json(module)
       |> raise_if_private!(opts)
     end)
   end
@@ -35,15 +34,21 @@ defmodule Zig.Sema do
 
   defp raise_if_private!(%Struct{name: name}, function_name, verb, opts) do
     parsed = opts[:parsed]
+
     case Analyzer.info_for(parsed, name) do
       {:const, %{pub: false, position: const_position}, _} ->
         {:fn, fn_opts, _} = Analyzer.info_for(parsed, Atom.to_string(function_name))
-        {fn_file, fn_line} = Analyzer.translate_location(parsed, opts[:file], fn_opts.position.line)
+
+        {fn_file, fn_line} =
+          Analyzer.translate_location(parsed, opts[:file], fn_opts.position.line)
+
         {st_file, st_line} = Analyzer.translate_location(parsed, opts[:file], const_position.line)
+
         raise CompileError,
           file: fn_file,
           line: fn_line,
-          description: "the function `#{function_name}` #{verb} the struct `#{name}` which is not public (defined at #{st_file}:#{st_line})"
+          description:
+            "the function `#{function_name}` #{verb} the struct `#{name}` which is not public (defined at #{st_file}:#{st_line})"
 
       _ ->
         :ok
@@ -51,5 +56,4 @@ defmodule Zig.Sema do
   end
 
   defp raise_if_private!(_, _, _, _), do: :ok
-
 end

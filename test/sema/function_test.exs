@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Sema.FunctionTest do
   use ExUnit.Case, async: true
 
+  @moduletag :skip
+
   use Zig,
     precompile: false
 

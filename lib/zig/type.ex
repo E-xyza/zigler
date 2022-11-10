@@ -5,7 +5,7 @@ defprotocol Zig.Type do
   alias Zig.Type.Integer
   alias Zig.Type.Struct
 
-  @type t :: Integer.t() | :env | :term
+  @type t :: Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :term
 
   @spec marshal_param(t) :: (Macro.t(), index :: non_neg_integer -> Macro.t()) | nil
   @doc "elixir-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
@@ -18,6 +18,9 @@ defprotocol Zig.Type do
   @doc "generates clauses to trap errors and convert them to expected errors"
   @spec param_errors(t) :: (integer -> [Macro.t()]) | nil
   def param_errors(type)
+
+  @spec to_call(t) :: String.t()
+  def to_call(type)
 
   import Kernel
 
@@ -51,7 +54,7 @@ defprotocol Zig.Type do
     end
   end
 
-  def from_json(json) do
+  def from_json(json, module) do
     case json do
       "?*stub_erl_nif.ErlNifEnv" ->
         :env
@@ -69,20 +72,20 @@ defprotocol Zig.Type do
         Integer.from_json(json)
 
       %{"type" => "enum"} ->
-        Enum.from_json(json)
+        Enum.from_json(json, module)
 
       %{"type" => "float"} ->
         Float.from_json(json)
 
       %{"type" => "struct"} ->
-        Struct.from_json(json)
+        Struct.from_json(json, module)
     end
   end
 
   @spec to_zig(t) :: String.t()
   def to_zig(:env), do: "beam.env"
   def to_zig(:term), do: "beam.term"
-  def to_zig(type), do: to_string(type)
+  def to_zig(type), do: to_call(type)
 
   defmacro __using__(opts) do
     module = __CALLER__.module
@@ -107,6 +110,7 @@ defprotocol Zig.Type do
         defdelegate marshal_param(type), to: module
         defdelegate marshal_return(type), to: module
         defdelegate param_errors(type), to: module
+        defdelegate to_call(type), to: module
       end
     end
   end

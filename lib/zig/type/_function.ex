@@ -16,8 +16,8 @@ defmodule Zig.Type.Function do
           return: Type.t()
         }
 
-  def from_json(%{"name" => name, "params" => params, "return" => return}) do
-    params = Enum.map(params, &Type.from_json/1)
+  def from_json(%{"name" => name, "params" => params, "return" => return}, module) do
+    params = Enum.map(params, &Type.from_json(&1, module))
 
     arity =
       case params do
@@ -29,7 +29,7 @@ defmodule Zig.Type.Function do
       name: String.to_atom(name),
       arity: arity,
       params: params,
-      return: Type.from_json(return)
+      return: Type.from_json(return, module)
     }
   end
 
@@ -52,21 +52,4 @@ defmodule Zig.Type.Function do
 
   @impl true
   def pop(_, _), do: raise("you should not pop a function")
-
-  # eliminates module prefix from
-  def scrub_structs(function, module) do
-    %{
-      function
-      | params: Enum.map(function.params, &scrub_struct(&1, module)),
-        return: scrub_struct(function.return, module)
-    }
-  end
-
-  alias Zig.Type.Struct
-
-  def scrub_struct(struct = %Struct{}, module) do
-    %{struct | name: String.trim_leading(struct.name, ".#{module}.")}
-  end
-
-  def scrub_struct(non_struct, _), do: non_struct
 end

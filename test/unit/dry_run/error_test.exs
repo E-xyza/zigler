@@ -1,29 +1,30 @@
 defmodule ZiglerTest.DryRunErrorTest do
   use ExUnit.Case, async: true
 
+  @moduletag :skip
   @moduletag :dry_run
 
-  defmodule ZeroArityError do
-    use Zig, link_libc: true
-
-    ~Z"""
-    /// nif: void_error/1
-    fn void_error(input: i64) !void {
-      if (input != 47) {
-        return error.BadInput;
-      }
-    }
-    """
-  end
-
-  defmodule NoError do
-    use Zig
-
-    ~Z"""
-    /// nif: void/0
-    fn void() void {}
-    """
-  end
+  # defmodule ZeroArityError do
+  #  use Zig, link_libc: true
+  #
+  #  ~Z"""
+  #  /// nif: void_error/1
+  #  fn void_error(input: i64) !void {
+  #    if (input != 47) {
+  #      return error.BadInput;
+  #    }
+  #  }
+  #  """
+  # end
+  #
+  # defmodule NoError do
+  #  use Zig
+  #
+  #  ~Z"""
+  #  /// nif: void/0
+  #  fn void() void {}
+  #  """
+  # end
 
   @zig_error_module __MODULE__.ZeroArityError.ZigError
 

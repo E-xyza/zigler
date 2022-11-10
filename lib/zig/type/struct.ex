@@ -9,9 +9,9 @@ defmodule Zig.Type.Struct do
           packed: nil | non_neg_integer()
         }
 
-  def from_json(json = %{"name" => name}) do
+  def from_json(json = %{"name" => name}, module) do
     %__MODULE__{
-      name: name,
+      name: String.trim_leading(name, ".#{module}."),
       packed: Map.get(json, "packed_size")
     }
   end
@@ -40,5 +40,7 @@ defmodule Zig.Type.Struct do
 
   def param_errors(_), do: nil
 
-  def to_string(struct), do: "nif." <> struct.name
+  def to_string(struct), do: struct.name
+
+  def to_call(struct), do: "nif." <> struct.name
 end

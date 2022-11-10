@@ -8,6 +8,7 @@ defmodule Zig.Type.Bool do
   def from_json(_), do: %__MODULE__{}
 
   def to_string(_), do: "bool"
+  def to_call(_), do: "bool"
 
   def marshal_param(_), do: nil
   def marshal_return(_), do: nil

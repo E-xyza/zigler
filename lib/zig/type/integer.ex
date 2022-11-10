@@ -45,6 +45,8 @@ defmodule Zig.Type.Integer do
     end
   end
 
+  def to_call(integer), do: to_string(integer)
+
   def inspect(type, _opts) do
     concat(["~t(", to_string(type), ")"])
   end

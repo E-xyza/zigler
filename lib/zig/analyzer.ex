@@ -13,17 +13,25 @@ defmodule Zig.Analyzer do
     Enum.find(ast, fn
       {:const, _, {name, _, _}} ->
         name_str = Atom.to_string(name)
+
         case {head == name_str, rest} do
-          {true, []} -> true
+          {true, []} ->
+            true
+
           {true, _} ->
             find(ast, rest)
-          _ -> nil
+
+          _ ->
+            nil
         end
+
       {:fn, _, parts} when rest == [] ->
         if name = parts[:name] do
           Atom.to_string(name) == head
         end
-      _ -> nil
+
+      _ ->
+        nil
     end)
   end
 
@@ -32,7 +40,8 @@ defmodule Zig.Analyzer do
   end
 
   defp location_search([{_, %{line: this_line}} | _], line, last)
-    when this_line > line, do: last
+       when this_line > line,
+       do: last
 
   defp location_search([{" ref " <> ref, %{line: this_line}} | rest], line, _) do
     [file, lineoffset] = String.split(ref, ":")

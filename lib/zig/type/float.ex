@@ -8,6 +8,7 @@ defmodule Zig.Type.Float do
   def from_json(%{"bits" => bits}), do: %__MODULE__{bits: bits}
 
   def to_string(float), do: "f#{float.bits}"
+  def to_call(float), do: "f#{float.bits}"
 
   def marshal_param(_), do: nil
   def marshal_return(_), do: nil
