@@ -61,10 +61,12 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
         try stream.emitString(field.name);
         try stream.objectField("type");
         try streamType(stream, field.field_type);
+        try stream.objectField("required");
         if (field.default_value) |default_value| {
             _ = default_value;
-            try stream.objectField("default");
-            try stream.emitString("not yet");
+            try stream.emitBool(false);
+        } else {
+            try stream.emitBool(true);
         }
         try stream.objectField("alignment");
         try stream.emitNumber(field.alignment);

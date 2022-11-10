@@ -30,16 +30,16 @@ defmodule ZiglerTest.DryRunTest do
     assert_raise RuntimeError, fn -> BasicZeroArity.zeroarity() end
   end
 
-  #defmodule BasicFortySeven do
+  # defmodule BasicFortySeven do
   #  use Zig
-#
+  #
   #  ~Z"""
   #  /// nif: fortyseven/1
   #  fn fortyseven(foo: i64) i64 {
   #    return foo + 47;
   #  }
   #  """
-  #end
+  # end
 
   test "the fortyseven function exists" do
     assert [module = %{}] = BasicFortySeven.__info__(:attributes)[:zigler]

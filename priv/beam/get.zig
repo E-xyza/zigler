@@ -245,7 +245,7 @@ pub fn get_struct(comptime T: type, env: beam.env, src: beam.term) !T {
                 // scan the list of fields to see if we have found one.
                 scan_fields: inline for (struct_info.fields) |field| {
                     if (std.mem.eql(u8, atom_name, field.name)) {
-                        @field(result, field.name) = try get(field.field_type, env, value);
+                        @field(result, field.name) = get(field.field_type, env, value) catch return GetError.nif_struct_field_error;
                         // label the registry as complete.
                         @field(registry, field.name) = true;
                         break :scan_fields;

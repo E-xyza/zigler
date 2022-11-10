@@ -2,17 +2,22 @@ defmodule Zig.Type.Struct do
   use Zig.Type
 
   @derive Inspect
-  defstruct [:name, :packed]
+  defstruct [:name, :packed, :required, :optional]
 
   @type t :: %{
           name: String.t(),
           packed: nil | non_neg_integer()
         }
 
-  def from_json(json = %{"name" => name}, module) do
+  def from_json(json = %{"name" => name, "fields" => fields}, module) do
+    {required, optional} = Enum.split_with(fields, & &1["required"])
+    to_field = fn desc -> String.to_atom(desc["name"]) end
+
     %__MODULE__{
       name: String.trim_leading(name, ".#{module}."),
-      packed: Map.get(json, "packed_size")
+      packed: Map.get(json, "packed_size"),
+      required: Enum.map(required, to_field),
+      optional: Enum.map(optional, to_field)
     }
   end
 
@@ -38,7 +43,68 @@ defmodule Zig.Type.Struct do
 
   def marshal_return(_), do: nil
 
-  def param_errors(_), do: nil
+  def param_errors(type) do
+    type_str = to_string(type)
+
+    fn index ->
+      [
+        {{:nif_struct_missing_field_error, index},
+         quote do
+           case __STACKTRACE__ do
+             [{_m, _f, args, _opts}, {m, f, _, opts} | rest] ->
+               # obtain the argument at index
+               arg_keys =
+                 args
+                 |> Enum.at(unquote(index))
+                 |> case do
+                   map when is_map(map) ->
+                     Map.keys(map)
+
+                   list when is_list(list) ->
+                     Keyword.keys(list)
+                 end
+
+               missing_key = List.first(unquote(type.required) -- arg_keys)
+
+               new_opts =
+                 Keyword.merge(opts,
+                   error_info: %{module: __MODULE__, function: :_format_error},
+                   zigler_error: %{
+                    unquote(index + 1) =>
+                      "\n\n     expected argument of type `#{unquote(type_str)}` to have field #{inspect missing_key}"
+                    }
+                 )
+
+               :erlang.raise(:error, :badarg, [{m, f, args, new_opts} | rest])
+
+             stacktrace ->
+               :erlang.raise(:error, :badarg, stacktrace)
+           end
+         end},
+
+
+         {{:nif_struct_field_error, index},
+         quote do
+           case __STACKTRACE__ do
+             [{_m, _f, args, _opts}, {m, f, _, opts} | rest] ->
+               new_opts =
+                 Keyword.merge(opts,
+                   error_info: %{module: __MODULE__, function: :_format_error},
+                   zigler_error: %{
+                    unquote(index + 1) =>
+                      "\n\n     expected argument of type `#{unquote(type_str)}` but one of its fields has incorrect type"
+                    }
+                 )
+
+               :erlang.raise(:error, :badarg, [{m, f, args, new_opts} | rest])
+
+             stacktrace ->
+               :erlang.raise(:error, :badarg, stacktrace)
+           end
+         end}
+      ]
+    end
+  end
 
   def to_string(struct), do: struct.name
 
