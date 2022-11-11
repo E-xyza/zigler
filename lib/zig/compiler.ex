@@ -25,12 +25,10 @@ defmodule Zig.Compiler do
 
     File.write!(module_nif_zig, code)
 
-    parsed = Zig.Parser.parse(code)
-
     opts =
       context.module
       |> Module.get_attribute(:zigler_opts)
-      |> Keyword.merge(file: module_nif_zig, parsed: parsed)
+      |> Keyword.merge(file: module_nif_zig)
 
     assembled = Keyword.get(opts, :assemble, true)
     precompiled = Keyword.get(opts, :precompile, true)
@@ -43,7 +41,10 @@ defmodule Zig.Compiler do
          true <- precompiled,
          function_code = precompile(context, directory, opts),
          true <- compiled do
-      Command.compile(context.module, opts)
+
+      # parser should only operate on parsed, valid zig code.
+      new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(code))
+      Command.compile(context.module, new_opts)
 
       nif_name = "#{context.module}"
 

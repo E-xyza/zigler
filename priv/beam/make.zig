@@ -39,7 +39,11 @@ fn make_array(env: beam.env, value: anytype) beam.term {
         std.mem.copy(u8, buf[0..array.len], value[0..]);
         return .{ .v = result };
     } else {
-        @compileError("other arrays not implemented yet");
+        var buf: [array.len]e.ErlNifTerm = undefined;
+        for (value) |item, index| {
+            buf[index] = make(env, item).v;
+        }
+        return .{ .v = e.enif_make_list_from_array(env, &buf, array.len) };
     }
 }
 

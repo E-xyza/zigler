@@ -76,6 +76,18 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
     try stream.endObject();
 }
 
+fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array) !void {
+    try stream.beginObject();
+    try stream.objectField("type");
+    try stream.emitString("array");
+    try stream.objectField("len");
+    try stream.emitNumber(a.len);
+    try stream.objectField("child");
+    try streamType(stream, a.child);
+    // TODO: figure out sentinels
+    try stream.endObject();
+}
+
 fn streamType(stream: anytype, comptime T: type) !void {
     switch (@typeInfo(T)) {
         .Int => |i|
@@ -86,6 +98,8 @@ fn streamType(stream: anytype, comptime T: type) !void {
             try streamFloat(stream, f),
         .Struct => |s|
             try streamStruct(stream, s, @typeName(T)),
+        .Array => |a|
+            try streamArray(stream, a),
         else =>
             try stream.emitString(std.fmt.comptimePrint("{}", .{T})),
     }

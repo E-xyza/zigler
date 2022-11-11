@@ -10,6 +10,10 @@ defmodule Zig.Type.Float do
   def to_string(float), do: "f#{float.bits}"
   def to_call(float), do: "f#{float.bits}"
 
+  def inspect(type, _opts) do
+    concat(["~t(", to_string(type), ")"])
+  end
+
   def marshal_param(_), do: nil
   def marshal_return(_), do: nil
   def param_errors(_), do: nil

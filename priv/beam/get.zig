@@ -8,6 +8,7 @@ pub const GetError = error {
     nif_struct_field_error,
     nif_struct_missing_field_error,
     nif_argument_enum_not_found_error,
+    nif_array_length_error,
     nif_marshalling_error  // this should really not happen.
 };
 
@@ -21,6 +22,7 @@ pub fn get(comptime T: type, env: beam.env, src: beam.term) GetError!T {
         .Float => return get_float(T, env, src),
         .Struct => return get_struct(T, env, src),
         .Bool => return get_bool(T, env, src),
+        .Array => return get_array(T, env, src),
         else => @panic("unknown type encountered"),
     }
 }
@@ -237,7 +239,7 @@ pub fn get_struct(comptime T: type, env: beam.env, src: beam.term) !T {
 
             while (e.enif_get_list_cell(env, list, &head, &tail) == 1) : (list = tail) {
                 var item: beam.term = .{.v = head};
-                try get_tuple(env, item, &tuple_buf);
+                try get_tuple_to_buf(env, item, &tuple_buf);
                 const key = tuple_buf[0];
                 const value = tuple_buf[1];
                 const atom_name = try get_atom(env, key, &atom_buf);
@@ -292,16 +294,18 @@ pub fn get_struct(comptime T: type, env: beam.env, src: beam.term) !T {
     return GetError.nif_argument_type_error;
 }
 
-pub fn get_tuple(env: beam.env, src: beam.term, buf: anytype) !void{
+// internal function, for getting individual tuples out of a keyword list for
+// the purposes of filling out maplike data structures, e.g. `struct`
+fn get_tuple_to_buf(env: beam.env, src: beam.term, buf: anytype) !void {
     // compile-time type checking on the buf variable
     const type_info = @typeInfo(@TypeOf(buf));
-    if (type_info != .Pointer) @compileError("get_tuple buffer must be a pointer to an array of beam.term");
-    if (type_info.Pointer.size != .One) @compileError("get_tuple buffer must be a pointer to an array of beam.term");
-    if (type_info.Pointer.sentinel != null) @compileError("get_tuple buffer must be a pointer to an array of beam.term");
-    if (type_info.Pointer.is_const) @compileError("get_tuple buffer must be a pointer to an array of beam.term");
+    if (type_info != .Pointer) @compileError("get_tuple_to_buf buffer must be a pointer to an array of beam.term");
+    if (type_info.Pointer.size != .One) @compileError("get_tuple_to_buf buffer must be a pointer to an array of beam.term");
+    if (type_info.Pointer.sentinel != null) @compileError("get_tuple_to_buf buffer must be a pointer to an array of beam.term");
+    if (type_info.Pointer.is_const) @compileError("get_tuple_to_buf buffer must be a pointer to an array of beam.term");
     const child_type_info = @typeInfo(type_info.Pointer.child);
-    if (child_type_info != .Array) @compileError("get_tuple buffer must be a pointer to an array of beam.term");
-    if (child_type_info.Array.child != beam.term) @compileError("get_tuple buffer must be a pointer to an array of beam.term");
+    if (child_type_info != .Array) @compileError("get_tuple_to_buf buffer must be a pointer to an array of beam.term");
+    if (child_type_info.Array.child != beam.term) @compileError("get_tuple_to_buf buffer must be a pointer to an array of beam.term");
     // compile-time type checking on the buf variable
 
     if (src.term_type(env) != .tuple) return GetError.nif_argument_type_error;
@@ -328,6 +332,29 @@ pub fn get_bool(comptime T: type, env: beam.env, src: beam.term) !bool {
             if (std.mem.eql(u8, "true", atom)) { return true; }
             if (std.mem.eql(u8, "false", atom)) { return false; }
             return GetError.nif_argument_type_error;
+        },
+        else => return GetError.nif_argument_type_error,
+    }
+}
+
+pub fn get_array(comptime T: type, env: beam.env, src: beam.term) !T {
+    const array_info = @typeInfo(T).Array;
+    var result : [array_info.len]array_info.child = undefined;
+
+    switch (src.term_type(env)) {
+        .list => {
+            // try to fill the array, if the lengths mismatch, then throw an error.
+            // however, don't call enif_get_list_length because that incurs a second
+            // pass through the array.
+            var tail = src.v;
+            for (result) |*item| {
+                var head: e.ErlNifTerm = undefined;
+                if (e.enif_get_list_cell(env, tail, &head, &tail) != 0) {
+                   item.* = try get(array_info.child, env, .{.v = head});
+                } else return GetError.nif_array_length_error;
+            }
+            if (e.enif_is_empty_list(env, tail) == 0) return GetError.nif_array_length_error;
+            return result;
         },
         else => return GetError.nif_argument_type_error,
     }

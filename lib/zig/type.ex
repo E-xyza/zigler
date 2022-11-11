@@ -1,4 +1,5 @@
 defprotocol Zig.Type do
+  alias Zig.Type.Array
   alias Zig.Type.Bool
   alias Zig.Type.Enum
   alias Zig.Type.Float
@@ -79,6 +80,9 @@ defprotocol Zig.Type do
 
       %{"type" => "struct"} ->
         Struct.from_json(json, module)
+
+      %{"type" => "array"} ->
+        Array.from_json(json, module)
     end
   end
 
