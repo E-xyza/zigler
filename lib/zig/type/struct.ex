@@ -21,7 +21,7 @@ defmodule Zig.Type.Struct do
     }
   end
 
-  def marshal_param(%{packed: packed}) when rem(packed, 8) != 0 do
+  def marshal_param(%{packed: packed}, _) when rem(packed, 8) != 0 do
     # padding bits
     padding = 8 - rem(packed, 8)
 
@@ -39,11 +39,11 @@ defmodule Zig.Type.Struct do
     end
   end
 
-  def marshal_param(_), do: nil
+  def marshal_param(_, _), do: nil
 
-  def marshal_return(_), do: nil
+  def marshal_return(_, _), do: nil
 
-  def param_errors(type) do
+  def param_errors(type, _) do
     type_str = to_string(type)
 
     fn index ->
@@ -70,9 +70,9 @@ defmodule Zig.Type.Struct do
                  Keyword.merge(opts,
                    error_info: %{module: __MODULE__, function: :_format_error},
                    zigler_error: %{
-                    unquote(index + 1) =>
-                      "\n\n     expected argument of type `#{unquote(type_str)}` to have field #{inspect missing_key}"
-                    }
+                     unquote(index + 1) =>
+                       "\n\n     expected argument of type `#{unquote(type_str)}` to have field #{inspect(missing_key)}"
+                   }
                  )
 
                :erlang.raise(:error, :badarg, [{m, f, args, new_opts} | rest])
@@ -81,9 +81,7 @@ defmodule Zig.Type.Struct do
                :erlang.raise(:error, :badarg, stacktrace)
            end
          end},
-
-
-         {{:nif_struct_field_error, index},
+        {{:nif_struct_field_error, index},
          quote do
            case __STACKTRACE__ do
              [{_m, _f, args, _opts}, {m, f, _, opts} | rest] ->
@@ -91,9 +89,9 @@ defmodule Zig.Type.Struct do
                  Keyword.merge(opts,
                    error_info: %{module: __MODULE__, function: :_format_error},
                    zigler_error: %{
-                    unquote(index + 1) =>
-                      "\n\n     expected argument of type `#{unquote(type_str)}` but one of its fields has incorrect type"
-                    }
+                     unquote(index + 1) =>
+                       "\n\n     expected argument of type `#{unquote(type_str)}` but one of its fields has incorrect type"
+                   }
                  )
 
                :erlang.raise(:error, :badarg, [{m, f, args, new_opts} | rest])

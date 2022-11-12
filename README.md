@@ -116,8 +116,7 @@ than using C to bind C libraries.  Here is an example:
 
 ```elixir
 defmodule BlasDynamic do
-  use Zig,
-    libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
+  use Zig,     libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
     include: ["/usr/include/x86_64-linux-gnu"],
     link_libc: true
 

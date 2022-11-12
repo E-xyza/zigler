@@ -18,42 +18,17 @@ defmodule Zig.Sema do
 
     %{"functions" => functions} = Jason.decode!(result)
 
+    nif_opts =
+      case Keyword.fetch!(opts, :nifs) do
+        :all -> Enum.map(functions, &{String.to_atom(&1["name"]), []})
+        keyword when is_list(keyword) -> keyword
+      end
+
     Enum.map(functions, fn function ->
-      function
-      |> Type.Function.from_json(module)
-      |> raise_if_private!(opts)
+      name = String.to_atom(function["name"])
+      fn_opts = Keyword.fetch!(nif_opts, name)
+
+      Type.Function.from_json(function, module, name, fn_opts)
     end)
   end
-
-  # verifies that none of the structs returned are private.
-  defp raise_if_private!(function = %{name: name}, opts) do
-    Enum.each(function.params, &raise_if_private!(&1, name, "accepts", opts))
-    raise_if_private!(function.return, name, "returns", opts)
-    function
-  end
-
-  defp raise_if_private!(%Struct{name: name}, function_name, verb, opts) do
-    parsed = opts[:parsed]
-
-    case Analyzer.info_for(parsed, name) do
-      {:const, %{pub: false, position: const_position}, _} ->
-        {:fn, fn_opts, _} = Analyzer.info_for(parsed, Atom.to_string(function_name))
-
-        {fn_file, fn_line} =
-          Analyzer.translate_location(parsed, opts[:file], fn_opts.position.line)
-
-        {st_file, st_line} = Analyzer.translate_location(parsed, opts[:file], const_position.line)
-
-        raise CompileError,
-          file: fn_file,
-          line: fn_line,
-          description:
-            "the function `#{function_name}` #{verb} the struct `#{name}` which is not public (defined at #{st_file}:#{st_line})"
-
-      _ ->
-        :ok
-    end
-  end
-
-  defp raise_if_private!(_, _, _, _), do: :ok
 end

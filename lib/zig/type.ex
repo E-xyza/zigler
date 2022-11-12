@@ -8,17 +8,17 @@ defprotocol Zig.Type do
 
   @type t :: Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :term
 
-  @spec marshal_param(t) :: (Macro.t(), index :: non_neg_integer -> Macro.t()) | nil
+  @spec marshal_param(t, keyword) :: (Macro.t(), index :: non_neg_integer -> Macro.t()) | nil
   @doc "elixir-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
-  def marshal_param(type)
+  def marshal_param(type, opts)
 
-  @spec marshal_return(t) :: (Macro.t() -> Macro.t()) | nil
+  @spec marshal_return(t, keyword) :: (Macro.t() -> Macro.t()) | nil
   @doc "elixir-side type conversions that might be necessary to get a zig return into an elixir return"
-  def marshal_return(type)
+  def marshal_return(type, opts)
 
   @doc "generates clauses to trap errors and convert them to expected errors"
-  @spec param_errors(t) :: (integer -> [Macro.t()]) | nil
-  def param_errors(type)
+  @spec param_errors(t, keyword) :: (integer -> [Macro.t()]) | nil
+  def param_errors(type, opts)
 
   @spec to_call(t) :: String.t()
   def to_call(type)
@@ -111,9 +111,9 @@ defprotocol Zig.Type do
       end
 
       defimpl Zig.Type do
-        defdelegate marshal_param(type), to: module
-        defdelegate marshal_return(type), to: module
-        defdelegate param_errors(type), to: module
+        defdelegate marshal_param(type, opts), to: module
+        defdelegate marshal_return(type, opts), to: module
+        defdelegate param_errors(type, opts), to: module
         defdelegate to_call(type), to: module
       end
     end
@@ -121,18 +121,18 @@ defprotocol Zig.Type do
 end
 
 defimpl Zig.Type, for: Atom do
-  def marshal_param(:env), do: nil
-  def marshal_param(:term), do: nil
+  def marshal_param(:env, _), do: nil
+  def marshal_param(:term, _), do: nil
 
-  def marshal_param(type) do
+  def marshal_param(type, _) do
     raise "#{type} should not be a call type for elixir."
   end
 
-  def marshal_return(:term), do: nil
+  def marshal_return(:term, _), do: nil
 
-  def marshal_return(type) do
+  def marshal_return(type, _) do
     raise "#{type} should not be a return type for elixir."
   end
 
-  def param_errors(_type), do: nil
+  def param_errors(_type, _), do: nil
 end

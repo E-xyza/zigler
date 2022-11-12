@@ -9,6 +9,7 @@ pub const GetError = error {
     nif_struct_missing_field_error,
     nif_argument_enum_not_found_error,
     nif_array_length_error,
+    nif_binary_size_error,
     nif_marshalling_error  // this should really not happen.
 };
 
@@ -71,7 +72,6 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) GetError!T {
                 // This should fail if it's not a binary.  Note there isn't much we can do here because
                 // it is *supposed* to be marshalled into the nif.
                 if (e.enif_inspect_binary(env, src.v, &result) == 0) return GetError.nif_marshalling_error;
-
 
                 var buf: Bigger = 0;
                 std.mem.copy(u8, @ptrCast([*]u8, &buf)[0..bytes], result.data[0..bytes]);
@@ -339,7 +339,7 @@ pub fn get_bool(comptime T: type, env: beam.env, src: beam.term) !bool {
 
 pub fn get_array(comptime T: type, env: beam.env, src: beam.term) !T {
     const array_info = @typeInfo(T).Array;
-    var result : [array_info.len]array_info.child = undefined;
+    var result : T = undefined;
 
     switch (src.term_type(env)) {
         .list => {
@@ -354,6 +354,18 @@ pub fn get_array(comptime T: type, env: beam.env, src: beam.term) !T {
                 } else return GetError.nif_array_length_error;
             }
             if (e.enif_is_empty_list(env, tail) == 0) return GetError.nif_array_length_error;
+            return result;
+        },
+        .bitstring => {
+            // arrays can be instantiated as binaries, if they are u8 arrays
+            if (array_info.child != u8) return GetError.nif_argument_type_error;
+
+            var str_res: e.ErlNifBinary = undefined;
+
+            if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.nif_marshalling_error;
+            if (str_res.size != array_info.len) return GetError.nif_binary_size_error;
+
+            std.mem.copy(u8, &result, str_res.data[0..array_info.len]);
             return result;
         },
         else => return GetError.nif_argument_type_error,

@@ -3,8 +3,7 @@ defmodule ZiglerTest.Sema.SynchronousTest do
 
   @moduletag :skip
 
-  use Zig,
-    compile: false
+  use Zig, compile: false
 
   ~Z"""
   fn synchronous() u8 { return 47; }

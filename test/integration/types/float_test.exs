@@ -1,8 +1,7 @@
 defmodule ZiglerTest.Types.FloatTest do
   use ExUnit.Case, async: true
 
-  use Zig,
-    otp_app: :zigler
+  use Zig, otp_app: :zigler
 
   ~Z"""
   pub fn f64_div2(value: f64) f64 { return value / 2; }

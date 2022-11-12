@@ -2,7 +2,7 @@ defmodule Zig.Type.Enum do
   use Zig.Type
 
   defstruct [:tags, :name]
-  @type t :: %__MODULE__{tags: %{optional(atom) => String.t()}, name: String.t}
+  @type t :: %__MODULE__{tags: %{optional(atom) => String.t()}, name: String.t()}
 
   def from_json(%{"tags" => tags, "name" => name}, module) do
     %__MODULE__{
@@ -19,7 +19,7 @@ defmodule Zig.Type.Enum do
     ~s(%Zig.Type.Enum{name: "#{enum.name}", tags: #{Kernel.inspect(enum.tags, opts)}})
   end
 
-  def marshal_param(enum) do
+  def marshal_param(enum, _) do
     keys =
       enum.tags
       |> Map.values()
@@ -46,11 +46,11 @@ defmodule Zig.Type.Enum do
   end
 
   # zig automagically converts enums back to atoms, so, no code is required.
-  def marshal_return(_), do: nil
+  def marshal_return(_, _), do: nil
 
   @arg {:arg, [], Elixir}
 
-  def param_errors(enum) do
+  def param_errors(enum, _) do
     type_str = to_string(enum)
 
     tags =

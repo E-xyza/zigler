@@ -134,8 +134,7 @@ defmodule Zig do
 
   ```
   defmodule Blas do
-    use Zig,
-      libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
+    use Zig,       libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
       include: ["/usr/include/x86_64-linux-gnu"]
 
     ~Z\"""
@@ -153,8 +152,7 @@ defmodule Zig do
 
   ```
   defmodule Blas do
-    use Zig,
-      system_libs: ["blas"],
+    use Zig,       system_libs: ["blas"],
       include: ["/usr/include/x86_64-linux-gnu"]
 
     ~Z\"""
@@ -175,8 +173,7 @@ defmodule Zig do
 
   ```
   defmodule UsesCOrCpp do
-    use Zig,
-      link_libc: true,
+    use Zig,       link_libc: true,
       link_libcpp: true,
       include: ["my_header.h"],
       sources: [

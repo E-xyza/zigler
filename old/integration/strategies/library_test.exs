@@ -8,8 +8,7 @@ if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") and
     @moduletag :library
 
     defmodule BlasDynamic do
-      use Zig,
-        libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
+      use Zig,         libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
         system_include_dirs: ["/usr/include/x86_64-linux-gnu"],
         link_libc: true
 
@@ -38,8 +37,7 @@ if File.exists?("/usr/include/x86_64-linux-gnu/cblas.h") and
 
     if File.exists?("/usr/lib/x86_64-linux-gnu/blas/libblas.a") do
       defmodule BlasStatic do
-        use Zig,
-          libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.a"],
+        use Zig,           libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.a"],
           system_include_dirs: ["/usr/include/x86_64-linux-gnu"],
           link_libc: true
 

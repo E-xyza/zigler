@@ -3,7 +3,7 @@ defmodule Zig.Type.Function do
   # files.
   @behaviour Access
 
-  defstruct [:name, :arity, :params, :return]
+  defstruct [:name, :arity, :params, :return, :opts]
   alias Zig.Type
 
   @impl true
@@ -13,10 +13,11 @@ defmodule Zig.Type.Function do
           name: atom(),
           arity: non_neg_integer(),
           params: [Type.t()],
-          return: Type.t()
+          return: Type.t(),
+          opts: keyword
         }
 
-  def from_json(%{"name" => name, "params" => params, "return" => return}, module) do
+  def from_json(%{"params" => params, "return" => return}, module, name, nif_opts) do
     params = Enum.map(params, &Type.from_json(&1, module))
 
     arity =
@@ -26,24 +27,25 @@ defmodule Zig.Type.Function do
       end
 
     %__MODULE__{
-      name: String.to_atom(name),
+      name: name,
       arity: arity,
       params: params,
-      return: Type.from_json(return, module)
+      return: Type.from_json(return, module),
+      opts: nif_opts
     }
   end
 
-  def param_marshalling_macros(%{params: params}) do
-    list = Enum.map(params, &Type.marshal_param/1)
+  def param_marshalling_macros(function) do
+    list = Enum.map(function.params, &Type.marshal_param(&1, function.opts))
     if Enum.any?(list), do: list, else: nil
   end
 
-  def return_marshalling_macro(%{return: return}) do
-    Type.marshal_return(return)
+  def return_marshalling_macro(function) do
+    Type.marshal_return(function.return, function.opts)
   end
 
-  def param_error_macros(%{params: params}) do
-    list = Enum.map(params, &Type.param_errors/1)
+  def param_error_macros(function) do
+    list = Enum.map(function.params, &Type.param_errors(&1, function.opts))
     if Enum.any?(list), do: list, else: nil
   end
 

@@ -51,7 +51,7 @@ defmodule Zig.Type.Integer do
     concat(["~t(", to_string(type), ")"])
   end
 
-  def marshal_param(type = %{signedness: :unsigned, bits: bits}) when bits > 64 do
+  def marshal_param(type = %{signedness: :unsigned, bits: bits}, _) when bits > 64 do
     size = _next_power_of_two_ceil(bits)
     max = typemax(type)
 
@@ -65,7 +65,7 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  def marshal_param(type = %{signedness: :signed, bits: bits}) when bits > 64 do
+  def marshal_param(type = %{signedness: :signed, bits: bits}, _) when bits > 64 do
     size = _next_power_of_two_ceil(bits)
     max = typemax(type)
     min = typemin(type)
@@ -80,9 +80,9 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  def marshal_param(_), do: nil
+  def marshal_param(_, _), do: nil
 
-  def marshal_return(%{signedness: :unsigned, bits: bits}) when bits > 64 do
+  def marshal_return(%{signedness: :unsigned, bits: bits}, _) when bits > 64 do
     size = _next_power_of_two_ceil(bits)
 
     fn arg ->
@@ -93,7 +93,7 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  def marshal_return(%{signedness: :signed, bits: bits}) when bits > 64 do
+  def marshal_return(%{signedness: :signed, bits: bits}, _) when bits > 64 do
     size = _next_power_of_two_ceil(bits)
 
     fn arg ->
@@ -104,9 +104,9 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  def marshal_return(_), do: nil
+  def marshal_return(_, _), do: nil
 
-  def param_errors(type = %{bits: bits}) when bits <= 64 do
+  def param_errors(type = %{bits: bits}, _) when bits <= 64 do
     type_str = to_string(type)
     range = "#{typemin(type)}...#{typemax(type)}"
 
@@ -156,7 +156,7 @@ defmodule Zig.Type.Integer do
 
   @arg {:arg, [], Elixir}
 
-  def param_errors(type) do
+  def param_errors(type, _) do
     type_str = to_string(type)
     range = "#{typemin(type)}...#{typemax(type)}"
 

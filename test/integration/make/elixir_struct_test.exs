@@ -3,8 +3,7 @@ defmodule ZiglerTest.Make.ElixirStructTest do
 
   @moduletag :skip
 
-  #  use Zig,
-  #    otp_app: :zigler,
+  #  use Zig,   #    otp_app: :zigler,
   #    import: [structs: [NaiveDateTime]]
   #
   #  ~Z"""

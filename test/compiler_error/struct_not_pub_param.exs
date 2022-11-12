@@ -1,6 +1,5 @@
 defmodule ZiglerTest.CompilerError.StructNotPubParam do
-  use Zig,
-    compile: false
+  use Zig, compile: false
 
   ~Z"""
   const not_pub_struct = struct {

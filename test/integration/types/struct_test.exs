@@ -1,8 +1,7 @@
 defmodule ZiglerTest.Types.StructTest do
   use ExUnit.Case, async: true
 
-  use Zig,
-    otp_app: :zigler
+  use Zig, otp_app: :zigler
 
   # TODO: validations that the structs are defined "pub"
 
@@ -34,19 +33,27 @@ defmodule ZiglerTest.Types.StructTest do
     end
 
     test "missing required values in a map are not tolerated" do
-      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` to have field :value\n", fn -> struct_test(%{}) end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` to have field :value\n",
+                   fn -> struct_test(%{}) end
     end
 
     test "missing required values in a keyword list are not tolerated" do
-      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` to have field :value\n", fn -> struct_test([]) end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` to have field :value\n",
+                   fn -> struct_test([]) end
     end
 
     test "incorrect value types in a map are not tolerated" do
-      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` but one of its fields has incorrect type\n", fn -> struct_test(%{value: "foo"}) end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` but one of its fields has incorrect type\n",
+                   fn -> struct_test(%{value: "foo"}) end
     end
 
     test "incorrect value types in a keyword list are not tolerated" do
-      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` but one of its fields has incorrect type\n", fn -> struct_test(value: "foo") end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` but one of its fields has incorrect type\n",
+                   fn -> struct_test(value: "foo") end
     end
   end
 
@@ -86,11 +93,15 @@ defmodule ZiglerTest.Types.StructTest do
     end
 
     test "incorrect value types in a map are not tolerated" do
-      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `default_struct` but one of its fields has incorrect type\n", fn -> default_struct_test(%{value: "foo"}) end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `default_struct` but one of its fields has incorrect type\n",
+                   fn -> default_struct_test(%{value: "foo"}) end
     end
 
     test "incorrect value types in a keyword list are not tolerated" do
-      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `default_struct` but one of its fields has incorrect type\n", fn -> default_struct_test(value: "foo") end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `default_struct` but one of its fields has incorrect type\n",
+                   fn -> default_struct_test(value: "foo") end
     end
   end
 end

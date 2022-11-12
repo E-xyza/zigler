@@ -5,11 +5,13 @@ defmodule Zig.Compiler do
 
   require Logger
 
+  alias Zig.Analyzer
   alias Zig.Assembler
   alias Zig.Command
   alias Zig.Nif
   alias Zig.Parser
   alias Zig.Sema
+  alias Zig.Type.Struct
 
   defmacro __before_compile__(context) do
     # TODO: verify that :otp_app exists
@@ -39,11 +41,11 @@ defmodule Zig.Compiler do
     with true <- assembled,
          Assembler.assemble(context.module, from: this_dir),
          true <- precompiled,
-         function_code = precompile(context, directory, opts),
+         sema = Sema.analyze_file!(context.module, opts),
+         new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(code)),
+         function_code = precompile(sema, context, directory, new_opts),
          true <- compiled do
-
       # parser should only operate on parsed, valid zig code.
-      new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(code))
       Command.compile(context.module, new_opts)
 
       nif_name = "#{context.module}"
@@ -84,8 +86,8 @@ defmodule Zig.Compiler do
     end
   end
 
-  defp precompile(context, directory, opts) do
-    sema = Sema.analyze_file!(context.module, opts)
+  defp precompile(sema, context, directory, opts) do
+    verify_sound!(sema, opts)
 
     nif_functions = Nif.from_sema(sema, opts[:nifs])
 
@@ -144,4 +146,42 @@ defmodule Zig.Compiler do
     |> String.replace("\\", "/")
     |> Path.join(".zigler_compiler/#{env}/#{module}")
   end
+
+  defp verify_sound!(sema, opts) do
+    Enum.each(sema, fn function ->
+      raise_if_uses_private_struct!(function, opts)
+    end)
+  end
+
+  # verifies that none of the structs returned are private.
+  defp raise_if_uses_private_struct!(function = %{name: name}, opts) do
+    Enum.each(function.params, &raise_if_private_struct!(&1, name, "accepts", opts))
+    raise_if_private_struct!(function.return, name, "returns", opts)
+    function
+  end
+
+  defp raise_if_private_struct!(%Struct{name: name}, function_name, verb, opts) do
+    parsed = opts[:parsed]
+
+    case Analyzer.info_for(parsed, name) do
+      {:const, %{pub: false, position: const_position}, _} ->
+        {:fn, fn_opts, _} = Analyzer.info_for(parsed, Atom.to_string(function_name))
+
+        {fn_file, fn_line} =
+          Analyzer.translate_location(parsed, opts[:file], fn_opts.position.line)
+
+        {st_file, st_line} = Analyzer.translate_location(parsed, opts[:file], const_position.line)
+
+        raise CompileError,
+          file: fn_file,
+          line: fn_line,
+          description:
+            "the function `#{function_name}` #{verb} the struct `#{name}` which is not public (defined at #{st_file}:#{st_line})"
+
+      _ ->
+        :ok
+    end
+  end
+
+  defp raise_if_private_struct!(_, _, _, _), do: :ok
 end

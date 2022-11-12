@@ -3,8 +3,7 @@ defmodule ZiglerTest.Integration.Strategies.CAndCppSourcesTest do
 
   @moduletag :integration
 
-  use Zig,
-    link_libc: true,
+  use Zig,     link_libc: true,
     link_libcpp: true,
     include: ["test_c_cpp.h"],
     sources: [
