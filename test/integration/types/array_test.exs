@@ -3,8 +3,15 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   use Zig,
     otp_app: :zigler,
-    nifs: [:array_float_test, {:array_u8_test, return: :list}, :array_string_test,
-    :mut_array_float_test, {:mut_array_u8_test, return: :list}, :mut_array_string_test]
+    nifs: [
+      :array_float_test,
+      {:array_u8_test, return: :list},
+      :array_string_test,
+      :mut_array_float_test,
+      {:mut_array_u8_test, return: :list},
+      :mut_array_string_test,
+      :sentinel_terminated_test
+    ]
 
   ## BASIC ARRAYS
 
@@ -40,6 +47,24 @@ defmodule ZiglerTest.Types.ArrayTest do
     test "you can work with u8s" do
       assert [2, 3, 4] == array_u8_test([1, 2, 3])
     end
+
+    test "completely wrong type is not tolerated" do
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer ([3]f64)\n     got: :bar\n",
+                   fn -> array_float_test(:bar) end
+    end
+
+    test "incorrect number of elements is not tolerated" do
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: array of length 3\n     got length: 2\n",
+                   fn -> array_float_test([1.0, 2.0]) end
+    end
+
+    test "incorrect value types is not tolerated" do
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` but one of its fields has incorrect type\n",
+                   fn -> array_float_test(["foo", :bar, :baz]) end
+    end
   end
 
   describe "for u8s strings are" do
@@ -65,7 +90,7 @@ defmodule ZiglerTest.Types.ArrayTest do
     return passed;
   }
 
-  pub fn mut_array_u8_test(passed: *[3]f64) *[3]f64 {
+  pub fn mut_array_u8_test(passed: *[3]u8) *[3]u8 {
     common_array_mut(passed);
     return passed;
   }
@@ -82,12 +107,24 @@ defmodule ZiglerTest.Types.ArrayTest do
       assert [2, 3, 4] == mut_array_u8_test([1, 2, 3])
     end
 
-    test "you can pass a string" do
+    test "you can pass a string for a u8 array" do
       assert ~C"bcd" == mut_array_u8_test("abc")
     end
 
     test "returning a string is default" do
       assert "bcd" == mut_array_string_test("abc")
+    end
+  end
+
+  ~Z"""
+  pub fn sentinel_terminated_test(passed: [3:0]u8) u8 {
+    return passed[3];
+  }
+  """
+
+  describe "sentinel terminated arrays" do
+    test "are supported" do
+      assert 0 == sentinel_terminated_test("foo")
     end
   end
 end

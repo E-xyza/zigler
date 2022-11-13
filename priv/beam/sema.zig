@@ -76,7 +76,7 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
     try stream.endObject();
 }
 
-fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array) !void {
+fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) !void {
     try stream.beginObject();
     try stream.objectField("type");
     try stream.emitString("array");
@@ -84,6 +84,10 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array) !void {
     try stream.emitNumber(a.len);
     try stream.objectField("child");
     try streamType(stream, a.child);
+    try stream.objectField("hasSentinel");
+    try stream.emitBool(if (a.sentinel) |_| true else false);
+    try stream.objectField("repr");
+    try stream.emitString(repr);
     // TODO: figure out sentinels
     try stream.endObject();
 }
@@ -108,7 +112,7 @@ fn streamType(stream: anytype, comptime T: type) !void {
         .Struct => |s|
             try streamStruct(stream, s, @typeName(T)),
         .Array => |a|
-            try streamArray(stream, a),
+            try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
         .Pointer => |p|
             try streamPointer(stream, p),
         else =>

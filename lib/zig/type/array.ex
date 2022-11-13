@@ -3,17 +3,26 @@ defmodule Zig.Type.Array do
   use Type
   import Type, only: :macros
 
-  @derive Inspect
-  defstruct [:child, :len, mutable: false]
+  defstruct [:child, :len, :has_sentinel, :repr, mutable: false]
 
   @type t :: %__MODULE__{
           child: Type.t(),
+          repr: String.t(),
           len: non_neg_integer,
-          mutable: boolean
+          mutable: boolean,
+          has_sentinel: boolean
         }
 
-  def from_json(%{"child" => child, "len" => len}, module) do
-    %__MODULE__{child: Type.from_json(child, module), len: len}
+  def from_json(
+        %{"child" => child, "len" => len, "hasSentinel" => has_sentinel, "repr" => repr},
+        module
+      ) do
+    %__MODULE__{
+      child: Type.from_json(child, module),
+      len: len,
+      has_sentinel: has_sentinel,
+      repr: repr
+    }
   end
 
   def marshal_param(_, _), do: nil
@@ -28,11 +37,71 @@ defmodule Zig.Type.Array do
     end
   end
 
-  def param_errors(_, _), do: nil
+  def param_errors(type, _opts) do
+    type_str = to_string(type)
 
-  def to_string(array), do: "#{mut(array)}[#{array.len}]#{Kernel.to_string(array.child)}"
+    fn index ->
+      [
+        {{:nif_argument_type_error, index},
+         quote do
+           case __STACKTRACE__ do
+             [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
+               item = Enum.at(a, unquote(index))
 
-  def to_call(array), do: "#{mut(array)}[#{array.len}]#{Type.to_call(array.child)}"
+               msg =
+                 case item do
+                   _ when not is_list(item) ->
+                     "\n\n     expected: integer (#{unquote(type_str)})\n     got: #{inspect(item)}"
 
-  defp mut(array), do: if array.mutable, do: "*"
+                   _ when length(item) != unquote(type.len) ->
+                     "\n\n     expected: array of length (#{unquote(type.len)})\n     got: #{inspect(item)} (length #{length(item)})"
+
+                   _ ->
+                     "nothing"
+                 end
+
+               new_opts =
+                 Keyword.merge(opts,
+                   error_info: %{module: __MODULE__, function: :_format_error},
+                   zigler_error: %{unquote(index + 1) => msg}
+                 )
+
+               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
+
+             stacktrace ->
+               :erlang.raise(:error, :badarg, stacktrace)
+           end
+         end},
+        {{:nif_array_length_error, index},
+         quote do
+           case __STACKTRACE__ do
+             [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
+               item = Enum.at(a, unquote(index))
+
+               new_opts =
+                 Keyword.merge(opts,
+                   error_info: %{module: __MODULE__, function: :_format_error},
+                   zigler_error: %{
+                     unquote(index + 1) =>
+                       "\n\n     expected: array of length #{unquote(type.len)}\n     got length: #{length(item)}"
+                   }
+                 )
+
+               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
+
+             stacktrace ->
+               :erlang.raise(:error, :badarg, stacktrace)
+           end
+         end}
+      ]
+    end
+  end
+
+  def to_string(array = %{mutable: true}), do: "*" <> to_string(%{array | mutable: false})
+  def to_string(%{has_sentinel: true, repr: repr}), do: repr
+  def to_string(array), do: "[#{array.len}]#{Kernel.to_string(array.child)}"
+
+  def to_call(array = %{mutable: true}), do: "*" <> to_string(%{array | mutable: false})
+  def to_call(%{has_sentinel: true, repr: repr}), do: repr
+  def to_call(array), do: "[#{array.len}]#{Type.to_call(array.child)}"
 end

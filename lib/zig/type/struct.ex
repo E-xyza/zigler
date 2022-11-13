@@ -1,7 +1,6 @@
 defmodule Zig.Type.Struct do
   use Zig.Type
 
-  @derive Inspect
   defstruct [:name, :packed, :required, :optional]
 
   @type t :: %{
@@ -108,3 +107,5 @@ defmodule Zig.Type.Struct do
 
   def to_call(struct), do: "nif." <> struct.name
 end
+
+#

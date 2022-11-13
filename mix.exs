@@ -81,7 +81,8 @@ defmodule Zigler.MixProject do
       {:nimble_parsec, "~> 1.2.3", runtime: false},
       # to parse the zig JSON
       {:jason, "~> 1.1"},
-      {:zig_parser, path: "../zig_parser"},#"~> 0.1"},
+      # "~> 0.1"},
+      {:zig_parser, path: "../zig_parser"},
       # documentation
       {:ex_doc, "~> 0.23", runtime: false}
     ]

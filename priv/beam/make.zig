@@ -29,38 +29,13 @@ fn make_null(env: beam.env) beam.term {
 }
 
 fn make_array(env: beam.env, value: anytype) beam.term {
-    const array = @typeInfo(@TypeOf(value)).Array;
-
-    // u8 arrays (sentinel terminated or otherwise) are treated as
-    // strings.
-    if (array.child == u8) {
-        var result: e.ErlNifTerm = undefined;
-        const buf = e.enif_make_new_binary(env, array.len, &result);
-        std.mem.copy(u8, buf[0..array.len], value[0..]);
-        return .{ .v = result };
-    } else {
-        var buf: [array.len]e.ErlNifTerm = undefined;
-        for (value) |item, index| {
-            buf[index] = make(env, item).v;
-        }
-        return .{ .v = e.enif_make_list_from_array(env, &buf, array.len) };
-    }
+    return make_array_from_pointer(@TypeOf(value), env, &value);
 }
 
 fn make_pointer(env: beam.env, value: anytype) beam.term {
     const pointer = @typeInfo(@TypeOf(value)).Pointer;
     switch (pointer.size) {
-        .One => {
-            const child_info = @typeInfo(pointer.child);
-            switch (child_info) {
-                .Array => if (child_info.Array.child == u8) {
-                    return make_array(env, value.*);
-                } else {
-                    return make(env, .oops);
-                },
-                else => @compileError("this type is unsupported"),
-            }
-        },
+        .One => return make_mut(env, value),
         .Many => @compileError("not implemented yet"),
         .Slice => @compileError("not implemented yet"),
         .C => @compileError("not implemented yet"),
@@ -182,6 +157,33 @@ fn make_float(env: beam.env, value: anytype) beam.term {
 
 fn make_bool(env: beam.env, value: bool) beam.term {
     return make_into_atom(env, if (value) "true" else "false");
+}
+
+fn make_mut(env: beam.env, value_ptr: anytype) beam.term {
+    const child = @TypeOf(value_ptr.*);
+    switch (@typeInfo(child)) {
+        .Array => return make_array_from_pointer(child, env, value_ptr),
+        else => @compileError("this type is unsupported"),
+    }
+}
+
+fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype) beam.term {
+    // u8 arrays (sentinel terminated or otherwise) are treated as
+    // strings.
+    const array_info = @typeInfo(T).Array;
+    if (array_info.child == u8) {
+        var result: e.ErlNifTerm = undefined;
+        const buf = e.enif_make_new_binary(env, array_info.len, &result);
+        std.mem.copy(u8, buf[0..array_info.len], array_ptr.*[0..]);
+        return .{ .v = result };
+    } else {
+        // TODO: what if the array length is much bigger that the allowable stack size?
+        var buf: [array_info.len]e.ErlNifTerm = undefined;
+        for (array_ptr.*) |item, index| {
+            buf[index] = make(env, item).v;
+        }
+        return .{ .v = e.enif_make_list_from_array(env, &buf, array_info.len) };
+    }
 }
 
 pub fn make_into_atom(env: beam.env, atom_string: []const u8) beam.term {
