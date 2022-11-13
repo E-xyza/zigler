@@ -13,7 +13,7 @@ pub const GetError = error {
     nif_marshalling_error  // this should really not happen.
 };
 
-pub fn get(comptime T: type, env: beam.env, src: beam.term) GetError!T {
+pub fn get(comptime T: type, env: beam.env, src: beam.term) !T {
     // passthrough on beam.env and beam.term
     if (T == beam.term) return src;
 
@@ -24,7 +24,8 @@ pub fn get(comptime T: type, env: beam.env, src: beam.term) GetError!T {
         .Struct => return get_struct(T, env, src),
         .Bool => return get_bool(T, env, src),
         .Array => return get_array(T, env, src),
-        else => @panic("unknown type encountered"),
+        .Pointer => return get_mut(T, env, src),
+        else => @compileError("unhandlable type encountered in get"),
     }
 }
 
@@ -338,23 +339,45 @@ pub fn get_bool(comptime T: type, env: beam.env, src: beam.term) !bool {
 }
 
 pub fn get_array(comptime T: type, env: beam.env, src: beam.term) !T {
-    const array_info = @typeInfo(T).Array;
     var result : T = undefined;
+    try fill_array(T, env, &result, src);
+    return result;
+}
 
+pub fn get_mut(comptime T: type, env: beam.env, src: beam.term) !T {
+    const child = @typeInfo(T).Pointer.child;
+    var result = try beam.allocator.create(child);
+    errdefer beam.allocator.free(result);
+
+    // note that CALLER of get has the responsibility of freeing the result, if it
+    // has succeeded.
+    try fill(child, env, result, src);
+    return result;
+}
+
+// fill functions
+fn fill(comptime T: type, env: beam.env, result: *T, src: beam.term) GetError!void {
+    switch (@typeInfo(T)) {
+        .Array => try fill_array(T, env, result, src),
+        else => @compileError("unhandlable type encountered in fill"),
+    }
+}
+
+fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term) GetError!void {
+    const array_info = @typeInfo(T).Array;
     switch (src.term_type(env)) {
         .list => {
             // try to fill the array, if the lengths mismatch, then throw an error.
             // however, don't call enif_get_list_length because that incurs a second
             // pass through the array.
             var tail = src.v;
-            for (result) |*item| {
+            for (result.*) |*item| {
                 var head: e.ErlNifTerm = undefined;
                 if (e.enif_get_list_cell(env, tail, &head, &tail) != 0) {
                    item.* = try get(array_info.child, env, .{.v = head});
                 } else return GetError.nif_array_length_error;
             }
             if (e.enif_is_empty_list(env, tail) == 0) return GetError.nif_array_length_error;
-            return result;
         },
         .bitstring => {
             // arrays can be instantiated as binaries, if they are u8 arrays
@@ -365,12 +388,12 @@ pub fn get_array(comptime T: type, env: beam.env, src: beam.term) !T {
             if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.nif_marshalling_error;
             if (str_res.size != array_info.len) return GetError.nif_binary_size_error;
 
-            std.mem.copy(u8, &result, str_res.data[0..array_info.len]);
-            return result;
+            std.mem.copy(u8, result, str_res.data[0..array_info.len]);
         },
         else => return GetError.nif_argument_type_error,
     }
 }
+
 
 pub fn StructRegistry(comptime SourceStruct: type) type {
     const source_info = @typeInfo(SourceStruct);

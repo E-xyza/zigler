@@ -55,6 +55,8 @@ defprotocol Zig.Type do
     end
   end
 
+  @pointer_types ~w(array)
+
   def from_json(json, module) do
     case json do
       "?*stub_erl_nif.ErlNifEnv" ->
@@ -83,6 +85,11 @@ defprotocol Zig.Type do
 
       %{"type" => "array"} ->
         Array.from_json(json, module)
+
+      %{"type" => "pointer", "child" => child = %{"type" => type}} when type in @pointer_types ->
+        child
+        |> __MODULE__.from_json(module)
+        |> Map.replace!(:mutable, true)
     end
   end
 
@@ -135,4 +142,6 @@ defimpl Zig.Type, for: Atom do
   end
 
   def param_errors(_type, _), do: nil
+
+  def to_call(type), do: to_string(type)
 end

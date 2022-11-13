@@ -18,7 +18,7 @@ pub fn make(env: beam.env, value: anytype) beam.term {
         .Float => return make_float(env, value),
         .Bool => return make_bool(env, value),
         else => {
-            @panic("unknown type encountered");
+            @compileError("unknown type encountered");
         },
     }
 }
@@ -51,13 +51,12 @@ fn make_pointer(env: beam.env, value: anytype) beam.term {
     const pointer = @typeInfo(@TypeOf(value)).Pointer;
     switch (pointer.size) {
         .One => {
-            // pointers are only allowed to be decoded if they are string literals.
             const child_info = @typeInfo(pointer.child);
             switch (child_info) {
                 .Array => if (child_info.Array.child == u8) {
                     return make_array(env, value.*);
                 } else {
-                    @compileError("this type is unsupported.");
+                    return make(env, .oops);
                 },
                 else => @compileError("this type is unsupported"),
             }

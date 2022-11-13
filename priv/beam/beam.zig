@@ -141,12 +141,19 @@ pub const term = struct {
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-// syntactic sugar: gets
-///////////////////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////////////////
 // generics
 
-pub const get = @import("get.zig").get;
-pub const make = @import("make.zig").make;
-pub const make_into_atom = @import("make.zig").make_into_atom;
+const get_ = @import("get.zig");
+const make_ = @import("make.zig");
+
+pub const get = get_.get;
+pub const make = make_.make;
+pub const make_into_atom = make_.make_into_atom;
+
+///////////////////////////////////////////////////////////////////////////////
+// allocators
+
+const allocator_ = @import("allocator.zig");
+
+pub const allocator = allocator_.allocator;
+

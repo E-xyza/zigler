@@ -88,6 +88,15 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array) !void {
     try stream.endObject();
 }
 
+fn streamPointer(stream: anytype, comptime a: std.builtin.Type.Pointer) !void {
+    try stream.beginObject();
+    try stream.objectField("type");
+    try stream.emitString("pointer");
+    try stream.objectField("child");
+    try streamType(stream, a.child);
+    try stream.endObject();
+}
+
 fn streamType(stream: anytype, comptime T: type) !void {
     switch (@typeInfo(T)) {
         .Int => |i|
@@ -100,6 +109,8 @@ fn streamType(stream: anytype, comptime T: type) !void {
             try streamStruct(stream, s, @typeName(T)),
         .Array => |a|
             try streamArray(stream, a),
+        .Pointer => |p|
+            try streamPointer(stream, p),
         else =>
             try stream.emitString(std.fmt.comptimePrint("{}", .{T})),
     }

@@ -3,11 +3,14 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   use Zig,
     otp_app: :zigler,
-    nifs: [:array_float_test, {:array_u8_test, return: :list}, :array_string_test]
+    nifs: [:array_float_test, {:array_u8_test, return: :list}, :array_string_test,
+    :mut_array_float_test, {:mut_array_u8_test, return: :list}, :mut_array_string_test]
+
+  ## BASIC ARRAYS
 
   ~Z"""
-  fn common_array_fun(comptime T: type, passed: T) T {
-    var returned : T = undefined;
+  fn common_array_fun(passed: anytype) @TypeOf(passed) {
+    var returned : @TypeOf(passed) = undefined;
 
     for (passed) |value, index| {
       returned[index] = value + 1;
@@ -17,15 +20,15 @@ defmodule ZiglerTest.Types.ArrayTest do
   }
 
   pub fn array_float_test(passed: [3]f64) [3]f64 {
-    return common_array_fun([3]f64, passed);
+    return common_array_fun(passed);
   }
 
   pub fn array_u8_test(passed: [3]u8) [3]u8 {
-    return common_array_fun([3]u8, passed);
+    return common_array_fun(passed);
   }
 
   pub fn array_string_test(passed: [3]u8) [3]u8 {
-    return common_array_fun([3]u8, passed);
+    return common_array_fun(passed);
   }
   """
 
@@ -46,6 +49,45 @@ defmodule ZiglerTest.Types.ArrayTest do
 
     test "the default output" do
       assert "bcd" == array_string_test("abc")
+    end
+  end
+
+  ## "PSEUDO-MUTABLE" ARRAYS.  Note that "responsibility" for the
+  # array data is with the calling function.
+
+  ~Z"""
+  fn common_array_mut(passed: anytype) void {
+    for (passed.*) |*value| { value.* += 1; }
+  }
+
+  pub fn mut_array_float_test(passed: *[3]f64) *[3]f64 {
+    common_array_mut(passed);
+    return passed;
+  }
+
+  pub fn mut_array_u8_test(passed: *[3]f64) *[3]f64 {
+    common_array_mut(passed);
+    return passed;
+  }
+
+  pub fn mut_array_string_test(passed: *[3]u8) *[3]u8 {
+    common_array_mut(passed);
+    return passed;
+  }
+  """
+
+  describe "for a generic mutable array" do
+    test "you can do a pseudo-mutable pass" do
+      assert [2.0, 3.0, 4.0] == mut_array_float_test([1.0, 2.0, 3.0])
+      assert [2, 3, 4] == mut_array_u8_test([1, 2, 3])
+    end
+
+    test "you can pass a string" do
+      assert ~C"bcd" == mut_array_u8_test("abc")
+    end
+
+    test "returning a string is default" do
+      assert "bcd" == mut_array_string_test("abc")
     end
   end
 end

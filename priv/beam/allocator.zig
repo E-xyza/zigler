@@ -3,6 +3,9 @@
 // BEAM allocator definitions
 ///////////////////////////////////////////////////////////////////////////////
 
+const std = @import("std");
+const e = @import("erl_nif.zig");
+
 const Allocator = std.mem.Allocator;
 
 // basic allocator

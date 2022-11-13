@@ -4,11 +4,12 @@ defmodule Zig.Type.Array do
   import Type, only: :macros
 
   @derive Inspect
-  defstruct [:child, :len]
+  defstruct [:child, :len, mutable: false]
 
   @type t :: %__MODULE__{
           child: Type.t(),
-          len: non_neg_integer
+          len: non_neg_integer,
+          mutable: boolean
         }
 
   def from_json(%{"child" => child, "len" => len}, module) do
@@ -29,7 +30,9 @@ defmodule Zig.Type.Array do
 
   def param_errors(_, _), do: nil
 
-  def to_string(array), do: "[#{array.len}]#{Kernel.to_string(array.child)}"
+  def to_string(array), do: "#{mut(array)}[#{array.len}]#{Kernel.to_string(array.child)}"
 
-  def to_call(array), do: "[#{array.len}]#{Type.to_call(array.child)}"
+  def to_call(array), do: "#{mut(array)}[#{array.len}]#{Type.to_call(array.child)}"
+
+  defp mut(array), do: if array.mutable, do: "*"
 end
