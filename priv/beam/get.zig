@@ -203,95 +203,96 @@ pub fn get_atom(env: beam.env, src: beam.term, buf: *[256]u8) ![]u8 {
 }
 
 pub fn get_struct(comptime T: type, env: beam.env, src: beam.term) !T {
-    const struct_info = @typeInfo(T).Struct;
     var result: T = undefined;
-    switch (src.term_type(env)) {
-        .map => {
-            var failed: bool = false;
-            // look for each of the fields:
-            inline for (struct_info.fields) |field| {
-                const F = field.field_type;
-                const field_atom = beam.make_into_atom(env, field.name);
-                var map_value: e.ErlNifTerm = undefined;
-                if (e.enif_get_map_value(env, src.v, field_atom.v, &map_value) == 1) {
-                    @field(result, field.name) = get(F, env, .{.v = map_value}) catch return GetError.nif_struct_field_error;
-                } else {
-                    // note that this is a comptime if.
-                    if (field.default_value) |default_value| {
-                        @field(result, field.name) = @ptrCast(*const F, @alignCast(@alignOf(F), default_value)).*;
-                    } else {
-                        // can't return this directly due to compilation error.
-                        failed = true;
-                    }
-                }
-
-                if (failed) return GetError.nif_struct_missing_field_error;
-            }
-            return result;
-        },
-        .list => {
-            var head: e.ErlNifTerm = undefined;
-            var tail: e.ErlNifTerm = undefined;
-            var list: e.ErlNifTerm = src.v;
-            var tuple_buf: [2]beam.term = undefined;
-            var atom_buf: [256]u8 = undefined;
-            var registry: StructRegistry(T) = .{};
-
-            while (e.enif_get_list_cell(env, list, &head, &tail) == 1) : (list = tail) {
-                var item: beam.term = .{.v = head};
-                try get_tuple_to_buf(env, item, &tuple_buf);
-                const key = tuple_buf[0];
-                const value = tuple_buf[1];
-                const atom_name = try get_atom(env, key, &atom_buf);
-
-                // scan the list of fields to see if we have found one.
-                scan_fields: inline for (struct_info.fields) |field| {
-                    if (std.mem.eql(u8, atom_name, field.name)) {
-                        @field(result, field.name) = get(field.field_type, env, value) catch return GetError.nif_struct_field_error;
-                        // label the registry as complete.
-                        @field(registry, field.name) = true;
-                        break :scan_fields;
-                    }
-                }
-            }
-
-            inline for (struct_info.fields) |field| {
-                // skip anything that was defined in the last section.
-                if (!@field(registry, field.name)) {
-                    const Tf = field.field_type;
-                    if (field.default_value) |defaultptr| {
-                        @field(result, field.name) = @ptrCast(*const Tf, @alignCast(@alignOf(Tf), defaultptr)).*;
-                    } else {
-                        return GetError.nif_struct_missing_field_error;
-                    }
-                }
-            }
-
-            return result;
-        },
-        .bitstring => {
-            if (struct_info.layout == .Packed) {
-                // the bitstring is going to be *padded*, so we need to take this into account.
-                var str_res: e.ErlNifBinary = undefined;
-                const bytes = bytesFor(T);
-                const String = [bytes]u8;
-
-                // This should fail if it's not a binary.  Note there isn't much we can do here because
-                // it is *supposed* to be marshalled into the nif.
-                if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.nif_marshalling_error;
-
-                var buf: String = undefined;
-                std.mem.copy(u8, &buf, str_res.data[0..buf.len]);
-
-                var big_int = @bitCast(IntFor(bytes * 8), buf);
-                return @bitCast(T, @intCast(IntFor(@bitSizeOf(T)), big_int));
-            } else {
-                return GetError.nif_argument_type_error;
-            }
-        },
-        else => return GetError.nif_argument_type_error,
-    }
-    return GetError.nif_argument_type_error;
+    try fill_struct(T, env, &result, src);
+    return result;
+    //switch (src.term_type(env)) {
+    //    .map => {
+    //        var failed: bool = false;
+    //        // look for each of the fields:
+    //        inline for (struct_info.fields) |field| {
+    //            const F = field.field_type;
+    //            const field_atom = beam.make_into_atom(env, field.name);
+    //            var map_value: e.ErlNifTerm = undefined;
+    //            if (e.enif_get_map_value(env, src.v, field_atom.v, &map_value) == 1) {
+    //                @field(result, field.name) = get(F, env, .{.v = map_value}) catch return GetError.nif_struct_field_error;
+    //            } else {
+    //                // note that this is a comptime if.
+    //                if (field.default_value) |default_value| {
+    //                    @field(result, field.name) = @ptrCast(*const F, @alignCast(@alignOf(F), default_value)).*;
+    //                } else {
+    //                    // can't return this directly due to compilation error.
+    //                    failed = true;
+    //                }
+    //            }
+//
+    //            if (failed) return GetError.nif_struct_missing_field_error;
+    //        }
+    //        return result;
+    //    },
+    //    .list => {
+    //        var head: e.ErlNifTerm = undefined;
+    //        var tail: e.ErlNifTerm = undefined;
+    //        var list: e.ErlNifTerm = src.v;
+    //        var tuple_buf: [2]beam.term = undefined;
+    //        var atom_buf: [256]u8 = undefined;
+    //        var registry: StructRegistry(T) = .{};
+//
+    //        while (e.enif_get_list_cell(env, list, &head, &tail) == 1) : (list = tail) {
+    //            var item: beam.term = .{.v = head};
+    //            try get_tuple_to_buf(env, item, &tuple_buf);
+    //            const key = tuple_buf[0];
+    //            const value = tuple_buf[1];
+    //            const atom_name = try get_atom(env, key, &atom_buf);
+//
+    //            // scan the list of fields to see if we have found one.
+    //            scan_fields: inline for (struct_info.fields) |field| {
+    //                if (std.mem.eql(u8, atom_name, field.name)) {
+    //                    @field(result, field.name) = get(field.field_type, env, value) catch return GetError.nif_struct_field_error;
+    //                    // label the registry as complete.
+    //                    @field(registry, field.name) = true;
+    //                    break :scan_fields;
+    //                }
+    //            }
+    //        }
+//
+    //        inline for (struct_info.fields) |field| {
+    //            // skip anything that was defined in the last section.
+    //            if (!@field(registry, field.name)) {
+    //                const Tf = field.field_type;
+    //                if (field.default_value) |defaultptr| {
+    //                    @field(result, field.name) = @ptrCast(*const Tf, @alignCast(@alignOf(Tf), defaultptr)).*;
+    //                } else {
+    //                    return GetError.nif_struct_missing_field_error;
+    //                }
+    //            }
+    //        }
+//
+    //        return result;
+    //    },
+    //    .bitstring => {
+    //        if (struct_info.layout == .Packed) {
+    //            // the bitstring is going to be *padded*, so we need to take this into account.
+    //            var str_res: e.ErlNifBinary = undefined;
+    //            const bytes = bytesFor(T);
+    //            const String = [bytes]u8;
+//
+    //            // This should fail if it's not a binary.  Note there isn't much we can do here because
+    //            // it is *supposed* to be marshalled into the nif.
+    //            if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.nif_marshalling_error;
+//
+    //            var buf: String = undefined;
+    //            std.mem.copy(u8, &buf, str_res.data[0..buf.len]);
+//
+    //            var big_int = @bitCast(IntFor(bytes * 8), buf);
+    //            return @bitCast(T, @intCast(IntFor(@bitSizeOf(T)), big_int));
+    //        } else {
+    //            return GetError.nif_argument_type_error;
+    //        }
+    //    },
+    //    else => return GetError.nif_argument_type_error,
+    //}
+    //return GetError.nif_argument_type_error;
 }
 
 // internal function, for getting individual tuples out of a keyword list for
@@ -351,6 +352,7 @@ pub fn get_mut(comptime T: type, env: beam.env, src: beam.term) !T {
     // note that CALLER of get has the responsibility of freeing the result, if it
     // has succeeded.
     try fill(child, env, result, src);
+    //return result;
     return result;
 }
 
@@ -358,6 +360,8 @@ pub fn get_mut(comptime T: type, env: beam.env, src: beam.term) !T {
 fn fill(comptime T: type, env: beam.env, result: *T, src: beam.term) GetError!void {
     switch (@typeInfo(T)) {
         .Array => try fill_array(T, env, result, src),
+        // this is not executable in 0.10.0 due to a compiler bug in zig.
+        //.Struct => try fill_struct(T, env, result, src),
         else => @compileError("unhandlable type encountered in fill"),
     }
 }
@@ -389,6 +393,94 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term) GetEr
             if (str_res.size != array_info.len) return GetError.nif_array_length_error;
 
             std.mem.copy(u8, result, str_res.data[0..array_info.len]);
+        },
+        else => return GetError.nif_argument_type_error,
+    }
+}
+
+fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term) GetError!void {
+    const struct_info = @typeInfo(T).Struct;
+    switch (src.term_type(env)) {
+        .map => {
+            var failed: bool = false;
+            // look for each of the fields:
+            inline for (struct_info.fields) |field| {
+                const F = field.field_type;
+                const field_atom = beam.make_into_atom(env, field.name);
+                var map_value: e.ErlNifTerm = undefined;
+                if (e.enif_get_map_value(env, src.v, field_atom.v, &map_value) == 1) {
+                    @field(result.*, field.name) = get(F, env, .{.v = map_value}) catch return GetError.nif_struct_field_error;
+                } else {
+                    // note that this is a comptime if.
+                    if (field.default_value) |default_value| {
+                        @field(result.*, field.name) = @ptrCast(*const F, @alignCast(@alignOf(F), default_value)).*;
+                    } else {
+                        // can't return this directly due to compilation error.
+                        failed = true;
+                    }
+                }
+
+                if (failed) return GetError.nif_struct_missing_field_error;
+            }
+        },
+        .list => {
+            var head: e.ErlNifTerm = undefined;
+            var tail: e.ErlNifTerm = undefined;
+            var list: e.ErlNifTerm = src.v;
+            var tuple_buf: [2]beam.term = undefined;
+            var atom_buf: [256]u8 = undefined;
+            var registry: StructRegistry(T) = .{};
+
+            while (e.enif_get_list_cell(env, list, &head, &tail) == 1) : (list = tail) {
+                var item: beam.term = .{.v = head};
+                try get_tuple_to_buf(env, item, &tuple_buf);
+                const key = tuple_buf[0];
+                const value = tuple_buf[1];
+                const atom_name = try get_atom(env, key, &atom_buf);
+
+                // scan the list of fields to see if we have found one.
+                scan_fields: inline for (struct_info.fields) |field| {
+                    if (std.mem.eql(u8, atom_name, field.name)) {
+                        @field(result.*, field.name) = get(field.field_type, env, value) catch return GetError.nif_struct_field_error;
+                        // label the registry as complete.
+                        @field(registry, field.name) = true;
+                        break :scan_fields;
+                    }
+                }
+            }
+
+            inline for (struct_info.fields) |field| {
+                // skip anything that was defined in the last section.
+                if (!@field(registry, field.name)) {
+                    const Tf = field.field_type;
+                    if (field.default_value) |defaultptr| {
+                        @field(result.*, field.name) = @ptrCast(*const Tf, @alignCast(@alignOf(Tf), defaultptr)).*;
+                    } else {
+                        return GetError.nif_struct_missing_field_error;
+                    }
+                }
+            }
+        },
+        .bitstring => {
+            if (struct_info.layout == .Packed) {
+                // the bitstring is going to be *padded*, so we need to take this into account.
+                //var str_res: e.ErlNifBinary = undefined;
+                ////const bytes = bytesFor(T);
+                //const buf = @ptrToInt(result);
+
+                //std.debug.print("yooo {}\n", .{buf});
+                //_ = buf;
+
+                // This should fail if it's not a binary.  Note there isn't much we can do here because
+                // it is *supposed* to be marshalled into the nif.
+                //if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.nif_marshalling_error;
+
+                @panic("whoops");
+
+                //std.mem.copy(u8, buf, str_res.data[0..buf.len]);
+            } else {
+                return GetError.nif_argument_type_error;
+            }
         },
         else => return GetError.nif_argument_type_error,
     }

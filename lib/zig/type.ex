@@ -55,7 +55,7 @@ defprotocol Zig.Type do
     end
   end
 
-  @pointer_types ~w(array)
+  @pointer_types ~w(array struct)
 
   def from_json(json, module) do
     case json do

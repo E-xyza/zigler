@@ -3,8 +3,8 @@ const std = @import("std");
 const nif = @import("nif");
 const json = std.json;
 
-// probably 10 is an over-conservative choice for function depth here.
-const JSON_DEPTH = 10;
+// possibly 100 is an over-conservative choice for function depth here.
+const JSON_DEPTH = 100;
 
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();

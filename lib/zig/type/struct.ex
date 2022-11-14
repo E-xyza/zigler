@@ -1,7 +1,7 @@
 defmodule Zig.Type.Struct do
   use Zig.Type
 
-  defstruct [:name, :packed, :required, :optional]
+  defstruct [:name, :packed, :required, :optional, mutable: false]
 
   @type t :: %{
           name: String.t(),
@@ -103,9 +103,11 @@ defmodule Zig.Type.Struct do
     end
   end
 
-  def to_string(struct), do: struct.name
+  def to_string(struct), do: "#{mut(struct)}#{struct.name}"
 
-  def to_call(struct), do: "nif." <> struct.name
+  def to_call(struct), do: "#{mut(struct)}nif.#{struct.name}"
+
+  defp mut(struct), do: if (struct.mutable), do: "*"
 end
 
 #

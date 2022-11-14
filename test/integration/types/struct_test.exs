@@ -3,8 +3,6 @@ defmodule ZiglerTest.Types.StructTest do
 
   use Zig, otp_app: :zigler
 
-  # TODO: validations that the structs are defined "pub"
-
   ~Z"""
   pub const basic_struct = struct {
     value: u64
@@ -103,5 +101,20 @@ defmodule ZiglerTest.Types.StructTest do
                    "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `default_struct` but one of its fields has incorrect type\n",
                    fn -> default_struct_test(value: "foo") end
     end
+  end
+
+#  ~Z"""
+#  pub fn mutable_struct_test(s: *basic_struct) *basic_struct {
+#    s.value += 1;
+#    return s;
+#  }
+#  """
+  describe "structs can be pseudo-mutable" do
+    # currently not available due to compiler bug in ziglang.
+    @tag :skip
+    test "called as a map"
+    #do
+    #  assert %{value: 46} == mutable_struct_test(%{value: 47})
+    #end
   end
 end

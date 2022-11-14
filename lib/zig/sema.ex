@@ -1,9 +1,7 @@
 defmodule Zig.Sema do
   alias Zig.Type
-  alias Zig.Type.Struct
 
   require EEx
-  alias Zig.Analyzer
   alias Zig.Assembler
 
   sema_zig_template = Path.join(__DIR__, "templates/sema.zig.eex")
@@ -16,7 +14,9 @@ defmodule Zig.Sema do
     File.write!(sema_file, file_for(opts))
     {result, 0} = System.cmd("zig", ["build", "sema"], cd: dir)
 
-    %{"functions" => functions} = Jason.decode!(result)
+    functions = result
+    |> Jason.decode!
+    |> Map.fetch!("functions")
 
     nif_opts =
       case Keyword.fetch!(opts, :nifs) do

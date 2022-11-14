@@ -57,7 +57,8 @@ defmodule Zig.Type.Array do
                      "\n\n     expected: list of length (#{unquote(type.len)})\n     got: #{inspect(item)} (length #{length(item)})"
 
                    true ->
-                    child_str = unquote(Kernel.to_string(type.child))
+                     child_str = unquote(Kernel.to_string(type.child))
+
                      "\n\n     expected: list with elements of type #{child_str} but one of the list items has the wrong type"
                  end
 
@@ -80,15 +81,15 @@ defmodule Zig.Type.Array do
                item = Enum.at(a, unquote(index))
 
                msg =
-                cond do
-                  is_binary(item) ->
-                    "\n\n     expected: binary of size #{unquote(type.len)}\n     got size: #{byte_size(item)}"
+                 cond do
+                   is_binary(item) ->
+                     "\n\n     expected: binary of size #{unquote(type.len)}\n     got size: #{byte_size(item)}"
 
-                  true ->
-                   child_str = unquote(Kernel.to_string(type.child))
-                   "\n\n     expected: list of length #{unquote(type.len)}\n     got length: #{length(item)}"
-                end
+                   true ->
+                     child_str = unquote(Kernel.to_string(type.child))
 
+                     "\n\n     expected: list of length #{unquote(type.len)}\n     got length: #{length(item)}"
+                 end
 
                new_opts =
                  Keyword.merge(opts,
