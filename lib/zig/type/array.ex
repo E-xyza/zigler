@@ -49,15 +49,16 @@ defmodule Zig.Type.Array do
                item = Enum.at(a, unquote(index))
 
                msg =
-                 case item do
-                   _ when not is_list(item) ->
-                     "\n\n     expected: integer (#{unquote(type_str)})\n     got: #{inspect(item)}"
+                 cond do
+                   not is_list(item) ->
+                     "\n\n     expected: list (#{unquote(type_str)})\n     got: #{inspect(item)}"
 
-                   _ when length(item) != unquote(type.len) ->
-                     "\n\n     expected: array of length (#{unquote(type.len)})\n     got: #{inspect(item)} (length #{length(item)})"
+                   length(item) != unquote(type.len) ->
+                     "\n\n     expected: list of length (#{unquote(type.len)})\n     got: #{inspect(item)} (length #{length(item)})"
 
-                   _ ->
-                     "nothing"
+                   true ->
+                    child_str = unquote(Kernel.to_string(type.child))
+                     "\n\n     expected: list with elements of type #{child_str} but one of the list items has the wrong type"
                  end
 
                new_opts =
@@ -78,13 +79,21 @@ defmodule Zig.Type.Array do
              [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
                item = Enum.at(a, unquote(index))
 
+               msg =
+                cond do
+                  is_binary(item) ->
+                    "\n\n     expected: binary of size #{unquote(type.len)}\n     got size: #{byte_size(item)}"
+
+                  true ->
+                   child_str = unquote(Kernel.to_string(type.child))
+                   "\n\n     expected: list of length #{unquote(type.len)}\n     got length: #{length(item)}"
+                end
+
+
                new_opts =
                  Keyword.merge(opts,
                    error_info: %{module: __MODULE__, function: :_format_error},
-                   zigler_error: %{
-                     unquote(index + 1) =>
-                       "\n\n     expected: array of length #{unquote(type.len)}\n     got length: #{length(item)}"
-                   }
+                   zigler_error: %{unquote(index + 1) => msg}
                  )
 
                :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])

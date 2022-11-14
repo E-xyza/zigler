@@ -50,19 +50,19 @@ defmodule ZiglerTest.Types.ArrayTest do
 
     test "completely wrong type is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer ([3]f64)\n     got: :bar\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list ([3]f64)\n     got: :bar\n",
                    fn -> array_float_test(:bar) end
     end
 
     test "incorrect number of elements is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: array of length 3\n     got length: 2\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list of length 3\n     got length: 2\n",
                    fn -> array_float_test([1.0, 2.0]) end
     end
 
     test "incorrect value types is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` but one of its fields has incorrect type\n",
+      "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list with elements of type f64 but one of the list items has the wrong type\n",
                    fn -> array_float_test(["foo", :bar, :baz]) end
     end
   end
@@ -74,6 +74,12 @@ defmodule ZiglerTest.Types.ArrayTest do
 
     test "the default output" do
       assert "bcd" == array_string_test("abc")
+    end
+
+    test "not tolerated with wrong length" do
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: binary of size 3\n     got size: 2\n",
+                   fn -> array_string_test("fo") end
     end
   end
 

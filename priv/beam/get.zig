@@ -9,7 +9,6 @@ pub const GetError = error {
     nif_struct_missing_field_error,
     nif_argument_enum_not_found_error,
     nif_array_length_error,
-    nif_binary_size_error,
     nif_marshalling_error  // this should really not happen.
 };
 
@@ -386,14 +385,14 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term) GetEr
             var str_res: e.ErlNifBinary = undefined;
 
             if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.nif_marshalling_error;
-            if (str_res.size != array_info.len) return GetError.nif_binary_size_error;
+
+            if (str_res.size != array_info.len) return GetError.nif_array_length_error;
 
             std.mem.copy(u8, result, str_res.data[0..array_info.len]);
         },
         else => return GetError.nif_argument_type_error,
     }
 }
-
 
 pub fn StructRegistry(comptime SourceStruct: type) type {
     const source_info = @typeInfo(SourceStruct);
