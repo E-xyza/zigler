@@ -107,7 +107,5 @@ defmodule Zig.Type.Struct do
 
   def to_call(struct), do: "#{mut(struct)}nif.#{struct.name}"
 
-  defp mut(struct), do: if (struct.mutable), do: "*"
+  defp mut(struct), do: if(struct.mutable, do: "*")
 end
-
-#

@@ -4,6 +4,7 @@ defprotocol Zig.Type do
   alias Zig.Type.Enum
   alias Zig.Type.Float
   alias Zig.Type.Integer
+  alias Zig.Type.Optional
   alias Zig.Type.Struct
 
   @type t :: Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :term
@@ -90,6 +91,9 @@ defprotocol Zig.Type do
         child
         |> __MODULE__.from_json(module)
         |> Map.replace!(:mutable, true)
+
+      %{"type" => "optional"} ->
+        Optional.from_json(json, module)
     end
   end
 

@@ -126,5 +126,7 @@ defmodule ZiglerTest.Types.IntegerTest do
   end
 
   describe "for big integers" do
+    @tag :skip
+    test "can be marshalled into zig bigint type"
   end
 end

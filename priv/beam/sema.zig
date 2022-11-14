@@ -92,12 +92,21 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
     try stream.endObject();
 }
 
-fn streamPointer(stream: anytype, comptime a: std.builtin.Type.Pointer) !void {
+fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer) !void {
     try stream.beginObject();
     try stream.objectField("type");
     try stream.emitString("pointer");
     try stream.objectField("child");
-    try streamType(stream, a.child);
+    try streamType(stream, p.child);
+    try stream.endObject();
+}
+
+fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) ! void {
+    try stream.beginObject();
+    try stream.objectField("type");
+    try stream.emitString("optional");
+    try stream.objectField("child");
+    try streamType(stream, o.child);
     try stream.endObject();
 }
 
@@ -115,6 +124,8 @@ fn streamType(stream: anytype, comptime T: type) !void {
             try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
         .Pointer => |p|
             try streamPointer(stream, p),
+        .Optional => |o|
+            try streamOptional(stream, o),
         else =>
             try stream.emitString(std.fmt.comptimePrint("{}", .{T})),
     }

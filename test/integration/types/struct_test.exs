@@ -103,18 +103,18 @@ defmodule ZiglerTest.Types.StructTest do
     end
   end
 
-#  ~Z"""
-#  pub fn mutable_struct_test(s: *basic_struct) *basic_struct {
-#    s.value += 1;
-#    return s;
-#  }
-#  """
+  #  ~Z"""
+  #  pub fn mutable_struct_test(s: *basic_struct) *basic_struct {
+  #    s.value += 1;
+  #    return s;
+  #  }
+  #  """
   describe "structs can be pseudo-mutable" do
     # currently not available due to compiler bug in ziglang.
     @tag :skip
     test "called as a map"
-    #do
+    # do
     #  assert %{value: 46} == mutable_struct_test(%{value: 47})
-    #end
+    # end
   end
 end

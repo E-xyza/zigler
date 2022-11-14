@@ -14,9 +14,10 @@ defmodule Zig.Sema do
     File.write!(sema_file, file_for(opts))
     {result, 0} = System.cmd("zig", ["build", "sema"], cd: dir)
 
-    functions = result
-    |> Jason.decode!
-    |> Map.fetch!("functions")
+    functions =
+      result
+      |> Jason.decode!()
+      |> Map.fetch!("functions")
 
     nif_opts =
       case Keyword.fetch!(opts, :nifs) do

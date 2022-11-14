@@ -17,6 +17,7 @@ pub fn make(env: beam.env, value: anytype) beam.term {
         .Null => return make_null(env),
         .Float => return make_float(env, value),
         .Bool => return make_bool(env, value),
+        .Optional => return make_optional(env, value),
         else => {
             @compileError("unknown type encountered");
         },
@@ -40,6 +41,10 @@ fn make_pointer(env: beam.env, value: anytype) beam.term {
         .Slice => @compileError("not implemented yet"),
         .C => @compileError("not implemented yet"),
     }
+}
+
+fn make_optional(env: beam.env, value: anytype) beam.term {
+    return if (value) | unwrapped | make(env, unwrapped) else make_into_atom(env, "nil");
 }
 
 fn make_int(env: beam.env, value: anytype) beam.term {
