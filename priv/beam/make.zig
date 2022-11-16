@@ -38,7 +38,7 @@ fn make_pointer(env: beam.env, value: anytype) beam.term {
     switch (pointer.size) {
         .One => return make_mut(env, value),
         .Many => @compileError("not implemented yet"),
-        .Slice => @compileError("not implemented yet"),
+        .Slice => return make_slice(env, value),
         .C => @compileError("not implemented yet"),
     }
 }
@@ -191,6 +191,34 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype) 
     }
 }
 
+pub fn make_slice(env: beam.env, slice: anytype) beam.term {
+    // we own the slice, so always delete it.
+    defer beam.allocator.free(slice);
+
+    // if the slice is a slice of u8, send it as a binary.
+    if (@TypeOf(slice) == []u8) return make_binary(env, slice);
+
+    // TODO: an optimization where we check if slice is a slice of beam.term
+    var tail = e.enif_make_list_from_array(env, null, 0);
+
+    if (slice.len != 0) {
+      var index = slice.len;
+      while (index > 0) : (index -= 1) {
+          tail = e.enif_make_list_cell(env, make(env, slice[index - 1]).v, tail);
+      }
+    }
+
+    return .{ .v = tail };
+}
+
 pub fn make_into_atom(env: beam.env, atom_string: []const u8) beam.term {
     return .{.v = e.enif_make_atom_len(env, atom_string.ptr, atom_string.len)};
+}
+
+pub fn make_binary(env: beam.env, binary_slice: []const u8) beam.term {
+    // TODO: make this return some sort of error if it fails
+    var result: beam.term = undefined;
+    var buf = e.enif_make_new_binary(env, binary_slice.len, &result.v);
+    std.mem.copy(u8, buf[0..binary_slice.len], binary_slice);
+    return result;
 }

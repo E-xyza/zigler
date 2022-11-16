@@ -92,13 +92,35 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
     try stream.endObject();
 }
 
-fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer) !void {
-    try stream.beginObject();
-    try stream.objectField("type");
-    try stream.emitString("pointer");
-    try stream.objectField("child");
-    try streamType(stream, p.child);
-    try stream.endObject();
+fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) !void {
+    switch (p.size) {
+        .One => {
+            try stream.beginObject();
+            try stream.objectField("type");
+            try stream.emitString("pointer");
+            try stream.objectField("child");
+            try streamType(stream, p.child);
+            try stream.endObject();
+        },
+        .Many => {
+            @compileError("not implemented yet");
+        },
+        .Slice => {
+            try stream.beginObject();
+            try stream.objectField("type");
+            try stream.emitString("slice");
+            try stream.objectField("child");
+            try streamType(stream, p.child);
+            try stream.objectField("hasSentinel");
+            try stream.emitBool(if (p.sentinel) |_| true else false);
+            try stream.objectField("repr");
+            try stream.emitString(repr);
+            try stream.endObject();
+        },
+        .C => {
+            @compileError("not implemented yet");
+        }
+    }
 }
 
 fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) ! void {
@@ -123,7 +145,7 @@ fn streamType(stream: anytype, comptime T: type) !void {
         .Array => |a|
             try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
         .Pointer => |p|
-            try streamPointer(stream, p),
+            try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
         .Optional => |o|
             try streamOptional(stream, o),
         else =>

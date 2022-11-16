@@ -9,7 +9,6 @@ defmodule Zig.Compiler do
   alias Zig.Assembler
   alias Zig.Command
   alias Zig.Nif
-  alias Zig.Parser
   alias Zig.Sema
   alias Zig.Type.Struct
 

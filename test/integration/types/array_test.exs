@@ -62,9 +62,14 @@ defmodule ZiglerTest.Types.ArrayTest do
 
     test "incorrect value types is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list with elements of type f64 but one of the list items has the wrong type\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list ([3]f64) but one of the list items (in [\"foo\", :bar, :baz]) has the wrong type\n",
                    fn -> array_float_test(["foo", :bar, :baz]) end
     end
+  end
+
+  describe "fastlanes for" do
+    test "beam.term works"
+    test "e.ErlNifTerm works"
   end
 
   describe "for u8s strings are" do

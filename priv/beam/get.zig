@@ -2,14 +2,7 @@ const beam = @import("beam.zig");
 const e = @import("erl_nif.zig");
 const std = @import("std");
 
-pub const GetError = error {
-    nif_argument_type_error,
-    nif_argument_range_error,
-    nif_struct_field_error,
-    nif_struct_missing_field_error,
-    nif_argument_enum_not_found_error,
-    nif_array_length_error,
-    nif_marshalling_error  // this should really not happen.
+pub const GetError = error{ nif_argument_type_error, nif_argument_range_error, nif_struct_field_error, nif_struct_missing_field_error, nif_argument_enum_not_found_error, nif_array_length_error, nif_marshalling_error // this should really not happen.
 };
 
 pub fn get(comptime T: type, env: beam.env, src: beam.term) !T {
@@ -153,8 +146,7 @@ pub fn get_enum(comptime T: type, env: beam.env, src: beam.term) !T {
     const IntType = enumInfo.tag_type;
     // prefer the integer form, fallback to string searches.
     switch (src.term_type(env)) {
-        .integer =>
-            return @intToEnum(T, try get_int(IntType, env, src)),
+        .integer => return @intToEnum(T, try get_int(IntType, env, src)),
         .atom => {
             // atoms cannot be longer than 256 characters.
             var buf: [256]u8 = undefined;
@@ -165,42 +157,39 @@ pub fn get_enum(comptime T: type, env: beam.env, src: beam.term) !T {
             }
             return GetError.nif_argument_enum_not_found_error;
         },
-        else => return GetError.nif_argument_type_error
+        else => return GetError.nif_argument_type_error,
     }
 }
 
-const FloatAtoms = enum {
-    infinity, neg_infinity, NaN
-};
+const FloatAtoms = enum { infinity, neg_infinity, NaN };
 
 pub fn get_float(comptime T: type, env: beam.env, src: beam.term) !T {
     // all floats in the beam are f64 types so this is relatively easy.
     switch (src.term_type(env)) {
         .float => {
-          var float: f64 = undefined;
+            var float: f64 = undefined;
 
-          // this is not failable.
-          _ = e.enif_get_double(env, src.v, &float);
+            // this is not failable.
+            _ = e.enif_get_double(env, src.v, &float);
 
-          return @floatCast(T, float);
+            return @floatCast(T, float);
         },
         .atom => {
             const special_form = get_enum(FloatAtoms, env, src) catch return GetError.nif_argument_type_error;
             return switch (special_form) {
                 .infinity => std.math.inf(T),
-                .neg_infinity => - std.math.inf(T),
+                .neg_infinity => -std.math.inf(T),
                 .NaN => std.math.nan(T),
             };
         },
-        else =>
-          return GetError.nif_argument_type_error
+        else => return GetError.nif_argument_type_error,
     }
 }
 
 pub fn get_atom(env: beam.env, src: beam.term, buf: *[256]u8) ![]u8 {
     const len = @intCast(usize, e.enif_get_atom(env, src.v, buf, 256, e.ERL_NIF_LATIN1));
     if (len == 0) return GetError.nif_argument_type_error;
-    return buf[0..len - 1];
+    return buf[0 .. len - 1];
 }
 
 pub fn get_struct(comptime T: type, env: beam.env, src: beam.term) !T {
@@ -233,8 +222,8 @@ fn get_tuple_to_buf(env: beam.env, src: beam.term, buf: anytype) !void {
     if (result == 0) return GetError.nif_argument_type_error;
     if (arity != child_type_info.Array.len) return GetError.nif_argument_type_error;
 
-    for (buf) | *slot, index | {
-        slot.* = .{.v = src_array[index]};
+    for (buf) |*slot, index| {
+        slot.* = .{ .v = src_array[index] };
     }
 }
 
@@ -244,8 +233,12 @@ pub fn get_bool(comptime T: type, env: beam.env, src: beam.term) !bool {
         .atom => {
             var buf: [256]u8 = undefined;
             const atom = try get_atom(env, src, &buf);
-            if (std.mem.eql(u8, "true", atom)) { return true; }
-            if (std.mem.eql(u8, "false", atom)) { return false; }
+            if (std.mem.eql(u8, "true", atom)) {
+                return true;
+            }
+            if (std.mem.eql(u8, "false", atom)) {
+                return false;
+            }
             return GetError.nif_argument_type_error;
         },
         else => return GetError.nif_argument_type_error,
@@ -253,21 +246,29 @@ pub fn get_bool(comptime T: type, env: beam.env, src: beam.term) !bool {
 }
 
 pub fn get_array(comptime T: type, env: beam.env, src: beam.term) !T {
-    var result : T = undefined;
+    var result: T = undefined;
     try fill_array(T, env, &result, src);
     return result;
 }
 
 pub fn get_pointer(comptime T: type, env: beam.env, src: beam.term) !T {
-    const Child = @typeInfo(T).Pointer.child;
-    var result = try beam.allocator.create(Child);
-    errdefer beam.allocator.free(result);
-
     // note that CALLER of get has the responsibility of freeing the result, if it
     // has succeeded.
-    try fill(Child, env, result, src);
-    //return result;
-    return result;
+
+    const pointer_info = @typeInfo(T).Pointer;
+    const Child = pointer_info.child;
+    switch (pointer_info.size) {
+        .One => {
+            var result = try beam.allocator.create(Child);
+            errdefer beam.allocator.destroy(result);
+            try fill(Child, env, result, src);
+            return result;
+        },
+        .Slice => {
+            return get_slice(T, env, src);
+        },
+        else => @compileError("not implemented yet"),
+    }
 }
 
 pub fn get_optional(comptime T: type, env: beam.env, src: beam.term) !T {
@@ -277,11 +278,52 @@ pub fn get_optional(comptime T: type, env: beam.env, src: beam.term) !T {
         .atom => {
             var buf: [256]u8 = undefined;
             const atom = try get_atom(env, src, &buf);
-            if (std.mem.eql(u8, "nil", atom)) { return null; }
+            if (std.mem.eql(u8, "nil", atom)) {
+                return null;
+            }
             return GetError.nif_argument_type_error;
         },
         else => return try get(Child, env, src),
     }
+}
+
+pub fn get_slice(comptime T: type, env: beam.env, src: beam.term) !T {
+    switch (src.term_type(env)) {
+        .bitstring => return get_slice_binary(T, env, src),
+        .list => return get_slice_list(T, env, src),
+        else => return GetError.nif_argument_type_error,
+    }
+}
+
+pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term) !T {
+    const slice_info = @typeInfo(T).Pointer;
+    // slices can be instantiated from binaries, if they are u8 arrays
+    if (slice_info.child != u8) return GetError.nif_argument_type_error;
+    var str_res: e.ErlNifBinary = undefined;
+    if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.nif_marshalling_error;
+    var result = try beam.allocator.alloc(u8, str_res.size);
+    std.mem.copy(u8, result, str_res.data[0..result.len]);
+    return result;
+}
+
+pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term) !T {
+    const Child = @typeInfo(T).Pointer.child;
+    var length: c_uint = undefined;
+
+    if (e.enif_get_list_length(env, src.v, &length) == 0) return GetError.nif_marshalling_error;
+    var result = try beam.allocator.alloc(Child, length);
+    errdefer beam.allocator.free(result);
+
+    var list: e.ErlNifTerm = src.v;
+    for (result) |*item| {
+        var head: e.ErlNifTerm = undefined;
+        if (e.enif_get_list_cell(env, list, &head, &list) == 0) return GetError.nif_marshalling_error;
+        item.* = try get(Child, env, .{ .v = head });
+    }
+
+    if (e.enif_is_empty_list(env, list) == 0) return GetError.nif_marshalling_error;
+
+    return result;
 }
 
 // fill functions
@@ -305,7 +347,7 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term) GetEr
             for (result.*) |*item| {
                 var head: e.ErlNifTerm = undefined;
                 if (e.enif_get_list_cell(env, tail, &head, &tail) != 0) {
-                   item.* = try get(array_info.child, env, .{.v = head});
+                    item.* = try get(array_info.child, env, .{ .v = head });
                 } else return GetError.nif_array_length_error;
             }
             if (e.enif_is_empty_list(env, tail) == 0) return GetError.nif_array_length_error;
@@ -337,7 +379,7 @@ fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term) GetE
                 const field_atom = beam.make_into_atom(env, field.name);
                 var map_value: e.ErlNifTerm = undefined;
                 if (e.enif_get_map_value(env, src.v, field_atom.v, &map_value) == 1) {
-                    @field(result.*, field.name) = get(F, env, .{.v = map_value}) catch return GetError.nif_struct_field_error;
+                    @field(result.*, field.name) = get(F, env, .{ .v = map_value }) catch return GetError.nif_struct_field_error;
                 } else {
                     // note that this is a comptime if.
                     if (field.default_value) |default_value| {
@@ -360,7 +402,7 @@ fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term) GetE
             var registry: StructRegistry(T) = .{};
 
             while (e.enif_get_list_cell(env, list, &head, &tail) == 1) : (list = tail) {
-                var item: beam.term = .{.v = head};
+                var item: beam.term = .{ .v = head };
                 try get_tuple_to_buf(env, item, &tuple_buf);
                 const key = tuple_buf[0];
                 const value = tuple_buf[1];
@@ -423,13 +465,7 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
     var fields: [source_fields.len]std.builtin.Type.StructField = undefined;
 
     for (source_fields) |source_field, index| {
-        fields[index] = .{
-            .name = source_field.name,
-            .field_type = bool,
-            .default_value = &default,
-            .is_comptime = false,
-            .alignment = @alignOf(*bool)
-        };
+        fields[index] = .{ .name = source_field.name, .field_type = bool, .default_value = &default, .is_comptime = false, .alignment = @alignOf(*bool) };
     }
 
     const decls = [0]std.builtin.Type.Declaration{};
@@ -440,7 +476,7 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
         .is_tuple = false,
     };
 
-    return @Type(.{.Struct = constructed_struct});
+    return @Type(.{ .Struct = constructed_struct });
 }
 
 fn bytesFor(comptime T: type) comptime_int {
@@ -450,5 +486,5 @@ fn bytesFor(comptime T: type) comptime_int {
 
 // there's probably a std function for this.
 fn IntFor(comptime bits: comptime_int) type {
-    return @Type(.{.Int = .{.signedness = .unsigned, .bits = bits}});
+    return @Type(.{ .Int = .{ .signedness = .unsigned, .bits = bits } });
 }

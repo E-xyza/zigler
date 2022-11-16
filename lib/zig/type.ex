@@ -5,6 +5,7 @@ defprotocol Zig.Type do
   alias Zig.Type.Float
   alias Zig.Type.Integer
   alias Zig.Type.Optional
+  alias Zig.Type.Slice
   alias Zig.Type.Struct
 
   @type t :: Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :term
@@ -86,6 +87,9 @@ defprotocol Zig.Type do
 
       %{"type" => "array"} ->
         Array.from_json(json, module)
+
+      %{"type" => "slice"} ->
+        Slice.from_json(json, module)
 
       %{"type" => "pointer", "child" => child = %{"type" => type}} when type in @pointer_types ->
         child

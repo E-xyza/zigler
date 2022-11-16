@@ -7,7 +7,8 @@ defmodule Zig.Type.Optional do
 
   @type t :: %__MODULE__{child: Type.t()}
 
-  def from_json(%{"child" => child}, module), do: %__MODULE__{child: Type.from_json(child, module)}
+  def from_json(%{"child" => child}, module),
+    do: %__MODULE__{child: Type.from_json(child, module)}
 
   # TODO: punt these to child's functions
   def marshal_param(_, _), do: nil

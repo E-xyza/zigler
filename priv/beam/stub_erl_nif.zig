@@ -86,11 +86,11 @@ const dcll = ErlNifResourceDynCall;
 
 const reentry = fn (env, c_int, [*c]const term) term;
 
-pub fn enif_alloc(_: isize) void {}
-pub fn enif_alloc_binary(_: isize, _: bin) c_int { return 0; }
+pub fn enif_alloc(_: usize) ?*anyopaque { return null; }
+pub fn enif_alloc_binary(_: usize, _: bin) c_int { return 0; }
 pub fn enif_alloc_env() env { return null; }
 pub fn enif_alloc_resource(_: res, _: c_uint) ?*anyopaque { return null; }
-pub fn enif_binary_to_term(_: env, _: [*c]u8, _: isize, _: *term, _: ErlNifBinaryToTerm) usize { return 0; }
+pub fn enif_binary_to_term(_: env, _: [*c]u8, _: usize, _: *term, _: ErlNifBinaryToTerm) usize { return 0; }
 pub fn enif_clear_env(_: env) void {}
 pub fn enif_compare(_: term, _: term) c_int { return 0; }
 pub fn enif_compare_monitors(_: mon, _: mon) c_int { return 0; }
@@ -121,7 +121,7 @@ pub fn enif_get_local_port(_: env, _: term, _: prt) c_int { return 0; }
 pub fn enif_get_list_cell(_: env, _: term, _: trm, _: trm) c_int { return 0; }
 pub fn enif_get_list_length(_: env, _: term, _: ?*c_uint) c_int { return 0; }
 pub fn enif_get_long(_: env, _: term, _: ?*c_long) c_int { return 0; }
-pub fn enif_get_map_size(_: env, _: term, _: ?*isize) c_int { return 0; }
+pub fn enif_get_map_size(_: env, _: term, _: ?*usize) c_int { return 0; }
 pub fn enif_get_map_value(_: env, _: term, _: term, _: trm) c_int { return 0; }
 pub fn enif_get_resource(_: env, _: term, _: res, _: ?*?*anyopaque) c_int { return 0; }
 pub fn enif_get_string(_: env, _: term, _: [*c]u8, _: c_uint, _: cenc) c_int { return 0; }
@@ -129,20 +129,20 @@ pub fn enif_get_tuple(_: env, _: term, _: ?*c_int, _: ?*trm) c_int { return 0; }
 pub fn enif_get_uint(_: env, _: term, _: ?*c_uint) c_int { return 0; }
 pub fn enif_get_uint64(_: env, _: term, _: ?*u64) c_int { return 0; }
 pub fn enif_get_ulong(_: env, _: term, _: ?*c_ulong) c_int { return 0; }
-pub fn enif_getenv(_: [*c]const u8, _: [*c]u8, _: ?*isize) c_int { return 0; }
+pub fn enif_getenv(_: [*c]const u8, _: [*c]u8, _: ?*usize) c_int { return 0; }
 pub fn enif_has_pending_exception(_: env, _: trm) c_int { return 0; }
 pub fn enif_hash(_: hash, _: term, _: u64) u64 { return 0; }
 pub fn enif_inspect_binary(_: env, _: term, _: bin) c_int { return 0; }
 pub fn enif_inspect_iolist_as_binary(_: env, _: term, _: bin) c_int { return 0; }
-pub fn enif_inspect_iovec(_: env, _: isize, _: term, _: trm, _: ?*iov) c_int { return 0; }
+pub fn enif_inspect_iovec(_: env, _: usize, _: term, _: trm, _: ?*iov) c_int { return 0; }
 pub fn enif_ioq_create(_: ioqo) ioq { return null; }
 pub fn enif_ioq_destroy(_: ioq) void {}
-pub fn enif_ioq_deq(_: ioq, _: isize, _: ?*isize) c_int { return 0; }
-pub fn enif_ioq_enq_binary(_: ioq, _: bin, _: isize) c_int { return 0; }
-pub fn enif_ioq_enqv(_: ioq, _: iov, _: isize) c_int { return 0; }
+pub fn enif_ioq_deq(_: ioq, _: usize, _: ?*usize) c_int { return 0; }
+pub fn enif_ioq_enq_binary(_: ioq, _: bin, _: usize) c_int { return 0; }
+pub fn enif_ioq_enqv(_: ioq, _: iov, _: usize) c_int { return 0; }
 pub fn enif_ioq_peek(_: ioq, _: ?*c_int) siv { return 0; }
 pub fn enif_ioq_peek_head(_: env, _: ioq, _: ?*c_int, _: trm) siv { return 0; }
-pub fn enif_ioq_size(_: ioq) isize { return 0; }
+pub fn enif_ioq_size(_: ioq) usize { return 0; }
 pub fn enif_is_atom(_: env, _: term) c_int { return 0; }
 pub fn enif_is_binary(_: env, _: term) c_int { return 0; }
 pub fn enif_is_current_process_alive(_: env) c_int { return 0; }
@@ -168,7 +168,7 @@ pub fn enif_make_binary(_: env, _: bin) term { return .{}; }
 pub fn enif_make_copy(_: env, _: term) term { return .{}; }
 pub fn enif_make_double(_: env, _: f64) term { return .{}; }
 pub fn enif_make_existing_atom(_: env, _: [*c]const u8, _: trm, _: cenc) c_int { return 0; }
-pub fn enif_make_existing_atom_len(_: env, _: [*c]const u8, _: isize, _: trm, _: cenc) c_int { return 0; }
+pub fn enif_make_existing_atom_len(_: env, _: [*c]const u8, _: usize, _: trm, _: cenc) c_int { return 0; }
 pub fn enif_make_int(_: env, _: c_int) term { return .{}; }
 pub fn enif_make_int64(_: env, _: u64) term { return .{}; }
 // don't use the variadic list functions.
@@ -182,18 +182,18 @@ pub fn enif_make_long(_: env, _: c_long) term { return .{}; }
 pub fn enif_make_map_put(_: env, _: term, _: term, _: term, _: trm) c_int { return 0; }
 pub fn enif_make_map_remove(_: env, _: term, _: term, _: trm) c_int { return 0; }
 pub fn enif_make_map_update(_: env, _: term, _: term, _: term, _: trm) c_int { return 0; }
-pub fn enif_make_map_from_arrays(_: env, _: [*c]const term, _: [*c]const term, _: isize, _: trm) c_int { return 0; }
+pub fn enif_make_map_from_arrays(_: env, _: [*c]const term, _: [*c]const term, _: usize, _: trm) c_int { return 0; }
 pub fn enif_make_monitor_term(_: env, _: mon) term { return .{}; }
-pub fn enif_make_new_binary(_: env, _: isize, _: trm) [*c]u8 { return null; }
+pub fn enif_make_new_binary(_: env, _: usize, _: trm) [*c]u8 { return null; }
 pub fn enif_make_new_map(_: env) term { return .{}; }
 pub fn enif_make_pid(_: env, _: pid) term { return .{}; }
 pub fn enif_make_ref(_: env) term { return .{}; }
 pub fn enif_make_resource(_: env, _: ?*anyopaque) term { return .{}; }
-pub fn enif_make_resource_binary(_: env, _: ?*anyopaque, _: ?*const anyopaque, _: isize) term { return .{}; }
+pub fn enif_make_resource_binary(_: env, _: ?*anyopaque, _: ?*const anyopaque, _: usize) term { return .{}; }
 pub fn enif_make_reverse_list(_: env, _: term, _: trm) c_int { return 0; }
 pub fn enif_make_string(_: env, _: [*c]const u8, _: cenc) term { return .{}; }
-pub fn enif_make_string_len(_: env, _: [*c]const u8, _: isize, _: cenc) term { return .{}; }
-pub fn enif_make_sub_binary(_: env, _: term, _: isize, _: isize) term { return .{}; }
+pub fn enif_make_string_len(_: env, _: [*c]const u8, _: usize, _: cenc) term { return .{}; }
+pub fn enif_make_sub_binary(_: env, _: term, _: usize, _: usize) term { return .{}; }
 // don't use the variadic tuple functions.
 // pub fn enif_make_tuple(...)
 // pub fn enif_make_tuple1(...)
@@ -233,8 +233,8 @@ pub fn enif_init_resource_type(_: env, _: [*c]const u8, _: ini, _: rflags, _: ?*
 pub fn enif_port_command(_: env, _: prt, _: env, _: term) c_int { return .{}; }
 pub fn enif_priv_data(_: env) ?*anyopaque { return null; }
 pub fn enif_raise_exception(_: env, _: term) term { return .{}; }
-pub fn enif_realloc(_: ?*anyopaque, _: isize) ?*anyopaque { return null; }
-pub fn enif_realloc_binary(_: bin, _: isize) c_int { return null; }
+pub fn enif_realloc(_: ?*anyopaque, _: usize) ?*anyopaque { return null; }
+pub fn enif_realloc_binary(_: bin, _: usize) c_int { return null; }
 pub fn enif_release_binary(_: bin) void {}
 pub fn enif_release_resource(_: ?*anyopaque) void {}
 pub fn enif_rwlock_create(_: [*c]u8) lck { return null; }
@@ -255,7 +255,7 @@ pub fn enif_set_pid_undefined(_: pid) void {}
 pub fn enif_sizeof_resource(_: ?*anyopaque) c_uint { return 0; }
 // not usable since it's variadic
 // pub fn enif_snprintf(...)
-pub fn enif_system_info(_: inf, _: isize) void {}
+pub fn enif_system_info(_: inf, _: usize) void {}
 pub fn enif_term_to_binary(_: env, _: term, _: bin) c_int { return 0; }
 pub fn enif_term_type(_: env, _: term) ttyp { return .{}; }
 pub fn enif_thread_create(_: [*c]u8, _: ?*tid_, _: fn (?*anyopaque) ?*anyopaque, _: ?*anyopaque, _: top) c_int {

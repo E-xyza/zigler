@@ -49,17 +49,12 @@ defmodule Zig.Type.Array do
                item = Enum.at(a, unquote(index))
 
                msg =
-                 cond do
-                   not is_list(item) ->
-                     "\n\n     expected: list (#{unquote(type_str)})\n     got: #{inspect(item)}"
+                 if is_list(item) do
+                   child_str = unquote(Kernel.to_string(type.child))
 
-                   length(item) != unquote(type.len) ->
-                     "\n\n     expected: list of length (#{unquote(type.len)})\n     got: #{inspect(item)} (length #{length(item)})"
-
-                   true ->
-                     child_str = unquote(Kernel.to_string(type.child))
-
-                     "\n\n     expected: list with elements of type #{child_str} but one of the list items has the wrong type"
+                   "\n\n     expected: list (#{unquote(type_str)}) but one of the list items (in #{inspect(item)}) has the wrong type"
+                 else
+                   "\n\n     expected: list (#{unquote(type_str)})\n     got: #{inspect(item)}"
                  end
 
                new_opts =
@@ -81,14 +76,12 @@ defmodule Zig.Type.Array do
                item = Enum.at(a, unquote(index))
 
                msg =
-                 cond do
-                   is_binary(item) ->
-                     "\n\n     expected: binary of size #{unquote(type.len)}\n     got size: #{byte_size(item)}"
+                 if is_list(item) do
+                   child_str = unquote(Kernel.to_string(type.child))
 
-                   true ->
-                     child_str = unquote(Kernel.to_string(type.child))
-
-                     "\n\n     expected: list of length #{unquote(type.len)}\n     got length: #{length(item)}"
+                   "\n\n     expected: list of length #{unquote(type.len)}\n     got length: #{length(item)}"
+                 else
+                   "\n\n     expected: binary of size #{unquote(type.len)}\n     got size: #{byte_size(item)}"
                  end
 
                new_opts =
