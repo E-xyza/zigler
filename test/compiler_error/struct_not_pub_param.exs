@@ -1,5 +1,5 @@
 defmodule ZiglerTest.CompilerError.StructNotPubParam do
-  use Zig, compile: false
+  use Zig, otp_app: :zigler, compile: false
 
   ~Z"""
   const not_pub_struct = struct {

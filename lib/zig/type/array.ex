@@ -17,6 +17,7 @@ defmodule Zig.Type.Array do
         %{"child" => child, "len" => len, "hasSentinel" => has_sentinel, "repr" => repr},
         module
       ) do
+        
     %__MODULE__{
       child: Type.from_json(child, module),
       len: len,
@@ -104,7 +105,7 @@ defmodule Zig.Type.Array do
   def to_string(%{has_sentinel: true, repr: repr}), do: repr
   def to_string(array), do: "[#{array.len}]#{Kernel.to_string(array.child)}"
 
-  def to_call(array = %{mutable: true}), do: "*" <> to_string(%{array | mutable: false})
+  def to_call(array = %{mutable: true}), do: "*" <> to_call(%{array | mutable: false})
   def to_call(%{has_sentinel: true, repr: repr}), do: repr
   def to_call(array), do: "[#{array.len}]#{Type.to_call(array.child)}"
 end

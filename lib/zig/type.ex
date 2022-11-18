@@ -61,11 +61,19 @@ defprotocol Zig.Type do
 
   def from_json(json, module) do
     case json do
-      "?*stub_erl_nif.ErlNifEnv" ->
+      %{
+        "type" => "optional",
+        "child" => %{"type" => "pointer", "child" => %{"name" => "stub_erl_nif.ErlNifEnv"}}
+      } ->
         :env
 
-      "stub_erl_nif.ERL_NIF_TERM" ->
+      %{"type" => "struct", "name" => "stub_erl_nif.ERL_NIF_TERM"} ->
         :erl_nif_term
+
+      %{"type" => "struct", "fields" => [
+        %{"name" => "v", "type" => %{"name" => "stub_erl_nif.ERL_NIF_TERM"}}
+      ]} ->
+        :term
 
       %{"type" => "struct", "name" => "beam.term"} ->
         :term
@@ -101,18 +109,13 @@ defprotocol Zig.Type do
     end
   end
 
-  @spec to_zig(t) :: String.t()
-  def to_zig(:env), do: "beam.env"
-  def to_zig(:term), do: "beam.term"
-  def to_zig(type), do: to_call(type)
-
   defmacro __using__(opts) do
     module = __CALLER__.module
 
-    inspect? = Keyword.get(opts, :inspect?, true)
+    inspect? = Keyword.get(opts, :inspect?, false)
 
     quote bind_quoted: [inspect?: inspect?, module: module] do
-      import Inspect.Algebra
+      import Protocol, only: []
       import Kernel, except: [to_string: 1]
 
       defimpl String.Chars do
@@ -122,6 +125,10 @@ defprotocol Zig.Type do
       if inspect? do
         defimpl Inspect do
           defdelegate inspect(type, opts), to: module
+        end
+      else
+        defimpl Inspect do
+          defdelegate inspect(type, opts), to: Inspect.Any
         end
       end
 
@@ -138,12 +145,14 @@ end
 defimpl Zig.Type, for: Atom do
   def marshal_param(:env, _), do: nil
   def marshal_param(:term, _), do: nil
+  def marshal_param(:erl_nif_term, _), do: nil
 
   def marshal_param(type, _) do
     raise "#{type} should not be a call type for elixir."
   end
 
   def marshal_return(:term, _), do: nil
+  def marshal_return(:erl_nif_term, _), do: nil
 
   def marshal_return(type, _) do
     raise "#{type} should not be a return type for elixir."
@@ -151,5 +160,7 @@ defimpl Zig.Type, for: Atom do
 
   def param_errors(_type, _), do: nil
 
+  def to_call(:erl_nif_term), do: "e.ErlNifTerm"
+  def to_call(:term), do: "beam.term"
   def to_call(type), do: to_string(type)
 end

@@ -51,45 +51,6 @@ defmodule Zig.Command do
     naked_name = Path.join(ebin_dir, "lib/#{module}.so")
 
     File.rename!(lib_name, naked_name)
-
-    # Logger.debug(
-    #  "compiling nif for module #{inspect(compiler.module_spec.module)} in path #{
-    #    compiler.assembly_dir
-    #  }"
-    # )
-    #
-    # Builder.build(compiler, zig_tree)
-    #
-    # case System.cmd(zig_executable, ["build"], opts) do
-    #  {_, 0} ->
-    #    :ok
-    #
-    #  {err, _} ->
-    #    Error.parse(err, compiler)
-    # end
-    #
-    #
-    # source_library_filename = Zig.nif_name(compiler.module_spec)
-    #
-    # library_filename = maybe_rename_library_filename(source_library_filename)
-    #
-    ## copy the compiled library over to the lib/nif directory.
-    # File.mkdir_p!(lib_dir)
-    #
-    # compiler.assembly_dir
-    # |> Path.join("zig-out/lib/#{source_library_filename}")
-    # |> File.cp!(Path.join(lib_dir, library_filename))
-    #
-    ## link the compiled library to be unversioned.
-    # symlink_filename = Path.join(lib_dir, "#{library_filename}")
-    #
-    # unless File.exists?(symlink_filename) do
-    #  lib_dir
-    #  |> Path.join(library_filename)
-    #  |> File.ln_s!(symlink_filename)
-    # end
-    #
-    # :ok
   end
 
   @local_zig Application.get_env(:zigler, :local_zig, false)

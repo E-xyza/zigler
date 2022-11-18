@@ -275,6 +275,18 @@ defmodule Zig do
   defmacro __using__(opts) do
     opts = normalize_nifs!(opts)
 
+    # TODO: check to make sure the otp_app exists
+    case Keyword.fetch(opts, :otp_app) do
+      {:ok, _app} ->
+        :ok
+
+      _ ->
+        raise CompileError,
+          description: "you must supply the otp_app for the nifs",
+          file: __CALLER__.file,
+          line: __CALLER__.line
+    end
+
     # clear out the assembly directory
     Mix.env()
     |> Compiler.assembly_dir(__CALLER__.module)
@@ -283,7 +295,7 @@ defmodule Zig do
     Module.register_attribute(__CALLER__.module, :zig_code_parts, accumulate: true)
     Module.register_attribute(__CALLER__.module, :zig_code, persist: true)
 
-    q =
+    code =
       quote do
         import Zig, only: [sigil_Z: 2, sigil_z: 2]
         @on_load :__load_nifs__
@@ -295,10 +307,10 @@ defmodule Zig do
       end
 
     if opts[:dump] do
-      q |> Macro.to_string() |> Code.format_string!() |> IO.puts()
+      code |> Macro.to_string() |> Code.format_string!() |> IO.puts()
     end
 
-    q
+    code
   end
 
   @doc """
@@ -357,6 +369,8 @@ defmodule Zig do
   defp normalize_nifs!(opts) do
     # nifs are either atom() or {atom(), keyword()}.  This turns all atom nifs
     # into {atom(), []}, so that downstream they are easier to deal with.
+
+    # TODO: change to "Keyword.replace"
 
     case Keyword.fetch(opts, :nifs) do
       {:ok, nif_opt} ->

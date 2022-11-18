@@ -1,5 +1,5 @@
 defmodule Zig.Type.Integer do
-  use Zig.Type
+  use Zig.Type, inspect?: true
 
   defstruct [:signedness, :bits]
 
@@ -48,6 +48,7 @@ defmodule Zig.Type.Integer do
   def to_call(integer), do: to_string(integer)
 
   def inspect(type, _opts) do
+    import Inspect.Algebra
     concat(["~t(", to_string(type), ")"])
   end
 

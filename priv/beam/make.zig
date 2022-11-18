@@ -4,7 +4,10 @@ const std = @import("std");
 
 pub fn make(env: beam.env, value: anytype) beam.term {
     const T = @TypeOf(value);
-    if (T == beam.env) return value;
+    // passthrough on beam.term and e.ErlNifTerm, no work needed.
+    if (T == beam.term) return value;
+    if (T == e.ErlNifTerm) return .{ .v = value };
+
     switch (@typeInfo(T)) {
         .Array => return make_array(env, value),
         .Pointer => return make_pointer(env, value),
@@ -44,7 +47,7 @@ fn make_pointer(env: beam.env, value: anytype) beam.term {
 }
 
 fn make_optional(env: beam.env, value: anytype) beam.term {
-    return if (value) | unwrapped | make(env, unwrapped) else make_into_atom(env, "nil");
+    return if (value) |unwrapped| make(env, unwrapped) else make_into_atom(env, "nil");
 }
 
 fn make_int(env: beam.env, value: anytype) beam.term {
@@ -176,18 +179,37 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype) 
     // u8 arrays (sentinel terminated or otherwise) are treated as
     // strings.
     const array_info = @typeInfo(T).Array;
-    if (array_info.child == u8) {
-        var result: e.ErlNifTerm = undefined;
-        const buf = e.enif_make_new_binary(env, array_info.len, &result);
-        std.mem.copy(u8, buf[0..array_info.len], array_ptr.*[0..]);
-        return .{ .v = result };
-    } else {
-        // TODO: what if the array length is much bigger that the allowable stack size?
-        var buf: [array_info.len]e.ErlNifTerm = undefined;
-        for (array_ptr.*) |item, index| {
-            buf[index] = make(env, item).v;
-        }
-        return .{ .v = e.enif_make_list_from_array(env, &buf, array_info.len) };
+    switch (array_info.child) {
+        u8 => {
+            // u8 arrays are always marshalled into binaries, but might be converted
+            // into lists on the elixir side.
+            var result: e.ErlNifTerm = undefined;
+            const buf = e.enif_make_new_binary(env, array_info.len, &result);
+            std.mem.copy(u8, buf[0..array_info.len], array_ptr.*[0..]);
+            return .{ .v = result };
+        },
+        beam.term => {
+            // since beam.term is guaranteed to be a packed struct of only
+            // e.ErlNifTerm, this is always guaranteed to work.
+            const ptr = @ptrCast([*]const e.ErlNifTerm, array_ptr);
+            return .{ .v = e.enif_make_list_from_array(env, ptr, array_info.len) };
+        },
+        e.ErlNifTerm => {
+            return .{ .v = e.enif_make_list_from_array(env, array_ptr, array_info.len) };
+        },
+        // the general case is build the list backwards.
+        else => {
+            var tail = e.enif_make_list_from_array(env, null, 0);
+
+            if (array_info.len != 0) {
+                var index: usize = array_info.len;
+                while (index > 0) : (index -= 1) {
+                    tail = e.enif_make_list_cell(env, make(env, array_ptr[index - 1]).v, tail);
+                }
+            }
+
+            return .{ .v = tail };
+        },
     }
 }
 
@@ -202,17 +224,17 @@ pub fn make_slice(env: beam.env, slice: anytype) beam.term {
     var tail = e.enif_make_list_from_array(env, null, 0);
 
     if (slice.len != 0) {
-      var index = slice.len;
-      while (index > 0) : (index -= 1) {
-          tail = e.enif_make_list_cell(env, make(env, slice[index - 1]).v, tail);
-      }
+        var index = slice.len;
+        while (index > 0) : (index -= 1) {
+            tail = e.enif_make_list_cell(env, make(env, slice[index - 1]).v, tail);
+        }
     }
 
     return .{ .v = tail };
 }
 
 pub fn make_into_atom(env: beam.env, atom_string: []const u8) beam.term {
-    return .{.v = e.enif_make_atom_len(env, atom_string.ptr, atom_string.len)};
+    return .{ .v = e.enif_make_atom_len(env, atom_string.ptr, atom_string.len) };
 }
 
 pub fn make_binary(env: beam.env, binary_slice: []const u8) beam.term {

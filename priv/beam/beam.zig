@@ -103,11 +103,17 @@ const std = @import("std");
 const builtin = @import("builtin");
 const BeamMutex = @import("mutex.zig").BeamMutex;
 
+const is_sema = switch (builtin.output_mode) {
+  .Exe => true,
+  .Lib => false,
+  else => unreachable
+};
+
 // semantic analysis
-pub const sema = if (builtin.output_mode == .Exe) @import("sema.zig") else void;
+pub const sema = if (is_sema) @import("sema.zig") else void;
 
 // loading boilerplate
-pub const loader = if (builtin.output_mode == .Lib) @import("loader.zig") else void;
+pub const loader = @import("loader.zig");
 
 /// syntactic sugar for the BEAM environment.  Note that the `env` type
 /// encapsulates the pointer, since you will almost always be passing this
@@ -131,7 +137,10 @@ const TermType = enum (u64) {
 /// wrapped term struct.  This lets us typecheck terms on the way in and out.
 /// many things will still if you use the "original" e.ErlNifTerm, but some things
 /// will require you to use `beam.term` instead.
-pub const term = struct {
+pub const term = if (is_sema) struct {
+  v: e.ErlNifTerm,
+  pub fn term_type(_: *const @This(), _: env) TermType { return .atom; }
+} else packed struct {
     v: e.ErlNifTerm,
 
     /// equivalent of e.enif_term_type

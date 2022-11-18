@@ -3,7 +3,7 @@ defmodule ZiglerTest.Sema.FunctionTest do
 
   @moduletag :skip
 
-  use Zig, precompile: false
+  use Zig, otp_app: :zigler, precompile: false
 
   alias Zig.Type
   alias Zig.Sema

@@ -10,7 +10,11 @@ defmodule ZiglerTest.Types.ArrayTest do
       :mut_array_float_test,
       {:mut_array_u8_test, return: :list},
       :mut_array_string_test,
-      :sentinel_terminated_test
+      :sentinel_terminated_test,
+      :fastlane_beam_term_test,
+      :fastlane_erl_nif_term_test,
+      {:fastlane_beam_term_ptr_test, return: :noclean},
+      {:fastlane_erl_nif_term_ptr_test, return: :noclean}
     ]
 
   ## BASIC ARRAYS
@@ -65,11 +69,6 @@ defmodule ZiglerTest.Types.ArrayTest do
                    "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list ([3]f64) but one of the list items (in [\"foo\", :bar, :baz]) has the wrong type\n",
                    fn -> array_float_test(["foo", :bar, :baz]) end
     end
-  end
-
-  describe "fastlanes for" do
-    test "beam.term works"
-    test "e.ErlNifTerm works"
   end
 
   describe "for u8s strings are" do
@@ -136,6 +135,63 @@ defmodule ZiglerTest.Types.ArrayTest do
   describe "sentinel terminated arrays" do
     test "are supported" do
       assert 0 == sentinel_terminated_test("foo")
+    end
+  end
+
+  ~Z"""
+  const beam = @import("beam");
+  const e = @import("erl_nif");
+
+  pub fn fastlane_beam_term_test(env: beam.env, passed: [3]beam.term) [3]beam.term {
+    var result: [3]beam.term = undefined;
+    for (result) |*item, index| {
+      var value: f64 = beam.get(f64, env, passed[index]) catch unreachable;
+      item.* = beam.make(env, value + 1.0);
+    }
+    return result;
+  }
+
+  pub fn fastlane_erl_nif_term_test(env: beam.env, passed: [3]e.ErlNifTerm) [3]e.ErlNifTerm {
+    var result: [3]e.ErlNifTerm = undefined;
+    for (result) |*item, index| {
+      var value: f64 = beam.get(f64, env, .{.v = passed[index]}) catch unreachable;
+      item.* = beam.make(env, value + 1.0).v;
+    }
+    return result;
+  }
+
+  pub fn fastlane_beam_term_ptr_test(env: beam.env, passed: *[3]beam.term) *[3]beam.term {
+    for (passed.*) |*item| {
+      var value: f64 = beam.get(f64, env, item.*) catch unreachable;
+      item.* = beam.make(env, value + 1.0);
+    }
+    return passed;
+  }
+
+  pub fn fastlane_erl_nif_term_ptr_test(env: beam.env, passed: *[3]e.ErlNifTerm) *[3]e.ErlNifTerm {
+    for (passed.*) |*item| {
+      var value: f64 = beam.get(f64, env, .{.v = item.*}) catch unreachable;
+      item.* = beam.make(env, value + 1.0).v;
+    }
+    return passed;
+  }
+  """
+
+  describe "fastlanes for" do
+    test "beam.term works" do
+      assert [2.0, 3.0, 4.0] = fastlane_beam_term_test([1.0, 2.0, 3.0])
+    end
+
+    test "e.ErlNifTerm works" do
+      assert [2.0, 3.0, 4.0] = fastlane_erl_nif_term_test([1.0, 2.0, 3.0])
+    end
+
+    test "beam.term pointer works" do
+      assert [2.0, 3.0, 4.0] = fastlane_beam_term_ptr_test([1.0, 2.0, 3.0])
+    end
+
+    test "e.ErlNifTerm pointer works" do
+      assert [2.0, 3.0, 4.0] = fastlane_erl_nif_term_ptr_test([1.0, 2.0, 3.0])
     end
   end
 end

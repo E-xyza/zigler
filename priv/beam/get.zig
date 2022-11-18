@@ -6,8 +6,9 @@ pub const GetError = error{ nif_argument_type_error, nif_argument_range_error, n
 };
 
 pub fn get(comptime T: type, env: beam.env, src: beam.term) !T {
-    // passthrough on beam.env and beam.term
+    // passthrough on beam.term and e.ErlNifTerm, no work needed.
     if (T == beam.term) return src;
+    if (T == e.ErlNifTerm) return src.v;
 
     switch (@typeInfo(T)) {
         .Int => return get_int(T, env, src),
@@ -338,6 +339,7 @@ fn fill(comptime T: type, env: beam.env, result: *T, src: beam.term) GetError!vo
 
 fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term) GetError!void {
     const array_info = @typeInfo(T).Array;
+    const Child = array_info.child;
     switch (src.term_type(env)) {
         .list => {
             // try to fill the array, if the lengths mismatch, then throw an error.
@@ -347,14 +349,14 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term) GetEr
             for (result.*) |*item| {
                 var head: e.ErlNifTerm = undefined;
                 if (e.enif_get_list_cell(env, tail, &head, &tail) != 0) {
-                    item.* = try get(array_info.child, env, .{ .v = head });
+                    item.* = try get(Child, env, .{ .v = head });
                 } else return GetError.nif_array_length_error;
             }
             if (e.enif_is_empty_list(env, tail) == 0) return GetError.nif_array_length_error;
         },
         .bitstring => {
             // arrays can be instantiated as binaries, if they are u8 arrays
-            if (array_info.child != u8) return GetError.nif_argument_type_error;
+            if (Child != u8) return GetError.nif_argument_type_error;
 
             var str_res: e.ErlNifBinary = undefined;
 

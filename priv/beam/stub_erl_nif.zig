@@ -16,15 +16,11 @@ pub const ErlNifPort = extern struct {};
 pub const ErlNifCond = extern struct {};
 pub const ErlNifMutex = extern struct {};
 pub const ErlNifTime = extern struct {};
-pub const ErlNifTimeUnit = extern struct {};
 pub const ErlNifTid = extern struct {};
 pub const ErlNifThreadOpts = extern struct {};
 pub const ErlNifIOVec = extern struct {};
-pub const ErlNifCharEncoding = extern struct {};
-pub const ErlNifHash = extern struct {};
 pub const ErlNifIOQueue = extern struct {};
 pub const ErlNifIOQueueOpts = extern struct {};
-pub const ErlNifUniqueInteger = extern struct {};
 pub const ErlNifMapIterator = extern struct {};
 pub const ErlNifMapIteratorEntry = extern struct {};
 pub const ErlNifResourceFlags = extern struct {};
@@ -33,9 +29,16 @@ pub const ErlNifSelectFlags = extern struct {};
 pub const ErlNifEvent = extern struct {};
 pub const ErlNifRWLock = extern struct {};
 pub const ErlNifSysInfo = extern struct {};
-pub const ErlNifTermType = extern struct {};
 pub const ErlNifTSDKey = extern struct {};
 pub const SysIOVec = extern struct {};
+
+// enum types.  These types are enums in the BEAM, we're going to spoof them
+// as integers.
+pub const ErlNifTimeUnit = u64;
+pub const ErlNifCharEncoding = u64;
+pub const ErlNifHash = u64;
+pub const ErlNifTermType = u64;
+pub const ErlNifUniqueInteger = u64;
 
 // convenience abbreviations for this document only.
 // three letters is for types that are always used as pointers.
@@ -257,7 +260,7 @@ pub fn enif_sizeof_resource(_: ?*anyopaque) c_uint { return 0; }
 // pub fn enif_snprintf(...)
 pub fn enif_system_info(_: inf, _: usize) void {}
 pub fn enif_term_to_binary(_: env, _: term, _: bin) c_int { return 0; }
-pub fn enif_term_type(_: env, _: term) ttyp { return .{}; }
+pub fn enif_term_type(_: env, _: term) ttyp { return 0; }
 pub fn enif_thread_create(_: [*c]u8, _: ?*tid_, _: fn (?*anyopaque) ?*anyopaque, _: ?*anyopaque, _: top) c_int {
     return 0;
 }
@@ -276,3 +279,33 @@ pub fn enif_tsd_set(_: tsdk, _: ?*anyopaque) void {}
 // pub fn enif_vsnprintf(...)
 pub fn enif_whereis_pid(_: env, _: term, _: pid) c_int { return 0; }
 pub fn enif_whereis_port(_: env, _: term, _: pid) c_int { return 0; }
+
+// #define constants section.
+// these values have to exist as exported const values.  Because this is a stub
+// file, the values probably don't have to match the "true" values.  However, they
+// must be unique within each category.
+
+pub const ERL_NIF_TERM_TYPE_ATOM = 0;
+pub const ERL_NIF_TERM_TYPE_BITSTRING = 1;
+pub const ERL_NIF_TERM_TYPE_FLOAT = 2;
+pub const ERL_NIF_TERM_TYPE_FUN = 3;
+pub const ERL_NIF_TERM_TYPE_INTEGER = 4;
+pub const ERL_NIF_TERM_TYPE_LIST = 5;
+pub const ERL_NIF_TERM_TYPE_MAP = 6;
+pub const ERL_NIF_TERM_TYPE_PID = 7;
+pub const ERL_NIF_TERM_TYPE_PORT = 8;
+pub const ERL_NIF_TERM_TYPE_REFERENCE = 9;
+pub const ERL_NIF_TERM_TYPE_TUPLE = 10;
+
+pub const ERL_NIF_LATIN1 = 0;
+
+pub const ERL_NIF_SEC = 0;
+pub const ERL_NIF_MSEC = 1;
+pub const ERL_NIF_USEC = 2;
+pub const ERL_NIF_NSEC = 3;
+
+pub const ERL_NIF_UNIQUE_POSITIVE = 0;
+pub const ERL_NIF_UNIQUE_MONOTONIC = 1;
+
+pub const ERL_NIF_INTERNAL_HASH = 0;
+pub const ERL_NIF_PHASH2 = 1;

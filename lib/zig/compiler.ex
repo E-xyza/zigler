@@ -37,52 +37,59 @@ defmodule Zig.Compiler do
 
     directory = Assembler.directory(context.module)
 
-    with true <- assembled,
-         Assembler.assemble(context.module, from: this_dir),
-         true <- precompiled,
-         sema = Sema.analyze_file!(context.module, opts),
-         new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(code)),
-         function_code = precompile(sema, context, directory, new_opts),
-         true <- compiled do
-      # parser should only operate on parsed, valid zig code.
-      Command.compile(context.module, new_opts)
+    output =
+      with true <- assembled,
+           Assembler.assemble(context.module, from: this_dir),
+           true <- precompiled,
+           sema = Sema.analyze_file!(context.module, opts),
+           new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(code)),
+           function_code = precompile(sema, context, directory, new_opts),
+           true <- compiled do
+        # parser should only operate on parsed, valid zig code.
+        Command.compile(context.module, new_opts)
 
-      nif_name = "#{context.module}"
+        nif_name = "#{context.module}"
 
-      quote do
-        @zig_code unquote(code)
+        quote do
+          @zig_code unquote(code)
 
-        unquote_splicing(function_code)
+          unquote_splicing(function_code)
 
-        def __load_nifs__ do
-          # LOADS the nifs from :code.lib_dir() <> "ebin", which is
-          # a path that has files correctly moved in to release packages.
+          def __load_nifs__ do
+            # LOADS the nifs from :code.lib_dir() <> "ebin", which is
+            # a path that has files correctly moved in to release packages.
 
-          require Logger
+            require Logger
 
-          unquote(opts[:otp_app])
-          |> :code.lib_dir()
-          |> Path.join("ebin/lib")
-          |> Path.join(unquote(nif_name))
-          |> String.to_charlist()
-          |> :erlang.load_nif(0)
-          |> case do
-            :ok ->
-              Logger.debug("loaded module at #{unquote(nif_name)}")
+            unquote(opts[:otp_app])
+            |> :code.lib_dir()
+            |> Path.join("ebin/lib")
+            |> Path.join(unquote(nif_name))
+            |> String.to_charlist()
+            |> :erlang.load_nif(0)
+            |> case do
+              :ok ->
+                Logger.debug("loaded module at #{unquote(nif_name)}")
 
-            error = {:error, any} ->
-              Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
+              error = {:error, any} ->
+                Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
+            end
+          end
+
+          def _format_error(_, [{_, _, _, opts} | _rest] = _stacktrace) do
+            if formatted = opts[:zigler_error], do: formatted, else: %{}
           end
         end
-
-        def _format_error(_, [{_, _, _, opts} | _rest] = _stacktrace) do
-          if formatted = opts[:zigler_error], do: formatted, else: %{}
-        end
+      else
+        false ->
+          dead_module(code, context)
       end
-    else
-      false ->
-        dead_module(code, context)
+
+    if opts[:dump] do
+      output |> Macro.to_string() |> Code.format_string!() |> IO.puts()
     end
+
+    output
   end
 
   defp precompile(sema, context, directory, opts) do
