@@ -183,10 +183,7 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype) 
         u8 => {
             // u8 arrays are always marshalled into binaries, but might be converted
             // into lists on the elixir side.
-            var result: e.ErlNifTerm = undefined;
-            const buf = e.enif_make_new_binary(env, array_info.len, &result);
-            std.mem.copy(u8, buf[0..array_info.len], array_ptr.*[0..]);
-            return .{ .v = result };
+            return make_binary(env, array_ptr[0..]);
         },
         beam.term => {
             // since beam.term is guaranteed to be a packed struct of only
@@ -217,20 +214,33 @@ pub fn make_slice(env: beam.env, slice: anytype) beam.term {
     // we own the slice, so always delete it.
     defer beam.allocator.free(slice);
 
-    // if the slice is a slice of u8, send it as a binary.
-    if (@TypeOf(slice) == []u8) return make_binary(env, slice);
+    switch (@TypeOf(slice)) {
+        // if the slice is a slice of u8, send it as a binary.
+        []u8 => {
+            return make_binary(env, slice);
+        },
+        []beam.term => {
+            // since beam.term is guaranteed to be a packed struct of only
+            // e.ErlNifTerm, this is always guaranteed to work.
+            const ptr = @ptrCast([*]const e.ErlNifTerm, slice.ptr);
+            return .{ .v = e.enif_make_list_from_array(env, ptr, @intCast(c_uint, slice.len)) };
+        },
+        []e.ErlNifTerm => {
+            return .{ .v = e.enif_make_list_from_array(env, slice.ptr, @intCast(c_uint, slice.len)) };
+        },
+        else => {
+            var tail = e.enif_make_list_from_array(env, null, 0);
 
-    // TODO: an optimization where we check if slice is a slice of beam.term
-    var tail = e.enif_make_list_from_array(env, null, 0);
+            if (slice.len != 0) {
+                var index = slice.len;
+                while (index > 0) : (index -= 1) {
+                    tail = e.enif_make_list_cell(env, make(env, slice[index - 1]).v, tail);
+                }
+            }
 
-    if (slice.len != 0) {
-        var index = slice.len;
-        while (index > 0) : (index -= 1) {
-            tail = e.enif_make_list_cell(env, make(env, slice[index - 1]).v, tail);
-        }
+            return .{ .v = tail };
+        },
     }
-
-    return .{ .v = tail };
 }
 
 pub fn make_into_atom(env: beam.env, atom_string: []const u8) beam.term {

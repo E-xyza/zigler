@@ -6,7 +6,9 @@ defmodule ZiglerTest.Types.SliceTest do
     nifs: [
       :slice_float_test,
       {:slice_u8_test, return: :list},
-      :slice_string_test
+      :slice_string_test,
+      :fastlane_beam_term_test,
+      :fastlane_erl_nif_term_test,
       # :sentinel_terminated_test
     ]
 
@@ -90,9 +92,34 @@ defmodule ZiglerTest.Types.SliceTest do
     end
   end
 
+  ~Z"""
+  const e = @import("erl_nif");
+
+  pub fn fastlane_beam_term_test(env: beam.env, passed: []beam.term) []beam.term {
+    for (passed) |*item| {
+      var value: f64 = beam.get(f64, env, item.*) catch unreachable;
+      item.* = beam.make(env, value + 1.0);
+    }
+    return passed;
+  }
+
+  pub fn fastlane_erl_nif_term_test(env: beam.env, passed: []e.ErlNifTerm) []e.ErlNifTerm {
+    for (passed) |*item| {
+      var value: f64 = beam.get(f64, env, .{.v = item.*}) catch unreachable;
+      item.* = beam.make(env, value + 1.0).v;
+    }
+    return passed;
+  }
+  """
+
   describe "fastlanes for" do
-    test "beam.term works"
-    test "e.ErlNifTerm works"
+    test "beam.term works" do
+      assert [2.0, 3.0, 4.0] = fastlane_beam_term_test([1.0, 2.0, 3.0])
+    end
+
+    test "e.ErlNifTerm works" do
+      assert [2.0, 3.0, 4.0] = fastlane_erl_nif_term_test([1.0, 2.0, 3.0])
+    end
   end
 
   #  ~Z"""
