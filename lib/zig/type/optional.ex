@@ -1,7 +1,6 @@
 defmodule Zig.Type.Optional do
   alias Zig.Type
   use Type
-  import Type, only: :macros
 
   defstruct [:child]
 

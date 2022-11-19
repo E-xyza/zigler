@@ -40,7 +40,7 @@ fn make_pointer(env: beam.env, value: anytype) beam.term {
     const pointer = @typeInfo(@TypeOf(value)).Pointer;
     switch (pointer.size) {
         .One => return make_mut(env, value),
-        .Many => @compileError("not implemented yet"),
+        .Many => @compileError("it's not possible to create a manypointer"),
         .Slice => return make_slice(env, value),
         .C => @compileError("not implemented yet"),
     }

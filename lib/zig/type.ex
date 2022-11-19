@@ -4,6 +4,7 @@ defprotocol Zig.Type do
   alias Zig.Type.Enum
   alias Zig.Type.Float
   alias Zig.Type.Integer
+  alias Zig.Type.Manypointer
   alias Zig.Type.Optional
   alias Zig.Type.Slice
   alias Zig.Type.Struct
@@ -103,6 +104,9 @@ defprotocol Zig.Type do
         child
         |> __MODULE__.from_json(module)
         |> Map.replace!(:mutable, true)
+
+      %{"type" => "manypointer", "child" => child} ->
+        Manypointer.from_json(json, module)
 
       %{"type" => "optional"} ->
         Optional.from_json(json, module)

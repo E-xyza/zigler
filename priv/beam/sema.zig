@@ -103,7 +103,16 @@ fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: an
             try stream.endObject();
         },
         .Many => {
-            @compileError("not implemented yet");
+            try stream.beginObject();
+            try stream.objectField("type");
+            try stream.emitString("manypointer");
+            try stream.objectField("child");
+            try streamType(stream, p.child);
+            try stream.objectField("hasSentinel");
+            try stream.emitBool(if (p.sentinel) |_| true else false);
+            try stream.objectField("repr");
+            try stream.emitString(repr);
+            try stream.endObject();
         },
         .Slice => {
             try stream.beginObject();

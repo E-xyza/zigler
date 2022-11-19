@@ -1,4 +1,4 @@
-defmodule Zig.Type.Slice do
+defmodule Zig.Type.Manypointer do
   alias Zig.Type
   use Type
   import Type, only: :macros
@@ -53,7 +53,7 @@ defmodule Zig.Type.Slice do
                    true ->
                      child_str = unquote(Kernel.to_string(type.child))
 
-                     "\n\n     expected: list with elements of type #{child_str} but one of the list items has the wrong type"
+                     "\n\n     expected: list (#{unquote(type_str)}) but one of the list items (in #{inspect item}) has the wrong type"
                  end
 
                new_opts =
@@ -73,8 +73,8 @@ defmodule Zig.Type.Slice do
   end
 
   def to_string(%{has_sentinel: true, repr: repr}), do: repr
-  def to_string(slice), do: "[]#{Kernel.to_string(slice.child)}"
+  def to_string(slice), do: "[*]#{Kernel.to_string(slice.child)}"
 
   def to_call(%{has_sentinel: true, repr: repr}), do: repr
-  def to_call(slice), do: "[]#{Type.to_call(slice.child)}"
+  def to_call(slice), do: "[*]#{Type.to_call(slice.child)}"
 end

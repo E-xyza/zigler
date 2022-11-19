@@ -268,6 +268,9 @@ pub fn get_pointer(comptime T: type, env: beam.env, src: beam.term) !T {
         .Slice => {
             return get_slice(T, env, src);
         },
+        .Many => {
+            return get_manypointer(T, env, src);
+        },
         else => @compileError("not implemented yet"),
     }
 }
@@ -325,6 +328,13 @@ pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term) !T {
     if (e.enif_is_empty_list(env, list) == 0) return GetError.nif_marshalling_error;
 
     return result;
+}
+
+pub fn get_manypointer(comptime T: type, env: beam.env, src: beam.term) !T {
+    // this is equivalent to creating a slice and then discarding the length term
+    const Child = @typeInfo(T).Pointer.child;
+    const slice = try get_slice([]Child, env, src);
+    return @ptrCast(T, slice.ptr);
 }
 
 // fill functions
