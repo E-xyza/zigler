@@ -10,9 +10,7 @@ defmodule ZiglerTest.Types.ManypointerTest do
       :sentinel_terminated_test,
       :sentinel_terminated_return_test,
       :sentinel_terminated_binary_return_test,
-      {:sentinel_terminated_u8_list_return_test, return: :list},
-      #:fastlane_beam_term_test,
-      #:fastlane_erl_nif_term_test
+      {:sentinel_terminated_u8_list_return_test, return: :list}
     ]
 
   ## BASIC MULTIPOINTERS
@@ -119,45 +117,4 @@ defmodule ZiglerTest.Types.ManypointerTest do
       assert ~C'bar' == sentinel_terminated_u8_list_return_test()
     end
   end
-
-  #~Z"""
-  #const beam = @import("beam");
-  #const e = @import("erl_nif");
-#
-  #pub fn fastlane_beam_term_test(env: beam.env, passed: [3]beam.term) [3]beam.term {
-  #  var result: [3]beam.term = undefined;
-  #  for (result) |*item, index| {
-  #    var value: f64 = beam.get(f64, env, passed[index]) catch unreachable;
-  #    item.* = beam.make(env, value + 1.0);
-  #  }
-  #  return result;
-  #}
-#
-  #pub fn fastlane_erl_nif_term_test(env: beam.env, passed: [3]e.ErlNifTerm) [3]e.ErlNifTerm {
-  #  var result: [3]e.ErlNifTerm = undefined;
-  #  for (result) |*item, index| {
-  #    var value: f64 = beam.get(f64, env, .{.v = passed[index]}) catch unreachable;
-  #    item.* = beam.make(env, value + 1.0).v;
-  #  }
-  #  return result;
-  #}
-  #"""
-#
-  #describe "fastlanes for" do
-  #  test "beam.term works" do
-  #    assert [2.0, 3.0, 4.0] = fastlane_beam_term_test([1.0, 2.0, 3.0])
-  #  end
-#
-  #  test "e.ErlNifTerm works" do
-  #    assert [2.0, 3.0, 4.0] = fastlane_erl_nif_term_test([1.0, 2.0, 3.0])
-  #  end
-#
-  #  test "beam.term pointer works" do
-  #    assert [2.0, 3.0, 4.0] = fastlane_beam_term_ptr_test([1.0, 2.0, 3.0])
-  #  end
-#
-  #  test "e.ErlNifTerm pointer works" do
-  #    assert [2.0, 3.0, 4.0] = fastlane_erl_nif_term_ptr_test([1.0, 2.0, 3.0])
-  #  end
-  #end
 end
