@@ -331,8 +331,7 @@ pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term) !T {
 fn fill(comptime T: type, env: beam.env, result: *T, src: beam.term) GetError!void {
     switch (@typeInfo(T)) {
         .Array => try fill_array(T, env, result, src),
-        // this is not executable in 0.10.0 due to a compiler bug in zig.
-        //.Struct => try fill_struct(T, env, result, src),
+        .Struct => try fill_struct(T, env, result, src),
         else => @compileError("unhandlable type encountered in fill"),
     }
 }

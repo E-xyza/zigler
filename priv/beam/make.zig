@@ -171,6 +171,7 @@ fn make_mut(env: beam.env, value_ptr: anytype) beam.term {
     const child = @TypeOf(value_ptr.*);
     switch (@typeInfo(child)) {
         .Array => return make_array_from_pointer(child, env, value_ptr),
+        .Struct => return make_struct(env, value_ptr.*),
         else => @compileError("this type is unsupported"),
     }
 }
