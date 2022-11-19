@@ -334,7 +334,11 @@ pub fn get_manypointer(comptime T: type, env: beam.env, src: beam.term) !T {
     // this is equivalent to creating a slice and then discarding the length term
     const Child = @typeInfo(T).Pointer.child;
     const slice = try get_slice([]Child, env, src);
-    return @ptrCast(T, slice.ptr);
+    const result = @ptrCast(T, slice.ptr);
+    if (@typeInfo(T).Pointer.sentinel) |sentinel_ptr| {
+        result[slice.len] = @ptrCast(*const Child, @alignCast(@alignOf(Child), sentinel_ptr)).*;
+    }
+    return result;
 }
 
 // fill functions

@@ -20,4 +20,6 @@ defmodule Zig.Type.Optional do
   def to_string(optional), do: "?#{Kernel.to_string(optional.child)}"
 
   def to_call(optional), do: "?#{Type.to_call(optional.child)}"
+
+  def return_allowed?(optional), do: Type.return_allowed?(optional.child)
 end

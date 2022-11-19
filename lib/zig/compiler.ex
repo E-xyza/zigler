@@ -10,6 +10,7 @@ defmodule Zig.Compiler do
   alias Zig.Command
   alias Zig.Nif
   alias Zig.Sema
+  alias Zig.Type
   alias Zig.Type.Struct
 
   defmacro __before_compile__(context) do
@@ -126,24 +127,6 @@ defmodule Zig.Compiler do
     end)
   end
 
-  @local_zig Application.compile_env(:zigler, :local_zig, false)
-
-  defp zig_location(zig_tree, module, local_zig \\ @local_zig)
-
-  defp zig_location(_, _, true), do: System.find_executable("zig")
-
-  defp zig_location(zig_tree, module, false) do
-    # check to see if the zig version has been downloaded.  If not,
-    # go ahead and download it.
-    unless File.dir?(zig_tree) do
-      Command.fetch("#{module.zig_version}")
-    end
-
-    Path.join(zig_tree, "zig")
-  end
-
-  defp zig_location(_, _, path), do: path
-
   #############################################################################
   ## STEPS
 
@@ -156,6 +139,7 @@ defmodule Zig.Compiler do
   defp verify_sound!(sema, opts) do
     Enum.each(sema, fn function ->
       raise_if_uses_private_struct!(function, opts)
+      Type.Function.validate!(function)
     end)
   end
 

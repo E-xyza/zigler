@@ -38,4 +38,6 @@ defmodule Zig.Type.Bool do
       ]
     end
   end
+
+  def return_allowed?(_), do: true
 end

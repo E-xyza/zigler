@@ -26,6 +26,9 @@ defprotocol Zig.Type do
   @spec to_call(t) :: String.t()
   def to_call(type)
 
+  @spec return_allowed?(t) :: boolean
+  def return_allowed?(type)
+
   import Kernel
 
   defmacro sigil_t(string, _) do
@@ -105,7 +108,7 @@ defprotocol Zig.Type do
         |> __MODULE__.from_json(module)
         |> Map.replace!(:mutable, true)
 
-      %{"type" => "manypointer", "child" => child} ->
+      %{"type" => "manypointer"} ->
         Manypointer.from_json(json, module)
 
       %{"type" => "optional"} ->
@@ -141,6 +144,7 @@ defprotocol Zig.Type do
         defdelegate marshal_return(type, opts), to: module
         defdelegate param_errors(type, opts), to: module
         defdelegate to_call(type), to: module
+        defdelegate return_allowed?(type), to: module
       end
     end
   end
@@ -167,4 +171,6 @@ defimpl Zig.Type, for: Atom do
   def to_call(:erl_nif_term), do: "e.ErlNifTerm"
   def to_call(:term), do: "beam.term"
   def to_call(type), do: to_string(type)
+
+  def return_allowed?(type), do: type in [:term, :erl_nif_term]
 end

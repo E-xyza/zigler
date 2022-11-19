@@ -7,7 +7,10 @@ defmodule ZiglerTest.Types.ManypointerTest do
       :manypointer_float_test,
       {:manypointer_u8_test, return: :list},
       :manypointer_string_test,
-      #:sentinel_terminated_test,
+      :sentinel_terminated_test,
+      :sentinel_terminated_return_test,
+      :sentinel_terminated_binary_return_test,
+      {:sentinel_terminated_u8_list_return_test, return: :list},
       #:fastlane_beam_term_test,
       #:fastlane_erl_nif_term_test
     ]
@@ -67,17 +70,55 @@ defmodule ZiglerTest.Types.ManypointerTest do
     end
   end
 
-  #~Z"""
-  #pub fn sentinel_terminated_test(passed: [3:0]u8) u8 {
-  #  return passed[3];
-  #}
-  #"""
-#
-  #describe "sentinel terminated arrays" do
-  #  test "are supported" do
-  #    assert 0 == sentinel_terminated_test("foo")
-  #  end
-  #end
+  describe "for normal manypointers" do
+    test "having a return value is prohibited" do
+      assert_raise CompileError,  " functions returning [*]u8 are not allowed", fn ->
+        Code.compile_file("_manypointer_forbidden_output.exs", __DIR__)
+      end
+    end
+
+    test "correct line and file"
+  end
+
+  ~Z"""
+  pub fn sentinel_terminated_test(passed: [*:0]u8) u8 {
+    return passed[3];
+  }
+
+  var str_result = [_]f64{47.0, 0.0};
+
+  pub fn sentinel_terminated_return_test() [*:0.0]f64 {
+    return @ptrCast([*:0.0]f64, &str_result);
+  }
+
+  var stbr_result = [_]u8{'b', 'a', 'r', 0};
+
+  pub fn sentinel_terminated_binary_return_test() [*:0]u8 {
+    return @ptrCast([*:0]u8, &stbr_result);
+  }
+
+  pub fn sentinel_terminated_u8_list_return_test() [*:0]u8 {
+    return @ptrCast([*:0]u8, &stbr_result);
+  }
+  """
+
+  describe "sentinel terminated arrays" do
+    test "are supported" do
+      assert 0 == sentinel_terminated_test("foo")
+    end
+
+    test "can be returned" do
+      assert [47.0] == sentinel_terminated_return_test()
+    end
+
+    test "can be returned as binary" do
+      assert "bar" == sentinel_terminated_binary_return_test()
+    end
+
+    test "can be returned as u8 list" do
+      assert ~C'bar' == sentinel_terminated_u8_list_return_test()
+    end
+  end
 
   #~Z"""
   #const beam = @import("beam");

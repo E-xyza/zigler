@@ -1,5 +1,6 @@
 defmodule Zig.Type.Struct do
-  use Zig.Type
+  alias Zig.Type
+  use Type
 
   defstruct [:name, :packed, :required, :optional, mutable: false]
 
@@ -108,4 +109,12 @@ defmodule Zig.Type.Struct do
   def to_call(struct), do: "#{mut(struct)}nif.#{struct.name}"
 
   defp mut(struct), do: if(struct.mutable, do: "*")
+
+  def return_allowed?(struct) do
+    struct.required
+    |> Map.values
+    |> Kernel.++(Map.values(struct.optional))
+    |> Enum.map(&Type.return_allowed?/1)
+    |> Enum.all?()
+  end
 end

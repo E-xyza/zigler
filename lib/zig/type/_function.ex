@@ -49,6 +49,12 @@ defmodule Zig.Type.Function do
     if Enum.any?(list), do: list, else: nil
   end
 
+  def validate!(function) do
+    unless Type.return_allowed?(function.return) do
+        raise CompileError, description: "functions returning #{function.return} are not allowed"
+    end
+  end
+
   @impl true
   def get_and_update(_, _, _), do: raise("you should not update a function")
 

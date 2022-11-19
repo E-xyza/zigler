@@ -232,4 +232,6 @@ defmodule Zig.Type.Integer do
   defp typemax(%{signedness: :unsigned, bits: bits}), do: Bitwise.<<<(1, bits) - 1
   defp typemax(%{signedness: :signed, bits: 1}), do: 0
   defp typemax(%{signedness: :signed, bits: bits}), do: Bitwise.<<<(1, bits - 1) - 1
+
+  def return_allowed?(_), do: true
 end

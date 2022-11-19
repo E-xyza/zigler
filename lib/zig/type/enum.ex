@@ -127,4 +127,6 @@ defmodule Zig.Type.Enum do
       ]
     end
   end
+
+  def return_allowed?(_), do: true
 end

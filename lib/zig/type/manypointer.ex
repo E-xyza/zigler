@@ -3,21 +3,21 @@ defmodule Zig.Type.Manypointer do
   use Type
   import Type, only: :macros
 
-  defstruct [:child, :has_sentinel, :repr]
+  defstruct [:child, :has_sentinel?, :repr]
 
   @type t :: %__MODULE__{
           child: Type.t(),
           repr: String.t(),
-          has_sentinel: boolean
+          has_sentinel?: boolean
         }
 
   def from_json(
-        %{"child" => child, "hasSentinel" => has_sentinel, "repr" => repr},
+        %{"child" => child, "hasSentinel" => has_sentinel?, "repr" => repr},
         module
       ) do
     %__MODULE__{
       child: Type.from_json(child, module),
-      has_sentinel: has_sentinel,
+      has_sentinel?: has_sentinel?,
       repr: repr
     }
   end
@@ -72,9 +72,11 @@ defmodule Zig.Type.Manypointer do
     end
   end
 
-  def to_string(%{has_sentinel: true, repr: repr}), do: repr
+  def to_string(%{has_sentinel?: true, repr: repr}), do: repr
   def to_string(slice), do: "[*]#{Kernel.to_string(slice.child)}"
 
-  def to_call(%{has_sentinel: true, repr: repr}), do: repr
+  def to_call(%{has_sentinel?: true, repr: repr}), do: repr
   def to_call(slice), do: "[*]#{Type.to_call(slice.child)}"
+
+  def return_allowed?(pointer), do: pointer.has_sentinel? and Type.return_allowed?(pointer.child)
 end

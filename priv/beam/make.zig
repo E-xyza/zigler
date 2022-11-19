@@ -40,7 +40,13 @@ fn make_pointer(env: beam.env, value: anytype) beam.term {
     const pointer = @typeInfo(@TypeOf(value)).Pointer;
     switch (pointer.size) {
         .One => return make_mut(env, value),
-        .Many => @compileError("it's not possible to create a manypointer"),
+        .Many => {
+            if (pointer.sentinel) |_| {
+                return make_manypointer(env, value);
+            } else {
+                @compileError("it's not possible to create a manypointer");
+            }
+        },
         .Slice => return make_slice(env, value),
         .C => @compileError("not implemented yet"),
     }
@@ -211,10 +217,12 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype) 
     }
 }
 
-pub fn make_slice(env: beam.env, slice: anytype) beam.term {
-    // we own the slice, so always delete it.
-    defer beam.allocator.free(slice);
+pub fn make_manypointer(env: beam.env, manypointer: anytype) beam.term {
+    const len = std.mem.len(manypointer);
+    return make_slice(env, manypointer[0..len]);
+}
 
+pub fn make_slice(env: beam.env, slice: anytype) beam.term {
     switch (@TypeOf(slice)) {
         // if the slice is a slice of u8, send it as a binary.
         []u8 => {

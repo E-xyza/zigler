@@ -3,6 +3,7 @@ defmodule Zig.Sema do
 
   require EEx
   alias Zig.Assembler
+  alias Zig.Command
 
   sema_zig_template = Path.join(__DIR__, "templates/sema.zig.eex")
   EEx.function_from_file(:defp, :file_for, sema_zig_template, [:opts])
@@ -12,7 +13,7 @@ defmodule Zig.Sema do
     sema_file = Path.join(dir, "sema.zig")
 
     File.write!(sema_file, file_for(opts))
-    {result, 0} = System.cmd("zig", ["build", "sema"], cd: dir)
+    result = Command.build_sema(dir)
 
     functions =
       result

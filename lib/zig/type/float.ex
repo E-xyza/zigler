@@ -18,4 +18,6 @@ defmodule Zig.Type.Float do
   def marshal_param(_, _), do: nil
   def marshal_return(_, _), do: nil
   def param_errors(_, _), do: nil
+
+  def return_allowed?(_), do: true
 end

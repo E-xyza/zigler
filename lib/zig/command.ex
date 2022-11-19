@@ -20,8 +20,8 @@ defmodule Zig.Command do
     zig_cmd = executable_path(opts)
 
     case System.cmd(zig_cmd, args, cmd_opts) do
-      {_, 0} ->
-        :ok
+      {result, 0} ->
+        result
 
       # TODO: better error parsing here
       {other, _} ->
@@ -29,6 +29,8 @@ defmodule Zig.Command do
         raise "failed"
     end
   end
+
+  def build_sema(dir), do: run_zig("build sema", cd: dir)
 
   def compile(module, opts) do
     assembly_dir = Assembler.directory(module)
@@ -52,8 +54,6 @@ defmodule Zig.Command do
 
     File.rename!(lib_name, naked_name)
   end
-
-  @local_zig Application.get_env(:zigler, :local_zig, false)
 
   defp executable_path(opts) do
     cond do
