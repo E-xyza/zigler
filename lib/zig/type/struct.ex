@@ -6,18 +6,21 @@ defmodule Zig.Type.Struct do
 
   @type t :: %{
           name: String.t(),
-          packed: nil | non_neg_integer()
+          packed: nil | non_neg_integer(),
+          required: %{optional(atom) => Type.t},
+          optional: %{optional(atom) => Type.t},
+          mutable: boolean,
         }
 
   def from_json(json = %{"name" => name, "fields" => fields}, module) do
     {required, optional} = Enum.split_with(fields, & &1["required"])
-    to_field = fn desc -> String.to_atom(desc["name"]) end
+    to_field = fn desc -> {String.to_atom(desc["name"]), Type.from_json(desc["type"], module)} end
 
     %__MODULE__{
       name: String.trim_leading(name, ".#{module}."),
       packed: Map.get(json, "packed_size"),
-      required: Enum.map(required, to_field),
-      optional: Enum.map(optional, to_field)
+      required: Map.new(required, to_field),
+      optional: Map.new(optional, to_field)
     }
   end
 
@@ -64,7 +67,7 @@ defmodule Zig.Type.Struct do
                      Keyword.keys(list)
                  end
 
-               missing_key = List.first(unquote(type.required) -- arg_keys)
+               missing_key = List.first(unquote(Map.keys(type.required)) -- arg_keys)
 
                new_opts =
                  Keyword.merge(opts,

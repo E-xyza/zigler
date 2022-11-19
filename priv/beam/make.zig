@@ -40,13 +40,7 @@ fn make_pointer(env: beam.env, value: anytype) beam.term {
     const pointer = @typeInfo(@TypeOf(value)).Pointer;
     switch (pointer.size) {
         .One => return make_mut(env, value),
-        .Many => {
-            if (pointer.sentinel) |_| {
-                return make_manypointer(env, value);
-            } else {
-                @compileError("it's not possible to create a manypointer");
-            }
-        },
+        .Many => return make_manypointer(env, value),
         .Slice => return make_slice(env, value),
         .C => @compileError("not implemented yet"),
     }
@@ -218,8 +212,13 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype) 
 }
 
 pub fn make_manypointer(env: beam.env, manypointer: anytype) beam.term {
-    const len = std.mem.len(manypointer);
-    return make_slice(env, manypointer[0..len]);
+    const pointer = @typeInfo(@TypeOf(manypointer)).Pointer;
+    if (pointer.sentinel) |_| {    
+        const len = std.mem.len(manypointer);
+        return make_slice(env, manypointer[0..len]);
+    } else {
+        @compileError("it's not possible to create a manypointer");
+    }
 }
 
 pub fn make_slice(env: beam.env, slice: anytype) beam.term {
