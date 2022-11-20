@@ -345,6 +345,12 @@ pub fn get_cpointer(comptime T: type, env: beam.env, src: beam.term) !T {
             if (@typeInfo(Child) != .Struct) return GetError.nif_argument_type_error;
             return try get_pointer(*Child, env, src);
         },
+        .list => {
+            return (try get_slice_list([]Child, env, src)).ptr;
+        },
+        .bitstring => {
+            return (try get_slice_binary([]Child, env, src)).ptr;
+        },
         else => unreachable,
     }
 }
