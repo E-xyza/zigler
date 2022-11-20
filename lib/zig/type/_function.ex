@@ -51,7 +51,7 @@ defmodule Zig.Type.Function do
 
   def validate!(function) do
     unless Type.return_allowed?(function.return) do
-        raise CompileError, description: "functions returning #{function.return} are not allowed"
+      raise CompileError, description: "functions returning #{function.return} are not allowed"
     end
   end
 

@@ -7,9 +7,9 @@ defmodule Zig.Type.Struct do
   @type t :: %{
           name: String.t(),
           packed: nil | non_neg_integer(),
-          required: %{optional(atom) => Type.t},
-          optional: %{optional(atom) => Type.t},
-          mutable: boolean,
+          required: %{optional(atom) => Type.t()},
+          optional: %{optional(atom) => Type.t()},
+          mutable: boolean
         }
 
   def from_json(json = %{"name" => name, "fields" => fields}, module) do
@@ -115,7 +115,7 @@ defmodule Zig.Type.Struct do
 
   def return_allowed?(struct) do
     struct.required
-    |> Map.values
+    |> Map.values()
     |> Kernel.++(Map.values(struct.optional))
     |> Enum.map(&Type.return_allowed?/1)
     |> Enum.all?()

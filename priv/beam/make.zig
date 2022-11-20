@@ -12,7 +12,6 @@ pub fn make(env: beam.env, value: anytype) beam.term {
         .Array => return make_array(env, value),
         .Pointer => return make_pointer(env, value),
         .Int => return make_int(env, value),
-        .ComptimeInt => return make_comptime_int(env, value),
         .Struct => return make_struct(env, value),
         .EnumLiteral => return make_enum_literal(env, value),
         .Enum => return make_enum(env, value),
@@ -21,6 +20,8 @@ pub fn make(env: beam.env, value: anytype) beam.term {
         .Float => return make_float(env, value),
         .Bool => return make_bool(env, value),
         .Optional => return make_optional(env, value),
+        .ComptimeInt => return make_comptime_int(env, value),
+        .ComptimeFloat => return make_comptime_float(env, value),
         else => {
             @compileError("unknown type encountered");
         },
@@ -98,6 +99,11 @@ fn make_comptime_int(env: beam.env, value: anytype) beam.term {
     }
     @compileError("directly making a value greater than u64 is not supported");
 }
+
+pub fn make_comptime_float(env: beam.env, comptime float: comptime_float) beam.term {
+    return beam.make(env, @floatCast(f64, float));
+}
+
 
 const EMPTY_TUPLE_LIST = [_]beam.term{};
 
@@ -217,7 +223,7 @@ pub fn make_manypointer(env: beam.env, manypointer: anytype) beam.term {
         const len = std.mem.len(manypointer);
         return make_slice(env, manypointer[0..len]);
     } else {
-        @compileError("it's not possible to create a manypointer");
+        @compileError("it's not possible to create a manypointer without a sentinel");
     }
 }
 

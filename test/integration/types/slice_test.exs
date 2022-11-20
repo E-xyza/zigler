@@ -8,7 +8,7 @@ defmodule ZiglerTest.Types.SliceTest do
       {:slice_u8_test, return: :list},
       :slice_string_test,
       :fastlane_beam_term_test,
-      :fastlane_erl_nif_term_test,
+      :fastlane_erl_nif_term_test
       # :sentinel_terminated_test
     ]
 

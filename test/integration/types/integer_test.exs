@@ -125,6 +125,23 @@ defmodule ZiglerTest.Types.IntegerTest do
     end
   end
 
+  describe "for c integer types" do
+    @ctypes ~w(c_short c_ushort c_int c_uint c_long c_longlong c_ulonglong)
+    # note that c_ulong is missing, it's not entirely clear why that doesn't work.
+
+    for type <- @ctypes do
+      function = :"addone_#{type}"
+
+      ~z"""
+      pub fn #{function}(value: #{type}) #{type} { return value + 1; }
+      """
+
+      test "c integer #{type} does the right thing" do
+        assert 48 = unquote(function)(47)
+      end
+    end
+  end
+
   describe "for big integers" do
     @tag :skip
     test "can be marshalled into zig bigint type"

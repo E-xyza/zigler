@@ -53,7 +53,7 @@ defmodule Zig.Type.Manypointer do
                    true ->
                      child_str = unquote(Kernel.to_string(type.child))
 
-                     "\n\n     expected: list (#{unquote(type_str)}) but one of the list items (in #{inspect item}) has the wrong type"
+                     "\n\n     expected: list (#{unquote(type_str)}) but one of the list items (in #{inspect(item)}) has the wrong type"
                  end
 
                new_opts =

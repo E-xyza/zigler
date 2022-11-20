@@ -109,6 +109,7 @@ defmodule ZiglerTest.Types.StructTest do
     return s;
   }
   """
+
   describe "structs can be pseudo-mutable" do
     test "called as a map" do
       assert %{value: 48} == mutable_struct_test(%{value: 47})

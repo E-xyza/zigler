@@ -17,7 +17,6 @@ defmodule Zig.Type.Array do
         %{"child" => child, "len" => len, "hasSentinel" => has_sentinel?, "repr" => repr},
         module
       ) do
-
     %__MODULE__{
       child: Type.from_json(child, module),
       len: len,

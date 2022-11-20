@@ -74,9 +74,12 @@ defprotocol Zig.Type do
       %{"type" => "struct", "name" => "stub_erl_nif.ERL_NIF_TERM"} ->
         :erl_nif_term
 
-      %{"type" => "struct", "fields" => [
-        %{"name" => "v", "type" => %{"name" => "stub_erl_nif.ERL_NIF_TERM"}}
-      ]} ->
+      %{
+        "type" => "struct",
+        "fields" => [
+          %{"name" => "v", "type" => %{"name" => "stub_erl_nif.ERL_NIF_TERM"}}
+        ]
+      } ->
         :term
 
       %{"type" => "struct", "name" => "beam.term"} ->
@@ -114,6 +117,7 @@ defprotocol Zig.Type do
       %{"type" => "optional"} ->
         Optional.from_json(json, module)
     end
+    |> dbg
   end
 
   defmacro __using__(opts) do
