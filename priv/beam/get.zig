@@ -271,7 +271,9 @@ pub fn get_pointer(comptime T: type, env: beam.env, src: beam.term) !T {
         .Many => {
             return get_manypointer(T, env, src);
         },
-        else => @compileError("not implemented yet"),
+        .C => {
+            return get_cpointer(T, env, src);
+        },
     }
 }
 
@@ -279,14 +281,7 @@ pub fn get_optional(comptime T: type, env: beam.env, src: beam.term) !T {
     const Child = @typeInfo(T).Optional.child;
 
     switch (src.term_type(env)) {
-        .atom => {
-            var buf: [256]u8 = undefined;
-            const atom = try get_atom(env, src, &buf);
-            if (std.mem.eql(u8, "nil", atom)) {
-                return null;
-            }
-            return GetError.nif_argument_type_error;
-        },
+        .atom => return try null_or_error(env, src),
         else => return try get(Child, env, src),
     }
 }
@@ -339,6 +334,19 @@ pub fn get_manypointer(comptime T: type, env: beam.env, src: beam.term) !T {
         result[slice.len] = @ptrCast(*const Child, @alignCast(@alignOf(Child), sentinel_ptr)).*;
     }
     return result;
+}
+
+pub fn get_cpointer(comptime T: type, env: beam.env, src: beam.term) !T {
+    const Child = @typeInfo(T).Pointer.child;
+    // scan on the type of the source.
+    switch (src.term_type(env)) {
+        .atom => return try null_or_error(T, env, src),
+        .map => {
+            if (@typeInfo(Child) != .Struct) return GetError.nif_argument_type_error;
+            return try get_pointer(*Child, env, src);
+        },
+        else => unreachable,
+    }
 }
 
 // fill functions
@@ -502,4 +510,10 @@ fn bytesFor(comptime T: type) comptime_int {
 // there's probably a std function for this.
 fn IntFor(comptime bits: comptime_int) type {
     return @Type(.{ .Int = .{ .signedness = .unsigned, .bits = bits } });
+}
+
+fn null_or_error(comptime T: type, env: beam.env, src: beam.term) !T {
+    var buf: [256]u8 = undefined;
+    const atom = try get_atom(env, src, &buf);
+    return if (std.mem.eql(u8, "nil", atom)) null else GetError.nif_argument_type_error;
 }

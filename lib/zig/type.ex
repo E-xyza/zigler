@@ -1,6 +1,7 @@
 defprotocol Zig.Type do
   alias Zig.Type.Array
   alias Zig.Type.Bool
+  alias Zig.Type.Cpointer
   alias Zig.Type.Enum
   alias Zig.Type.Float
   alias Zig.Type.Integer
@@ -114,10 +115,12 @@ defprotocol Zig.Type do
       %{"type" => "manypointer"} ->
         Manypointer.from_json(json, module)
 
+      %{"type" => "cpointer"} ->
+        Cpointer.from_json(json, module)
+
       %{"type" => "optional"} ->
         Optional.from_json(json, module)
     end
-    |> dbg
   end
 
   defmacro __using__(opts) do

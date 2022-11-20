@@ -4,11 +4,11 @@ defmodule ZiglerTest.Types.StructTest do
   use Zig, otp_app: :zigler
 
   ~Z"""
-  pub const basic_struct = struct {
+  pub const TestStruct = struct {
     value: u64
   };
 
-  pub fn struct_test(s: basic_struct) basic_struct {
+  pub fn struct_test(s: TestStruct) TestStruct {
     return .{.value = s.value + 1};
   }
   """
@@ -32,25 +32,25 @@ defmodule ZiglerTest.Types.StructTest do
 
     test "missing required values in a map are not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` to have field :value\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `TestStruct` to have field :value\n",
                    fn -> struct_test(%{}) end
     end
 
     test "missing required values in a keyword list are not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` to have field :value\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `TestStruct` to have field :value\n",
                    fn -> struct_test([]) end
     end
 
     test "incorrect value types in a map are not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` but one of its fields has incorrect type\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `TestStruct` but one of its fields has incorrect type\n",
                    fn -> struct_test(%{value: "foo"}) end
     end
 
     test "incorrect value types in a keyword list are not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `basic_struct` but one of its fields has incorrect type\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected argument of type `TestStruct` but one of its fields has incorrect type\n",
                    fn -> struct_test(value: "foo") end
     end
   end
@@ -104,7 +104,7 @@ defmodule ZiglerTest.Types.StructTest do
   end
 
   ~Z"""
-  pub fn mutable_struct_test(s: *basic_struct) *basic_struct {
+  pub fn mutable_struct_test(s: *TestStruct) *TestStruct {
     s.value += 1;
     return s;
   }

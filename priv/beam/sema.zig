@@ -127,7 +127,12 @@ fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: an
             try stream.endObject();
         },
         .C => {
-            @compileError("not implemented yet");
+            try stream.beginObject();
+            try stream.objectField("type");
+            try stream.emitString("cpointer");
+            try stream.objectField("child");
+            try streamType(stream, p.child);
+            try stream.endObject();
         }
     }
 }
