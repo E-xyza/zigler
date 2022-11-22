@@ -25,7 +25,7 @@ defprotocol Zig.Type do
   def param_errors(type, opts)
 
   @doc "generates make clauses in zig"
-  @spec make(t, keyword) :: (atom -> String.t)
+  @spec make(t, keyword) :: (atom -> String.t())
   def make(type, opts)
 
   @spec to_call(t) :: String.t()
@@ -189,6 +189,6 @@ defimpl Zig.Type, for: Atom do
 
   def return_allowed?(type), do: type in [:term, :erl_nif_term]
 
-  def make(:erl_nif_term, _), do: "result"
-  def make(:term), do: "result.v"
+  def make(:erl_nif_term, _), do: &(&1)
+  def make(:term, _), do: &"#{&1}.v"
 end

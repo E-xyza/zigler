@@ -279,9 +279,8 @@ pub fn get_pointer(comptime T: type, env: beam.env, src: beam.term) !T {
 
 pub fn get_optional(comptime T: type, env: beam.env, src: beam.term) !T {
     const Child = @typeInfo(T).Optional.child;
-
     switch (src.term_type(env)) {
-        .atom => return try null_or_error(env, src),
+        .atom => return try null_or_error(T, env, src),
         else => return try get(Child, env, src),
     }
 }

@@ -24,43 +24,109 @@ defmodule Zig.Type.Cpointer do
     end
   end
 
-  def param_errors(type, _opts) do
-#    type_str = to_string(type)
-#
-#    fn index ->
-#      [
-#        {{:nif_argument_type_error, index},
-#         quote do
-#           case __STACKTRACE__ do
-#             [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
-#               item = Enum.at(a, unquote(index))
-#
-#               msg =
-#                 cond do
-#                   not is_list(item) ->
-#                     "\n\n     expected: list (#{unquote(type_str)})\n     got: #{inspect(item)}"
-#
-#                   true ->
-#                     child_str = unquote(Kernel.to_string(type.child))
-#
-#                     "\n\n     expected: list (#{unquote(type_str)}) but one of the list items (in #{inspect(item)}) has the wrong type"
-#                 end
-#
-#               new_opts =
-#                 Keyword.merge(opts,
-#                   error_info: %{module: __MODULE__, function: :_format_error},
-#                   zigler_error: %{unquote(index + 1) => msg}
-#                 )
-#
-#               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
-#
-#             stacktrace ->
-#               :erlang.raise(:error, :badarg, stacktrace)
-#           end
-#         end}
-#      ]
-#    end
-    nil
+  def param_errors(type, opts) do
+    case type.child do
+      %Struct{} ->
+        param_error_struct(type, opts)
+
+      _ ->
+        param_error_array(type, opts)
+    end
+  end
+
+  def param_error_struct(type, _opts) do
+    type_str = Kernel.to_string(type.child)
+
+    fn index ->
+      [
+        {{:nif_argument_type_error, index},
+         quote do
+           case __STACKTRACE__ do
+             [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
+               item = Enum.at(a, unquote(index))
+
+               msg =
+                 cond do
+                   not is_map(item) ->
+                     "\n\n     expected: map (#{unquote(type_str)})\n     got: #{inspect(item)}"
+
+                   true ->
+                     "\n\n     expected: map (#{unquote(type_str)}) but one of the value terms (in #{inspect(item)}) has the wrong type"
+                 end
+
+               new_opts =
+                 Keyword.merge(opts,
+                   error_info: %{module: __MODULE__, function: :_format_error},
+                   zigler_error: %{unquote(index + 1) => msg}
+                 )
+
+               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
+
+             stacktrace ->
+               :erlang.raise(:error, :badarg, stacktrace)
+           end
+         end},
+        {{:nif_struct_field_error, index},
+         quote do
+           case __STACKTRACE__ do
+             [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
+               item = Enum.at(a, unquote(index))
+
+               msg =
+                 "\n\n     expected: map (#{unquote(type_str)}) but one of the value terms (in #{inspect(item)}) has the wrong type"
+
+               new_opts =
+                 Keyword.merge(opts,
+                   error_info: %{module: __MODULE__, function: :_format_error},
+                   zigler_error: %{unquote(index + 1) => msg}
+                 )
+
+               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
+
+             stacktrace ->
+               :erlang.raise(:error, :badarg, stacktrace)
+           end
+         end}
+      ]
+    end
+  end
+
+  def param_error_array(type, _opts) do
+    type_str = to_string(type)
+
+    fn index ->
+      [
+        {{:nif_argument_type_error, index},
+         quote do
+           case __STACKTRACE__ do
+             [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
+               item = Enum.at(a, unquote(index))
+
+               msg =
+                 cond do
+                   not is_list(item) ->
+                     "\n\n     expected: list (#{unquote(type_str)})\n     got: #{inspect(item)}"
+
+                   true ->
+                     child_str = unquote(Kernel.to_string(type.child))
+
+                     "\n\n     expected: list (#{unquote(type_str)}) but one of the list items (in #{inspect(item)}) has the wrong type"
+                 end
+
+               new_opts =
+                 Keyword.merge(opts,
+                   error_info: %{module: __MODULE__, function: :_format_error},
+                   zigler_error: %{unquote(index + 1) => msg}
+                 )
+
+               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
+
+             stacktrace ->
+               :erlang.raise(:error, :badarg, stacktrace)
+           end
+         end}
+      ]
+    end
   end
 
   def to_string(slice), do: "[*c]#{Kernel.to_string(slice.child)}"
@@ -68,11 +134,12 @@ defmodule Zig.Type.Cpointer do
   def to_call(slice), do: "[*c]#{Type.to_call(slice.child)}"
 
   def make(_t, opts) do
-    options = case opts[:return] do
-      :list -> ".{.output_as = .list}"
-      _ -> ".{}"
-    end
-    
+    options =
+      case opts[:return] do
+        :list -> ".{.output_as = .list}"
+        _ -> ".{}"
+      end
+
     &"beam.make_cpointer(env, #{&1}, #{options}).v"
   end
 
