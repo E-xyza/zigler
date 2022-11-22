@@ -1,5 +1,6 @@
 defmodule Zig.Type.Cpointer do
   alias Zig.Type
+  alias Zig.Type.Struct
   use Type
   import Type, only: :macros
 
@@ -14,14 +15,13 @@ defmodule Zig.Type.Cpointer do
   def marshal_param(_, _), do: nil
 
   def marshal_return(type, opts) do
-    #if type.child == ~t(u8) and opts[:return] == :list do
-    #  fn arg ->
-    #    quote bind_quoted: [arg: arg] do
-    #      :binary.bin_to_list(arg)
-    #    end
-    #  end
-    #end
-    nil
+    if type.child == ~t(u8) and opts[:return] == :list do
+      fn arg ->
+        quote bind_quoted: [arg: arg] do
+          :binary.bin_to_list(arg)
+        end
+      end
+    end
   end
 
   def param_errors(type, _opts) do
@@ -67,6 +67,22 @@ defmodule Zig.Type.Cpointer do
 
   def to_call(slice), do: "[*c]#{Type.to_call(slice.child)}"
 
+  def make(_t, opts) do
+    options = case opts[:return] do
+      :list -> ".{.output_as = .list}"
+      _ -> ".{}"
+    end
+    
+    &"beam.make_cpointer(env, #{&1}, #{options}).v"
+  end
+
   # for now.
-  def return_allowed?(pointer), do: false
+  def return_allowed?(pointer) do
+    case pointer.child do
+      ~t(u8) -> true
+      %__MODULE__{child: child} -> Type.return_allowed?(child)
+      struct = %Struct{} -> Type.return_allowed?(struct)
+      _ -> false
+    end
+  end
 end

@@ -339,20 +339,19 @@ pub fn get_manypointer(comptime T: type, env: beam.env, src: beam.term) !T {
 pub fn get_cpointer(comptime T: type, env: beam.env, src: beam.term) !T {
     const Child = @typeInfo(T).Pointer.child;
     // scan on the type of the source.
-    switch (src.term_type(env)) {
-        .atom => return try null_or_error(T, env, src),
-        .map => {
-            if (@typeInfo(Child) != .Struct) return GetError.nif_argument_type_error;
-            return try get_pointer(*Child, env, src);
-        },
-        .list => {
-            return (try get_slice_list([]Child, env, src)).ptr;
-        },
-        .bitstring => {
-            return (try get_slice_binary([]Child, env, src)).ptr;
-        },
-        else => unreachable,
-    }
+    return switch (src.term_type(env)) {
+        .atom => try null_or_error(T, env, src),
+        .map => 
+            if (@typeInfo(Child) != .Struct) 
+                GetError.nif_argument_type_error 
+            else 
+                try get_pointer(*Child, env, src),
+        .list =>
+            (try get_slice_list([]Child, env, src)).ptr,
+        .bitstring =>
+            (try get_slice_binary([]Child, env, src)).ptr,
+        else => GetError.nif_argument_type_error,
+    };
 }
 
 // fill functions

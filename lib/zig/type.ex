@@ -24,12 +24,17 @@ defprotocol Zig.Type do
   @spec param_errors(t, keyword) :: (integer -> [Macro.t()]) | nil
   def param_errors(type, opts)
 
+  @doc "generates make clauses in zig"
+  @spec make(t, keyword) :: (atom -> String.t)
+  def make(type, opts)
+
   @spec to_call(t) :: String.t()
   def to_call(type)
 
   @spec return_allowed?(t) :: boolean
   def return_allowed?(type)
 
+  import Protocol, only: []
   import Kernel
 
   defmacro sigil_t(string, _) do
@@ -129,8 +134,10 @@ defprotocol Zig.Type do
     inspect? = Keyword.get(opts, :inspect?, false)
 
     quote bind_quoted: [inspect?: inspect?, module: module] do
-      import Protocol, only: []
       import Kernel, except: [to_string: 1]
+
+      def make(_, _), do: &"beam.make(env, #{&1}).v"
+      defoverridable make: 2
 
       defimpl String.Chars do
         defdelegate to_string(type), to: module
@@ -152,6 +159,7 @@ defprotocol Zig.Type do
         defdelegate param_errors(type, opts), to: module
         defdelegate to_call(type), to: module
         defdelegate return_allowed?(type), to: module
+        defdelegate make(type, opts), to: module
       end
     end
   end
@@ -180,4 +188,7 @@ defimpl Zig.Type, for: Atom do
   def to_call(type), do: to_string(type)
 
   def return_allowed?(type), do: type in [:term, :erl_nif_term]
+
+  def make(:erl_nif_term, _), do: "result"
+  def make(:term), do: "result.v"
 end

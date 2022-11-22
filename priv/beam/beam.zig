@@ -158,6 +158,8 @@ const make_ = @import("make.zig");
 pub const get = get_.get;
 pub const make = make_.make;
 pub const make_into_atom = make_.make_into_atom;
+pub const make_cpointer = make_.make_cpointer;
+pub const make_binary = make_.make_binary;
 
 ///////////////////////////////////////////////////////////////////////////////
 // allocators

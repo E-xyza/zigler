@@ -2,6 +2,11 @@ const beam = @import("beam.zig");
 const e = @import("erl_nif.zig");
 const std = @import("std");
 
+const OutputType = enum { default, list };
+const MakeOpts = struct {
+    output_as: OutputType = .default,
+};
+
 pub fn make(env: beam.env, value: anytype) beam.term {
     const T = @TypeOf(value);
     // passthrough on beam.term and e.ErlNifTerm, no work needed.
@@ -43,7 +48,7 @@ fn make_pointer(env: beam.env, value: anytype) beam.term {
         .One => return make_mut(env, value),
         .Many => return make_manypointer(env, value),
         .Slice => return make_slice(env, value),
-        .C => @compileError("not implemented yet"),
+        .C => return make_cpointer(env, value, .{}),
     }
 }
 
@@ -224,6 +229,31 @@ pub fn make_manypointer(env: beam.env, manypointer: anytype) beam.term {
         return make_slice(env, manypointer[0..len]);
     } else {
         @compileError("it's not possible to create a manypointer without a sentinel");
+    }
+}
+
+pub fn make_cpointer(env: beam.env, cpointer: anytype, comptime opts: MakeOpts) beam.term {
+    const pointer = @typeInfo(@TypeOf(cpointer)).Pointer;
+    const Child = pointer.child; 
+    _ = opts;
+
+    if (cpointer) |_| {
+        // the following two types have inferrable sentinels
+        if (Child == u8) {
+            return make(env, @ptrCast([*:0]u8, cpointer));
+        }
+        if (@typeInfo(Child) == .Pointer) {
+            return make(env, @ptrCast([*:null]Child, cpointer));
+        }
+
+        switch (@typeInfo(Child)) {
+            .Struct =>
+              return make(env, @ptrCast(*Child, cpointer)),
+            else => 
+              return make(env, .not_yet)
+        }
+    } else {
+        return make(env, .nil);
     }
 }
 
