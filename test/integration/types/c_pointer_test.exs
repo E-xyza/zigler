@@ -54,9 +54,11 @@ defmodule ZiglerTest.Types.CPointerTest do
     end
 
     test "you can't pass a bad value term" do
-      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map (TestStruct) but one of the value terms (in %{value: :foo}) has the wrong type\n", fn ->
-        cpointer_test(%{value: :foo})
-      end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map (TestStruct) but one of the value terms (in %{value: :foo}) has the wrong type\n",
+                   fn ->
+                     cpointer_test(%{value: :foo})
+                   end
     end
   end
 
@@ -103,7 +105,7 @@ defmodule ZiglerTest.Types.CPointerTest do
 
     test "list item should be correctly typed" do
       assert_raise ArgumentError,
-      "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list ([*c]u8) but one of the list items (in [:foo]) has the wrong type\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list ([*c]u8) but one of the list items (in [:foo]) has the wrong type\n",
                    fn ->
                      cpointer_list_test([:foo])
                    end

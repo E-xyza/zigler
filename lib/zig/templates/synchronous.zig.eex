@@ -1,7 +1,10 @@
 export fn <%= @name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) e.ErlNifTerm {
+    var error_info = beam.make_empty_list(env); 
     <%= for {param, index} <- Nif.indexed_parameters(@params) do %>
-    const arg<%= index %> = beam.get(<%= Type.to_call(param) %>, env, .{.v = arg[<%= index %>]}) catch |err| {
-      return e.enif_raise_exception(env, beam.make(env, .{err, <%= index %>}, .{}).v);
+    const arg<%= index %> = 
+      beam.get(<%= Type.to_call(param) %>, env, .{.v = arg[<%= index %>]}, .{.error_info = &error_info}) 
+      catch |err| {
+      return e.enif_raise_exception(env, beam.make(env, .{err, <%= index %>, error_info}, .{}).v);
     };
     <% end %>
     <%= case @params do %>

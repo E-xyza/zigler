@@ -50,5 +50,20 @@ defmodule ZiglerTest.Types.FloatTest do
     test "you can send NaN to f16" do
       assert :NaN = f16_div2(:NaN)
     end
+
+    test "argument error if integers are sent" do
+      # note that integers are wrongly typed.  You must explicitly send floats.
+      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: float (f64)\n     got: 3\n     integers are not allowed as arguments to float\n", fn -> f64_div2(3) end
+    end
+
+    test "argument error if non-special atoms are sent" do
+      # only certain atoms are allowed for float
+      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: float (f64)\n     got: :foo\n     only `:NaN`, `:infinity`, and `:neg_infinity` are allowed as atom arguments to float\n", fn -> f64_div2(:foo) end
+    end
+
+    test "argument error if other incorrect data are sent" do
+      # only certain atoms are allowed for float
+      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: float (f64)\n     got: \"foo\"\n", fn -> f64_div2("foo") end
+    end
   end
 end

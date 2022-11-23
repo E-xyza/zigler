@@ -185,6 +185,6 @@ defimpl Zig.Type, for: Atom do
 
   def return_allowed?(type), do: type in [:term, :erl_nif_term]
 
-  def make(:erl_nif_term, _), do: &(&1)
+  def make(:erl_nif_term, _), do: & &1
   def make(:term, _), do: &"#{&1}.v"
 end

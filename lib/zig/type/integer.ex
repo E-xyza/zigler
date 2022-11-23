@@ -107,13 +107,13 @@ defmodule Zig.Type.Integer do
 
   def marshal_return(_, _), do: nil
 
-  def param_errors(type = %{bits: bits}, _) when bits <= 64 do
-    type_str = to_string(type)
-    range = "#{typemin(type)}...#{typemax(type)}"
-
+  # TODO: refactor these out into a common module.
+  def param_errors(_, _) do
     fn index ->
       [
-        {{:nif_argument_type_error, index},
+        {quote do
+           {:argument_error, unquote(index), error_lines}
+         end,
          quote do
            case __STACKTRACE__ do
              [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
@@ -122,82 +122,26 @@ defmodule Zig.Type.Integer do
                    error_info: %{module: __MODULE__, function: :_format_error},
                    zigler_error: %{
                      unquote(index + 1) =>
-                       "\n\n     expected: integer (#{unquote(type_str)})\n     got: #{inspect(Enum.at(a, unquote(index)))}"
+                       error_lines
+                       |> Enum.map(fn error_line ->
+                         error_msg = error_line
+                         |> Tuple.to_list()
+                         |> Enum.map(fn
+                           string when is_binary(string) -> string
+                           {:inspect, content} -> inspect(content)
+                         end)
+                         |> List.wrap()
+                         |> List.insert_at(0, "\n     ")
+                       end)
+                       |> List.insert_at(0, "\n")
+                       |> IO.iodata_to_binary()
                    }
                  )
 
                :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
 
              stacktrace ->
-               :erlang.raise(:error, :badarg, stacktrace)
-           end
-         end},
-        {{:nif_argument_range_error, index},
-         quote do
-           case __STACKTRACE__ do
-             [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
-               new_opts =
-                 Keyword.merge(opts,
-                   error_info: %{module: __MODULE__, function: :_format_error},
-                   zigler_error: %{
-                     unquote(index + 1) =>
-                       "\n\n     #{inspect(Enum.at(a, unquote(index)))} is out of bounds for type #{unquote(type_str)} (#{unquote(range)})"
-                   }
-                 )
-
-               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
-
-             stacktrace ->
-               :erlang.raise(:error, :badarg, stacktrace)
-           end
-         end}
-      ]
-    end
-  end
-
-  @arg {:arg, [], Elixir}
-
-  def param_errors(type, _) do
-    type_str = to_string(type)
-    range = "#{typemin(type)}...#{typemax(type)}"
-
-    fn index ->
-      [
-        {{:nif_argument_type_error, {index, @arg}},
-         quote do
-           case __STACKTRACE__ do
-             [{m, f, a, opts} | rest] ->
-               new_opts =
-                 Keyword.merge(opts,
-                   error_info: %{module: __MODULE__, function: :_format_error},
-                   zigler_error: %{
-                     unquote(index + 1) =>
-                       "\n\n     expected: integer (#{unquote(type_str)})\n     got: #{inspect(unquote(@arg))}"
-                   }
-                 )
-
-               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
-
-             stacktrace ->
-               :erlang.raise(:error, :badarg, stacktrace)
-           end
-         end},
-        {{:nif_argument_range_error, {index, @arg}},
-         quote do
-           case __STACKTRACE__ do
-             [{m, f, a, opts} | rest] ->
-               new_opts =
-                 Keyword.merge(opts,
-                   error_info: %{module: __MODULE__, function: :_format_error},
-                   zigler_error: %{
-                     unquote(index + 1) =>
-                       "\n\n     #{inspect(unquote(@arg))} is out of bounds for type #{unquote(type_str)} (#{unquote(range)})"
-                   }
-                 )
-
-               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
-
-             stacktrace ->
+               # no available stacktrace info
                :erlang.raise(:error, :badarg, stacktrace)
            end
          end}

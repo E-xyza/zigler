@@ -160,6 +160,7 @@ pub const make = make_.make;
 pub const make_into_atom = make_.make_into_atom;
 pub const make_cpointer = make_.make_cpointer;
 pub const make_binary = make_.make_binary;
+pub const make_empty_list = make_.make_empty_list;
 
 ///////////////////////////////////////////////////////////////////////////////
 // allocators

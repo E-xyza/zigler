@@ -297,3 +297,7 @@ pub fn make_binary(env: beam.env, binary_slice: []const u8) beam.term {
     std.mem.copy(u8, buf[0..binary_slice.len], binary_slice);
     return result;
 }
+
+pub fn make_empty_list(env: beam.env) beam.term {
+    return .{.v = e.enif_make_list_from_array(env, null, 0)};
+}

@@ -2,23 +2,22 @@ const beam = @import("beam.zig");
 const e = @import("erl_nif.zig");
 const std = @import("std");
 
-pub const GetError = error{ nif_argument_type_error, nif_argument_range_error, nif_struct_field_error, nif_struct_missing_field_error, nif_argument_enum_not_found_error, nif_array_length_error, nif_marshalling_error // this should really not happen.
-};
+const GetError = error{ argument_error, unreachable_error };
 
-pub fn get(comptime T: type, env: beam.env, src: beam.term) !T {
+pub fn get(comptime T: type, env: beam.env, src: beam.term, opt: anytype) !T {
     // passthrough on beam.term and e.ErlNifTerm, no work needed.
     if (T == beam.term) return src;
     if (T == e.ErlNifTerm) return src.v;
 
     switch (@typeInfo(T)) {
-        .Int => return get_int(T, env, src),
-        .Enum => return get_enum(T, env, src),
-        .Float => return get_float(T, env, src),
-        .Struct => return get_struct(T, env, src),
-        .Bool => return get_bool(T, env, src),
-        .Array => return get_array(T, env, src),
-        .Pointer => return get_pointer(T, env, src),
-        .Optional => return get_optional(T, env, src),
+        .Int => return get_int(T, env, src, opt),
+        .Enum => return get_enum(T, env, src, opt),
+        .Float => return get_float(T, env, src, opt),
+        .Struct => return get_struct(T, env, src, opt),
+        .Bool => return get_bool(T, env, src, opt),
+        .Array => return get_array(T, env, src, opt),
+        .Pointer => return get_pointer(T, env, src, opt),
+        .Optional => return get_optional(T, env, src, opt),
         else => @compileError("unhandlable type encountered in get"),
     }
 }
@@ -30,31 +29,22 @@ const enif_get_i32 = if (c_int_size == 32) e.enif_get_int else if (c_long_size =
 const u32_t = if (c_int_size == 32) c_uint else if (c_long_size == 32) c_ulong;
 const enif_get_u32 = if (c_int_size == 32) e.enif_get_uint else if (c_long_size == 32) e.enif_get_ulong;
 
-pub fn get_int(comptime T: type, env: beam.env, src: beam.term) GetError!T {
+const minInt = std.math.minInt;
+const maxInt = std.math.maxInt;
+
+pub fn get_int(comptime T: type, env: beam.env, src: beam.term, opt: anytype) GetError!T {
     const int = @typeInfo(T).Int;
     switch (int.signedness) {
         .signed => switch (int.bits) {
             0...32 => {
                 var result: i32_t = 0;
-
-                if (src.term_type(env) != .integer) {
-                    return GetError.nif_argument_type_error;
-                }
-
-                if (enif_get_i32(env, src.v, &result) == 0) return GetError.nif_argument_range_error;
-
-                return lowerInt(T, result);
+                try genericGetInt(T, env, src, &result, opt, e.enif_get_int);
+                return lowerInt(T, env, src, result, opt);
             },
             33...64 => {
                 var result: i64 = 0;
-
-                if (src.term_type(env) != .integer) {
-                    return GetError.nif_argument_type_error;
-                }
-
-                if (e.enif_get_int64(env, src.v, &result) == 0) return GetError.nif_argument_range_error;
-
-                return lowerInt(T, result);
+                try genericGetInt(T, env, src, &result, opt, e.enif_get_int64);
+                return lowerInt(T, env, src, result, opt);
             },
             else => {
                 // for integers bigger than 64-bytes the number
@@ -66,13 +56,13 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) GetError!T {
 
                 // This should fail if it's not a binary.  Note there isn't much we can do here because
                 // it is *supposed* to be marshalled into the nif.
-                if (e.enif_inspect_binary(env, src.v, &result) == 0) return GetError.nif_marshalling_error;
+                if (e.enif_inspect_binary(env, src.v, &result) == 0) return GetError.unreachable_error;
 
                 var buf: Bigger = 0;
                 std.mem.copy(u8, @ptrCast([*]u8, &buf)[0..bytes], result.data[0..bytes]);
                 // check to make sure that the top bits are all zeros.
                 const top_bit_count = (bytes * 8 - int.bits);
-                if (@clz(buf) < top_bit_count) return GetError.nif_argument_range_error;
+                if (@clz(buf) < top_bit_count) return GetError.argument_error;
 
                 return @intCast(T, buf);
             },
@@ -80,26 +70,13 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) GetError!T {
         .unsigned => switch (int.bits) {
             0...32 => {
                 var result: u32_t = 0;
-
-                if (src.term_type(env) != .integer) {
-                    return GetError.nif_argument_type_error;
-                }
-
-                // TODO: check to make sure this doesn't get weird
-                if (enif_get_u32(env, src.v, &result) == 0) return GetError.nif_argument_range_error;
-
-                return try lowerInt(T, result);
+                try genericGetInt(T, env, src, &result, opt, e.enif_get_uint);
+                return lowerInt(T, env, src, result, opt);
             },
             33...64 => {
                 var result: u64 = 0;
-
-                if (src.term_type(env) != .integer) {
-                    return GetError.nif_argument_type_error;
-                }
-
-                if (e.enif_get_uint64(env, src.v, &result) == 0) return GetError.nif_argument_range_error;
-
-                return try lowerInt(T, result);
+                try genericGetInt(T, env, src, &result, opt, e.enif_get_uint64);
+                return lowerInt(T, env, src, result, opt);
             },
             else => {
                 // for integers bigger than 64-bytes the number
@@ -111,43 +88,64 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term) GetError!T {
 
                 // This should fail if it's not a binary.  Note there isn't much we can do here because
                 // it is *supposed* to be marshalled into the nif.
-                if (e.enif_inspect_binary(env, src.v, &result) == 0) return GetError.nif_marshalling_error;
+                if (e.enif_inspect_binary(env, src.v, &result) == 0) return GetError.unreachable_error;
 
                 var buf: Bigger = 0;
                 std.mem.copy(u8, @ptrCast([*]u8, &buf)[0..bytes], result.data[0..bytes]);
                 // check to make sure that the top bits are all zeros.
                 const top_bit_count = (bytes * 8 - int.bits);
-                if (@clz(buf) < top_bit_count) return GetError.nif_argument_range_error;
+                if (@clz(buf) < top_bit_count) return GetError.argument_error;
 
                 return @intCast(T, buf);
             },
         },
     }
-    // for now, panic.
-    unreachable;
 }
 
-inline fn lowerInt(comptime T: type, result: anytype) GetError!T {
+const tm = "expected: {s} ({})";
+fn typeMsg(comptime T: type, comptime prefix: []const u8) *const[std.fmt.count(tm, .{prefix, T})]u8 {
+    return std.fmt.comptimePrint(tm, .{prefix, T});
+}
+
+inline fn genericGetInt(comptime T: type, env: beam.env, src: beam.term, result_ptr: anytype, opt: anytype, fun: anytype) GetError!void {
+    if (src.term_type(env) != .integer) {
+        put_error_line(env, opt, .{ "got: ", .{ .inspect, src } });
+        put_error_line(env, opt, .{typeMsg(T, "integer")});
+        return GetError.argument_error;
+    }
+
+    if (fun(env, src.v, result_ptr) == 0) {
+        put_error_line(env, opt, .{ "out of bounds (", .{ .inspect, minInt(T) }, "..", .{ .inspect, maxInt(T) }, "): ", .{ .inspect, src } });
+        put_error_line(env, opt, .{typeMsg(T, "integer")});
+        return GetError.argument_error;
+    }
+}
+
+inline fn lowerInt(comptime T: type, env: beam.env, src: beam.term, result: anytype, opt: anytype) GetError!T {
     const int = @typeInfo(T).Int;
     if (int.signedness == .signed) {
         if (result < std.math.minInt(T)) {
-            return GetError.nif_argument_range_error;
+            put_error_line(env, opt, .{ "out of bounds (", .{ .inspect, minInt(T) }, "..", .{ .inspect, maxInt(T) }, "): ", .{ .inspect, src } });
+            put_error_line(env, opt, .{typeMsg(T, "integer")});
+            return GetError.argument_error;
         }
     }
 
     if (result > std.math.maxInt(T)) {
-        return GetError.nif_argument_range_error;
+        put_error_line(env, opt, .{ "out of bounds (", .{ .inspect, minInt(T) }, "..", .{ .inspect, maxInt(T) }, "): ", .{ .inspect, src } });
+        put_error_line(env, opt, .{typeMsg(T, "integer")});
+        return GetError.argument_error;
     }
 
     return @intCast(T, result);
 }
 
-pub fn get_enum(comptime T: type, env: beam.env, src: beam.term) !T {
+pub fn get_enum(comptime T: type, env: beam.env, src: beam.term, opt: anytype) !T {
     const enumInfo = @typeInfo(T).Enum;
     const IntType = enumInfo.tag_type;
     // prefer the integer form, fallback to string searches.
     switch (src.term_type(env)) {
-        .integer => return @intToEnum(T, try get_int(IntType, env, src)),
+        .integer => return @intToEnum(T, try get_int(IntType, env, src, opt)),
         .atom => {
             // atoms cannot be longer than 256 characters.
             var buf: [256]u8 = undefined;
@@ -156,15 +154,15 @@ pub fn get_enum(comptime T: type, env: beam.env, src: beam.term) !T {
             inline for (enumInfo.fields) |field| {
                 if (std.mem.eql(u8, field.name[0..], slice)) return @field(T, field.name);
             }
-            return GetError.nif_argument_enum_not_found_error;
+            return GetError.argument_error;
         },
-        else => return GetError.nif_argument_type_error,
+        else => return GetError.argument_error,
     }
 }
 
 const FloatAtoms = enum { infinity, neg_infinity, NaN };
 
-pub fn get_float(comptime T: type, env: beam.env, src: beam.term) !T {
+pub fn get_float(comptime T: type, env: beam.env, src: beam.term, opt: anytype) !T {
     // all floats in the beam are f64 types so this is relatively easy.
     switch (src.term_type(env)) {
         .float => {
@@ -176,20 +174,36 @@ pub fn get_float(comptime T: type, env: beam.env, src: beam.term) !T {
             return @floatCast(T, float);
         },
         .atom => {
-            const special_form = get_enum(FloatAtoms, env, src) catch return GetError.nif_argument_type_error;
+            const special_form = get_enum(FloatAtoms, env, src, opt) catch {
+                put_error_line(env, opt, .{"only `:NaN`, `:infinity`, and `:neg_infinity` are allowed as atom arguments to float"});
+                put_error_line(env, opt, .{"got: ", .{.inspect, src}});
+                put_error_line(env, opt, .{typeMsg(T, "float")});
+                return GetError.argument_error;
+            };
+
             return switch (special_form) {
                 .infinity => std.math.inf(T),
                 .neg_infinity => -std.math.inf(T),
                 .NaN => std.math.nan(T),
             };
         },
-        else => return GetError.nif_argument_type_error,
+        .integer => {
+            put_error_line(env, opt, .{"integers are not allowed as arguments to float"});
+            put_error_line(env, opt, .{"got: ", .{.inspect, src}});
+            put_error_line(env, opt, .{typeMsg(T, "float")});
+            return GetError.argument_error;
+        },
+        else => {
+            put_error_line(env, opt, .{"got: ", .{.inspect, src}});
+            put_error_line(env, opt, .{typeMsg(T, "float")});
+            return GetError.argument_error;
+        }
     }
 }
 
 pub fn get_atom(env: beam.env, src: beam.term, buf: *[256]u8) ![]u8 {
     const len = @intCast(usize, e.enif_get_atom(env, src.v, buf, 256, e.ERL_NIF_LATIN1));
-    if (len == 0) return GetError.nif_argument_type_error;
+    if (len == 0) return GetError.argument_error;
     return buf[0 .. len - 1];
 }
 
@@ -213,15 +227,15 @@ fn get_tuple_to_buf(env: beam.env, src: beam.term, buf: anytype) !void {
     if (child_type_info.Array.child != beam.term) @compileError("get_tuple_to_buf buffer must be a pointer to an array of beam.term");
     // compile-time type checking on the buf variable
 
-    if (src.term_type(env) != .tuple) return GetError.nif_argument_type_error;
+    if (src.term_type(env) != .tuple) return GetError.argument_error;
 
     var arity: c_int = undefined;
     var src_array: [*c]e.ErlNifTerm = undefined;
 
     const result = e.enif_get_tuple(env, src.v, &arity, &src_array);
 
-    if (result == 0) return GetError.nif_argument_type_error;
-    if (arity != child_type_info.Array.len) return GetError.nif_argument_type_error;
+    if (result == 0) return GetError.argument_error;
+    if (arity != child_type_info.Array.len) return GetError.argument_error;
 
     for (buf) |*slot, index| {
         slot.* = .{ .v = src_array[index] };
@@ -240,9 +254,9 @@ pub fn get_bool(comptime T: type, env: beam.env, src: beam.term) !bool {
             if (std.mem.eql(u8, "false", atom)) {
                 return false;
             }
-            return GetError.nif_argument_type_error;
+            return GetError.argument_error;
         },
-        else => return GetError.nif_argument_type_error,
+        else => return GetError.argument_error,
     }
 }
 
@@ -289,16 +303,16 @@ pub fn get_slice(comptime T: type, env: beam.env, src: beam.term) !T {
     switch (src.term_type(env)) {
         .bitstring => return get_slice_binary(T, env, src),
         .list => return get_slice_list(T, env, src),
-        else => return GetError.nif_argument_type_error,
+        else => return GetError.argument_error,
     }
 }
 
 pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term) !T {
     const slice_info = @typeInfo(T).Pointer;
     // slices can be instantiated from binaries, if they are u8 arrays
-    if (slice_info.child != u8) return GetError.nif_argument_type_error;
+    if (slice_info.child != u8) return GetError.argument_error;
     var str_res: e.ErlNifBinary = undefined;
-    if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.nif_marshalling_error;
+    if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.unreachable_error;
     var result = try beam.allocator.alloc(u8, str_res.size);
     std.mem.copy(u8, result, str_res.data[0..result.len]);
     return result;
@@ -308,18 +322,18 @@ pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term) !T {
     const Child = @typeInfo(T).Pointer.child;
     var length: c_uint = undefined;
 
-    if (e.enif_get_list_length(env, src.v, &length) == 0) return GetError.nif_marshalling_error;
+    if (e.enif_get_list_length(env, src.v, &length) == 0) return GetError.unreachable_error;
     var result = try beam.allocator.alloc(Child, length);
     errdefer beam.allocator.free(result);
 
     var list: e.ErlNifTerm = src.v;
     for (result) |*item| {
         var head: e.ErlNifTerm = undefined;
-        if (e.enif_get_list_cell(env, list, &head, &list) == 0) return GetError.nif_marshalling_error;
+        if (e.enif_get_list_cell(env, list, &head, &list) == 0) return GetError.unreachable_error;
         item.* = try get(Child, env, .{ .v = head });
     }
 
-    if (e.enif_is_empty_list(env, list) == 0) return GetError.nif_marshalling_error;
+    if (e.enif_is_empty_list(env, list) == 0) return GetError.unreachable_error;
 
     return result;
 }
@@ -340,16 +354,13 @@ pub fn get_cpointer(comptime T: type, env: beam.env, src: beam.term) !T {
     // scan on the type of the source.
     return switch (src.term_type(env)) {
         .atom => try null_or_error(T, env, src),
-        .map => 
-            if (@typeInfo(Child) != .Struct) 
-                GetError.nif_argument_type_error 
-            else 
-                try get_pointer(*Child, env, src),
-        .list =>
-            (try get_slice_list([]Child, env, src)).ptr,
-        .bitstring =>
-            (try get_slice_binary([]Child, env, src)).ptr,
-        else => GetError.nif_argument_type_error,
+        .map => if (@typeInfo(Child) != .Struct)
+            GetError.argument_error
+        else
+            try get_pointer(*Child, env, src),
+        .list => (try get_slice_list([]Child, env, src)).ptr,
+        .bitstring => (try get_slice_binary([]Child, env, src)).ptr,
+        else => GetError.argument_error,
     };
 }
 
@@ -381,17 +392,17 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term) GetEr
         },
         .bitstring => {
             // arrays can be instantiated as binaries, if they are u8 arrays
-            if (Child != u8) return GetError.nif_argument_type_error;
+            if (Child != u8) return GetError.argument_error;
 
             var str_res: e.ErlNifBinary = undefined;
 
-            if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.nif_marshalling_error;
+            if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.unreachable_error;
 
             if (str_res.size != array_info.len) return GetError.nif_array_length_error;
 
             std.mem.copy(u8, result, str_res.data[0..array_info.len]);
         },
-        else => return GetError.nif_argument_type_error,
+        else => return GetError.argument_error,
     }
 }
 
@@ -470,16 +481,16 @@ fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term) GetE
 
                 // This should fail if it's not a binary.  Note there isn't much we can do here because
                 // it is *supposed* to be marshalled into the nif.
-                //if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.nif_marshalling_error;
+                //if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.unreachable_error;
 
                 @panic("whoops");
 
                 //std.mem.copy(u8, buf, str_res.data[0..buf.len]);
             } else {
-                return GetError.nif_argument_type_error;
+                return GetError.argument_error;
             }
         },
-        else => return GetError.nif_argument_type_error,
+        else => return GetError.argument_error,
     }
 }
 
@@ -519,5 +530,29 @@ fn IntFor(comptime bits: comptime_int) type {
 fn null_or_error(comptime T: type, env: beam.env, src: beam.term) !T {
     var buf: [256]u8 = undefined;
     const atom = try get_atom(env, src, &buf);
-    return if (std.mem.eql(u8, "nil", atom)) null else GetError.nif_argument_type_error;
+    return if (std.mem.eql(u8, "nil", atom)) null else GetError.argument_error;
+}
+
+inline fn put_error_line(env: beam.env, opts: anytype, msg: anytype) void {
+    // note that this function completely no-ops if the opts variable (which
+    // in many cases is going to be `.{}`).  For the most part, this should be
+    // used when detailed errors resulting from retrieving values from the VM
+    // needs to be passed back to the VM.
+
+    // in order to pass values back, .{} should contain the `.error_info` field
+    // and this field should be a pointer to a `beam.term` object.  Anything
+    // else will result in a compiler error.
+
+    inline for (@typeInfo(@TypeOf(opts)).Struct.fields) |field| {
+        if (std.mem.eql(u8, "error_info", field.name)) {
+            const field_type = @TypeOf(opts.error_info);
+            if (field_type != *beam.term) {
+                const error_msg = comptime mblk: {
+                    break :mblk std.fmt.comptimePrint("the `.error_info` field of the get opts parameter must be `*beam.term`, got: {}", .{field_type});
+                };
+                @compileError(error_msg);
+            }
+            opts.error_info.v = e.enif_make_list_cell(env, beam.make(env, msg, .{}).v, opts.error_info.v);
+        }
+    }
 }

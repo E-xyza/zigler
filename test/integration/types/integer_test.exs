@@ -42,7 +42,7 @@ defmodule ZiglerTest.Types.IntegerTest do
         limit = 1 <<< size
 
         assert_raise ArgumentError,
-                     "errors were found at the given arguments:\n\n  * 1st argument: \n\n     #{limit} is out of bounds for type u#{size} (0...#{limit - 1})\n",
+                     "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (u#{size})\n     out of bounds (0..#{limit - 1}): #{limit}\n",
                      fn ->
                        unquote(ufunction)(limit)
                      end
