@@ -45,9 +45,6 @@ defmodule Zig.Type.Enum do
     end
   end
 
-  # zig automagically converts enums back to atoms, so, no code is required.
-  def marshal_return(_, _), do: nil
-
   @arg {:arg, [], Elixir}
 
   def param_errors(enum, _) do

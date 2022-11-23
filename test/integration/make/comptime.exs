@@ -7,11 +7,11 @@ defmodule ZiglerTest.Make.ComptimeTest do
   const beam = @import("beam");
 
   pub fn make_comptime_int(env: beam.env) beam.term {
-    return beam.make(env, 47);
+    return beam.make(env, 47, .{});
   }
 
   pub fn make_comptime_float(env: beam.env) beam.term {
-    return beam.make(env, 47.0);
+    return beam.make(env, 47.0, .{});
   }
   """
 

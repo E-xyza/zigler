@@ -22,18 +22,6 @@ defmodule Zig.Type.Manypointer do
     }
   end
 
-  def marshal_param(_, _), do: nil
-
-  def marshal_return(type, opts) do
-    if type.child == ~t(u8) and opts[:return] == :list do
-      fn arg ->
-        quote bind_quoted: [arg: arg] do
-          :binary.bin_to_list(arg)
-        end
-      end
-    end
-  end
-
   def param_errors(type, _opts) do
     type_str = to_string(type)
 

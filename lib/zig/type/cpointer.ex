@@ -12,18 +12,6 @@ defmodule Zig.Type.Cpointer do
     %__MODULE__{child: Type.from_json(child, module)}
   end
 
-  def marshal_param(_, _), do: nil
-
-  def marshal_return(type, opts) do
-    if type.child == ~t(u8) and opts[:return] == :list do
-      fn arg ->
-        quote bind_quoted: [arg: arg] do
-          :binary.bin_to_list(arg)
-        end
-      end
-    end
-  end
-
   def param_errors(type, opts) do
     case type.child do
       %Struct{} ->
@@ -132,16 +120,6 @@ defmodule Zig.Type.Cpointer do
   def to_string(slice), do: "[*c]#{Kernel.to_string(slice.child)}"
 
   def to_call(slice), do: "[*c]#{Type.to_call(slice.child)}"
-
-  def make(_t, opts) do
-    options =
-      case opts[:return] do
-        :list -> ".{.output_as = .list}"
-        _ -> ".{}"
-      end
-
-    &"beam.make_cpointer(env, #{&1}, #{options}).v"
-  end
 
   # for now.
   def return_allowed?(pointer) do

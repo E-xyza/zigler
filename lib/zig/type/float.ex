@@ -15,9 +15,5 @@ defmodule Zig.Type.Float do
     concat(["~t(", to_string(type), ")"])
   end
 
-  def marshal_param(_, _), do: nil
-  def marshal_return(_, _), do: nil
-  def param_errors(_, _), do: nil
-
   def return_allowed?(_), do: true
 end

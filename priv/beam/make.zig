@@ -2,71 +2,70 @@ const beam = @import("beam.zig");
 const e = @import("erl_nif.zig");
 const std = @import("std");
 
-const OutputType = enum { default, list };
+const OutputType = enum { default, charlists, noclean };
 const MakeOpts = struct {
     output_as: OutputType = .default,
 };
 
-pub fn make(env: beam.env, value: anytype) beam.term {
+pub fn make(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
     const T = @TypeOf(value);
     // passthrough on beam.term and e.ErlNifTerm, no work needed.
     if (T == beam.term) return value;
     if (T == e.ErlNifTerm) return .{ .v = value };
 
     switch (@typeInfo(T)) {
-        .Array => return make_array(env, value),
-        .Pointer => return make_pointer(env, value),
+        .Array => return make_array(env, value, opts),
+        .Pointer => return make_pointer(env, value, opts),
         .Int => return make_int(env, value),
-        .Struct => return make_struct(env, value),
+        .Struct => return make_struct(env, value, opts),
         .EnumLiteral => return make_enum_literal(env, value),
         .Enum => return make_enum(env, value),
         .ErrorSet => return make_error(env, value),
         .Null => return make_null(env),
         .Float => return make_float(env, value),
         .Bool => return make_bool(env, value),
-        .Optional => return make_optional(env, value),
+        .Optional => return make_optional(env, value, opts),
         .ComptimeInt => return make_comptime_int(env, value),
         .ComptimeFloat => return make_comptime_float(env, value),
         else => {
-            @compileError("unknown type encountered");
+            @compileError("unusable type encountered");
         },
     }
 }
 
-// TODO: put this in the main namespace.
-fn make_null(env: beam.env) beam.term {
+pub fn make_null(env: beam.env) beam.term {
     return .{ .v = e.enif_make_atom(env, "nil") };
 }
 
-fn make_array(env: beam.env, value: anytype) beam.term {
-    return make_array_from_pointer(@TypeOf(value), env, &value);
+fn make_array(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
+    return make_array_from_pointer(@TypeOf(value), env, &value, opts);
 }
 
-fn make_pointer(env: beam.env, value: anytype) beam.term {
+fn make_pointer(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
     const pointer = @typeInfo(@TypeOf(value)).Pointer;
     switch (pointer.size) {
-        .One => return make_mut(env, value),
-        .Many => return make_manypointer(env, value),
-        .Slice => return make_slice(env, value),
-        .C => return make_cpointer(env, value, .{}),
+        .One => return make_mut(env, value, opts),
+        .Many => return make_manypointer(env, value, opts),
+        .Slice => return make_slice(env, value, opts),
+        .C => return make_cpointer(env, value, opts),
     }
 }
 
-fn make_optional(env: beam.env, value: anytype) beam.term {
-    return if (value) |unwrapped| make(env, unwrapped) else make_into_atom(env, "nil");
+fn make_optional(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
+    return if (value) |unwrapped| make(env, unwrapped, opts) else make_into_atom(env, "nil");
 }
 
 fn make_int(env: beam.env, value: anytype) beam.term {
     const int = @typeInfo(@TypeOf(value)).Int;
     switch (int.signedness) {
         .signed => switch (int.bits) {
-            0 => return make(env, 0),
+            0 => return .{ .v = e.enif_make_int(env, 0)},
             1...32 => return .{ .v = e.enif_make_int(env, @intCast(i32, value)) },
             33...64 => return .{ .v = e.enif_make_int64(env, @intCast(i64, value)) },
             else => {},
         },
         .unsigned => switch (int.bits) {
-            0 => return make(env, 0),
+            0 => return .{ .v = e.enif_make_int(env, 0)},
             1...32 => return .{ .v = e.enif_make_uint(env, @intCast(u32, value)) },
             33...64 => return .{ .v = e.enif_make_uint64(env, @intCast(u64, value)) },
             else => {
@@ -109,10 +108,9 @@ pub fn make_comptime_float(env: beam.env, comptime float: comptime_float) beam.t
     return beam.make(env, @floatCast(f64, float));
 }
 
-
 const EMPTY_TUPLE_LIST = [_]beam.term{};
 
-fn make_struct(env: beam.env, value: anytype) beam.term {
+fn make_struct(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
     const struct_info = @typeInfo(@TypeOf(value)).Struct;
     if (struct_info.is_tuple) {
         if (value.len > 16_777_215) {
@@ -125,7 +123,7 @@ fn make_struct(env: beam.env, value: anytype) beam.term {
             if (@TypeOf(tuple_term) == beam.term) {
                 tuple_list[index] = tuple_term.v;
             } else {
-                tuple_list[index] = make(env, tuple_term).v;
+                tuple_list[index] = make(env, tuple_term, opts).v;
             }
         }
         return .{ .v = e.enif_make_tuple_from_array(env, &tuple_list, value.len) };
@@ -140,7 +138,7 @@ fn make_struct(env: beam.env, value: anytype) beam.term {
                 @compileError("the length of the struct field name is too large for the erlang virtual machine");
             }
             keys[index] = e.enif_make_atom_len(env, field.name.ptr, field.name.len);
-            vals[index] = make(env, @field(value, field.name)).v;
+            vals[index] = make(env, @field(value, field.name), opts).v;
         }
 
         _ = e.enif_make_map_from_arrays(env, &keys, &vals, fields.len, &result);
@@ -178,25 +176,27 @@ fn make_bool(env: beam.env, value: bool) beam.term {
     return make_into_atom(env, if (value) "true" else "false");
 }
 
-fn make_mut(env: beam.env, value_ptr: anytype) beam.term {
+fn make_mut(env: beam.env, value_ptr: anytype, comptime opts: MakeOpts) beam.term {
     const child = @TypeOf(value_ptr.*);
     switch (@typeInfo(child)) {
-        .Array => return make_array_from_pointer(child, env, value_ptr),
-        .Struct => return make_struct(env, value_ptr.*),
+        .Array => return make_array_from_pointer(child, env, value_ptr, opts),
+        .Struct => return make_struct(env, value_ptr.*, opts),
         else => @compileError("this type is unsupported"),
     }
 }
 
-fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype) beam.term {
+fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype, comptime opts: MakeOpts) beam.term {
     // u8 arrays (sentinel terminated or otherwise) are treated as
     // strings.
     const array_info = @typeInfo(T).Array;
+    const Child = array_info.child;
+
+    if (Child == u8 and opts.output_as != .charlists) { 
+        // u8 arrays are by default marshalled into binaries.
+        return make_binary(env, array_ptr[0..]);
+    }
+
     switch (array_info.child) {
-        u8 => {
-            // u8 arrays are always marshalled into binaries, but might be converted
-            // into lists on the elixir side.
-            return make_binary(env, array_ptr[0..]);
-        },
         beam.term => {
             // since beam.term is guaranteed to be a packed struct of only
             // e.ErlNifTerm, this is always guaranteed to work.
@@ -213,7 +213,7 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype) 
             if (array_info.len != 0) {
                 var index: usize = array_info.len;
                 while (index > 0) : (index -= 1) {
-                    tail = e.enif_make_list_cell(env, make(env, array_ptr[index - 1]).v, tail);
+                    tail = e.enif_make_list_cell(env, make(env, array_ptr[index - 1], opts).v, tail);
                 }
             }
 
@@ -222,11 +222,11 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype) 
     }
 }
 
-pub fn make_manypointer(env: beam.env, manypointer: anytype) beam.term {
+pub fn make_manypointer(env: beam.env, manypointer: anytype, comptime opts: MakeOpts) beam.term {
     const pointer = @typeInfo(@TypeOf(manypointer)).Pointer;
     if (pointer.sentinel) |_| {    
         const len = std.mem.len(manypointer);
-        return make_slice(env, manypointer[0..len]);
+        return make_slice(env, manypointer[0..len], opts);
     } else {
         @compileError("it's not possible to create a manypointer without a sentinel");
     }
@@ -234,35 +234,34 @@ pub fn make_manypointer(env: beam.env, manypointer: anytype) beam.term {
 
 pub fn make_cpointer(env: beam.env, cpointer: anytype, comptime opts: MakeOpts) beam.term {
     const pointer = @typeInfo(@TypeOf(cpointer)).Pointer;
-    const Child = pointer.child; 
-    _ = opts;
+    const Child = pointer.child;
 
     if (cpointer) |_| {
         // the following two types have inferrable sentinels
         if (Child == u8) {
-            return make(env, @ptrCast([*:0]u8, cpointer));
+            return make(env, @ptrCast([*:0]u8, cpointer), opts);
         }
         if (@typeInfo(Child) == .Pointer) {
-            return make(env, @ptrCast([*:null]Child, cpointer));
+            return make(env, @ptrCast([*:null]Child, cpointer), opts);
         }
 
         switch (@typeInfo(Child)) {
             .Struct =>
-              return make(env, @ptrCast(*Child, cpointer)),
+              return make(env, @ptrCast(*Child, cpointer), opts),
             else => 
-              return make(env, .not_yet)
+              @compileError("this is not supported")
         }
     } else {
-        return make(env, .nil);
+        return make(env, .nil, opts);
     }
 }
 
-pub fn make_slice(env: beam.env, slice: anytype) beam.term {
+pub fn make_slice(env: beam.env, slice: anytype, comptime opts: MakeOpts) beam.term {
+    if (@TypeOf(slice) == []u8 and opts.output_as != .charlists) {
+        return make_binary(env, slice);
+    }
+
     switch (@TypeOf(slice)) {
-        // if the slice is a slice of u8, send it as a binary.
-        []u8 => {
-            return make_binary(env, slice);
-        },
         []beam.term => {
             // since beam.term is guaranteed to be a packed struct of only
             // e.ErlNifTerm, this is always guaranteed to work.
@@ -278,7 +277,7 @@ pub fn make_slice(env: beam.env, slice: anytype) beam.term {
             if (slice.len != 0) {
                 var index = slice.len;
                 while (index > 0) : (index -= 1) {
-                    tail = e.enif_make_list_cell(env, make(env, slice[index - 1]).v, tail);
+                    tail = e.enif_make_list_cell(env, make(env, slice[index - 1], opts).v, tail);
                 }
             }
 

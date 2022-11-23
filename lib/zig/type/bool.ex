@@ -10,9 +10,6 @@ defmodule Zig.Type.Bool do
   def to_string(_), do: "bool"
   def to_call(_), do: "bool"
 
-  def marshal_param(_, _), do: nil
-  def marshal_return(_, _), do: nil
-
   def param_errors(_, _) do
     fn index ->
       [

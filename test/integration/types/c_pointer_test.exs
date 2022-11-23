@@ -8,7 +8,7 @@ defmodule ZiglerTest.Types.CPointerTest do
       :cpointer_list_test,
       :cpointer_struct_list_test,
       :cpointer_u8_return_test,
-      {:cpointer_u8_list_return_test, return: :list},
+      {:cpointer_u8_list_return_test, return: :charlists},
       :cpointer_struct_return_test,
       :cpointer_struct_list_return_test,
       :cpointer_null_return_test

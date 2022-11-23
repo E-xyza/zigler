@@ -44,8 +44,6 @@ defmodule Zig.Type.Struct do
 
   def marshal_param(_, _), do: nil
 
-  def marshal_return(_, _), do: nil
-
   def param_errors(type, _) do
     type_str = to_string(type)
 

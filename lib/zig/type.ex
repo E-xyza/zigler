@@ -136,8 +136,17 @@ defprotocol Zig.Type do
     quote bind_quoted: [inspect?: inspect?, module: module] do
       import Kernel, except: [to_string: 1]
 
-      def make(_, _), do: &"beam.make(env, #{&1}).v"
-      defoverridable make: 2
+      def marshal_param(_, _), do: nil
+      def marshal_return(_, _), do: nil
+      def param_errors(_, _), do: nil
+
+      def make(_, opts) do
+        return_type = Keyword.get(opts, :return, :default)
+
+        fn var -> "beam.make(env, #{var}, .{.output_as = .#{return_type}}).v" end
+      end
+
+      defoverridable make: 2, marshal_param: 2, marshal_return: 2, param_errors: 2
 
       defimpl String.Chars do
         defdelegate to_string(type), to: module
@@ -166,22 +175,9 @@ defprotocol Zig.Type do
 end
 
 defimpl Zig.Type, for: Atom do
-  def marshal_param(:env, _), do: nil
-  def marshal_param(:term, _), do: nil
-  def marshal_param(:erl_nif_term, _), do: nil
-
-  def marshal_param(type, _) do
-    raise "#{type} should not be a call type for elixir."
-  end
-
-  def marshal_return(:term, _), do: nil
-  def marshal_return(:erl_nif_term, _), do: nil
-
-  def marshal_return(type, _) do
-    raise "#{type} should not be a return type for elixir."
-  end
-
-  def param_errors(_type, _), do: nil
+  def marshal_param(_, _), do: nil
+  def marshal_return(_, _), do: nil
+  def param_errors(_, _), do: nil
 
   def to_call(:erl_nif_term), do: "e.ErlNifTerm"
   def to_call(:term), do: "beam.term"

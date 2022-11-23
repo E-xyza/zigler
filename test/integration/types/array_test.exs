@@ -5,10 +5,10 @@ defmodule ZiglerTest.Types.ArrayTest do
     otp_app: :zigler,
     nifs: [
       :array_float_test,
-      {:array_u8_test, return: :list},
+      {:array_u8_test, return: :charlists},
       :array_string_test,
       :mut_array_float_test,
-      {:mut_array_u8_test, return: :list},
+      {:mut_array_u8_test, return: :charlists},
       :mut_array_string_test,
       :sentinel_terminated_test,
       :fastlane_beam_term_test,
@@ -146,7 +146,7 @@ defmodule ZiglerTest.Types.ArrayTest do
     var result: [3]beam.term = undefined;
     for (result) |*item, index| {
       var value: f64 = beam.get(f64, env, passed[index]) catch unreachable;
-      item.* = beam.make(env, value + 1.0);
+      item.* = beam.make(env, value + 1.0, .{});
     }
     return result;
   }
@@ -155,7 +155,7 @@ defmodule ZiglerTest.Types.ArrayTest do
     var result: [3]e.ErlNifTerm = undefined;
     for (result) |*item, index| {
       var value: f64 = beam.get(f64, env, .{.v = passed[index]}) catch unreachable;
-      item.* = beam.make(env, value + 1.0).v;
+      item.* = beam.make(env, value + 1.0, .{}).v;
     }
     return result;
   }
@@ -163,7 +163,7 @@ defmodule ZiglerTest.Types.ArrayTest do
   pub fn fastlane_beam_term_ptr_test(env: beam.env, passed: *[3]beam.term) *[3]beam.term {
     for (passed.*) |*item| {
       var value: f64 = beam.get(f64, env, item.*) catch unreachable;
-      item.* = beam.make(env, value + 1.0);
+      item.* = beam.make(env, value + 1.0, .{});
     }
     return passed;
   }
@@ -171,7 +171,7 @@ defmodule ZiglerTest.Types.ArrayTest do
   pub fn fastlane_erl_nif_term_ptr_test(env: beam.env, passed: *[3]e.ErlNifTerm) *[3]e.ErlNifTerm {
     for (passed.*) |*item| {
       var value: f64 = beam.get(f64, env, .{.v = item.*}) catch unreachable;
-      item.* = beam.make(env, value + 1.0).v;
+      item.* = beam.make(env, value + 1.0, .{}).v;
     }
     return passed;
   }
