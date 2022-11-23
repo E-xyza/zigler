@@ -57,10 +57,28 @@ defmodule Zig.Type.Integer do
     max = typemax(type)
 
     fn arg, index ->
-      quote bind_quoted: [arg: arg, size: size, index: index, max: max] do
-        unless is_integer(arg), do: :erlang.error({:nif_argument_type_error, {index, arg}})
-        unless arg >= 0, do: :erlang.error({:nif_argument_range_error, {index, arg}})
-        unless arg <= max, do: :erlang.error({:nif_argument_range_error, {index, arg}})
+      quote bind_quoted: [arg: arg, size: size, index: index, max: max, name: to_string(type)] do
+        unless is_integer(arg),
+          do:
+            :erlang.error(
+              {:argument_error, index,
+               [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}]}
+            )
+
+        unless arg >= 0,
+          do:
+            :erlang.error(
+              {:argument_error, index,
+               [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}, {"note: out of bounds (0..#{max})"}]}
+            )
+
+        unless arg <= max,
+          do:
+            :erlang.error(
+              {:argument_error, index,
+               [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}, {"note: out of bounds (0..#{max})"}]}
+            )
+
         <<arg::unsigned-integer-size(size)-native>>
       end
     end
@@ -72,10 +90,17 @@ defmodule Zig.Type.Integer do
     min = typemin(type)
 
     fn arg, index ->
-      quote bind_quoted: [arg: arg, size: size, index: index, min: min, max: max] do
-        unless is_integer(arg), do: :erlang.error({:nif_argument_type_error, {index, arg}})
-        unless arg >= min, do: :erlang.error({:nif_argument_range_error, {index, arg}})
-        unless arg <= max, do: :erlang.error({:nif_argument_range_error, {index, arg}})
+      quote bind_quoted: [
+              arg: arg,
+              size: size,
+              index: index,
+              min: min,
+              max: max,
+              name: to_string(type)
+            ] do
+        unless is_integer(arg), do: :erlang.error({:argument_error, index, [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}]})
+        unless arg >= min, do: :erlang.error({:argument_error, index, [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}, {"note: out of bounds (#{min}..#{max})"}]})
+        unless arg <= max, do: :erlang.error({:argument_error, index, [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}, {"note: out of bounds (#{min}..#{max})"}]})
         <<arg::signed-integer-size(size)-native>>
       end
     end
@@ -107,48 +132,6 @@ defmodule Zig.Type.Integer do
 
   def marshal_return(_, _), do: nil
 
-  # TODO: refactor these out into a common module.
-  def param_errors(_, _) do
-    fn index ->
-      [
-        {quote do
-           {:argument_error, unquote(index), error_lines}
-         end,
-         quote do
-           case __STACKTRACE__ do
-             [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
-               new_opts =
-                 Keyword.merge(opts,
-                   error_info: %{module: __MODULE__, function: :_format_error},
-                   zigler_error: %{
-                     unquote(index + 1) =>
-                       error_lines
-                       |> Enum.map(fn error_line ->
-                         error_msg = error_line
-                         |> Tuple.to_list()
-                         |> Enum.map(fn
-                           string when is_binary(string) -> string
-                           {:inspect, content} -> inspect(content)
-                         end)
-                         |> List.wrap()
-                         |> List.insert_at(0, "\n     ")
-                       end)
-                       |> List.insert_at(0, "\n")
-                       |> IO.iodata_to_binary()
-                   }
-                 )
-
-               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
-
-             stacktrace ->
-               # no available stacktrace info
-               :erlang.raise(:error, :badarg, stacktrace)
-           end
-         end}
-      ]
-    end
-  end
-
   def _next_power_of_two_ceil(bits), do: _next_power_of_two_ceil(bits, 1, true)
 
   def _next_power_of_two_ceil(bits, so_far, all_zeros) do
@@ -168,9 +151,9 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  defp typemin(%{bits: 0}), do: 0
-  defp typemin(%{signedness: :unsigned}), do: 0
-  defp typemin(%{bits: bits}), do: -Bitwise.<<<(1, bits - 1)
+  # note that we're currently not using this function for unsigned ints, which we know is zero
+  defp typemin(%{signedness: :signed, bits: 0}), do: 0
+  defp typemin(%{signedness: :signed, bits: bits}), do: -Bitwise.<<<(1, bits - 1)
 
   defp typemax(%{bits: 0}), do: 0
   defp typemax(%{signedness: :unsigned, bits: bits}), do: Bitwise.<<<(1, bits) - 1

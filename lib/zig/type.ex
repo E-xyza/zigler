@@ -2,7 +2,6 @@ defprotocol Zig.Type do
   alias Zig.Type.Array
   alias Zig.Type.Bool
   alias Zig.Type.Cpointer
-  alias Zig.Type.Enum
   alias Zig.Type.Float
   alias Zig.Type.Integer
   alias Zig.Type.Manypointer
@@ -98,7 +97,7 @@ defprotocol Zig.Type do
         Integer.from_json(json)
 
       %{"type" => "enum"} ->
-        Enum.from_json(json, module)
+        Zig.Type.Enum.from_json(json, module)
 
       %{"type" => "float"} ->
         Float.from_json(json)
@@ -138,7 +137,54 @@ defprotocol Zig.Type do
 
       def marshal_param(_, _), do: nil
       def marshal_return(_, _), do: nil
-      def param_errors(_, _), do: nil
+
+      # default parameter errors handling.
+      # TODO: simplify this!!
+      def param_errors(type, _opts) do
+        typename = "#{type}"
+
+        fn index ->
+          [
+            {quote do
+               {:argument_error, unquote(index), error_lines}
+             end,
+             quote do
+               case __STACKTRACE__ do
+                 [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
+                   new_opts =
+                     Keyword.merge(opts,
+                       error_info: %{module: __MODULE__, function: :_format_error},
+                       zigler_error: %{
+                         unquote(index + 1) =>
+                           error_lines
+                           |> Enum.map(fn error_line ->
+                             error_msg =
+                               error_line
+                               |> Tuple.to_list()
+                               |> Enum.map(fn
+                                 list when is_list(list) -> list
+                                 string when is_binary(string) -> string
+                                 {:inspect, content} -> "#{inspect(content)}"
+                                 :typename -> unquote(typename)
+                               end)
+                               |> List.wrap()
+                               |> List.insert_at(0, "\n     ")
+                           end)
+                           |> List.insert_at(0, "\n")
+                           |> IO.iodata_to_binary()
+                       }
+                     )
+
+                   :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
+
+                 stacktrace ->
+                   # no available stacktrace info
+                   :erlang.raise(:error, :badarg, stacktrace)
+               end
+             end}
+          ]
+        end
+      end
 
       def make(_, opts) do
         return_type = Keyword.get(opts, :return, :default)

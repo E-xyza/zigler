@@ -30,7 +30,7 @@ defmodule ZiglerTest.Types.IntegerTest do
         size = unquote(size)
 
         assert_raise ArgumentError,
-                     "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (i#{size})\n     got: \"foo\"\n",
+                     "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `i#{size}`)\n     got: `\"foo\"`\n",
                      fn ->
                        unquote(ifunction)("foo")
                      end
@@ -42,7 +42,7 @@ defmodule ZiglerTest.Types.IntegerTest do
         limit = 1 <<< size
 
         assert_raise ArgumentError,
-                     "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (u#{size})\n     out of bounds (0..#{limit - 1}): #{limit}\n",
+                     "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u#{size}`)\n     got: `#{limit}`\n     note: out of bounds (0..#{limit - 1})\n",
                      fn ->
                        unquote(ufunction)(limit)
                      end
@@ -65,13 +65,13 @@ defmodule ZiglerTest.Types.IntegerTest do
 
     test "non-integer fails for size 0" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (u0)\n     got: \"foo\"\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u0`)\n     got: `\"foo\"`\n",
                    fn -> zerobit("foo") end
     end
 
     test "out of bounds integer of size 0 fails" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     1 is out of bounds for type u0 (0...0)\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u0`)\n     got: `1`\n     note: out of bounds (0..0)\n",
                    fn -> zerobit(1) end
     end
   end
@@ -107,21 +107,30 @@ defmodule ZiglerTest.Types.IntegerTest do
     """
 
     test "type checking on large integer" do
-      assert_raise ArgumentError, fn ->
-        test_u65("foo")
-      end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u65`)\n     got: `\"foo\"`\n",
+                   fn ->
+                     test_u65("foo")
+                   end
     end
 
     test "bounds checking on unsigned large integer" do
-      assert_raise ArgumentError, fn ->
-        test_u65(Bitwise.<<<(1, 65))
-      end
+      limit = Bitwise.<<<(1, 65)
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u65`)\n     got: `#{limit}`\n     note: out of bounds (0..#{limit - 1})\n",
+                   fn ->
+                     test_u65(limit)
+                   end
     end
 
     test "bounds checking on signed large integer" do
-      assert_raise ArgumentError, fn ->
-        test_i65(-Bitwise.<<<(1, 64) - 1)
-      end
+      limit = Bitwise.<<<(1, 64)
+      value = -limit - 1
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `i65`)\n     got: `#{value}`\n     note: out of bounds (#{-limit}..#{limit - 1})\n",
+                   fn ->
+                     test_i65(value)
+                   end
     end
   end
 

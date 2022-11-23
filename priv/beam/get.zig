@@ -71,12 +71,12 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term, opt: anytype) Ge
             0...32 => {
                 var result: u32_t = 0;
                 try genericGetInt(T, env, src, &result, opt, e.enif_get_uint);
-                return lowerInt(T, env, src, result, opt);
+                return try lowerInt(T, env, src, result, opt);
             },
             33...64 => {
                 var result: u64 = 0;
                 try genericGetInt(T, env, src, &result, opt, e.enif_get_uint64);
-                return lowerInt(T, env, src, result, opt);
+                return try lowerInt(T, env, src, result, opt);
             },
             else => {
                 // for integers bigger than 64-bytes the number
@@ -102,38 +102,33 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term, opt: anytype) Ge
     }
 }
 
-const tm = "expected: {s} ({})";
-fn typeMsg(comptime T: type, comptime prefix: []const u8) *const[std.fmt.count(tm, .{prefix, T})]u8 {
-    return std.fmt.comptimePrint(tm, .{prefix, T});
-}
-
 inline fn genericGetInt(comptime T: type, env: beam.env, src: beam.term, result_ptr: anytype, opt: anytype, fun: anytype) GetError!void {
+    errdefer error_expected(env, opt, "integer");
+    errdefer error_got(env, opt, src);
+
     if (src.term_type(env) != .integer) {
-        put_error_line(env, opt, .{ "got: ", .{ .inspect, src } });
-        put_error_line(env, opt, .{typeMsg(T, "integer")});
         return GetError.argument_error;
     }
 
     if (fun(env, src.v, result_ptr) == 0) {
-        put_error_line(env, opt, .{ "out of bounds (", .{ .inspect, minInt(T) }, "..", .{ .inspect, maxInt(T) }, "): ", .{ .inspect, src } });
-        put_error_line(env, opt, .{typeMsg(T, "integer")});
+        error_line(env, opt, .{ "note: out of bounds (", .{ .inspect, minInt(T) }, "..", .{ .inspect, maxInt(T) }, ")" });
         return GetError.argument_error;
     }
 }
 
 inline fn lowerInt(comptime T: type, env: beam.env, src: beam.term, result: anytype, opt: anytype) GetError!T {
+    errdefer error_expected(env, opt, "integer");
+    errdefer error_got(env, opt, src);
+    errdefer error_line(env, opt, .{ "note: out of bounds (", .{ .inspect, minInt(T) }, "..", .{ .inspect, maxInt(T) }, ")" });
+
     const int = @typeInfo(T).Int;
     if (int.signedness == .signed) {
         if (result < std.math.minInt(T)) {
-            put_error_line(env, opt, .{ "out of bounds (", .{ .inspect, minInt(T) }, "..", .{ .inspect, maxInt(T) }, "): ", .{ .inspect, src } });
-            put_error_line(env, opt, .{typeMsg(T, "integer")});
             return GetError.argument_error;
         }
     }
 
     if (result > std.math.maxInt(T)) {
-        put_error_line(env, opt, .{ "out of bounds (", .{ .inspect, minInt(T) }, "..", .{ .inspect, maxInt(T) }, "): ", .{ .inspect, src } });
-        put_error_line(env, opt, .{typeMsg(T, "integer")});
         return GetError.argument_error;
     }
 
@@ -141,17 +136,32 @@ inline fn lowerInt(comptime T: type, env: beam.env, src: beam.term, result: anyt
 }
 
 pub fn get_enum(comptime T: type, env: beam.env, src: beam.term, opt: anytype) !T {
-    const enumInfo = @typeInfo(T).Enum;
-    const IntType = enumInfo.tag_type;
+    const enum_info = @typeInfo(T).Enum;
+    const IntType = enum_info.tag_type;
+    comptime var int_values: [enum_info.fields.len]IntType = undefined;
+    comptime for (int_values) |*value, index| { value.* = enum_info.fields[index].value; };
+    const enum_values = std.enums.values(T);
+
+    errdefer error_expected(env, opt, "atom or integer");
+    errdefer error_got(env, opt, src);
+
     // prefer the integer form, fallback to string searches.
     switch (src.term_type(env)) {
-        .integer => return @intToEnum(T, try get_int(IntType, env, src, opt)),
+        .integer => {
+            errdefer error_line(env, opt, .{ "note: not an integer value for ", .typename, " (should be one of ", .{.inspect, int_values}, ")"} );
+
+            // put erasure on get_int setting the error_line
+            const result = try get_int(IntType, env, src, .{});
+            return try std.meta.intToEnum(T, result);
+        },
         .atom => {
+            errdefer error_line(env, opt, .{ "note: not an atom value for ", .typename, " (should be one of ", .{.inspect, enum_values}, ")"} );
+
             // atoms cannot be longer than 256 characters.
             var buf: [256]u8 = undefined;
             const slice = try get_atom(env, src, &buf);
 
-            inline for (enumInfo.fields) |field| {
+            inline for (enum_info.fields) |field| {
                 if (std.mem.eql(u8, field.name[0..], slice)) return @field(T, field.name);
             }
             return GetError.argument_error;
@@ -164,6 +174,9 @@ const FloatAtoms = enum { infinity, neg_infinity, NaN };
 
 pub fn get_float(comptime T: type, env: beam.env, src: beam.term, opt: anytype) !T {
     // all floats in the beam are f64 types so this is relatively easy.
+    errdefer error_expected(env, opt, "float or atom");
+    errdefer error_got(env, opt, src);
+
     switch (src.term_type(env)) {
         .float => {
             var float: f64 = undefined;
@@ -174,10 +187,9 @@ pub fn get_float(comptime T: type, env: beam.env, src: beam.term, opt: anytype) 
             return @floatCast(T, float);
         },
         .atom => {
-            const special_form = get_enum(FloatAtoms, env, src, opt) catch {
-                put_error_line(env, opt, .{"only `:NaN`, `:infinity`, and `:neg_infinity` are allowed as atom arguments to float"});
-                put_error_line(env, opt, .{"got: ", .{.inspect, src}});
-                put_error_line(env, opt, .{typeMsg(T, "float")});
+            // erase the errors coming back from get_enum!
+            const special_form = get_enum(FloatAtoms, env, src, .{}) catch {
+                error_line(env, opt, .{"note: not an atom value for f64 (should be one of `[:infinity, :neg_infinity, :NaN]`"});
                 return GetError.argument_error;
             };
 
@@ -188,16 +200,12 @@ pub fn get_float(comptime T: type, env: beam.env, src: beam.term, opt: anytype) 
             };
         },
         .integer => {
-            put_error_line(env, opt, .{"integers are not allowed as arguments to float"});
-            put_error_line(env, opt, .{"got: ", .{.inspect, src}});
-            put_error_line(env, opt, .{typeMsg(T, "float")});
+            error_line(env, opt, .{"note: integers are not allowed as arguments to float"});
             return GetError.argument_error;
         },
         else => {
-            put_error_line(env, opt, .{"got: ", .{.inspect, src}});
-            put_error_line(env, opt, .{typeMsg(T, "float")});
             return GetError.argument_error;
-        }
+        },
     }
 }
 
@@ -242,8 +250,10 @@ fn get_tuple_to_buf(env: beam.env, src: beam.term, buf: anytype) !void {
     }
 }
 
-pub fn get_bool(comptime T: type, env: beam.env, src: beam.term) !bool {
-    if (T != bool) @compileError("get_bool may only be called with the bool type");
+pub fn get_bool(comptime T: type, env: beam.env, src: beam.term, opt: anytype) !T {
+    errdefer error_expected(env, opt, "atom");
+    errdefer error_got(env, opt, src);
+
     switch (src.term_type(env)) {
         .atom => {
             var buf: [256]u8 = undefined;
@@ -254,10 +264,13 @@ pub fn get_bool(comptime T: type, env: beam.env, src: beam.term) !bool {
             if (std.mem.eql(u8, "false", atom)) {
                 return false;
             }
-            return GetError.argument_error;
+
+            error_line(env, opt, .{"note: only the atoms `true` and `false` are allowed to be bools"});
         },
-        else => return GetError.argument_error,
+        else => {},
     }
+
+    return GetError.argument_error;
 }
 
 pub fn get_array(comptime T: type, env: beam.env, src: beam.term) !T {
@@ -267,9 +280,6 @@ pub fn get_array(comptime T: type, env: beam.env, src: beam.term) !T {
 }
 
 pub fn get_pointer(comptime T: type, env: beam.env, src: beam.term) !T {
-    // note that CALLER of get has the responsibility of freeing the result, if it
-    // has succeeded.
-
     const pointer_info = @typeInfo(T).Pointer;
     const Child = pointer_info.child;
     switch (pointer_info.size) {
@@ -533,7 +543,7 @@ fn null_or_error(comptime T: type, env: beam.env, src: beam.term) !T {
     return if (std.mem.eql(u8, "nil", atom)) null else GetError.argument_error;
 }
 
-inline fn put_error_line(env: beam.env, opts: anytype, msg: anytype) void {
+inline fn error_line(env: beam.env, opts: anytype, msg: anytype) void {
     // note that this function completely no-ops if the opts variable (which
     // in many cases is going to be `.{}`).  For the most part, this should be
     // used when detailed errors resulting from retrieving values from the VM
@@ -555,4 +565,12 @@ inline fn put_error_line(env: beam.env, opts: anytype, msg: anytype) void {
             opts.error_info.v = e.enif_make_list_cell(env, beam.make(env, msg, .{}).v, opts.error_info.v);
         }
     }
+}
+
+inline fn error_expected(env: beam.env, opts: anytype, comptime prefix: []const u8) void {
+    error_line(env, opts, .{ "expected: ", prefix, " (for `", .typename, "`)" });
+}
+
+inline fn error_got(env: beam.env, opts: anytype, src: beam.term) void {
+    error_line(env, opts, .{ "got: `", .{ .inspect, src }, "`" });
 }
