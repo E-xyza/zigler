@@ -27,6 +27,9 @@ defprotocol Zig.Type do
   @spec make(t, keyword) :: (atom -> String.t())
   def make(type, opts)
 
+  @spec needs_make?(t) :: boolean
+  def needs_make?(type)
+
   @spec to_call(t) :: String.t()
   def to_call(type)
 
@@ -149,7 +152,8 @@ defprotocol Zig.Type do
              quote do
                case __STACKTRACE__ do
                  [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
-                   indentation = &["\n     ", List.duplicate("→", &1), List.wrap(if &1 != 0, do: " ")]
+                   indentation =
+                     &["\n     ", List.duplicate("→", &1), List.wrap(if &1 != 0, do: " ")]
 
                    new_opts =
                      Keyword.merge(opts,
@@ -160,7 +164,6 @@ defprotocol Zig.Type do
                            |> Enum.reduce({[], 0}, fn
                              :enter, {so_far, indents} ->
                                {so_far, indents + 1}
-
 
                              error_line, {so_far, indents} ->
                                error_msg =
@@ -177,7 +180,7 @@ defprotocol Zig.Type do
                                      "#{inspect(content)}"
 
                                    {:typename, typename} ->
-                                    String.trim_leading(typename, ".#{__MODULE__}.")
+                                     String.trim_leading(typename, ".#{__MODULE__}.")
                                  end)
                                  |> List.wrap()
                                  |> List.insert_at(0, indentation.(indents))
@@ -208,7 +211,9 @@ defprotocol Zig.Type do
         fn var -> "beam.make(env, #{var}, .{.output_as = .#{return_type}}).v" end
       end
 
-      defoverridable make: 2, marshal_param: 2, marshal_return: 2, param_errors: 2
+      def needs_make?(_), do: true
+
+      defoverridable make: 2, marshal_param: 2, marshal_return: 2, param_errors: 2, needs_make?: 1
 
       defimpl String.Chars do
         defdelegate to_string(type), to: module
@@ -232,6 +237,7 @@ defprotocol Zig.Type do
         defdelegate return_allowed?(type), to: module
         defdelegate make(type, opts), to: module
         defdelegate expected(type), to: module
+        defdelegate needs_make?(type), to: module
       end
     end
   end
@@ -250,4 +256,6 @@ defimpl Zig.Type, for: Atom do
 
   def make(:erl_nif_term, _), do: & &1
   def make(:term, _), do: &"#{&1}.v"
+
+  def needs_make?(_), do: false
 end

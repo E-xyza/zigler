@@ -32,13 +32,13 @@ defmodule ZiglerTest.Types.StructTest do
 
     test "missing required values in a map are not tolerated" do
       assert_raise ArgumentError,
-      "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `TestStruct`)\n     got: `%{}`\n     note: TestStruct requires the field `:value`, which is missing.)\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `TestStruct`)\n     got: `%{}`\n     note: TestStruct requires the field `:value`, which is missing.)\n",
                    fn -> struct_test(%{}) end
     end
 
     test "missing required values in a keyword list are not tolerated" do
       assert_raise ArgumentError,
-      "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `TestStruct`)\n     got: `[]`\n     note: TestStruct requires the field `:value`, which is missing.)\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `TestStruct`)\n     got: `[]`\n     note: TestStruct requires the field `:value`, which is missing.)\n",
                    fn -> struct_test([]) end
     end
 
