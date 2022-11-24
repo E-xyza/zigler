@@ -162,7 +162,9 @@ defprotocol Zig.Type do
                                {so_far, indents + 1}
 
                              {:expected, typespec, typename}, {so_far, indents} ->
-                              formatted_typename = String.trim_leading(typename, ".#{__MODULE__}.")
+                               formatted_typename =
+                                 String.trim_leading(typename, ".#{__MODULE__}.")
+
                                {[
                                   [
                                     indentation.(indents),

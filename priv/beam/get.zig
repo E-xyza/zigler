@@ -314,15 +314,19 @@ pub fn get_optional(comptime T: type, env: beam.env, src: beam.term) !T {
     }
 }
 
-pub fn get_slice(comptime T: type, env: beam.env, src: beam.term) !T {
+pub fn get_slice(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
+    errdefer error_expected(T, env, opts);
+    errdefer error_got(env, opts, src);
+
     switch (src.term_type(env)) {
-        .bitstring => return get_slice_binary(T, env, src),
-        .list => return get_slice_list(T, env, src),
+        .bitstring => return get_slice_binary(T, env, src, opts),
+        .list => return get_slice_list(T, env, src, opts),
         else => return GetError.argument_error,
     }
 }
 
-pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term) !T {
+pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
+    _ = opts;
     const slice_info = @typeInfo(T).Pointer;
     // slices can be instantiated from binaries, if they are u8 arrays
     if (slice_info.child != u8) return GetError.argument_error;
@@ -333,7 +337,7 @@ pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term) !T {
     return result;
 }
 
-pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term) !T {
+pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
     const Child = @typeInfo(T).Pointer.child;
     var length: c_uint = undefined;
 
@@ -342,10 +346,13 @@ pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term) !T {
     errdefer beam.allocator.free(result);
 
     var list: e.ErlNifTerm = src.v;
-    for (result) |*item| {
+    for (result) |*item, index| {
         var head: e.ErlNifTerm = undefined;
         if (e.enif_get_list_cell(env, list, &head, &list) == 0) return GetError.unreachable_error;
-        item.* = try get(Child, env, .{ .v = head });
+        item.* = get(Child, env, .{ .v = head }, opts) catch |err| {
+            error_enter(env, opts, .{ "at index ", .{ .inspect, index }, ":" });
+            return err;
+        };
     }
 
     if (e.enif_is_empty_list(env, list) == 0) return GetError.unreachable_error;
@@ -403,7 +410,7 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term, opts:
                 var head: e.ErlNifTerm = undefined;
                 if (e.enif_get_list_cell(env, tail, &head, &tail) != 0) {
                     item.* = get(Child, env, .{ .v = head }, opts) catch |err| {
-                        error_enter(env, opts, .{ "in element ", .{ .inspect, index }, ":" });
+                        error_enter(env, opts, .{ "at index ", .{ .inspect, index }, ":" });
                         return err;
                     };
                 } else {
