@@ -8,6 +8,7 @@ defmodule Zig.Compiler do
   alias Zig.Analyzer
   alias Zig.Assembler
   alias Zig.Command
+  alias Zig.EasyC
   alias Zig.Nif
   alias Zig.Sema
   alias Zig.Type
@@ -17,20 +18,22 @@ defmodule Zig.Compiler do
     # TODO: verify that :otp_app exists
     this_dir = Path.dirname(context.file)
     module_nif_zig = Path.join(this_dir, ".#{context.module}.zig")
+    zigler_opts = Module.get_attribute(context.module, :zigler_opts)
 
     # obtain the code
     code =
-      context.module
-      |> Module.get_attribute(:zig_code_parts)
-      |> Enum.reverse()
-      |> Enum.join()
+      if easy_c = zigler_opts[:easy_c] do
+        EasyC.build_from(zigler_opts)
+      else
+        context.module
+        |> Module.get_attribute(:zig_code_parts)
+        |> Enum.reverse()
+        |> Enum.join()
+      end
 
     File.write!(module_nif_zig, code)
 
-    opts =
-      context.module
-      |> Module.get_attribute(:zigler_opts)
-      |> Keyword.merge(file: module_nif_zig)
+    opts = Keyword.merge(zigler_opts, file: module_nif_zig)
 
     assembled = Keyword.get(opts, :assemble, true)
     precompiled = Keyword.get(opts, :precompile, true)

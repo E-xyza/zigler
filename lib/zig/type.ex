@@ -94,6 +94,9 @@ defprotocol Zig.Type do
       "bool" ->
         Bool.from_json(json)
 
+      "void" ->
+        :void
+
       %{"type" => "integer"} ->
         Integer.from_json(json)
 
@@ -249,12 +252,14 @@ defimpl Zig.Type, for: Atom do
 
   def to_call(:erl_nif_term), do: "e.ErlNifTerm"
   def to_call(:term), do: "beam.term"
+  def to_call(:void), do: "void"
   def to_call(type), do: to_string(type)
 
-  def return_allowed?(type), do: type in [:term, :erl_nif_term]
+  def return_allowed?(type), do: type in [:term, :erl_nif_term, :void]
 
   def make(:erl_nif_term, _), do: & &1
   def make(:term, _), do: &"#{&1}.v"
+  def make(:void, _), do: fn _ -> "beam.make(env, .ok, .{}).v" end
 
   def needs_make?(_), do: false
 end

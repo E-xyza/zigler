@@ -24,7 +24,11 @@ export fn <%= @name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) e.
       <% [:env] -> %> _ = arg;
       <% _ ->  %>
     <% end %>
-    const result = nif.<%= @name %>(<%= Nif.indexed_args(@params) %>);
+    <%= if @return == :void do %>
+      nif.<%= @name %>(<%= Nif.indexed_args(@params) %>);
+    <% else %>
+      const result = nif.<%= @name %>(<%= Nif.indexed_args(@params) %>);
+    <% end %>
 
     return <%= Type.make(@return, @opts).(:result) %>;
 }

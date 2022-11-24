@@ -329,6 +329,12 @@ defmodule Zig do
   end
 
   defp quoted_code(zig_code, meta, caller) do
+    opts = Module.get_attribute(caller.module, :zigler_opts)
+
+    if opts[:easy_c] do
+      raise CompileError, description: "you can't use ~Z in easy_c nifs", line: caller.line, file: caller.file
+    end
+
     line = meta[:line]
     module = caller.module
     file = Path.relative_to_cwd(caller.file)
