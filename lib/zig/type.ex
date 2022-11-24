@@ -149,7 +149,7 @@ defprotocol Zig.Type do
              quote do
                case __STACKTRACE__ do
                  [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
-                   indentation = &["\n     ", List.duplicate("→", &1)]
+                   indentation = &["\n     ", List.duplicate("→", &1), List.wrap(if &1 != 0, do: " ")]
 
                    new_opts =
                      Keyword.merge(opts,
@@ -161,17 +161,6 @@ defprotocol Zig.Type do
                              :enter, {so_far, indents} ->
                                {so_far, indents + 1}
 
-                             {:expected, typespec, typename}, {so_far, indents} ->
-                               formatted_typename =
-                                 String.trim_leading(typename, ".#{__MODULE__}.")
-
-                               {[
-                                  [
-                                    indentation.(indents),
-                                    "expected: #{typespec} (for `#{formatted_typename}`)"
-                                  ]
-                                  | so_far
-                                ], indents}
 
                              error_line, {so_far, indents} ->
                                error_msg =
@@ -187,8 +176,8 @@ defprotocol Zig.Type do
                                    {:inspect, content} ->
                                      "#{inspect(content)}"
 
-                                   :typename ->
-                                     unquote(typename)
+                                   {:typename, typename} ->
+                                    String.trim_leading(typename, ".#{__MODULE__}.")
                                  end)
                                  |> List.wrap()
                                  |> List.insert_at(0, indentation.(indents))

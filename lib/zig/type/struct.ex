@@ -44,67 +44,6 @@ defmodule Zig.Type.Struct do
 
   def marshal_param(_, _), do: nil
 
-  def param_errors(type, _) do
-    type_str = to_string(type)
-
-    fn index ->
-      [
-        {{:nif_struct_missing_field_error, index},
-         quote do
-           case __STACKTRACE__ do
-             [{_m, _f, args, _opts}, {m, f, _, opts} | rest] ->
-               # obtain the argument at index
-               arg_keys =
-                 args
-                 |> Enum.at(unquote(index))
-                 |> case do
-                   map when is_map(map) ->
-                     Map.keys(map)
-
-                   list when is_list(list) ->
-                     Keyword.keys(list)
-                 end
-
-               missing_key = List.first(unquote(Map.keys(type.required)) -- arg_keys)
-
-               new_opts =
-                 Keyword.merge(opts,
-                   error_info: %{module: __MODULE__, function: :_format_error},
-                   zigler_error: %{
-                     unquote(index + 1) =>
-                       "\n\n     expected argument of type `#{unquote(type_str)}` to have field #{inspect(missing_key)}"
-                   }
-                 )
-
-               :erlang.raise(:error, :badarg, [{m, f, args, new_opts} | rest])
-
-             stacktrace ->
-               :erlang.raise(:error, :badarg, stacktrace)
-           end
-         end},
-        {{:nif_struct_field_error, index},
-         quote do
-           case __STACKTRACE__ do
-             [{_m, _f, args, _opts}, {m, f, _, opts} | rest] ->
-               new_opts =
-                 Keyword.merge(opts,
-                   error_info: %{module: __MODULE__, function: :_format_error},
-                   zigler_error: %{
-                     unquote(index + 1) =>
-                       "\n\n     expected argument of type `#{unquote(type_str)}` but one of its fields has incorrect type"
-                   }
-                 )
-
-               :erlang.raise(:error, :badarg, [{m, f, args, new_opts} | rest])
-
-             stacktrace ->
-               :erlang.raise(:error, :badarg, stacktrace)
-           end
-         end}
-      ]
-    end
-  end
-
   def to_string(struct), do: "#{mut(struct)}#{struct.name}"
 
   def to_call(struct), do: "#{mut(struct)}nif.#{struct.name}"

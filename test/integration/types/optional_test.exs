@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Types.NullableTest do
+defmodule ZiglerTest.Types.OptionalTest do
   use ExUnit.Case, async: true
 
   use Zig, otp_app: :zigler
