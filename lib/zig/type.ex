@@ -152,8 +152,7 @@ defprotocol Zig.Type do
              quote do
                case __STACKTRACE__ do
                  [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
-                   indentation =
-                     &["\n     ", List.duplicate("→", &1), List.wrap(if &1 != 0, do: " ")]
+                   indentation = &["\n     ", List.duplicate("| ", &1)]
 
                    new_opts =
                      Keyword.merge(opts,
@@ -180,7 +179,7 @@ defprotocol Zig.Type do
                                      "#{inspect(content)}"
 
                                    {:typename, typename} ->
-                                     String.trim_leading(typename, ".#{__MODULE__}.")
+                                     String.replace(typename, ".#{__MODULE__}.", "")
                                  end)
                                  |> List.wrap()
                                  |> List.insert_at(0, indentation.(indents))

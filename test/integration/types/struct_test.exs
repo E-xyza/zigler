@@ -44,13 +44,13 @@ defmodule ZiglerTest.Types.StructTest do
 
     test "incorrect value types in a map are not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `TestStruct`)\n     got: `%{value: \"foo\"}`\n     in field `:value`:\n     → expected: integer (for `u64`)\n     → got: `\"foo\"`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `TestStruct`)\n     got: `%{value: \"foo\"}`\n     in field `:value`:\n     | expected: integer (for `u64`)\n     | got: `\"foo\"`\n",
                    fn -> struct_test(%{value: "foo"}) end
     end
 
     test "incorrect value types in a keyword list are not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `TestStruct`)\n     got: `[value: \"foo\"]`\n     in field `:value`:\n     → expected: integer (for `u64`)\n     → got: `\"foo\"`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `TestStruct`)\n     got: `[value: \"foo\"]`\n     in field `:value`:\n     | expected: integer (for `u64`)\n     | got: `\"foo\"`\n",
                    fn -> struct_test(value: "foo") end
     end
   end
@@ -92,13 +92,13 @@ defmodule ZiglerTest.Types.StructTest do
 
     test "incorrect value types in a map are not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `default_struct`)\n     got: `%{value: \"foo\"}`\n     in field `:value`:\n     → expected: integer (for `u64`)\n     → got: `\"foo\"`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `default_struct`)\n     got: `%{value: \"foo\"}`\n     in field `:value`:\n     | expected: integer (for `u64`)\n     | got: `\"foo\"`\n",
                    fn -> default_struct_test(%{value: "foo"}) end
     end
 
     test "incorrect value types in a keyword list are not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `default_struct`)\n     got: `[value: \"foo\"]`\n     in field `:value`:\n     → expected: integer (for `u64`)\n     → got: `\"foo\"`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `default_struct`)\n     got: `[value: \"foo\"]`\n     in field `:value`:\n     | expected: integer (for `u64`)\n     | got: `\"foo\"`\n",
                    fn -> default_struct_test(value: "foo") end
     end
   end

@@ -450,7 +450,7 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term, opts:
     }
 }
 
-fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term, opts: anytype) GetError!void {
+fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term, opts: anytype) !void {
     const struct_info = @typeInfo(T).Struct;
     switch (src.term_type(env)) {
         .map => {
