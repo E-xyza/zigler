@@ -54,19 +54,25 @@ defmodule ZiglerTest.Types.ArrayTest do
 
     test "completely wrong type is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list ([3]f64)\n     got: :bar\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `:bar`\n",
                    fn -> array_float_test(:bar) end
     end
 
-    test "incorrect number of elements is not tolerated" do
+    test "too few elements is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list of length 3\n     got length: 2\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[1.0, 2.0]`\n     note: length 3 expected but got length 2\n",
                    fn -> array_float_test([1.0, 2.0]) end
+    end
+
+    test "too many elements is not tolerated" do
+      assert_raise ArgumentError,
+      "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[1.0, 2.0, 3.0, 4.0]`\n     note: length 3 expected but got length 4\n",
+                   fn -> array_float_test([1.0, 2.0, 3.0, 4.0]) end
     end
 
     test "incorrect value types is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list ([3]f64) but one of the list items (in [\"foo\", :bar, :baz]) has the wrong type\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[\"foo\", :bar, :baz]`\n     in element 0:\n     →expected: float | :infinity | :neg_infinity | :NaN (for `f64`)\n     →got: `\"foo\"`\n",
                    fn -> array_float_test(["foo", :bar, :baz]) end
     end
   end
@@ -82,7 +88,7 @@ defmodule ZiglerTest.Types.ArrayTest do
 
     test "not tolerated with wrong length" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: binary of size 3\n     got size: 2\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: binary | list(integer) (for `[3]u8`)\n     got: `\"fo\"`\n     note: binary size 3 expected but got size 2\n",
                    fn -> array_string_test("fo") end
     end
   end

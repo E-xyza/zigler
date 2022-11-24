@@ -116,6 +116,7 @@ defmodule ZiglerTest.Types.IntegerTest do
 
     test "bounds checking on unsigned large integer" do
       limit = Bitwise.<<<(1, 65)
+
       assert_raise ArgumentError,
                    "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u65`)\n     got: `#{limit}`\n     note: out of bounds (0..#{limit - 1})\n",
                    fn ->
@@ -126,6 +127,7 @@ defmodule ZiglerTest.Types.IntegerTest do
     test "bounds checking on signed large integer" do
       limit = Bitwise.<<<(1, 64)
       value = -limit - 1
+
       assert_raise ArgumentError,
                    "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `i65`)\n     got: `#{value}`\n     note: out of bounds (#{-limit}..#{limit - 1})\n",
                    fn ->

@@ -69,14 +69,22 @@ defmodule Zig.Type.Integer do
           do:
             :erlang.error(
               {:argument_error, index,
-               [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}, {"note: out of bounds (0..#{max})"}]}
+               [
+                 {"expected: integer (for `#{name}`)"},
+                 {"got: `#{inspect(arg)}`"},
+                 {"note: out of bounds (0..#{max})"}
+               ]}
             )
 
         unless arg <= max,
           do:
             :erlang.error(
               {:argument_error, index,
-               [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}, {"note: out of bounds (0..#{max})"}]}
+               [
+                 {"expected: integer (for `#{name}`)"},
+                 {"got: `#{inspect(arg)}`"},
+                 {"note: out of bounds (0..#{max})"}
+               ]}
             )
 
         <<arg::unsigned-integer-size(size)-native>>
@@ -98,9 +106,35 @@ defmodule Zig.Type.Integer do
               max: max,
               name: to_string(type)
             ] do
-        unless is_integer(arg), do: :erlang.error({:argument_error, index, [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}]})
-        unless arg >= min, do: :erlang.error({:argument_error, index, [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}, {"note: out of bounds (#{min}..#{max})"}]})
-        unless arg <= max, do: :erlang.error({:argument_error, index, [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}, {"note: out of bounds (#{min}..#{max})"}]})
+        unless is_integer(arg),
+          do:
+            :erlang.error(
+              {:argument_error, index,
+               [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}]}
+            )
+
+        unless arg >= min,
+          do:
+            :erlang.error(
+              {:argument_error, index,
+               [
+                 {"expected: integer (for `#{name}`)"},
+                 {"got: `#{inspect(arg)}`"},
+                 {"note: out of bounds (#{min}..#{max})"}
+               ]}
+            )
+
+        unless arg <= max,
+          do:
+            :erlang.error(
+              {:argument_error, index,
+               [
+                 {"expected: integer (for `#{name}`)"},
+                 {"got: `#{inspect(arg)}`"},
+                 {"note: out of bounds (#{min}..#{max})"}
+               ]}
+            )
+
         <<arg::signed-integer-size(size)-native>>
       end
     end

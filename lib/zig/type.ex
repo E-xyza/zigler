@@ -36,10 +36,8 @@ defprotocol Zig.Type do
   import Protocol, only: []
   import Kernel
 
-  defmacro sigil_t(string, _) do
+  defmacro sigil_t({:<<>>, _, [string]}, _) do
     string
-    |> Code.eval_quoted([], __CALLER__)
-    |> elem(0)
     |> parse
     |> Macro.escape()
   end
@@ -151,25 +149,52 @@ defprotocol Zig.Type do
              quote do
                case __STACKTRACE__ do
                  [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
+                   indentation = &["\n     ", List.duplicate("→", &1)]
+
                    new_opts =
                      Keyword.merge(opts,
                        error_info: %{module: __MODULE__, function: :_format_error},
                        zigler_error: %{
                          unquote(index + 1) =>
                            error_lines
-                           |> Enum.map(fn error_line ->
-                             error_msg =
-                               error_line
-                               |> Tuple.to_list()
-                               |> Enum.map(fn
-                                 list when is_list(list) -> list
-                                 string when is_binary(string) -> string
-                                 {:inspect, content} -> "#{inspect(content)}"
-                                 :typename -> unquote(typename)
-                               end)
-                               |> List.wrap()
-                               |> List.insert_at(0, "\n     ")
+                           |> Enum.reduce({[], 0}, fn
+                             :enter, {so_far, indents} ->
+                               {so_far, indents + 1}
+
+                             {:expected, typespec, typename}, {so_far, indents} ->
+                              formatted_typename = String.trim_leading(typename, ".#{__MODULE__}.")
+                               {[
+                                  [
+                                    indentation.(indents),
+                                    "expected: #{typespec} (for `#{formatted_typename}`)"
+                                  ]
+                                  | so_far
+                                ], indents}
+
+                             error_line, {so_far, indents} ->
+                               error_msg =
+                                 error_line
+                                 |> Tuple.to_list()
+                                 |> Enum.map(fn
+                                   list when is_list(list) ->
+                                     list
+
+                                   string when is_binary(string) ->
+                                     string
+
+                                   {:inspect, content} ->
+                                     "#{inspect(content)}"
+
+                                   :typename ->
+                                     unquote(typename)
+                                 end)
+                                 |> List.wrap()
+                                 |> List.insert_at(0, indentation.(indents))
+
+                               {[error_msg | so_far], indents}
                            end)
+                           |> elem(0)
+                           |> Enum.reverse()
                            |> List.insert_at(0, "\n")
                            |> IO.iodata_to_binary()
                        }
@@ -215,6 +240,7 @@ defprotocol Zig.Type do
         defdelegate to_call(type), to: module
         defdelegate return_allowed?(type), to: module
         defdelegate make(type, opts), to: module
+        defdelegate expected(type), to: module
       end
     end
   end

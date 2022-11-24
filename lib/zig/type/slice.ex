@@ -22,44 +22,6 @@ defmodule Zig.Type.Slice do
     }
   end
 
-  def param_errors(type, _opts) do
-    type_str = to_string(type)
-
-    fn index ->
-      [
-        {{:nif_argument_type_error, index},
-         quote do
-           case __STACKTRACE__ do
-             [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
-               item = Enum.at(a, unquote(index))
-
-               msg =
-                 cond do
-                   not is_list(item) ->
-                     "\n\n     expected: list (#{unquote(type_str)})\n     got: #{inspect(item)}"
-
-                   true ->
-                     child_str = unquote(Kernel.to_string(type.child))
-
-                     "\n\n     expected: list with elements of type #{child_str} but one of the list items has the wrong type"
-                 end
-
-               new_opts =
-                 Keyword.merge(opts,
-                   error_info: %{module: __MODULE__, function: :_format_error},
-                   zigler_error: %{unquote(index + 1) => msg}
-                 )
-
-               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
-
-             stacktrace ->
-               :erlang.raise(:error, :badarg, stacktrace)
-           end
-         end}
-      ]
-    end
-  end
-
   def to_string(%{has_sentinel?: true, repr: repr}), do: repr
   def to_string(slice), do: "[]#{Kernel.to_string(slice.child)}"
 

@@ -24,19 +24,19 @@ defmodule ZiglerTest.Types.EnumTest do
 
     test "if you try to use something that isn't an atom or integer" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: atom or integer (for `EnumType`)\n     got: `\"foo\"`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer | atom (for `EnumType`)\n     got: `\"foo\"`\n",
                    fn -> untagged_swap("foo") end
     end
 
     test "if you try to use an invalid atom" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: atom or integer (for `EnumType`)\n     got: `:zag`\n     note: not an atom value for EnumType (should be one of `[:foo, :bar]`)\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer | atom (for `EnumType`)\n     got: `:zag`\n     note: not an atom value for EnumType (should be one of `[:foo, :bar]`)\n",
                    fn -> untagged_swap(:zag) end
     end
 
     test "if you try to use an invalid number" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: atom or integer (for `EnumType`)\n     got: `42`\n     note: not an integer value for EnumType (should be one of `[0, 1]`)\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer | atom (for `EnumType`)\n     got: `42`\n     note: not an integer value for EnumType (should be one of `[0, 1]`)\n",
                    fn -> untagged_swap(42) end
     end
   end

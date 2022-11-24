@@ -2,6 +2,7 @@ defmodule Zig.Type.Cpointer do
   alias Zig.Type
   alias Zig.Type.Struct
   use Type
+
   import Type, only: :macros
 
   defstruct [:child]
@@ -121,7 +122,6 @@ defmodule Zig.Type.Cpointer do
 
   def to_call(slice), do: "[*c]#{Type.to_call(slice.child)}"
 
-  # for now.
   def return_allowed?(pointer) do
     case pointer.child do
       ~t(u8) -> true
