@@ -1,6 +1,6 @@
 <% needs_make? = Enum.any?(@params, &Type.needs_make?/1) %>
 
-export fn <%= @name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) e.ErlNifTerm {
+export fn <%= Function.alias_for(assigns) %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) e.ErlNifTerm {
     <%= if needs_make? do %>
     var error_info = beam.make_empty_list(env); 
     <% end %>
@@ -24,11 +24,6 @@ export fn <%= @name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) e.
       <% [:env] -> %> _ = arg;
       <% _ ->  %>
     <% end %>
-    <%= if @return == :void do %>
-      nif.<%= @name %>(<%= Nif.indexed_args(@params) %>);
-    <% else %>
-      const result = nif.<%= @name %>(<%= Nif.indexed_args(@params) %>);
-    <% end %>
-
-    return <%= Type.make(@return, @opts).(:result) %>;
+    const result = nif.<%= @name %>(<%= Nif.indexed_args(@params) %>);
+    <%= Type.return(@return, @opts) %>
 }

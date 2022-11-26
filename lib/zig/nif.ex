@@ -52,7 +52,10 @@ defmodule Zig.Nif do
     |> Enum.map(fn
       {name, opts} ->
         # "calculated" details.
-        function = find_function(name, sema_list)
+        function = sema_list
+        |> find_function(name)
+        |> adopt_options(nif_opts)
+
         concurrency = Synchronous
 
         concurrency.set_entrypoint(%__MODULE__{
@@ -66,8 +69,14 @@ defmodule Zig.Nif do
     end)
   end
 
-  defp find_function(name, sema_list) do
+  # function retrieval and manipulation
+  defp find_function(sema_list, name) do
     Enum.find(sema_list, &(&1.name == name)) || raise "unreachable"
+  end
+
+  defp adopt_options(function, :all), do: function
+  defp adopt_options(function, opts) do
+    %{function | alias: get_in(opts, [function.name, :alias])}
   end
 
   # for now, don't implement.

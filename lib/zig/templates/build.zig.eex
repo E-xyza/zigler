@@ -31,12 +31,21 @@ pub fn build(b: *Builder) void {
         .{ .versioned = .{.major = <%= @version.major %>,
                           .minor = <%= @version.minor %>,
                           .patch = <%= @version.patch %>}});
+    lib.linkage = .dynamic;
 
     lib.addSystemIncludePath(beam_system_dir);
     lib.linkLibC();
     lib.addPackage(erl_nif_pkg);
     lib.addPackage(beam_pkg);
     lib.addPackage(core_pkg);
+    <%= for lib <- @link_lib do %>
+      <%= case lib do %>
+        <% {:system, lib} -> %>
+    lib.linkSystemLibrary("<%= lib %>");
+        <% lib -> %>
+    lib.addObjectFile("<%= lib %>");
+      <% end %>
+    <% end %>
     lib.setBuildMode(mode);
     lib.setTarget(target);
 

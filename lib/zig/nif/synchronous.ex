@@ -1,6 +1,7 @@
 defmodule Zig.Nif.Synchronous do
   alias Zig.Nif
   alias Zig.Type
+  alias Zig.Type.Function
 
   @behaviour Zig.Nif.Concurrency
 
@@ -31,7 +32,7 @@ defmodule Zig.Nif.Synchronous do
 
   def table_entries(nif) do
     [
-      ~s(.{.name = "#{nif.entrypoint}", .arity = #{nif.function.arity}, .fptr = #{nif.function.name}, .flags = 0})
+      ~s(.{.name = "#{nif.entrypoint}", .arity = #{nif.function.arity}, .fptr = #{Function.alias_for(nif.function)}, .flags = 0})
     ]
   end
 

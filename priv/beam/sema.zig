@@ -6,10 +6,8 @@ fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
     try stream.emitString("integer");
     try stream.objectField("signedness");
     switch (i.signedness) {
-      .unsigned =>
-        try stream.emitString("unsigned"),
-      .signed =>
-        try stream.emitString("signed"),
+        .unsigned => try stream.emitString("unsigned"),
+        .signed => try stream.emitString("signed"),
     }
     try stream.objectField("bits");
     try stream.emitNumber(i.bits);
@@ -48,7 +46,7 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
     try stream.objectField("type");
     try stream.emitString("struct");
     if (s.layout == .Packed) {
-        const OriginalType = @Type(.{.Struct = s});
+        const OriginalType = @Type(.{ .Struct = s });
         try stream.objectField("packed_size");
         try stream.emitNumber(@bitSizeOf(OriginalType));
     }
@@ -84,7 +82,7 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
     try stream.emitNumber(a.len);
     try stream.objectField("child");
     try streamType(stream, a.child);
-    try stream.objectField("hasSentinel");
+    try stream.objectField("has_sentinel");
     try stream.emitBool(if (a.sentinel) |_| true else false);
     try stream.objectField("repr");
     try stream.emitString(repr);
@@ -93,51 +91,42 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
 }
 
 fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) !void {
+    try stream.beginObject();
     switch (p.size) {
         .One => {
-            try stream.beginObject();
             try stream.objectField("type");
             try stream.emitString("pointer");
-            try stream.objectField("child");
-            try streamType(stream, p.child);
-            try stream.endObject();
         },
         .Many => {
-            try stream.beginObject();
             try stream.objectField("type");
             try stream.emitString("manypointer");
-            try stream.objectField("child");
-            try streamType(stream, p.child);
-            try stream.objectField("hasSentinel");
+            try stream.objectField("has_sentinel");
             try stream.emitBool(if (p.sentinel) |_| true else false);
             try stream.objectField("repr");
             try stream.emitString(repr);
-            try stream.endObject();
         },
         .Slice => {
-            try stream.beginObject();
             try stream.objectField("type");
             try stream.emitString("slice");
-            try stream.objectField("child");
-            try streamType(stream, p.child);
-            try stream.objectField("hasSentinel");
+            try stream.objectField("has_sentinel");
             try stream.emitBool(if (p.sentinel) |_| true else false);
             try stream.objectField("repr");
             try stream.emitString(repr);
             try stream.endObject();
         },
         .C => {
-            try stream.beginObject();
             try stream.objectField("type");
             try stream.emitString("cpointer");
-            try stream.objectField("child");
-            try streamType(stream, p.child);
-            try stream.endObject();
-        }
+        },
     }
+    try stream.objectField("is_const");
+    try stream.emitBool(p.is_const);
+    try stream.objectField("child");
+    try streamType(stream, p.child);
+    try stream.endObject();
 }
 
-fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) ! void {
+fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) !void {
     try stream.beginObject();
     try stream.objectField("type");
     try stream.emitString("optional");
@@ -148,22 +137,14 @@ fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) ! void
 
 fn streamType(stream: anytype, comptime T: type) !void {
     switch (@typeInfo(T)) {
-        .Int => |i|
-            try streamInt(stream, i),
-        .Enum => |e|
-            try streamEnum(stream, e, T),
-        .Float => |f|
-            try streamFloat(stream, f),
-        .Struct => |s|
-            try streamStruct(stream, s, @typeName(T)),
-        .Array => |a|
-            try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
-        .Pointer => |p|
-            try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
-        .Optional => |o|
-            try streamOptional(stream, o),
-        else =>
-            try stream.emitString(std.fmt.comptimePrint("{}", .{T})),
+        .Int => |i| try streamInt(stream, i),
+        .Enum => |e| try streamEnum(stream, e, T),
+        .Float => |f| try streamFloat(stream, f),
+        .Struct => |s| try streamStruct(stream, s, @typeName(T)),
+        .Array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
+        .Pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
+        .Optional => |o| try streamOptional(stream, o),
+        else => try stream.emitString(std.fmt.comptimePrint("{}", .{T})),
     }
 }
 
@@ -196,7 +177,7 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
                     try streamFun(stream, decl.name, fun);
                 },
                 // do something about types.
-                else => {}
+                else => {},
             }
         }
     }

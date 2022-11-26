@@ -3,7 +3,7 @@ defmodule Zig.Type.Function do
   # files.
   @behaviour Access
 
-  defstruct [:name, :arity, :params, :return, :opts]
+  defstruct [:name, :arity, :params, :return, :opts, :alias]
   alias Zig.Type
 
   @impl true
@@ -11,6 +11,7 @@ defmodule Zig.Type.Function do
 
   @type t :: %__MODULE__{
           name: atom(),
+          alias: true | atom,
           arity: non_neg_integer(),
           params: [Type.t()],
           return: Type.t(),
@@ -60,4 +61,12 @@ defmodule Zig.Type.Function do
 
   @impl true
   def pop(_, _), do: raise("you should not pop a function")
+
+  def alias_for(%{alias: true, name: name}) do
+    "#{name}_aliased_#{:erlang.phash2(name)}"
+  end
+
+  def alias_for(%{alias: name}) when is_binary(name), do: name
+
+  def alias_for(other), do: other.name
 end

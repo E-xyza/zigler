@@ -11,14 +11,16 @@ defmodule Zig.Builder do
   EEx.function_from_file(:defp, :build_zig, build_zig_template, [:assigns])
 
   def build(module, opts) do
-    assigns = %{
-      module: module,
-      # TODO: fix this!
-      version: Version.parse!("0.0.0"),
-      code_file: ".#{module}.zig",
-      nif_path: Path.join(opts[:from], ".#{module}.zig"),
-      beam_dir: Path.join(:code.priv_dir(:zigler), "beam")
-    }
+    assigns =
+      %{
+        module: module,
+        # TODO: fix this!
+        version: Version.parse!("0.0.0"),
+        code_file: ".#{module}.zig",
+        nif_path: Path.join(opts[:from], ".#{module}.zig"),
+        beam_dir: Path.join(:code.priv_dir(:zigler), "beam"),
+        link_lib: opts[:link_lib]
+      }
 
     build_file = build_zig(assigns)
 

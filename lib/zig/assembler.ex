@@ -17,7 +17,10 @@ defmodule Zig.Assembler do
   def assemble(module, opts) do
     directory = directory(module)
     File.mkdir_p!(directory)
+
+    opts = Keyword.take(opts, [:to, :from, :link_lib])
+    opts = Keyword.merge([to: directory], opts)
     # TODO: get to/from from opts.
-    Builder.build(module, to: directory, from: opts[:from])
+    Builder.build(module, opts)
   end
 end

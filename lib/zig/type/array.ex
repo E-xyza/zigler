@@ -1,7 +1,6 @@
 defmodule Zig.Type.Array do
   alias Zig.Type
   use Type
-  import Type, only: :macros
 
   defstruct [:child, :len, :has_sentinel?, :repr, mutable: false]
 
@@ -14,7 +13,7 @@ defmodule Zig.Type.Array do
         }
 
   def from_json(
-        %{"child" => child, "len" => len, "hasSentinel" => has_sentinel?, "repr" => repr},
+        %{"child" => child, "len" => len, "has_sentinel" => has_sentinel?, "repr" => repr},
         module
       ) do
     %__MODULE__{

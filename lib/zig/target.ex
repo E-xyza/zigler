@@ -11,7 +11,7 @@ defmodule Zig.Target do
   """
 
   def string(_) do
-    IO.warn("this needs to be fixed")
+    # IO.warn("this needs to be fixed")
     # lamesauce, but this will get things working.
     "linux-x86_64"
   end

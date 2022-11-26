@@ -24,8 +24,8 @@ defprotocol Zig.Type do
   def param_errors(type, opts)
 
   @doc "generates make clauses in zig"
-  @spec make(t, keyword) :: (atom -> String.t())
-  def make(type, opts)
+  @spec return(t, keyword) :: String.t
+  def return(type, opts)
 
   @spec needs_make?(t) :: boolean
   def needs_make?(type)
@@ -207,15 +207,14 @@ defprotocol Zig.Type do
         end
       end
 
-      def make(_, opts) do
+      def return(_, opts) do
         return_type = Keyword.get(opts, :return, :default)
-
-        fn var -> "beam.make(env, #{var}, .{.output_as = .#{return_type}}).v" end
+        "return beam.make(env, result, .{.output_as = .#{return_type}}).v;"
       end
 
       def needs_make?(_), do: true
 
-      defoverridable make: 2, marshal_param: 2, marshal_return: 2, param_errors: 2, needs_make?: 1
+      defoverridable return: 2, marshal_param: 2, marshal_return: 2, param_errors: 2, needs_make?: 1
 
       defimpl String.Chars do
         defdelegate to_string(type), to: module
@@ -237,8 +236,7 @@ defprotocol Zig.Type do
         defdelegate param_errors(type, opts), to: module
         defdelegate to_call(type), to: module
         defdelegate return_allowed?(type), to: module
-        defdelegate make(type, opts), to: module
-        defdelegate expected(type), to: module
+        defdelegate return(type, opts), to: module
         defdelegate needs_make?(type), to: module
       end
     end
@@ -257,9 +255,24 @@ defimpl Zig.Type, for: Atom do
 
   def return_allowed?(type), do: type in [:term, :erl_nif_term, :void]
 
-  def make(:erl_nif_term, _), do: & &1
-  def make(:term, _), do: &"#{&1}.v"
-  def make(:void, _), do: fn _ -> "beam.make(env, .ok, .{}).v" end
+  def return(:erl_nif_term, _), do: "return result;"
+  def return(:term, _), do: "return result.v;"
+  def return(:void, opts) do
+    case {get_in(opts, [:return, :arg]), get_in(opts, [:return, :length])} do
+      {nil, _} ->
+        "return beam.make(env, result, .{}).v;"
+      {arg, nil} ->
+        """
+        _ = result;
+        return beam.make(env, arg#{arg}, .{}).v;
+        """
+      {arg, {:arg, length_arg}} ->
+        """
+        _ = result;
+        return beam.make(env, arg#{arg}[0..@intCast(usize, arg#{length_arg})], .{}).v;
+        """
+    end
+  end
 
   def needs_make?(_), do: false
 end

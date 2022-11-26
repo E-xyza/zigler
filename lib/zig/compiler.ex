@@ -22,7 +22,7 @@ defmodule Zig.Compiler do
 
     # obtain the code
     code =
-      if easy_c = zigler_opts[:easy_c] do
+      if zigler_opts[:easy_c] do
         EasyC.build_from(zigler_opts)
       else
         context.module
@@ -43,7 +43,9 @@ defmodule Zig.Compiler do
 
     output =
       with true <- assembled,
-           Assembler.assemble(context.module, from: this_dir),
+           assemble_opts = Keyword.take(opts, [:link_lib]),
+           assemble_opts = Keyword.merge(assemble_opts, from: this_dir),
+           Assembler.assemble(context.module, assemble_opts),
            true <- precompiled,
            sema = Sema.analyze_file!(context.module, opts),
            new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(code)),

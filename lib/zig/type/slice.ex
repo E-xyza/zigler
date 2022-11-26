@@ -12,7 +12,7 @@ defmodule Zig.Type.Slice do
         }
 
   def from_json(
-        %{"child" => child, "hasSentinel" => has_sentinel?, "repr" => repr},
+        %{"child" => child, "has_sentinel" => has_sentinel?, "repr" => repr},
         module
       ) do
     %__MODULE__{

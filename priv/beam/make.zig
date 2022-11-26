@@ -27,6 +27,7 @@ pub fn make(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
         .Optional => return make_optional(env, value, opts),
         .ComptimeInt => return make_comptime_int(env, value),
         .ComptimeFloat => return make_comptime_float(env, value),
+        .Void => return make_enum(env, .ok),
         else => {
             @compileError("unusable type encountered");
         },

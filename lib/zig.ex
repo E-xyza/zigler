@@ -268,12 +268,17 @@ defmodule Zig do
   """
 
   alias Zig.Compiler
+  alias Zig.EasyC
 
   # default release modes.
   # you can override these in your `use Zigler` statement.
   @spec __using__(keyword) :: Macro.t()
   defmacro __using__(opts) do
-    opts = normalize_nifs!(opts)
+    opts =
+      opts
+      |> normalize_nifs!
+      |> normalize_libs
+      |> EasyC.normalize_aliasing
 
     # TODO: check to make sure the otp_app exists
     case Keyword.fetch(opts, :otp_app) do
@@ -385,8 +390,8 @@ defmodule Zig do
             atom when is_atom(atom) ->
               {atom, []}
 
-            tuple = {_name, _opts} ->
-              tuple
+            tuple = {name, opts} ->
+              {name, normalize_nif_opts(opts)}
 
             other ->
               error_meta =
@@ -404,5 +409,31 @@ defmodule Zig do
       _ ->
         Keyword.put(opts, :nifs, :all)
     end
+  end
+
+  defp normalize_libs(opts) do
+    Keyword.put(opts, :link_lib, List.wrap(opts[:link_lib]))
+  end
+
+  defp normalize_nif_opts(opts) do
+    Enum.map(opts, fn
+      {:return, return_opts} ->
+        normalized =
+          return_opts
+          |> List.wrap
+          |> normalize_return_opts
+        {:return, normalized}
+      other -> other
+    end)
+  end
+
+  @return_types [:list, :binary, :default]
+
+  defp normalize_return_opts(opts) do
+    Enum.map(opts, fn
+      integer when is_integer(integer) -> {:arg, integer}
+      type when type in @return_types -> {:type, type}
+      other -> other
+    end)
   end
 end

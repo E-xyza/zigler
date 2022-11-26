@@ -16,6 +16,7 @@ defmodule Zig.Command do
 
   defp run_zig(command, opts) do
     args = String.split(command)
+
     cmd_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
     zig_cmd = executable_path(opts)
 

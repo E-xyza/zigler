@@ -328,13 +328,29 @@ pub fn get_slice(comptime T: type, env: beam.env, src: beam.term, opts: anytype)
 pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
     _ = opts;
     const slice_info = @typeInfo(T).Pointer;
-    // slices can be instantiated from binaries, if they are u8 arrays
-    if (slice_info.child != u8) return GetError.argument_error;
+    const Child = slice_info.child;
+    const child_info = @typeInfo(Child);
+    // slices can be instantiated from binaries, for certain types of data.
+    const bytes = switch (child_info) {
+        // TODO: check that the argument errors here are correct.
+        .Int => |i| if (i % 8 != 0) return GetError.argument_error else i.bits / 8,
+        .Float => |f| f.bits / 8,
+        else => return GetError.argument_error,
+    };
+
     var str_res: e.ErlNifBinary = undefined;
     if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.unreachable_error;
-    var result = try beam.allocator.alloc(u8, str_res.size);
-    std.mem.copy(u8, result, str_res.data[0..result.len]);
-    return result;
+    const item_count = str_res.size / bytes;
+    const result_ptr = @ptrCast([*]Child, @alignCast(@alignOf(Child), str_res.data));
+
+    if (slice_info.is_const) {
+        return result_ptr[0..item_count];
+    } else {
+        var result = try beam.allocator.alloc(Child, item_count);
+        std.mem.copy(Child, result, result_ptr[0..item_count]);
+
+        return result;
+    }
 }
 
 pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
@@ -433,6 +449,7 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term, opts:
         },
         .bitstring => {
             // arrays can be instantiated as binaries, if they are u8 arrays
+            // TODO: figure out const-correctness.
             if (Child != u8) return GetError.argument_error;
 
             var str_res: e.ErlNifBinary = undefined;
@@ -653,5 +670,12 @@ fn maybe_binary_term(comptime term_info: anytype) []const u8 {
     const child_term_type = comptime btbrk: {
         break :btbrk "list(" ++ associated_typespec(Child) ++ ")";
     };
-    return if (Child == u8) "binary | " ++ child_term_type else child_term_type;
+    if (Child == u8) return "binary | " ++ child_term_type;
+    return switch (@typeInfo(Child)) {
+        .Int => |i|
+          std.fmt.comptimePrint("<<_::_ * {}>> | ", .{i.bits}) ++ child_term_type,
+        .Float => |f|
+          std.fmt.comptimePrint("<<_::_ * {}>> | ", .{f.bits}) ++ child_term_type,
+        else => child_term_type,
+    };
 }
