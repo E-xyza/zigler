@@ -21,17 +21,17 @@ defmodule Zig.Compiler do
     zigler_opts = Module.get_attribute(context.module, :zigler_opts)
 
     # obtain the code
-    code =
-      if zigler_opts[:easy_c] do
-        EasyC.build_from(zigler_opts)
-      else
+    easy_c_code = List.wrap(if zigler_opts[:easy_c], do: EasyC.build_from(zigler_opts))
+
+    aliasing_code = create_aliases(zigler_opts)
+
+    base_code =
         context.module
         |> Module.get_attribute(:zig_code_parts)
         |> Enum.reverse()
         |> Enum.join()
-      end
 
-    File.write!(module_nif_zig, code)
+    File.write!(module_nif_zig, [aliasing_code, easy_c_code, base_code])
 
     opts = Keyword.merge(zigler_opts, file: module_nif_zig)
 
@@ -48,7 +48,7 @@ defmodule Zig.Compiler do
            Assembler.assemble(context.module, assemble_opts),
            true <- precompiled,
            sema = Sema.analyze_file!(context.module, opts),
-           new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(code)),
+           new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(base_code)),
            function_code = precompile(sema, context, directory, new_opts),
            true <- compiled do
         # parser should only operate on parsed, valid zig code.
@@ -57,7 +57,7 @@ defmodule Zig.Compiler do
         nif_name = "#{context.module}"
 
         quote do
-          @zig_code unquote(code)
+          @zig_code unquote(base_code)
 
           unquote_splicing(function_code)
 
@@ -88,7 +88,7 @@ defmodule Zig.Compiler do
         end
       else
         false ->
-          dead_module(code, context)
+          dead_module(base_code, context)
       end
 
     if opts[:dump] do
@@ -123,6 +123,10 @@ defmodule Zig.Compiler do
       end
     end
   end
+
+  require EEx
+  zig_alias_template = Path.join(__DIR__, "templates/alias.zig.eex")
+  EEx.function_from_file(:defp, :create_aliases, zig_alias_template, [:assigns])
 
   defp dependencies_for(assemblies) do
     Enum.map(assemblies, fn assembly ->
