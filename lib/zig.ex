@@ -427,12 +427,13 @@ defmodule Zig do
     end)
   end
 
-  @return_types [:list, :binary, :default]
+  @return_types [:charlists, :binary, :default]
 
   defp normalize_return_opts(opts) do
     Enum.map(opts, fn
       integer when is_integer(integer) -> {:arg, integer}
       type when type in @return_types -> {:type, type}
+      :noclean -> {:noclean, true}
       other -> other
     end)
   end

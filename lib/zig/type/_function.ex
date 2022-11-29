@@ -3,7 +3,7 @@ defmodule Zig.Type.Function do
   # files.
   @behaviour Access
 
-  defstruct [:name, :arity, :params, :return, :opts, :alias]
+  defstruct [:name, :arity, :params, :return, :opts]
   alias Zig.Type
 
   @impl true
@@ -11,7 +11,6 @@ defmodule Zig.Type.Function do
 
   @type t :: %__MODULE__{
           name: atom(),
-          alias: true | atom,
           arity: non_neg_integer(),
           params: [Type.t()],
           return: Type.t(),

@@ -2,7 +2,7 @@ const beam = @import("beam.zig");
 const e = @import("erl_nif.zig");
 const std = @import("std");
 
-const OutputType = enum { default, charlists, noclean };
+const OutputType = enum { default, charlists, binary };
 const MakeOpts = struct {
     output_as: OutputType = .default,
 };

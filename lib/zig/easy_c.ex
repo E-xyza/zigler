@@ -16,7 +16,14 @@ defmodule Zig.EasyC do
     raise "can't have all on an easy_c module"
   end
 
-  defp add_aliasing(list) do
-    Enum.map(list, fn {fun, opts} -> {fun, Keyword.put(opts, :alias, true)} end)
+  defp add_aliasing(nifs) do
+    Enum.map(nifs, fn {fun, opts} -> {fun, add_alias_nif(opts)} end)
+  end
+
+  defp add_alias_nif(opts) do
+    Keyword.update(opts, :alias, true, fn
+      true -> true
+      alias_ -> :"easy_c.#{alias_}"
+    end)
   end
 end

@@ -207,8 +207,8 @@ defprotocol Zig.Type do
         end
       end
 
-      def return(_, opts) do
-        return_type = Keyword.get(opts, :return, :default)
+      def return(type, opts) do
+        return_type = get_in(opts, [:return, :type]) || raise "return type not found"
         "return beam.make(env, result, .{.output_as = .#{return_type}}).v;"
       end
 
@@ -267,9 +267,13 @@ defimpl Zig.Type, for: Atom do
         return beam.make(env, arg#{arg}, .{}).v;
         """
       {arg, {:arg, length_arg}} ->
+        return_type = opts
+        |> Keyword.fetch!(:return)
+        |> Keyword.fetch!(:type)
+
         """
         _ = result;
-        return beam.make(env, arg#{arg}[0..@intCast(usize, arg#{length_arg})], .{}).v;
+        return beam.make(env, arg#{arg}[0..@intCast(usize, arg#{length_arg})], .{.output_as = .#{return_type}}).v;
         """
     end
   end

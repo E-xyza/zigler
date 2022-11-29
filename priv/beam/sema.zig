@@ -1,7 +1,6 @@
 const std = @import("std");
 
 fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
-    try stream.beginObject();
     try stream.objectField("type");
     try stream.emitString("integer");
     try stream.objectField("signedness");
@@ -11,11 +10,9 @@ fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
     }
     try stream.objectField("bits");
     try stream.emitNumber(i.bits);
-    try stream.endObject();
 }
 
 fn streamEnum(stream: anytype, comptime e: std.builtin.Type.Enum, comptime T: type) !void {
-    try stream.beginObject();
     try stream.objectField("type");
     try stream.emitString("enum");
     try stream.objectField("name");
@@ -27,20 +24,16 @@ fn streamEnum(stream: anytype, comptime e: std.builtin.Type.Enum, comptime T: ty
         try stream.emitNumber(field.value);
     }
     try stream.endObject();
-    try stream.endObject();
 }
 
 fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) !void {
-    try stream.beginObject();
     try stream.objectField("type");
     try stream.emitString("float");
     try stream.objectField("bits");
     try stream.emitNumber(f.bits);
-    try stream.endObject();
 }
 
 fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime name: []const u8) !void {
-    try stream.beginObject();
     try stream.objectField("name");
     try stream.emitString(name);
     try stream.objectField("type");
@@ -71,11 +64,9 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
         try stream.endObject();
     }
     try stream.endArray();
-    try stream.endObject();
 }
 
 fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) !void {
-    try stream.beginObject();
     try stream.objectField("type");
     try stream.emitString("array");
     try stream.objectField("len");
@@ -86,12 +77,9 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
     try stream.emitBool(if (a.sentinel) |_| true else false);
     try stream.objectField("repr");
     try stream.emitString(repr);
-    // TODO: figure out sentinels
-    try stream.endObject();
 }
 
 fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) !void {
-    try stream.beginObject();
     switch (p.size) {
         .One => {
             try stream.objectField("type");
@@ -112,7 +100,6 @@ fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: an
             try stream.emitBool(if (p.sentinel) |_| true else false);
             try stream.objectField("repr");
             try stream.emitString(repr);
-            try stream.endObject();
         },
         .C => {
             try stream.objectField("type");
@@ -123,19 +110,17 @@ fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: an
     try stream.emitBool(p.is_const);
     try stream.objectField("child");
     try streamType(stream, p.child);
-    try stream.endObject();
 }
 
 fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) !void {
-    try stream.beginObject();
     try stream.objectField("type");
     try stream.emitString("optional");
     try stream.objectField("child");
     try streamType(stream, o.child);
-    try stream.endObject();
 }
 
 fn streamType(stream: anytype, comptime T: type) !void {
+    try stream.beginObject();
     switch (@typeInfo(T)) {
         .Int => |i| try streamInt(stream, i),
         .Enum => |e| try streamEnum(stream, e, T),
@@ -144,8 +129,9 @@ fn streamType(stream: anytype, comptime T: type) !void {
         .Array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
         .Pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
         .Optional => |o| try streamOptional(stream, o),
-        else => try stream.emitString(std.fmt.comptimePrint("{}", .{T})),
+        else => unreachable,
     }
+    try stream.endObject();
 }
 
 pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.Fn) !void {
@@ -153,6 +139,7 @@ pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.buil
     try stream.objectField("name");
     try stream.emitString(name);
     try stream.objectField("return");
+    std.debug.print("{}\n", .{fun.return_type.?});
     try streamType(stream, fun.return_type.?);
     try stream.objectField("params");
     try stream.beginArray();

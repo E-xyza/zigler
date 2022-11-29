@@ -333,7 +333,7 @@ pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: a
     // slices can be instantiated from binaries, for certain types of data.
     const bytes = switch (child_info) {
         // TODO: check that the argument errors here are correct.
-        .Int => |i| if (i % 8 != 0) return GetError.argument_error else i.bits / 8,
+        .Int => |i| if (i.bits % 8 != 0) return GetError.argument_error else i.bits / 8,
         .Float => |f| f.bits / 8,
         else => return GetError.argument_error,
     };

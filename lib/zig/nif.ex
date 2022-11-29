@@ -41,6 +41,15 @@ defmodule Zig.Nif do
 
   defp normalize_all(list, _) when is_list(list), do: list
 
+  def normalize_return(nif_opts) do
+    Enum.map(nif_opts, fn {nif, opts}->
+      new_opts = Keyword.update(opts, :return, [type: :default], fn return_list ->
+        Keyword.update(return_list, :type, :default, &(&1))
+      end)
+      {nif, new_opts}
+    end)
+  end
+
   @doc """
   obtains a list of Nif structs from the semantically analyzed content and
   the nif options that are a part of
@@ -49,12 +58,13 @@ defmodule Zig.Nif do
   def from_sema(sema_list, nif_opts) do
     nif_opts
     |> normalize_all(sema_list)
+    |> normalize_return()
     |> Enum.map(fn
       {name, opts} ->
         # "calculated" details.
         function = sema_list
         |> find_function(name)
-        |> adopt_options(nif_opts)
+        |> adopt_options(opts)
 
         concurrency = Synchronous
 
@@ -75,9 +85,7 @@ defmodule Zig.Nif do
   end
 
   defp adopt_options(function, :all), do: function
-  defp adopt_options(function, opts) do
-    %{function | alias: get_in(opts, [function.name, :alias])}
-  end
+  defp adopt_options(function, opts), do: %{function | opts: opts}
 
   # for now, don't implement.
   def typespec(_), do: nil
