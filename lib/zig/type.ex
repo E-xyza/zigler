@@ -91,10 +91,10 @@ defprotocol Zig.Type do
       %{"type" => "struct", "name" => "beam.term"} ->
         :term
 
-      "bool" ->
+      %{"type" => "bool"} ->
         Bool.from_json(json)
 
-      "void" ->
+      %{"type" => "void"} ->
         :void
 
       %{"type" => "integer"} ->

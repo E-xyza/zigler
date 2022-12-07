@@ -8,7 +8,7 @@ defmodule ZiglerTest.EasyC.BlasTest do
     nifs: [
       :cblas_dasum,
       cblas_daxpy: [return: [4, length: {:arg, 0}]],
-      #daxpy_bin: [alias: :cblas_daxpy, return: [4, :binary, length: {:arg, 0}]]
+      daxpy_bin: [alias: :cblas_daxpy, return: [4, :binary, length: {:arg, 0}]]
     ]
 
   describe "dasum" do
@@ -44,8 +44,8 @@ defmodule ZiglerTest.EasyC.BlasTest do
       assert [7.0, 11.0, 15.0] == cblas_daxpy(3, 3.0, [1.0, 2.0, 3.0], 1, [4.0, 5.0, 6.0], 1)
     end
 
-    #test "can be aliased to output binaries" do
-    #  assert <<7.0 :: float-native, 11.0  :: float-native, 15.0  :: float-native >> == daxpy_bin(3, 3.0, [1.0, 2.0, 3.0], 1, [4.0, 5.0, 6.0], 1)
-    #end
+    test "can be aliased to output binaries" do
+      assert <<7.0 :: float-native, 11.0  :: float-native, 15.0  :: float-native >> == daxpy_bin(3, 3.0, [1.0, 2.0, 3.0], 1, [4.0, 5.0, 6.0], 1) 
+    end
   end
 end

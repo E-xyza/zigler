@@ -32,7 +32,7 @@ defmodule Zig.Nif.Synchronous do
 
   def table_entries(nif) do
     [
-      ~s(.{.name = "#{nif.entrypoint}", .arity = #{nif.function.arity}, .fptr = #{Function.alias_for(nif.function)}, .flags = 0})
+      ~s(.{.name = "#{nif.entrypoint}", .arity = #{nif.function.arity}, .fptr = #{Function.nif_alias_for(nif.function)}, .flags = 0})
     ]
   end
 

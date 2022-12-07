@@ -61,11 +61,12 @@ defmodule Zig.Type.Function do
   @impl true
   def pop(_, _), do: raise("you should not pop a function")
 
-  def alias_for(%{alias: true, name: name}) do
-    "#{name}_aliased_#{:erlang.phash2(name)}"
+  def nif_alias_for(%{opts: opts, name: name}) do
+    case opts[:alias] do
+      true ->
+        "#{name}_aliased_#{:erlang.phash2(name)}"
+      _ ->
+        name
+    end
   end
-
-  def alias_for(%{alias: name}) when is_binary(name), do: name
-
-  def alias_for(other), do: other.name
 end

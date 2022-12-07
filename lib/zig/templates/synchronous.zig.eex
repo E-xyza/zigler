@@ -1,6 +1,6 @@
 <% needs_make? = Enum.any?(@params, &Type.needs_make?/1) %>
 
-export fn <%= Function.alias_for(assigns) %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) e.ErlNifTerm {
+export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) e.ErlNifTerm {
     <%= if needs_make? do %>
     var error_info = beam.make_empty_list(env); 
     <% end %>

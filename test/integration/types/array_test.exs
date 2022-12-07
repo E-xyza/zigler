@@ -54,25 +54,25 @@ defmodule ZiglerTest.Types.ArrayTest do
 
     test "completely wrong type is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `:bar`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `:bar`\n",
                    fn -> array_float_test(:bar) end
     end
 
     test "too few elements is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[1.0, 2.0]`\n     note: length 3 expected but got length 2\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[1.0, 2.0]`\n     note: length 3 expected but got length 2\n",
                    fn -> array_float_test([1.0, 2.0]) end
     end
 
     test "too many elements is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[1.0, 2.0, 3.0, 4.0]`\n     note: length 3 expected but got length 4\n",
+      "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[1.0, 2.0, 3.0, 4.0]`\n     note: length 3 expected but got length 4\n",
                    fn -> array_float_test([1.0, 2.0, 3.0, 4.0]) end
     end
 
     test "incorrect value types is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[\"foo\", :bar, :baz]`\n     at index 0:\n     | expected: float | :infinity | :neg_infinity | :NaN (for `f64`)\n     | got: `\"foo\"`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[\"foo\", :bar, :baz]`\n     at index 0:\n     | expected: float | :infinity | :neg_infinity | :NaN (for `f64`)\n     | got: `\"foo\"`\n",
                    fn -> array_float_test(["foo", :bar, :baz]) end
     end
   end

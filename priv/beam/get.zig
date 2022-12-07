@@ -401,8 +401,7 @@ pub fn get_cpointer(comptime T: type, env: beam.env, src: beam.term, opts: anyty
             GetError.argument_error
         else
             try get_pointer(*Child, env, src, opts),
-        .list => 
-            (try get_slice_list([]Child, env, src, opts)).ptr,
+        .list => (try get_slice_list([]Child, env, src, opts)).ptr,
         .bitstring => (try get_slice_binary([]Child, env, src, opts)).ptr,
         else => GetError.argument_error,
     };
@@ -621,7 +620,13 @@ inline fn error_line(env: beam.env, opts: anytype, msg: anytype) void {
 }
 
 inline fn error_expected(comptime T: type, env: beam.env, opts: anytype) void {
-    error_line(env, opts, .{ "expected: ", associated_typespec(T), " (for `", .{ .typename, @typeName(T) }, "`)" });
+    // it's not entirely obvious why, but this needs to be put into a comptime block
+    // to avoid a memory aliasing bug that exists in ziglang. (0.10.0)
+    const typespec = comptime ts: {
+        break :ts typespec_for(T);
+    };
+
+    error_line(env, opts, .{ "expected: ", typespec, " (for `", .{ .typename, @typeName(T) }, "`)" });
 }
 
 inline fn error_got(env: beam.env, opts: anytype, src: beam.term) void {
@@ -633,49 +638,47 @@ inline fn error_enter(env: beam.env, opts: anytype, msg: anytype) void {
     error_line(env, opts, msg);
 }
 
-fn associated_typespec(comptime T: type) []const u8 {
-    switch (@typeInfo(T)) {
-        .Int => return "integer",
-        .Enum => return "integer | atom",
-        .Float => return "float | :infinity | :neg_infinity | :NaN",
-        .Struct => |s| {
+fn typespec_for(comptime T: type) []const u8 {
+    return switch (@typeInfo(T)) {
+        .Int => "integer",
+        .Enum => "integer | atom",
+        .Float => "float | :infinity | :neg_infinity | :NaN",
+        .Struct => |s| make_struct: {
             const maybe_binary = if (s.layout == .Packed) " | binary" else "";
-            return "map | keyword" ++ maybe_binary;
+            break :make_struct "map | keyword" ++ maybe_binary;
         },
-        .Bool => return "boolean",
-        .Array => |a| return maybe_binary_term(a),
-        .Pointer => |p| {
+        .Bool => "boolean",
+        .Array => |a| maybe_binary_term(a),
+        .Pointer => |p| 
             switch (p.size) {
                 // pointer to one can only be a map or keyword.
-                .One => return "map | keyword",
-                .Slice => return maybe_binary_term(p),
-                .Many => return maybe_binary_term(p),
-                .C => {
-                    return comptime cpbreak: {
+                .One => "map | keyword",
+                .Slice => maybe_binary_term(p),
+                .Many => maybe_binary_term(p),
+                .C => comptime make_cpointer: {
                         const or_single = if (@typeInfo(p.child) == .Struct) "map | " else "";
-                        break :cpbreak or_single ++ maybe_binary_term(p);
-                    };
-                },
-            }
-        },
-        .Optional => |o| return comptime opbreak: {
-            break :opbreak "nil | " ++ associated_typespec(o.child);
+                        break :make_cpointer or_single ++ maybe_binary_term(p);
+                    }
+            },
+        .Optional => |o| comptime make_optional: {
+            break :make_optional "nil | " ++ typespec_for(o.child);
         },
         else => @compileError("unreachable"),
-    }
+    };
 }
 
 fn maybe_binary_term(comptime term_info: anytype) []const u8 {
     const Child = term_info.child;
     const child_term_type = comptime btbrk: {
-        break :btbrk "list(" ++ associated_typespec(Child) ++ ")";
+        break :btbrk "list(" ++ typespec_for(Child) ++ ")";
     };
     if (Child == u8) return "binary | " ++ child_term_type;
-    return switch (@typeInfo(Child)) {
+    const r = switch (@typeInfo(Child)) {
         .Int => |i|
           std.fmt.comptimePrint("<<_::_ * {}>> | ", .{i.bits}) ++ child_term_type,
         .Float => |f|
           std.fmt.comptimePrint("<<_::_ * {}>> | ", .{f.bits}) ++ child_term_type,
         else => child_term_type,
     };
+    return r;
 }

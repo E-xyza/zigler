@@ -60,13 +60,13 @@ fn make_int(env: beam.env, value: anytype) beam.term {
     const int = @typeInfo(@TypeOf(value)).Int;
     switch (int.signedness) {
         .signed => switch (int.bits) {
-            0 => return .{ .v = e.enif_make_int(env, 0)},
+            0 => return .{ .v = e.enif_make_int(env, 0) },
             1...32 => return .{ .v = e.enif_make_int(env, @intCast(i32, value)) },
             33...64 => return .{ .v = e.enif_make_int64(env, @intCast(i64, value)) },
             else => {},
         },
         .unsigned => switch (int.bits) {
-            0 => return .{ .v = e.enif_make_int(env, 0)},
+            0 => return .{ .v = e.enif_make_int(env, 0) },
             1...32 => return .{ .v = e.enif_make_uint(env, @intCast(u32, value)) },
             33...64 => return .{ .v = e.enif_make_uint64(env, @intCast(u64, value)) },
             else => {
@@ -106,7 +106,7 @@ fn make_comptime_int(env: beam.env, value: anytype) beam.term {
 }
 
 pub fn make_comptime_float(env: beam.env, comptime float: comptime_float) beam.term {
-    return beam.make(env, @floatCast(f64, float));
+    return beam.make(env, @floatCast(f64, float), .{});
 }
 
 const EMPTY_TUPLE_LIST = [_]beam.term{};
@@ -118,13 +118,12 @@ fn make_struct(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term
             @compileError("The tuple size is too large for the erlang virtual machine");
         }
         var tuple_list: [value.len]e.ErlNifTerm = undefined;
-        comptime var index = 0;
-        inline while (index < value.len) : (index += 1) {
+        inline for (tuple_list) |*tuple_item, index| {
             const tuple_term = value[index];
             if (@TypeOf(tuple_term) == beam.term) {
-                tuple_list[index] = tuple_term.v;
+                tuple_item.* = tuple_term.v;
             } else {
-                tuple_list[index] = make(env, tuple_term, opts).v;
+                tuple_item.* = make(env, tuple_term, opts).v;
             }
         }
         return .{ .v = e.enif_make_tuple_from_array(env, &tuple_list, value.len) };
@@ -192,7 +191,7 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype, 
     const array_info = @typeInfo(T).Array;
     const Child = array_info.child;
 
-    if (Child == u8 and opts.output_as != .charlists) { 
+    if (Child == u8 and opts.output_as != .charlists) {
         // u8 arrays are by default marshalled into binaries.
         return make_binary(env, array_ptr[0..]);
     }
@@ -225,7 +224,7 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype, 
 
 pub fn make_manypointer(env: beam.env, manypointer: anytype, comptime opts: MakeOpts) beam.term {
     const pointer = @typeInfo(@TypeOf(manypointer)).Pointer;
-    if (pointer.sentinel) |_| {    
+    if (pointer.sentinel) |_| {
         const len = std.mem.len(manypointer);
         return make_slice(env, manypointer[0..len], opts);
     } else {
@@ -247,10 +246,8 @@ pub fn make_cpointer(env: beam.env, cpointer: anytype, comptime opts: MakeOpts) 
         }
 
         switch (@typeInfo(Child)) {
-            .Struct =>
-              return make(env, @ptrCast(*Child, cpointer), opts),
-            else => 
-              @compileError("this is not supported")
+            .Struct => return make(env, @ptrCast(*Child, cpointer), opts),
+            else => @compileError("this is not supported"),
         }
     } else {
         return make(env, .nil, opts);
@@ -258,7 +255,14 @@ pub fn make_cpointer(env: beam.env, cpointer: anytype, comptime opts: MakeOpts) 
 }
 
 pub fn make_slice(env: beam.env, slice: anytype, comptime opts: MakeOpts) beam.term {
+    // u8 slices default to binary and must be opt-in to get charlists out.
     if (@TypeOf(slice) == []u8 and opts.output_as != .charlists) {
+        return make_binary(env, slice);
+    }
+
+    // any other slices can be opt-in to get a binary out
+    // TODO: check to make sure that these are either ints, floats, or packed structs.
+    if (opts.output_as == .binary) {
         return make_binary(env, slice);
     }
 
@@ -291,14 +295,45 @@ pub fn make_into_atom(env: beam.env, atom_string: []const u8) beam.term {
     return .{ .v = e.enif_make_atom_len(env, atom_string.ptr, atom_string.len) };
 }
 
-pub fn make_binary(env: beam.env, binary_slice: []const u8) beam.term {
-    // TODO: make this return some sort of error if it fails
+pub fn make_binary(env: beam.env, content: anytype) beam.term {
+    const T = @TypeOf(content);
+    switch (@typeInfo(T)) {
+        .Pointer => |P| {
+            const Child = P.child;
+            switch (P.size) {
+                .Slice => {
+                    const byte_size = @sizeOf(Child) * content.len;
+                    const u8buf = @ptrCast([*]const u8, content.ptr);
+                    return make_binary_from_u8_slice(env, u8buf[0..byte_size]);
+                },
+                // it is possible that this is a const pointer to an array in memory.
+                .One => {
+                    if (@typeInfo(Child) != .Array) {
+                        @compileError("make_binary is only supported for array and slice pointers");
+                    }
+                    const byte_size = @sizeOf(Child) * content.len;
+                    const u8buf = @ptrCast([*]const u8, content);
+                    return make_binary_from_u8_slice(env, u8buf[0..byte_size]);
+                },
+                else => @compileError("make_binary is only supported for array and slice pointers"),
+            }
+        },
+        .Array => |A| {
+            const byte_size = @sizeOf(A.child) * content.len;
+            const u8buf = @ptrCast([*]const u8, &content);
+            return make_binary_from_u8_slice(env, u8buf[0..byte_size]);
+        },
+        else => @compileError("make_binary is only supported for slices and arrays"),
+    }
+}
+
+fn make_binary_from_u8_slice(env: beam.env, slice: []const u8) beam.term {
     var result: beam.term = undefined;
-    var buf = e.enif_make_new_binary(env, binary_slice.len, &result.v);
-    std.mem.copy(u8, buf[0..binary_slice.len], binary_slice);
+    var buf = e.enif_make_new_binary(env, slice.len, &result.v);
+    std.mem.copy(u8, buf[0..slice.len], slice);
     return result;
 }
 
 pub fn make_empty_list(env: beam.env) beam.term {
-    return .{.v = e.enif_make_list_from_array(env, null, 0)};
+    return .{ .v = e.enif_make_list_from_array(env, null, 0) };
 }
