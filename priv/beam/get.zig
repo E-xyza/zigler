@@ -447,20 +447,24 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term, opts:
             }
         },
         .bitstring => {
-            // arrays can be instantiated as binaries, if they are u8 arrays
-            // TODO: figure out const-correctness.
-            if (Child != u8) return GetError.argument_error;
+            // this code should never be executed, it only happens due to 
+            // semantic analysis.
+            // TODO: check to make sure size-0 packed struct arrays are not supported.
+            if (@alignOf(Child) == 0) unreachable;
+
+            const expected_size = array_info.len * @sizeOf(Child);
 
             var str_res: e.ErlNifBinary = undefined;
+            var u8_result_ptr = @ptrCast([*]u8, result);
 
             if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.unreachable_error;
 
-            if (str_res.size != array_info.len) {
-                error_line(env, opts, .{ "note: binary size ", .{ .inspect, array_info.len }, " expected but got size ", .{ .inspect, str_res.size } });
+            if (str_res.size != expected_size) {
+                error_line(env, opts, .{ "note: binary size ", .{ .inspect, expected_size }, " expected but got size ", .{ .inspect, str_res.size } });
                 return GetError.argument_error;
             }
 
-            std.mem.copy(u8, result, str_res.data[0..array_info.len]);
+            std.mem.copy(u8, u8_result_ptr[0..str_res.size], str_res.data[0..str_res.size]);
         },
         else => return GetError.argument_error,
     }
@@ -648,7 +652,7 @@ fn typespec_for(comptime T: type) []const u8 {
             break :make_struct "map | keyword" ++ maybe_binary;
         },
         .Bool => "boolean",
-        .Array => |a| maybe_binary_term(a),
+        .Array => |a| maybe_array_term(a, @sizeOf(T)),
         .Pointer => |p| 
             switch (p.size) {
                 // pointer to one can only be a map or keyword.
@@ -666,6 +670,16 @@ fn typespec_for(comptime T: type) []const u8 {
         else => @compileError("unreachable"),
     };
 }
+
+fn maybe_array_term(comptime term_info: anytype, comptime array_bytes: usize) []const u8 {
+    const Child = term_info.child;
+    const child_term_type = comptime btbrk: {
+        break :btbrk "list(" ++ typespec_for(Child) ++ ")";
+    };
+    if (Child == u8) return "binary | " ++ child_term_type;
+    return std.fmt.comptimePrint("<<_::binary-size({})>> | ", .{array_bytes}) ++ child_term_type;
+}
+
 
 fn maybe_binary_term(comptime term_info: anytype) []const u8 {
     const Child = term_info.child;

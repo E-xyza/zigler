@@ -9,9 +9,8 @@ const MakeOpts = struct {
 
 pub fn make(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
     const T = @TypeOf(value);
-    // passthrough on beam.term and e.ErlNifTerm, no work needed.
+    // passthrough on beam.term, no work needed.
     if (T == beam.term) return value;
-    if (T == e.ErlNifTerm) return .{ .v = value };
 
     switch (@typeInfo(T)) {
         .Array => return make_array(env, value, opts),
@@ -196,6 +195,11 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype, 
         return make_binary(env, array_ptr[0..]);
     }
 
+    if (opts.output_as == .binary) {
+        // u8 arrays are by default marshalled into binaries.
+        return make_binary(env, array_ptr[0..]);
+    }
+
     switch (array_info.child) {
         beam.term => {
             // since beam.term is guaranteed to be a packed struct of only
@@ -311,7 +315,7 @@ pub fn make_binary(env: beam.env, content: anytype) beam.term {
                     if (@typeInfo(Child) != .Array) {
                         @compileError("make_binary is only supported for array and slice pointers");
                     }
-                    const byte_size = @sizeOf(Child) * content.len;
+                    const byte_size = @sizeOf(@typeInfo(Child).Array.child) * content.len;
                     const u8buf = @ptrCast([*]const u8, content);
                     return make_binary_from_u8_slice(env, u8buf[0..byte_size]);
                 },
@@ -336,4 +340,14 @@ fn make_binary_from_u8_slice(env: beam.env, slice: []const u8) beam.term {
 
 pub fn make_empty_list(env: beam.env) beam.term {
     return .{ .v = e.enif_make_list_from_array(env, null, 0) };
+}
+
+// you can't make the atom .error, because `error` is a reserved term
+// in ziglang.
+pub fn make_error_atom(env: beam.env) beam.term {
+    return make_into_atom(env, "error");
+}
+
+pub fn make_error_pair(env: beam.env, payload: anytype, comptime opts: MakeOpts) beam.term {
+    return make(env, .{make_error_atom(env), make(env, payload, opts)}, opts);
 }

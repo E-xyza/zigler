@@ -5,6 +5,7 @@ defmodule ZiglerTest.Types.ArrayTest do
     otp_app: :zigler,
     nifs: [
       :array_float_test,
+      {:array_float_binary_test, return: :binary},
       {:array_u8_test, return: :charlists},
       :array_string_test,
       :mut_array_float_test,
@@ -34,6 +35,10 @@ defmodule ZiglerTest.Types.ArrayTest do
     return common_array_fun(passed);
   }
 
+  pub fn array_float_binary_test(passed: [3]f64) [3]f64 {
+    return common_array_fun(passed);
+  }
+
   pub fn array_u8_test(passed: [3]u8) [3]u8 {
     return common_array_fun(passed);
   }
@@ -48,31 +53,39 @@ defmodule ZiglerTest.Types.ArrayTest do
       assert [2.0, 3.0, 4.0] == array_float_test([1.0, 2.0, 3.0])
     end
 
+    test "you can pass a binary" do
+      assert [2.0, 3.0, 4.0] == array_float_test(<<1.0 :: float-native, 2.0 :: float-native, 3.0 :: float-native>>)
+    end
+
+    test "you can get back a binary" do
+      assert <<2.0 :: float-native, 3.0 :: float-native, 4.0 :: float-native>> == array_float_binary_test([1.0, 2.0, 3.0])
+    end
+
     test "you can work with u8s" do
       assert [2, 3, 4] == array_u8_test([1, 2, 3])
     end
 
     test "completely wrong type is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `:bar`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::binary-size(24)>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `:bar`\n",
                    fn -> array_float_test(:bar) end
     end
 
     test "too few elements is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[1.0, 2.0]`\n     note: length 3 expected but got length 2\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::binary-size(24)>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[1.0, 2.0]`\n     note: length 3 expected but got length 2\n",
                    fn -> array_float_test([1.0, 2.0]) end
     end
 
     test "too many elements is not tolerated" do
       assert_raise ArgumentError,
-      "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[1.0, 2.0, 3.0, 4.0]`\n     note: length 3 expected but got length 4\n",
+      "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::binary-size(24)>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[1.0, 2.0, 3.0, 4.0]`\n     note: length 3 expected but got length 4\n",
                    fn -> array_float_test([1.0, 2.0, 3.0, 4.0]) end
     end
 
     test "incorrect value types is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[\"foo\", :bar, :baz]`\n     at index 0:\n     | expected: float | :infinity | :neg_infinity | :NaN (for `f64`)\n     | got: `\"foo\"`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::binary-size(24)>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[\"foo\", :bar, :baz]`\n     at index 0:\n     | expected: float | :infinity | :neg_infinity | :NaN (for `f64`)\n     | got: `\"foo\"`\n",
                    fn -> array_float_test(["foo", :bar, :baz]) end
     end
   end
