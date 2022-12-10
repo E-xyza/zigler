@@ -278,6 +278,7 @@ defmodule Zig do
       opts
       |> normalize_nifs!
       |> normalize_libs
+      |> normalize_build_opts
       |> EasyC.normalize_aliasing
 
     # TODO: check to make sure the otp_app exists
@@ -436,5 +437,18 @@ defmodule Zig do
       :noclean -> {:noclean, true}
       other -> other
     end)
+  end
+
+  @use_gpa {:bool, "use_gpa", true}
+  defp normalize_build_opts(opts) do
+    # creates build_opts out of a list of build opt shortcuts
+    use_gpa = Keyword.get(opts, :use_gpa, false)
+    if use_gpa do
+      Keyword.update(opts, :build_opts, [@use_gpa], fn list ->
+        [@use_gpa | list]
+      end)
+    else
+      opts
+    end
   end
 end

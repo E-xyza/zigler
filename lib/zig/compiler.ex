@@ -43,7 +43,7 @@ defmodule Zig.Compiler do
 
     output =
       with true <- assembled,
-           assemble_opts = Keyword.take(opts, [:link_lib]),
+           assemble_opts = Keyword.take(opts, [:link_lib, :build_opts]),
            assemble_opts = Keyword.merge(assemble_opts, from: this_dir),
            Assembler.assemble(context.module, assemble_opts),
            true <- precompiled,
@@ -105,9 +105,10 @@ defmodule Zig.Compiler do
 
     function_code = Enum.map(nif_functions, &Nif.render_elixir/1)
 
-    directory
-    |> Path.join("nif.zig")
-    |> File.write!(Nif.render_zig(nif_functions, context.module))
+    nif_src_path = Path.join(directory, "nif.zig")
+    File.write!(nif_src_path, Nif.render_zig(nif_functions, context.module))
+
+    Logger.debug("wrote nif.zig to #{nif_src_path}")
 
     function_code
   end
