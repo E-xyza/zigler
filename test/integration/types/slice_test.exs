@@ -3,6 +3,7 @@ defmodule ZiglerTest.Types.SliceTest do
 
   use Zig,
     otp_app: :zigler,
+    leak_check: true,
     nifs: [
       :slice_float_test,
       {:slice_u8_test, return: :charlists},

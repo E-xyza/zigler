@@ -3,6 +3,7 @@ defmodule ZiglerTest.Types.CPointerTest do
 
   use Zig,
     otp_app: :zigler,
+    leak_check: true,
     nifs: [
       :cpointer_test,
       :cpointer_list_test,

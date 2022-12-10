@@ -275,7 +275,7 @@ defmodule Zig do
   @spec __using__(keyword) :: Macro.t()
   defmacro __using__(opts) do
     module = __CALLER__.module
-    if (module in :erlang.loaded()), do: :code.purge(module)
+    if module in :erlang.loaded(), do: :code.purge(module)
 
     opts =
       opts
@@ -453,10 +453,12 @@ defmodule Zig do
   end
 
   defp normalize_args_opts(opts) do
-    Map.new(case opts do
-      [{_, _} | _] -> opts
-      list -> Enum.with_index(list, fn opt, idx -> {idx, opt} end)
-    end)
+    Map.new(
+      case opts do
+        [{_, _} | _] -> opts
+        list -> Enum.with_index(list, fn opt, idx -> {idx, opt} end)
+      end
+    )
   end
 
   @use_gpa {:bool, "use_gpa", true}

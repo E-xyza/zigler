@@ -14,7 +14,7 @@ export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [
     defer beam.allocator = old_allocator;
     <% end %>
 
-    const result = get_result: {
+    const outer_result = get_result: {
         <%= for {param, index} <- Nif.indexed_parameters(@params) do %>
         const arg<%= index %> = 
           beam.get(
@@ -38,7 +38,9 @@ export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [
           <% [:env] -> %> _ = arg;
           <% _ ->  %>
         <% end %>
-        break :get_result nif.<%= @name %>(<%= Nif.indexed_args(@params) %>);
+        const result = nif.<%= @name %>(<%= Nif.indexed_args(@params) %>);
+
+        <%= Type.get_result(@return, @opts) %>
     };
 
     <%= if leak_check? do %>
@@ -46,5 +48,5 @@ export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [
         return beam.raise_elixir_exception(env, "RuntimeError", .{.message = "memory leak detected in function <%= inspect @name %>"}).v;
     }
     <% end %>
-    <%= Type.return(@return, @opts) %>
+    return outer_result;
 }
