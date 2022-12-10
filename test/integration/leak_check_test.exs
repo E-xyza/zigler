@@ -3,7 +3,6 @@ defmodule ZiglerTest.LeakCheckTest do
 
   use Zig,
     otp_app: :zigler,
-    use_gpa: true,
     nifs: [
       {:leaky_string, args: [[cleanup: false]], leak_check: true},
       {:unchecked_leak, args: [[cleanup: false]], alias: :leaky_string},

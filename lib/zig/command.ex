@@ -54,6 +54,8 @@ defmodule Zig.Command do
     naked_name = Path.join(ebin_dir, "lib/#{module}.so")
 
     File.rename!(lib_name, naked_name)
+
+    Logger.debug("built library at #{naked_name}")
   end
 
   defp executable_path(opts) do

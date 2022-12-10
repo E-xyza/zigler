@@ -274,6 +274,9 @@ defmodule Zig do
   # you can override these in your `use Zigler` statement.
   @spec __using__(keyword) :: Macro.t()
   defmacro __using__(opts) do
+    module = __CALLER__.module
+    if (module in :erlang.loaded()), do: :code.purge(module)
+
     opts =
       opts
       |> normalize_nifs!
@@ -294,13 +297,14 @@ defmodule Zig do
     end
 
     # clear out the assembly directory
+    # TODO: make sure this is accessible.
     Mix.env()
-    |> Compiler.assembly_dir(__CALLER__.module)
+    |> Compiler.assembly_dir(module)
     |> File.rm_rf!()
 
-    Module.register_attribute(__CALLER__.module, :zig_code_parts, accumulate: true)
-    Module.register_attribute(__CALLER__.module, :zig_code, persist: true)
-    Module.put_attribute(__CALLER__.module, :zigler_opts, opts)
+    Module.register_attribute(module, :zig_code_parts, accumulate: true)
+    Module.register_attribute(module, :zig_code, persist: true)
+    Module.put_attribute(module, :zigler_opts, opts)
 
     code =
       quote do

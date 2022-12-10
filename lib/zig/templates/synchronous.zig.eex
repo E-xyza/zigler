@@ -16,7 +16,6 @@ export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [
 
     const result = get_result: {
         <%= for {param, index} <- Nif.indexed_parameters(@params) do %>
-        <% assigns |> dbg %>
         const arg<%= index %> = 
           beam.get(
             <%= Type.to_call(param) %>, 
