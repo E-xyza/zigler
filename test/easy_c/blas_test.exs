@@ -23,9 +23,11 @@ defmodule ZiglerTest.EasyC.BlasTest do
     end
 
     test "will reject invalid input" do
-      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `i32`)\n     got: `:foo`\n", fn ->
-        cblas_dasum(:foo, [1.0, 2.0, 3.0], 1)
-      end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `i32`)\n     got: `:foo`\n",
+                   fn ->
+                     cblas_dasum(:foo, [1.0, 2.0, 3.0], 1)
+                   end
     end
   end
 
@@ -45,7 +47,8 @@ defmodule ZiglerTest.EasyC.BlasTest do
     end
 
     test "can be aliased to output binaries" do
-      assert <<7.0 :: float-native, 11.0  :: float-native, 15.0  :: float-native >> == daxpy_bin(3, 3.0, [1.0, 2.0, 3.0], 1, [4.0, 5.0, 6.0], 1) 
+      assert <<7.0::float-native, 11.0::float-native, 15.0::float-native>> ==
+               daxpy_bin(3, 3.0, [1.0, 2.0, 3.0], 1, [4.0, 5.0, 6.0], 1)
     end
   end
 end

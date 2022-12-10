@@ -279,7 +279,7 @@ defmodule Zig do
       |> normalize_nifs!
       |> normalize_libs
       |> normalize_build_opts
-      |> EasyC.normalize_aliasing
+      |> EasyC.normalize_aliasing()
 
     # TODO: check to make sure the otp_app exists
     case Keyword.fetch(opts, :otp_app) do
@@ -338,7 +338,10 @@ defmodule Zig do
     opts = Module.get_attribute(caller.module, :zigler_opts)
 
     if opts[:easy_c] do
-      raise CompileError, description: "you can't use ~Z in easy_c nifs", line: caller.line, file: caller.file
+      raise CompileError,
+        description: "you can't use ~Z in easy_c nifs",
+        line: caller.line,
+        file: caller.file
     end
 
     line = meta[:line]
@@ -421,10 +424,16 @@ defmodule Zig do
       {:return, return_opts} ->
         normalized =
           return_opts
-          |> List.wrap
+          |> List.wrap()
           |> normalize_return_opts
+
         {:return, normalized}
-      other -> other
+
+      {:args, args_opts} ->
+        {:args, normalize_args_opts(args_opts)}
+
+      other ->
+        other
     end)
   end
 
@@ -439,10 +448,18 @@ defmodule Zig do
     end)
   end
 
+  defp normalize_args_opts(opts) do
+    Map.new(case opts do
+      [{_, _} | _] -> opts
+      list -> Enum.with_index(list, fn opt, idx -> {idx, opt} end)
+    end)
+  end
+
   @use_gpa {:bool, "use_gpa", true}
   defp normalize_build_opts(opts) do
     # creates build_opts out of a list of build opt shortcuts
     use_gpa = Keyword.get(opts, :use_gpa, false)
+
     if use_gpa do
       Keyword.update(opts, :build_opts, [@use_gpa], fn list ->
         [@use_gpa | list]

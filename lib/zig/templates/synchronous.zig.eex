@@ -5,35 +5,42 @@ export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [
     <%= if needs_make? do %>
     var error_info = beam.make_empty_list(env); 
     <% end %>
+    <%# TODO: set up a proper allocator variable. %>
     <%= if leak_check? do %>
     var alloc_instance = beam.make_general_purpose_allocator_instance();
     // set the threadlocal beam.allocator, but only for this run.
     const old_allocator = beam.allocator;
     beam.allocator = alloc_instance.allocator();
-    defer beam.allocator = old_allocator; 
+    defer beam.allocator = old_allocator;
     <% end %>
-    <%= for {param, index} <- Nif.indexed_parameters(@params) do %>
-    const arg<%= index %> = 
-      beam.get(
-        <%= Type.to_call(param) %>, 
-        env, 
-        .{.v = arg[<%= index %>]}, 
-        .{<%= if needs_make? do %>.error_info = &error_info,<% end %>
-          <%= if leak_check? do%>.allocator = beam.allocator <% end %>}) 
-      catch |err| {
-      <%= if needs_make? do %>
-      return e.enif_raise_exception(env, beam.make(env, .{err, <%= index %>, error_info}, .{}).v);
-      <% else %>
-      return e.enif_raise_exception(env, beam.make(env, .{err, <%= index %>, beam.make_empty_list(env)}, .{}).v);
-      <% end %>
+
+    const result = get_result: {
+        <%= for {param, index} <- Nif.indexed_parameters(@params) do %>
+        <% assigns |> dbg %>
+        const arg<%= index %> = 
+          beam.get(
+            <%= Type.to_call(param) %>, 
+            env, 
+            .{.v = arg[<%= index %>]}, 
+            .{<%= if needs_make? do %>.error_info = &error_info,<% end %>}) 
+          catch |err| {
+          <%= if needs_make? do %>
+          return e.enif_raise_exception(env, beam.make(env, .{err, <%= index %>, error_info}, .{}).v);
+          <% else %>
+          return e.enif_raise_exception(env, beam.make(env, .{err, <%= index %>, beam.make_empty_list(env)}, .{}).v);
+          <% end %>
+        };
+        <%= if @opts |> Keyword.get(:args, %{}) |> Map.get(index, []) |> Keyword.get(:cleanup, true) do %>
+        defer beam.cleanup(arg<%= index %>, .{});
+        <% end %>
+        <% end %>
+        <%= case @params do %>
+          <% [] -> %> _ = arg;
+          <% [:env] -> %> _ = arg;
+          <% _ ->  %>
+        <% end %>
+        break :get_result nif.<%= @name %>(<%= Nif.indexed_args(@params) %>);
     };
-    <% end %>
-    <%= case @params do %>
-      <% [] -> %> _ = arg;
-      <% [:env] -> %> _ = arg;
-      <% _ ->  %>
-    <% end %>
-    const result = nif.<%= @name %>(<%= Nif.indexed_args(@params) %>);
 
     <%= if leak_check? do %>
     if (alloc_instance.detectLeaks()) {

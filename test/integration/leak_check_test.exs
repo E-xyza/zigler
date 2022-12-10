@@ -1,13 +1,14 @@
-defmodule ZiglerTest.GpaTest do
+defmodule ZiglerTest.LeakCheckTest do
   use ExUnit.Case
+
   use Zig,
     otp_app: :zigler,
     use_gpa: true,
     nifs: [
-      {:leaky_string, args: %{0 => :no_cleanup}, leak_check: true},
-      {:unchecked_leak, args: %{0 => :no_cleanup}, alias: :leaky_string},
-      {:no_leaky_string, args: %{0 => :no_cleanup}, leak_check: true},
-      {:with_cleanup, alias: :leaky_string, leak_check: true},
+      {:leaky_string, args: [[cleanup: false]], leak_check: true},
+      {:unchecked_leak, args: [[cleanup: false]], alias: :leaky_string},
+      {:no_leaky_string, args: [[cleanup: false]], leak_check: true},
+      {:with_cleanup, alias: :leaky_string, leak_check: true}
     ]
 
   ~Z"""
@@ -30,7 +31,9 @@ defmodule ZiglerTest.GpaTest do
       ----------------------------------------------------
       """)
 
-      assert_raise RuntimeError, "memory leak detected in function :leaky_string", fn -> leaky_string("some string") end
+      assert_raise RuntimeError, "memory leak detected in function :leaky_string", fn ->
+        leaky_string("some string")
+      end
 
       IO.puts("====================================================")
     end

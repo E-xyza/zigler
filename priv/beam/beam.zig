@@ -154,9 +154,11 @@ pub const term = if (is_sema) struct {
 
 const get_ = @import("get.zig");
 const make_ = @import("make.zig");
+const cleanup_ = @import("cleanup.zig");
 
 pub const get = get_.get;
 pub const make = make_.make;
+pub const cleanup = cleanup_.cleanup;
 pub const make_into_atom = make_.make_into_atom;
 pub const make_cpointer = make_.make_cpointer;
 pub const make_binary = make_.make_binary;

@@ -26,10 +26,10 @@ defmodule Zig.Compiler do
     aliasing_code = create_aliases(zigler_opts)
 
     base_code =
-        context.module
-        |> Module.get_attribute(:zig_code_parts)
-        |> Enum.reverse()
-        |> Enum.join()
+      context.module
+      |> Module.get_attribute(:zig_code_parts)
+      |> Enum.reverse()
+      |> Enum.join()
 
     File.write!(module_nif_zig, [aliasing_code, easy_c_code, base_code])
 

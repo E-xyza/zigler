@@ -42,10 +42,12 @@ defmodule Zig.Nif do
   defp normalize_all(list, _) when is_list(list), do: list
 
   def normalize_return(nif_opts) do
-    Enum.map(nif_opts, fn {nif, opts}->
-      new_opts = Keyword.update(opts, :return, [type: :default], fn return_list ->
-        Keyword.update(return_list, :type, :default, &(&1))
-      end)
+    Enum.map(nif_opts, fn {nif, opts} ->
+      new_opts =
+        Keyword.update(opts, :return, [type: :default], fn return_list ->
+          Keyword.update(return_list, :type, :default, & &1)
+        end)
+
       {nif, new_opts}
     end)
   end
@@ -62,9 +64,10 @@ defmodule Zig.Nif do
     |> Enum.map(fn
       {name, opts} ->
         # "calculated" details.
-        function = sema_list
-        |> find_function(name)
-        |> adopt_options(opts)
+        function =
+          sema_list
+          |> find_function(name)
+          |> adopt_options(opts)
 
         concurrency = Synchronous
 
