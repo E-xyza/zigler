@@ -101,7 +101,10 @@ defmodule Zig.Compiler do
   defp precompile(sema, context, directory, opts) do
     verify_sound!(sema, opts)
 
-    nif_functions = Nif.from_sema(sema, opts[:nifs])
+    nif_functions = sema
+    |> Nif.from_sema(opts[:nifs])
+    |> assimilate_common_options(opts)
+    |> dbg
 
     function_code = Enum.map(nif_functions, &Nif.render_elixir/1)
 
@@ -184,4 +187,19 @@ defmodule Zig.Compiler do
   end
 
   defp raise_if_private_struct!(_, _, _, _), do: :ok
+
+  @common_options [:leak_check]
+  defp assimilate_common_options(nifs, opts) when is_list(nifs) do
+    for nif <- nifs do
+      %{nif | function: assimilate_common_options(nif.function, opts)}
+    end
+  end
+
+  defp assimilate_common_options(nif, module_opts) when is_struct(nif) do
+    new_opts = module_opts
+    |> Keyword.take(@common_options)
+    |> Keyword.merge(nif.opts)
+
+    %{nif | opts: new_opts}
+  end
 end

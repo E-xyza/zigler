@@ -26,7 +26,7 @@ defmodule Zig.Nif.Synchronous do
   require EEx
 
   synchronous = Path.join(__DIR__, "../templates/synchronous.zig.eex")
-  EEx.function_from_file(:def, :synchronous, synchronous, [:assigns])
+  EEx.function_from_file(:defp, :synchronous, synchronous, [:assigns])
 
   def render_zig(%Nif{function: function}), do: synchronous(function)
 
