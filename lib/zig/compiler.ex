@@ -104,7 +104,6 @@ defmodule Zig.Compiler do
     nif_functions = sema
     |> Nif.from_sema(opts[:nifs])
     |> assimilate_common_options(opts)
-    |> dbg
 
     function_code = Enum.map(nif_functions, &Nif.render_elixir/1)
 

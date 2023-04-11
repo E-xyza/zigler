@@ -44,6 +44,7 @@ fn cleanup_pointer(comptime T: type, ptr: anytype, opts: anytype) void {
     const Opts = @TypeOf(opts);
     switch (@typeInfo(T).Pointer.size) {
         .One => {
+            // TODO: more detailed cleanup.
             allocator(opts).destroy(ptr);
         },
         .Slice => {
@@ -51,7 +52,7 @@ fn cleanup_pointer(comptime T: type, ptr: anytype, opts: anytype) void {
         },
         .Many, .C => {
             if (@hasDecl(Opts, "cleanup")) {
-                opts.cleanup(ptr);
+                opts.cleanup.cleanup();
             }
         },
     }
