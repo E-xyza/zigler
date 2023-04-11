@@ -10,7 +10,7 @@ defmodule :zigler do
 
     ensure_eex!()
 
-    {:attribute, _, :file, file} = Enum.find(ast, &match?({:attribute, _, :file, _, &1}, &1)) do
+    {:attribute, _, :file, file} = Enum.find(ast, &match?({:attribute, _, :file, _, &1}, &1))
     module_dir = Path.dirname(file)
 
     module = case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
