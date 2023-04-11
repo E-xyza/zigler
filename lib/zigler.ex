@@ -6,6 +6,8 @@ defmodule :zigler do
     Application.ensure_all_started(:logger)
     Zig.Command.fetch("0.10.0")
 
+    ast |> dbg(limit: 25)
+
     ensure_eex!()
 
     {:attribute, _, :file, file} = Enum.find(ast, &match?({:attribute, _, :file, _, &1}, &1)) do
