@@ -6,12 +6,15 @@ defmodule :zigler do
     Application.ensure_all_started(:logger)
     Zig.Command.fetch("0.10.0")
 
-    ast |> dbg(limit: 25)
-
     ensure_eex!()
 
-    {:attribute, _, :file, file} = Enum.find(ast, &match?({:attribute, _, :file, _, &1}, &1))
+    {:attribute, _, :file, {file, _}} = Enum.find(ast, &match?({:attribute, _, :file, _}, &1))
     module_dir = Path.dirname(file)
+
+    exports = Enum.reduce(ast, [], fn
+      {:attribute, _, :export, exports}, acc -> exports ++ acc
+      _, acc -> acc
+    end)
 
     module = case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
       nil -> raise "No module definition found"
@@ -46,6 +49,13 @@ defmodule :zigler do
     Compiler.compile(code, module, code_dir, opts)
 
     ast
+    |> Enum.reject(&match?({:attribute, _, :exports, _}, &1))
+    |> insert(:exports, exports)
+  end
+
+  defp insert(ast, key, value) do
+    [eof = {:eof, {line, _}} | rest] = Enum.reverse(ast)
+    Enum.reverse([eof, {:attribute, {line, 1}, key, value} | rest])
   end
 
   defp ensure_eex! do
