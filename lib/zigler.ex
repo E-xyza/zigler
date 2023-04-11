@@ -7,7 +7,7 @@ defmodule :zigler do
     |> :code.lib_dir()
     |> Path.join("../eex/ebin")
     |> Path.absname
-    |> Path.to_string
+    |> to_string
     |> String.to_charlist
     |> :code.add_path
 
