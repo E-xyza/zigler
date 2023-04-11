@@ -66,7 +66,7 @@ defmodule :zigler do
     ast
     |> Enum.reject(&match?({:attribute, _, :exports, _}, &1))
     |> add(:exports, exports)
-    |> Enum.sort_by(__MODULE__)
+    |> Enum.sort_by(&elem(&1, 0), __MODULE__)
   end
 
   defp add(ast, key, value), do: [{:attribute, {1, 1}, key, value} | ast]
@@ -81,8 +81,8 @@ defmodule :zigler do
     end
   end
 
-  def compare(type1, type2),
-    do: compare(Map.fetch!(@order, elem(type1, 0)), Map.fetch!(@order, elem(type2, 0)))
+  def compare(type1, type2) when is_atom(type1) and is_atom(type2),
+    do: compare(Map.fetch!(@order, type1), Map.fetch!(@order, type2))
 
   defp ensure_eex do
     # rebar_mix doesn't include the eex dependency out of the gate.  This function
