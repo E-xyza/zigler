@@ -53,6 +53,7 @@ defmodule :zigler do
     |> Keyword.put(:render, :render_erlang)
 
     Compiler.compile(code, module, code_dir, opts)
+    |> dbg(limit: 25)
 
     ast
     |> Enum.reject(&match?({:attribute, _, :exports, _}, &1))
