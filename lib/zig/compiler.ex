@@ -39,7 +39,6 @@ defmodule Zig.Compiler do
   def compile(base_code, module, code_dir, opts) do
     module_nif_zig = Path.join(code_dir, ".#{module}.zig")
     opts = Keyword.merge(opts, file: module_nif_zig)
-    |> dbg(limit: 25)
 
     assembly_directory = Assembler.directory(module)
 
@@ -47,7 +46,6 @@ defmodule Zig.Compiler do
     easy_c_code = List.wrap(if opts[:easy_c], do: EasyC.build_from(opts))
 
     aliasing_code = create_aliases(opts)
-    |> dbg(limit: 25)
 
     File.write!(module_nif_zig, [aliasing_code, easy_c_code, base_code])
 

@@ -26,6 +26,7 @@ defmodule Zig.Command do
 
       # TODO: better error parsing here
       {other, _} ->
+        other |> dbg(limit: 25)
         Logger.error(other)
         raise "failed"
     end
