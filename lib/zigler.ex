@@ -39,7 +39,7 @@ defmodule :zigler do
     {code, pos} =
       case Enum.find(ast, &match?({:attribute, _, :zig, _}, &1)) do
         nil -> raise "No zig code found"
-        {:attribute, pos, :zig, code} -> {IO.iodata_to_binary(code), pos}
+        {:attribute, pos, :zig_code, code} -> {IO.iodata_to_binary(code), pos}
       end
 
     code_dir =
@@ -82,7 +82,7 @@ defmodule :zigler do
   end
 
   def compare(type1, type2),
-    do: compare(Map.fetch!(order, elem(type1, 0)), Map.fetch!(@order, elem(type2, 0)))
+    do: compare(Map.fetch!(@order, elem(type1, 0)), Map.fetch!(@order, elem(type2, 0)))
 
   defp ensure_eex do
     # rebar_mix doesn't include the eex dependency out of the gate.  This function
