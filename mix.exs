@@ -80,7 +80,7 @@ defmodule Zigler.MixProject do
       # zigler's parsing is done using nimble_parsec
       {:nimble_parsec, "~> 1.2.3", runtime: false},
       # to parse the zig JSON
-      {:jason, "~> 1.1"},
+      {:jason, "~> 1.4"},
       {:zig_parser, "~> 0.1"},
       # documentation
       {:ex_doc, "~> 0.23", runtime: false}

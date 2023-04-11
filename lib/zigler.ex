@@ -6,8 +6,19 @@ defmodule :zigler do
     Application.ensure_all_started(:logger)
     Zig.Command.fetch("0.10.0")
 
-    ensure_eex!()
-    ensure_libs!()
+    opts =
+      case Enum.find(ast, &match?({:attribute, _, :zig_opts, _}, &1)) do
+        nil -> raise "No zig opts found"
+        {:attribute, _, :zig_opts, opts} -> opts
+      end
+
+    otp_app = case Keyword.fetch(opts, :otp_app) do
+      {:ok, otp_app} -> otp_app
+      _ -> raise "No otp_app found in zig opts"
+    end
+
+    ensure_eex()
+    ensure_libs(otp_app)
 
     {:attribute, _, :file, {file, _}} = Enum.find(ast, &match?({:attribute, _, :file, _}, &1))
     module_dir = Path.dirname(file)
@@ -26,12 +37,6 @@ defmodule :zigler do
       case Enum.find(ast, &match?({:attribute, _, :zig, _}, &1)) do
         nil -> raise "No zig code found"
         {:attribute, pos, :zig, code} -> {code, pos}
-      end
-
-    opts =
-      case Enum.find(ast, &match?({:attribute, _, :zig_opts, _}, &1)) do
-        nil -> raise "No zig opts found"
-        {:attribute, _, :zig_opts, opts} -> opts
       end
 
     code_dir = case Keyword.fetch(opts, :code_dir) do
@@ -59,7 +64,7 @@ defmodule :zigler do
     Enum.reverse([eof, {:attribute, {line, 1}, key, value} | rest])
   end
 
-  defp ensure_eex! do
+  defp ensure_eex do
     # rebar_mix doesn't include the eex dependency out of the gate.  This function
     # retrieves the location of the eex code and adds it to the code path, ensuring
     # that the BEAM vm will have access to the eex code (at least, at compile time)
@@ -73,11 +78,11 @@ defmodule :zigler do
     |> :code.add_path
   end
 
-  defp ensure_libs! do
+  defp ensure_libs(app) do
     Enum.each(~w(jason)a, fn lib ->
-      lib
+      app
       |> :code.lib_dir()
-      |> Path.join("ebin")
+      |> Path.join("../#{lib}/ebin")
       |> Path.absname
       |> to_string
       |> String.to_charlist
