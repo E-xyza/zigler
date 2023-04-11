@@ -146,10 +146,8 @@ defmodule Zig.Compiler do
     end
   end
 
-  defp render_elixir(code, module, false) do
-    quote do
-      @zig_code unquote(code)
-    end
+  def render_erlang(code, function_code, module, opts) do
+    {:erlang_compiled}
   end
 
   require EEx

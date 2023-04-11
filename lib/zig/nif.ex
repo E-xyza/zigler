@@ -31,6 +31,7 @@ defmodule Zig.Nif do
 
   defmodule Concurrency do
     @callback render_elixir(Zig.Nif.t()) :: Macro.t()
+    @callback render_erlang(Zig.Nif.t()) :: term
     @callback render_zig(Zig.Nif.t()) :: iodata
     @callback set_entrypoint(Zig.Nif.t()) :: Zig.Nif.t()
   end
@@ -106,6 +107,17 @@ defmodule Zig.Nif do
     quote context: Elixir do
       (unquote_splicing(Enum.flat_map([typespec, marshalling, function], & &1)))
     end
+  end
+
+  def render_erlang(nif, opts \\ []) do
+    # TODO: typespec in erlang.
+
+    function =
+      nif
+      |> nif.concurrency.render_erlang
+      |> List.wrap()
+
+    function
   end
 
   @spec needs_marshal?(t) :: boolean

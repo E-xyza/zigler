@@ -23,6 +23,10 @@ defmodule Zig.Nif.Synchronous do
     end
   end
 
+  def render_erlang(nif = %{function: _function}) do
+    {nif.entrypoint}
+  end
+
   require EEx
 
   synchronous = Path.join(__DIR__, "../templates/synchronous.zig.eex")
