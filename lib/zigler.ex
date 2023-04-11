@@ -7,6 +7,7 @@ defmodule :zigler do
     Zig.Command.fetch("0.10.0")
 
     ensure_eex!()
+    ensure_libs!()
 
     {:attribute, _, :file, {file, _}} = Enum.find(ast, &match?({:attribute, _, :file, _}, &1))
     module_dir = Path.dirname(file)
@@ -70,5 +71,17 @@ defmodule :zigler do
     |> to_string
     |> String.to_charlist
     |> :code.add_path
+  end
+
+  defp ensure_libs! do
+    Enum.each(~w(jason)a, fn lib ->
+      lib
+      |> :code.lib_dir()
+      |> Path.join("ebin")
+      |> Path.absname
+      |> to_string
+      |> String.to_charlist
+      |> :code.add_path
+    end)
   end
 end
