@@ -26,8 +26,12 @@ defmodule :zigler do
       end
 
     code_dir = case Keyword.fetch(opts, :src_dir) do
-      {:ok, code_dir} ->
+      {:ok, code_dir = "/" <> _} ->
         code_dir
+      {:ok, code_dir} ->
+        dir = Path.relative_to_cwd(code_dir)
+        File.mkdir_p!(dir)
+        dir
       _ -> raise "no src_dir found in zig_opts"
     end
 
