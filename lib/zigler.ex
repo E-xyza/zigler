@@ -65,13 +65,13 @@ defmodule :zigler do
     |> dbg(limit: 25)
 
     ast
-    |> Enum.reject(&match?({:attribute, _, :exports, _}, &1))
-    |> add(:exports, exports)
+    |> Enum.reject(&match?({:attribute, _, :export, _}, &1))
+    |> append(:export, exports)
     |> Enum.sort_by(&elem(&1, 0), __MODULE__)
     |> dbg(limit: 25)
   end
 
-  defp add(ast, key, value), do: [{:attribute, {1, 1}, key, value} | ast]
+  defp add(ast, key, value), do: ast ++ [{:attribute, {1, 1}, key, value}]
 
   @order %{file: 0, attribute: 1, function: 2, eof: 10}
 
