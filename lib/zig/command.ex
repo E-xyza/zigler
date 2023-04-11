@@ -25,9 +25,9 @@ defmodule Zig.Command do
         result
 
       # TODO: better error parsing here
-      {other, _} ->
-        other |> dbg(limit: 25)
-        Logger.error(other)
+      {error, code} ->
+        message = "zig command failed: #{command} failed with error #{code}: #{error}"
+        Logger.error(error)
         raise "failed"
     end
   end
