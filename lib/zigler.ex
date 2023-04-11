@@ -3,8 +3,13 @@ defmodule :zigler do
   alias Zig.Compiler
 
   def parse_transform(ast, _opts) do
-    Application.ensure_all_started(:eex)
-    |> dbg(limit: 25)
+    elixir = :elixir
+    |> :code.lib_dir()
+    |> Path.join("../eex/ebin")
+    |> Path.absname
+    |> Path.to_string
+    |> String.to_charlist
+    |> :code.add_path
 
     module = case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
       nil -> raise "No module definition found"
