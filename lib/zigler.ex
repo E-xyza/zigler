@@ -18,6 +18,7 @@ defmodule :zigler do
     end
 
     ensure_eex()
+    IO.puts("hi mom")
     ensure_libs(otp_app)
 
     {:attribute, _, :file, {file, _}} = Enum.find(ast, &match?({:attribute, _, :file, _}, &1))
@@ -80,6 +81,7 @@ defmodule :zigler do
   end
 
   defp ensure_libs(app) do
+    IO.puts("hi dad")
     Enum.each(~w(jason)a, fn lib ->
       app
       |> :code.lib_dir()
@@ -88,6 +90,7 @@ defmodule :zigler do
       |> to_string
       |> String.to_charlist
       |> :code.add_path
+      |> dbg(limit: 25)
     end)
   end
 end
