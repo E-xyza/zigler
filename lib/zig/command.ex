@@ -37,13 +37,19 @@ defmodule Zig.Command do
   def compile(module, opts) do
     assembly_dir = Assembler.directory(module)
 
-    ebin_dir =
-      Keyword.get_lazy(opts, :ebin_dir, fn ->
-        opts
-        |> Keyword.fetch!(:otp_app)
-        |> :code.lib_dir()
-        |> Path.join("ebin")
-      end)
+    so_dir =
+      case Keyword.get(opts, :ebin_dir) do
+        :priv ->
+          opts
+          |> Keyword.fetch!(:otp_app)
+          |> :code.priv_dir()
+
+        _ ->
+          opts
+          |> Keyword.fetch!(:otp_app)
+          |> :code.lib_dir()
+          |> Path.join("ebin")
+      end
 
     compile_opts =
       Keyword.merge(
@@ -52,10 +58,10 @@ defmodule Zig.Command do
         cd: assembly_dir
       )
 
-    run_zig("build --prefix #{ebin_dir}", compile_opts)
+    run_zig("build --prefix #{so_dir}", compile_opts)
 
-    lib_name = Path.join(ebin_dir, "lib/lib#{module}.so")
-    naked_name = Path.join(ebin_dir, "lib/#{module}.so")
+    lib_name = Path.join(so_dir, "lib/lib#{module}.so")
+    naked_name = Path.join(so_dir, "lib/#{module}.so")
 
     File.rename!(lib_name, naked_name)
 

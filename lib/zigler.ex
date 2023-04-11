@@ -19,6 +19,7 @@ defmodule :zigler do
 
     ensure_eex()
     ensure_libs()
+    ensure_priv_dir(otp_app)
 
     {:attribute, _, :file, {file, _}} = Enum.find(ast, &match?({:attribute, _, :file, _}, &1))
     module_dir = Path.dirname(file)
@@ -57,7 +58,7 @@ defmodule :zigler do
       opts
       |> Zig.normalize!()
       |> Keyword.put(:render, :render_erlang)
-      #|> add_ebin_dir(otp_app)
+      |> Keyword.put(:ebin_dir, :priv)
 
     Compiler.compile(code, module, code_dir, opts)
     |> dbg(limit: 25)
@@ -76,10 +77,10 @@ defmodule :zigler do
     # rebar_mix doesn't include the eex dependency out of the gate.  This function
     # retrieves the location of the eex code and adds it to the code path, ensuring
     # that the BEAM vm will have access to the eex code (at least, at compile time)
-      :eex
-      |> path_relative_to(:elixir)
-      |> String.to_charlist()
-      |> :code.add_path()
+    :eex
+    |> path_relative_to(:elixir)
+    |> String.to_charlist()
+    |> :code.add_path()
   end
 
   defp ensure_libs do
@@ -93,14 +94,16 @@ defmodule :zigler do
     end)
   end
 
-  defp add_ebin_dir(opts, otp_app) do
-    ebin_dir = path_relative_to(otp_app, :zigler)
-    Keyword.put(opts, :ebin_dir, ebin_dir)
+  defp ensure_priv_dir(otp_app) do
+    # makes sure the priv dir exists
+    otp_app
+    |> :code.priv_dir()
+    |> File.mkdir_p!()
   end
 
   defp path_relative_to(target, start) do
     start
-    |> :code.lib_dir
+    |> :code.lib_dir()
     |> Path.join("../#{target}/ebin")
     |> Path.absname()
     |> to_string
