@@ -8,6 +8,9 @@ defmodule :zigler do
 
     ensure_eex!()
 
+    {:attribute, _, :file, file} = Enum.find(ast, &match?({:attribute, _, :file, _, &1}, &1)) do
+    module_dir = Path.dirname(file)
+
     module = case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
       nil -> raise "No module definition found"
       {:attribute, _, :module, module} -> module
@@ -25,14 +28,13 @@ defmodule :zigler do
         {:attribute, _, :zig_opts, opts} -> opts
       end
 
-    code_dir = case Keyword.fetch(opts, :src_dir) do
+    code_dir = case Keyword.fetch(opts, :code_dir) do
       {:ok, code_dir = "/" <> _} ->
         code_dir
       {:ok, code_dir} ->
-        dir = Path.relative_to_cwd(code_dir)
-        File.mkdir_p!(dir)
-        dir
-      _ -> raise "no src_dir found in zig_opts"
+        Path.join(module_dir, code_dir)
+      _ ->
+        module_dir
     end
 
     opts = opts
