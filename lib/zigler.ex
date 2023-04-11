@@ -36,7 +36,7 @@ defmodule :zigler do
     {code, pos} =
       case Enum.find(ast, &match?({:attribute, _, :zig, _}, &1)) do
         nil -> raise "No zig code found"
-        {:attribute, pos, :zig, code} -> {code, pos}
+        {:attribute, pos, :zig, code} -> {IO.iodata_to_binary(code), pos}
       end
 
     code_dir = case Keyword.fetch(opts, :code_dir) do
