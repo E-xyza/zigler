@@ -1,5 +1,4 @@
 defmodule :zigler do
-
   alias Zig.Compiler
 
   def parse_transform(ast, _opts) do
@@ -12,10 +11,11 @@ defmodule :zigler do
         {:attribute, _, :zig_opts, opts} -> opts
       end
 
-    otp_app = case Keyword.fetch(opts, :otp_app) do
-      {:ok, otp_app} -> otp_app
-      _ -> raise "No otp_app found in zig opts"
-    end
+    otp_app =
+      case Keyword.fetch(opts, :otp_app) do
+        {:ok, otp_app} -> otp_app
+        _ -> raise "No otp_app found in zig opts"
+      end
 
     ensure_eex()
     ensure_libs()
@@ -23,15 +23,17 @@ defmodule :zigler do
     {:attribute, _, :file, {file, _}} = Enum.find(ast, &match?({:attribute, _, :file, _}, &1))
     module_dir = Path.dirname(file)
 
-    exports = Enum.reduce(ast, [], fn
-      {:attribute, _, :export, exports}, acc -> exports ++ acc
-      _, acc -> acc
-    end)
+    exports =
+      Enum.reduce(ast, [], fn
+        {:attribute, _, :export, exports}, acc -> exports ++ acc
+        _, acc -> acc
+      end)
 
-    module = case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
-      nil -> raise "No module definition found"
-      {:attribute, _, :module, module} -> module
-    end
+    module =
+      case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
+        nil -> raise "No module definition found"
+        {:attribute, _, :module, module} -> module
+      end
 
     {code, pos} =
       case Enum.find(ast, &match?({:attribute, _, :zig, _}, &1)) do
@@ -39,18 +41,23 @@ defmodule :zigler do
         {:attribute, pos, :zig, code} -> {IO.iodata_to_binary(code), pos}
       end
 
-    code_dir = case Keyword.fetch(opts, :code_dir) do
-      {:ok, code_dir = "/" <> _} ->
-        code_dir
-      {:ok, code_dir} ->
-        Path.join(module_dir, code_dir)
-      _ ->
-        module_dir
-    end
+    code_dir =
+      case Keyword.fetch(opts, :code_dir) do
+        {:ok, code_dir = "/" <> _} ->
+          code_dir
 
-    opts = opts
-    |> Zig.normalize!
-    |> Keyword.put(:render, :render_erlang)
+        {:ok, code_dir} ->
+          Path.join(module_dir, code_dir)
+
+        _ ->
+          module_dir
+      end
+
+    opts =
+      opts
+      |> Zig.normalize!()
+      |> Keyword.put(:render, :render_erlang)
+      |> add_ebin_dir(otp_app)
 
     Compiler.compile(code, module, code_dir, opts)
     |> dbg(limit: 25)
@@ -69,27 +76,33 @@ defmodule :zigler do
     # rebar_mix doesn't include the eex dependency out of the gate.  This function
     # retrieves the location of the eex code and adds it to the code path, ensuring
     # that the BEAM vm will have access to the eex code (at least, at compile time)
-
-    elixir = :elixir
-    |> :code.lib_dir()
-    |> Path.join("../eex/ebin")
-    |> Path.absname
-    |> to_string
-    |> String.to_charlist
-    |> :code.add_path
+      :eex
+      |> path_relative_to(:elixir)
+      |> String.to_charlist()
+      |> :code.add_path()
   end
 
   defp ensure_libs do
     # we can't put this dependency into rebar.config because it has resolution issues
     # since jason decimal requirement is 1.0.0 or 2.0.0
     Enum.each(~w(jason zig_parser)a, fn lib ->
-      :zigler
-      |> :code.lib_dir()
-      |> Path.join("../#{lib}/ebin")
-      |> Path.absname
-      |> to_string
-      |> String.to_charlist
-      |> :code.add_path
+      lib
+      |> path_relative_to(:zigler)
+      |> String.to_charlist()
+      |> :code.add_path()
     end)
+  end
+
+  defp add_ebin_dir(opts, otp_app) do
+    ebin_dir = path_relative_to(otp_app, :zigler)
+    Keyword.put(opts, :ebin_dir, ebin_dir)
+  end
+
+  defp path_relative_to(target, start) do
+    start
+    |> :code.lib_dir
+    |> Path.join("../#{target}/ebin")
+    |> Path.absname()
+    |> to_string
   end
 end

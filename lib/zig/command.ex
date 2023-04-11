@@ -38,9 +38,12 @@ defmodule Zig.Command do
     assembly_dir = Assembler.directory(module)
 
     ebin_dir =
-      opts[:otp_app]
-      |> :code.lib_dir()
-      |> Path.join("ebin")
+      Keyword.get_lazy(opts, :ebin_dir, fn ->
+        opts
+        |> Keyword.fetch!(:otp_app)
+        |> :code.lib_dir()
+        |> Path.join("ebin")
+      end)
 
     compile_opts =
       Keyword.merge(
