@@ -59,8 +59,8 @@ defmodule Zig.Compiler do
          assemble_opts = Keyword.merge(assemble_opts, from: code_dir),
          Assembler.assemble(module, assemble_opts),
          true <- precompiled,
-         sema = Sema.analyze_file!(module, opts),
-         new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(base_code)),
+         sema = Sema.analyze_file!(module, opts) |> dbg(limit: 25),
+         new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(base_code)) |> dbg(limit: 25),
          function_code = precompile(sema, module, assembly_directory, new_opts),
          true <- compiled do
       # parser should only operate on parsed, valid zig code.

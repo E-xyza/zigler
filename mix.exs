@@ -77,8 +77,6 @@ defmodule Zigler.MixProject do
       {:credo, "~> 1.4.0", only: [:dev, :test], runtime: false},
       # dialyzer
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
-      # zigler's parsing is done using nimble_parsec
-      {:nimble_parsec, "~> 1.2.3", runtime: false},
       # to parse the zig JSON
       {:jason, "~> 1.4"},
       {:zig_parser, "~> 0.1"},
