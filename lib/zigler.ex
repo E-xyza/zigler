@@ -71,7 +71,7 @@ defmodule :zigler do
     |> dbg(limit: 25)
   end
 
-  defp add(ast, key, value), do: ast ++ [{:attribute, {1, 1}, key, value}]
+  defp append(ast, key, value), do: ast ++ [{:attribute, {1, 1}, key, value}]
 
   @order %{file: 0, attribute: 1, function: 2, eof: 10}
 
