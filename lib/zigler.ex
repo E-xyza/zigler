@@ -37,7 +37,7 @@ defmodule :zigler do
       end
 
     {code, pos} =
-      case Enum.find(ast, &match?({:attribute, _, :zig, _}, &1)) do
+      case Enum.find(ast, &match?({:attribute, _, :zig_code, _}, &1)) do
         nil -> raise "No zig code found"
         {:attribute, pos, :zig_code, code} -> {IO.iodata_to_binary(code), pos}
       end
