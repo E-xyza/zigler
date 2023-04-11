@@ -96,8 +96,9 @@ defmodule :zigler do
 
   defp ensure_priv_dir(otp_app) do
     # makes sure the priv dir exists
-    otp_app
-    |> :code.priv_dir()
+    dir = otp_app
+    |> :code.lib_dir
+    |> Path.join("priv")
     |> File.mkdir_p!()
   end
 

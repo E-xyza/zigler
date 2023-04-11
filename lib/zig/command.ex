@@ -42,7 +42,8 @@ defmodule Zig.Command do
         :priv ->
           opts
           |> Keyword.fetch!(:otp_app)
-          |> :code.priv_dir()
+          |> :code.lib_dir()
+          |> Path.join("priv")
 
         _ ->
           opts
