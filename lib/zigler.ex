@@ -57,7 +57,7 @@ defmodule :zigler do
       opts
       |> Zig.normalize!()
       |> Keyword.put(:render, :render_erlang)
-      |> add_ebin_dir(otp_app)
+      #|> add_ebin_dir(otp_app)
 
     Compiler.compile(code, module, code_dir, opts)
     |> dbg(limit: 25)
