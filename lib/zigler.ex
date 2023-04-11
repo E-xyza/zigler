@@ -18,8 +18,7 @@ defmodule :zigler do
     end
 
     ensure_eex()
-    IO.puts("hi mom")
-    ensure_libs(otp_app)
+    ensure_libs()
 
     {:attribute, _, :file, {file, _}} = Enum.find(ast, &match?({:attribute, _, :file, _}, &1))
     module_dir = Path.dirname(file)
@@ -80,17 +79,17 @@ defmodule :zigler do
     |> :code.add_path
   end
 
-  defp ensure_libs(app) do
-    IO.puts("hi dad")
+  defp ensure_libs do
+    # we can't put this dependency into rebar.config because it has resolution issues
+    # since jason decimal requirement is 1.0.0 or 2.0.0
     Enum.each(~w(jason)a, fn lib ->
-      app
+      :zigler
       |> :code.lib_dir()
       |> Path.join("../#{lib}/ebin")
       |> Path.absname
       |> to_string
       |> String.to_charlist
       |> :code.add_path
-      |> dbg(limit: 25)
     end)
   end
 end
