@@ -28,7 +28,11 @@ defmodule :zigler do
       _ -> raise "no src_dir found in zig_opts"
     end
 
-    Compiler.compile(module, code_dir, Keyword.put(opts, :render, :render_erlang))
+    opts = opts
+    |> Zig.normalize!
+    |> Keyword.put(:render, :render_erlang)
+
+    Compiler.compile(code, module, code_dir, opts)
 
     ast
   end

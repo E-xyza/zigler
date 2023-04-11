@@ -19,7 +19,12 @@ defmodule Zig.Compiler do
     code_dir = Path.dirname(context.file)
     opts = Module.get_attribute(module, :zigler_opts)
 
-    output = compile(module, code_dir, Keyword.put(opts, :render, :render_elixir))
+    output =
+      module
+      |> Module.get_attribute(:zig_code_parts)
+      |> Enum.reverse()
+      |> Enum.join()
+      |> compile(module, code_dir, Keyword.put(opts, :render, :render_elixir))
 
     if opts[:dump] do
       output |> Macro.to_string() |> Code.format_string!() |> IO.puts()
@@ -31,9 +36,10 @@ defmodule Zig.Compiler do
   # note that this directory is made public so that it can be both accessed
   # from the :zigler entrypoint for erlang parse transforms, as well as the
   # __before_compile__ entrypoint for Elixir
-  def compile(module, code_dir, opts) do
+  def compile(base_code, module, code_dir, opts) do
     module_nif_zig = Path.join(code_dir, ".#{module}.zig")
     opts = Keyword.merge(opts, file: module_nif_zig)
+    |> dbg(limit: 25)
 
     assembly_directory = Assembler.directory(module)
 
@@ -41,12 +47,7 @@ defmodule Zig.Compiler do
     easy_c_code = List.wrap(if opts[:easy_c], do: EasyC.build_from(opts))
 
     aliasing_code = create_aliases(opts)
-
-    base_code =
-      module
-      |> Module.get_attribute(:zig_code_parts)
-      |> Enum.reverse()
-      |> Enum.join()
+    |> dbg(limit: 25)
 
     File.write!(module_nif_zig, [aliasing_code, easy_c_code, base_code])
 
@@ -60,7 +61,7 @@ defmodule Zig.Compiler do
          assemble_opts = Keyword.merge(assemble_opts, from: code_dir),
          Assembler.assemble(module, assemble_opts),
          true <- precompiled,
-         sema = Sema.analyze_file!(module, opts) |> dbg(limit: 25),
+         sema = Sema.analyze_file!(module, opts),
          new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(base_code)),
          function_code = precompile(sema, module, assembly_directory, new_opts),
          true <- compiled do

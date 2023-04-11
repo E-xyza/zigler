@@ -277,12 +277,7 @@ defmodule Zig do
     module = __CALLER__.module
     if module in :erlang.loaded(), do: :code.purge(module)
 
-    opts =
-      opts
-      |> normalize_nifs!
-      |> normalize_libs
-      |> normalize_build_opts
-      |> EasyC.normalize_aliasing()
+    opts = normalize!(opts)
 
     # TODO: check to make sure the otp_app exists
     case Keyword.fetch(opts, :otp_app) do
@@ -323,6 +318,15 @@ defmodule Zig do
     code
   end
 
+  @doc false
+  def normalize!(opts) do
+    opts
+    |> normalize_nifs!
+    |> normalize_libs
+    |> normalize_build_opts
+    |> EasyC.normalize_aliasing()
+  end
+
   @doc """
   declares a string block to be included in the module's .zig source file.
   """
@@ -359,6 +363,9 @@ defmodule Zig do
     end
   end
 
+  @doc """
+  retrieves the zig code from any given module that was compiled with zigler
+  """
   def code(module) do
     [code] = Keyword.fetch!(module.__info__(:attributes), :zig_code)
     code
