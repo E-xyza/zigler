@@ -71,12 +71,7 @@ defmodule :zigler do
 
   defp add(ast, key, value), do: [{:attribute, {1, 1}, key, value} | ast]
 
-  @order %{
-    :file -> 0
-    :attribute -> 1
-    :function -> 2
-    :eof -> 10
-  }
+  @order %{file: 0, attribute: 1, function: 2, eof: 10}
 
   def compare(order1, order2) when is_integer(order1) and is_integer(order2) do
     case order1 do
@@ -85,7 +80,9 @@ defmodule :zigler do
       _ -> :eq
     end
   end
-  def compare(type1, type2), do: compare(Map.fetch!(order, elem(type1, 0)), Map.fetch!(@order, elem(type2, 0)))
+
+  def compare(type1, type2),
+    do: compare(Map.fetch!(order, elem(type1, 0)), Map.fetch!(@order, elem(type2, 0)))
 
   defp ensure_eex do
     # rebar_mix doesn't include the eex dependency out of the gate.  This function
@@ -110,10 +107,11 @@ defmodule :zigler do
 
   defp ensure_priv_dir(otp_app) do
     # makes sure the priv dir exists
-    dir = otp_app
-    |> :code.lib_dir
-    |> Path.join("priv")
-    |> File.mkdir_p!()
+    dir =
+      otp_app
+      |> :code.lib_dir()
+      |> Path.join("priv")
+      |> File.mkdir_p!()
   end
 
   defp path_relative_to(target, start) do
