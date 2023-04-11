@@ -3,13 +3,7 @@ defmodule :zigler do
   alias Zig.Compiler
 
   def parse_transform(ast, _opts) do
-    elixir = :elixir
-    |> :code.lib_dir()
-    |> Path.join("../eex/ebin")
-    |> Path.absname
-    |> to_string
-    |> String.to_charlist
-    |> :code.add_path
+    ensure_eex!()
 
     module = case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
       nil -> raise "No module definition found"
@@ -37,5 +31,19 @@ defmodule :zigler do
     Compiler.compile(module, code_dir, Keyword.put(opts, :render, :render_erlang))
 
     ast
+  end
+
+  defp ensure_eex! do
+    # rebar_mix doesn't include the eex dependency out of the gate.  This function
+    # retrieves the location of the eex code and adds it to the code path, ensuring
+    # that the BEAM vm will have access to the eex code (at least, at compile time)
+
+    elixir = :elixir
+    |> :code.lib_dir()
+    |> Path.join("../eex/ebin")
+    |> Path.absname
+    |> to_string
+    |> String.to_charlist
+    |> :code.add_path
   end
 end
