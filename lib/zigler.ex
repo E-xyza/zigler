@@ -3,7 +3,9 @@ defmodule :zigler do
   alias Zig.Compiler
 
   def parse_transform(ast, _opts) do
+    Application.ensure_all_started(:logger)
     Zig.Command.fetch("0.10.0")
+
     ensure_eex!()
 
     module = case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
