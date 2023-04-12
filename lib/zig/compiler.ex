@@ -147,7 +147,7 @@ defmodule Zig.Compiler do
 
   def render_erlang(code, function_code, module, opts) do
     otp_app = Keyword.fetch!(opts, :otp_app)
-    module_name = Atom.to_charlist(atom)
+    module_name = Atom.to_charlist(module)
 
     init_function =
       {:function, {1, 1}, :__init__, 0,

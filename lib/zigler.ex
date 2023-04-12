@@ -2,7 +2,6 @@ defmodule :zigler do
   alias Zig.Compiler
 
   def parse_transform(ast, _opts) do
-    ast |> dbg(limit: 100)
     Application.ensure_all_started(:logger)
     Zig.Command.fetch("0.10.0")
 
