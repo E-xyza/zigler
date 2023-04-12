@@ -146,7 +146,7 @@ defmodule Zig.Compiler do
   end
 
   def render_erlang(code, function_code, module, opts) do
-    function_code
+    function_code ++ []
   end
 
   require EEx

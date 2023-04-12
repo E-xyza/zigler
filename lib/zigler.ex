@@ -2,7 +2,7 @@ defmodule :zigler do
   alias Zig.Compiler
 
   def parse_transform(ast, _opts) do
-    ast |> dbg(limit: 25)
+    ast |> dbg(limit: 100)
     Application.ensure_all_started(:logger)
     Zig.Command.fetch("0.10.0")
 
@@ -66,12 +66,12 @@ defmodule :zigler do
 
     ast
     |> Enum.reject(&match?({:attribute, _, :export, _}, &1))
-    |> append(:export, exports)
+    |> append_attrib(:export, exports)
+    |> append_attrib(:on_load, {:__init__, 0})
     |> Enum.sort_by(&elem(&1, 0), __MODULE__)
-    |> dbg(limit: 25)
   end
 
-  defp append(ast, key, value), do: ast ++ [{:attribute, {1, 1}, key, value}]
+  defp append_attrib(ast, key, value), do: ast ++ [{:attribute, {1, 1}, key, value}]
 
   @order %{file: 0, attribute: 1, function: 2, eof: 10}
 
