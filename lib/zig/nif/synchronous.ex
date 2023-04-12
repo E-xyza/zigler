@@ -23,8 +23,18 @@ defmodule Zig.Nif.Synchronous do
     end
   end
 
-  def render_erlang(nif = %{function: _function}) do
-    {nif.entrypoint}
+  def render_erlang(nif = %{function: function}) do
+    vars =
+      case function.arity do
+        0 -> []
+        n -> Enum.map(1..n, &{:var, {1, 1}, :"_X#{&1}"})
+      end
+
+    {:function, {1, 1}, function.name, function.arity,
+     [
+       {:clause, {1, 1}, vars, [],
+        [{:call, {1, 1}, {:atom, {1, 1}, :exit}, [{:atom, {1, 1}, :nif_library_not_loaded}]}]}
+     ]}
   end
 
   require EEx
