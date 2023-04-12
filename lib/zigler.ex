@@ -61,7 +61,6 @@ defmodule :zigler do
       |> Keyword.put(:ebin_dir, :priv)
 
     rendered_erlang = Compiler.compile(code, module, code_dir, opts)
-    |> dbg(limit: 25)
 
     ast
     |> Enum.reject(&match?({:attribute, _, :export, _}, &1))

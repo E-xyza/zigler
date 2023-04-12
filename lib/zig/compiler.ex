@@ -171,7 +171,7 @@ defmodule Zig.Compiler do
           ]}
        ]}
 
-    function_code ++ [init_function]
+    Enum.flat_map(function_code, &Function.identity/1) ++ [init_function]
   end
 
   require EEx
