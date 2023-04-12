@@ -11,10 +11,17 @@ pub fn build(b: *Builder) void {
         .source = .{ .path = "<%= Path.join(@beam_dir, "erl_nif.zig") %>"}
     };
 
+    // compile-time options that modify default settings in beam.zig
+
+    const opts_pkg = Pkg{
+        .name = "zigler_options",
+        .source = .{ .path = "options.zig" }
+    };
+
     const beam_pkg = Pkg{
         .name = "beam",
         .source = .{ .path = "<%= Path.join(@beam_dir, "beam.zig") %>"},
-        .dependencies = &.{erl_nif_pkg},
+        .dependencies = &.{erl_nif_pkg, opts_pkg},
     };
 
     const core_pkg = Pkg{

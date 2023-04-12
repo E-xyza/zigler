@@ -23,10 +23,24 @@ defmodule Zig.Nif.Synchronous do
     end
   end
 
+  def render_erlang(nif = %{function: function}) do
+    vars =
+      case function.arity do
+        0 -> []
+        n -> Enum.map(1..n, &{:var, {1, 1}, :"_X#{&1}"})
+      end
+
+    {:function, {1, 1}, function.name, function.arity,
+     [
+       {:clause, {1, 1}, vars, [],
+        [{:call, {1, 1}, {:atom, {1, 1}, :exit}, [{:atom, {1, 1}, :nif_library_not_loaded}]}]}
+     ]}
+  end
+
   require EEx
 
   synchronous = Path.join(__DIR__, "../templates/synchronous.zig.eex")
-  EEx.function_from_file(:def, :synchronous, synchronous, [:assigns])
+  EEx.function_from_file(:defp, :synchronous, synchronous, [:assigns])
 
   def render_zig(%Nif{function: function}), do: synchronous(function)
 

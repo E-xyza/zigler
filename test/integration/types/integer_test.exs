@@ -3,7 +3,9 @@ defmodule ZiglerTest.Types.IntegerTest do
 
   @sizes [7, 8, 32, 48, 64]
 
-  use Zig, otp_app: :zigler
+  use Zig,
+    leak_check: true,
+    otp_app: :zigler
 
   generated_addone_functions =
     Enum.map_join(

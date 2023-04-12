@@ -25,8 +25,9 @@ defmodule Zig.Command do
         result
 
       # TODO: better error parsing here
-      {other, _} ->
-        Logger.error(other)
+      {error, code} ->
+        message = "zig command failed: #{command} failed with error #{code}: #{error}"
+        Logger.error(error)
         raise "failed"
     end
   end
@@ -36,10 +37,20 @@ defmodule Zig.Command do
   def compile(module, opts) do
     assembly_dir = Assembler.directory(module)
 
-    ebin_dir =
-      opts[:otp_app]
-      |> :code.lib_dir()
-      |> Path.join("ebin")
+    so_dir =
+      case Keyword.get(opts, :ebin_dir) do
+        :priv ->
+          opts
+          |> Keyword.fetch!(:otp_app)
+          |> :code.lib_dir()
+          |> Path.join("priv")
+
+        _ ->
+          opts
+          |> Keyword.fetch!(:otp_app)
+          |> :code.lib_dir()
+          |> Path.join("ebin")
+      end
 
     compile_opts =
       Keyword.merge(
@@ -48,12 +59,14 @@ defmodule Zig.Command do
         cd: assembly_dir
       )
 
-    run_zig("build --prefix #{ebin_dir}", compile_opts)
+    run_zig("build --prefix #{so_dir}", compile_opts)
 
-    lib_name = Path.join(ebin_dir, "lib/lib#{module}.so")
-    naked_name = Path.join(ebin_dir, "lib/#{module}.so")
+    lib_name = Path.join(so_dir, "lib/lib#{module}.so")
+    naked_name = Path.join(so_dir, "lib/#{module}.so")
 
     File.rename!(lib_name, naked_name)
+
+    Logger.debug("built library at #{naked_name}")
   end
 
   defp executable_path(opts) do

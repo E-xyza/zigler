@@ -24,8 +24,8 @@ defprotocol Zig.Type do
   def param_errors(type, opts)
 
   @doc "generates make clauses in zig"
-  @spec return(t, keyword) :: String.t
-  def return(type, opts)
+  @spec get_result(t, keyword) :: String.t()
+  def get_result(type, opts)
 
   @spec needs_make?(t) :: boolean
   def needs_make?(type)
@@ -207,14 +207,18 @@ defprotocol Zig.Type do
         end
       end
 
-      def return(type, opts) do
+      def get_result(type, opts) do
         return_type = get_in(opts, [:return, :type]) || raise "return type not found"
-        "return beam.make(env, result, .{.output_as = .#{return_type}}).v;"
+        "break :get_result beam.make(env, result, .{.output_as = .#{return_type}}).v;"
       end
 
       def needs_make?(_), do: true
 
-      defoverridable return: 2, marshal_param: 2, marshal_return: 2, param_errors: 2, needs_make?: 1
+      defoverridable get_result: 2,
+                     marshal_param: 2,
+                     marshal_return: 2,
+                     param_errors: 2,
+                     needs_make?: 1
 
       defimpl String.Chars do
         defdelegate to_string(type), to: module
@@ -236,8 +240,9 @@ defprotocol Zig.Type do
         defdelegate param_errors(type, opts), to: module
         defdelegate to_call(type), to: module
         defdelegate return_allowed?(type), to: module
-        defdelegate return(type, opts), to: module
+        defdelegate get_result(type, opts), to: module
         defdelegate needs_make?(type), to: module
+        defdelegate cleanup(type, opts), to: module
       end
     end
   end
@@ -255,25 +260,29 @@ defimpl Zig.Type, for: Atom do
 
   def return_allowed?(type), do: type in [:term, :erl_nif_term, :void]
 
-  def return(:erl_nif_term, _), do: "return result;"
-  def return(:term, _), do: "return result.v;"
-  def return(:void, opts) do
+  def get_result(:erl_nif_term, _), do: "break :get_result result;"
+  def get_result(:term, _), do: "break :get_result result.v;"
+
+  def get_result(:void, opts) do
     case {get_in(opts, [:return, :arg]), get_in(opts, [:return, :length])} do
       {nil, _} ->
-        "return beam.make(env, result, .{}).v;"
+        "break :get_result beam.make(env, result, .{}).v;"
+
       {arg, nil} ->
         """
         _ = result;
-        return beam.make(env, arg#{arg}, .{}).v;
+        break :get_result beam.make(env, arg#{arg}, .{}).v;
         """
+
       {arg, {:arg, length_arg}} ->
-        return_type = opts
-        |> Keyword.fetch!(:return)
-        |> Keyword.fetch!(:type)
+        return_type =
+          opts
+          |> Keyword.fetch!(:return)
+          |> Keyword.fetch!(:type)
 
         """
         _ = result;
-        return beam.make(env, arg#{arg}[0..@intCast(usize, arg#{length_arg})], .{.output_as = .#{return_type}}).v;
+        break :get_result beam.make(env, arg#{arg}[0..@intCast(usize, arg#{length_arg})], .{.output_as = .#{return_type}}).v;
         """
     end
   end

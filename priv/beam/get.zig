@@ -4,6 +4,12 @@ const std = @import("std");
 
 const GetError = error{ argument_error, unreachable_error };
 
+fn allocator(opts: anytype) std.mem.Allocator {
+    const T = @TypeOf(opts);
+    if (@hasField(T, "allocator")) { return opts.allocator; }
+    return beam.allocator;
+}
+
 pub fn get(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
     // passthrough on beam.term and e.ErlNifTerm, no work needed.
     if (T == beam.term) return src;
@@ -286,8 +292,9 @@ pub fn get_pointer(comptime T: type, env: beam.env, src: beam.term, opts: anytyp
     const Child = pointer_info.child;
     switch (pointer_info.size) {
         .One => {
-            var result = try beam.allocator.create(Child);
-            errdefer beam.allocator.destroy(result);
+            const alloc = allocator(opts);
+            var result = try alloc.create(Child);
+            errdefer alloc.destroy(result);
             try fill(Child, env, result, src, opts);
             return result;
         },
@@ -326,7 +333,6 @@ pub fn get_slice(comptime T: type, env: beam.env, src: beam.term, opts: anytype)
 }
 
 pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
-    _ = opts;
     const slice_info = @typeInfo(T).Pointer;
     const Child = slice_info.child;
     const child_info = @typeInfo(Child);
@@ -337,6 +343,7 @@ pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: a
         .Float => |f| f.bits / 8,
         else => return GetError.argument_error,
     };
+    const alloc = allocator(opts);
 
     var str_res: e.ErlNifBinary = undefined;
     if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.unreachable_error;
@@ -346,7 +353,7 @@ pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: a
     if (slice_info.is_const) {
         return result_ptr[0..item_count];
     } else {
-        var result = try beam.allocator.alloc(Child, item_count);
+        var result = try alloc.alloc(Child, item_count);
         std.mem.copy(Child, result, result_ptr[0..item_count]);
 
         return result;
@@ -356,10 +363,11 @@ pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: a
 pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
     const Child = @typeInfo(T).Pointer.child;
     var length: c_uint = undefined;
+    const alloc = allocator(opts);
 
     if (e.enif_get_list_length(env, src.v, &length) == 0) return GetError.unreachable_error;
-    var result = try beam.allocator.alloc(Child, length);
-    errdefer beam.allocator.free(result);
+    var result = try alloc.alloc(Child, length);
+    errdefer alloc.free(result);
 
     var list: e.ErlNifTerm = src.v;
     for (result) |*item, index| {

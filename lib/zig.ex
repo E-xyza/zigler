@@ -274,11 +274,10 @@ defmodule Zig do
   # you can override these in your `use Zigler` statement.
   @spec __using__(keyword) :: Macro.t()
   defmacro __using__(opts) do
-    opts =
-      opts
-      |> normalize_nifs!
-      |> normalize_libs
-      |> EasyC.normalize_aliasing
+    module = __CALLER__.module
+    if module in :erlang.loaded(), do: :code.purge(module)
+
+    opts = normalize!(opts)
 
     # TODO: check to make sure the otp_app exists
     case Keyword.fetch(opts, :otp_app) do
@@ -293,13 +292,14 @@ defmodule Zig do
     end
 
     # clear out the assembly directory
+    # TODO: make sure this is accessible.
     Mix.env()
-    |> Compiler.assembly_dir(__CALLER__.module)
+    |> Compiler.assembly_dir(module)
     |> File.rm_rf!()
 
-    Module.register_attribute(__CALLER__.module, :zig_code_parts, accumulate: true)
-    Module.register_attribute(__CALLER__.module, :zig_code, persist: true)
-    Module.put_attribute(__CALLER__.module, :zigler_opts, opts)
+    Module.register_attribute(module, :zig_code_parts, accumulate: true)
+    Module.register_attribute(module, :zig_code, persist: true)
+    Module.put_attribute(module, :zigler_opts, opts)
 
     code =
       quote do
@@ -316,6 +316,15 @@ defmodule Zig do
     end
 
     code
+  end
+
+  @doc false
+  def normalize!(opts) do
+    opts
+    |> normalize_nifs!
+    |> normalize_libs
+    |> normalize_build_opts
+    |> EasyC.normalize_aliasing()
   end
 
   @doc """
@@ -337,7 +346,10 @@ defmodule Zig do
     opts = Module.get_attribute(caller.module, :zigler_opts)
 
     if opts[:easy_c] do
-      raise CompileError, description: "you can't use ~Z in easy_c nifs", line: caller.line, file: caller.file
+      raise CompileError,
+        description: "you can't use ~Z in easy_c nifs",
+        line: caller.line,
+        file: caller.file
     end
 
     line = meta[:line]
@@ -351,6 +363,9 @@ defmodule Zig do
     end
   end
 
+  @doc """
+  retrieves the zig code from any given module that was compiled with zigler
+  """
   def code(module) do
     [code] = Keyword.fetch!(module.__info__(:attributes), :zig_code)
     code
@@ -420,10 +435,16 @@ defmodule Zig do
       {:return, return_opts} ->
         normalized =
           return_opts
-          |> List.wrap
+          |> List.wrap()
           |> normalize_return_opts
+
         {:return, normalized}
-      other -> other
+
+      {:args, args_opts} ->
+        {:args, normalize_args_opts(args_opts)}
+
+      other ->
+        other
     end)
   end
 
@@ -436,5 +457,28 @@ defmodule Zig do
       :noclean -> {:noclean, true}
       other -> other
     end)
+  end
+
+  defp normalize_args_opts(opts) do
+    Map.new(
+      case opts do
+        [{_, _} | _] -> opts
+        list -> Enum.with_index(list, fn opt, idx -> {idx, opt} end)
+      end
+    )
+  end
+
+  @use_gpa {:bool, "use_gpa", true}
+  defp normalize_build_opts(opts) do
+    # creates build_opts out of a list of build opt shortcuts
+    use_gpa = Keyword.get(opts, :use_gpa, false)
+
+    if use_gpa do
+      Keyword.update(opts, :build_opts, [@use_gpa], fn list ->
+        [@use_gpa | list]
+      end)
+    else
+      opts
+    end
   end
 end

@@ -14,82 +14,17 @@ defmodule Zig.Compiler do
   alias Zig.Type
   alias Zig.Type.Struct
 
-  defmacro __before_compile__(context) do
+  defmacro __before_compile__(context = %{module: module}) do
     # TODO: verify that :otp_app exists
-    this_dir = Path.dirname(context.file)
-    module_nif_zig = Path.join(this_dir, ".#{context.module}.zig")
-    zigler_opts = Module.get_attribute(context.module, :zigler_opts)
-
-    # obtain the code
-    easy_c_code = List.wrap(if zigler_opts[:easy_c], do: EasyC.build_from(zigler_opts))
-
-    aliasing_code = create_aliases(zigler_opts)
-
-    base_code =
-        context.module
-        |> Module.get_attribute(:zig_code_parts)
-        |> Enum.reverse()
-        |> Enum.join()
-
-    File.write!(module_nif_zig, [aliasing_code, easy_c_code, base_code])
-
-    opts = Keyword.merge(zigler_opts, file: module_nif_zig)
-
-    assembled = Keyword.get(opts, :assemble, true)
-    precompiled = Keyword.get(opts, :precompile, true)
-    compiled = Keyword.get(opts, :compile, true)
-
-    directory = Assembler.directory(context.module)
+    code_dir = Path.dirname(context.file)
+    opts = Module.get_attribute(module, :zigler_opts)
 
     output =
-      with true <- assembled,
-           assemble_opts = Keyword.take(opts, [:link_lib]),
-           assemble_opts = Keyword.merge(assemble_opts, from: this_dir),
-           Assembler.assemble(context.module, assemble_opts),
-           true <- precompiled,
-           sema = Sema.analyze_file!(context.module, opts),
-           new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(base_code)),
-           function_code = precompile(sema, context, directory, new_opts),
-           true <- compiled do
-        # parser should only operate on parsed, valid zig code.
-        Command.compile(context.module, new_opts)
-
-        nif_name = "#{context.module}"
-
-        quote do
-          @zig_code unquote(base_code)
-
-          unquote_splicing(function_code)
-
-          def __load_nifs__ do
-            # LOADS the nifs from :code.lib_dir() <> "ebin", which is
-            # a path that has files correctly moved in to release packages.
-
-            require Logger
-
-            unquote(opts[:otp_app])
-            |> :code.lib_dir()
-            |> Path.join("ebin/lib")
-            |> Path.join(unquote(nif_name))
-            |> String.to_charlist()
-            |> :erlang.load_nif(0)
-            |> case do
-              :ok ->
-                Logger.debug("loaded module at #{unquote(nif_name)}")
-
-              error = {:error, any} ->
-                Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
-            end
-          end
-
-          def _format_error(_, [{_, _, _, opts} | _rest] = _stacktrace) do
-            if formatted = opts[:zigler_error], do: formatted, else: %{}
-          end
-        end
-      else
-        false ->
-          dead_module(base_code, context)
-      end
+      module
+      |> Module.get_attribute(:zig_code_parts)
+      |> Enum.reverse()
+      |> Enum.join()
+      |> compile(module, code_dir, Keyword.put(opts, :render, :render_elixir))
 
     if opts[:dump] do
       output |> Macro.to_string() |> Code.format_string!() |> IO.puts()
@@ -98,30 +33,145 @@ defmodule Zig.Compiler do
     output
   end
 
-  defp precompile(sema, context, directory, opts) do
+  # note that this directory is made public so that it can be both accessed
+  # from the :zigler entrypoint for erlang parse transforms, as well as the
+  # __before_compile__ entrypoint for Elixir
+  def compile(base_code, module, code_dir, opts) do
+    module_nif_zig = Path.join(code_dir, ".#{module}.zig")
+    opts = Keyword.merge(opts, file: module_nif_zig)
+
+    assembly_directory = Assembler.directory(module)
+
+    # obtain the code
+    easy_c_code = List.wrap(if opts[:easy_c], do: EasyC.build_from(opts))
+
+    aliasing_code = create_aliases(opts)
+
+    File.write!(module_nif_zig, [aliasing_code, easy_c_code, base_code])
+
+    assembled = Keyword.get(opts, :assemble, true)
+    precompiled = Keyword.get(opts, :precompile, true)
+    compiled = Keyword.get(opts, :compile, true)
+    renderer = Keyword.fetch!(opts, :render)
+
+    with true <- assembled,
+         assemble_opts = Keyword.take(opts, [:link_lib, :build_opts]),
+         assemble_opts = Keyword.merge(assemble_opts, from: code_dir),
+         Assembler.assemble(module, assemble_opts),
+         true <- precompiled,
+         sema = Sema.analyze_file!(module, opts),
+         new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(base_code)),
+         function_code = precompile(sema, module, assembly_directory, new_opts),
+         true <- compiled do
+      # parser should only operate on parsed, valid zig code.
+      Command.compile(module, new_opts)
+      apply(__MODULE__, renderer, [base_code, function_code, module, opts])
+    else
+      false ->
+        apply(__MODULE__, renderer, [base_code, [], module, opts])
+    end
+  end
+
+  defp precompile(sema, module, directory, opts) do
     verify_sound!(sema, opts)
 
-    nif_functions = Nif.from_sema(sema, opts[:nifs])
+    nif_functions =
+      sema
+      |> Nif.from_sema(opts[:nifs])
+      |> assimilate_common_options(opts)
 
-    function_code = Enum.map(nif_functions, &Nif.render_elixir/1)
+    renderer = Keyword.fetch!(opts, :render)
 
-    directory
-    |> Path.join("nif.zig")
-    |> File.write!(Nif.render_zig(nif_functions, context.module))
+    function_code = Enum.map(nif_functions, &apply(Nif, renderer, [&1]))
+
+    nif_src_path = Path.join(directory, "nif.zig")
+    File.write!(nif_src_path, Nif.render_zig(nif_functions, module))
+
+    Logger.debug("wrote nif.zig to #{nif_src_path}")
 
     function_code
   end
 
-  defp dead_module(code, context) do
-    logger_msg = "module #{inspect(context.module)} does not compile its nifs"
+  def render_elixir(code, function_code, module, opts) do
+    nif_name = "#{module}"
+
+    load_nif_fn =
+      case function_code do
+        [] ->
+          logger_msg = "module #{inspect(module)} does not compile its nifs"
+
+          quote do
+            def __load_nifs__ do
+              require Logger
+              Logger.info(unquote(logger_msg))
+            end
+          end
+
+        _ ->
+          quote do
+            def __load_nifs__ do
+              # LOADS the nifs from :code.lib_dir() <> "ebin", which is
+              # a path that has files correctly moved in to release packages.
+
+              require Logger
+
+              unquote(opts[:otp_app])
+              |> :code.lib_dir()
+              |> Path.join("ebin/lib")
+              |> Path.join(unquote(nif_name))
+              |> String.to_charlist()
+              |> :erlang.load_nif(0)
+              |> case do
+                :ok ->
+                  Logger.debug("loaded module at #{unquote(nif_name)}")
+
+                error = {:error, any} ->
+                  Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
+              end
+            end
+          end
+      end
 
     quote do
       @zig_code unquote(code)
-      def __load_nifs__ do
-        require Logger
-        Logger.info(unquote(logger_msg))
+
+      unquote_splicing(function_code)
+
+      unquote(load_nif_fn)
+
+      def _format_error(_, [{_, _, _, opts} | _rest] = _stacktrace) do
+        if formatted = opts[:zigler_error], do: formatted, else: %{}
       end
     end
+  end
+
+  def render_erlang(code, function_code, module, opts) do
+    otp_app = Keyword.fetch!(opts, :otp_app)
+    module_name = Atom.to_charlist(module)
+
+    init_function =
+      {:function, {1, 1}, :__init__, 0,
+       [
+         {:clause, {1, 1}, [], [],
+          [
+            {:call, {1, 1},
+             {:remote, {1, 1}, {:atom, {1, 1}, :erlang}, {:atom, {1, 1}, :load_nif}},
+             [
+               {:call, {1, 1},
+                {:remote, {1, 1}, {:atom, {1, 1}, :filename}, {:atom, {1, 1}, :join}},
+                [
+                  {:cons, {1, 1},
+                   {:call, {1, 1},
+                    {:remote, {1, 1}, {:atom, {1, 1}, :code}, {:atom, {1, 1}, :priv_dir}},
+                    [{:atom, {1, 1}, otp_app}]},
+                   {:cons, {1, 1}, {:string, {14, 58}, ~C'lib/' ++ module_name}, {nil, {1, 1}}}}
+                ]},
+               {:integer, {1, 1}, 0}
+             ]}
+          ]}
+       ]}
+
+    Enum.flat_map(function_code, &Function.identity/1) ++ [init_function]
   end
 
   require EEx
@@ -183,4 +233,20 @@ defmodule Zig.Compiler do
   end
 
   defp raise_if_private_struct!(_, _, _, _), do: :ok
+
+  @common_options [:leak_check]
+  defp assimilate_common_options(nifs, opts) when is_list(nifs) do
+    for nif <- nifs do
+      %{nif | function: assimilate_common_options(nif.function, opts)}
+    end
+  end
+
+  defp assimilate_common_options(nif, module_opts) when is_struct(nif) do
+    new_opts =
+      module_opts
+      |> Keyword.take(@common_options)
+      |> Keyword.merge(nif.opts)
+
+    %{nif | opts: new_opts}
+  end
 end

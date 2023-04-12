@@ -3,6 +3,7 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   use Zig,
     otp_app: :zigler,
+    leak_check: true,
     nifs: [
       :array_float_test,
       {:array_float_binary_test, return: :binary},
@@ -54,11 +55,13 @@ defmodule ZiglerTest.Types.ArrayTest do
     end
 
     test "you can pass a binary" do
-      assert [2.0, 3.0, 4.0] == array_float_test(<<1.0 :: float-native, 2.0 :: float-native, 3.0 :: float-native>>)
+      assert [2.0, 3.0, 4.0] ==
+               array_float_test(<<1.0::float-native, 2.0::float-native, 3.0::float-native>>)
     end
 
     test "you can get back a binary" do
-      assert <<2.0 :: float-native, 3.0 :: float-native, 4.0 :: float-native>> == array_float_binary_test([1.0, 2.0, 3.0])
+      assert <<2.0::float-native, 3.0::float-native, 4.0::float-native>> ==
+               array_float_binary_test([1.0, 2.0, 3.0])
     end
 
     test "you can work with u8s" do
@@ -79,7 +82,7 @@ defmodule ZiglerTest.Types.ArrayTest do
 
     test "too many elements is not tolerated" do
       assert_raise ArgumentError,
-      "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::binary-size(24)>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[1.0, 2.0, 3.0, 4.0]`\n     note: length 3 expected but got length 4\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::binary-size(24)>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[1.0, 2.0, 3.0, 4.0]`\n     note: length 3 expected but got length 4\n",
                    fn -> array_float_test([1.0, 2.0, 3.0, 4.0]) end
     end
 

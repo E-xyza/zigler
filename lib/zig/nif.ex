@@ -31,6 +31,7 @@ defmodule Zig.Nif do
 
   defmodule Concurrency do
     @callback render_elixir(Zig.Nif.t()) :: Macro.t()
+    @callback render_erlang(Zig.Nif.t()) :: term
     @callback render_zig(Zig.Nif.t()) :: iodata
     @callback set_entrypoint(Zig.Nif.t()) :: Zig.Nif.t()
   end
@@ -42,10 +43,12 @@ defmodule Zig.Nif do
   defp normalize_all(list, _) when is_list(list), do: list
 
   def normalize_return(nif_opts) do
-    Enum.map(nif_opts, fn {nif, opts}->
-      new_opts = Keyword.update(opts, :return, [type: :default], fn return_list ->
-        Keyword.update(return_list, :type, :default, &(&1))
-      end)
+    Enum.map(nif_opts, fn {nif, opts} ->
+      new_opts =
+        Keyword.update(opts, :return, [type: :default], fn return_list ->
+          Keyword.update(return_list, :type, :default, & &1)
+        end)
+
       {nif, new_opts}
     end)
   end
@@ -62,9 +65,10 @@ defmodule Zig.Nif do
     |> Enum.map(fn
       {name, opts} ->
         # "calculated" details.
-        function = sema_list
-        |> find_function(name)
-        |> adopt_options(opts)
+        function =
+          sema_list
+          |> find_function(name)
+          |> adopt_options(opts)
 
         concurrency = Synchronous
 
@@ -103,6 +107,17 @@ defmodule Zig.Nif do
     quote context: Elixir do
       (unquote_splicing(Enum.flat_map([typespec, marshalling, function], & &1)))
     end
+  end
+
+  def render_erlang(nif, opts \\ []) do
+    # TODO: typespec in erlang.
+
+    function =
+      nif
+      |> nif.concurrency.render_erlang
+      |> List.wrap()
+
+    function
   end
 
   @spec needs_marshal?(t) :: boolean

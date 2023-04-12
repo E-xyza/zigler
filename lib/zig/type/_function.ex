@@ -65,6 +65,7 @@ defmodule Zig.Type.Function do
     case opts[:alias] do
       true ->
         "#{name}_aliased_#{:erlang.phash2(name)}"
+
       _ ->
         name
     end

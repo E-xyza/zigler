@@ -1,7 +1,9 @@
 defmodule ZiglerTest.Types.RawTest do
   use ExUnit.Case, async: true
 
-  use Zig, otp_app: :zigler
+  use Zig,
+    leak_check: true,
+    otp_app: :zigler
 
   ~Z"""
   const beam = @import("beam");

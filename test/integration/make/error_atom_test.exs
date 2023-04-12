@@ -16,10 +16,10 @@ defmodule ZiglerTest.Make.ErrorAtomTest do
   """
 
   test "error atom" do
-    assert :error = test_error_atom();
+    assert :error = test_error_atom()
   end
 
   test "error pair" do
-    assert {:error, :some_error} = test_error_pair();
+    assert {:error, :some_error} = test_error_pair()
   end
 end

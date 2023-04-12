@@ -3,6 +3,7 @@ defmodule ZiglerTest.Types.ManypointerTest do
 
   use Zig,
     otp_app: :zigler,
+    leak_check: true,
     nifs: [
       :manypointer_float_test,
       {:manypointer_u8_test, return: :charlists},
