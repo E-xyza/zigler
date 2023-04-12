@@ -146,7 +146,32 @@ defmodule Zig.Compiler do
   end
 
   def render_erlang(code, function_code, module, opts) do
-    function_code ++ []
+    otp_app = Keyword.fetch!(opts, :otp_app)
+    module_name = Atom.to_charlist(atom)
+
+    init_function =
+      {:function, {1, 1}, :__init__, 0,
+       [
+         {:clause, {1, 1}, [], [],
+          [
+            {:call, {1, 1},
+             {:remote, {1, 1}, {:atom, {1, 1}, :erlang}, {:atom, {1, 1}, :load_nif}},
+             [
+               {:call, {1, 1},
+                {:remote, {1, 1}, {:atom, {1, 1}, :filename}, {:atom, {1, 1}, :join}},
+                [
+                  {:cons, {1, 1},
+                   {:call, {1, 1},
+                    {:remote, {1, 1}, {:atom, {1, 1}, :code}, {:atom, {1, 1}, :priv_dir}},
+                    [{:atom, {1, 1}, otp_app}]},
+                   {:cons, {1, 1}, {:string, {14, 58}, ~C'lib/' ++ module_name}, {nil, {1, 1}}}}
+                ]},
+               {:integer, {1, 1}, 0}
+             ]}
+          ]}
+       ]}
+
+    function_code ++ [init_function]
   end
 
   require EEx

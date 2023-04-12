@@ -61,13 +61,13 @@ defmodule :zigler do
       |> Keyword.put(:render, :render_erlang)
       |> Keyword.put(:ebin_dir, :priv)
 
-    Compiler.compile(code, module, code_dir, opts)
-    |> dbg(limit: 25)
+    rendered_erlang = Compiler.compile(code, module, code_dir, opts)
 
     ast
     |> Enum.reject(&match?({:attribute, _, :export, _}, &1))
     |> append_attrib(:export, exports)
     |> append_attrib(:on_load, {:__init__, 0})
+    |> Kernel.++(rendered_erlang)
     |> Enum.sort_by(&elem(&1, 0), __MODULE__)
   end
 
