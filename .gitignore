@@ -31,5 +31,11 @@ zigler-*.tar
 # ignore zig version downloads
 /zig/zig-*
 
+# ignore artifacts created by zigler-erlang test
+/priv/lib/
+/priv/bin/
+
 # module zig files
 .Elixir.*.zig
+# erlang module zig files
+.test_*.zig

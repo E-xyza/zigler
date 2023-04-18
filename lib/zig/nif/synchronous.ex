@@ -5,6 +5,8 @@ defmodule Zig.Nif.Synchronous do
 
   @behaviour Zig.Nif.Concurrency
 
+  import Zig.QuoteErl
+
   def render_elixir(nif = %{function: function}) do
     params =
       case function.arity do
@@ -18,7 +20,7 @@ defmodule Zig.Nif.Synchronous do
 
     quote context: Elixir do
       unquote(type)(unquote(nif.entrypoint)(unquote_splicing(params))) do
-        raise unquote(error_text)
+        :erlang.nif_error(unquote(error_text))
       end
     end
   end
@@ -27,14 +29,20 @@ defmodule Zig.Nif.Synchronous do
     vars =
       case function.arity do
         0 -> []
-        n -> Enum.map(1..n, &{:var, {1, 1}, :"_X#{&1}"})
+        n -> Enum.map(1..n, &{:var, :"_X#{&1}"})
       end
 
-    {:function, {1, 1}, function.name, function.arity,
-     [
-       {:clause, {1, 1}, vars, [],
-        [{:call, {1, 1}, {:atom, {1, 1}, :exit}, [{:atom, {1, 1}, :nif_library_not_loaded}]}]}
-     ]}
+    error_text = ~c'nif for function #{nif.entrypoint}/#{function.arity} not bound'
+
+    quote_erl(
+      """
+      unquote(function_name)(unquote(...vars)) ->
+        erlang:nif_error(unquote(error_text)).
+      """,
+      function_name: nif.entrypoint,
+      vars: vars,
+      error_text: error_text
+    )
   end
 
   require EEx
