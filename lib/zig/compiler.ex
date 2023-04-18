@@ -14,6 +14,8 @@ defmodule Zig.Compiler do
   alias Zig.Type
   alias Zig.Type.Struct
 
+  import Zig.QuoteErl
+
   defmacro __before_compile__(context = %{module: module}) do
     # TODO: verify that :otp_app exists
     code_dir = Path.dirname(context.file)
@@ -145,31 +147,19 @@ defmodule Zig.Compiler do
     end
   end
 
-  def render_erlang(code, function_code, module, opts) do
+  def render_erlang(_code, function_code, module, opts) do
     otp_app = Keyword.fetch!(opts, :otp_app)
     module_name = Atom.to_charlist(module)
 
     init_function =
-      {:function, {1, 1}, :__init__, 0,
-       [
-         {:clause, {1, 1}, [], [],
-          [
-            {:call, {1, 1},
-             {:remote, {1, 1}, {:atom, {1, 1}, :erlang}, {:atom, {1, 1}, :load_nif}},
-             [
-               {:call, {1, 1},
-                {:remote, {1, 1}, {:atom, {1, 1}, :filename}, {:atom, {1, 1}, :join}},
-                [
-                  {:cons, {1, 1},
-                   {:call, {1, 1},
-                    {:remote, {1, 1}, {:atom, {1, 1}, :code}, {:atom, {1, 1}, :priv_dir}},
-                    [{:atom, {1, 1}, otp_app}]},
-                   {:cons, {1, 1}, {:string, {14, 58}, ~C'lib/' ++ module_name}, {nil, {1, 1}}}}
-                ]},
-               {:integer, {1, 1}, 0}
-             ]}
-          ]}
-       ]}
+      quote_erl(
+        """
+        '__init__'() ->
+          erlang:load_nif(filename:join(code:priv_dir(unquote(otp_app)) ++ unquote(module_id)))
+        """,
+        otp_app: otp_app,
+        module_id: ~C'lib/' ++ module_name
+      )
 
     Enum.flat_map(function_code, &Function.identity/1) ++ [init_function]
   end
