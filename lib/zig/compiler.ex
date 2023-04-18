@@ -155,13 +155,13 @@ defmodule Zig.Compiler do
       quote_erl(
         """
         '__init__'() ->
-          erlang:load_nif(filename:join(code:priv_dir(unquote(otp_app)) ++ unquote(module_id)))
+          erlang:load_nif(filename:join(code:priv_dir(unquote(otp_app)), unquote(module_id)), []).
         """,
         otp_app: otp_app,
         module_id: ~C'lib/' ++ module_name
       )
 
-    Enum.flat_map(function_code, &Function.identity/1) ++ [init_function]
+    Enum.flat_map(function_code, &Function.identity/1) ++ init_function
   end
 
   require EEx

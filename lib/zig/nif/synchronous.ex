@@ -37,7 +37,7 @@ defmodule Zig.Nif.Synchronous do
     quote_erl(
       """
       unquote(function_name)(unquote(...vars)) ->
-        nif_error(unquote(error_text))
+        erlang:nif_error(unquote(error_text)).
       """,
       function_name: nif.entrypoint,
       vars: vars,
