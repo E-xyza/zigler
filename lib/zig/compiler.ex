@@ -85,7 +85,7 @@ defmodule Zig.Compiler do
     renderer = Keyword.fetch!(opts, :render)
 
     function_code = Enum.map(nif_functions, &apply(Nif, renderer, [&1]))
-
+    
     nif_src_path = Path.join(directory, "nif.zig")
     File.write!(nif_src_path, Nif.render_zig(nif_functions, module))
 
