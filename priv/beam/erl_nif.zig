@@ -23,4 +23,4 @@ pub const e = @cImport({
 
 pub const ErlNifTerm = e.ERL_NIF_TERM;
 
-usingnamespace e;
+pub usingnamespace e;

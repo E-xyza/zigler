@@ -2,14 +2,12 @@
 
 const e = @import("erl_nif.zig");
 
-const MutexError = error {
-    CreationFail
-};
+const MutexError = error{CreationFail};
 
-pub fn BeamMutex(comptime name: []const u8) type {
+pub fn BeamMutex(comptime name_: []const u8) type {
     return struct {
         mutex_ref: ?*e.ErlNifMutex = null,
-        const name: []const u8 = name;
+        const name: []const u8 = name_;
         const Self = @This();
 
         /// initializes the mutex.  Note this is failable.
@@ -36,8 +34,7 @@ pub fn BeamMutex(comptime name: []const u8) type {
                     break :zero true;
                 },
                 e.EBUSY => false,
-                _ => unreachable
-
+                _ => unreachable,
             };
         }
 
