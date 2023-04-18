@@ -39,6 +39,27 @@ defmodule Zig.QuoteErl do
   @lparen :"("
   @rparen :")"
 
+  # unquote a splatted value
+  defp substitute_unquoted(
+         [
+           {:atom, _, :unquote},
+           {@lparen, _},
+           {:..., _},
+           {:atom, line, symbol},
+           {@rparen, _} | rest
+         ],
+         substitutions,
+         so_far
+       ) do
+    new_so_far = substitutions
+    |> escaped_substitution(symbol, line, splat: true)
+    |> Enum.intersperse({:",", line})
+    |> Enum.reverse(so_far)
+
+    substitute_unquoted(rest, substitutions, new_so_far)
+  end
+
+  # unquote a single value
   defp substitute_unquoted(
          [{:atom, _, :unquote}, {@lparen, _}, {:atom, line, symbol}, {@rparen, _} | rest],
          substitutions,
@@ -53,16 +74,22 @@ defmodule Zig.QuoteErl do
 
   defp substitute_unquoted([], _substitutions, so_far), do: Enum.reverse(so_far)
 
-  defp escaped_substitution(substitutions, key, line) do
-    case Access.fetch(substitutions, key)  do
+  defp escaped_substitution(substitutions, key, line, opts \\ []) do
+    splat = Keyword.get(opts, :splat, false)
+
+    case Access.fetch(substitutions, key) do
       :error ->
         raise KeyError, term: substitutions, key: key
 
-      {:ok, atom} when is_atom(atom) ->
-        {:atom, line, atom}
+      {:ok, list} when is_list(list) and splat ->
+        Enum.map(list, &escape(&1, line))
 
-      {:ok, charlist} when is_list(charlist) ->
-        {:string, line, charlist}
+      {:ok, term} ->
+        escape(term, line)
     end
   end
+
+  defp escape(atom, line) when is_atom(atom), do: {:atom, line, atom}
+  defp escape(charlist, line) when is_list(charlist), do: {:string, line, charlist}
+  defp escape({:var, atom}, line) when is_atom(atom), do: {:var, line, atom}
 end
