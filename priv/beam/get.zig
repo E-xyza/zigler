@@ -6,7 +6,9 @@ const GetError = error{ argument_error, unreachable_error };
 
 fn allocator(opts: anytype) std.mem.Allocator {
     const T = @TypeOf(opts);
-    if (@hasField(T, "allocator")) { return opts.allocator; }
+    if (@hasField(T, "allocator")) {
+        return opts.allocator;
+    }
     return beam.allocator;
 }
 
@@ -394,6 +396,9 @@ pub fn get_manypointer(comptime T: type, env: beam.env, src: beam.term, opts: an
     if (@typeInfo(T).Pointer.sentinel) |sentinel_ptr| {
         result[slice.len] = @ptrCast(*const Child, @alignCast(@alignOf(Child), sentinel_ptr)).*;
     }
+    if (@hasField(@TypeOf(opts), "size")) {
+        opts.size.* = slice.len;
+    }
     return result;
 }
 
@@ -403,16 +408,40 @@ pub fn get_cpointer(comptime T: type, env: beam.env, src: beam.term, opts: anyty
 
     const Child = @typeInfo(T).Pointer.child;
     // scan on the type of the source.
-    return switch (src.term_type(env)) {
-        .atom => try null_or_error(T, env, src, opts),
-        .map => if (@typeInfo(Child) != .Struct)
-            GetError.argument_error
-        else
-            try get_pointer(*Child, env, src, opts),
-        .list => (try get_slice_list([]Child, env, src, opts)).ptr,
-        .bitstring => (try get_slice_binary([]Child, env, src, opts)).ptr,
-        else => GetError.argument_error,
-    };
+    switch (src.term_type(env)) {
+        .atom => return try null_or_error(T, env, src, opts),
+        .map => if (@typeInfo(Child) != .Struct) {
+            return GetError.argument_error;
+        } else {
+            // we have to allocate this as a slice, so that it can be safely cleaned later.
+            const alloc = allocator(opts);
+            var result = try alloc.alloc(Child, 1);
+            errdefer alloc.free(result);
+
+            try fill(Child, env, &result[0], src, opts);
+
+            if (@hasField(@TypeOf(opts), "size")) {
+                opts.size.* = 1;
+            }
+
+            return result.ptr;
+        },
+        .list => {
+            const result_slice = try get_slice_list([]Child, env, src, opts);
+            if (@hasField(@TypeOf(opts), "size")) {
+                opts.size.* = result_slice.len;
+            }
+            return result_slice.ptr;
+        },
+        .bitstring => {
+            const result_slice = try get_slice_binary([]Child, env, src, opts);
+            if (@hasField(@TypeOf(opts), "size")) {
+                opts.size.* = result_slice.len;
+            }
+            return result_slice.ptr;
+        },
+        else => return GetError.argument_error,
+    }
 }
 
 // fill functions
@@ -455,7 +484,7 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term, opts:
             }
         },
         .bitstring => {
-            // this code should never be executed, it only happens due to 
+            // this code should never be executed, it only happens due to
             // semantic analysis.
             // TODO: check to make sure size-0 packed struct arrays are not supported.
             if (@alignOf(Child) == 0) unreachable;
@@ -661,17 +690,16 @@ fn typespec_for(comptime T: type) []const u8 {
         },
         .Bool => "boolean",
         .Array => |a| maybe_array_term(a, @sizeOf(T)),
-        .Pointer => |p| 
-            switch (p.size) {
-                // pointer to one can only be a map or keyword.
-                .One => "map | keyword",
-                .Slice => maybe_binary_term(p),
-                .Many => maybe_binary_term(p),
-                .C => comptime make_cpointer: {
-                        const or_single = if (@typeInfo(p.child) == .Struct) "map | " else "";
-                        break :make_cpointer or_single ++ maybe_binary_term(p);
-                    }
+        .Pointer => |p| switch (p.size) {
+            // pointer to one can only be a map or keyword.
+            .One => "map | keyword",
+            .Slice => maybe_binary_term(p),
+            .Many => maybe_binary_term(p),
+            .C => comptime make_cpointer: {
+                const or_single = if (@typeInfo(p.child) == .Struct) "map | " else "";
+                break :make_cpointer or_single ++ maybe_binary_term(p);
             },
+        },
         .Optional => |o| comptime make_optional: {
             break :make_optional "nil | " ++ typespec_for(o.child);
         },
@@ -688,7 +716,6 @@ fn maybe_array_term(comptime term_info: anytype, comptime array_bytes: usize) []
     return std.fmt.comptimePrint("<<_::binary-size({})>> | ", .{array_bytes}) ++ child_term_type;
 }
 
-
 fn maybe_binary_term(comptime term_info: anytype) []const u8 {
     const Child = term_info.child;
     const child_term_type = comptime btbrk: {
@@ -696,10 +723,8 @@ fn maybe_binary_term(comptime term_info: anytype) []const u8 {
     };
     if (Child == u8) return "binary | " ++ child_term_type;
     const r = switch (@typeInfo(Child)) {
-        .Int => |i|
-          std.fmt.comptimePrint("<<_::_ * {}>> | ", .{i.bits}) ++ child_term_type,
-        .Float => |f|
-          std.fmt.comptimePrint("<<_::_ * {}>> | ", .{f.bits}) ++ child_term_type,
+        .Int => |i| std.fmt.comptimePrint("<<_::_ * {}>> | ", .{i.bits}) ++ child_term_type,
+        .Float => |f| std.fmt.comptimePrint("<<_::_ * {}>> | ", .{f.bits}) ++ child_term_type,
         else => child_term_type,
     };
     return r;

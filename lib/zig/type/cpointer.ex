@@ -25,4 +25,6 @@ defmodule Zig.Type.Cpointer do
       _ -> false
     end
   end
+
+  def missing_size?(_), do: true
 end

@@ -15,13 +15,19 @@ export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [
     <% end %>
 
     const outer_result = get_result: {
-        <%= for {param, index} <- Nif.indexed_parameters(@params) do %>
+        <%= for {param_type, index} <- Nif.indexed_parameters(@params) do %>
+        <% needs_size? = Type.missing_size?(param_type) %>
+
+        <%= if needs_size? do %>
+        var size<%= index %>: usize = undefined;
+        <% end %>
+
         const arg<%= index %> = 
           beam.get(
-            <%= Type.to_call(param) %>, 
+            <%= Type.to_call(param_type) %>, 
             env, 
             .{.v = arg[<%= index %>]}, 
-            .{<%= if needs_make? do %>.error_info = &error_info,<% end %>}) 
+            .{<%= if needs_make? do %>.error_info = &error_info,<% end %><%= if needs_size? do%>.size = &size<%= index %><% end %>}) 
           catch |err| {
           <%= if needs_make? do %>
           return e.enif_raise_exception(env, beam.make(env, .{err, <%= index %>, error_info}, .{}).v);
@@ -30,7 +36,7 @@ export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [
           <% end %>
         };
         <%= if @opts |> Keyword.get(:args, %{}) |> Map.get(index, []) |> Keyword.get(:cleanup, true) do %>
-        defer beam.cleanup(arg<%= index %>, .{});
+          defer beam.cleanup(arg<%= index %>, .{<%= if needs_size? do %>.size = size<%= index %>,<% end %>});
         <% end %>
         <% end %>
         <%= case @params do %>

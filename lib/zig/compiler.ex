@@ -51,6 +51,10 @@ defmodule Zig.Compiler do
 
     File.write!(module_nif_zig, [aliasing_code, easy_c_code, base_code])
 
+    if opts[:easy_c] do
+      Command.fmt(module_nif_zig)
+    end
+
     assembled = Keyword.get(opts, :assemble, true)
     precompiled = Keyword.get(opts, :precompile, true)
     compiled = Keyword.get(opts, :compile, true)
@@ -88,6 +92,7 @@ defmodule Zig.Compiler do
 
     nif_src_path = Path.join(directory, "nif.zig")
     File.write!(nif_src_path, Nif.render_zig(nif_functions, module))
+    Command.fmt(nif_src_path)
 
     Logger.debug("wrote nif.zig to #{nif_src_path}")
 

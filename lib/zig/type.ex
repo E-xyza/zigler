@@ -30,6 +30,9 @@ defprotocol Zig.Type do
   @spec needs_make?(t) :: boolean
   def needs_make?(type)
 
+  @spec missing_size?(t) :: boolean
+  def missing_size?(type)
+
   @spec to_call(t) :: String.t()
   def to_call(type)
 
@@ -213,12 +216,14 @@ defprotocol Zig.Type do
       end
 
       def needs_make?(_), do: true
+      def missing_size?(_), do: false
 
       defoverridable get_result: 2,
                      marshal_param: 2,
                      marshal_return: 2,
                      param_errors: 2,
-                     needs_make?: 1
+                     needs_make?: 1,
+                     missing_size?: 1
 
       defimpl String.Chars do
         defdelegate to_string(type), to: module
@@ -242,6 +247,7 @@ defprotocol Zig.Type do
         defdelegate return_allowed?(type), to: module
         defdelegate get_result(type, opts), to: module
         defdelegate needs_make?(type), to: module
+        defdelegate missing_size?(type), to: module
         defdelegate cleanup(type, opts), to: module
       end
     end
@@ -288,4 +294,5 @@ defimpl Zig.Type, for: Atom do
   end
 
   def needs_make?(_), do: false
+  def missing_size?(_), do: false
 end

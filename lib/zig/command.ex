@@ -34,6 +34,10 @@ defmodule Zig.Command do
 
   def build_sema(dir), do: run_zig("build sema", cd: dir)
 
+  def fmt(file) do
+    run_zig("fmt #{file}", [])
+  end
+
   def compile(module, opts) do
     assembly_dir = Assembler.directory(module)
 

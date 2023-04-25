@@ -1,32 +1,31 @@
 const std = @import("std");
 const beam = @import("beam.zig");
 
-const CPointerTags = enum{One, Many};
+const CPointerTags = enum { One, Many };
 pub fn CPointerCleanup(comptime T: type) type {
-    return ?union(CPointerTags) {
-        One: *T,
-        Many: []T
-    };
+    return ?union(CPointerTags) { One: *T, Many: []T };
 }
 
 pub fn CleanupArtifact(comptime T: type) type {
     return switch (@typeInfo(T)) {
         .Pointer => PointerCleanupArtifact(T),
-        else => @compileError("this type doesn't need an artifact")
+        else => @compileError("this type doesn't need an artifact"),
     };
 }
 
 fn PointerCleanupArtifact(comptime T: type) type {
     const info = @typeInfo(T);
-    return switch(info.size) {
+    return switch (info.size) {
         .C => CPointerCleanup(info.child),
-        else => @compileError("this type doesn't need an artifact")
+        else => @compileError("this type doesn't need an artifact"),
     };
 }
- 
+
 fn allocator(opts: anytype) std.mem.Allocator {
     const T = @TypeOf(opts);
-    if (@hasField(T, "allocator")) { return opts.allocator; }
+    if (@hasField(T, "allocator")) {
+        return opts.allocator;
+    }
     return beam.allocator;
 }
 
@@ -34,14 +33,18 @@ pub fn cleanup(what: anytype, opts: anytype) void {
     const T = @TypeOf(what);
     switch (@typeInfo(T)) {
         .Pointer => {
-            cleanup_pointer(T, what, opts);
+            cleanup_pointer(what, opts);
         },
-        else => return
+        .Optional => {
+            if (what) |pointer| {cleanup(pointer, opts); }
+        },
+        else => {},
     }
 }
 
-fn cleanup_pointer(comptime T: type, ptr: anytype, opts: anytype) void {
+fn cleanup_pointer(ptr: anytype, opts: anytype) void {
     const Opts = @TypeOf(opts);
+    const T = @TypeOf(ptr);
     switch (@typeInfo(T).Pointer.size) {
         .One => {
             // TODO: more detailed cleanup.
@@ -51,9 +54,34 @@ fn cleanup_pointer(comptime T: type, ptr: anytype, opts: anytype) void {
             allocator(opts).free(ptr);
         },
         .Many, .C => {
-            if (@hasDecl(Opts, "cleanup")) {
-                opts.cleanup.cleanup();
+            // cleaning up content can be done by specifying either a size parameter in the
+            // cleanup options, or by specifying a cleanup function.  It can also be explictly
+            // ignored by specifying a null cleanup function.  This function should take
+            // pointer, plus the selfsame options tuple.  Specifying a size assumes that
+            // the underlying memory was created using a slice operation.
+            if (@hasField(Opts, "size")) {
+                if (@typeInfo(T).Pointer.is_allowzero) {
+                    if (ptr) |_| {
+                        const underlying_slice = ptr[0..opts.size];
+                        allocator(opts).free(underlying_slice);
+                    }
+                } else {
+                    const underlying_slice = ptr[0..opts.size];
+                    allocator(opts).free(underlying_slice);
+                }
+            } else if (@hasField(Opts, "cleanup")) {
+                maybe_cleanup_pointer_with_function(ptr, opts);
+            } else {
+                @compileError("C or Many pointer cleanup requires size, or a function.  If you would like to ignore cleanup, specify a null function.");
             }
         },
+    }
+}
+
+fn maybe_cleanup_pointer_with_function(ptr: anytype, opts: anytype) void {
+    const T = @TypeOf(opts.cleanup);
+    switch (@typeInfo(T)) {
+        .Null => return,
+        .Fn => opts.cleanup(ptr, opts),
     }
 }

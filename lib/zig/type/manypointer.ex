@@ -29,4 +29,6 @@ defmodule Zig.Type.Manypointer do
   def to_call(slice), do: "[*]#{Type.to_call(slice.child)}"
 
   def return_allowed?(pointer), do: pointer.has_sentinel? and Type.return_allowed?(pointer.child)
+
+  def missing_size?(_), do: true
 end

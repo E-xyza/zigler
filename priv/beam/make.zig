@@ -5,6 +5,7 @@ const std = @import("std");
 const OutputType = enum { default, charlists, binary };
 const MakeOpts = struct {
     output_as: OutputType = .default,
+    as_size_struct: bool = false,
 };
 
 pub fn make(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
