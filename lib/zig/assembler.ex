@@ -5,10 +5,10 @@ defmodule Zig.Assembler do
   The staging directory contains:
 
   - `build.zig` for the library file.
-  - `<MODULE_NAME>.zig` which is the library file.
   """
 
   alias Zig.Builder
+  alias Zig.Options
 
   @doc "staging directory for the zigler assembly"
   def directory(module) do
@@ -18,7 +18,11 @@ defmodule Zig.Assembler do
   def assemble(module, opts) do
     directory = directory(module)
     File.mkdir_p!(directory)
+
+    opts = Keyword.take(opts, [:to, :from, :link_lib, :build_opts])
+    opts = Keyword.merge([to: directory], opts)
     # TODO: get to/from from opts.
-    Builder.build(module, to: directory, from: opts[:from])
+    Options.build(module, opts)
+    Builder.build(module, opts)
   end
 end

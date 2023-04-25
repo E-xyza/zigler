@@ -3,6 +3,7 @@ defmodule Zig.Sema do
 
   require EEx
   alias Zig.Assembler
+  alias Zig.Command
 
   sema_zig_template = Path.join(__DIR__, "templates/sema.zig.eex")
   EEx.function_from_file(:defp, :file_for, sema_zig_template, [:opts])
@@ -12,10 +13,26 @@ defmodule Zig.Sema do
     sema_file = Path.join(dir, "sema.zig")
 
     File.write!(sema_file, file_for(opts))
-    {result, 0} = System.cmd("zig", ["build", "sema"], cd: dir)
+    Command.fmt(sema_file)
 
-    result
-    |> Jason.decode!()
-    |> Enum.map(&Type.Function.from_json/1)
+    result = Command.build_sema(dir)
+
+    functions =
+      result
+      |> Jason.decode!()
+      |> Map.fetch!("functions")
+
+    nif_opts =
+      case Keyword.fetch!(opts, :nifs) do
+        :all -> Enum.map(functions, &{String.to_atom(&1["name"]), []})
+        keyword when is_list(keyword) -> keyword
+      end
+
+    Enum.map(functions, fn function ->
+      name = String.to_atom(function["name"])
+      fn_opts = Keyword.fetch!(nif_opts, name)
+
+      Type.Function.from_json(function, module, name, fn_opts)
+    end)
   end
 end

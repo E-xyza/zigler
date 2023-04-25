@@ -103,11 +103,17 @@ const std = @import("std");
 const builtin = @import("builtin");
 const BeamMutex = @import("mutex.zig").BeamMutex;
 
+const is_sema = switch (builtin.output_mode) {
+  .Exe => true,
+  .Lib => false,
+  else => unreachable
+};
+
 // semantic analysis
-pub const sema = if (builtin.output_mode == .Exe) @import("sema.zig") else void;
+pub const sema = if (is_sema) @import("sema.zig") else void;
 
 // loading boilerplate
-pub const loader = if (builtin.output_mode == .Lib) @import("loader.zig") else void;
+pub const loader = @import("loader.zig");
 
 /// syntactic sugar for the BEAM environment.  Note that the `env` type
 /// encapsulates the pointer, since you will almost always be passing this
@@ -131,7 +137,10 @@ const TermType = enum (u64) {
 /// wrapped term struct.  This lets us typecheck terms on the way in and out.
 /// many things will still if you use the "original" e.ErlNifTerm, but some things
 /// will require you to use `beam.term` instead.
-pub const term = struct {
+pub const term = if (is_sema) struct {
+  v: e.ErlNifTerm,
+  pub fn term_type(_: *const @This(), _: env) TermType { return .atom; }
+} else packed struct {
     v: e.ErlNifTerm,
 
     /// equivalent of e.enif_term_type
@@ -141,12 +150,68 @@ pub const term = struct {
 };
 
 ///////////////////////////////////////////////////////////////////////////////
-// syntactic sugar: gets
-///////////////////////////////////////////////////////////////////////////////
-
-///////////////////////////////////////////////////////////////////////////////
 // generics
 
-pub const get = @import("get.zig").get;
+const get_ = @import("get.zig");
+const make_ = @import("make.zig");
+const cleanup_ = @import("cleanup.zig");
 
-pub const make = @import("make.zig").make;
+pub const get = get_.get;
+pub const make = make_.make;
+pub const cleanup = cleanup_.cleanup;
+pub const make_into_atom = make_.make_into_atom;
+pub const make_cpointer = make_.make_cpointer;
+pub const make_binary = make_.make_binary;
+pub const make_empty_list = make_.make_empty_list;
+pub const make_error_atom = make_.make_error_atom;
+pub const make_error_pair = make_.make_error_pair;
+
+///////////////////////////////////////////////////////////////////////////////
+// options
+
+const zigler_options = @import("zigler_options");
+
+pub const options = struct{
+    pub const use_gpa = if (@hasDecl(zigler_options, "use_gpa")) zigler_options.use_gpa else false;
+};
+
+///////////////////////////////////////////////////////////////////////////////
+// allocators
+
+const allocator_ = @import("allocator.zig");
+
+pub const make_general_purpose_allocator_instance = allocator_.make_general_purpose_allocator_instance;
+pub var general_purpose_allocator_instance = make_general_purpose_allocator_instance();
+pub const general_purpose_allocator = general_purpose_allocator_instance.allocator();
+
+///
+/// wraps `erl_nif_alloc` and `erl_nif_free` into the zig allocator interface.
+/// does a very simple implementation of this in the default case.
+/// you may also set the `use_gpa` option, which will make the default beam allocator
+/// the BEAM allocator wrapped in zig stdlib's `general_purpose_allocator`.
+/// This will provide you with thread-safety, double-free-safety, and the ability to
+/// check that there are no memory leaks.
+///
+pub threadlocal var allocator = if (options.use_gpa) general_purpose_allocator else allocator_.raw_beam_allocator;
+
+///////////////////////////////////////////////////////////////////////////////
+// exception
+
+pub fn raise_exception(env_: env, reason: anytype) term {
+    return term{.v = e.enif_raise_exception(env_, make(env_, reason, .{}).v)};
+}
+
+pub fn raise_elixir_exception(env_: env, comptime module: []const u8, data: anytype) term {
+    if (@typeInfo(@TypeOf(data)) != .Struct) {
+        @compileError("elixir exceptions must be structs");
+    }
+
+    const name = comptime name: { break :name "Elixir." ++ module; };
+    var exception: e.ErlNifTerm = undefined;
+    const initial = make(env_, data, .{});
+
+    _ = e.enif_make_map_put(env_, initial.v, make_into_atom(env_, "__struct__").v, make_into_atom(env_, name).v, &exception);
+    _ = e.enif_make_map_put(env_, exception, make_into_atom(env_, "__exception__").v, make(env_, true, .{}).v, &exception);
+
+    return raise_exception(env_, term{.v = exception});
+}

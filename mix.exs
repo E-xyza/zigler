@@ -61,7 +61,7 @@ defmodule Zigler.MixProject do
   def application, do: [extra_applications: [:logger, :inets]]
 
   defp elixirc_paths(:dev), do: ["lib"]
-  defp elixirc_paths(:test), do: ["lib", "test/support"]
+  defp elixirc_paths(:test), do: ["lib", "test/_support"]
   defp elixirc_paths(_), do: ["lib"]
 
   defp test_alias do
@@ -77,10 +77,9 @@ defmodule Zigler.MixProject do
       {:credo, "~> 1.4.0", only: [:dev, :test], runtime: false},
       # dialyzer
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
-      # zigler's parsing is done using nimble_parsec
-      {:nimble_parsec, "~> 1.1", runtime: false},
       # to parse the zig JSON
-      {:jason, "~> 1.1"},
+      {:jason, "~> 1.4"},
+      {:zig_parser, "~> 0.1"},
       # documentation
       {:ex_doc, "~> 0.23", runtime: false}
     ]

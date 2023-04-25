@@ -111,14 +111,11 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 ## 0.10.0
 - Breaking changes:
-  - deprecated the `dry_run` feature
   - nif selection is no longer done using inline docstrings
     - select nifs using `use Zig` options.
+- support for the following types:
+
 
 ## Upcoming
-- more intelligent support for FunctionCallError reporting
-- support for more types (zig tuples <-> beam tuples, arrays, optionals)
 - `beam.call` which will call erlang or elixir modules (but only in yielding or
   threaded contexts)
-- massive refactor of making terms.  Expect beam.make_* functions to be
-  completely overhauled.

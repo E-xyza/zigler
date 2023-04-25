@@ -1,6 +1,6 @@
 defmodule ZiglerTest.SigilZ.MultiTest do
   use ExUnit.Case, async: true
-  use Zig, precompile: false, nifs: [:nif]
+  use Zig, otp_app: :zigler, precompile: false
 
   ~Z"""
   fn first() u16 { return 47; }

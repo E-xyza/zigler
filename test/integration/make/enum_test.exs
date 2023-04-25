@@ -1,15 +1,13 @@
 defmodule ZiglerTest.Make.EnumTest do
   use ExUnit.Case, async: true
 
-  use Zig,
-    otp_app: :zigler,
-    local_zig: true
+  use Zig, otp_app: :zigler
 
   ~Z"""
   const beam = @import("beam");
 
   pub fn make_anonymous_enum(env: beam.env) beam.term {
-    return beam.make(env, .foo);
+    return beam.make(env, .foo, .{});
   }
   """
 
@@ -21,7 +19,7 @@ defmodule ZiglerTest.Make.EnumTest do
   const e = enum { bar };
 
   pub fn make_enum(env: beam.env) beam.term {
-    return beam.make(env, e.bar);
+    return beam.make(env, e.bar, .{});
   }
   """
 
@@ -33,7 +31,7 @@ defmodule ZiglerTest.Make.EnumTest do
   const err = error { baz };
 
   pub fn make_error(env: beam.env) beam.term {
-    return beam.make(env, err.baz);
+    return beam.make(env, err.baz, .{});
   }
   """
 

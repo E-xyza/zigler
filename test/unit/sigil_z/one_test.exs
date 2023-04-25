@@ -1,6 +1,6 @@
 defmodule ZiglerTest.SigilZ.OneTest do
   use ExUnit.Case, async: true
-  use Zig, precompile: false, nifs: [:nif]
+  use Zig, otp_app: :zigler, precompile: false, nifs: [:nif]
 
   ~Z"""
   fn nif() u16 { return 47; }

@@ -62,8 +62,12 @@ defmodule Zig.Nif.Marshaller do
                :env, {[], 0, false} ->
                  {[], 0, false}
 
+               :env, _ ->
+                 # TODO: line number for this error.
+                 raise CompileError, "you may not have an env type except in the first position"
+
                nil, {clauses_so_far, index, any_so_far?} ->
-                 {[nil | clauses_so_far], index, any_so_far?}
+                 {clauses_so_far, index, any_so_far?}
 
                clauses_fn, {clauses_so_far, index, _any_so_far} ->
                  new_clauses =

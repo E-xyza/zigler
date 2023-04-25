@@ -1,8 +1,11 @@
 defmodule Zig.Nif.Synchronous do
   alias Zig.Nif
   alias Zig.Type
+  alias Zig.Type.Function
 
   @behaviour Zig.Nif.Concurrency
+
+  import Zig.QuoteErl
 
   def render_elixir(nif = %{function: function}) do
     params =
@@ -17,21 +20,41 @@ defmodule Zig.Nif.Synchronous do
 
     quote context: Elixir do
       unquote(type)(unquote(nif.entrypoint)(unquote_splicing(params))) do
-        raise unquote(error_text)
+        :erlang.nif_error(unquote(error_text))
       end
     end
+  end
+
+  def render_erlang(nif = %{function: function}) do
+    vars =
+      case function.arity do
+        0 -> []
+        n -> Enum.map(1..n, &{:var, :"_X#{&1}"})
+      end
+
+    error_text = ~c'nif for function #{nif.entrypoint}/#{function.arity} not bound'
+
+    quote_erl(
+      """
+      unquote(function_name)(unquote(...vars)) ->
+        erlang:nif_error(unquote(error_text)).
+      """,
+      function_name: nif.entrypoint,
+      vars: vars,
+      error_text: error_text
+    )
   end
 
   require EEx
 
   synchronous = Path.join(__DIR__, "../templates/synchronous.zig.eex")
-  EEx.function_from_file(:def, :synchronous, synchronous, [:assigns])
+  EEx.function_from_file(:defp, :synchronous, synchronous, [:assigns])
 
   def render_zig(%Nif{function: function}), do: synchronous(function)
 
   def table_entries(nif) do
     [
-      ~s(.{.name = "#{nif.entrypoint}", .arity = #{nif.function.arity}, .fptr = #{nif.function.name}, .flags = 0})
+      ~s(.{.name = "#{nif.entrypoint}", .arity = #{nif.function.arity}, .fptr = #{Function.nif_alias_for(nif.function)}, .flags = 0})
     ]
   end
 

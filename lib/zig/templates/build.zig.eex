@@ -11,10 +11,17 @@ pub fn build(b: *Builder) void {
         .source = .{ .path = "<%= Path.join(@beam_dir, "erl_nif.zig") %>"}
     };
 
+    // compile-time options that modify default settings in beam.zig
+
+    const opts_pkg = Pkg{
+        .name = "zigler_options",
+        .source = .{ .path = "options.zig" }
+    };
+
     const beam_pkg = Pkg{
         .name = "beam",
         .source = .{ .path = "<%= Path.join(@beam_dir, "beam.zig") %>"},
-        .dependencies = &.{erl_nif_pkg},
+        .dependencies = &.{erl_nif_pkg, opts_pkg},
     };
 
     const core_pkg = Pkg{
@@ -31,12 +38,21 @@ pub fn build(b: *Builder) void {
         .{ .versioned = .{.major = <%= @version.major %>,
                           .minor = <%= @version.minor %>,
                           .patch = <%= @version.patch %>}});
+    lib.linkage = .dynamic;
 
-    lib.addSystemIncludeDir(beam_system_dir);
+    lib.addSystemIncludePath(beam_system_dir);
     lib.linkLibC();
     lib.addPackage(erl_nif_pkg);
     lib.addPackage(beam_pkg);
     lib.addPackage(core_pkg);
+    <%= for lib <- @link_lib do %>
+      <%= case lib do %>
+        <% {:system, lib} -> %>
+    lib.linkSystemLibrary("<%= lib %>");
+        <% lib -> %>
+    lib.addObjectFile("<%= lib %>");
+      <% end %>
+    <% end %>
     lib.setBuildMode(mode);
     lib.setTarget(target);
 
@@ -44,7 +60,7 @@ pub fn build(b: *Builder) void {
     lib.install();
 
     const exe = b.addExecutable("sema", "sema.zig");
-    exe.addSystemIncludeDir(beam_system_dir);
+    exe.addSystemIncludePath(beam_system_dir);
     exe.linkLibC();
     exe.addPackage(erl_nif_pkg);
     exe.addPackage(beam_pkg);

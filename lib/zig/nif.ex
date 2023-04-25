@@ -31,6 +31,7 @@ defmodule Zig.Nif do
 
   defmodule Concurrency do
     @callback render_elixir(Zig.Nif.t()) :: Macro.t()
+    @callback render_erlang(Zig.Nif.t()) :: term
     @callback render_zig(Zig.Nif.t()) :: iodata
     @callback set_entrypoint(Zig.Nif.t()) :: Zig.Nif.t()
   end
@@ -41,6 +42,17 @@ defmodule Zig.Nif do
 
   defp normalize_all(list, _) when is_list(list), do: list
 
+  def normalize_return(nif_opts) do
+    Enum.map(nif_opts, fn {nif, opts} ->
+      new_opts =
+        Keyword.update(opts, :return, [type: :default], fn return_list ->
+          Keyword.update(return_list, :type, :default, & &1)
+        end)
+
+      {nif, new_opts}
+    end)
+  end
+
   @doc """
   obtains a list of Nif structs from the semantically analyzed content and
   the nif options that are a part of
@@ -49,10 +61,15 @@ defmodule Zig.Nif do
   def from_sema(sema_list, nif_opts) do
     nif_opts
     |> normalize_all(sema_list)
+    |> normalize_return()
     |> Enum.map(fn
       {name, opts} ->
         # "calculated" details.
-        function = find_function(name, sema_list)
+        function =
+          sema_list
+          |> find_function(name)
+          |> adopt_options(opts)
+
         concurrency = Synchronous
 
         concurrency.set_entrypoint(%__MODULE__{
@@ -66,9 +83,13 @@ defmodule Zig.Nif do
     end)
   end
 
-  defp find_function(name, sema_list) do
+  # function retrieval and manipulation
+  defp find_function(sema_list, name) do
     Enum.find(sema_list, &(&1.name == name)) || raise "unreachable"
   end
+
+  defp adopt_options(function, :all), do: function
+  defp adopt_options(function, opts), do: %{function | opts: opts}
 
   # for now, don't implement.
   def typespec(_), do: nil
@@ -86,6 +107,17 @@ defmodule Zig.Nif do
     quote context: Elixir do
       (unquote_splicing(Enum.flat_map([typespec, marshalling, function], & &1)))
     end
+  end
+
+  def render_erlang(nif, opts \\ []) do
+    # TODO: typespec in erlang.
+
+    function =
+      nif
+      |> nif.concurrency.render_erlang
+      |> List.wrap()
+
+    function
   end
 
   @spec needs_marshal?(t) :: boolean

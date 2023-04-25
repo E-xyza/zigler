@@ -1,5 +1,5 @@
 defmodule Zig.Type.Float do
-  use Zig.Type
+  use Zig.Type, inspect?: true
 
   defstruct [:bits]
 
@@ -8,8 +8,12 @@ defmodule Zig.Type.Float do
   def from_json(%{"bits" => bits}), do: %__MODULE__{bits: bits}
 
   def to_string(float), do: "f#{float.bits}"
+  def to_call(float), do: "f#{float.bits}"
 
-  def marshal_param(_), do: nil
-  def marshal_return(_), do: nil
-  def param_errors(_), do: nil
+  def inspect(type, _opts) do
+    import Inspect.Algebra
+    concat(["~t(", to_string(type), ")"])
+  end
+
+  def return_allowed?(_), do: true
 end

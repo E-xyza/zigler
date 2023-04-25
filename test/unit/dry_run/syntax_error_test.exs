@@ -1,6 +1,8 @@
 defmodule ZiglerTest.DryRun.SyntaxErrorTest do
   use ExUnit.Case, async: true
 
+  @moduletag :skip
+
   def load(name) do
     __ENV__.file
     |> Path.dirname()

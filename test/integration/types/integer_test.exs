@@ -4,8 +4,8 @@ defmodule ZiglerTest.Types.IntegerTest do
   @sizes [7, 8, 32, 48, 64]
 
   use Zig,
-    otp_app: :zigler,
-    local_zig: true
+    leak_check: true,
+    otp_app: :zigler
 
   generated_addone_functions =
     Enum.map_join(
@@ -32,7 +32,7 @@ defmodule ZiglerTest.Types.IntegerTest do
         size = unquote(size)
 
         assert_raise ArgumentError,
-                     "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (i#{size})\n     got: \"foo\"\n",
+                     "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `i#{size}`)\n     got: `\"foo\"`\n",
                      fn ->
                        unquote(ifunction)("foo")
                      end
@@ -44,7 +44,7 @@ defmodule ZiglerTest.Types.IntegerTest do
         limit = 1 <<< size
 
         assert_raise ArgumentError,
-                     "errors were found at the given arguments:\n\n  * 1st argument: \n\n     #{limit} is out of bounds for type u#{size} (0...#{limit - 1})\n",
+                     "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u#{size}`)\n     got: `#{limit}`\n     note: out of bounds (0..#{limit - 1})\n",
                      fn ->
                        unquote(ufunction)(limit)
                      end
@@ -67,13 +67,13 @@ defmodule ZiglerTest.Types.IntegerTest do
 
     test "non-integer fails for size 0" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (u0)\n     got: \"foo\"\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u0`)\n     got: `\"foo\"`\n",
                    fn -> zerobit("foo") end
     end
 
     test "out of bounds integer of size 0 fails" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     1 is out of bounds for type u0 (0...0)\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u0`)\n     got: `1`\n     note: out of bounds (0..0)\n",
                    fn -> zerobit(1) end
     end
   end
@@ -109,24 +109,54 @@ defmodule ZiglerTest.Types.IntegerTest do
     """
 
     test "type checking on large integer" do
-      assert_raise ArgumentError, fn ->
-        test_u65("foo")
-      end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u65`)\n     got: `\"foo\"`\n",
+                   fn ->
+                     test_u65("foo")
+                   end
     end
 
     test "bounds checking on unsigned large integer" do
-      assert_raise ArgumentError, fn ->
-        test_u65(Bitwise.<<<(1, 65))
-      end
+      limit = Bitwise.<<<(1, 65)
+
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u65`)\n     got: `#{limit}`\n     note: out of bounds (0..#{limit - 1})\n",
+                   fn ->
+                     test_u65(limit)
+                   end
     end
 
     test "bounds checking on signed large integer" do
-      assert_raise ArgumentError, fn ->
-        test_i65(-Bitwise.<<<(1, 64) - 1)
+      limit = Bitwise.<<<(1, 64)
+      value = -limit - 1
+
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `i65`)\n     got: `#{value}`\n     note: out of bounds (#{-limit}..#{limit - 1})\n",
+                   fn ->
+                     test_i65(value)
+                   end
+    end
+  end
+
+  describe "for c integer types" do
+    @ctypes ~w(c_short c_ushort c_int c_uint c_long c_longlong c_ulonglong)
+    # note that c_ulong is missing, it's not entirely clear why that doesn't work.
+
+    for type <- @ctypes do
+      function = :"addone_#{type}"
+
+      ~z"""
+      pub fn #{function}(value: #{type}) #{type} { return value + 1; }
+      """
+
+      test "c integer #{type} does the right thing" do
+        assert 48 = unquote(function)(47)
       end
     end
   end
 
   describe "for big integers" do
+    @tag :skip
+    test "can be marshalled into zig bigint type"
   end
 end

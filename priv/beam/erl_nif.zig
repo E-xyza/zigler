@@ -25,4 +25,4 @@ pub const e = if (builtin.output_mode == .Exe) stub else real;
 
 pub const ErlNifTerm = e.ERL_NIF_TERM;
 
-usingnamespace e;
+pub usingnamespace e;

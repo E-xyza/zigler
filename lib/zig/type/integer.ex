@@ -1,5 +1,5 @@
 defmodule Zig.Type.Integer do
-  use Zig.Type
+  use Zig.Type, inspect?: true
 
   defstruct [:signedness, :bits]
 
@@ -45,42 +45,104 @@ defmodule Zig.Type.Integer do
     end
   end
 
+  def to_call(integer), do: to_string(integer)
+
   def inspect(type, _opts) do
+    import Inspect.Algebra
     concat(["~t(", to_string(type), ")"])
   end
 
-  def marshal_param(type = %{signedness: :unsigned, bits: bits}) when bits > 64 do
+  def marshal_param(type = %{signedness: :unsigned, bits: bits}, _) when bits > 64 do
     size = _next_power_of_two_ceil(bits)
     max = typemax(type)
 
     fn arg, index ->
-      quote bind_quoted: [arg: arg, size: size, index: index, max: max] do
-        unless is_integer(arg), do: :erlang.error({:nif_argument_type_error, {index, arg}})
-        unless arg >= 0, do: :erlang.error({:nif_argument_range_error, {index, arg}})
-        unless arg <= max, do: :erlang.error({:nif_argument_range_error, {index, arg}})
+      quote bind_quoted: [arg: arg, size: size, index: index, max: max, name: to_string(type)] do
+        unless is_integer(arg),
+          do:
+            :erlang.error(
+              {:argument_error, index,
+               [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}]}
+            )
+
+        unless arg >= 0,
+          do:
+            :erlang.error(
+              {:argument_error, index,
+               [
+                 {"expected: integer (for `#{name}`)"},
+                 {"got: `#{inspect(arg)}`"},
+                 {"note: out of bounds (0..#{max})"}
+               ]}
+            )
+
+        unless arg <= max,
+          do:
+            :erlang.error(
+              {:argument_error, index,
+               [
+                 {"expected: integer (for `#{name}`)"},
+                 {"got: `#{inspect(arg)}`"},
+                 {"note: out of bounds (0..#{max})"}
+               ]}
+            )
+
         <<arg::unsigned-integer-size(size)-native>>
       end
     end
   end
 
-  def marshal_param(type = %{signedness: :signed, bits: bits}) when bits > 64 do
+  def marshal_param(type = %{signedness: :signed, bits: bits}, _) when bits > 64 do
     size = _next_power_of_two_ceil(bits)
     max = typemax(type)
     min = typemin(type)
 
     fn arg, index ->
-      quote bind_quoted: [arg: arg, size: size, index: index, min: min, max: max] do
-        unless is_integer(arg), do: :erlang.error({:nif_argument_type_error, {index, arg}})
-        unless arg >= min, do: :erlang.error({:nif_argument_range_error, {index, arg}})
-        unless arg <= max, do: :erlang.error({:nif_argument_range_error, {index, arg}})
+      quote bind_quoted: [
+              arg: arg,
+              size: size,
+              index: index,
+              min: min,
+              max: max,
+              name: to_string(type)
+            ] do
+        unless is_integer(arg),
+          do:
+            :erlang.error(
+              {:argument_error, index,
+               [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}]}
+            )
+
+        unless arg >= min,
+          do:
+            :erlang.error(
+              {:argument_error, index,
+               [
+                 {"expected: integer (for `#{name}`)"},
+                 {"got: `#{inspect(arg)}`"},
+                 {"note: out of bounds (#{min}..#{max})"}
+               ]}
+            )
+
+        unless arg <= max,
+          do:
+            :erlang.error(
+              {:argument_error, index,
+               [
+                 {"expected: integer (for `#{name}`)"},
+                 {"got: `#{inspect(arg)}`"},
+                 {"note: out of bounds (#{min}..#{max})"}
+               ]}
+            )
+
         <<arg::signed-integer-size(size)-native>>
       end
     end
   end
 
-  def marshal_param(_), do: nil
+  def marshal_param(_, _), do: nil
 
-  def marshal_return(%{signedness: :unsigned, bits: bits}) when bits > 64 do
+  def marshal_return(%{signedness: :unsigned, bits: bits}, _) when bits > 64 do
     size = _next_power_of_two_ceil(bits)
 
     fn arg ->
@@ -91,7 +153,7 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  def marshal_return(%{signedness: :signed, bits: bits}) when bits > 64 do
+  def marshal_return(%{signedness: :signed, bits: bits}, _) when bits > 64 do
     size = _next_power_of_two_ceil(bits)
 
     fn arg ->
@@ -102,105 +164,7 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  def marshal_return(_), do: nil
-
-  def param_errors(type = %{bits: bits}) when bits <= 64 do
-    type_str = to_string(type)
-    range = "#{typemin(type)}...#{typemax(type)}"
-
-    fn index ->
-      [
-        {{:nif_argument_type_error, index},
-         quote do
-           case __STACKTRACE__ do
-             [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
-               new_opts =
-                 Keyword.merge(opts,
-                   error_info: %{module: __MODULE__, function: :_format_error},
-                   zigler_error: %{
-                     unquote(index + 1) =>
-                       "\n\n     expected: integer (#{unquote(type_str)})\n     got: #{inspect(Enum.at(a, unquote(index)))}"
-                   }
-                 )
-
-               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
-
-             stacktrace ->
-               :erlang.raise(:error, :badarg, stacktrace)
-           end
-         end},
-        {{:nif_argument_range_error, index},
-         quote do
-           case __STACKTRACE__ do
-             [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
-               new_opts =
-                 Keyword.merge(opts,
-                   error_info: %{module: __MODULE__, function: :_format_error},
-                   zigler_error: %{
-                     unquote(index + 1) =>
-                       "\n\n     #{inspect(Enum.at(a, unquote(index)))} is out of bounds for type #{unquote(type_str)} (#{unquote(range)})"
-                   }
-                 )
-
-               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
-
-             stacktrace ->
-               :erlang.raise(:error, :badarg, stacktrace)
-           end
-         end}
-      ]
-    end
-  end
-
-  @arg {:arg, [], Elixir}
-
-  def param_errors(type) do
-    type_str = to_string(type)
-    range = "#{typemin(type)}...#{typemax(type)}"
-
-    fn index ->
-      [
-        {{:nif_argument_type_error, {index, @arg}},
-         quote do
-           case __STACKTRACE__ do
-             [{m, f, a, opts} | rest] ->
-               new_opts =
-                 Keyword.merge(opts,
-                   error_info: %{module: __MODULE__, function: :_format_error},
-                   zigler_error: %{
-                     unquote(index + 1) =>
-                       "\n\n     expected: integer (#{unquote(type_str)})\n     got: #{inspect(unquote(@arg))}"
-                   }
-                 )
-
-               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
-
-             stacktrace ->
-               :erlang.raise(:error, :badarg, stacktrace)
-           end
-         end},
-        {{:nif_argument_range_error, {index, @arg}},
-         quote do
-           case __STACKTRACE__ do
-             [{m, f, a, opts} | rest] ->
-               new_opts =
-                 Keyword.merge(opts,
-                   error_info: %{module: __MODULE__, function: :_format_error},
-                   zigler_error: %{
-                     unquote(index + 1) =>
-                       "\n\n     #{inspect(unquote(@arg))} is out of bounds for type #{unquote(type_str)} (#{unquote(range)})"
-                   }
-                 )
-
-               :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
-
-             stacktrace ->
-               :erlang.raise(:error, :badarg, stacktrace)
-           end
-         end}
-      ]
-    end
-  end
+  def marshal_return(_, _), do: nil
 
   def _next_power_of_two_ceil(bits), do: _next_power_of_two_ceil(bits, 1, true)
 
@@ -221,12 +185,14 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  defp typemin(%{bits: 0}), do: 0
-  defp typemin(%{signedness: :unsigned}), do: 0
-  defp typemin(%{bits: bits}), do: -Bitwise.<<<(1, bits - 1)
+  # note that we're currently not using this function for unsigned ints, which we know is zero
+  defp typemin(%{signedness: :signed, bits: 0}), do: 0
+  defp typemin(%{signedness: :signed, bits: bits}), do: -Bitwise.<<<(1, bits - 1)
 
   defp typemax(%{bits: 0}), do: 0
   defp typemax(%{signedness: :unsigned, bits: bits}), do: Bitwise.<<<(1, bits) - 1
   defp typemax(%{signedness: :signed, bits: 1}), do: 0
   defp typemax(%{signedness: :signed, bits: bits}), do: Bitwise.<<<(1, bits - 1) - 1
+
+  def return_allowed?(_), do: true
 end

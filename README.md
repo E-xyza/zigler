@@ -3,7 +3,7 @@
 Library test status:
 ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI/badge.svg)
 
-## Installation
+## Installation: Elixir
 
 Zigler is [available in Hex](https://hex.pm/zigler), and the package can be installed
 by adding `zigler` to your list of dependencies in `mix.exs`:
@@ -14,6 +14,21 @@ def deps do
     {:zigler, "~> 0.10.0", runtime: false}
   ]
 end
+```
+
+## Installation: Erlang
+
+Erlang is only supported via rebar3.  You must enable the rebar_mix plugin and 
+add zigler to your deps in rebar3.
+
+Note that erlang support is highly experimental.  Please submit issues if you 
+have difficulty.
+
+```erlang
+{plugins, [rebar_mix]}.
+
+{deps, [{zigler, "0.10"}]}.
+
 ```
 
 ## Documentation
@@ -116,8 +131,7 @@ than using C to bind C libraries.  Here is an example:
 
 ```elixir
 defmodule BlasDynamic do
-  use Zig,
-    libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
+  use Zig,     libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
     include: ["/usr/include/x86_64-linux-gnu"],
     link_libc: true
 
@@ -147,7 +161,7 @@ test "we can use a blas shared library" do
 end
 ```
 
-### Documentation
+### Documentation (Elixir-only)
 
 You can document nif functions, local functions, zig structs, variables, and types.
 If you document a nif function, it will be a part of the module documentation, and
@@ -168,10 +182,34 @@ defmodule Documentation do
 end
 ```
 
-## Formatting
+### Formatting (Elixir-only)
 
 A mix format plugin is available through the `zigler_format` package.
 [See the installation instructions](https://github.com/v0idpwn/zigler_format#installation)
+
+## Erlang support
+
+Use of Zigler with erlang is possible using parse transforms.  Annotate the zig
+code into a `zig_code` attribute and pass zigler options (identical to the elixir
+options) into a `zig_opts` attribute.  Zigler will then create appropriate
+functions matching the zig functions.
+
+```erlang
+-module(erlang_zigler_module).
+-compile({parse_transform, zigler}). 
+-export([foo/1, foo/0]).
+
+-zig_code("
+pub fn foo() i32 {
+    return 47;
+}
+").
+
+-zig_opts([{otp_app, zigler}]).
+
+foo(X) ->
+    47 + X.
+```
 
 ## Zigler Principles
 

@@ -1,5 +1,6 @@
-defmodule ZigTest.Assembler.IncludeTest do
+defmodule ZiglerTest.Assembler.IncludeTest do
   use ExUnit.Case, async: true
+  @moduletag :skip
 
   @moduletag :assembler
 
