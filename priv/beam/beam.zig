@@ -195,6 +195,12 @@ pub const general_purpose_allocator = general_purpose_allocator_instance.allocat
 pub threadlocal var allocator = if (options.use_gpa) general_purpose_allocator else allocator_.raw_beam_allocator;
 
 ///////////////////////////////////////////////////////////////////////////////
+// resources
+
+pub const resource = @import("resource.zig");
+pub const Resource = resource.Resource;
+
+///////////////////////////////////////////////////////////////////////////////
 // exception
 
 pub fn raise_exception(env_: env, reason: anytype) term {

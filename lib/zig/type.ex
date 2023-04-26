@@ -8,6 +8,7 @@ defprotocol Zig.Type do
   alias Zig.Type.Optional
   alias Zig.Type.Slice
   alias Zig.Type.Struct
+  alias Zig.Type.Resource
 
   @type t :: Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :term
 
@@ -131,6 +132,9 @@ defprotocol Zig.Type do
 
       %{"type" => "optional"} ->
         Optional.from_json(json, module)
+
+      %{"type" => "resource"} ->
+        Resource.from_json(json, module)
     end
   end
 

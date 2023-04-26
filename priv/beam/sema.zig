@@ -30,36 +30,54 @@ fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) !void {
     try stream.emitNumber(f.bits);
 }
 
+fn is_resource(comptime s: std.builtin.Type.Struct) bool {
+    if (s.decls.len != 1) return false;
+    if (!std.mem.eql(u8, s.decls[0].name, "__wraps")) return false;
+    if (s.fields.len != 1) return false;
+    if (!std.mem.eql(u8, s.fields[0].name, "resource_payload")) return false;
+    return true;
+}
+
 fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime name: []const u8) !void {
-    try stream.emitString("struct");
-    try stream.objectField("name");
-    try stream.emitString(name);
-    if (s.layout == .Packed) {
-        const OriginalType = @Type(.{ .Struct = s });
-        try stream.objectField("packed_size");
-        try stream.emitNumber(@bitSizeOf(OriginalType));
-    }
-    try stream.objectField("fields");
-    try stream.beginArray();
-    inline for (s.fields) |field| {
-        try stream.arrayElem();
-        try stream.beginObject();
+    if (is_resource(s)) {
+        try streamResource(stream, s);
+    } else {
+        try stream.emitString("struct");
         try stream.objectField("name");
-        try stream.emitString(field.name);
-        try stream.objectField("type");
-        try streamType(stream, field.field_type);
-        try stream.objectField("required");
-        if (field.default_value) |default_value| {
-            _ = default_value;
-            try stream.emitBool(false);
-        } else {
-            try stream.emitBool(true);
+        try stream.emitString(name);
+        if (s.layout == .Packed) {
+            const OriginalType = @Type(.{ .Struct = s });
+            try stream.objectField("packed_size");
+            try stream.emitNumber(@bitSizeOf(OriginalType));
         }
-        try stream.objectField("alignment");
-        try stream.emitNumber(field.alignment);
-        try stream.endObject();
+        try stream.objectField("fields");
+        try stream.beginArray();
+        inline for (s.fields) |field| {
+            try stream.arrayElem();
+            try stream.beginObject();
+            try stream.objectField("name");
+            try stream.emitString(field.name);
+            try stream.objectField("type");
+            try streamType(stream, field.field_type);
+            try stream.objectField("required");
+            if (field.default_value) |default_value| {
+                _ = default_value;
+                try stream.emitBool(false);
+            } else {
+                try stream.emitBool(true);
+            }
+            try stream.objectField("alignment");
+            try stream.emitNumber(field.alignment);
+            try stream.endObject();
+        }
+        try stream.endArray();
     }
-    try stream.endArray();
+}
+
+fn streamResource(stream: anytype, comptime s: std.builtin.Type.Struct) !void {
+    try stream.emitString("resource");
+    try stream.objectField("payload");
+    try streamType(stream, s.fields[0].field_type);
 }
 
 fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) !void {
@@ -122,7 +140,9 @@ fn streamType(stream: anytype, comptime T: type) !void {
         .Optional => |o| try streamOptional(stream, o),
         .Bool => try stream.emitString("bool"),
         .Void => try stream.emitString("void"),
-        else => unreachable,
+        else => {
+            @compileError("Unsupported return or argument type found in public function: " ++ @typeName(T));
+        },
     }
     try stream.endObject();
 }
