@@ -14,7 +14,6 @@ defmodule Zig.Sema do
 
     File.write!(sema_file, file_for(opts))
     Command.fmt(sema_file)
-
     result = Command.build_sema(dir)
 
     functions =

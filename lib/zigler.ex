@@ -3,7 +3,7 @@ defmodule :zigler do
 
   def parse_transform(ast, _opts) do
     Application.ensure_all_started(:logger)
-    Zig.Command.fetch("0.10.0")
+    Zig.Command.fetch("0.10.1")
 
     opts =
       case Enum.find(ast, &match?({:attribute, _, :zig_opts, _}, &1)) do

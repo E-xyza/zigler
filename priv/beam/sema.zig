@@ -1,4 +1,5 @@
 const std = @import("std");
+const resource = @import("resource.zig");
 
 fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
     try stream.emitString("integer");
@@ -30,17 +31,11 @@ fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) !void {
     try stream.emitNumber(f.bits);
 }
 
-fn is_resource(comptime s: std.builtin.Type.Struct) bool {
-    if (s.decls.len != 1) return false;
-    if (!std.mem.eql(u8, s.decls[0].name, "__wraps")) return false;
-    if (s.fields.len != 1) return false;
-    if (!std.mem.eql(u8, s.fields[0].name, "resource_payload")) return false;
-    return true;
-}
-
 fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime name: []const u8) !void {
-    if (is_resource(s)) {
-        try streamResource(stream, s);
+    if (resource.MaybeUnwrap(s)) |res_type| {
+        try stream.emitString("resource");
+        try stream.objectField("payload");
+        try streamType(stream, res_type);
     } else {
         try stream.emitString("struct");
         try stream.objectField("name");
@@ -72,12 +67,6 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
         }
         try stream.endArray();
     }
-}
-
-fn streamResource(stream: anytype, comptime s: std.builtin.Type.Struct) !void {
-    try stream.emitString("resource");
-    try stream.objectField("payload");
-    try streamType(stream, s.fields[0].field_type);
 }
 
 fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) !void {

@@ -5,6 +5,22 @@ const nif = @import("nif");
 <%= for nif <- @nifs do %>
 <%= render_zig(nif) %>
 <% end %>
+
+// this function is used by resource.zig and must exist.  Will be templated later.
+pub fn resource_lookup(comptime T: type) *e.ErlNifResourceType {
+    _ = T;
+    // CAUSE SEGFAULT IF THIS ACTUALLY GETS CALLED.
+    return @intToPtr(*e.ErlNifResourceType, 0x1);
+}
+
+// this will be filled out later.
+export fn load(env: ?*e.ErlNifEnv, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) c_int {
+    _ = env;
+    _ = priv_data;
+    _ = load_info;
+    return 0;
+}
+
 export var exported_nifs = [_]e.ErlNifFunc{<%= table_entries(@nifs) %>};
 
 const entry = e.ErlNifEntry{
@@ -13,7 +29,7 @@ const entry = e.ErlNifEntry{
     .name = "<%= @module %>",
     .num_of_funcs = exported_nifs.len,
     .funcs = &exported_nifs,
-    .load = beam.loader.blank_load,
+    .load = load,
     .reload = null,   // never supported as of OTP 20
     .upgrade = beam.loader.blank_upgrade, 
     .unload = beam.loader.blank_unload,  
