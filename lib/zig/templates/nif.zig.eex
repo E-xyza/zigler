@@ -12,7 +12,7 @@ const entry = e.ErlNifEntry{
     .minor = <%= nif_version(:minor) %>,
     .name = "<%= @module %>",
     .num_of_funcs = exported_nifs.len,
-    .funcs = &(exported_nifs[0]),
+    .funcs = &exported_nifs,
     .load = beam.loader.blank_load,
     .reload = null,   // never supported as of OTP 20
     .upgrade = beam.loader.blank_upgrade, 

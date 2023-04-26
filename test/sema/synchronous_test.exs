@@ -1,12 +1,10 @@
 defmodule ZiglerTest.Sema.SynchronousTest do
   use ExUnit.Case, async: true
 
-  @moduletag :skip
-
   use Zig, otp_app: :zigler, compile: false
 
   ~Z"""
-  fn synchronous() u8 { return 47; }
+  pub fn synchronous() u8 { return 47; }
   """
 
   test "synchronous function is identified" do

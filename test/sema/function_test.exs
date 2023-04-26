@@ -1,8 +1,6 @@
 defmodule ZiglerTest.Sema.FunctionTest do
   use ExUnit.Case, async: true
 
-  @moduletag :skip
-
   use Zig, otp_app: :zigler, precompile: false
 
   alias Zig.Type
