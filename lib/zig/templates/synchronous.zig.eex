@@ -17,6 +17,7 @@ export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [
     const outer_result = get_result: {
         <%= for {param_type, index} <- Nif.indexed_parameters(@params) do %>
         <% needs_size? = Type.missing_size?(param_type) %>
+        <% needs_root? = match?(%Zig.Type.Resource{}, param_type) %>
 
         <%= if needs_size? do %>
         var size<%= index %>: usize = undefined;
@@ -27,7 +28,10 @@ export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [
             <%= Type.to_call(param_type) %>, 
             env, 
             .{.v = arg[<%= index %>]}, 
-            .{<%= if needs_make? do %>.error_info = &error_info,<% end %><%= if needs_size? do%>.size = &size<%= index %><% end %>}) 
+            .{
+              <%= if needs_make? do %>.error_info = &error_info,<% end %>
+              <%= if needs_size? do%>.size = &size<%= index %>,<% end %>
+              <%= if needs_root? do%>.root = @This() <% end %>}) 
           catch |err| {
           <%= if needs_make? do %>
           return e.enif_raise_exception(env, beam.make(env, .{err, <%= index %>, error_info}, .{}).v);

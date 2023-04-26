@@ -1,7 +1,7 @@
 <%= for resource <- @resources, do: resource_decl(resource) %>
 
-pub fn setup_resource_allocator(comptime T: type, allocator: *Allocator) void {
-    allocator.ptr = switch (T) {
+pub fn assign_resource_type(comptime T: type, type_ptr: **e.ErlNifResourceType) void {
+    type_ptr.* = switch (T) {
         <%= for resource <- @resources, do: resource_prong(resource) %>
         else => @compileError("a resource was attempted to be used for " ++ @typeName(T) ++ " but no resource was declared for it."),
     };

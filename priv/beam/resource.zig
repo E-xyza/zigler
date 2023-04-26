@@ -37,6 +37,17 @@ pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
     }
 }
 
+pub fn Unwrap(comptime T: type) type {
+    switch (@typeInfo(T)) {
+        .Struct => |s| {
+            const maybe_unwrapped = MaybeUnwrap(s);
+            if (maybe_unwrapped) | unwrapped | return unwrapped;
+            @compileError("can't unwrap a type that is not a resource: " ++ @typeName(T));
+        },
+        else => @compileError("can't unwrap a type that is not a resource: " ++ @typeName(T)),
+    }
+}
+
 const ResourceMode = enum { reference, binary };
 
 const ResourceOpts = struct {
@@ -76,7 +87,8 @@ pub fn resources(comptime root_import: anytype) type {
         pub fn create(data: anytype, opts: ResourceOpts) !Resource(@TypeOf(data)) {
             const T = @TypeOf(data);
             var allocator = Allocator{ .ptr = undefined, .vtable = &resource_vtable };
-            root_import.setup_resource_allocator(T, &allocator);
+            var typed_allocator = @ptrCast(**e.ErlNifResourceType, &allocator.ptr);
+            root_import.assign_resource_type(T, typed_allocator);
 
             if (@sizeOf(@TypeOf(data)) == 0) {
                 @compileError("you cannot create a resource for a zero-byte object");
@@ -86,6 +98,14 @@ pub fn resources(comptime root_import: anytype) type {
             const resource_payload = try allocator.create(T);
             resource_payload.* = data;
             return Resource(T){ .resource_payload = resource_payload };
+        }
+
+        pub fn unpack(resource: anytype) Unwrap(@TypeOf(resource)) {
+            return resource.resource_payload.*;
+        }
+
+        pub fn update(resource: anytype, data: Unwrap(@TypeOf(resource))) void {
+            resource.resource_payload.* = data;
         }
     };
 }

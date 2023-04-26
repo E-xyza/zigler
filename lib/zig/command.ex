@@ -27,7 +27,7 @@ defmodule Zig.Command do
       # TODO: better error parsing here
       {error, code} ->
         message = "zig command failed: #{command} failed with error #{code}: #{error}"
-        Logger.error(error)
+        Logger.error(message)
         raise "failed"
     end
   end
@@ -81,15 +81,15 @@ defmodule Zig.Command do
     end
   end
 
-  defp maybe_rename_library_filename(fullpath) do
-    if Path.extname(fullpath) == ".dylib" do
-      fullpath
-      |> Path.dirname()
-      |> Path.join(Path.basename(fullpath, ".dylib") <> ".so")
-    else
-      fullpath
-    end
-  end
+  #defp maybe_rename_library_filename(fullpath) do
+  #  if Path.extname(fullpath) == ".dylib" do
+  #    fullpath
+  #    |> Path.dirname()
+  #    |> Path.join(Path.basename(fullpath, ".dylib") <> ".so")
+  #  else
+  #    fullpath
+  #  end
+  #end
 
   #############################################################################
   ## download zig from online sources.
@@ -199,8 +199,7 @@ defmodule Zig.Command do
   end
 
   # https://ziglang.org/download/#release-0.10.1
-  @checksums %{
-  }
+  #@checksums %{}
 
   defp download_zig_archive(zig_download_path, version, archive) do
     url = "https://ziglang.org/download/#{version}/#{archive}"
@@ -208,12 +207,12 @@ defmodule Zig.Command do
 
     case httpc_get(url) do
       {:ok, %{status: 200, body: body}} ->
-        #expected_checksum = Map.fetch!(@checksums, archive)
-        #actual_checksum = :sha256 |> :crypto.hash(body) |> Base.encode16(case: :lower)
+        # expected_checksum = Map.fetch!(@checksums, archive)
+        # actual_checksum = :sha256 |> :crypto.hash(body) |> Base.encode16(case: :lower)
 
-        #if expected_checksum != actual_checksum do
+        # if expected_checksum != actual_checksum do
         #  raise "checksum mismatch: expected #{expected_checksum}, got #{actual_checksum}"
-        #end
+        # end
 
         File.write!(zig_download_path, body)
 

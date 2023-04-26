@@ -57,6 +57,9 @@ defprotocol Zig.Type do
       "i" <> _ ->
         Integer.parse(string)
 
+      "f" <> _ ->
+        Float.parse(string)
+
       "?*.cimport" <> rest ->
         if String.ends_with?(rest, "struct_enif_environment_t") do
           Env

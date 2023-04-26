@@ -5,6 +5,10 @@ defmodule Zig.Type.Float do
 
   @type t :: %__MODULE__{bits: 16 | 32 | 64}
 
+  def parse("f16"), do: %__MODULE__{bits: 16}
+  def parse("f32"), do: %__MODULE__{bits: 32}
+  def parse("f64"), do: %__MODULE__{bits: 64}
+
   def from_json(%{"bits" => bits}), do: %__MODULE__{bits: bits}
 
   def to_string(float), do: "f#{float.bits}"

@@ -1,6 +1,7 @@
 const beam = @import("beam.zig");
 const e = @import("erl_nif.zig");
 const std = @import("std");
+const resource = @import("resource.zig");
 
 const GetError = error{ argument_error, unreachable_error };
 
@@ -226,12 +227,40 @@ pub fn get_atom(env: beam.env, src: beam.term, buf: *[256]u8) ![]u8 {
 }
 
 pub fn get_struct(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
+    const struct_info = switch (@typeInfo(T)) {
+        .Struct => |s| s,
+        else => unreachable,
+    };
+
+    if (resource.MaybeUnwrap(struct_info)) |_| {
+        return get_resource(T, env, src, opts);
+    } else {
+        errdefer error_expected(T, env, opts);
+        errdefer error_got(env, opts, src);
+
+        var result: T = undefined;
+        try fill_struct(T, env, &result, src, opts);
+        return result;
+    }
+}
+
+pub fn get_resource(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
+    if (!@hasField(@TypeOf(opts), "root")) {
+        @compileError("get must be provided a root option to obtain a resource, you can use @import(\"root\").");
+    }
+
     errdefer error_expected(T, env, opts);
     errdefer error_got(env, opts, src);
 
-    var result: T = undefined;
-    try fill_struct(T, env, &result, src, opts);
-    return result;
+    var res: T = undefined;
+    var resource_type: *e.ErlNifResourceType = undefined;
+
+    opts.root.assign_resource_type(resource.Unwrap(T), &resource_type);
+    const resource_target = @ptrCast([*c]?*anyopaque, &res.resource_payload);
+    const result = e.enif_get_resource(env, src.v, resource_type, resource_target);
+
+    if (result == 0) return GetError.argument_error;
+    return res;
 }
 
 // internal function, for getting individual tuples out of a keyword list for

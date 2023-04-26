@@ -2,6 +2,7 @@ const beam = @import("beam");
 const e = @import("erl_nif");
 const nif = @import("nif");
 const Allocator = @import("std").mem.Allocator;
+const Resource = beam.Resource;
 
 <%= for nif <- @nifs do %>
 <%= render_zig_code(nif) %>
