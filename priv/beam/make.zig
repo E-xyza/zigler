@@ -1,6 +1,7 @@
 const beam = @import("beam.zig");
 const e = @import("erl_nif.zig");
 const std = @import("std");
+const resource = beam.resource;
 
 const OutputType = enum { default, charlists, binary };
 const MakeOpts = struct {
@@ -127,6 +128,8 @@ fn make_struct(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term
             }
         }
         return .{ .v = e.enif_make_tuple_from_array(env, &tuple_list, value.len) };
+    } else if (resource.MaybeUnwrap(struct_info)) | _ | {
+        return .{.v = e.enif_make_resource(env, value.resource_payload)};
     } else {
         const fields = struct_info.fields;
         var result: e.ErlNifTerm = undefined;

@@ -71,30 +71,55 @@ const resource_vtable = Allocator.VTable{
     .free = nofree,
 };
 
-fn ResourceAllocator(comptime root_import: anytype, comptime T: type) type {
-    return struct {
-        allocator: Allocator = .{
-            .ptr = root_import.resource_lookup(T),
-            .vtable = &resource_vtable,
-        },
-    };
-}
-
 pub fn resources(comptime root_import: anytype) type {
     return struct {
         pub fn create(data: anytype, opts: ResourceOpts) !Resource(@TypeOf(data)) {
-            const resource_allocator: ResourceAllocator(root_import, @TypeOf(data)) = .{};
-            const allocator = resource_allocator.allocator;
+            const T = @TypeOf(data);
+            var allocator = Allocator{ .ptr = undefined, .vtable = &resource_vtable };
+            root_import.setup_resource_allocator(T, &allocator);
 
             if (@sizeOf(@TypeOf(data)) == 0) {
                 @compileError("you cannot create a resource for a zero-byte object");
             }
 
             _ = opts;
-            const T = @TypeOf(data);
             const resource_payload = try allocator.create(T);
             resource_payload.* = data;
             return Resource(T){ .resource_payload = resource_payload };
         }
     };
+}
+
+const ResourceInitOpts = struct {
+    dtor: ?*e.ErlNifResourceDtor = null,
+    stop: ?*e.ErlNifResourceStop = null,
+    down: ?*e.ErlNifResourceDown = null,
+    dyncall: ?*e.ErlNifResourceDynCall = null,
+};
+
+pub fn init(comptime T: type, comptime module: []const u8, env: beam.env, opts: ResourceInitOpts) *e.ErlNifResourceType {
+    // load em up.  Note all callbacks are optional and may be set to null.
+    // see: https://www.erlang.org/doc/man/erl_nif.html#enif_init_resource_type
+    var init_struct: e.ErlNifResourceTypeInit = .{.dtor = null, .stop = null, .down = null, .dyncall = null, .members = 0};
+    if (opts.dtor) |dtor| { 
+        init_struct.dtor = dtor;
+        init_struct.members = 1;
+    }
+
+    if (opts.stop) |stop| { 
+        init_struct.stop = stop;
+        init_struct.members = 2;
+    }
+
+    if (opts.down) |down| { 
+        init_struct.down = down;
+        init_struct.members = 3;
+    }
+
+    if (opts.dyncall) |dyncall| { 
+        init_struct.dyncall = dyncall;
+        init_struct.members = 4;
+    }
+    
+    return if (e.enif_init_resource_type(env, @typeName(T) ++ "-" ++ module, &init_struct, e.ERL_NIF_RT_CREATE, null)) |resource_type| resource_type else @panic("couldn't initialize the resource type for" ++ @typeName(T));
 }

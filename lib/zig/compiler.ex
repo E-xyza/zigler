@@ -91,7 +91,10 @@ defmodule Zig.Compiler do
     function_code = Enum.map(nif_functions, &apply(Nif, renderer, [&1]))
 
     nif_src_path = Path.join(directory, "nif.zig")
-    File.write!(nif_src_path, Nif.render_zig(nif_functions, module))
+
+    resource_opts = Keyword.get(opts, :resources, [])
+
+    File.write!(nif_src_path, Nif.render_zig_code(nif_functions, resource_opts, module))
     Command.fmt(nif_src_path)
 
     Logger.debug("wrote nif.zig to #{nif_src_path}")

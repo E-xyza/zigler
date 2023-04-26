@@ -1,23 +1,19 @@
 const beam = @import("beam");
 const e = @import("erl_nif");
 const nif = @import("nif");
+const Allocator = @import("std").mem.Allocator;
 
 <%= for nif <- @nifs do %>
-<%= render_zig(nif) %>
+<%= render_zig_code(nif) %>
 <% end %>
 
-// this function is used by resource.zig and must exist.  Will be templated later.
-pub fn resource_lookup(comptime T: type) *e.ErlNifResourceType {
-    _ = T;
-    // CAUSE SEGFAULT IF THIS ACTUALLY GETS CALLED.
-    return @intToPtr(*e.ErlNifResourceType, 0x1);
-}
+<%= Resources.render(resources: @resources, module: @module) %>
 
 // this will be filled out later.
-export fn load(env: ?*e.ErlNifEnv, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) c_int {
-    _ = env;
+export fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) c_int {
     _ = priv_data;
     _ = load_info;
+    load_resources(env);
     return 0;
 }
 

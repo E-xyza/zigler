@@ -17,6 +17,7 @@ defmodule Zig.Nif do
   alias Zig.Nif.Threaded
   alias Zig.Nif.Yielding
   alias Zig.Type.Function
+  alias Zig.Resources
 
   @type t :: %__MODULE__{
           type: :def | :defp,
@@ -32,7 +33,7 @@ defmodule Zig.Nif do
   defmodule Concurrency do
     @callback render_elixir(Zig.Nif.t()) :: Macro.t()
     @callback render_erlang(Zig.Nif.t()) :: term
-    @callback render_zig(Zig.Nif.t()) :: iodata
+    @callback render_zig_code(Zig.Nif.t()) :: iodata
     @callback set_entrypoint(Zig.Nif.t()) :: Zig.Nif.t()
   end
 
@@ -130,12 +131,12 @@ defmodule Zig.Nif do
   nif = Path.join(__DIR__, "templates/nif.zig.eex")
   EEx.function_from_file(:def, :nif_file, nif, [:assigns])
 
-  def render_zig(all_nifs, module) do
-    nif_file(%{nifs: all_nifs, module: module})
+  def render_zig_code(nifs, resources, module) do
+    nif_file(binding())
   end
 
-  def render_zig(nif = %__MODULE__{}) do
-    nif.concurrency.render_zig(nif)
+  def render_zig_code(nif = %__MODULE__{}) do
+    nif.concurrency.render_zig_function(nif)
   end
 
   def indexed_parameters([:env | rest]) do
