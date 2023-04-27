@@ -10,8 +10,8 @@ defmodule ZiglerTest.Types.PidTest do
   const e = @import("erl_nif");
 
   pub fn pid_dance(env: beam.env, pids: []beam.pid) beam.pid {
-    // send the first pid to the second pid, return the second pid
-    _ = beam.send(env, pids[1], .{.ok, pids[0]}, .{}) catch unreachable;
+    // send tuple {:ok, pid[0]} to the pid[1], return pid[1]
+    _ = beam.send(env, pids[1], .{.ok, pids[0]}) catch unreachable;
     return pids[1];
   }
   """

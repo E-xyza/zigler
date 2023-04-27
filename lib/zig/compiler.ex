@@ -84,6 +84,7 @@ defmodule Zig.Compiler do
     nif_functions =
       sema
       |> Nif.from_sema(opts[:nifs])
+      |> remove_ignored(opts[:ignore])
       |> assimilate_common_options(opts)
 
     renderer = Keyword.fetch!(opts, :render)
@@ -246,5 +247,10 @@ defmodule Zig.Compiler do
       |> Keyword.merge(nif.opts)
 
     %{nif | opts: new_opts}
+  end
+
+  defp remove_ignored(functions, ignored) do
+    ignored = List.wrap(ignored)
+    Enum.reject(functions, &(&1.function.name in ignored))
   end
 end

@@ -10,5 +10,7 @@ pub fn foo() i32 {
 
 -zig_opts([{otp_app, zigler}]).
 
+-type value() :: integer().
+-spec foo(value()) -> value().
 foo(X) ->
     47 + X.
