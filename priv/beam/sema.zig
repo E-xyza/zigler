@@ -1,5 +1,6 @@
 const std = @import("std");
 const resource = @import("resource.zig");
+const beam = @import("beam.zig");
 
 fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
     try stream.emitString("integer");
@@ -119,19 +120,25 @@ fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) !void 
 fn streamType(stream: anytype, comptime T: type) !void {
     try stream.beginObject();
     try stream.objectField("type");
-    switch (@typeInfo(T)) {
-        .Int => |i| try streamInt(stream, i),
-        .Enum => |e| try streamEnum(stream, e, T),
-        .Float => |f| try streamFloat(stream, f),
-        .Struct => |s| try streamStruct(stream, s, @typeName(T)),
-        .Array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
-        .Pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
-        .Optional => |o| try streamOptional(stream, o),
-        .Bool => try stream.emitString("bool"),
-        .Void => try stream.emitString("void"),
-        else => {
-            @compileError("Unsupported return or argument type found in public function: " ++ @typeName(T));
-        },
+
+    // catch special types pid, port and term
+    if (T == beam.pid) {
+        try stream.emitString("pid");
+    } else {
+        switch (@typeInfo(T)) {
+            .Int => |i| try streamInt(stream, i),
+            .Enum => |e| try streamEnum(stream, e, T),
+            .Float => |f| try streamFloat(stream, f),
+            .Struct => |s| try streamStruct(stream, s, @typeName(T)),
+            .Array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
+            .Pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
+            .Optional => |o| try streamOptional(stream, o),
+            .Bool => try stream.emitString("bool"),
+            .Void => try stream.emitString("void"),
+            else => {
+                @compileError("Unsupported return or argument type found in public function: " ++ @typeName(T));
+            },
+        }
     }
     try stream.endObject();
 }

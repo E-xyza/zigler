@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Resource.BasicResourceTest do
+defmodule ZiglerTest.Resource.BasicTest do
   use ExUnit.Case, async: true
 
   use Zig, otp_app: :zigler, resources: [:Struct, :u64]

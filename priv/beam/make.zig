@@ -13,6 +13,8 @@ pub fn make(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
     const T = @TypeOf(value);
     // passthrough on beam.term, no work needed.
     if (T == beam.term) return value;
+    if (T == beam.pid) return make_pid(env, value);
+    if (T == beam.port) @compileError("you cannot convert a port into a term");
 
     switch (@typeInfo(T)) {
         .Array => return make_array(env, value, opts),
@@ -32,6 +34,25 @@ pub fn make(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
         else => {
             @compileError("unusable type encountered");
         },
+    }
+}
+
+pub fn make_pid(_: beam.env, pid: beam.pid) beam.term {
+    // for some reason, the macro for this is super shitty.  See:
+    // https://github.com/erlang/otp/blob/a78b8e0769bba69ba1245cce850b226bdf6940fa/erts/emulator/beam/erl_nif_api_funcs.h#L649
+    // so we have to use secret hidden implementation, which is
+    // that the pid struct just wraps beam.term directly =(
+
+    if (beam.is_sema) {
+        // note that we also have just disable this in the sema step,
+        // because sema shims pid with a bogus extern struct, which 
+        // can't have pid.
+        unreachable;
+    } else {
+        // super bogus and super sketchy code:
+        // this code will fail to work if the OTP team ever changes
+        // their internal pid representation away from this!
+        return .{ .v = @bitCast(e.ErlNifTerm, pid.pid) };
     }
 }
 

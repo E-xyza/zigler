@@ -10,7 +10,7 @@ defprotocol Zig.Type do
   alias Zig.Type.Struct
   alias Zig.Type.Resource
 
-  @type t :: Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :term
+  @type t :: Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :pid | :port | :term
 
   @spec marshal_param(t, keyword) :: (Macro.t(), index :: non_neg_integer -> Macro.t()) | nil
   @doc "elixir-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
@@ -138,6 +138,12 @@ defprotocol Zig.Type do
 
       %{"type" => "resource"} ->
         Resource.from_json(json, module)
+
+      %{"type" => "pid"} -> :pid
+
+      %{"type" => "port"} -> :port
+
+      %{"type" => "term"} -> :term
     end
   end
 
@@ -268,12 +274,15 @@ defimpl Zig.Type, for: Atom do
 
   def to_call(:erl_nif_term), do: "e.ErlNifTerm"
   def to_call(:term), do: "beam.term"
+  def to_call(:pid), do: "beam.pid"
+  def to_call(:port), do: "beam.port"
   def to_call(:void), do: "void"
   def to_call(type), do: to_string(type)
 
-  def return_allowed?(type), do: type in [:term, :erl_nif_term, :void]
+  def return_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
 
   def get_result(:erl_nif_term, _), do: "break :get_result result;"
+  def get_result(:pid, _), do: "break :get_result beam.make(env, result, .{}).v;"
   def get_result(:term, _), do: "break :get_result result.v;"
 
   def get_result(:void, opts) do

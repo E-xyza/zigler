@@ -81,7 +81,7 @@ defmodule Zig.Command do
     end
   end
 
-  #defp maybe_rename_library_filename(fullpath) do
+  # defp maybe_rename_library_filename(fullpath) do
   #  if Path.extname(fullpath) == ".dylib" do
   #    fullpath
   #    |> Path.dirname()
@@ -89,7 +89,7 @@ defmodule Zig.Command do
   #  else
   #    fullpath
   #  end
-  #end
+  # end
 
   #############################################################################
   ## download zig from online sources.
@@ -199,7 +199,7 @@ defmodule Zig.Command do
   end
 
   # https://ziglang.org/download/#release-0.10.1
-  #@checksums %{}
+  # @checksums %{}
 
   defp download_zig_archive(zig_download_path, version, archive) do
     url = "https://ziglang.org/download/#{version}/#{archive}"

@@ -8,5 +8,9 @@ pub fn assign_resource_type(comptime T: type, type_ptr: **e.ErlNifResourceType) 
 }
 
 fn load_resources(env: beam.env) void {
-    <%= for resource <- @resources, do: init_resource_type(resource, @module) %>
+    <%= case @resources do %>
+        <% [] -> %> _ = env;
+        <% resources -> %> 
+          <%= for resource <- resources, do: init_resource_type(resource, @module) %>
+    <% end %>
 }

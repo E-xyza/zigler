@@ -19,7 +19,7 @@ defmodule ZiglerTest.Sema.ResourceTest do
 
   ~Z"""
   const beam = @import("beam");
-  pub const resource = beam.resource;
+  pub const resource = beam.resources(@import("root"));
   const Resource = beam.Resource;
 
   pub const T = struct {

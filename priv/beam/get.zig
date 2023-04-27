@@ -16,6 +16,7 @@ fn allocator(opts: anytype) std.mem.Allocator {
 pub fn get(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
     // passthrough on beam.term and e.ErlNifTerm, no work needed.
     if (T == beam.term) return src;
+    if (T == beam.pid) return get_pid(env, src, opts);
     if (T == e.ErlNifTerm) return src.v;
 
     switch (@typeInfo(T)) {
@@ -29,6 +30,19 @@ pub fn get(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
         .Optional => return get_optional(T, env, src, opts),
         else => @compileError("unhandlable type encountered in get"),
     }
+}
+
+// basic special types
+pub fn get_pid(env: beam.env, src: beam.term, _: anytype) GetError!beam.pid {
+    var pid: beam.pid = undefined;
+    if (e.enif_get_local_pid(env, src.v, &pid) == 0) return GetError.argument_error;
+    return pid;
+}
+
+pub fn get_port(env: beam.env, src: beam.term, _: anytype) GetError!beam.port {
+    var port: beam.port = undefined;
+    if (e.enif_get_local_port(env, src.v, &port) == 0) return GetError.argument_error;
+    return port;
 }
 
 const c_int_size = @bitSizeOf(c_int);

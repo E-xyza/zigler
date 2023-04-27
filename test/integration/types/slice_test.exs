@@ -9,8 +9,8 @@ defmodule ZiglerTest.Types.SliceTest do
       {:slice_u8_test, return: :charlists},
       :slice_string_test,
       :fastlane_beam_term_test,
-      :fastlane_erl_nif_term_test
-      # :sentinel_terminated_test
+      :fastlane_erl_nif_term_test,
+      :sentinel_terminated_test
     ]
 
   ## BASIC SLICES
@@ -123,15 +123,15 @@ defmodule ZiglerTest.Types.SliceTest do
     end
   end
 
-  #  ~Z"""
-  #  pub fn sentinel_terminated_test(passed: [:0]u8) u8 {
-  #    return passed[3];
-  #  }
-  #  """
-  #
-  #  describe "sentinel terminated slices" do
-  #    test "are supported" do
-  #      assert 0 == sentinel_terminated_test("foo")
-  #    end
-  #  end
+  ~Z"""
+  pub fn sentinel_terminated_test(passed: [:0]u8) u8 {
+    return passed[3];
+  }
+  """
+
+  describe "sentinel terminated slices" do
+    test "are supported" do
+      assert 0 == sentinel_terminated_test("foo")
+    end
+  end
 end

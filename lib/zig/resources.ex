@@ -20,11 +20,17 @@ defmodule Zig.Resources do
 
   defp call_for(resource) do
     case Atom.to_string(resource) do
-      "i" <> rest -> call_for_int("i", rest)
-      "u" <> rest -> call_for_int("u", rest)
+      "i" <> rest ->
+        call_for_int("i", rest)
+
+      "u" <> rest ->
+        call_for_int("u", rest)
+
       builtin when builtin in @builtins ->
         builtin
-      other -> "nif.#{other}"
+
+      other ->
+        "nif.#{other}"
     end
   end
 

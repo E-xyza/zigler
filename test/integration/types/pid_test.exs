@@ -1,0 +1,34 @@
+defmodule ZiglerTest.Types.PidTest do
+  use ExUnit.Case, async: true
+
+  use Zig,
+    leak_check: true,
+    otp_app: :zigler
+
+  ~Z"""
+  const beam = @import("beam");
+  const e = @import("erl_nif");
+
+  pub fn pid_dance(env: beam.env, pids: []beam.pid) beam.pid {
+    // send the first pid to the second pid, return the second pid
+    _ = beam.send(env, pids[1], .{.ok, pids[0]}, .{}) catch unreachable;
+    return pids[1];
+  }
+  """
+
+  # TODO: make sure that the "count" thing is the type we expect.
+
+  describe "beam parameters" do
+    test "are valid" do
+      spawned =
+        spawn(fn ->
+          receive do
+            {:ok, pid} -> send(pid, :done)
+          end
+        end)
+
+      assert spawned == pid_dance([self(), spawned])
+      assert_receive :done, 1000
+    end
+  end
+end
