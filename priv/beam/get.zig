@@ -267,11 +267,8 @@ pub fn get_resource(comptime T: type, env: beam.env, src: beam.term, opts: anyty
     errdefer error_got(env, opts, src);
 
     var res: T = undefined;
-    var resource_type: *e.ErlNifResourceType = undefined;
-
-    opts.root.assign_resource_type(resource.Unwrap(T), &resource_type);
-    const resource_target = @ptrCast([*c]?*anyopaque, &res.resource_payload);
-    const result = e.enif_get_resource(env, src.v, resource_type, resource_target);
+    const resource_target = @ptrCast(?*?*anyopaque, &res.__payload);
+    const result = e.enif_get_resource(env, src.v, res.resource_type(), resource_target);
 
     if (result == 0) return GetError.argument_error;
     return res;

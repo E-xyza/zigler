@@ -48,14 +48,20 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                 }
             }
 
-            return if (e.enif_init_resource_type(env, @typeName(T) ++ "-" ++ module, &init_struct, e.ERL_NIF_RT_CREATE, null)) |resource_type| resource_type else @panic("couldn't initialize the resource type for" ++ @typeName(T));
+            return if (e.enif_init_resource_type(env, @typeName(T) ++ "-" ++ module, &init_struct, e.ERL_NIF_RT_CREATE, null)) |type_struct| type_struct else @panic("couldn't initialize the resource type for" ++ @typeName(T));
+        }
+
+        pub fn resource_type(_: @This()) *e.ErlNifResourceType {
+            var resource_type_struct: *e.ErlNifResourceType = undefined;
+            root.set_resource(@This(), &resource_type_struct);
+            return resource_type_struct;
         }
 
         pub fn create(data: T) !@This() {
             var allocator = Allocator{ .ptr = undefined, .vtable = &resource_vtable };
 
             if (! beam.is_sema) {
-                root.set_resource(T, @ptrCast(**e.ErlNifResourceType, &allocator.ptr));
+                root.set_resource(@This(), @ptrCast(**e.ErlNifResourceType, &allocator.ptr));
             }
 
             if (@sizeOf(@TypeOf(data)) == 0) {

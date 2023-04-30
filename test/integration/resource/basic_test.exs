@@ -55,6 +55,6 @@ defmodule ZiglerTest.Resource.BasicTest do
     assert is_reference(res)
     assert %{payload: 47} = unpack_struct(res)
     increment_struct(res)
-    assert 48 = unpack_struct(res)
+    assert %{payload: 48} = unpack_struct(res)
   end
 end

@@ -16,9 +16,9 @@ defmodule ZiglerTest.AliasTest do
 
   test "intermediate content actually has the aliased form" do
     assert __DIR__
-    |> Path.join(".#{__MODULE__}.zig")
-    |> File.read!
-    |> Kernel.=~("pub const renamed = ok;")
+           |> Path.join(".#{__MODULE__}.zig")
+           |> File.read!()
+           |> Kernel.=~("pub const renamed = ok;")
   end
 
   test "aliased call" do
