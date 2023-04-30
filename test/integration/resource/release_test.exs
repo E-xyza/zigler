@@ -1,7 +1,7 @@
-defmodule ZiglerTest.Resource.BasicTest do
+defmodule ZiglerTest.Resource.ReleaseTest do
   use ExUnit.Case, async: true
 
-  use Zig, otp_app: :zigler, resources: ["beam.term": [dtor: :destroy]]
+  use Zig, otp_app: :zigler, resources: []
 
   ~Z"""
   const beam = @import("beam");

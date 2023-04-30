@@ -6,26 +6,84 @@ const builtin = std.builtin;
 const Allocator = std.mem.Allocator;
 const MAX_ALIGN = @import("allocator.zig").MAX_ALIGN;
 
-pub fn Resource(comptime T: type) type {
+const ResourceMode = enum { reference, binary };
+
+const ResourceOpts = struct {
+    mode: ResourceMode = .reference,
+    Callbacks: ?type = null,
+};
+
+pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOpts) type {
     return struct {
-        // we put this function in here to make sure it's got something special going on
-        // and that it's not just a regular struct
-        pub fn __wraps() type {
-            return T;
+        __payload: *T,
+
+        /// initialization function, which should be called at runtime by the module's init function.  The
+        /// primary job of this function is to assign the resource type generating function to
+        /// the root namespace.
+        pub fn init(comptime module: []const u8, env: beam.env) *e.ErlNifResourceType {
+            // load em up.  Note all callbacks are optional and may be set to null.
+            // see: https://www.erlang.org/doc/man/erl_nif.html#enif_init_resource_type
+            var init_struct: e.ErlNifResourceTypeInit = .{ .dtor = null, .stop = null, .down = null, .dyncall = null, .members = 0 };
+            if (opts.Callbacks) |Callbacks| {
+                const Shimmed = MakeShimmed(Callbacks);
+
+                if (Callbacks.dtor) |_| {
+                    init_struct.dtor = Shimmed.dtor;
+                    init_struct.members = 1;
+                }
+
+                if (Callbacks.stop) |_| {
+                    init_struct.stop = Shimmed.stop;
+                    init_struct.members = 2;
+                }
+
+                if (Callbacks.down) |_| {
+                    init_struct.down = Shimmed.down;
+                    init_struct.members = 3;
+                }
+
+                if (Callbacks.dyncall) |_| {
+                    init_struct.dyncall = Shimmed.dyncall;
+                    init_struct.members = 4;
+                }
+            }
+
+            return if (e.enif_init_resource_type(env, @typeName(T) ++ "-" ++ module, &init_struct, e.ERL_NIF_RT_CREATE, null)) |resource_type| resource_type else @panic("couldn't initialize the resource type for" ++ @typeName(T));
         }
-        resource_payload: *T,
+
+        pub fn create(data: T) !@This() {
+            var allocator = Allocator{ .ptr = undefined, .vtable = &resource_vtable };
+
+            if (! beam.is_sema) {
+                root.set_resource(T, @ptrCast(**e.ErlNifResourceType, &allocator.ptr));
+            }
+
+            if (@sizeOf(@TypeOf(data)) == 0) {
+                @compileError("you cannot create a resource for a zero-byte object");
+            }
+
+            const resource_payload = try allocator.create(T);
+            resource_payload.* = data;
+            return .{ .__payload = resource_payload };
+        }
+
+        pub fn unpack(self: @This()) T {
+            return self.__payload.*;
+        }
+
+        pub fn update(self: @This(), data: T) void {
+            self.__payload.* = data;
+        }
     };
 }
 
 pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
     // verify that this is indeed a resource.  A resource has the
-    // `__wraps` function and a single field called `resource_payload`
-    // which is a pointer to the wrapped type.
+    // a single field called `__payload` which is a pointer to the wrapped type.
+    // return the wrapped type, otherwise return null.
 
-    if (s.decls.len != 1) return null;
-    if (!std.mem.eql(u8, s.decls[0].name, "__wraps")) return null;
     if (s.fields.len != 1) return null;
-    if (!std.mem.eql(u8, s.fields[0].name, "resource_payload")) return null;
+    if (!std.mem.eql(u8, s.fields[0].name, "__payload")) return null;
 
     switch (@typeInfo(s.fields[0].field_type)) {
         .Pointer => |p| {
@@ -37,22 +95,38 @@ pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
     }
 }
 
-pub fn Unwrap(comptime T: type) type {
-    switch (@typeInfo(T)) {
-        .Struct => |s| {
-            const maybe_unwrapped = MaybeUnwrap(s);
-            if (maybe_unwrapped) | unwrapped | return unwrapped;
-            @compileError("can't unwrap a type that is not a resource: " ++ @typeName(T));
-        },
-        else => @compileError("can't unwrap a type that is not a resource: " ++ @typeName(T)),
-    }
+fn MakeShimmed(comptime BeamCallbacks: ?type, T: type) type {
+    return struct {
+        fn dtor(env: beam.env, obj: ?*anyopaque) callconv(.C) void {
+            if (@hasDecl(BeamCallbacks, "dtor")){
+                const typed_object_ptr = @ptrCast(*T, obj.?);
+                BeamCallbacks.dtor(env, typed_object_ptr);
+            }
+        }
+
+        fn down(env: beam.env, obj: ?*anyopaque, pid: ?*beam.pid, monitor: ?*beam.monitor) callconv(.C) void {
+            if (@hasDecl(BeamCallbacks, "down")){
+                const typed_object_ptr = @ptrCast(*T, obj.?);
+                BeamCallbacks.down(env, typed_object_ptr, pid.?.*, monitor.?.*);
+            }
+        }
+
+        fn stop(env: beam.env, obj: ?*anyopaque, event: beam.event, is_direct_call: c_int) callconv(.C) void {
+            if (@hasDecl(BeamCallbacks, "stop")){
+                const typed_object_ptr = @ptrCast(*T, obj.?);
+                BeamCallbacks.stop(env, typed_object_ptr, event, is_direct_call != 0);
+            }
+        }
+
+        fn dyncall(env: beam.env, obj: ?*anyopaque, calldata: ?*anyopaque) callconv(.C) void {
+            if (@hasDecl(BeamCallbacks, "dyncall")){
+                const typed_object_ptr = @ptrCast(*T, obj.?);
+                return BeamCallbacks.dyncall(env, typed_object_ptr, calldata);
+            }
+        }
+    };
 }
 
-const ResourceMode = enum { reference, binary };
-
-const ResourceOpts = struct {
-    mode: ResourceMode = .reference,
-};
 
 fn resource_alloc(
     resource_ptr: *anyopaque,
@@ -81,65 +155,3 @@ const resource_vtable = Allocator.VTable{
     .resize = noresize,
     .free = nofree,
 };
-
-pub fn resources(comptime root_import: anytype) type {
-    return struct {
-        pub fn create(data: anytype, opts: ResourceOpts) !Resource(@TypeOf(data)) {
-            const T = @TypeOf(data);
-            var allocator = Allocator{ .ptr = undefined, .vtable = &resource_vtable };
-            var typed_allocator = @ptrCast(**e.ErlNifResourceType, &allocator.ptr);
-            root_import.assign_resource_type(T, typed_allocator);
-
-            if (@sizeOf(@TypeOf(data)) == 0) {
-                @compileError("you cannot create a resource for a zero-byte object");
-            }
-
-            _ = opts;
-            const resource_payload = try allocator.create(T);
-            resource_payload.* = data;
-            return Resource(T){ .resource_payload = resource_payload };
-        }
-
-        pub fn unpack(resource: anytype) Unwrap(@TypeOf(resource)) {
-            return resource.resource_payload.*;
-        }
-
-        pub fn update(resource: anytype, data: Unwrap(@TypeOf(resource))) void {
-            resource.resource_payload.* = data;
-        }
-    };
-}
-
-const ResourceInitOpts = struct {
-    dtor: ?*e.ErlNifResourceDtor = null,
-    stop: ?*e.ErlNifResourceStop = null,
-    down: ?*e.ErlNifResourceDown = null,
-    dyncall: ?*e.ErlNifResourceDynCall = null,
-};
-
-pub fn init(comptime T: type, comptime module: []const u8, env: beam.env, opts: ResourceInitOpts) *e.ErlNifResourceType {
-    // load em up.  Note all callbacks are optional and may be set to null.
-    // see: https://www.erlang.org/doc/man/erl_nif.html#enif_init_resource_type
-    var init_struct: e.ErlNifResourceTypeInit = .{.dtor = null, .stop = null, .down = null, .dyncall = null, .members = 0};
-    if (opts.dtor) |dtor| { 
-        init_struct.dtor = dtor;
-        init_struct.members = 1;
-    }
-
-    if (opts.stop) |stop| { 
-        init_struct.stop = stop;
-        init_struct.members = 2;
-    }
-
-    if (opts.down) |down| { 
-        init_struct.down = down;
-        init_struct.members = 3;
-    }
-
-    if (opts.dyncall) |dyncall| { 
-        init_struct.dyncall = dyncall;
-        init_struct.members = 4;
-    }
-    
-    return if (e.enif_init_resource_type(env, @typeName(T) ++ "-" ++ module, &init_struct, e.ERL_NIF_RT_CREATE, null)) |resource_type| resource_type else @panic("couldn't initialize the resource type for" ++ @typeName(T));
-}

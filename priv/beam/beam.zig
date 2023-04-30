@@ -204,7 +204,6 @@ pub threadlocal var allocator = if (options.use_gpa) general_purpose_allocator e
 
 pub const resource = @import("resource.zig");
 pub const Resource = resource.Resource;
-pub const resources = resource.resources;
 
 ///////////////////////////////////////////////////////////////////////////////
 // exception
