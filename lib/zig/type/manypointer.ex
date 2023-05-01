@@ -1,7 +1,6 @@
 defmodule Zig.Type.Manypointer do
   alias Zig.Type
   use Type
-  import Type, only: :macros
 
   defstruct [:child, :has_sentinel?, :repr]
 

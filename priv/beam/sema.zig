@@ -1,9 +1,10 @@
 const std = @import("std");
 const resource = @import("resource.zig");
 const beam = @import("beam.zig");
+const e = @import("erl_nif.zig");
 
 fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
-    try stream.emitString("integer");
+    try emitType(stream, "integer");
     try stream.objectField("signedness");
     switch (i.signedness) {
         .unsigned => try stream.emitString("unsigned"),
@@ -13,13 +14,13 @@ fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
     try stream.emitNumber(i.bits);
 }
 
-fn streamEnum(stream: anytype, comptime e: std.builtin.Type.Enum, comptime T: type) !void {
-    try stream.emitString("enum");
+fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: type) !void {
+    try emitType(stream, "enum");
     try stream.objectField("name");
     try stream.emitString(@typeName(T));
     try stream.objectField("tags");
     try stream.beginObject();
-    inline for (e.fields) |field| {
+    inline for (en.fields) |field| {
         try stream.objectField(field.name);
         try stream.emitNumber(field.value);
     }
@@ -27,20 +28,20 @@ fn streamEnum(stream: anytype, comptime e: std.builtin.Type.Enum, comptime T: ty
 }
 
 fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) !void {
-    try stream.emitString("float");
+    try emitType(stream, "float");
     try stream.objectField("bits");
     try stream.emitNumber(f.bits);
 }
 
 fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime name: []const u8) !void {
     if (resource.MaybeUnwrap(s)) |res_type| {
-        try stream.emitString("resource");
+        try emitType(stream, "resource");
         try stream.objectField("name");
         try stream.emitString(name);
         try stream.objectField("payload");
         try streamType(stream, res_type);
     } else {
-        try stream.emitString("struct");
+        try emitType(stream, "struct");
         try stream.objectField("name");
         try stream.emitString(name);
         if (s.layout == .Packed) {
@@ -70,11 +71,10 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
         }
         try stream.endArray();
     }
-    try stream.endObject();
 }
 
 fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) !void {
-    try stream.emitString("array");
+    try emitType(stream, "array");
     try stream.objectField("len");
     try stream.emitNumber(a.len);
     try stream.objectField("child");
@@ -88,24 +88,24 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
 fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) !void {
     switch (p.size) {
         .One => {
-            try stream.emitString("pointer");
+            try emitType(stream, "pointer");
         },
         .Many => {
-            try stream.emitString("manypointer");
+            try emitType(stream, "manypointer");
             try stream.objectField("has_sentinel");
             try stream.emitBool(if (p.sentinel) |_| true else false);
             try stream.objectField("repr");
             try stream.emitString(repr);
         },
         .Slice => {
-            try stream.emitString("slice");
+            try emitType(stream, "slice");
             try stream.objectField("has_sentinel");
             try stream.emitBool(if (p.sentinel) |_| true else false);
             try stream.objectField("repr");
             try stream.emitString(repr);
         },
         .C => {
-            try stream.emitString("cpointer");
+            try emitType(stream, "cpointer");
         },
     }
     try stream.objectField("is_const");
@@ -115,33 +115,50 @@ fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: an
 }
 
 fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) !void {
-    try stream.emitString("optional");
+    try emitType(stream, "optional");
     try stream.objectField("child");
     try streamType(stream, o.child);
 }
 
+fn emitType(stream: anytype, comptime name: []const u8) !void {
+    try stream.objectField("type");
+    try stream.emitString(name);
+}
+
+var depth: usize = 0;
+
 fn streamType(stream: anytype, comptime T: type) !void {
     try stream.beginObject();
-    try stream.objectField("type");
-
     // catch special types pid, port and term
-    if (T == beam.pid) {
-        try stream.emitString("pid");
-    } else {
-        switch (@typeInfo(T)) {
-            .Int => |i| try streamInt(stream, i),
-            .Enum => |e| try streamEnum(stream, e, T),
-            .Float => |f| try streamFloat(stream, f),
-            .Struct => |s| try streamStruct(stream, s, @typeName(T)),
-            .Array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
-            .Pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
-            .Optional => |o| try streamOptional(stream, o),
-            .Bool => try stream.emitString("bool"),
-            .Void => try stream.emitString("void"),
-            else => {
-                @compileError("Unsupported return or argument type found in public function: " ++ @typeName(T));
-            },
-        }
+    switch (T) {
+        e.ErlNifPid => {
+            try emitType(stream, "pid");
+        },
+        beam.term => {
+            try emitType(stream, "term");
+        },
+        e.ErlNifTerm => {
+            try emitType(stream, "erl_nif_term");
+        },
+        beam.env => {
+            try emitType(stream, "env");
+        },
+        else => {
+            switch (@typeInfo(T)) {
+                .Int => |i| try streamInt(stream, i),
+                .Enum => |en| try streamEnum(stream, en, T),
+                .Float => |f| try streamFloat(stream, f),
+                .Struct => |s| try streamStruct(stream, s, @typeName(T)),
+                .Array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
+                .Pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
+                .Optional => |o| try streamOptional(stream, o),
+                .Bool => try emitType(stream, "bool"),
+                .Void => try emitType(stream, "void"),
+                else => {
+                    @compileError("Unsupported return or argument type found in public function: " ++ @typeName(T));
+                },
+            }
+        },
     }
     try stream.endObject();
 }
@@ -152,6 +169,7 @@ pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.buil
     try stream.emitString(name);
     try stream.objectField("return");
     try streamType(stream, fun.return_type.?);
+
     try stream.objectField("params");
     try stream.beginArray();
     inline for (fun.args) |arg| {

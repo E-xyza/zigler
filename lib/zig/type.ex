@@ -79,26 +79,6 @@ defprotocol Zig.Type do
 
   def from_json(json, module) do
     case json do
-      %{
-        "type" => "optional",
-        "child" => %{"type" => "pointer", "child" => %{"name" => "stub_erl_nif.ErlNifEnv"}}
-      } ->
-        :env
-
-      %{"type" => "struct", "name" => "stub_erl_nif.ERL_NIF_TERM"} ->
-        :erl_nif_term
-
-      %{
-        "type" => "struct",
-        "fields" => [
-          %{"name" => "v", "type" => %{"name" => "stub_erl_nif.ERL_NIF_TERM"}}
-        ]
-      } ->
-        :term
-
-      %{"type" => "struct", "name" => "beam.term"} ->
-        :term
-
       %{"type" => "bool"} ->
         Bool.from_json(json)
 
@@ -139,6 +119,15 @@ defprotocol Zig.Type do
 
       %{"type" => "resource"} ->
         Resource.from_json(json, module)
+
+      %{"type" => "env"} ->
+        :env
+
+      %{"type" => "erl_nif_term"} ->
+        :erl_nif_term
+
+      %{"type" => "struct", "name" => "beam.term"} ->
+        :term
 
       %{"type" => "pid"} ->
         :pid
