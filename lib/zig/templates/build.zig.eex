@@ -61,10 +61,7 @@ pub fn build(b: *Builder) void {
 
     const exe = b.addExecutable("sema", "sema.zig");
     exe.addSystemIncludePath(beam_system_dir);
-<<<<<<< HEAD
     exe.builder.reference_trace = 100;
-=======
->>>>>>> 0.10.0-development
     exe.linkLibC();
     exe.addPackage(erl_nif_pkg);
     exe.addPackage(beam_pkg);

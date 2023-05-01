@@ -103,17 +103,10 @@ const std = @import("std");
 const builtin = @import("builtin");
 const BeamMutex = @import("mutex.zig").BeamMutex;
 
-<<<<<<< HEAD
 pub const is_sema = switch (builtin.output_mode) {
     .Exe => true,
     .Lib => false,
     else => unreachable,
-=======
-const is_sema = switch (builtin.output_mode) {
-  .Exe => true,
-  .Lib => false,
-  else => unreachable
->>>>>>> 0.10.0-development
 };
 
 // semantic analysis
@@ -136,15 +129,10 @@ const TermType = enum(u64) { atom = e.ERL_NIF_TERM_TYPE_ATOM, bitstring = e.ERL_
 /// many things will still if you use the "original" e.ErlNifTerm, but some things
 /// will require you to use `beam.term` instead.
 pub const term = if (is_sema) struct {
-<<<<<<< HEAD
     v: e.ErlNifTerm,
     pub fn term_type(_: *const @This(), _: env) TermType {
         return .atom;
     }
-=======
-  v: e.ErlNifTerm,
-  pub fn term_type(_: *const @This(), _: env) TermType { return .atom; }
->>>>>>> 0.10.0-development
 } else packed struct {
     v: e.ErlNifTerm,
 
@@ -160,23 +148,17 @@ pub const term = if (is_sema) struct {
 const get_ = @import("get.zig");
 const make_ = @import("make.zig");
 const cleanup_ = @import("cleanup.zig");
-<<<<<<< HEAD
 const processes = @import("processes.zig");
-=======
->>>>>>> 0.10.0-development
 
 pub const get = get_.get;
 pub const make = make_.make;
 pub const cleanup = cleanup_.cleanup;
-<<<<<<< HEAD
 pub const self = processes.self;
 pub const send = processes.send;
 
 // special makers
 pub const make_pid = make_.make_pid;
 pub const make_port = make_.make_port;
-=======
->>>>>>> 0.10.0-development
 pub const make_into_atom = make_.make_into_atom;
 pub const make_cpointer = make_.make_cpointer;
 pub const make_binary = make_.make_binary;
@@ -184,24 +166,17 @@ pub const make_empty_list = make_.make_empty_list;
 pub const make_error_atom = make_.make_error_atom;
 pub const make_error_pair = make_.make_error_pair;
 
-<<<<<<< HEAD
 // special functions
 
 const ExecutionContext = enum { process_bound, threaded, dirty, yielding, callback };
 pub threadlocal var context: ExecutionContext = .process_bound;
 
-=======
->>>>>>> 0.10.0-development
 ///////////////////////////////////////////////////////////////////////////////
 // options
 
 const zigler_options = @import("zigler_options");
 
-<<<<<<< HEAD
 pub const options = struct {
-=======
-pub const options = struct{
->>>>>>> 0.10.0-development
     pub const use_gpa = if (@hasDecl(zigler_options, "use_gpa")) zigler_options.use_gpa else false;
 };
 
@@ -225,7 +200,6 @@ pub const general_purpose_allocator = general_purpose_allocator_instance.allocat
 pub threadlocal var allocator = if (options.use_gpa) general_purpose_allocator else allocator_.raw_beam_allocator;
 
 ///////////////////////////////////////////////////////////////////////////////
-<<<<<<< HEAD
 // resources
 
 pub const resource = @import("resource.zig");
@@ -239,12 +213,6 @@ pub const monitor = e.ErlNifMonitor;
 
 pub fn raise_exception(env_: env, reason: anytype) term {
     return term{ .v = e.enif_raise_exception(env_, make(env_, reason, .{}).v) };
-=======
-// exception
-
-pub fn raise_exception(env_: env, reason: anytype) term {
-    return term{.v = e.enif_raise_exception(env_, make(env_, reason, .{}).v)};
->>>>>>> 0.10.0-development
 }
 
 pub fn raise_elixir_exception(env_: env, comptime module: []const u8, data: anytype) term {
@@ -252,23 +220,14 @@ pub fn raise_elixir_exception(env_: env, comptime module: []const u8, data: anyt
         @compileError("elixir exceptions must be structs");
     }
 
-<<<<<<< HEAD
     const name = comptime name: {
         break :name "Elixir." ++ module;
     };
-=======
-    const name = comptime name: { break :name "Elixir." ++ module; };
->>>>>>> 0.10.0-development
     var exception: e.ErlNifTerm = undefined;
     const initial = make(env_, data, .{});
 
     _ = e.enif_make_map_put(env_, initial.v, make_into_atom(env_, "__struct__").v, make_into_atom(env_, name).v, &exception);
     _ = e.enif_make_map_put(env_, exception, make_into_atom(env_, "__exception__").v, make(env_, true, .{}).v, &exception);
 
-<<<<<<< HEAD
     return raise_exception(env_, term{ .v = exception });
 }
-=======
-    return raise_exception(env_, term{.v = exception});
-}
->>>>>>> 0.10.0-development

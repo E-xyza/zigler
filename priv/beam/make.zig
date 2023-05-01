@@ -6,21 +6,15 @@ const resource = beam.resource;
 const OutputType = enum { default, charlists, binary };
 const MakeOpts = struct {
     output_as: OutputType = .default,
-<<<<<<< HEAD
     as_size_struct: bool = false,
-=======
->>>>>>> 0.10.0-development
 };
 
 pub fn make(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
     const T = @TypeOf(value);
     // passthrough on beam.term, no work needed.
     if (T == beam.term) return value;
-<<<<<<< HEAD
     if (T == beam.pid) return make_pid(env, value);
     if (T == beam.port) @compileError("you cannot convert a port into a term");
-=======
->>>>>>> 0.10.0-development
 
     switch (@typeInfo(T)) {
         .Array => return make_array(env, value, opts),
@@ -43,7 +37,6 @@ pub fn make(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
     }
 }
 
-<<<<<<< HEAD
 pub fn make_pid(_: beam.env, pid: beam.pid) beam.term {
     // for some reason, the macro for this is super shitty.  See:
     // https://github.com/erlang/otp/blob/a78b8e0769bba69ba1245cce850b226bdf6940fa/erts/emulator/beam/erl_nif_api_funcs.h#L649
@@ -63,8 +56,6 @@ pub fn make_pid(_: beam.env, pid: beam.pid) beam.term {
     }
 }
 
-=======
->>>>>>> 0.10.0-development
 pub fn make_null(env: beam.env) beam.term {
     return .{ .v = e.enif_make_atom(env, "nil") };
 }

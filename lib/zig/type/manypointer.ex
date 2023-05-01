@@ -1,10 +1,7 @@
 defmodule Zig.Type.Manypointer do
   alias Zig.Type
   use Type
-<<<<<<< HEAD
-=======
   import Type, only: :macros
->>>>>>> 0.10.0-development
 
   defstruct [:child, :has_sentinel?, :repr]
 
@@ -32,9 +29,5 @@ defmodule Zig.Type.Manypointer do
   def to_call(slice), do: "[*]#{Type.to_call(slice.child)}"
 
   def return_allowed?(pointer), do: pointer.has_sentinel? and Type.return_allowed?(pointer.child)
-<<<<<<< HEAD
-
   def missing_size?(_), do: true
-=======
->>>>>>> 0.10.0-development
 end

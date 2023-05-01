@@ -26,13 +26,8 @@ const entry = e.ErlNifEntry{
     .minor = <%= nif_version(:minor) %>,
     .name = "<%= @module %>",
     .num_of_funcs = exported_nifs.len,
-<<<<<<< HEAD
     .funcs = &exported_nifs,
     .load = load,
-=======
-    .funcs = &(exported_nifs[0]),
-    .load = beam.loader.blank_load,
->>>>>>> 0.10.0-development
     .reload = null,   // never supported as of OTP 20
     .upgrade = beam.loader.blank_upgrade, 
     .unload = beam.loader.blank_unload,  
