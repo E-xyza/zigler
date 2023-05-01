@@ -33,7 +33,11 @@ defmodule Zig.Nif do
   defmodule Concurrency do
     @callback render_elixir(Zig.Nif.t()) :: Macro.t()
     @callback render_erlang(Zig.Nif.t()) :: term
+<<<<<<< HEAD
     @callback render_zig_code(Zig.Nif.t()) :: iodata
+=======
+    @callback render_zig(Zig.Nif.t()) :: iodata
+>>>>>>> 0.10.0-development
     @callback set_entrypoint(Zig.Nif.t()) :: Zig.Nif.t()
   end
 

@@ -8,10 +8,15 @@ defprotocol Zig.Type do
   alias Zig.Type.Optional
   alias Zig.Type.Slice
   alias Zig.Type.Struct
+<<<<<<< HEAD
   alias Zig.Type.Resource
 
   @type t ::
           Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :pid | :port | :term
+=======
+
+  @type t :: Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :term
+>>>>>>> 0.10.0-development
 
   @spec marshal_param(t, keyword) :: (Macro.t(), index :: non_neg_integer -> Macro.t()) | nil
   @doc "elixir-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
@@ -32,9 +37,12 @@ defprotocol Zig.Type do
   @spec needs_make?(t) :: boolean
   def needs_make?(type)
 
+<<<<<<< HEAD
   @spec missing_size?(t) :: boolean
   def missing_size?(type)
 
+=======
+>>>>>>> 0.10.0-development
   @spec to_call(t) :: String.t()
   def to_call(type)
 
@@ -136,6 +144,7 @@ defprotocol Zig.Type do
 
       %{"type" => "optional"} ->
         Optional.from_json(json, module)
+<<<<<<< HEAD
 
       %{"type" => "resource"} ->
         Resource.from_json(json, module)
@@ -148,6 +157,8 @@ defprotocol Zig.Type do
 
       %{"type" => "term"} ->
         :term
+=======
+>>>>>>> 0.10.0-development
     end
   end
 
@@ -233,14 +244,21 @@ defprotocol Zig.Type do
       end
 
       def needs_make?(_), do: true
+<<<<<<< HEAD
       def missing_size?(_), do: false
+=======
+>>>>>>> 0.10.0-development
 
       defoverridable get_result: 2,
                      marshal_param: 2,
                      marshal_return: 2,
                      param_errors: 2,
+<<<<<<< HEAD
                      needs_make?: 1,
                      missing_size?: 1
+=======
+                     needs_make?: 1
+>>>>>>> 0.10.0-development
 
       defimpl String.Chars do
         defdelegate to_string(type), to: module
@@ -264,7 +282,10 @@ defprotocol Zig.Type do
         defdelegate return_allowed?(type), to: module
         defdelegate get_result(type, opts), to: module
         defdelegate needs_make?(type), to: module
+<<<<<<< HEAD
         defdelegate missing_size?(type), to: module
+=======
+>>>>>>> 0.10.0-development
         defdelegate cleanup(type, opts), to: module
       end
     end
@@ -278,6 +299,7 @@ defimpl Zig.Type, for: Atom do
 
   def to_call(:erl_nif_term), do: "e.ErlNifTerm"
   def to_call(:term), do: "beam.term"
+<<<<<<< HEAD
   def to_call(:pid), do: "beam.pid"
   def to_call(:port), do: "beam.port"
   def to_call(:void), do: "void"
@@ -287,6 +309,14 @@ defimpl Zig.Type, for: Atom do
 
   def get_result(:erl_nif_term, _), do: "break :get_result result;"
   def get_result(:pid, _), do: "break :get_result beam.make(env, result, .{}).v;"
+=======
+  def to_call(:void), do: "void"
+  def to_call(type), do: to_string(type)
+
+  def return_allowed?(type), do: type in [:term, :erl_nif_term, :void]
+
+  def get_result(:erl_nif_term, _), do: "break :get_result result;"
+>>>>>>> 0.10.0-development
   def get_result(:term, _), do: "break :get_result result.v;"
 
   def get_result(:void, opts) do
@@ -314,5 +344,8 @@ defimpl Zig.Type, for: Atom do
   end
 
   def needs_make?(_), do: false
+<<<<<<< HEAD
   def missing_size?(_), do: false
+=======
+>>>>>>> 0.10.0-development
 end

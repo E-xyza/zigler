@@ -10,7 +10,10 @@ pub fn foo() i32 {
 
 -zig_opts([{otp_app, zigler}]).
 
+<<<<<<< HEAD
 -type value() :: integer().
 -spec foo(value()) -> value().
+=======
+>>>>>>> 0.10.0-development
 foo(X) ->
     47 + X.

@@ -13,7 +13,10 @@ defmodule Zig.Sema do
     sema_file = Path.join(dir, "sema.zig")
 
     File.write!(sema_file, file_for(opts))
+<<<<<<< HEAD
     Command.fmt(sema_file)
+=======
+>>>>>>> 0.10.0-development
     result = Command.build_sema(dir)
 
     functions =

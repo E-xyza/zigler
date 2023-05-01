@@ -51,6 +51,7 @@ defmodule Zig.Compiler do
 
     File.write!(module_nif_zig, [aliasing_code, easy_c_code, base_code])
 
+<<<<<<< HEAD
     if opts[:easy_c] do
       Command.fmt(module_nif_zig)
     end
@@ -78,18 +79,47 @@ defmodule Zig.Compiler do
     end
   end
 
+=======
+    assembled = Keyword.get(opts, :assemble, true)
+    precompiled = Keyword.get(opts, :precompile, true)
+    compiled = Keyword.get(opts, :compile, true)
+    renderer = Keyword.fetch!(opts, :render)
+
+    with true <- assembled,
+         assemble_opts = Keyword.take(opts, [:link_lib, :build_opts]),
+         assemble_opts = Keyword.merge(assemble_opts, from: code_dir),
+         Assembler.assemble(module, assemble_opts),
+         true <- precompiled,
+         sema = Sema.analyze_file!(module, opts),
+         new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(base_code)),
+         function_code = precompile(sema, module, assembly_directory, new_opts),
+         true <- compiled do
+      # parser should only operate on parsed, valid zig code.
+      Command.compile(module, new_opts)
+      apply(__MODULE__, renderer, [base_code, function_code, module, opts])
+    else
+      false ->
+        apply(__MODULE__, renderer, [base_code, [], module, opts])
+    end
+  end
+
+>>>>>>> 0.10.0-development
   defp precompile(sema, module, directory, opts) do
     verify_sound!(sema, opts)
 
     nif_functions =
       sema
       |> Nif.from_sema(opts[:nifs])
+<<<<<<< HEAD
       |> remove_ignored(opts[:ignore])
+=======
+>>>>>>> 0.10.0-development
       |> assimilate_common_options(opts)
 
     renderer = Keyword.fetch!(opts, :render)
 
     function_code = Enum.map(nif_functions, &apply(Nif, renderer, [&1]))
+<<<<<<< HEAD
 
     nif_src_path = Path.join(directory, "nif.zig")
 
@@ -97,6 +127,11 @@ defmodule Zig.Compiler do
 
     File.write!(nif_src_path, Nif.render_zig_code(nif_functions, resource_opts, module))
     Command.fmt(nif_src_path)
+=======
+    
+    nif_src_path = Path.join(directory, "nif.zig")
+    File.write!(nif_src_path, Nif.render_zig(nif_functions, module))
+>>>>>>> 0.10.0-development
 
     Logger.debug("wrote nif.zig to #{nif_src_path}")
 
@@ -248,9 +283,12 @@ defmodule Zig.Compiler do
 
     %{nif | opts: new_opts}
   end
+<<<<<<< HEAD
 
   defp remove_ignored(functions, ignored) do
     ignored = List.wrap(ignored)
     Enum.reject(functions, &(&1.function.name in ignored))
   end
+=======
+>>>>>>> 0.10.0-development
 end

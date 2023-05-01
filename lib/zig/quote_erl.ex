@@ -51,11 +51,18 @@ defmodule Zig.QuoteErl do
          substitutions,
          so_far
        ) do
+<<<<<<< HEAD
     new_so_far =
       substitutions
       |> escaped_substitution(symbol, line, splat: true)
       |> Enum.intersperse({:",", line})
       |> Enum.reverse(so_far)
+=======
+    new_so_far = substitutions
+    |> escaped_substitution(symbol, line, splat: true)
+    |> Enum.intersperse({:",", line})
+    |> Enum.reverse(so_far)
+>>>>>>> 0.10.0-development
 
     substitute_unquoted(rest, substitutions, new_so_far)
   end

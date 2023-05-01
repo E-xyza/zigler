@@ -1,6 +1,10 @@
 defmodule Zig.Type.Slice do
   alias Zig.Type
   use Type
+<<<<<<< HEAD
+=======
+  import Type, only: :macros
+>>>>>>> 0.10.0-development
 
   defstruct [:child, :has_sentinel?, :repr]
 

@@ -544,10 +544,7 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term, opts:
             }
         },
         .bitstring => {
-            // this code should never be executed, it only happens due to
-            // semantic analysis.
-            // TODO: check to make sure size-0 packed struct arrays are not supported.
-            if (@alignOf(Child) == 0) unreachable;
+            if (beam.is_sema) {unreachable;}
 
             const expected_size = array_info.len * @sizeOf(Child);
 
