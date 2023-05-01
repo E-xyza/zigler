@@ -3,14 +3,22 @@ const e = @import("erl_nif.zig");
 const std = @import("std");
 const resource = beam.resource;
 
-const OutputType = enum { default, charlists, binary };
-const MakeOpts = struct {
-    output_as: OutputType = .default,
-    as_size_struct: bool = false,
+const OutputType = enum {
+    default,
+    charlists,
+    binary,
+    fn select(opts: anytype) OutputType {
+        if (@hasField(@TypeOf(opts), "output_type")) {
+            return opts.output_type;
+        } else {
+            return .default;
+        }
+    }
 };
 
-pub fn make(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
+pub fn make(env: beam.env, value: anytype, comptime opts: anytype) beam.term {
     const T = @TypeOf(value);
+
     // passthrough on beam.term, no work needed.
     if (T == beam.term) return value;
     if (T == beam.pid) return make_pid(env, value);
@@ -45,7 +53,7 @@ pub fn make_pid(_: beam.env, pid: beam.pid) beam.term {
 
     if (beam.is_sema) {
         // note that we also have just disable this in the sema step,
-        // because sema shims pid with a bogus extern struct, which 
+        // because sema shims pid with a bogus extern struct, which
         // can't have pid.
         unreachable;
     } else {
@@ -60,11 +68,11 @@ pub fn make_null(env: beam.env) beam.term {
     return .{ .v = e.enif_make_atom(env, "nil") };
 }
 
-fn make_array(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
+fn make_array(env: beam.env, value: anytype, comptime opts: anytype) beam.term {
     return make_array_from_pointer(@TypeOf(value), env, &value, opts);
 }
 
-fn make_pointer(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
+fn make_pointer(env: beam.env, value: anytype, comptime opts: anytype) beam.term {
     const pointer = @typeInfo(@TypeOf(value)).Pointer;
     switch (pointer.size) {
         .One => return make_mut(env, value, opts),
@@ -74,7 +82,7 @@ fn make_pointer(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.ter
     }
 }
 
-fn make_optional(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
+fn make_optional(env: beam.env, value: anytype, comptime opts: anytype) beam.term {
     return if (value) |unwrapped| make(env, unwrapped, opts) else make_into_atom(env, "nil");
 }
 
@@ -133,7 +141,7 @@ pub fn make_comptime_float(env: beam.env, comptime float: comptime_float) beam.t
 
 const EMPTY_TUPLE_LIST = [_]beam.term{};
 
-fn make_struct(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term {
+fn make_struct(env: beam.env, value: anytype, comptime opts: anytype) beam.term {
     const struct_info = @typeInfo(@TypeOf(value)).Struct;
     if (struct_info.is_tuple) {
         if (value.len > 16_777_215) {
@@ -149,7 +157,7 @@ fn make_struct(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term
             }
         }
         return .{ .v = e.enif_make_tuple_from_array(env, &tuple_list, value.len) };
-    } else if (resource.MaybeUnwrap(struct_info)) | _ | {
+    } else if (resource.MaybeUnwrap(struct_info)) |_| {
         return value.make(env, opts);
     } else {
         const fields = struct_info.fields;
@@ -200,7 +208,7 @@ fn make_bool(env: beam.env, value: bool) beam.term {
     return make_into_atom(env, if (value) "true" else "false");
 }
 
-fn make_mut(env: beam.env, value_ptr: anytype, comptime opts: MakeOpts) beam.term {
+fn make_mut(env: beam.env, value_ptr: anytype, comptime opts: anytype) beam.term {
     const child = @TypeOf(value_ptr.*);
     switch (@typeInfo(child)) {
         .Array => return make_array_from_pointer(child, env, value_ptr, opts),
@@ -209,18 +217,19 @@ fn make_mut(env: beam.env, value_ptr: anytype, comptime opts: MakeOpts) beam.ter
     }
 }
 
-fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype, comptime opts: MakeOpts) beam.term {
+fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype, comptime opts: anytype) beam.term {
     // u8 arrays (sentinel terminated or otherwise) are treated as
     // strings.
     const array_info = @typeInfo(T).Array;
     const Child = array_info.child;
+    const output_as = OutputType.select(opts);
 
-    if (Child == u8 and opts.output_as != .charlists) {
+    if (Child == u8 and output_as != .charlists) {
         // u8 arrays are by default marshalled into binaries.
         return make_binary(env, array_ptr[0..]);
     }
 
-    if (opts.output_as == .binary) {
+    if (output_as == .binary) {
         // u8 arrays are by default marshalled into binaries.
         return make_binary(env, array_ptr[0..]);
     }
@@ -251,7 +260,7 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype, 
     }
 }
 
-pub fn make_manypointer(env: beam.env, manypointer: anytype, comptime opts: MakeOpts) beam.term {
+pub fn make_manypointer(env: beam.env, manypointer: anytype, comptime opts: anytype) beam.term {
     const pointer = @typeInfo(@TypeOf(manypointer)).Pointer;
     if (pointer.sentinel) |_| {
         const len = std.mem.len(manypointer);
@@ -261,7 +270,7 @@ pub fn make_manypointer(env: beam.env, manypointer: anytype, comptime opts: Make
     }
 }
 
-pub fn make_cpointer(env: beam.env, cpointer: anytype, comptime opts: MakeOpts) beam.term {
+pub fn make_cpointer(env: beam.env, cpointer: anytype, comptime opts: anytype) beam.term {
     const pointer = @typeInfo(@TypeOf(cpointer)).Pointer;
     const Child = pointer.child;
 
@@ -283,15 +292,16 @@ pub fn make_cpointer(env: beam.env, cpointer: anytype, comptime opts: MakeOpts) 
     }
 }
 
-pub fn make_slice(env: beam.env, slice: anytype, comptime opts: MakeOpts) beam.term {
+pub fn make_slice(env: beam.env, slice: anytype, comptime opts: anytype) beam.term {
+    const output_as = OutputType.select(opts);
     // u8 slices default to binary and must be opt-in to get charlists out.
-    if (@TypeOf(slice) == []u8 and opts.output_as != .charlists) {
+    if (@TypeOf(slice) == []u8 and output_as != .charlists) {
         return make_binary(env, slice);
     }
 
     // any other slices can be opt-in to get a binary out
     // TODO: check to make sure that these are either ints, floats, or packed structs.
-    if (opts.output_as == .binary) {
+    if (output_as == .binary) {
         return make_binary(env, slice);
     }
 
@@ -373,6 +383,6 @@ pub fn make_error_atom(env: beam.env) beam.term {
     return make_into_atom(env, "error");
 }
 
-pub fn make_error_pair(env: beam.env, payload: anytype, comptime opts: MakeOpts) beam.term {
-    return make(env, .{make_error_atom(env), make(env, payload, opts)}, opts);
+pub fn make_error_pair(env: beam.env, payload: anytype, comptime opts: anytype) beam.term {
+    return make(env, .{ make_error_atom(env), make(env, payload, opts) }, opts);
 }

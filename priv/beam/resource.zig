@@ -14,6 +14,8 @@ const CreateOpts = struct {
     released: bool = true,
 };
 
+const OutputType = enum { default, binary};
+
 pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOpts) type {
     return struct {
         __payload: *T,
@@ -34,23 +36,23 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                 const Shimmed = MakeShimmed(Callbacks);
 
                 if (@hasDecl(Callbacks, "dtor")) {
-                    assert_types_match(@TypeOf(Callbacks.dtor), fn (beam.env, *T) void);
+                    assert_type_matches(@TypeOf(Callbacks.dtor), fn (beam.env, *T) void);
                     init_struct.dtor = Shimmed.dtor;
                     init_struct.members += 1;
                 }
 
                 if (@hasDecl(Callbacks, "stop")) {
-                    assert_types_match(@TypeOf(Callbacks.dtor), fn (beam.env, *T, beam.pid, beam.monitor) void);
+                    assert_type_matches(@TypeOf(Callbacks.stop), fn (beam.env, *T, beam.pid, beam.monitor) void);
                     init_struct.stop = Shimmed.stop;
                 }
 
                 if (@hasDecl(Callbacks, "down")) {
-                    assert_types_match(@TypeOf(Callbacks.dtor), fn (beam.env, *T, beam.event, bool) void);
+                    assert_type_matches(@TypeOf(Callbacks.down), fn (beam.env, *T, beam.event, bool) void);
                     init_struct.down = Shimmed.down;
                 }
 
                 if (@hasDecl(Callbacks, "dyncall")) {
-                    assert_types_match(@TypeOf(Callbacks.dtor), fn (beam.env, *T, ?*anyopaque) void);
+                    assert_type_matches(@TypeOf(Callbacks.dyncall), fn (beam.env, *T, ?*anyopaque) void);
                     init_struct.dyncall = Shimmed.dyncall;
                 }
             }
@@ -60,7 +62,9 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
 
         pub fn resource_type(_: @This()) *e.ErlNifResourceType {
             var resource_type_struct: *e.ErlNifResourceType = undefined;
-            if (beam.is_sema) { unreachable; }
+            if (beam.is_sema) {
+                unreachable;
+            }
             root.set_resource(@This(), &resource_type_struct);
             return resource_type_struct;
         }
@@ -79,7 +83,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
             const resource_payload = try allocator.create(T);
             resource_payload.* = data;
 
-            return .{ .__payload = resource_payload, .__should_release = create_opts.released};
+            return .{ .__payload = resource_payload, .__should_release = create_opts.released };
         }
 
         pub fn maybe_release(self: @This()) void {
@@ -89,11 +93,11 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         }
 
         pub fn release(self: @This()) void {
-            e.enif_release_resource(self.__payload);
+            e.enif_release_resource(@ptrCast(*anyopaque, self.__payload));
         }
 
         pub fn keep(self: @This()) void {
-            _ = e.enif_keep_resource(self.__payload);
+            _ = e.enif_keep_resource(@ptrCast(*anyopaque, self.__payload));
         }
 
         pub fn unpack(self: @This()) T {
@@ -118,14 +122,26 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         }
 
         pub fn make(self: @This(), env: beam.env, comptime make_opts: anytype) beam.term {
+            const output_as: OutputType = make_opts.output_as;
             defer self.maybe_release();
-            return switch (make_opts.output_as) {
-                .default =>
-                    .{.v = e.enif_make_resource(env, self.__payload)},
-                .binary =>
-                    @panic("not implemented yet"),
-                else =>
-                    @compileError("a resource may only output as a resource or a binary"),
+            switch (output_as) {
+                .default => {
+                    return .{ .v = e.enif_make_resource(env, @ptrCast(*anyopaque, self.__payload)) };
+                },
+                .binary => {
+                    const encoder = if (@hasField(@TypeOf(make_opts), "encoder")) make_opts.encoder else default_encoder;
+                    assert_type_matches(@TypeOf(encoder), fn (*const T) []const u8);
+                    const bytes: []const u8 = encoder(self.__payload);
+                    return .{ .v = e.enif_make_resource_binary(env, @ptrCast(*anyopaque, self.__payload), bytes.ptr, bytes.len) };
+                }
+            }
+        }
+
+        fn default_encoder(payload: *const T) []const u8 {
+            return switch (T) {
+                []const u8 => payload.*,
+                []u8 => payload.*,
+                else => @compileError("a resource only has default encoder for strings"),
             };
         }
 
@@ -210,7 +226,7 @@ const resource_vtable = Allocator.VTable{
     .free = nofree,
 };
 
-fn assert_types_match(comptime t1: type, comptime t2: type) void {
+fn assert_type_matches(comptime t1: type, comptime t2: type) void {
     if (t1 != t2) {
         @compileError("type " ++ @typeName(t1) ++ " doesn't match expected " ++ @typeName(t2));
     }

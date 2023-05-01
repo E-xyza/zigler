@@ -1,4 +1,5 @@
 defmodule Zig.Type.Resource do
+  alias Zig.Parser
   alias Zig.Type
   use Type
 
@@ -9,8 +10,10 @@ defmodule Zig.Type.Resource do
   def from_json(%{"payload" => payload, "name" => name}, module) do
     payload = Type.from_json(payload, module)
 
+    # TODO: use the Zig parser to do this in the future.
+
     name =
-      ~r/resource.Resource\(([a-zA-Z0-9_\.]+),sema/
+      ~r/resource.Resource\(([a-zA-Z0-9_\.\[\]\(\)]+),sema/
       |> Regex.replace(name, "Resource(#{Type.to_call(payload)},root")
       |> String.replace(".#{module}", "nif")
 
