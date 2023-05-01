@@ -259,16 +259,11 @@ pub fn get_struct(comptime T: type, env: beam.env, src: beam.term, opts: anytype
 }
 
 pub fn get_resource(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
-    if (!@hasField(@TypeOf(opts), "root")) {
-        @compileError("get must be provided a root option to obtain a resource, you can use @import(\"root\").");
-    }
-
     errdefer error_expected(T, env, opts);
     errdefer error_got(env, opts, src);
 
     var res: T = undefined;
-    const resource_target = @ptrCast(?*?*anyopaque, &res.__payload);
-    const result = e.enif_get_resource(env, src.v, res.resource_type(), resource_target);
+    const result = res.get(env, src, opts);
 
     if (result == 0) return GetError.argument_error;
     return res;
@@ -725,8 +720,12 @@ fn typespec_for(comptime T: type) []const u8 {
         .Enum => "integer | atom",
         .Float => "float | :infinity | :neg_infinity | :NaN",
         .Struct => |s| make_struct: {
-            const maybe_binary = if (s.layout == .Packed) " | binary" else "";
-            break :make_struct "map | keyword" ++ maybe_binary;
+            // resources require references
+            if (resource.MaybeUnwrap(s)) | _ | {
+                break :make_struct "reference";
+            }
+            // everything else is "reported as a generic map or keyword, binary if packed"
+            break :make_struct "map | keyword" ++ if (s.layout == .Packed) " | binary" else "";
         },
         .Bool => "boolean",
         .Array => |a| maybe_array_term(a, @sizeOf(T)),

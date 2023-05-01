@@ -150,7 +150,7 @@ fn make_struct(env: beam.env, value: anytype, comptime opts: MakeOpts) beam.term
         }
         return .{ .v = e.enif_make_tuple_from_array(env, &tuple_list, value.len) };
     } else if (resource.MaybeUnwrap(struct_info)) | _ | {
-        return .{.v = e.enif_make_resource(env, value.__payload)};
+        return value.make(env, opts);
     } else {
         const fields = struct_info.fields;
         var result: e.ErlNifTerm = undefined;

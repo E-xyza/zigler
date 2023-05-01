@@ -16,7 +16,7 @@ defmodule ZiglerTest.Resource.BasicTest do
   pub const U64Resource = Resource(u64, root, .{});
 
   pub fn new_scalar(resource: u64) U64Resource {
-      return U64Resource.create(resource) catch unreachable;
+      return U64Resource.create(resource, .{}) catch unreachable;
   }
 
   pub fn unpack_scalar(resource: U64Resource) u64 {
@@ -29,7 +29,7 @@ defmodule ZiglerTest.Resource.BasicTest do
   }
 
   pub fn new_struct(s: Struct) StructResource {
-      return StructResource.create(s) catch unreachable;
+      return StructResource.create(s, .{}) catch unreachable;
   }
 
   pub fn unpack_struct(resource: StructResource) Struct {

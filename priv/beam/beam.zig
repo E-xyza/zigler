@@ -205,6 +205,9 @@ pub threadlocal var allocator = if (options.use_gpa) general_purpose_allocator e
 pub const resource = @import("resource.zig");
 pub const Resource = resource.Resource;
 
+pub const event = e.ErlNifEvent;
+pub const monitor = e.ErlNifMonitor;
+
 ///////////////////////////////////////////////////////////////////////////////
 // exception
 
