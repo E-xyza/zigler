@@ -51,17 +51,15 @@ pub fn make_pid(_: beam.env, pid: beam.pid) beam.term {
     // so we have to use secret hidden implementation, which is
     // that the pid struct just wraps beam.term directly =(
 
-    if (beam.is_sema) {
-        // note that we also have just disable this in the sema step,
-        // because sema shims pid with a bogus extern struct, which
-        // can't have pid.
-        unreachable;
-    } else {
-        // super bogus and super sketchy code:
-        // this code will fail to work if the OTP team ever changes
-        // their internal pid representation away from this!
-        return .{ .v = @bitCast(e.ErlNifTerm, pid.pid) };
-    }
+    // note that we also have just disable this in the sema step,
+    // because sema shims pid with a bogus extern struct, which
+    // can't have pid.
+    beam.ignore_when_sema();
+
+    // super bogus and super sketchy code:
+    // this code will fail to work if the OTP team ever changes
+    // their internal pid representation away from this!
+    return .{ .v = @bitCast(e.ErlNifTerm, pid.pid) };
 }
 
 pub fn make_null(env: beam.env) beam.term {

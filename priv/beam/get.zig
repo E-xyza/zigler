@@ -544,7 +544,7 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term, opts:
             }
         },
         .bitstring => {
-            if (beam.is_sema) {unreachable;}
+            beam.ignore_when_sema();
 
             const expected_size = array_info.len * @sizeOf(Child);
 

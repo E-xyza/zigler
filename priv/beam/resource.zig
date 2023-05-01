@@ -14,7 +14,7 @@ const CreateOpts = struct {
     released: bool = true,
 };
 
-const OutputType = enum { default, binary};
+const OutputType = enum { default, binary };
 
 pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOpts) type {
     return struct {
@@ -61,24 +61,23 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         }
 
         pub fn resource_type(_: @This()) *e.ErlNifResourceType {
+            beam.ignore_when_sema();
+
             var resource_type_struct: *e.ErlNifResourceType = undefined;
-            if (beam.is_sema) {
-                unreachable;
-            }
             root.set_resource(@This(), &resource_type_struct);
             return resource_type_struct;
         }
 
         pub fn create(data: T, create_opts: CreateOpts) !@This() {
+            beam.ignore_when_sema();
+            
+            if (@sizeOf(T) == 0) {
+                @compileError("you cannot create a resource for a zero-byte object");
+            }
+
             var allocator = Allocator{ .ptr = undefined, .vtable = &resource_vtable };
 
-            if (!beam.is_sema) {
-                if (@sizeOf(T) == 0) {
-                    @compileError("you cannot create a resource for a zero-byte object");
-                }
-
-                root.set_resource(@This(), @ptrCast(**e.ErlNifResourceType, &allocator.ptr));
-            }
+            root.set_resource(@This(), @ptrCast(**e.ErlNifResourceType, &allocator.ptr));
 
             const resource_payload = try allocator.create(T);
             resource_payload.* = data;
@@ -93,10 +92,12 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         }
 
         pub fn release(self: @This()) void {
+            beam.ignore_when_sema();
             e.enif_release_resource(@ptrCast(*anyopaque, self.__payload));
         }
 
         pub fn keep(self: @This()) void {
+            beam.ignore_when_sema();
             _ = e.enif_keep_resource(@ptrCast(*anyopaque, self.__payload));
         }
 
@@ -133,7 +134,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                     assert_type_matches(@TypeOf(encoder), fn (*const T) []const u8);
                     const bytes: []const u8 = encoder(self.__payload);
                     return .{ .v = e.enif_make_resource_binary(env, @ptrCast(*anyopaque, self.__payload), bytes.ptr, bytes.len) };
-                }
+                },
             }
         }
 

@@ -112,6 +112,10 @@ pub const is_sema = switch (builtin.output_mode) {
 // semantic analysis
 pub const sema = if (is_sema) @import("sema.zig") else void;
 
+pub inline fn ignore_when_sema() void {
+    if (is_sema) unreachable;
+}
+
 // loading boilerplate
 pub const loader = @import("loader.zig");
 

@@ -3,7 +3,7 @@ defmodule Zig.Type.Function do
   # files.
   @behaviour Access
 
-  defstruct [:name, :arity, :params, :return, :opts]
+  defstruct [:name, :arity, :params, :return, :opts, :raw]
   alias Zig.Type
 
   @impl true
@@ -26,13 +26,23 @@ defmodule Zig.Type.Function do
         _ -> length(params)
       end
 
-    %__MODULE__{
+    function = %__MODULE__{
       name: name,
       arity: arity,
       params: params,
       return: Type.from_json(return, module),
       opts: nif_opts
     }
+
+    if arity = nif_opts[:raw] do
+      to_raw(function, arity)
+    else
+      function
+    end
+  end
+
+  defp to_raw(function, arity) do
+    %{function | raw: :zig, arity: arity}
   end
 
   def param_marshalling_macros(function) do

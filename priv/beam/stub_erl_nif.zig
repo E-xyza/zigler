@@ -204,7 +204,7 @@ pub fn enif_make_sub_binary(_: env, _: term, _: usize, _: usize) term { return .
 // pub fn enif_make_tuple9(...)
 pub fn enif_make_tuple_from_array(_: env, _: [*c]const term, _: c_uint) term { return .{}; }
 pub fn enif_make_uint(_: env, _: c_uint) term { return .{}; }
-pub fn enif_make_uint64(_: env, _: c_uint) term { return .{}; }
+pub fn enif_make_uint64(_: env, _: u64) term { return .{}; }
 pub fn enif_make_ulong(_: env, _: c_ulong) term { return .{}; }
 pub fn enif_make_unique_integer(_: env, _: unqi) term { return .{}; }
 pub fn enif_map_iterator_create(_: env, _: term, _: mpi, _: mpie) c_int { return 0; }

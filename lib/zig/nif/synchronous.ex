@@ -50,6 +50,11 @@ defmodule Zig.Nif.Synchronous do
   synchronous = Path.join(__DIR__, "../templates/synchronous.zig.eex")
   EEx.function_from_file(:defp, :synchronous, synchronous, [:assigns])
 
+  raw_zig = Path.join(__DIR__, "../templates/raw_zig.zig.eex")
+  EEx.function_from_file(:defp, :raw_zig, raw_zig, [:assigns])
+
+
+  def render_zig_function(%Nif{function: function = %{raw: :zig}}), do: raw_zig(function)
   def render_zig_function(%Nif{function: function}), do: synchronous(function)
 
   def table_entries(nif) do
