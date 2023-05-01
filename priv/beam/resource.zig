@@ -60,6 +60,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
 
         pub fn resource_type(_: @This()) *e.ErlNifResourceType {
             var resource_type_struct: *e.ErlNifResourceType = undefined;
+            if (beam.is_sema) { unreachable; }
             root.set_resource(@This(), &resource_type_struct);
             return resource_type_struct;
         }

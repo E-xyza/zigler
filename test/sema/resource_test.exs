@@ -41,6 +41,6 @@ defmodule ZiglerTest.Sema.ResourceTest do
                }
              ],
              return: %Struct{name: "T"}
-           } = res 
+           } = res
   end
 end

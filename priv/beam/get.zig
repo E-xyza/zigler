@@ -265,8 +265,21 @@ pub fn get_resource(comptime T: type, env: beam.env, src: beam.term, opts: anyty
     var res: T = undefined;
     const result = res.get(env, src, opts);
 
+    // by default, we keep the resource.
+    if (should_keep(opts)) {
+        res.keep();
+    }
+
     if (result == 0) return GetError.argument_error;
     return res;
+}
+
+fn should_keep(opts: anytype) bool {
+    if (@hasField(@TypeOf(opts), "keep")) {
+        return opts.keep;
+    } else {
+        return true;
+    }
 }
 
 // internal function, for getting individual tuples out of a keyword list for
@@ -390,20 +403,28 @@ pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: a
     if (slice_info.is_const) {
         return result_ptr[0..item_count];
     } else {
-        var result = try alloc.alloc(Child, item_count);
+        const alloc_count = if (slice_info.sentinel) | _ | item_count + 1 else item_count;
+        const result = try alloc.alloc(Child, alloc_count);
         std.mem.copy(Child, result, result_ptr[0..item_count]);
 
-        return result;
+        if (slice_info.sentinel) |sentinel| {
+            result[item_count] = @ptrCast(*const Child, @alignCast(@alignOf(Child), sentinel)).*;
+        }
+
+        return @ptrCast(T, result);
     }
 }
 
 pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
-    const Child = @typeInfo(T).Pointer.child;
+    const slice_info = @typeInfo(T).Pointer;
+    const Child = slice_info.child;
     var length: c_uint = undefined;
     const alloc = allocator(opts);
 
     if (e.enif_get_list_length(env, src.v, &length) == 0) return GetError.unreachable_error;
-    var result = try alloc.alloc(Child, length);
+    const alloc_length = if (slice_info.sentinel) | _ | length + 1 else length;
+
+    const result = try alloc.alloc(Child, alloc_length);
     errdefer alloc.free(result);
 
     var list: e.ErlNifTerm = src.v;
@@ -420,7 +441,11 @@ pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term, opts: any
 
     if (e.enif_is_empty_list(env, list) == 0) return GetError.unreachable_error;
 
-    return result;
+    if (slice_info.sentinel) |sentinel| {
+        result[length] = @ptrCast(*const Child, @alignCast(@alignOf(Child), sentinel)).*;
+    }
+
+    return @ptrCast(T, result);
 }
 
 pub fn get_manypointer(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
@@ -681,6 +706,8 @@ inline fn error_line(env: beam.env, opts: anytype, msg: anytype) void {
     // and this field should be a pointer to a `beam.term` object.  Anything
     // else will result in a compiler error.
 
+    if (!@hasField(@TypeOf(opts), "error_info")) return;
+
     inline for (@typeInfo(@TypeOf(opts)).Struct.fields) |field| {
         if (std.mem.eql(u8, "error_info", field.name)) {
             const field_type = @TypeOf(opts.error_info);
@@ -721,7 +748,7 @@ fn typespec_for(comptime T: type) []const u8 {
         .Float => "float | :infinity | :neg_infinity | :NaN",
         .Struct => |s| make_struct: {
             // resources require references
-            if (resource.MaybeUnwrap(s)) | _ | {
+            if (resource.MaybeUnwrap(s)) |_| {
                 break :make_struct "reference";
             }
             // everything else is "reported as a generic map or keyword, binary if packed"

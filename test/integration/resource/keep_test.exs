@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Resource.ReleaseTest do
+defmodule ZiglerTest.Resource.KeepTest do
   use ExUnit.Case, async: true
 
   use Zig, otp_app: :zigler, resources: [:PidResource]
@@ -22,7 +22,14 @@ defmodule ZiglerTest.Resource.ReleaseTest do
   }
 
   pub fn keep(resource: PidResource) void {
-    resource.keep();
+      resource.keep();
+  }
+
+  pub fn manual_keep(env: beam.env, term: beam.term, should_keep: bool) void {
+      const resource = beam.get(PidResource, env, term, .{.keep = false}) catch unreachable;
+      if (should_keep) {
+          resource.keep();
+      }
   }
   """
 
@@ -44,5 +51,31 @@ defmodule ZiglerTest.Resource.ReleaseTest do
     end)
 
     refute_receive :cleaned, 500
+  end
+
+  describe "you can manually use beam.get to" do
+    test "decide to not keep" do
+      this = self()
+
+      spawn(fn ->
+        this
+        |> create_released()
+        |> manual_keep(false)
+      end)
+
+      assert_receive :cleaned, 100
+    end
+
+    test "decide to keep" do
+      this = self()
+
+      spawn(fn ->
+        this
+        |> create_released()
+        |> manual_keep(true)
+      end)
+
+      refute_receive :cleaned, 500
+    end
   end
 end
