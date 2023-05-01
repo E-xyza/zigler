@@ -7,11 +7,6 @@ const json = std.json;
 // possibly 100 is an over-conservative choice for function depth here.
 const JSON_DEPTH = 100;
 
-// this needs to be here to mimic the resource_lookup function that's in the base nif file
-pub fn assign_resource_type(comptime _: type, _: **e.ErlNifResourceType) void {
-    @panic("sema should never call runtime assign_resource_type");
-}
-
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
     var stream = json.writeStream(stdout, JSON_DEPTH);

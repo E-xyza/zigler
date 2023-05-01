@@ -13,7 +13,7 @@ defmodule Zig.Resources do
   end
 
   def init_resource_type(resource, module) when is_atom(resource) do
-    "typeFor#{resource} = beam.resource.init(#{call_for(resource)}, \"#{module}\", env, .{});"
+    "typeFor#{resource} = #{call_for(resource)}.init(\"#{module}\", env);"
   end
 
   @builtins ~w(isize usize c_short c_ushort c_int c_uint c_long c_ulong c_longlong c_ulonglong c_longdouble f16 f32 f64 f80 f128 bool)

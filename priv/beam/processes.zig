@@ -12,8 +12,8 @@ pub fn self(env: beam.env) PidError!beam.pid {
     }
 }
 
-pub fn send(env: beam.env, dest: beam.pid, content: anytype, opts: anytype) PidError!beam.term {
-    const term = beam.make(env, content, opts);
+pub fn send(env: beam.env, dest: beam.pid, content: anytype) PidError!beam.term {
+    const term = beam.make(env, content, .{});
     var pid = dest;
     // disable this in sema because pid pointers are not supported
 
