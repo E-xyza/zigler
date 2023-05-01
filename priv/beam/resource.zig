@@ -91,6 +91,10 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
             e.enif_release_resource(self.__payload);
         }
 
+        pub fn keep(self: @This()) void {
+            _ = e.enif_keep_resource(self.__payload);
+        }
+
         pub fn unpack(self: @This()) T {
             return self.__payload.*;
         }
