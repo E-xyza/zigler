@@ -19,23 +19,27 @@ defmodule ZiglerTest.Sema.ResourceTest do
 
   ~Z"""
   const beam = @import("beam");
-  pub const resource = beam.resources(@import("root"));
-  const Resource = beam.Resource;
+  const StructResource = beam.Resource(T, @import("root"), .{});
 
   pub const T = struct {
     payload: u64,
   };
 
-  pub fn res(value: Resource(T)) T {
-    return resource.unpack(value);
+  pub fn res(resource: StructResource) T {
+    return resource.unpack();
   }
   """
 
-  test "a basic function can be found", %{res: res} do
+  test "resource in parameter", %{res: res} do
     assert %Type.Function{
              name: :res,
              arity: 1,
-             params: [%Resource{payload: %Zig.Type.Struct{name: "T"}}],
+             params: [
+               %Resource{
+                 name: "Resource(nif.T,root,.{.Callbacks = null})",
+                 payload: %Zig.Type.Struct{name: "T"}
+               }
+             ],
              return: %Struct{name: "T"}
            } = res
   end

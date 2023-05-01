@@ -35,6 +35,8 @@ fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) !void {
 fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime name: []const u8) !void {
     if (resource.MaybeUnwrap(s)) |res_type| {
         try stream.emitString("resource");
+        try stream.objectField("name");
+        try stream.emitString(name);
         try stream.objectField("payload");
         try streamType(stream, res_type);
     } else {

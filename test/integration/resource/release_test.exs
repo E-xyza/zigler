@@ -1,66 +1,69 @@
-defmodule ZiglerTest.Resource.BasicTest do
+defmodule ZiglerTest.Resource.ReleaseTest do
   use ExUnit.Case, async: true
 
-  use Zig, otp_app: :zigler, resources: ["beam.term": [dtor: :destroy]]
+  use Zig, otp_app: :zigler, resources: [:PidResource]
 
   ~Z"""
   const beam = @import("beam");
+  const std = @import("std");
   const Resource = beam.Resource;
-  pub const resource = beam.resources(@import("root"));
 
-  pub fn destroy(env: beam.env, pid: Resource(beam.pid)) void {
-      beam.send(env, pid, .ok);
+  pub const PidResource = Resource(beam.pid, @import("root"), .{.Callbacks = PidResourceCallbacks});
+
+  pub const PidResourceCallbacks = struct {
+      pub fn dtor(env: beam.env, pid: *beam.pid) void {
+          _ = beam.send(env, pid.*, .cleaned) catch unreachable;
+      }
+  };
+
+  pub fn create_no_release(pid: beam.pid) PidResource {
+      const resource = PidResource.create(pid, .{.released = false}) catch unreachable;
+      return resource;
   }
 
-  pub fn create_then_release(pid: beam.pid) Resource(beam.pid) {
-      const result = resource.create(pid, .{}) catch unreachable;
-      resource.release(result);
-      return result;
+  pub fn create_released(pid: beam.pid) PidResource {
+      const resource = PidResource.create(pid, .{}) catch unreachable;
+      return resource;
   }
 
-  pub fn create_released(pid: beam.pid) Resource(beam.pid) {
-      const result = resource.create_released(pid, .{}) catch unreachable;
-      return result;
-  }
-
-  pub fn keep(res: Resource(beam.pid)) void {
-      resource.keep(res);
+  pub fn release(resource: PidResource) void {
+    resource.release();
   }
   """
-
-  test "you can create then release an item" do
-    this = self()
-
-    spawn(fn ->
-      create_then_release(this)
-      :erlang.garbage_collect()
-    end)
-
-    assert_receive 1000, :ok
-  end
 
   test "you can create a released item" do
     this = self()
 
     spawn(fn ->
       create_released(this)
-      :erlang.garbage_collect()
     end)
 
-    assert_receive 1000, :ok
+    assert_receive :cleaned, 100
+    Process.sleep(500)
+    # adds this in to make sure we don't segfault.
   end
 
-  test "if the item has been kept, it won't release" do
+  test "you can create then release an item" do
     this = self()
 
     spawn(fn ->
       this
-      |> create_then_release
-      |> keep
-
-      :erlang.garbage_collect()
+      |> create_no_release()
+      |> release()
     end)
 
-    refute_receive 1000, :ok
+    assert_receive :cleaned, 100
+    Process.sleep(500)
+    # adds this in to make sure we don't segfault.
+  end
+
+  test "an unkept resource is never released" do
+    this = self()
+
+    spawn(fn ->
+      create_no_release(this)
+    end)
+
+    refute_receive :cleaned, 500
   end
 end

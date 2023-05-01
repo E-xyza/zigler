@@ -6,26 +6,171 @@ const builtin = std.builtin;
 const Allocator = std.mem.Allocator;
 const MAX_ALIGN = @import("allocator.zig").MAX_ALIGN;
 
-pub fn Resource(comptime T: type) type {
+const ResourceOpts = struct {
+    Callbacks: ?type = null,
+};
+
+const CreateOpts = struct {
+    released: bool = true,
+};
+
+pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOpts) type {
     return struct {
-        // we put this function in here to make sure it's got something special going on
-        // and that it's not just a regular struct
-        pub fn __wraps() type {
-            return T;
+        __payload: *T,
+
+        // indicates if the resource, in context of this nif call, should be released at the end
+        // of the nif call.  This is set in the `create_opts` parameter of the `create` function.
+        __should_release: bool = true,
+
+        /// initialization function, which should be called at runtime by the module's init function.  The
+        /// primary job of this function is to assign the resource type generating function to
+        /// the root namespace.
+        pub fn init(comptime module: []const u8, env: beam.env) *e.ErlNifResourceType {
+            // load em up.  Note all callbacks are optional and may be set to null.
+            // see: https://www.erlang.org/doc/man/erl_nif.html#enif_init_resource_type
+            var init_struct = e.ErlNifResourceTypeInit{ .dtor = null, .stop = null, .down = null, .dyncall = null, .members = 0 };
+
+            if (opts.Callbacks) |Callbacks| {
+                const Shimmed = MakeShimmed(Callbacks);
+
+                if (@hasDecl(Callbacks, "dtor")) {
+                    assert_types_match(@TypeOf(Callbacks.dtor), fn (beam.env, *T) void);
+                    init_struct.dtor = Shimmed.dtor;
+                    init_struct.members += 1;
+                }
+
+                if (@hasDecl(Callbacks, "stop")) {
+                    assert_types_match(@TypeOf(Callbacks.dtor), fn (beam.env, *T, beam.pid, beam.monitor) void);
+                    init_struct.stop = Shimmed.stop;
+                }
+
+                if (@hasDecl(Callbacks, "down")) {
+                    assert_types_match(@TypeOf(Callbacks.dtor), fn (beam.env, *T, beam.event, bool) void);
+                    init_struct.down = Shimmed.down;
+                }
+
+                if (@hasDecl(Callbacks, "dyncall")) {
+                    assert_types_match(@TypeOf(Callbacks.dtor), fn (beam.env, *T, ?*anyopaque) void);
+                    init_struct.dyncall = Shimmed.dyncall;
+                }
+            }
+
+            return e.enif_init_resource_type(env, @typeName(T) ++ "-" ++ module, &init_struct, e.ERL_NIF_RT_CREATE, null).?;
         }
-        resource_payload: *T,
+
+        pub fn resource_type(_: @This()) *e.ErlNifResourceType {
+            var resource_type_struct: *e.ErlNifResourceType = undefined;
+            if (beam.is_sema) { unreachable; }
+            root.set_resource(@This(), &resource_type_struct);
+            return resource_type_struct;
+        }
+
+        pub fn create(data: T, create_opts: CreateOpts) !@This() {
+            var allocator = Allocator{ .ptr = undefined, .vtable = &resource_vtable };
+
+            if (!beam.is_sema) {
+                if (@sizeOf(T) == 0) {
+                    @compileError("you cannot create a resource for a zero-byte object");
+                }
+
+                root.set_resource(@This(), @ptrCast(**e.ErlNifResourceType, &allocator.ptr));
+            }
+
+            const resource_payload = try allocator.create(T);
+            resource_payload.* = data;
+
+            return .{ .__payload = resource_payload, .__should_release = create_opts.released};
+        }
+
+        pub fn maybe_release(self: @This()) void {
+            if (self.__should_release) {
+                self.release();
+            }
+        }
+
+        pub fn release(self: @This()) void {
+            e.enif_release_resource(self.__payload);
+        }
+
+        pub fn keep(self: @This()) void {
+            _ = e.enif_keep_resource(self.__payload);
+        }
+
+        pub fn unpack(self: @This()) T {
+            return self.__payload.*;
+        }
+
+        pub fn update(self: @This(), data: T) void {
+            self.__payload.* = data;
+        }
+
+        // get and make functions should only be called internally, by get.zig
+        // and make.zig modules.  They are not intended to be called directly
+        // by end user.
+
+        pub fn get(self: *@This(), env: beam.env, src: beam.term, get_opts: anytype) c_int {
+            if (@hasField(@TypeOf(get_opts), "released")) {
+                self.__should_release = get_opts.released;
+            }
+
+            const resource_target = @ptrCast(?*?*anyopaque, &self.__payload);
+            return e.enif_get_resource(env, src.v, self.resource_type(), resource_target);
+        }
+
+        pub fn make(self: @This(), env: beam.env, comptime make_opts: anytype) beam.term {
+            defer self.maybe_release();
+            return switch (make_opts.output_as) {
+                .default =>
+                    .{.v = e.enif_make_resource(env, self.__payload)},
+                .binary =>
+                    @panic("not implemented yet"),
+                else =>
+                    @compileError("a resource may only output as a resource or a binary"),
+            };
+        }
+
+        fn MakeShimmed(comptime Callbacks: type) type {
+            return struct {
+                fn to_typed(obj: ?*anyopaque) *T {
+                    return @ptrCast(*T, @alignCast(@alignOf(T), obj.?));
+                }
+
+                fn dtor(env: beam.env, obj: ?*anyopaque) callconv(.C) void {
+                    if (@hasDecl(Callbacks, "dtor")) {
+                        Callbacks.dtor(env, to_typed(obj));
+                    }
+                }
+
+                fn down(env: beam.env, obj: ?*anyopaque, pid: [*c]beam.pid, monitor: [*c]beam.monitor) callconv(.C) void {
+                    if (@hasDecl(Callbacks, "down")) {
+                        Callbacks.down(env, to_typed(obj), pid[0], monitor[0]);
+                    }
+                }
+
+                fn stop(env: beam.env, obj: ?*anyopaque, event: beam.event, is_direct_call: c_int) callconv(.C) void {
+                    if (@hasDecl(Callbacks, "stop")) {
+                        Callbacks.stop(env, to_typed(obj), event, is_direct_call != 0);
+                    }
+                }
+
+                fn dyncall(env: beam.env, obj: ?*anyopaque, calldata: ?*anyopaque) callconv(.C) void {
+                    if (@hasDecl(Callbacks, "dyncall")) {
+                        return Callbacks.dyncall(env, to_typed(obj), calldata);
+                    }
+                }
+            };
+        }
     };
 }
 
 pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
     // verify that this is indeed a resource.  A resource has the
-    // `__wraps` function and a single field called `resource_payload`
-    // which is a pointer to the wrapped type.
+    // a single field called `__payload` which is a pointer to the wrapped type.
+    // return the wrapped type, otherwise return null.
 
-    if (s.decls.len != 1) return null;
-    if (!std.mem.eql(u8, s.decls[0].name, "__wraps")) return null;
-    if (s.fields.len != 1) return null;
-    if (!std.mem.eql(u8, s.fields[0].name, "resource_payload")) return null;
+    if (s.fields.len != 2) return null;
+    if (!std.mem.eql(u8, s.fields[0].name, "__payload")) return null;
+    if (!std.mem.eql(u8, s.fields[1].name, "__should_release")) return null;
 
     switch (@typeInfo(s.fields[0].field_type)) {
         .Pointer => |p| {
@@ -36,23 +181,6 @@ pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
         else => return null,
     }
 }
-
-pub fn Unwrap(comptime T: type) type {
-    switch (@typeInfo(T)) {
-        .Struct => |s| {
-            const maybe_unwrapped = MaybeUnwrap(s);
-            if (maybe_unwrapped) | unwrapped | return unwrapped;
-            @compileError("can't unwrap a type that is not a resource: " ++ @typeName(T));
-        },
-        else => @compileError("can't unwrap a type that is not a resource: " ++ @typeName(T)),
-    }
-}
-
-const ResourceMode = enum { reference, binary };
-
-const ResourceOpts = struct {
-    mode: ResourceMode = .reference,
-};
 
 fn resource_alloc(
     resource_ptr: *anyopaque,
@@ -82,64 +210,8 @@ const resource_vtable = Allocator.VTable{
     .free = nofree,
 };
 
-pub fn resources(comptime root_import: anytype) type {
-    return struct {
-        pub fn create(data: anytype, opts: ResourceOpts) !Resource(@TypeOf(data)) {
-            const T = @TypeOf(data);
-            var allocator = Allocator{ .ptr = undefined, .vtable = &resource_vtable };
-            var typed_allocator = @ptrCast(**e.ErlNifResourceType, &allocator.ptr);
-            root_import.assign_resource_type(T, typed_allocator);
-
-            if (@sizeOf(@TypeOf(data)) == 0) {
-                @compileError("you cannot create a resource for a zero-byte object");
-            }
-
-            _ = opts;
-            const resource_payload = try allocator.create(T);
-            resource_payload.* = data;
-            return Resource(T){ .resource_payload = resource_payload };
-        }
-
-        pub fn unpack(resource: anytype) Unwrap(@TypeOf(resource)) {
-            return resource.resource_payload.*;
-        }
-
-        pub fn update(resource: anytype, data: Unwrap(@TypeOf(resource))) void {
-            resource.resource_payload.* = data;
-        }
-    };
-}
-
-const ResourceInitOpts = struct {
-    dtor: ?*e.ErlNifResourceDtor = null,
-    stop: ?*e.ErlNifResourceStop = null,
-    down: ?*e.ErlNifResourceDown = null,
-    dyncall: ?*e.ErlNifResourceDynCall = null,
-};
-
-pub fn init(comptime T: type, comptime module: []const u8, env: beam.env, opts: ResourceInitOpts) *e.ErlNifResourceType {
-    // load em up.  Note all callbacks are optional and may be set to null.
-    // see: https://www.erlang.org/doc/man/erl_nif.html#enif_init_resource_type
-    var init_struct: e.ErlNifResourceTypeInit = .{.dtor = null, .stop = null, .down = null, .dyncall = null, .members = 0};
-    if (opts.dtor) |dtor| { 
-        init_struct.dtor = dtor;
-        init_struct.members = 1;
+fn assert_types_match(comptime t1: type, comptime t2: type) void {
+    if (t1 != t2) {
+        @compileError("type " ++ @typeName(t1) ++ " doesn't match expected " ++ @typeName(t2));
     }
-
-    if (opts.stop) |stop| { 
-        init_struct.stop = stop;
-        init_struct.members = 2;
-    }
-
-    if (opts.down) |down| { 
-        init_struct.down = down;
-        init_struct.members = 3;
-    }
-
-    if (opts.dyncall) |dyncall| { 
-        init_struct.dyncall = dyncall;
-        init_struct.members = 4;
-    }
-    
-    return if (e.enif_init_resource_type(env, @typeName(T) ++ "-" ++ module, &init_struct, e.ERL_NIF_RT_CREATE, null)) |resource_type| resource_type else @panic("couldn't initialize the resource type for" ++ @typeName(T));
 }

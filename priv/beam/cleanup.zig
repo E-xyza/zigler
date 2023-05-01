@@ -1,5 +1,6 @@
 const std = @import("std");
 const beam = @import("beam.zig");
+const resource = @import("resource.zig");
 
 const CPointerTags = enum { One, Many };
 pub fn CPointerCleanup(comptime T: type) type {
@@ -38,6 +39,11 @@ pub fn cleanup(what: anytype, opts: anytype) void {
         .Optional => {
             if (what) |pointer| {cleanup(pointer, opts); }
         },
+        .Struct => |s| {
+            if (resource.MaybeUnwrap(s)) |_| {
+                cleanup_resource(what, opts);
+            }
+        },
         else => {},
     }
 }
@@ -51,7 +57,11 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
             allocator(opts).destroy(ptr);
         },
         .Slice => {
-            allocator(opts).free(ptr);
+            if (@typeInfo(T).Pointer.sentinel) | _ | {
+                allocator(opts).free(@ptrCast([]u8, ptr));
+            } else {
+                allocator(opts).free(ptr);
+            }
         },
         .Many, .C => {
             // cleaning up content can be done by specifying either a size parameter in the
@@ -78,10 +88,20 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
     }
 }
 
+fn cleanup_resource(res: anytype, opts: anytype) void {
+    if (should_cleanup(opts)) {
+        res.release();
+    }
+}
+
 fn maybe_cleanup_pointer_with_function(ptr: anytype, opts: anytype) void {
     const T = @TypeOf(opts.cleanup);
     switch (@typeInfo(T)) {
         .Null => return,
         .Fn => opts.cleanup(ptr, opts),
     }
+}
+
+fn should_cleanup(opts: anytype) bool {
+    return if (@hasField(@TypeOf(opts), "cleanup")) opts.cleanup else true;
 }

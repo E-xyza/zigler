@@ -10,7 +10,8 @@ defprotocol Zig.Type do
   alias Zig.Type.Struct
   alias Zig.Type.Resource
 
-  @type t :: Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :pid | :port | :term
+  @type t ::
+          Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :pid | :port | :term
 
   @spec marshal_param(t, keyword) :: (Macro.t(), index :: non_neg_integer -> Macro.t()) | nil
   @doc "elixir-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
@@ -139,11 +140,14 @@ defprotocol Zig.Type do
       %{"type" => "resource"} ->
         Resource.from_json(json, module)
 
-      %{"type" => "pid"} -> :pid
+      %{"type" => "pid"} ->
+        :pid
 
-      %{"type" => "port"} -> :port
+      %{"type" => "port"} ->
+        :port
 
-      %{"type" => "term"} -> :term
+      %{"type" => "term"} ->
+        :term
     end
   end
 

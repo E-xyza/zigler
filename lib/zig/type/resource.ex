@@ -2,19 +2,24 @@ defmodule Zig.Type.Resource do
   alias Zig.Type
   use Type
 
-  defstruct [:payload]
+  defstruct [:payload, :name]
 
-  @type t :: %__MODULE__{payload: Type.t()}
+  @type t :: %__MODULE__{payload: Type.t(), name: String.t()}
 
-  def from_json(%{"payload" => payload}, module) do
-    %__MODULE__{
-      payload: Type.from_json(payload, module)
-    }
+  def from_json(%{"payload" => payload, "name" => name}, module) do
+    payload = Type.from_json(payload, module)
+
+    name =
+      ~r/resource.Resource\(([a-zA-Z0-9_\.]+),sema/
+      |> Regex.replace(name, "Resource(#{Type.to_call(payload)},root")
+      |> String.replace(".#{module}", "nif")
+
+    %__MODULE__{payload: payload, name: name}
   end
 
-  def to_string(resource), do: "Resource(#{resource.payload})"
+  def to_string(resource), do: resource.name
 
-  def to_call(resource), do: "Resource(#{Type.to_call(resource.payload)})"
+  def to_call(resource), do: resource.name
 
   def return_allowed?(_resource), do: true
 end
