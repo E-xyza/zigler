@@ -28,7 +28,18 @@ defmodule Zig.Type.Cpointer do
     end
   end
 
-  def spec(_, _, _), do: raise("unimplemented")
+  def spec(%{child: ~t(u8)}, :return, opts) do
+    # assumed to be a null-terminated string
+    if :charlist in opts do
+      Type.spec(:charlist)
+    else
+      Type.spec(:binary)
+    end
+  end
+
+  def spec(%{child: child = %__MODULE__{}}, :return, opts) do
+    [Type.spec(child, :return, opts)]
+  end
 
   def missing_size?(_), do: true
 

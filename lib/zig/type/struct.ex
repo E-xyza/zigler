@@ -2,11 +2,12 @@ defmodule Zig.Type.Struct do
   alias Zig.Type
   use Type
 
-  defstruct [:name, :packed, :required, :optional, mutable: false]
+  defstruct [:name, :packed, :required, :optional, extern: false, mutable: false]
 
   @type t :: %{
           name: String.t(),
           packed: nil | non_neg_integer(),
+          extern: nil | non_neg_integer(),
           required: %{optional(atom) => Type.t()},
           optional: %{optional(atom) => Type.t()},
           mutable: boolean
@@ -19,6 +20,7 @@ defmodule Zig.Type.Struct do
     %__MODULE__{
       name: String.trim_leading(name, ".#{module}."),
       packed: Map.get(json, "packed_size"),
+      extern: Map.get(json, "extern", false),
       required: Map.new(required, to_field),
       optional: Map.new(optional, to_field)
     }

@@ -44,10 +44,17 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
         try emitType(stream, "struct");
         try stream.objectField("name");
         try stream.emitString(name);
-        if (s.layout == .Packed) {
-            const OriginalType = @Type(.{ .Struct = s });
-            try stream.objectField("packed_size");
-            try stream.emitNumber(@bitSizeOf(OriginalType));
+        switch (s.layout) {
+            .Packed => {
+                const OriginalType = @Type(.{ .Struct = s });
+                try stream.objectField("packed_size");
+                try stream.emitNumber(@bitSizeOf(OriginalType));
+            }
+            .Extern => {
+                try stream.objectField("extern");
+                try stream.emitBool(true);
+            }
+            .Auto => {}
         }
         try stream.objectField("fields");
         try stream.beginArray();
