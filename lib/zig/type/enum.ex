@@ -20,4 +20,16 @@ defmodule Zig.Type.Enum do
   end
 
   def return_allowed?(_), do: true
+
+  def spec(%{tags: tags}, _opts) do
+    tags
+    |> Map.keys()
+    |> Enum.sort()
+    |> Enum.reverse()
+    |> Enum.reduce(fn a, b ->
+      quote do
+        unquote(a) | unquote(b)
+      end
+    end)
+  end
 end

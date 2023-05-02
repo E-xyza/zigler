@@ -2,7 +2,9 @@ defmodule Zig.Type.Manypointer do
   alias Zig.Type
   use Type
 
-  defstruct [:child, :has_sentinel?, :repr]
+  import Type, only: :macros
+
+  defstruct [:child, :repr, has_sentinel?: false]
 
   @type t :: %__MODULE__{
           child: Type.t(),
@@ -29,4 +31,14 @@ defmodule Zig.Type.Manypointer do
 
   def return_allowed?(pointer), do: pointer.has_sentinel? and Type.return_allowed?(pointer.child)
   def missing_size?(_), do: true
+
+  def spec(%{child: ~t(u8), has_sentinel?: true}, _) do
+    quote do
+      binary()
+    end
+  end
+
+  def of(type, opts) do
+    struct(__MODULE__, opts ++ [child: type])
+  end
 end

@@ -10,13 +10,15 @@ const JSON_DEPTH = 100;
 pub fn main() !void {
     const stdout = std.io.getStdOut().writer();
     var stream = json.writeStream(stdout, JSON_DEPTH);
-    <%= if opts[:nifs] == :all do %> <% # TODO: consider moving this conditional to build.zig %>
+
+    <%= case @nifs do %>
+    <% {:all, _} -> %>
     try beam.sema.streamModule(&stream, nif);
-    <% else %>
+    <% functions when is_list(functions) -> %>
     try stream.beginObject();
     try stream.objectField("functions");
     try stream.beginArray();
-    <%= for {nif, _nif_opt} <- opts[:nifs] do %>
+    <%= for {nif, _nif_opt} <- functions do %>
     const <%= nif %> = @typeInfo(@TypeOf(nif.<%= nif %>)).Fn;
     try stream.arrayElem();
     try beam.sema.streamFun(&stream, "<%= nif %>", <%= nif %>);

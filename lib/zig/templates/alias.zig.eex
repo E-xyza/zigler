@@ -1,9 +1,7 @@
-<%= unless @nifs == :all do %>
 <%= for {nif, opts} <- @nifs do %>
   <%= case opts[:alias] do %>
     <% noalias when noalias in [true, false, nil] -> %>
     <% name -> %>
 pub const <%= nif %> = <%= name %>;
   <% end %>
-<% end %>
 <% end %>

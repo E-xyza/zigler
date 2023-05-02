@@ -405,8 +405,11 @@ defmodule Zig do
             atom when is_atom(atom) ->
               {atom, []}
 
-            tuple = {name, opts} ->
+            {name, opts} ->
               {name, normalize_nif_opts(opts)}
+
+            {:..., _, atom} when is_atom(atom) ->
+              :all
 
             other ->
               error_meta =
@@ -419,10 +422,17 @@ defmodule Zig do
               raise CompileError, error_meta
           end)
 
+        new_nifs =
+          if Enum.any?(new_nifs, &(&1 == :all)) do
+            {:all, new_nifs -- [:all]}
+          else
+            new_nifs
+          end
+
         Keyword.put(opts, :nifs, new_nifs)
 
       _ ->
-        Keyword.put(opts, :nifs, :all)
+        Keyword.put(opts, :nifs, {:all, []})
     end
   end
 

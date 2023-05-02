@@ -5,12 +5,8 @@ defmodule ZiglerTest.Types.SliceTest do
     otp_app: :zigler,
     leak_check: true,
     nifs: [
-      :slice_float_test,
       {:slice_u8_test, return: :charlists},
-      :slice_string_test,
-      :fastlane_beam_term_test,
-      :fastlane_erl_nif_term_test,
-      :sentinel_terminated_test
+      ...
     ]
 
   ## BASIC SLICES

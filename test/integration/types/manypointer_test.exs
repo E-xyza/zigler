@@ -5,13 +5,9 @@ defmodule ZiglerTest.Types.ManypointerTest do
     otp_app: :zigler,
     leak_check: true,
     nifs: [
-      :manypointer_float_test,
       {:manypointer_u8_test, return: :charlists},
-      :manypointer_string_test,
-      :sentinel_terminated_test,
-      :sentinel_terminated_return_test,
-      :sentinel_terminated_binary_return_test,
-      {:sentinel_terminated_u8_list_return_test, return: :charlists}
+      {:sentinel_terminated_u8_list_return_test, return: :charlists},
+      ...
     ]
 
   ## BASIC MULTIPOINTERS

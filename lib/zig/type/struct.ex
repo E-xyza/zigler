@@ -48,6 +48,18 @@ defmodule Zig.Type.Struct do
 
   def to_call(struct), do: "#{mut(struct)}nif.#{struct.name}"
 
+  def spec(struct, opts) do
+    fields =
+      struct.required
+      |> Map.merge(struct.optional)
+      |> Enum.map(fn {k, v} -> {k, Type.spec(v, opts)} end)
+      |> Enum.sort()
+
+    quote context: Elixir do
+      %{unquote_splicing(fields)}
+    end
+  end
+
   defp mut(struct), do: if(struct.mutable, do: "*")
 
   def return_allowed?(struct) do

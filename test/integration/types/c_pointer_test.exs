@@ -5,14 +5,8 @@ defmodule ZiglerTest.Types.CPointerTest do
     otp_app: :zigler,
     leak_check: true,
     nifs: [
-      :cpointer_test,
-      :cpointer_list_test,
-      :cpointer_struct_list_test,
-      :cpointer_u8_return_test,
-      :cpointer_struct_return_test,
-      :cpointer_struct_list_return_test,
-      :cpointer_null_return_test,
-      cpointer_u8_list_return_test: [return: :charlists]
+      {:cpointer_u8_list_return_test, return: :charlists},
+      ...
     ]
 
   ## C pointers as single pointers

@@ -1,5 +1,4 @@
 defmodule Zig.Type.Resource do
-  alias Zig.Parser
   alias Zig.Type
   use Type
 
@@ -23,6 +22,12 @@ defmodule Zig.Type.Resource do
   def to_string(resource), do: resource.name
 
   def to_call(resource), do: resource.name
+
+  def spec(_resource, _opts) do
+    quote do
+      reference()
+    end
+  end
 
   def return_allowed?(_resource), do: true
 end

@@ -20,11 +20,15 @@ defmodule Zig.Type.Cpointer do
   def return_allowed?(pointer) do
     case pointer.child do
       ~t(u8) -> true
+      # null-terminated list of pointers.
       %__MODULE__{child: child} -> Type.return_allowed?(child)
+      # NB: we assume these are single pointer returns.
       struct = %Struct{} -> Type.return_allowed?(struct)
       _ -> false
     end
   end
 
   def missing_size?(_), do: true
+
+  def of(child), do: %__MODULE__{child: child}
 end

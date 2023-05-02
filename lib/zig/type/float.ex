@@ -19,5 +19,11 @@ defmodule Zig.Type.Float do
     concat(["~t(", to_string(type), ")"])
   end
 
+  def spec(_, _) do
+    quote context: Elixir do
+      float()
+    end
+  end
+
   def return_allowed?(_), do: true
 end

@@ -41,6 +41,9 @@ defprotocol Zig.Type do
   @spec return_allowed?(t) :: boolean
   def return_allowed?(type)
 
+  @spec spec(t, keyword) :: Macro.t()
+  def spec(type, opts)
+
   import Protocol, only: []
   import Kernel
 
@@ -60,6 +63,33 @@ defprotocol Zig.Type do
 
       "f" <> _ ->
         Float.parse(string)
+
+      "c_uint" <> _ ->
+        Integer.parse(string)
+
+      "[]" <> rest ->
+        Slice.of(parse(rest))
+
+      "[*:0]" <> rest ->
+        Manypointer.of(parse(rest), has_sentinel?: true)
+
+      "[*c]" <> rest ->
+        Cpointer.of(parse(rest))
+
+      "?" <> rest ->
+        Optional.of(parse(rest))
+
+      "[" <> maybe_array ->
+        case Elixir.Integer.parse(maybe_array) do
+          {count, "]" <> rest} ->
+            Array.of(parse(rest), count)
+
+          {count, ":0]" <> rest} ->
+            Array.of(parse(rest), count, has_sentinel?: true)
+
+          _ ->
+            raise "unknown type #{string}"
+        end
 
       "?*.cimport" <> rest ->
         if String.ends_with?(rest, "struct_enif_environment_t") do
@@ -255,6 +285,7 @@ defprotocol Zig.Type do
         defdelegate needs_make?(type), to: module
         defdelegate missing_size?(type), to: module
         defdelegate cleanup(type, opts), to: module
+        defdelegate spec(type, opts), to: module
       end
     end
   end
@@ -299,6 +330,20 @@ defimpl Zig.Type, for: Atom do
         _ = result;
         break :get_result beam.make(env, arg#{arg}[0..@intCast(usize, arg#{length_arg})], .{.output_as = .#{return_type}}).v;
         """
+    end
+  end
+
+  def spec(:void, _), do: :ok
+
+  def spec(:pid, _) do
+    quote context: Elixir do
+      pid()
+    end
+  end
+
+  def spec(term, _) when term in ~w(term erl_nif_term)a do
+    quote context: Elixir do
+      term()
     end
   end
 

@@ -1,7 +1,10 @@
 defmodule ZiglerTest.Resource.AsBinaryTest do
   use ExUnit.Case, async: true
 
-  use Zig, otp_app: :zigler, resources: [:StringResource]
+  use Zig,
+    otp_app: :zigler,
+    resources: [:StringResource],
+    nifs: [{:output_as_binary, return: :binary}, ...]
 
   ~Z"""
   const beam = @import("beam");
@@ -16,7 +19,7 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
       }
   };
 
-  pub fn create(src_string: []u8) StringResource {
+  pub fn output_auto(src_string: []u8) StringResource {
       const new_string = beam.allocator.alloc(u8, src_string.len) catch unreachable;
       std.mem.copy(u8, new_string, src_string);
       return StringResource.create(new_string, .{}) catch unreachable;
@@ -24,7 +27,7 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
 
   pub const OutputModes = enum {binary, reference, static};
 
-  pub fn create_manual(env: beam.env, src_string: []u8, mode: OutputModes) beam.term {
+  pub fn output_manual(env: beam.env, src_string: []u8, mode: OutputModes) beam.term {
       const new_string = beam.allocator.alloc(u8, src_string.len) catch unreachable;
       std.mem.copy(u8, new_string, src_string);
       const resource = StringResource.create(new_string, .{}) catch unreachable;
@@ -33,6 +36,12 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
         .reference => beam.make(env, resource, .{.output_as = .default}),
         .static => beam.make(env, resource, .{.output_as = .binary, .encoder = static_encoder}),
       };
+  }
+
+  pub fn output_as_binary(src_string: []u8) StringResource {
+    const new_string = beam.allocator.alloc(u8, src_string.len) catch unreachable;
+    std.mem.copy(u8, new_string, src_string);
+    return StringResource.create(new_string, .{}) catch unreachable;
   }
 
   fn static_encoder(_ : *const []u8) [] const u8 {
@@ -46,19 +55,32 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
 
   describe "you can manually use beam.make to" do
     test "output as reference (default)" do
-      ref_resource = create_manual("foobar", :reference)
+      ref_resource = output_manual("foobar", :reference)
       assert is_reference(ref_resource)
       assert ~C'foobar' == unpack(ref_resource)
     end
 
     test "output as binary" do
-      ref_resource = create_manual("foobar", :binary)
-      assert "foobar" == ref_resource
+      str_resource = output_manual("foobar", :binary)
+      assert "foobar" == str_resource
     end
 
     test "output with static encoder" do
-      ref_resource = create_manual("foobar", :static)
-      assert "barbaz" == ref_resource
+      str_resource = output_manual("foobar", :static)
+      assert "barbaz" == str_resource
+    end
+  end
+
+  describe "function marshalling uses" do
+    test "output as reference (default)" do
+      ref_resource = output_auto("foobar")
+      assert is_reference(ref_resource)
+      assert ~C'foobar' == unpack(ref_resource)
+    end
+
+    test "output as binary, determined by return clause" do
+      str_resource = output_as_binary("foobar")
+      assert "foobar" == str_resource
     end
   end
 end

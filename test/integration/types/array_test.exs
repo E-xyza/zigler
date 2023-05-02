@@ -5,18 +5,12 @@ defmodule ZiglerTest.Types.ArrayTest do
     otp_app: :zigler,
     leak_check: true,
     nifs: [
-      :array_float_test,
       {:array_float_binary_test, return: :binary},
       {:array_u8_test, return: :charlists},
-      :array_string_test,
-      :mut_array_float_test,
       {:mut_array_u8_test, return: :charlists},
-      :mut_array_string_test,
-      :sentinel_terminated_test,
-      :fastlane_beam_term_test,
-      :fastlane_erl_nif_term_test,
       {:fastlane_beam_term_ptr_test, return: :noclean},
-      {:fastlane_erl_nif_term_ptr_test, return: :noclean}
+      {:fastlane_erl_nif_term_ptr_test, return: :noclean},
+      ...
     ]
 
   ## BASIC ARRAYS

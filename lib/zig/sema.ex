@@ -6,7 +6,7 @@ defmodule Zig.Sema do
   alias Zig.Command
 
   sema_zig_template = Path.join(__DIR__, "templates/sema.zig.eex")
-  EEx.function_from_file(:defp, :file_for, sema_zig_template, [:opts])
+  EEx.function_from_file(:defp, :file_for, sema_zig_template, [:assigns])
 
   def analyze_file!(module, opts) do
     dir = Assembler.directory(module)
@@ -23,8 +23,16 @@ defmodule Zig.Sema do
 
     nif_opts =
       case Keyword.fetch!(opts, :nifs) do
-        :all -> Enum.map(functions, &{String.to_atom(&1["name"]), []})
-        keyword when is_list(keyword) -> keyword
+        {:all, specified} ->
+          specified_functions = Keyword.keys(specified)
+
+          Enum.flat_map(functions, fn function ->
+            name = String.to_atom(function["name"])
+            List.wrap(if name not in specified_functions, do: {name, []})
+          end) ++ specified
+
+        keyword when is_list(keyword) ->
+          keyword
       end
 
     Enum.map(functions, fn function ->

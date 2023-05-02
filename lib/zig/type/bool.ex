@@ -11,4 +11,10 @@ defmodule Zig.Type.Bool do
   def to_call(_), do: "bool"
 
   def return_allowed?(_), do: true
+
+  def spec(_, _) do
+    quote context: Elixir do
+      boolean()
+    end
+  end
 end

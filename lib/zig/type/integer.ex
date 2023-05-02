@@ -185,9 +185,24 @@ defmodule Zig.Type.Integer do
     end
   end
 
+  def spec(type = %{signedness: :unsigned}, _opts) do
+    quote context: Elixir do
+      0..unquote(typemax(type))
+    end
+  end
+
+  def spec(type = %{signedness: :signed}, _opts) do
+    neg_typemin = -typemin(type)
+
+    quote context: Elixir do
+      -unquote(neg_typemin)..unquote(typemax(type))
+    end
+  end
+
   # note that we're currently not using this function for unsigned ints, which we know is zero
   defp typemin(%{signedness: :signed, bits: 0}), do: 0
   defp typemin(%{signedness: :signed, bits: bits}), do: -Bitwise.<<<(1, bits - 1)
+  defp typemin(%{signedness: :unsigned}), do: 0
 
   defp typemax(%{bits: 0}), do: 0
   defp typemax(%{signedness: :unsigned, bits: bits}), do: Bitwise.<<<(1, bits) - 1

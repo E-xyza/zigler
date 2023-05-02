@@ -80,4 +80,13 @@ defmodule Zig.Type.Function do
         name
     end
   end
+
+  def spec(function) do
+    params = Enum.map(function.params, &Type.spec(&1, []))
+    return = Type.spec(function.return, [])
+
+    quote context: Elixir do
+      @spec unquote(function.name)(unquote_splicing(params)) :: unquote(return)
+    end
+  end
 end

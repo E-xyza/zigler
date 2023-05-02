@@ -37,8 +37,13 @@ defmodule Zig.Nif do
     @callback set_entrypoint(Zig.Nif.t()) :: Zig.Nif.t()
   end
 
-  defp normalize_all(:all, functions) do
-    Enum.map(functions, &{&1.name, []})
+  defp normalize_all({:all, substitutions}, functions) do
+    substituted = Keyword.keys(substitutions)
+
+    Enum.flat_map(
+      functions,
+      &List.wrap(if &1.name not in substituted, do: {&1.name, []})
+    ) ++ substitutions
   end
 
   defp normalize_all(list, _) when is_list(list), do: list
@@ -110,7 +115,7 @@ defmodule Zig.Nif do
     end
   end
 
-  def render_erlang(nif, opts \\ []) do
+  def render_erlang(nif, _opts \\ []) do
     # TODO: typespec in erlang.
 
     function =
@@ -136,7 +141,7 @@ defmodule Zig.Nif do
   end
 
   def render_zig_code(nif = %__MODULE__{}) do
-    nif.concurrency.render_zig_function(nif)
+    nif.concurrency.render_zig_code(nif)
   end
 
   def indexed_parameters([:env | rest]) do
