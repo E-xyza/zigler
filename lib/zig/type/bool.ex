@@ -1,5 +1,6 @@
 defmodule Zig.Type.Bool do
-  use Zig.Type
+  alias Zig.Type
+  use Type
 
   defstruct []
 
@@ -12,9 +13,5 @@ defmodule Zig.Type.Bool do
 
   def return_allowed?(_), do: true
 
-  def spec(_, _) do
-    quote context: Elixir do
-      boolean()
-    end
-  end
+  def spec(_, _, _), do: Type.spec(:boolean)
 end

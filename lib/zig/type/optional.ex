@@ -15,9 +15,9 @@ defmodule Zig.Type.Optional do
 
   def return_allowed?(optional), do: Type.return_allowed?(optional.child)
 
-  def spec(%{child: child}, opts) do
+  def spec(%{child: child}, context, opts) do
     quote do
-      unquote(Type.spec(child, opts)) | nil
+      unquote(Type.spec(child, context, opts)) | nil
     end
   end
 

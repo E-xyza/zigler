@@ -29,18 +29,35 @@ defmodule Zig.Type.Slice do
   def to_call(%{has_sentinel?: true, repr: repr}), do: repr
   def to_call(slice), do: "[]#{Type.to_call(slice.child)}"
 
-  def spec(%{child: ~t(u8)}, _), do: binary()
-  def spec(%{child: child}, opts), do: list(child, opts)
+  def spec(%{child: ~t(u8)}, :return, opts) do
+    Type.spec(if :charlist in opts, do: :charlist, else: :binary)
+  end
 
-  defp binary do
-    quote context: Elixir do
-      binary()
+  def spec(%{child: child = %Type.Integer{bits: size}}, :return, opts) do
+    if :binary in opts do
+      quote context: Elixir do
+        <<_::_*unquote(Type.Integer._next_power_of_two_ceil(size))>>
+      end
+    else
+      list(child, :return, opts)
     end
   end
 
-  defp list(child, opts) do
+  def spec(%{child: child = %Type.Float{bits: size}}, :return, opts) do
+    if :binary in opts do
+      quote context: Elixir do
+        <<_::_*unquote(size)>>
+      end
+    else
+      list(child, :return, opts)
+    end
+  end
+
+  def spec(%{child: child}, :return, opts), do: list(child, :return, opts)
+
+  defp list(child, context, opts) do
     quote context: Elixir do
-      [unquote(Type.spec(child, opts))]
+      [unquote(Type.spec(child, context, opts))]
     end
   end
 

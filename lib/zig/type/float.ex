@@ -1,5 +1,6 @@
 defmodule Zig.Type.Float do
-  use Zig.Type, inspect?: true
+  alias Zig.Type
+  use Type, inspect?: true
 
   defstruct [:bits]
 
@@ -19,11 +20,7 @@ defmodule Zig.Type.Float do
     concat(["~t(", to_string(type), ")"])
   end
 
-  def spec(_, _) do
-    quote context: Elixir do
-      float()
-    end
-  end
+  def spec(_, _, _), do: Type.spec(:float)
 
   def return_allowed?(_), do: true
 end

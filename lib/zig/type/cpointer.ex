@@ -28,6 +28,8 @@ defmodule Zig.Type.Cpointer do
     end
   end
 
+  def spec(_, _, _), do: raise("unimplemented")
+
   def missing_size?(_), do: true
 
   def of(child), do: %__MODULE__{child: child}

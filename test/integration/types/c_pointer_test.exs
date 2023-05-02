@@ -5,7 +5,7 @@ defmodule ZiglerTest.Types.CPointerTest do
     otp_app: :zigler,
     leak_check: true,
     nifs: [
-      {:cpointer_u8_list_return_test, return: :charlists},
+      {:cpointer_u8_list_return_test, return: :charlist},
       ...
     ]
 

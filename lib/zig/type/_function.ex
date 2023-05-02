@@ -81,12 +81,18 @@ defmodule Zig.Type.Function do
     end
   end
 
-  def spec(function) do
-    params = Enum.map(function.params, &Type.spec(&1, []))
-    return = Type.spec(function.return, [])
+  def spec(function = %{opts: opts}) do
+    params = Enum.map(function.params, &Type.spec(&1, :params, []))
+
+    return_opts =
+      opts
+      |> List.wrap()
+      |> Keyword.get(:return, [])
+
+    return = Type.spec(function.return, :return, return_opts)
 
     quote context: Elixir do
-      @spec unquote(function.name)(unquote_splicing(params)) :: unquote(return)
+      unquote(function.name)(unquote_splicing(params)) :: unquote(return)
     end
   end
 end

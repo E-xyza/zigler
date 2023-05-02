@@ -10,7 +10,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "a void function gives a sane result" do
       result =
         quote context: Elixir do
-          @spec egress() :: :ok
+          egress() :: :ok
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: :void}) ==
@@ -23,7 +23,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "a u8-returning function gives appropriate bounds" do
       result =
         quote context: Elixir do
-          @spec egress() :: 0..255
+          egress() :: 0..255
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t(u8)}) ==
@@ -33,7 +33,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "a u16-returning function gives appropriate bounds" do
       result =
         quote context: Elixir do
-          @spec egress() :: 0..0xFFFF
+          egress() :: 0..0xFFFF
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t(u16)}) ==
@@ -43,7 +43,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "a u32-returning function gives appropriate bounds" do
       result =
         quote context: Elixir do
-          @spec egress() :: 0..0xFFFF_FFFF
+          egress() :: 0..0xFFFF_FFFF
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t(u32)}) ==
@@ -53,7 +53,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "a u64-returning function gives non_neg_integer" do
       result =
         quote context: Elixir do
-          @spec egress() :: 0..0xFFFF_FFFF_FFFF_FFFF
+          egress() :: 0..0xFFFF_FFFF_FFFF_FFFF
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t(u64)}) ==
@@ -63,7 +63,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "an i32-returning function gives appropriate bounds" do
       result =
         quote context: Elixir do
-          @spec egress() :: -0x8000_0000..0x7FFF_FFFF
+          egress() :: -0x8000_0000..0x7FFF_FFFF
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t(i32)}) ==
@@ -73,7 +73,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "an i64-returning function gives integer" do
       result =
         quote context: Elixir do
-          @spec egress() :: -0x8000_0000_0000_0000..0x7FFF_FFFF_FFFF_FFFF
+          egress() :: -0x8000_0000_0000_0000..0x7FFF_FFFF_FFFF_FFFF
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t(i64)}) ==
@@ -90,7 +90,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "an f16-returning function gives float" do
       result =
         quote context: Elixir do
-          @spec egress() :: float()
+          egress() :: float()
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t(f16)}) ==
@@ -100,7 +100,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "an f32-returning function gives float" do
       result =
         quote context: Elixir do
-          @spec egress() :: float()
+          egress() :: float()
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t(f32)}) ==
@@ -110,7 +110,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "an f64-returning function gives float" do
       result =
         quote context: Elixir do
-          @spec egress() :: float()
+          egress() :: float()
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t(f64)}) ==
@@ -125,7 +125,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
 
       result =
         quote context: Elixir do
-          @spec egress() :: boolean()
+          egress() :: boolean()
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: %Bool{}}) ==
@@ -138,7 +138,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "a beam.term returning function is term" do
       result =
         quote context: Elixir do
-          @spec egress() :: term()
+          egress() :: term()
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: :term}) ==
@@ -148,7 +148,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "a e.ErlNifTerm returning function is term" do
       result =
         quote context: Elixir do
-          @spec egress() :: term()
+          egress() :: term()
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: :erl_nif_term}) ==
@@ -158,7 +158,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "a beam.pid returning function is pid" do
       result =
         quote context: Elixir do
-          @spec egress() :: pid()
+          egress() :: pid()
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: :pid}) == result
@@ -167,7 +167,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "an enum returning function is just the optional atoms" do
       result =
         quote context: Elixir do
-          @spec egress() :: :error | :maybe | :ok
+          egress() :: :error | :maybe | :ok
         end
 
       return = %Zig.Type.Enum{tags: %{ok: "ok", error: "error", maybe: "maybe"}}
@@ -181,93 +181,223 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "a u8-slice returning function is special and defaults to binary" do
       result =
         quote context: Elixir do
-          @spec egress() :: binary()
+          egress() :: binary()
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t([]u8)}) ==
                result
     end
 
-    test "u8 can be forced to return list"
+    test "u8-slice can be forced to return list" do
+      result =
+        quote context: Elixir do
+          egress() :: charlist()
+        end
+
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: ~t([]u8),
+               opts: [return: [:charlist]]
+             }) ==
+               result
+    end
 
     test "a int-slice returning function is list of integer" do
       result =
         quote context: Elixir do
-          @spec egress() :: [-0x8000_0000_0000_0000..0x7FFF_FFFF_FFFF_FFFF]
+          egress() :: [-0x8000_0000_0000_0000..0x7FFF_FFFF_FFFF_FFFF]
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t([]i64)}) ==
                result
     end
 
-    test "int-slice can be forced to return binary"
+    test "int-slice can be forced to return binary" do
+      result =
+        quote context: Elixir do
+          egress() :: <<_::_*64>>
+        end
+
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: ~t([]i64),
+               opts: [return: [:binary]]
+             }) ==
+               result
+    end
+
+    test "int-slice will pack as the biggest power of two size" do
+      result =
+        quote context: Elixir do
+          egress() :: <<_::_*64>>
+        end
+
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: ~t([]i63),
+               opts: [return: [:binary]]
+             }) ==
+               result
+    end
 
     test "a float-slice returning function is list of float" do
       result =
         quote context: Elixir do
-          @spec egress() :: [float()]
+          egress() :: [float()]
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t([]f64)}) ==
                result
     end
 
-    test "float-slice can be forced to return binary"
+    test "float-slice can be forced to return binary" do
+      result =
+        quote context: Elixir do
+          egress() :: <<_::_*32>>
+        end
+
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: ~t([]f32),
+               opts: [return: [:binary]]
+             }) ==
+               result
+    end
 
     test "manypointer with sentinel u8 defaults to binary" do
       result =
         quote context: Elixir do
-          @spec egress() :: binary()
+          egress() :: binary()
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t([*:0]u8)}) ==
                result
     end
 
-    test "manypointer with sentinel u8 can be charlist"
+    test "manypointer with sentinel u8 can be charlist" do
+      result =
+        quote context: Elixir do
+          egress() :: charlist()
+        end
+
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: ~t([*:0]u8),
+               opts: [return: [:charlist]]
+             }) ==
+               result
+    end
 
     test "array with u8 defaults to binary" do
       result =
         quote context: Elixir do
-          @spec egress() :: <<_::80>>
+          egress() :: <<_::80>>
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t([10]u8)}) ==
                result
     end
 
-    test "array with u8 can be forced to return charlist"
+    test "array with u8 can be forced to return charlist" do
+      result =
+        quote context: Elixir do
+          egress() :: charlist()
+        end
+
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: ~t([10]u8),
+               opts: [return: [:charlist]]
+             }) ==
+               result
+    end
 
     test "array with int defaults to list of integer" do
       result =
         quote context: Elixir do
-          @spec egress() :: [0..0xFFFF_FFFF_FFFF_FFFF]
+          egress() :: [0..0xFFFF_FFFF_FFFF_FFFF]
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t([10]u64)}) ==
                result
     end
 
-    test "array with int can be forced to return binary"
+    test "array with int can be forced to return binary" do
+      result =
+        quote context: Elixir do
+          egress() :: <<_::640>>
+        end
+
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: ~t([10]u64),
+               opts: [return: [:binary]]
+             }) ==
+               result
+    end
+
+    test "array with int, unusual size can be forced to return binary" do
+      result =
+        quote context: Elixir do
+          egress() :: <<_::640>>
+        end
+
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: ~t([10]u63),
+               opts: [return: [:binary]]
+             }) ==
+               result
+    end
 
     test "array with float defaults to list of float" do
       result =
         quote context: Elixir do
-          @spec egress() :: [float()]
+          egress() :: [float()]
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t([10]f64)}) ==
                result
     end
 
-    test "array with float can be forced to return binary"
+    test "array with float can be forced to return binary" do
+      result =
+        quote context: Elixir do
+          egress() :: <<_::320>>
+        end
+
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: ~t([10]f32),
+               opts: [return: [:binary]]
+             }) ==
+               result
+    end
   end
 
   describe "when asking for function returns for structs" do
     test "it returns a straight map" do
       result =
         quote context: Elixir do
-          @spec egress() :: %{bar: binary(), foo: float()}
+          egress() :: %{bar: binary(), foo: float()}
         end
 
       return = %Zig.Type.Struct{
@@ -280,14 +410,29 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
                result
     end
 
-    test "it returns binary if it's packed"
+    test "it returns binary if it's packed" do
+      result =
+        quote context: Elixir do
+          egress() :: <<_::128>>
+        end
+
+      return = %Zig.Type.Struct{
+        name: "Foo",
+        required: %{foo: ~t(f64)},
+        optional: %{bar: ~t(u64)},
+        packed: 16,
+      }
+
+      assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: return, opts: [return: [:binary]]}) ==
+               result
+    end
   end
 
   describe "when asking for optional returns" do
     test "it adds nil to the possible return" do
       result =
         quote context: Elixir do
-          @spec egress() :: 0..255 | nil
+          egress() :: 0..255 | nil
         end
 
       assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: ~t(?u8)}) ==
@@ -299,7 +444,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     test "it marks it as a reference" do
       result =
         quote context: Elixir do
-          @spec egress() :: reference()
+          egress() :: reference()
         end
 
       return = %Zig.Type.Resource{}
@@ -308,6 +453,22 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
                result
     end
 
-    test "it can know if the resource will emerge as a binary"
+    test "it can know if the resource will emerge as a binary" do
+      result =
+        quote context: Elixir do
+          egress() :: binary()
+        end
+
+      return = %Zig.Type.Resource{}
+
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: return,
+               opts: [return: [:binary]]
+             }) ==
+               result
+    end
   end
 end

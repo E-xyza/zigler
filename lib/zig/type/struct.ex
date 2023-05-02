@@ -48,11 +48,23 @@ defmodule Zig.Type.Struct do
 
   def to_call(struct), do: "#{mut(struct)}nif.#{struct.name}"
 
-  def spec(struct, opts) do
+  def spec(struct = %{packed: size}, :return, opts) when is_integer(size) do
+    if :binary in opts do
+      quote context: Elixir do
+        <<_::unquote(size * 8)>>
+      end
+    else
+      default_spec(struct, :return, opts)
+    end
+  end
+
+  def spec(struct, context, opts), do: default_spec(struct, context, opts)
+
+  def default_spec(struct, :return, opts) do
     fields =
       struct.required
       |> Map.merge(struct.optional)
-      |> Enum.map(fn {k, v} -> {k, Type.spec(v, opts)} end)
+      |> Enum.map(fn {k, v} -> {k, Type.spec(v, :return, opts)} end)
       |> Enum.sort()
 
     quote context: Elixir do

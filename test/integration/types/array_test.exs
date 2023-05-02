@@ -6,8 +6,8 @@ defmodule ZiglerTest.Types.ArrayTest do
     leak_check: true,
     nifs: [
       {:array_float_binary_test, return: :binary},
-      {:array_u8_test, return: :charlists},
-      {:mut_array_u8_test, return: :charlists},
+      {:array_u8_test, return: :charlist},
+      {:mut_array_u8_test, return: :charlist},
       {:fastlane_beam_term_ptr_test, return: :noclean},
       {:fastlane_erl_nif_term_ptr_test, return: :noclean},
       ...

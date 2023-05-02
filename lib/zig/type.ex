@@ -41,8 +41,9 @@ defprotocol Zig.Type do
   @spec return_allowed?(t) :: boolean
   def return_allowed?(type)
 
-  @spec spec(t, keyword) :: Macro.t()
-  def spec(type, opts)
+  @typep spec_context :: :param | :return
+  @spec spec(t, spec_context, keyword) :: Macro.t()
+  def spec(type, context, opts)
 
   import Protocol, only: []
   import Kernel
@@ -170,6 +171,13 @@ defprotocol Zig.Type do
     end
   end
 
+  # convenienece function
+  def spec(atom) when is_atom(atom) do
+    quote context: Elixir do
+      unquote(atom)()
+    end
+  end
+
   defmacro __using__(opts) do
     module = __CALLER__.module
 
@@ -285,7 +293,7 @@ defprotocol Zig.Type do
         defdelegate needs_make?(type), to: module
         defdelegate missing_size?(type), to: module
         defdelegate cleanup(type, opts), to: module
-        defdelegate spec(type, opts), to: module
+        defdelegate spec(type, context, opts), to: module
       end
     end
   end
@@ -333,19 +341,11 @@ defimpl Zig.Type, for: Atom do
     end
   end
 
-  def spec(:void, _), do: :ok
+  def spec(:void, :return, _), do: :ok
 
-  def spec(:pid, _) do
-    quote context: Elixir do
-      pid()
-    end
-  end
+  def spec(:pid, _, _), do: Zig.Type.spec(:pid)
 
-  def spec(term, _) when term in ~w(term erl_nif_term)a do
-    quote context: Elixir do
-      term()
-    end
-  end
+  def spec(term, _, _) when term in ~w(term erl_nif_term)a, do: Zig.Type.spec(:term)
 
   def needs_make?(_), do: false
   def missing_size?(_), do: false

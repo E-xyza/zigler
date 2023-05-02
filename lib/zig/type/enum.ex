@@ -21,7 +21,7 @@ defmodule Zig.Type.Enum do
 
   def return_allowed?(_), do: true
 
-  def spec(%{tags: tags}, _opts) do
+  def spec(%{tags: tags}, _, _opts) do
     tags
     |> Map.keys()
     |> Enum.sort()

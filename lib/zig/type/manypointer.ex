@@ -32,9 +32,11 @@ defmodule Zig.Type.Manypointer do
   def return_allowed?(pointer), do: pointer.has_sentinel? and Type.return_allowed?(pointer.child)
   def missing_size?(_), do: true
 
-  def spec(%{child: ~t(u8), has_sentinel?: true}, _) do
-    quote do
-      binary()
+  def spec(%{child: ~t(u8), has_sentinel?: true}, :return, opts) do
+    if :charlist in opts do
+      Type.spec(:charlist)
+    else
+      Type.spec(:binary)
     end
   end
 

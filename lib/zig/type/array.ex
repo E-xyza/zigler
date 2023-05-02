@@ -36,15 +36,51 @@ defmodule Zig.Type.Array do
 
   def return_allowed?(array), do: Type.return_allowed?(array.child)
 
-  def spec(%{child: ~t(u8), len: length, has_sentinel?: false}, _) do
-    quote context: Elixir do
-      <<_::unquote(length * 8)>>
+  def spec(%{child: ~t(u8), len: length, has_sentinel?: false}, :return, opts) do
+    if :charlist in opts do
+      Type.spec(:charlist)
+    else
+      quote context: Elixir do
+        <<_::unquote(length * 8)>>
+      end
     end
   end
 
-  def spec(%{child: child}, opts) do
+  def spec(
+        %{child: child = %Type.Integer{bits: bits}, len: length, has_sentinel?: false},
+        :return,
+        opts
+      ) do
+    if :binary in opts do
+      quote context: Elixir do
+        <<_::unquote(Type.Integer._next_power_of_two_ceil(bits) * length)>>
+      end
+    else
+      quote context: Elixir do
+        [unquote(Type.spec(child, :return, opts))]
+      end
+    end
+  end
+
+  def spec(
+        %{child: child = %Type.Float{bits: bits}, len: length, has_sentinel?: false},
+        :return,
+        opts
+      ) do
+    if :binary in opts do
+      quote context: Elixir do
+        <<_::unquote(bits * length)>>
+      end
+    else
+      quote context: Elixir do
+        [unquote(Type.spec(child, :return, opts))]
+      end
+    end
+  end
+
+  def spec(%{child: child}, :return, opts) do
     quote context: Elixir do
-      [unquote(Type.spec(child, opts))]
+      [unquote(Type.spec(child, :return, opts))]
     end
   end
 

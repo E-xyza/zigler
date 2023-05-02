@@ -168,7 +168,7 @@ defmodule Zig.Type.Integer do
 
   def _next_power_of_two_ceil(bits), do: _next_power_of_two_ceil(bits, 1, true)
 
-  def _next_power_of_two_ceil(bits, so_far, all_zeros) do
+  defp _next_power_of_two_ceil(bits, so_far, all_zeros) do
     import Bitwise
     shifted = bits >>> 1
 
@@ -185,13 +185,13 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  def spec(type = %{signedness: :unsigned}, _opts) do
+  def spec(type = %{signedness: :unsigned}, _, _opts) do
     quote context: Elixir do
       0..unquote(typemax(type))
     end
   end
 
-  def spec(type = %{signedness: :signed}, _opts) do
+  def spec(type = %{signedness: :signed}, _, _opts) do
     neg_typemin = -typemin(type)
 
     quote context: Elixir do
