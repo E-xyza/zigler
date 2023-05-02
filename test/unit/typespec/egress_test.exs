@@ -3,8 +3,14 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
 
   @moduletag :typespec
 
+  alias Zig.Type
+  alias Zig.Type.Array
+  alias Zig.Type.Bool
   alias Zig.Type.Function
-  import Zig.Type, only: :macros
+  alias Zig.Type.Slice
+  alias Zig.Type.Struct
+
+  import Type, only: :macros
 
   describe "when asking for a typespec return for basic types" do
     test "a void function gives a sane result" do
@@ -121,8 +127,6 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
     ## BOOL
 
     test "a bool returning function is boolean" do
-      alias Zig.Type.Bool
-
       result =
         quote context: Elixir do
           egress() :: boolean()
@@ -400,7 +404,7 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
           egress() :: %{bar: binary(), foo: float()}
         end
 
-      return = %Zig.Type.Struct{
+      return = %Struct{
         name: "Foo",
         required: %{foo: ~t(f64)},
         optional: %{bar: ~t([]u8)}
@@ -410,20 +414,62 @@ defmodule ZiglerTest.Unit.Typespec.EgressTest do
                result
     end
 
+    @packed %Struct{
+      name: "Foo",
+      required: %{foo: ~t(f64)},
+      optional: %{bar: ~t(u64)},
+      packed: 16
+    }
+
     test "it returns binary if it's packed" do
       result =
         quote context: Elixir do
           egress() :: <<_::128>>
         end
 
-      return = %Zig.Type.Struct{
-        name: "Foo",
-        required: %{foo: ~t(f64)},
-        optional: %{bar: ~t(u64)},
-        packed: 16,
-      }
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: @packed,
+               opts: [return: [:binary]]
+             }) ==
+               result
+    end
 
-      assert Function.spec(%Function{name: :egress, arity: 0, params: [], return: return, opts: [return: [:binary]]}) ==
+    test "slice of packeds is what you expect" do
+      result =
+        quote context: Elixir do
+          egress() :: <<_::_*128>>
+        end
+
+      return = %Slice{child: @packed}
+
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: return,
+               opts: [return: [:binary]]
+             }) ==
+               result
+    end
+
+    test "array of packeds is what you expect" do
+      result =
+        quote context: Elixir do
+          egress() :: <<_::256>>
+        end
+
+      return = %Array{child: @packed, len: 2, has_sentinel?: false}
+
+      assert Function.spec(%Function{
+               name: :egress,
+               arity: 0,
+               params: [],
+               return: return,
+               opts: [return: [:binary]]
+             }) ==
                result
     end
   end

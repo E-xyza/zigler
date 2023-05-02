@@ -53,6 +53,16 @@ defmodule Zig.Type.Slice do
     end
   end
 
+  def spec(%{child: child = %Type.Struct{packed: size}}, :return, opts) when is_integer(size) do
+    if :binary in opts do
+      quote context: Elixir do
+        <<_::_*unquote(size * 8)>>
+      end
+    else
+      list(child, :return, opts -- [:binary])
+    end
+  end
+
   def spec(%{child: child}, :return, opts), do: list(child, :return, opts)
 
   defp list(child, context, opts) do
