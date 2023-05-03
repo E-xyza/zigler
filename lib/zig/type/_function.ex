@@ -88,6 +88,7 @@ defmodule Zig.Type.Function do
       opts
       |> List.wrap()
       |> Keyword.get(:return, [])
+      |> dbg(limit: 25)
 
     return = Type.spec(function.return, :return, return_opts)
 
