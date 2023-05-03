@@ -24,11 +24,11 @@ defmodule Zig.Type.Resource do
   def to_call(resource), do: resource.name
 
   def spec(_resource, context, opts) do
-    case {context, :binary in opts} do
-      {:return, true} ->
+    case {context, Keyword.fetch!(opts, :type)} do
+      {:return, :binary} ->
         Type.spec(:binary)
 
-      _ ->
+      {_, _} ->
         Type.spec(:reference)
     end
   end

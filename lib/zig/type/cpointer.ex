@@ -52,12 +52,14 @@ defmodule Zig.Type.Cpointer do
 
   def spec(%{child: ~t(u8)}, :return, opts) do
     # assumed to be a null-terminated string
-    if :charlist in opts do
-      quote context: Elixir do
-        [0..255]
-      end
-    else
-      Type.spec(:binary)
+    case Keyword.fetch!(opts, :type) do
+      :charlist ->
+        quote context: Elixir do
+          [0..255]
+        end
+
+      type when type in ~w(default binary)a ->
+        Type.spec(:binary)
     end
   end
 

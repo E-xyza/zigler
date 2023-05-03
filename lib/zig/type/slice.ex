@@ -32,7 +32,9 @@ defmodule Zig.Type.Slice do
   # TYPE SPEC STUFF
 
   def spec(%{child: ~t(u8)}, :return, opts) do
-    if :charlist in opts, do: [Type.spec(~t(u8), :return, opts)], else: binary_form(~t(u8))
+    if Keyword.fetch!(opts, :type) == :charlist,
+      do: [Type.spec(~t(u8), :return, opts)],
+      else: binary_form(~t(u8))
   end
 
   def spec(%{child: ~t(u8)}, :params, opts) do
@@ -42,11 +44,11 @@ defmodule Zig.Type.Slice do
   end
 
   def spec(%{child: child}, context, opts) do
-    case {context, :binary in opts} do
-      {:return, true} ->
+    case {context, Keyword.fetch!(opts, :type)} do
+      {:return, :binary} ->
         binary_form(child) || raise "unreachable"
 
-      {:return, false} ->
+      {:return, type} when type in ~w(default charlist)a ->
         [Type.spec(child, :return, [])]
 
       {:params, _} ->

@@ -71,15 +71,17 @@ defmodule Zig.Type.Struct do
   def spec(struct, :return, opts) do
     binary_form = binary_form(struct)
 
-    if :binary in opts and binary_form do
-      binary_form
-    else
-      all_fields =
-        struct.optional
-        |> Map.merge(struct.required)
-        |> to_fields(:required, :return, opts)
+    case Keyword.fetch!(opts, :type) do
+      :binary when not is_nil(binary_form) ->
+        binary_form
 
-      map_spec([], all_fields)
+      t when t in ~w(charlist binary default)a ->
+        all_fields =
+          struct.optional
+          |> Map.merge(struct.required)
+          |> to_fields(:required, :return, opts)
+
+        map_spec([], all_fields)
     end
   end
 
