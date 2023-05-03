@@ -71,6 +71,12 @@ defprotocol Zig.Type do
       "[]" <> rest ->
         Slice.of(parse(rest))
 
+      "[:0]" <> rest ->
+        Slice.of(parse(rest), has_sentinel?: true)
+
+      "[*]" <> rest ->
+        Manypointer.of(parse(rest))
+
       "[*:0]" <> rest ->
         Manypointer.of(parse(rest), has_sentinel?: true)
 

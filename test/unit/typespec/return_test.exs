@@ -155,7 +155,12 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
           return_test() :: term()
         end
 
-      assert Function.spec(%Function{name: :return_test, arity: 0, params: [], return: :erl_nif_term}) ==
+      assert Function.spec(%Function{
+               name: :return_test,
+               arity: 0,
+               params: [],
+               return: :erl_nif_term
+             }) ==
                result
     end
 
@@ -165,7 +170,8 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
           return_test() :: pid()
         end
 
-      assert Function.spec(%Function{name: :return_test, arity: 0, params: [], return: :pid}) == result
+      assert Function.spec(%Function{name: :return_test, arity: 0, params: [], return: :pid}) ==
+               result
     end
 
     test "an enum returning function is just the optional atoms" do
@@ -195,7 +201,7 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
     test "u8-slice can be forced to return list" do
       result =
         quote context: Elixir do
-          return_test() :: charlist()
+          return_test() :: [0..255]
         end
 
       assert Function.spec(%Function{
@@ -282,14 +288,19 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
           return_test() :: binary()
         end
 
-      assert Function.spec(%Function{name: :return_test, arity: 0, params: [], return: ~t([*:0]u8)}) ==
+      assert Function.spec(%Function{
+               name: :return_test,
+               arity: 0,
+               params: [],
+               return: ~t([*:0]u8)
+             }) ==
                result
     end
 
     test "manypointer with sentinel u8 can be charlist" do
       result =
         quote context: Elixir do
-          return_test() :: charlist()
+          return_test() :: [0..255]
         end
 
       assert Function.spec(%Function{
@@ -315,7 +326,7 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
     test "array with u8 can be forced to return charlist" do
       result =
         quote context: Elixir do
-          return_test() :: charlist()
+          return_test() :: [0..255]
         end
 
       assert Function.spec(%Function{
@@ -334,7 +345,12 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
           return_test() :: [0..0xFFFF_FFFF_FFFF_FFFF]
         end
 
-      assert Function.spec(%Function{name: :return_test, arity: 0, params: [], return: ~t([10]u64)}) ==
+      assert Function.spec(%Function{
+               name: :return_test,
+               arity: 0,
+               params: [],
+               return: ~t([10]u64)
+             }) ==
                result
     end
 
@@ -376,7 +392,12 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
           return_test() :: [float()]
         end
 
-      assert Function.spec(%Function{name: :return_test, arity: 0, params: [], return: ~t([10]f64)}) ==
+      assert Function.spec(%Function{
+               name: :return_test,
+               arity: 0,
+               params: [],
+               return: ~t([10]f64)
+             }) ==
                result
     end
 
@@ -414,7 +435,7 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
     test "c pointer with u8 is assumed to be a string and can be turned into a charlist" do
       result =
         quote context: Elixir do
-          return_test() :: charlist()
+          return_test() :: [0..255]
         end
 
       assert Function.spec(%Function{
@@ -585,4 +606,6 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
                result
     end
   end
+
+  test "in-out parameter for easy_c"
 end

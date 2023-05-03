@@ -28,10 +28,34 @@ defmodule Zig.Type.Cpointer do
     end
   end
 
+  def spec(%{child: child}, :params, opts) do
+    has_solo? = match?(%Type.Struct{extern: true}, child)
+    child_form = Type.spec(child, :params, [])
+
+    case {has_solo?, binary_form(child)} do
+      {false, nil} ->
+        quote do
+          [unquote(child_form)] | nil
+        end
+
+      {true, nil} ->
+        quote do
+          unquote(child_form) | [unquote(child_form)] | nil
+        end
+
+      {false, binary_form} ->
+        quote do
+          [unquote(child_form)] | unquote(binary_form) | nil
+        end
+    end
+  end
+
   def spec(%{child: ~t(u8)}, :return, opts) do
     # assumed to be a null-terminated string
     if :charlist in opts do
-      Type.spec(:charlist)
+      quote context: Elixir do
+        [0..255]
+      end
     else
       Type.spec(:binary)
     end
@@ -40,6 +64,22 @@ defmodule Zig.Type.Cpointer do
   def spec(%{child: child = %__MODULE__{}}, :return, opts) do
     [Type.spec(child, :return, opts)]
   end
+
+  defp binary_form(~t(u8)), do: Type.spec(:binary)
+
+  defp binary_form(%Type.Integer{bits: bits}) do
+    quote context: Elixir do
+      <<_::_*unquote(Type.Integer._next_power_of_two_ceil(bits))>>
+    end
+  end
+
+  defp binary_form(%Type.Float{bits: bits}) do
+    quote context: Elixir do
+      <<_::_*unquote(bits)>>
+    end
+  end
+
+  defp binary_form(_), do: nil
 
   def missing_size?(_), do: true
 

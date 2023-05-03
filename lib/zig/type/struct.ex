@@ -50,28 +50,65 @@ defmodule Zig.Type.Struct do
 
   def to_call(struct), do: "#{mut(struct)}nif.#{struct.name}"
 
-  def spec(struct = %{packed: size}, :return, opts) when is_integer(size) do
-    if :binary in opts do
-      quote context: Elixir do
-        <<_::unquote(size * 8)>>
+  def spec(struct, :params, opts) do
+    optional = to_fields(struct.optional, :optional, :params, opts)
+    keyword = to_fields(struct.optional, :untagged, :params, opts)
+    required = to_fields(struct.required, :untagged, :params, opts)
+
+    if binary_form = binary_form(struct) do
+      quote do
+        unquote(map_spec(optional, required))
+        | unquote(keyword ++ required)
+        | unquote(binary_form)
       end
     else
-      default_spec(struct, :return, opts)
+      quote do
+        unquote(map_spec(optional, required)) | unquote(keyword ++ required)
+      end
     end
   end
 
-  def spec(struct, context, opts), do: default_spec(struct, context, opts)
+  def spec(struct, :return, opts) do
+    binary_form = binary_form(struct)
 
-  def default_spec(struct, :return, opts) do
-    fields =
-      struct.required
-      |> Map.merge(struct.optional)
-      |> Enum.map(fn {k, v} -> {k, Type.spec(v, :return, opts)} end)
-      |> Enum.sort()
+    if :binary in opts and binary_form do
+      binary_form
+    else
+      all_fields =
+        struct.optional
+        |> Map.merge(struct.required)
+        |> to_fields(:required, :return, opts)
 
-    quote context: Elixir do
-      %{unquote_splicing(fields)}
+      map_spec([], all_fields)
     end
+  end
+
+  defp map_spec(optional, required) do
+    quote context: Elixir do
+      %{unquote_splicing(optional ++ required)}
+    end
+  end
+
+  defp binary_form(%{packed: int}) when is_integer(int) do
+    quote context: Elixir do
+      <<_::unquote(int * 8)>>
+    end
+  end
+
+  defp binary_form(_struct), do: nil
+
+  defp to_fields(portion, mode, context, opts) do
+    portion
+    |> Enum.map(fn
+      {k, v} when mode == :optional ->
+        {quote do
+           optional(unquote(k))
+         end, Type.spec(v, context, opts)}
+
+      {k, v} ->
+        {k, Type.spec(v, context, opts)}
+    end)
+    |> Enum.sort()
   end
 
   defp mut(struct), do: if(struct.mutable, do: "*")

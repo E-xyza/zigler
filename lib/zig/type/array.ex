@@ -37,89 +37,79 @@ defmodule Zig.Type.Array do
   def return_allowed?(array), do: Type.return_allowed?(array.child)
 
   def spec(type = %{child: ~t(u8), len: length}, :return, opts) do
-    cond do
-      :charlist in opts ->
-        Type.spec(:charlist)
-
-      type.has_sentinel? ->
-        Type.spec(:binary)
-
-      true ->
-        quote context: Elixir do
-          <<_::unquote(length * 8)>>
-        end
+    # u8 defaults to binary
+    if :charlist in opts do
+      [Type.spec(~t(u8), :return, opts)]
+    else
+      binary_form(~t(u8), known_length(type))
     end
   end
 
-  def spec(
-        type = %{child: child = %Type.Integer{bits: bits}, len: length},
-        :return,
-        opts
-      ) do
-    cond do
-      :binary in opts and type.has_sentinel? ->
-        quote context: Elixir do
-          <<_::_*unquote(Type.Integer._next_power_of_two_ceil(bits))>>
-        end
+  def spec(type = %{child: child, len: length}, :return, opts) do
+    # other types defaults to binary
+    binary_form = binary_form(child, known_length(type))
 
-      :binary in opts ->
-        quote context: Elixir do
-          <<_::unquote(Type.Integer._next_power_of_two_ceil(bits) * length)>>
-        end
-
-      true ->
-        [Type.spec(child, :return, opts)]
+    if :binary in opts and binary_form do
+      binary_form
+    else
+      [Type.spec(child, :return, opts)]
     end
   end
 
-  def spec(
-        type = %{child: child = %Type.Float{bits: bits}, len: length},
-        :return,
-        opts
-      ) do
-    cond do
-      :binary in opts and type.has_sentinel? ->
-        quote context: Elixir do
-          <<_::_*unquote(bits)>>
-        end
-
-      :binary in opts ->
-        quote context: Elixir do
-          <<_::unquote(bits * length)>>
-        end
-
-      true ->
-        [Type.spec(child, :return, opts)]
+  def spec(type = %{child: child, len: length}, :params, opts) do
+    # u8 defaults to binary
+    if binary_form = binary_form(child, known_length(type)) do
+      quote context: Elixir do
+        unquote([Type.spec(child, :params, opts)]) | unquote(binary_form)
+      end
+    else
+      [Type.spec(child, :params, opts)]
     end
   end
 
-  def spec(
-        type = %{child: child = %Type.Struct{packed: size}, len: length},
-        :return,
-        opts
-      )
-      when is_integer(size) do
-    cond do
-      :binary in opts and type.has_sentinel? ->
-        quote context: Elixir do
-          <<_::_*unquote(size * 8)>>
-        end
+  defp known_length(%{len: length, has_sentinel?: sentinel?}) do
+    unless sentinel?, do: length
+  end
 
-      :binary in opts ->
-        quote context: Elixir do
-          <<_::unquote(size * 8 * length)>>
-        end
+  defp binary_form(~t(u8), nil), do: Type.spec(:binary)
 
-      true ->
-        [Type.spec(child, :return, opts)]
+  defp binary_form(%Type.Integer{bits: bits}, length) do
+    if length do
+      quote context: Elixir do
+        <<_::unquote(Type.Integer._next_power_of_two_ceil(bits) * length)>>
+      end
+    else
+      quote context: Elixir do
+        <<_::_*unquote(Type.Integer._next_power_of_two_ceil(bits))>>
+      end
     end
   end
 
-  def spec(%{child: child}, :return, opts) do
-    quote context: Elixir do
-      [unquote(Type.spec(child, :return, opts))]
+  defp binary_form(%Type.Float{bits: bits}, length) do
+    if length do
+      quote context: Elixir do
+        <<_::unquote(bits * length)>>
+      end
+    else
+      quote context: Elixir do
+        <<_::_*unquote(bits)>>
+      end
     end
   end
+
+  defp binary_form(%Type.Struct{packed: size}, length) when is_integer(size) do
+    if length do
+      quote context: Elixir do
+        <<_::unquote(size * 8 * length)>>
+      end
+    else
+      quote context: Elixir do
+        <<_::_*unquote(size * 8)>>
+      end
+    end
+  end
+
+  defp binary_form(_), do: nil
 
   def of(type, len, opts \\ []) do
     struct(__MODULE__, opts ++ [child: type, len: len])

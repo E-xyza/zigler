@@ -19,6 +19,8 @@ defmodule Zig.Nif.Synchronous do
     type = if Nif.needs_marshal?(nif), do: :defp, else: nif.type
 
     quote context: Elixir do
+      @spec unquote(Function.spec(function))
+
       unquote(type)(unquote(nif.entrypoint)(unquote_splicing(params))) do
         :erlang.nif_error(unquote(error_text))
       end

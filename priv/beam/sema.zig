@@ -49,11 +49,11 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
                 const OriginalType = @Type(.{ .Struct = s });
                 try stream.objectField("packed_size");
                 try stream.emitNumber(@bitSizeOf(OriginalType));
-            }
+            },
             .Extern => {
                 try stream.objectField("extern");
                 try stream.emitBool(true);
-            }
+            },
             .Auto => {}
         }
         try stream.objectField("fields");
