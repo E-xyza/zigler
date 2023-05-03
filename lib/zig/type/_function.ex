@@ -88,12 +88,25 @@ defmodule Zig.Type.Function do
       opts
       |> List.wrap()
       |> Keyword.get(:return, [])
-      |> dbg(limit: 25)
 
-    return = Type.spec(function.return, :return, return_opts)
+    return =
+      if arg = return_opts[:arg] do
+        function.params
+        |> Enum.at(arg)
+        |> constrain_length(return_opts[:length])
+        |> Type.spec(:return, return_opts)
+      else
+        Type.spec(function.return, :return, return_opts)
+      end
 
     quote context: Elixir do
       unquote(function.name)(unquote_splicing(params)) :: unquote(return)
     end
   end
+
+  defp constrain_length(type = %Type.Cpointer{child: child}, length) when is_integer(length) do
+    %Type.Array{child: child, len: length}
+  end
+
+  defp constrain_length(type, _), do: type
 end

@@ -456,5 +456,35 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
     end
   end
 
-  test "in-out parameter for easy_c"
+  describe "when there's an in-out parameter for easy_c" do
+    test "it works when the length is specified" do
+      result =
+        quote context: Elixir do
+          return_test([0..255] | binary() | nil) :: <<_::16>>
+        end
+
+      assert Function.spec(%Function{
+               name: :return_test,
+               arity: 0,
+               params: [~t([*c]u8)],
+               return: :void,
+               opts: [return: [type: :default, length: 2, arg: 0]]
+             }) == result
+    end
+
+    test "it works when the length is not specified" do
+      result =
+        quote context: Elixir do
+          return_test([0..255] | binary() | nil) :: binary()
+        end
+
+      assert Function.spec(%Function{
+               name: :return_test,
+               arity: 0,
+               params: [~t([*c]u8)],
+               return: :void,
+               opts: [return: [type: :default, arg: 0]]
+             }) == result
+    end
+  end
 end
