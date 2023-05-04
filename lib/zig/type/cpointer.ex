@@ -69,7 +69,7 @@ defmodule Zig.Type.Cpointer do
   end
 
   def spec(%{child: child}, :return, opts) do
-    case {Keyword.fetch(opts, :length), Keyword.fetch!(opts, :type)}  do
+    case {Keyword.fetch(opts, :length), Keyword.fetch!(opts, :type)} do
       {{:ok, _}, :default} ->
         [Type.spec(child, :return, opts)]
 

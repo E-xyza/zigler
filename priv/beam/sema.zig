@@ -161,6 +161,11 @@ fn streamType(stream: anytype, comptime T: type) !void {
                 .Optional => |o| try streamOptional(stream, o),
                 .Bool => try emitType(stream, "bool"),
                 .Void => try emitType(stream, "void"),
+                .ErrorUnion => |eu| {
+                    try emitType(stream, "error");
+                    try stream.objectField("child");
+                    try streamType(stream, eu.payload);
+                },
                 else => {
                     @compileError("Unsupported return or argument type found in public function: " ++ @typeName(T));
                 },

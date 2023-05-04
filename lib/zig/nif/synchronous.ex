@@ -1,4 +1,15 @@
 defmodule Zig.Nif.Synchronous do
+  @moduledoc """
+  Architecture:
+
+  Synchronous has two different cases.  The first case is that the nif can be called
+  directly.  In this case, the function is mapped directly to function name.  In the
+  case that the nif needs marshalling, the function is mapped to `marshalled-<nifname>`.
+  and the called function contains wrapping logic.
+
+  To understand wrapping logic, see `Zig.Nif.Marshaller`
+  """
+
   alias Zig.Nif
   alias Zig.Type
   alias Zig.Type.Function
@@ -65,7 +76,7 @@ defmodule Zig.Nif.Synchronous do
   end
 
   def set_entrypoint(nif = %{function: %{name: name}}) do
-    entrypoint = if Nif.needs_marshal?(nif), do: :"marshalling_#{name}", else: name
+    entrypoint = if Nif.needs_marshal?(nif), do: :"marshalled-#{name}", else: name
     %{nif | entrypoint: entrypoint}
   end
 end

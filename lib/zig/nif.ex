@@ -16,6 +16,7 @@ defmodule Zig.Nif do
   alias Zig.Nif.Synchronous
   alias Zig.Nif.Threaded
   alias Zig.Nif.Yielding
+  alias Zig.Type.Error
   alias Zig.Type.Function
   alias Zig.Resources
 
@@ -127,8 +128,10 @@ defmodule Zig.Nif do
   end
 
   @spec needs_marshal?(t) :: boolean
+  # TODO: move this query into the concurrency module.
   def needs_marshal?(nif) do
-    !!nif.param_marshalling_macros or !!nif.return_marshalling_macro or !!nif.param_error_macros
+    !!nif.param_marshalling_macros or !!nif.return_marshalling_macro or !!nif.param_error_macros or
+      match?(%Error{}, nif.function.return)
   end
 
   require EEx
@@ -164,6 +167,16 @@ defmodule Zig.Nif do
     |> Enum.with_index()
     |> Enum.map_join(", ", fn {_, index} -> "arg#{index}" end)
   end
+
+  def maybe_catch(%Error{}) do
+    """
+    catch |err| {
+        return e.enif_raise_exception(env, beam.make(env, .{ .@"error", err}, .{}).v);
+    }
+    """
+  end
+
+  def maybe_catch(_), do: nil
 
   # internal helpers
   defp table_entries(nifs) when is_list(nifs) do

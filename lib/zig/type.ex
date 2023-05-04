@@ -2,6 +2,7 @@ defprotocol Zig.Type do
   alias Zig.Type.Array
   alias Zig.Type.Bool
   alias Zig.Type.Cpointer
+  alias Zig.Type.Error
   alias Zig.Type.Float
   alias Zig.Type.Integer
   alias Zig.Type.Manypointer
@@ -156,6 +157,9 @@ defprotocol Zig.Type do
 
       %{"type" => "resource"} ->
         Resource.from_json(json, module)
+
+      %{"type" => "error"} ->
+        Error.from_json(json, module)
 
       %{"type" => "env"} ->
         :env

@@ -48,7 +48,7 @@ export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [
           <% [:env] -> %> _ = arg;
           <% _ ->  %>
         <% end %>
-        const result = nif.<%= @name %>(<%= Nif.indexed_args(@params) %>);
+        const result = nif.<%= @name %>(<%= Nif.indexed_args(@params) %>) <%= Nif.maybe_catch(@return) %>;
 
         <%= Type.get_result(@return, @opts) %>
     };

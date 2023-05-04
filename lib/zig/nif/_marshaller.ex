@@ -1,9 +1,15 @@
 defmodule Zig.Nif.Marshaller do
-  @moduledoc """
+  @doc """
   renders a nif marshalling function into an elixir macro.
+
+  Currently the following cases are marshalled for Synchronous, DirtyIO,and
+  DirtyCPU cases:
+
+  - long integer to binary conversions (in both directions)
+  - catching raises and turning them into actual erlang raises
   """
 
-  @enforce_keys [:type, :name, :args, :arg_exprs, :entrypoint, :return_expr, :param_error_clauses]
+  @enforce_keys [:type, :name, :args, :arg_exprs, :entrypoint, :return_expr, :error_prongs]
   defstruct @enforce_keys
 
   @type t :: %__MODULE__{
@@ -13,16 +19,20 @@ defmodule Zig.Nif.Marshaller do
           arg_exprs: [Macro.t()],
           entrypoint: atom,
           return_expr: Macro.t(),
-          param_error_clauses: Macro.t()
+          error_prongs: Macro.t()
         }
 
   @return {:return, [], Elixir}
 
+  alias Zig.Type.Error
+
   def render(%{
+        function: %{return: return_type},
         param_marshalling_macros: nil,
         return_marshalling_macro: nil,
         param_error_macros: nil
-      }),
+      })
+      when not is_struct(return_type, Error),
       do: nil
 
   def render(nif) do
@@ -52,42 +62,56 @@ defmodule Zig.Nif.Marshaller do
 
     arg_exprs = Enum.flat_map(arg_exprs_lists, & &1)
 
-    param_error_clauses =
-      case Enum.reduce(
-             nif.param_error_macros || [],
-             {[], 0, false},
-             # TODO: break out into defp
-             fn
-               # skip "env"
-               :env, {[], 0, false} ->
-                 {[], 0, false}
+    error_prongs =
+      List.wrap(
+        case Enum.reduce(
+               nif.param_error_macros || [],
+               {[], 0, false},
+               # TODO: break out into defp
+               fn
+                 # skip "env"
+                 :env, {[], 0, false} ->
+                   {[], 0, false}
 
-               :env, _ ->
-                 # TODO: line number for this error.
-                 raise CompileError, "you may not have an env type except in the first position"
+                 :env, _ ->
+                   # TODO: line number for this error.
+                   raise CompileError, "you may not have an env type except in the first position"
 
-               nil, {clauses_so_far, index, any_so_far?} ->
-                 {clauses_so_far, index, any_so_far?}
+                 nil, {clauses_so_far, index, any_so_far?} ->
+                   {clauses_so_far, index, any_so_far?}
 
-               clauses_fn, {clauses_so_far, index, _any_so_far} ->
-                 new_clauses =
-                   index
-                   |> clauses_fn.()
-                   |> Enum.map(fn {prefix_macro, result_macro} ->
-                     quote do
-                       :error, unquote(prefix_macro) -> unquote(result_macro)
-                     end
-                   end)
+                 clauses_fn, {clauses_so_far, index, _any_so_far} ->
+                   new_clauses =
+                     index
+                     |> clauses_fn.()
+                     |> Enum.map(fn {prefix_macro, result_macro} ->
+                       quote do
+                         :error, unquote(prefix_macro) -> unquote(result_macro)
+                       end
+                     end)
 
-                 {clauses_so_far ++ new_clauses, index + 1, true}
-             end
-           ) do
-        {_, _, false} ->
-          nil
+                   {clauses_so_far ++ new_clauses, index + 1, true}
+               end
+             ) do
+          {_, _, false} ->
+            nil
 
-        {clauses, _, _} ->
-          Enum.flat_map(clauses, & &1)
-      end
+          {clauses, _, _} ->
+            Enum.flat_map(clauses, & &1)
+        end
+      )
+
+    error_prongs =
+      error_prongs ++
+        List.wrap(
+          if match?(%Error{}, nif.function.return) do
+            quote do
+              # TODO: add stacktrace
+              :error, {:error, type} ->
+                reraise ErlangError, [original: type], __STACKTRACE__
+            end
+          end
+        )
 
     do_render(%__MODULE__{
       type: nif.type,
@@ -96,11 +120,11 @@ defmodule Zig.Nif.Marshaller do
       arg_exprs: arg_exprs,
       entrypoint: nif.entrypoint,
       return_expr: return_expr,
-      param_error_clauses: param_error_clauses
+      error_prongs: error_prongs
     })
   end
 
-  defp do_render(r = %__MODULE__{param_error_clauses: nil}) do
+  defp do_render(r = %__MODULE__{error_prongs: []}) do
     quote do
       unquote(r.type)(unquote(r.name)(unquote_splicing(r.args))) do
         unquote_splicing(r.arg_exprs)
@@ -117,7 +141,7 @@ defmodule Zig.Nif.Marshaller do
         unquote(@return) = unquote(r.entrypoint)(unquote_splicing(r.args))
         unquote(r.return_expr)
       catch
-        unquote(r.param_error_clauses)
+        unquote(r.error_prongs)
       end
     end
   end
