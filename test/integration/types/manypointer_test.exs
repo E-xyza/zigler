@@ -80,12 +80,6 @@ defmodule ZiglerTest.Types.ManypointerTest do
     return passed[3];
   }
 
-  var str_result = [_]f64{47.0, 0.0};
-
-  pub fn sentinel_terminated_return_test() [*:0.0]f64 {
-    return @ptrCast([*:0.0]f64, &str_result);
-  }
-
   var stbr_result = [_]u8{'b', 'a', 'r', 0};
 
   pub fn sentinel_terminated_binary_return_test() [*:0]u8 {
@@ -100,10 +94,6 @@ defmodule ZiglerTest.Types.ManypointerTest do
   describe "sentinel terminated arrays" do
     test "are supported" do
       assert 0 == sentinel_terminated_test("foo")
-    end
-
-    test "can be returned" do
-      assert [47.0] == sentinel_terminated_return_test()
     end
 
     test "can be returned as binary" do

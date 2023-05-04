@@ -35,6 +35,15 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
     ###########################################################################
     ## INTS
 
+    test "a u0-returning function gives appropriate bounds" do
+      result =
+        quote context: Elixir do
+          return_test() :: 0
+        end
+
+      assert make_spec(~t(u0)) == result
+    end
+
     test "a u8-returning function gives appropriate bounds" do
       result =
         quote context: Elixir do

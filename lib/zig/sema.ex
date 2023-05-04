@@ -37,9 +37,31 @@ defmodule Zig.Sema do
 
     Enum.map(functions, fn function ->
       name = String.to_atom(function["name"])
-      fn_opts = Keyword.fetch!(nif_opts, name)
+
+      fn_opts =
+        nif_opts
+        |> Keyword.fetch!(name)
+        |> normalize
 
       Type.Function.from_json(function, module, name, fn_opts)
+    end)
+  end
+
+  def normalize(opts) do
+    opts
+    |> Keyword.put_new(:args, %{})
+    |> Keyword.put_new(:return, type: :default)
+    |> Keyword.update!(:return, &normalize_return/1)
+  end
+
+  def normalize_return(return) do
+    return
+    |> List.wrap()
+    |> Enum.map(fn
+      :binary -> {:type, :binary}
+      :charlist -> {:type, :charlist}
+      integer when is_integer(integer) -> {:arg, integer}
+      other -> other
     end)
   end
 end

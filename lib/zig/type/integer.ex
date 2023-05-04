@@ -185,6 +185,8 @@ defmodule Zig.Type.Integer do
     end
   end
 
+  def spec(%{bits: 0}, _, _), do: 0
+
   def spec(type = %{signedness: :unsigned}, _, _opts) do
     quote context: Elixir do
       0..unquote(typemax(type))

@@ -28,7 +28,7 @@ defmodule Zig.Type.Cpointer do
     end
   end
 
-  def spec(%{child: child}, :params, opts) do
+  def spec(%{child: child}, :params, _opts) do
     has_solo? = match?(%Type.Struct{extern: true}, child)
     child_form = Type.spec(child, :params, [])
 
@@ -63,9 +63,43 @@ defmodule Zig.Type.Cpointer do
     end
   end
 
+  def spec(%{child: child}, :return, opts) do
+    case {Keyword.fetch(opts, :length), Keyword.fetch!(opts, :type)} do
+      {{:ok, _}, :default} ->
+        [Type.spec(child, :return, opts)]
+
+      {{:ok, {:arg, _}}, :binary} ->
+        # this is the case where the length is drawn from one of the arguments
+        # to the function.
+        quote do
+          <<_::_*unquote(chunk_size(child))>>
+        end
+
+      {{:ok, number}, :binary} ->
+        quote do
+          <<_::unquote(number * chunk_size(child))>>
+        end
+
+      {:error, _} when child.__struct__ == Type.Struct ->
+        Type.spec(child, :return, opts)
+
+      {:error, _} when child.__struct__ == __MODULE__ ->
+        [Type.spec(child.child, :return, opts)]
+
+      {:error, _} ->
+        raise "missing length not allowed"
+    end
+  end
+
   def spec(%{child: child = %__MODULE__{}}, :return, opts) do
     [Type.spec(child, :return, opts)]
   end
+
+  defp chunk_size(%type{bits: bits}) when type in [Type.Integer, Type.Float] do
+    bits
+  end
+
+  defp chunk_size(_), do: raise("invalid type for binary *c output")
 
   defp binary_form(~t(u8)), do: Type.spec(:binary)
 

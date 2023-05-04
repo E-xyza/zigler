@@ -21,6 +21,15 @@ defmodule ZiglerTest.Unit.Typespec.ParamsTest do
     ###########################################################################
     ## INTS
 
+    test "a u0-passed function is just zero" do
+      result =
+        quote context: Elixir do
+          params_test(0) :: :ok
+        end
+
+      assert make_spec(~t(u0)) == result
+    end
+
     test "a u8-passed function gives appropriate bounds" do
       result =
         quote context: Elixir do

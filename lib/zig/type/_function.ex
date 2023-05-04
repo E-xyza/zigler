@@ -81,32 +81,54 @@ defmodule Zig.Type.Function do
     end
   end
 
-  def spec(function = %{opts: opts}) do
-    params = Enum.map(function.params, &Type.spec(&1, :params, []))
+  def spec(function) do
+    if function.opts[:raw] do
+      spec_raw(function)
+    else
+      spec_normal(function)
+    end
+  end
+
+  def spec_raw(function) do
+    params =
+      List.duplicate(
+        quote do
+          term()
+        end,
+        function.arity
+      )
+
+    quote context: Elixir do
+      unquote(function.name)(unquote_splicing(params)) :: term()
+    end
+  end
+
+  def spec_normal(function) do
+    trimmed =
+      case function.params do
+        [:env | list] -> list
+        list -> list
+      end
+
+    param_types = Enum.map(trimmed, &Type.spec(&1, :params, []))
 
     return_opts =
-      opts
+      function.opts
       |> List.wrap()
       |> Keyword.get(:return, [])
 
+    # TODO: check for easy_c
     return =
       if arg = return_opts[:arg] do
         function.params
         |> Enum.at(arg)
-        |> constrain_length(return_opts[:length])
         |> Type.spec(:return, return_opts)
       else
         Type.spec(function.return, :return, return_opts)
       end
 
     quote context: Elixir do
-      unquote(function.name)(unquote_splicing(params)) :: unquote(return)
+      unquote(function.name)(unquote_splicing(param_types)) :: unquote(return)
     end
   end
-
-  defp constrain_length(type = %Type.Cpointer{child: child}, length) when is_integer(length) do
-    %Type.Array{child: child, len: length}
-  end
-
-  defp constrain_length(type, _), do: type
 end

@@ -36,7 +36,7 @@ defmodule Zig.Type.Array do
 
   def return_allowed?(array), do: Type.return_allowed?(array.child)
 
-  def spec(type = %{child: ~t(u8), len: length}, :return, opts) do
+  def spec(type = %{child: ~t(u8)}, :return, opts) do
     # u8 defaults to binary
     case Keyword.fetch!(opts, :type) do
       :charlist ->
@@ -47,7 +47,7 @@ defmodule Zig.Type.Array do
     end
   end
 
-  def spec(type = %{child: child, len: length}, :return, opts) do
+  def spec(type = %{child: child}, :return, opts) do
     # other types defaults to binary
     binary_form = binary_form(child, known_length(type))
 
@@ -60,7 +60,7 @@ defmodule Zig.Type.Array do
     end
   end
 
-  def spec(type = %{child: child, len: length}, :params, opts) do
+  def spec(type = %{child: child}, :params, opts) do
     # u8 defaults to binary
     if binary_form = binary_form(child, known_length(type)) do
       quote context: Elixir do
@@ -113,7 +113,7 @@ defmodule Zig.Type.Array do
     end
   end
 
-  defp binary_form(_), do: nil
+  defp binary_form(_, _), do: nil
 
   def of(type, len, opts \\ []) do
     struct(__MODULE__, opts ++ [child: type, len: len])

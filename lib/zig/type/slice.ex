@@ -44,7 +44,7 @@ defmodule Zig.Type.Slice do
   end
 
   def spec(%{child: child}, context, opts) do
-    case {context, Keyword.fetch!(opts, :type)} do
+    case {context, Keyword.get(opts, :type)} do
       {:return, :binary} ->
         binary_form(child) || raise "unreachable"
 

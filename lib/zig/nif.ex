@@ -52,7 +52,7 @@ defmodule Zig.Nif do
     Enum.map(nif_opts, fn {nif, opts} ->
       new_opts =
         Keyword.update(opts, :return, [type: :default], fn return_list ->
-          Keyword.update(return_list, :type, :default, & &1)
+          Keyword.put_new(return_list, :type, :default)
         end)
 
       {nif, new_opts}
