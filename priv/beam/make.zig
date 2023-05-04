@@ -22,6 +22,9 @@ pub fn make(env: beam.env, value: anytype, comptime opts: anytype) beam.term {
     // passthrough on beam.term, no work needed.
     if (T == beam.term) return value;
     if (T == beam.pid) return make_pid(env, value);
+    // special case on stacktrace
+    if (T == *std.builtin.StackTrace) return beam.make_stacktrace(env, value);
+
     if (T == beam.port) @compileError("you cannot convert a port into a term");
 
     switch (@typeInfo(T)) {
@@ -375,12 +378,10 @@ pub fn make_empty_list(env: beam.env) beam.term {
     return .{ .v = e.enif_make_list_from_array(env, null, 0) };
 }
 
-// you can't make the atom .error, because `error` is a reserved term
-// in ziglang.
-pub fn make_error_atom(env: beam.env) beam.term {
-    return make_into_atom(env, "error");
+pub fn make_list_cell(env: beam.env, head: beam.term, tail: beam.term) beam.term {
+    return .{ .v = e.enif_make_list_cell(env, head.v, tail.v) };
 }
 
 pub fn make_error_pair(env: beam.env, payload: anytype, comptime opts: anytype) beam.term {
-    return make(env, .{ make_error_atom(env), make(env, payload, opts) }, opts);
+    return make(env, .{ .@"error", make(env, payload, opts) }, opts);
 }

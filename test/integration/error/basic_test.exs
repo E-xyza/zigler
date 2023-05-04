@@ -9,8 +9,12 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
 
   const MyError = error{my_error};
 
-  pub fn basic_error_return() !void {
+  fn nested_error() !void {
     return error.my_error;
+  }
+
+  pub fn basic_error_return() !void {
+    return nested_error();
   }
   """
 
@@ -20,9 +24,14 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
         basic_error_return()
       rescue
         e in ErlangError ->
-          e |> IO.inspect(label: :e)
+          %{payload: e.original, stacktrace: __STACKTRACE__}
       end
 
-    assert %{original: :my_error} = error
+    assert %{payload: :my_error, stacktrace: [head | _]} = error
+
+    expected_file = Path.absname(__ENV__.file)
+
+    assert {__MODULE__, :nested_error, :...,
+            [file: ^expected_file, line: 12]} = head
   end
 end

@@ -171,7 +171,7 @@ defmodule Zig.Nif do
   def maybe_catch(%Error{}) do
     """
     catch |err| {
-        return e.enif_raise_exception(env, beam.make(env, .{ .@"error", err}, .{}).v);
+        return e.enif_raise_exception(env, beam.make(env, .{ .@"error", err, @errorReturnTrace()}, .{}).v);
     }
     """
   end

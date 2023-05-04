@@ -153,6 +153,7 @@ const get_ = @import("get.zig");
 const make_ = @import("make.zig");
 const cleanup_ = @import("cleanup.zig");
 const processes = @import("processes.zig");
+const stacktrace = @import("stacktrace.zig");
 
 pub const get = get_.get;
 pub const make = make_.make;
@@ -167,8 +168,9 @@ pub const make_into_atom = make_.make_into_atom;
 pub const make_cpointer = make_.make_cpointer;
 pub const make_binary = make_.make_binary;
 pub const make_empty_list = make_.make_empty_list;
-pub const make_error_atom = make_.make_error_atom;
+pub const make_list_cell = make_.make_list_cell;
 pub const make_error_pair = make_.make_error_pair;
+pub const make_stacktrace = stacktrace.to_term;
 
 // special functions
 

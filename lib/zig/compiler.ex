@@ -154,10 +154,30 @@ defmodule Zig.Compiler do
 
       unquote(load_nif_fn)
 
+      @__zig_manifest unquote(manifest_elixir(code))
+
+      require Zig.Manifest
+      Zig.Manifest.elixir_function()
+
       def _format_error(_, [{_, _, _, opts} | _rest] = _stacktrace) do
         if formatted = opts[:zigler_error], do: formatted, else: %{}
       end
     end
+  end
+
+  defp manifest_elixir(code) do
+    code
+    |> String.split("\n")
+    |> Enum.with_index(fn
+      "// ref " <> file_line, index ->
+        [file, line] = String.split(file_line, ":")
+        # note that line numbers are actually one-indexed.
+        [{index + 1, {Path.absname(file), String.to_integer(line)}}]
+
+      _, _ ->
+        []
+    end)
+    |> Enum.flat_map(& &1)
   end
 
   def render_erlang(_code, function_code, module, opts) do

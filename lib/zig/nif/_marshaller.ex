@@ -107,8 +107,18 @@ defmodule Zig.Nif.Marshaller do
           if match?(%Error{}, nif.function.return) do
             quote do
               # TODO: add stacktrace
-              :error, {:error, type} ->
-                reraise ErlangError, [original: type], __STACKTRACE__
+              :error, {:error, type, error_return_trace} ->
+                new_trace = Enum.map(error_return_trace, fn %{
+                  compile_unit_name: module,
+                  line_info: %{line: line, file_name: file},
+                  symbol_name: function
+                } ->
+                  # TODO: make these not do this anymore because we're natively handling binaries
+                  {file, line} = __resolve("#{file}", line)
+                  {:"#{module}", :"#{function}", :..., file: file, line: line}
+                end)
+
+                reraise ErlangError, [original: type], Enum.reverse(new_trace, __STACKTRACE__)
             end
           end
         )
