@@ -458,7 +458,7 @@ defmodule Zig do
     end)
   end
 
-  @return_types [:charlists, :binary, :default]
+  @return_types [:charlist, :binary, :default]
 
   defp normalize_return_opts(opts) do
     Enum.map(opts, fn

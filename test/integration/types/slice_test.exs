@@ -5,7 +5,7 @@ defmodule ZiglerTest.Types.SliceTest do
     otp_app: :zigler,
     leak_check: true,
     nifs: [
-      {:slice_u8_test, return: :charlists},
+      {:slice_u8_test, return: :charlist},
       ...
     ]
 

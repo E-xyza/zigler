@@ -70,7 +70,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
 
         pub fn create(data: T, create_opts: CreateOpts) !@This() {
             beam.ignore_when_sema();
-            
+
             if (@sizeOf(T) == 0) {
                 @compileError("you cannot create a resource for a zero-byte object");
             }
@@ -123,9 +123,9 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         }
 
         pub fn make(self: @This(), env: beam.env, comptime make_opts: anytype) beam.term {
-            const output_as: OutputType = make_opts.output_as;
+            const output_type: OutputType = make_opts.output_type;
             defer self.maybe_release();
-            switch (output_as) {
+            switch (output_type) {
                 .default => {
                     return .{ .v = e.enif_make_resource(env, @ptrCast(*anyopaque, self.__payload)) };
                 },

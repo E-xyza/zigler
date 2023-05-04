@@ -262,7 +262,7 @@ defprotocol Zig.Type do
 
       def get_result(type, opts) do
         return_type = get_in(opts, [:return, :type]) || raise "return type not found"
-        "break :get_result beam.make(env, result, .{.output_as = .#{return_type}}).v;"
+        "break :get_result beam.make(env, result, .{.output_type = .#{return_type}}).v;"
       end
 
       def needs_make?(_), do: true
@@ -342,7 +342,7 @@ defimpl Zig.Type, for: Atom do
 
         """
         _ = result;
-        break :get_result beam.make(env, arg#{arg}[0..@intCast(usize, arg#{length_arg})], .{.output_as = .#{return_type}}).v;
+        break :get_result beam.make(env, arg#{arg}[0..@intCast(usize, arg#{length_arg})], .{.output_type = .#{return_type}}).v;
         """
     end
   end

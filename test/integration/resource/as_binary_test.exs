@@ -32,9 +32,9 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
       std.mem.copy(u8, new_string, src_string);
       const resource = StringResource.create(new_string, .{}) catch unreachable;
       return switch (mode) {
-        .binary => beam.make(env, resource, .{.output_as = .binary}),
-        .reference => beam.make(env, resource, .{.output_as = .default}),
-        .static => beam.make(env, resource, .{.output_as = .binary, .encoder = static_encoder}),
+        .binary => beam.make(env, resource, .{.output_type = .binary}),
+        .reference => beam.make(env, resource, .{.output_type = .default}),
+        .static => beam.make(env, resource, .{.output_type = .binary, .encoder = static_encoder}),
       };
   }
 
