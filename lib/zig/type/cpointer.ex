@@ -52,19 +52,24 @@ defmodule Zig.Type.Cpointer do
 
   def spec(%{child: ~t(u8)}, :return, opts) do
     # assumed to be a null-terminated string
-    case Keyword.fetch!(opts, :type) do
-      :charlist ->
+    case {opts[:length], Keyword.fetch!(opts, :type)} do
+      {_, :charlist} ->
         quote context: Elixir do
           [0..255]
         end
 
-      type when type in ~w(default binary)a ->
+      {length, type} when not is_nil(length) and type in ~w(default binary)a ->
+        quote context: Elixir do
+          <<_::unquote(length * 8)>>
+        end
+
+      {_, type} when type in ~w(default binary)a ->
         Type.spec(:binary)
     end
   end
 
   def spec(%{child: child}, :return, opts) do
-    case {Keyword.fetch(opts, :length), Keyword.fetch!(opts, :type)} do
+    case {Keyword.fetch(opts, :length), Keyword.fetch!(opts, :type)}  do
       {{:ok, _}, :default} ->
         [Type.spec(child, :return, opts)]
 
@@ -82,6 +87,11 @@ defmodule Zig.Type.Cpointer do
 
       {:error, _} when child.__struct__ == Type.Struct ->
         Type.spec(child, :return, opts)
+
+      {:error, _} when child == %__MODULE__{child: ~t(u8)} ->
+        quote do
+          [binary()]
+        end
 
       {:error, _} when child.__struct__ == __MODULE__ ->
         [Type.spec(child.child, :return, opts)]
