@@ -402,6 +402,9 @@ defmodule Zig do
       {:ok, nif_opt} ->
         new_nifs =
           Enum.map(nif_opt, fn
+            :auto ->
+              :auto
+
             atom when is_atom(atom) ->
               {atom, []}
 
@@ -409,7 +412,7 @@ defmodule Zig do
               {name, normalize_nif_opts(opts)}
 
             {:..., _, atom} when is_atom(atom) ->
-              :all
+              :auto
 
             other ->
               error_meta =
@@ -423,8 +426,8 @@ defmodule Zig do
           end)
 
         new_nifs =
-          if Enum.any?(new_nifs, &(&1 == :all)) do
-            {:all, new_nifs -- [:all]}
+          if Enum.any?(new_nifs, &(&1 == :auto)) do
+            {:auto, new_nifs -- [:auto]}
           else
             new_nifs
           end
@@ -432,7 +435,7 @@ defmodule Zig do
         Keyword.put(opts, :nifs, new_nifs)
 
       _ ->
-        Keyword.put(opts, :nifs, {:all, []})
+        Keyword.put(opts, :nifs, {:auto, []})
     end
   end
 

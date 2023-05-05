@@ -11,7 +11,7 @@ defmodule ZiglerTest.Sema.FunctionTest do
   setup_all do
     sema_map =
       __MODULE__
-      |> Sema.analyze_file!(nifs: :all)
+      |> Sema.analyze_file!(nifs: {:auto, []})
       |> Map.new(&{&1.name, &1})
 
     {:ok, sema_map}

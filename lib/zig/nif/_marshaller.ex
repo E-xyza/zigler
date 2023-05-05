@@ -116,7 +116,7 @@ defmodule Zig.Nif.Marshaller do
                                                   } ->
                     # TODO: make these not do this anymore because we're natively handling binaries
                     {file, line} = __resolve("#{file}", line)
-                    {:"#{module}", :"#{function}", :..., file: file, line: line - 1}
+                    {:"#{module}", :"#{function}", :..., file: file, line: line}
                   end)
 
                 reraise ErlangError, [original: type], Enum.reverse(new_trace, __STACKTRACE__)

@@ -12,14 +12,20 @@ defmodule Zig.Compiler do
   alias Zig.Nif
   alias Zig.Sema
   alias Zig.Type
+  alias Zig.Type.Function
   alias Zig.Type.Struct
+  alias Zig.Manifest
 
   import Zig.QuoteErl
 
-  defmacro __before_compile__(context = %{module: module}) do
+  defmacro __before_compile__(context = %{module: module, file: file}) do
     # TODO: verify that :otp_app exists
-    code_dir = Path.dirname(context.file)
-    opts = Module.get_attribute(module, :zigler_opts)
+    code_dir = Path.dirname(file)
+
+    opts =
+      module
+      |> Module.get_attribute(:zigler_opts)
+      |> Keyword.put(:src_file, file)
 
     output =
       module
@@ -49,7 +55,7 @@ defmodule Zig.Compiler do
 
     aliasing_code =
       case opts[:nifs] do
-        {:all, overridden} -> create_aliases(nifs: overridden)
+        {:auto, overridden} -> create_aliases(nifs: overridden)
         functions when is_list(functions) -> create_aliases(nifs: functions)
       end
 
@@ -63,22 +69,28 @@ defmodule Zig.Compiler do
     precompiled = Keyword.get(opts, :precompile, true)
     compiled = Keyword.get(opts, :compile, true)
     renderer = Keyword.fetch!(opts, :render)
+    manifest = Manifest.make_manifest(base_code)
+    src_file = Keyword.fetch!(opts, :src_file)
 
     with true <- assembled,
          assemble_opts = Keyword.take(opts, [:link_lib, :build_opts]),
          assemble_opts = Keyword.merge(assemble_opts, from: code_dir),
          Assembler.assemble(module, assemble_opts),
          true <- precompiled,
-         sema = Sema.analyze_file!(module, opts),
-         new_opts = Keyword.merge(opts, parsed: Zig.Parser.parse(base_code)),
-         function_code = precompile(sema, module, assembly_directory, new_opts),
+         sema_functions = Sema.analyze_file!(module, opts),
+         parsed_code = Zig.Parser.parse(base_code),
+         new_opts = Keyword.put(opts, :parsed, parsed_code),
+         functions =
+           Enum.map(sema_functions, &Function.assign_parsed_info(&1, parsed_code, manifest)),
+         functions = Enum.map(functions, &Function.assign_file(&1, src_file)),
+         function_code = precompile(functions, module, assembly_directory, new_opts),
          true <- compiled do
       # parser should only operate on parsed, valid zig code.
       Command.compile(module, new_opts)
-      apply(__MODULE__, renderer, [base_code, function_code, module, opts])
+      apply(__MODULE__, renderer, [base_code, function_code, module, manifest, opts])
     else
       false ->
-        apply(__MODULE__, renderer, [base_code, [], module, opts])
+        apply(__MODULE__, renderer, [base_code, [], module, [], opts])
     end
   end
 
@@ -107,7 +119,7 @@ defmodule Zig.Compiler do
     function_code
   end
 
-  def render_elixir(code, function_code, module, opts) do
+  def render_elixir(code, function_code, module, manifest, opts) do
     nif_name = "#{module}"
 
     load_nif_fn =
@@ -155,7 +167,7 @@ defmodule Zig.Compiler do
       unquote(load_nif_fn)
 
       require Zig.Manifest
-      Zig.Manifest.resolver(unquote(code))
+      Zig.Manifest.resolver(unquote(manifest))
 
       def _format_error(_, [{_, _, _, opts} | _rest] = _stacktrace) do
         if formatted = opts[:zigler_error], do: formatted, else: %{}
@@ -163,7 +175,7 @@ defmodule Zig.Compiler do
     end
   end
 
-  def render_erlang(_code, function_code, module, opts) do
+  def render_erlang(_code, function_code, module, _manifest, opts) do
     otp_app = Keyword.fetch!(opts, :otp_app)
     module_name = Atom.to_charlist(module)
 
@@ -177,7 +189,7 @@ defmodule Zig.Compiler do
         module_id: ~C'lib/' ++ module_name
       )
 
-    Enum.flat_map(function_code, &Function.identity/1) ++ init_function
+    Enum.flat_map(function_code, & &1) ++ init_function
   end
 
   require EEx

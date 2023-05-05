@@ -14,6 +14,7 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
   }
 
   pub fn basic_error_return() !void {
+    // some extra space here
     return nested_error();
   }
   """
@@ -27,10 +28,11 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
           %{payload: e.original, stacktrace: __STACKTRACE__}
       end
 
-    assert %{payload: :my_error, stacktrace: [head | _]} = error
+    assert %{payload: :my_error, stacktrace: [head, next | _]} = error
 
     expected_file = Path.absname(__ENV__.file)
 
+    assert {__MODULE__, :basic_error_return, :..., [file: ^expected_file, line: 18]} = next
     assert {__MODULE__, :nested_error, :..., [file: ^expected_file, line: 13]} = head
   end
 end

@@ -38,7 +38,7 @@ defmodule Zig.Nif do
     @callback set_entrypoint(Zig.Nif.t()) :: Zig.Nif.t()
   end
 
-  defp normalize_all({:all, substitutions}, functions) do
+  defp normalize_auto({:auto, substitutions}, functions) do
     substituted = Keyword.keys(substitutions)
 
     Enum.flat_map(
@@ -47,7 +47,7 @@ defmodule Zig.Nif do
     ) ++ substitutions
   end
 
-  defp normalize_all(list, _) when is_list(list), do: list
+  defp normalize_auto(list, _) when is_list(list), do: list
 
   def normalize_return(nif_opts) do
     Enum.map(nif_opts, fn {nif, opts} ->
@@ -67,7 +67,7 @@ defmodule Zig.Nif do
   # TODO: unit test this function directly.
   def from_sema(sema_list, nif_opts) do
     nif_opts
-    |> normalize_all(sema_list)
+    |> normalize_auto(sema_list)
     |> normalize_return()
     |> Enum.map(fn
       {name, opts} ->
@@ -95,7 +95,7 @@ defmodule Zig.Nif do
     Enum.find(sema_list, &(&1.name == name)) || raise "unreachable"
   end
 
-  defp adopt_options(function, :all), do: function
+  defp adopt_options(function, :auto), do: function
   defp adopt_options(function, opts), do: %{function | opts: opts}
 
   # for now, don't implement.

@@ -12,12 +12,18 @@ defmodule Zig.EasyC do
     end
   end
 
-  defp add_aliasing(:all) do
-    raise "can't have all on an easy_c module"
+  defp add_aliasing(:auto) do
+    raise "can't have `auto` on an easy_c module"
   end
 
   defp add_aliasing(nifs) do
-    Enum.map(nifs, fn {fun, opts} -> {fun, add_alias_nif(opts)} end)
+    Enum.map(nifs, fn
+      {:..., _, _} ->
+        raise "cant have `...` on an easy_c module"
+
+      {fun, opts} ->
+        {fun, add_alias_nif(opts)}
+    end)
   end
 
   defp add_alias_nif(opts) do

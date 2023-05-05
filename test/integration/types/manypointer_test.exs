@@ -67,12 +67,20 @@ defmodule ZiglerTest.Types.ManypointerTest do
 
   describe "for normal manypointers" do
     test "having a return value is prohibited" do
-      assert_raise CompileError, " functions returning [*]u8 are not allowed", fn ->
-        Code.compile_file("_manypointer_forbidden_output.exs", __DIR__)
-      end
-    end
+      error =
+        try do
+          Code.compile_file("_manypointer_forbidden_output.exs", __DIR__)
+        rescue
+          e -> e
+        end
 
-    test "correct line and file"
+      assert %CompileError{
+               file: "test/integration/types/_manypointer_forbidden_output.exs",
+               line: 5
+             } = error
+
+      assert Exception.message(error) =~ "functions returning [*]u8 are not allowed"
+    end
   end
 
   ~Z"""

@@ -3,7 +3,9 @@ defmodule Zig.Type.Function do
   # files.
   @behaviour Access
 
-  defstruct [:name, :arity, :params, :return, :opts, :raw]
+  defstruct [:name, :arity, :params, :return, :opts, :raw, :file, :line, :doc]
+
+  alias Zig.Manifest
   alias Zig.Type
 
   @impl true
@@ -14,7 +16,10 @@ defmodule Zig.Type.Function do
           arity: non_neg_integer(),
           params: [Type.t()],
           return: Type.t(),
-          opts: keyword
+          opts: keyword,
+          doc: nil | String.t(),
+          file: nil | Path.t(),
+          line: nil | non_neg_integer()
         }
 
   def from_json(%{"params" => params, "return" => return}, module, name, nif_opts) do
@@ -61,7 +66,10 @@ defmodule Zig.Type.Function do
 
   def validate!(function) do
     unless Type.return_allowed?(function.return) do
-      raise CompileError, description: "functions returning #{function.return} are not allowed"
+      raise CompileError,
+        description: "functions returning #{function.return} are not allowed",
+        file: function.file,
+        line: function.line
     end
   end
 
@@ -131,4 +139,26 @@ defmodule Zig.Type.Function do
       unquote(function.name)(unquote_splicing(param_types)) :: unquote(return)
     end
   end
+
+  def assign_parsed_info(function, %{code: code}, manifest) do
+    if entry = Enum.find(code, &matches_name?(&1, function.name)) do
+      assign_parsed_info_(function, entry, manifest)
+    else
+      function
+    end
+  end
+
+  defp assign_parsed_info_(function, {:fn, options = %{position: position}, _}, manifest) do
+    fixed_line = Manifest.resolve(manifest, position.line)
+
+    %{function | doc: options.doc_comment, line: fixed_line}
+  end
+
+  def assign_file(function, file), do: %{function | file: Path.relative_to_cwd(file)}
+
+  defp matches_name?({:fn, _options, params}, function) do
+    Keyword.fetch!(params, :name) == function
+  end
+
+  defp matches_name?(_, _), do: false
 end

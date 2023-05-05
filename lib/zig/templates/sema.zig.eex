@@ -12,7 +12,7 @@ pub fn main() !void {
     var stream = json.writeStream(stdout, JSON_DEPTH);
 
     <%= case @nifs do %>
-    <% {:all, _} -> %>
+    <% {:auto, _} -> %>
     try beam.sema.streamModule(&stream, nif);
     <% functions when is_list(functions) -> %>
     try stream.beginObject();
