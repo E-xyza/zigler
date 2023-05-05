@@ -12,6 +12,6 @@ defmodule ZiglerTest.SigilZ.OneTest do
 
   test "the function is branded with the correct file and line number", %{code: code} do
     file = Path.relative_to_cwd(__ENV__.file)
-    assert code =~ "#{file}:5\nfn nif()"
+    assert code =~ "#{file}:4\nfn nif()"
   end
 end

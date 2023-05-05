@@ -357,7 +357,7 @@ defmodule Zig do
     file = Path.relative_to_cwd(caller.file)
 
     quote bind_quoted: [module: module, zig_code: zig_code, file: file, line: line] do
-      @zig_code_parts "// ref #{file}:#{line - 1}\n"
+      @zig_code_parts "// ref #{file}:#{line}\n"
       @zig_code_parts zig_code
       :nothing
     end

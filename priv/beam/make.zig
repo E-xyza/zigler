@@ -385,3 +385,7 @@ pub fn make_list_cell(env: beam.env, head: beam.term, tail: beam.term) beam.term
 pub fn make_error_pair(env: beam.env, payload: anytype, comptime opts: anytype) beam.term {
     return make(env, .{ .@"error", make(env, payload, opts) }, opts);
 }
+
+pub fn make_error_atom(env: beam.env) beam.term {
+    return make(env, .@"error", .{});
+}

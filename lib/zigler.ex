@@ -72,7 +72,7 @@ defmodule :zigler do
 
   defp append_attrib(ast, key, value), do: ast ++ [{:attribute, {1, 1}, key, value}]
 
-  @order %{file: 0, attribute: 1, function: 2, eof: 10}
+  @order %{file: 0, attribute: 1, function: 2, error: 3, eof: 10}
 
   def compare(order1, order2) when is_integer(order1) and is_integer(order2) do
     case order1 do
@@ -82,8 +82,9 @@ defmodule :zigler do
     end
   end
 
-  def compare(type1, type2) when is_atom(type1) and is_atom(type2),
-    do: compare(Map.fetch!(@order, type1), Map.fetch!(@order, type2))
+  def compare(type1, type2) when is_atom(type1) and is_atom(type2) do
+    compare(Map.fetch!(@order, type1), Map.fetch!(@order, type2))
+  end
 
   defp ensure_eex do
     # rebar_mix doesn't include the eex dependency out of the gate.  This function
