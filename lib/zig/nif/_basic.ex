@@ -58,14 +58,14 @@ defmodule Zig.Nif.Basic do
 
   require EEx
 
-  synchronous = Path.join(__DIR__, "../templates/synchronous.zig.eex")
-  EEx.function_from_file(:defp, :synchronous, synchronous, [:assigns])
+  basic = Path.join(__DIR__, "../templates/basic.zig.eex")
+  EEx.function_from_file(:defp, :basic, basic, [:assigns])
 
   raw_zig = Path.join(__DIR__, "../templates/raw_zig.zig.eex")
   EEx.function_from_file(:defp, :raw_zig, raw_zig, [:assigns])
 
   def render_zig_code(%Nif{function: function = %{raw: :zig}}), do: raw_zig(function)
-  def render_zig_code(%Nif{function: function}), do: synchronous(function)
+  def render_zig_code(%Nif{function: function}), do: basic(function)
 
   def set_entrypoint(nif = %{function: %{name: name}}) do
     entrypoint = if Nif.needs_marshal?(nif), do: :"marshalled-#{name}", else: name
