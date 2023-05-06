@@ -443,6 +443,8 @@ defmodule Zig do
     Keyword.put(opts, :link_lib, List.wrap(opts[:link_lib]))
   end
 
+  @concurrency_modes ~w(dirty_cpu dirty_io threaded yielding)a
+
   defp normalize_nif_opts(opts) do
     Enum.map(opts, fn
       {:return, return_opts} ->
@@ -455,6 +457,9 @@ defmodule Zig do
 
       {:args, args_opts} ->
         {:args, normalize_args_opts(args_opts)}
+
+      concurrency when concurrency in @concurrency_modes ->
+        {:concurrency, concurrency}
 
       other ->
         other

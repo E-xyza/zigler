@@ -1,4 +1,8 @@
-defmodule Zig.Nif.Synchronous do
+defmodule Zig.Nif.DirtyIo do
+  @moduledoc """
+  Dirty Cpu Nifs run dirty, on the cpu
+  """
+
   @behaviour Zig.Nif.Concurrency
 
   alias Zig.Nif.Basic
@@ -11,7 +15,7 @@ defmodule Zig.Nif.Synchronous do
 
   def table_entries(nif) do
     [
-      ~s(.{.name = "#{nif.entrypoint}", .arity = #{nif.function.arity}, .fptr = #{Function.nif_alias_for(nif.function)}, .flags = 0})
+      ~s(.{.name = "#{nif.entrypoint}", .arity = #{nif.function.arity}, .fptr = #{Function.nif_alias_for(nif.function)}, .flags = e.ERL_NIF_DIRTY_JOB_IO_BOUND})
     ]
   end
 end

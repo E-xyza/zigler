@@ -60,6 +60,14 @@ defmodule Zig.Nif do
     end)
   end
 
+  @concurrency_modules %{
+    :synchronous => Synchronous,
+    :threaded => Threaded,
+    :yielding => Yielding,
+    :dirty_cpu => DirtyCpu,
+    :dirty_io => DirtyIo
+  }
+
   @doc """
   obtains a list of Nif structs from the semantically analyzed content and
   the nif options that are a part of
@@ -77,11 +85,12 @@ defmodule Zig.Nif do
           |> find_function(name)
           |> adopt_options(opts)
 
-        concurrency = Synchronous
+        concurrency = Keyword.get(opts, :concurrency, :synchronous)
+        concurrency_module = Map.get(@concurrency_modules, concurrency)
 
-        concurrency.set_entrypoint(%__MODULE__{
+        concurrency_module.set_entrypoint(%__MODULE__{
           type: Keyword.get(opts, :type) || :def,
-          concurrency: concurrency,
+          concurrency: concurrency_module,
           function: function,
           param_marshalling_macros: Function.param_marshalling_macros(function),
           return_marshalling_macro: Function.return_marshalling_macro(function),
