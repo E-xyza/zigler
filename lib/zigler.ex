@@ -5,13 +5,16 @@ defmodule :zigler do
     Application.ensure_all_started(:logger)
     Zig.Command.fetch("0.10.1")
 
-    file = Enum.find(ast, &match?({:attribute, _, :file, {file, _}}, &1))
-    |> elem(3)
-    |> elem(0)
+    file =
+      Enum.find(ast, &match?({:attribute, _, :file, {file, _}}, &1))
+      |> elem(3)
+      |> elem(0)
 
     opts =
       case Enum.find(ast, &match?({:attribute, _, :zig_opts, _}, &1)) do
-        nil -> raise "No zig opts found"
+        nil ->
+          raise "No zig opts found"
+
         {:attribute, _, :zig_opts, opts} ->
           Keyword.put(opts, :src_file, file)
       end

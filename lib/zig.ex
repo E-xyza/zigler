@@ -268,8 +268,7 @@ defmodule Zig do
   """
 
   alias Zig.Compiler
-  alias Zig.EasyC
-
+  alias Zig.Options
   # default release modes.
   # you can override these in your `use Zigler` statement.
   @spec __using__(keyword) :: Macro.t()
@@ -277,7 +276,7 @@ defmodule Zig do
     module = __CALLER__.module
     if module in :erlang.loaded(), do: :code.purge(module)
 
-    opts = normalize!(opts)
+    opts = Options.normalize!(opts)
 
     # TODO: check to make sure the otp_app exists
     case Keyword.fetch(opts, :otp_app) do
@@ -316,15 +315,6 @@ defmodule Zig do
     end
 
     code
-  end
-
-  @doc false
-  def normalize!(opts) do
-    opts
-    |> normalize_nifs!
-    |> normalize_libs
-    |> normalize_build_opts
-    |> EasyC.normalize_aliasing()
   end
 
   @doc """
@@ -389,114 +379,6 @@ defmodule Zig do
       "lib#{module.module}#{@extension}"
     else
       "lib#{module.module}"
-    end
-  end
-
-  defp normalize_nifs!(opts) do
-    # nifs are either atom() or {atom(), keyword()}.  This turns all atom nifs
-    # into {atom(), []}, so that downstream they are easier to deal with.
-
-    # TODO: change to "Keyword.replace"
-
-    case Keyword.fetch(opts, :nifs) do
-      {:ok, nif_opt} ->
-        new_nifs =
-          Enum.map(nif_opt, fn
-            :auto ->
-              :auto
-
-            atom when is_atom(atom) ->
-              {atom, []}
-
-            {name, opts} ->
-              {name, normalize_nif_opts(opts)}
-
-            {:..., _, atom} when is_atom(atom) ->
-              :auto
-
-            other ->
-              error_meta =
-                opts
-                |> Keyword.take([:file, :line])
-                |> Keyword.merge(
-                  description: "obtained an unrecognizable nif option #{inspect(other)}"
-                )
-
-              raise CompileError, error_meta
-          end)
-
-        new_nifs =
-          if Enum.any?(new_nifs, &(&1 == :auto)) do
-            {:auto, new_nifs -- [:auto]}
-          else
-            new_nifs
-          end
-
-        Keyword.put(opts, :nifs, new_nifs)
-
-      _ ->
-        Keyword.put(opts, :nifs, {:auto, []})
-    end
-  end
-
-  defp normalize_libs(opts) do
-    Keyword.put(opts, :link_lib, List.wrap(opts[:link_lib]))
-  end
-
-  @concurrency_modes ~w(dirty_cpu dirty_io threaded yielding)a
-
-  defp normalize_nif_opts(opts) do
-    Enum.map(opts, fn
-      {:return, return_opts} ->
-        normalized =
-          return_opts
-          |> List.wrap()
-          |> normalize_return_opts
-
-        {:return, normalized}
-
-      {:args, args_opts} ->
-        {:args, normalize_args_opts(args_opts)}
-
-      concurrency when concurrency in @concurrency_modes ->
-        {:concurrency, concurrency}
-
-      other ->
-        other
-    end)
-  end
-
-  @return_types [:charlist, :binary, :default]
-
-  defp normalize_return_opts(opts) do
-    Enum.map(opts, fn
-      integer when is_integer(integer) -> {:arg, integer}
-      type when type in @return_types -> {:type, type}
-      :noclean -> {:noclean, true}
-      other -> other
-    end)
-  end
-
-  defp normalize_args_opts(opts) do
-    Map.new(
-      case opts do
-        [{_, _} | _] -> opts
-        list -> Enum.with_index(list, fn opt, idx -> {idx, opt} end)
-      end
-    )
-  end
-
-  @use_gpa {:bool, "use_gpa", true}
-  defp normalize_build_opts(opts) do
-    # creates build_opts out of a list of build opt shortcuts
-    use_gpa = Keyword.get(opts, :use_gpa, false)
-
-    if use_gpa do
-      Keyword.update(opts, :build_opts, [@use_gpa], fn list ->
-        [@use_gpa | list]
-      end)
-    else
-      opts
     end
   end
 end

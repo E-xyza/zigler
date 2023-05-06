@@ -95,7 +95,7 @@ defmodule Zig.Compiler do
   end
 
   defp precompile(sema, module, directory, opts) do
-    verify_sound!(sema, opts)
+    verify_soundness!(sema, opts)
 
     nif_functions =
       sema
@@ -111,7 +111,7 @@ defmodule Zig.Compiler do
 
     resource_opts = Keyword.get(opts, :resources, [])
 
-    File.write!(nif_src_path, Nif.render_zig_code(nif_functions, resource_opts, module))
+    File.write!(nif_src_path, Nif.render_zig(nif_functions, resource_opts, module))
     Command.fmt(nif_src_path)
 
     Logger.debug("wrote nif.zig to #{nif_src_path}")
@@ -213,10 +213,10 @@ defmodule Zig.Compiler do
     |> Path.join(".zigler_compiler/#{env}/#{module}")
   end
 
-  defp verify_sound!(sema, opts) do
+  defp verify_soundness!(sema, opts) do
     Enum.each(sema, fn function ->
       raise_if_uses_private_struct!(function, opts)
-      Type.Function.validate!(function)
+      Nif.validate_return!(function)
     end)
   end
 

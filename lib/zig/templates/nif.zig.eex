@@ -6,7 +6,7 @@ const Resource = beam.Resource;
 const root = @This();
 
 <%= for nif <- @nifs do %>
-<%= render_zig_code(nif) %>
+<%= render_zig(nif) %>
 <% end %>
 
 <%= Resources.render(resources: @resources, module: @module) %>

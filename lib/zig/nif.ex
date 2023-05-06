@@ -1,18 +1,25 @@
 defmodule Zig.Nif do
-  # TODO: distinguish Nif from Module.
-  @enforce_keys [:type, :concurrency, :function]
+  @moduledoc """
+  module encapsulating all of the information required to correctly generate
+  a nif function.
+
+  Note that all information obtained from semantic analysis of the function is
+  stashed in the `Zig.Nif.Function` module.
+  """
+
+  @enforce_keys [:export, :concurrency, :type]
 
   defstruct @enforce_keys ++
               [
-                :entrypoint,
-                :param_marshalling_macros,
-                :return_marshalling_macro,
-                :param_error_macros
+                :opts,
+                :raw,
+                :file,
+                :line,
+                :doc
               ]
 
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
-  alias Zig.Nif.Marshaller
   alias Zig.Nif.Synchronous
   alias Zig.Nif.Threaded
   alias Zig.Nif.Yielding
@@ -21,43 +28,38 @@ defmodule Zig.Nif do
   alias Zig.Resources
 
   @type t :: %__MODULE__{
-          type: :def | :defp,
+          export: boolean,
           concurrency: Synchronous | Threaded | Yielding | DirtyCpu | DirtyIo,
-          function: Function.t(),
-          # calculated details.
-          entrypoint: atom,
-          param_marshalling_macros: nil | [nil | (Macro.t() -> Macro.t())],
-          return_marshalling_macro: nil | (Macro.t() -> Macro.t()),
-          param_error_macros: nil | [nil | (Macro.t() -> Macro.t())]
+          type: Function.t(),
+          opts: keyword(),
+          # NB "c" not supported yet
+          raw: :zig | :c,
+          file: nil | Path.t(),
+          line: nil | non_neg_integer(),
+          doc: nil | String.t()
         }
 
   defmodule Concurrency do
-    @callback render_elixir(Zig.Nif.t()) :: Macro.t()
-    @callback render_erlang(Zig.Nif.t()) :: term
-    @callback render_zig_code(Zig.Nif.t()) :: iodata
-    @callback set_entrypoint(Zig.Nif.t()) :: Zig.Nif.t()
-  end
+    @moduledoc """
+    behaviour module which describes the interface for "plugins" which
+    generate concurrency-specific code.
+    """
 
-  defp normalize_auto({:auto, substitutions}, functions) do
-    substituted = Keyword.keys(substitutions)
+    alias Zig.Nif
 
-    Enum.flat_map(
-      functions,
-      &List.wrap(if &1.name not in substituted, do: {&1.name, []})
-    ) ++ substitutions
-  end
+    @callback render_elixir(Zig.t()) :: Macro.t()
+    @callback render_erlang(Zig.t()) :: term
+    @callback render_zig(Nif.t()) :: iodata
 
-  defp normalize_auto(list, _) when is_list(list), do: list
+    @type concurrency :: :synchronous | :dirty_cpu | :dirty_io
+    @type table_entry :: {name :: atom, arity :: non_neg_integer, bootstrap :: concurrency}
 
-  def normalize_return(nif_opts) do
-    Enum.map(nif_opts, fn {nif, opts} ->
-      new_opts =
-        Keyword.update(opts, :return, [type: :default], fn return_list ->
-          Keyword.put_new(return_list, :type, :default)
-        end)
-
-      {nif, new_opts}
-    end)
+    @doc """
+    returns "table_entry" tuples which are then used to generate the nif table.
+    if a nif function needs multiple parts, for example, for concurrency
+    management, then multiple entries should be returned.
+    """
+    @callback functions(Nif.t()) :: [table_entry]
   end
 
   @concurrency_modules %{
@@ -69,34 +71,14 @@ defmodule Zig.Nif do
   }
 
   @doc """
-  obtains a list of Nif structs from the semantically analyzed content and
-  the nif options that are a part of
+  based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
-  # TODO: unit test this function directly.
-  def from_sema(sema_list, nif_opts) do
-    nif_opts
-    |> normalize_auto(sema_list)
-    |> normalize_return()
-    |> Enum.map(fn
-      {name, opts} ->
-        # "calculated" details.
-        function =
-          sema_list
-          |> find_function(name)
-          |> adopt_options(opts)
+  def new(opts) do
+    %__MODULE__{
+      export: Keyword.fetch!(opts, :export),
+      concurrency: Map.get(@concurrency_modules, Keyword.fetch!(opts, :concurrency)),
 
-        concurrency = Keyword.get(opts, :concurrency, :synchronous)
-        concurrency_module = Map.get(@concurrency_modules, concurrency)
-
-        concurrency_module.set_entrypoint(%__MODULE__{
-          type: Keyword.get(opts, :type) || :def,
-          concurrency: concurrency_module,
-          function: function,
-          param_marshalling_macros: Function.param_marshalling_macros(function),
-          return_marshalling_macro: Function.return_marshalling_macro(function),
-          param_error_macros: Function.param_error_macros(function)
-        })
-    end)
+    }
   end
 
   # function retrieval and manipulation
@@ -107,21 +89,19 @@ defmodule Zig.Nif do
   defp adopt_options(function, :auto), do: function
   defp adopt_options(function, opts), do: %{function | opts: opts}
 
-  # for now, don't implement.
-  def typespec(_), do: nil
+  def render_elixir(nif = %{concurrency: concurrency}, opts \\ []) do
+    typespec =
+      if Keyword.get(opts, :typespec?, true) do
+        quote do
+          @spec unquote(Function.spec(function))
+        end
+      end
 
-  def render_elixir(nif, opts \\ []) do
-    typespec = List.wrap(if Keyword.get(opts, :typespec?, true), do: typespec(nif))
-
-    marshalling = List.wrap(Marshaller.render(nif))
-
-    function =
-      nif
-      |> nif.concurrency.render_elixir
-      |> List.wrap()
+    functions = concurrency.render_elixir(nif)
 
     quote context: Elixir do
-      (unquote_splicing(Enum.flat_map([typespec, marshalling, function], & &1)))
+      unquote(typespec)
+      unquote(functions)
     end
   end
 
@@ -148,12 +128,12 @@ defmodule Zig.Nif do
   nif = Path.join(__DIR__, "templates/nif.zig.eex")
   EEx.function_from_file(:def, :nif_file, nif, [:assigns])
 
-  def render_zig_code(nifs, resources, module) do
+  def render_zig(nifs, resources, module) do
     nif_file(binding())
   end
 
-  def render_zig_code(nif = %__MODULE__{}) do
-    nif.concurrency.render_zig_code(nif)
+  def render_zig(nif = %__MODULE__{}) do
+    nif.concurrency.render_zig(nif)
   end
 
   def indexed_parameters([:env | rest]) do
@@ -205,4 +185,31 @@ defmodule Zig.Nif do
     |> String.split(".")
     |> Enum.at(@index_of[at])
   end
+
+  def validate_return!(function) do
+    unless Type.return_allowed?(function.return) do
+      raise CompileError,
+        description: "functions returning #{function.return} are not allowed",
+        file: function.file,
+        line: function.line
+    end
+  end
+
+  #############################################################################
+  ## OPTIONS NORMALIZATION
+
+  # nifs are either atom() or {atom(), keyword()}.  This turns all atom nifs
+  # into {atom(), []}, so that downstream they are easier to deal with.
+
+  @doc false
+  def normalize_options!(function_name) when is_atom(function_name) do
+    {function_name, []}
+  end
+
+  def normalize_options!({function_name, opts}) do
+    {function_name, Enum.map(opts, &normalize_option/1)}
+  end
+
+  # TODO: figure this out later
+  defp normalize_option!(option), do: option
 end

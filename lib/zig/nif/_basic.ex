@@ -28,8 +28,6 @@ defmodule Zig.Nif.Basic do
     type = if Nif.needs_marshal?(nif), do: :defp, else: nif.type
 
     quote context: Elixir do
-      @spec unquote(Function.spec(function))
-
       unquote(type)(unquote(nif.entrypoint)(unquote_splicing(params))) do
         :erlang.nif_error(unquote(error_text))
       end
@@ -61,11 +59,12 @@ defmodule Zig.Nif.Basic do
   basic = Path.join(__DIR__, "../templates/basic.zig.eex")
   EEx.function_from_file(:defp, :basic, basic, [:assigns])
 
-  raw_zig = Path.join(__DIR__, "../templates/raw_zig.zig.eex")
-  EEx.function_from_file(:defp, :raw_zig, raw_zig, [:assigns])
+  basic_raw = Path.join(__DIR__, "../templates/basic_raw.zig.eex")
+  EEx.function_from_file(:defp, :basic_raw, basic_raw, [:assigns])
 
-  def render_zig_code(%Nif{function: function = %{raw: :zig}}), do: raw_zig(function)
-  def render_zig_code(%Nif{function: function}), do: basic(function)
+  # there may be a "raw C" functionality implemented later.
+  def render_zig(%Nif{function: function = %{raw: :zig}}), do: basic_raw(function)
+  def render_zig(%Nif{function: function}), do: basic(function)
 
   def set_entrypoint(nif = %{function: %{name: name}}) do
     entrypoint = if Nif.needs_marshal?(nif), do: :"marshalled-#{name}", else: name
