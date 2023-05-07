@@ -10,15 +10,33 @@ defmodule Zig.Nif.Basic do
   To understand wrapping logic, see `Zig.Nif.Marshaller`
   """
 
+  alias Zig.ErrorProng
   alias Zig.Nif
   alias Zig.Type
   alias Zig.Type.Function
 
   import Zig.QuoteErl
 
-  defp needs_marshal?(nif), do: false
+  # marshalling setup
+
+  defp needs_marshal?(nif) do
+    Enum.any?(nif.type.params, &Type.marshals_param?/1)
+    or Type.marshals_return?(nif.type.return)
+    or error_prongs(nif) !== []
+  end
+
+  defp error_prongs(nif) do
+    nif.type.params
+    |> Enum.map(&Type.error_prongs(&1, :argument))
+    |> List.insert_at(0, Type.error_prongs(nif.type.return, :return))
+    |> List.flatten
+  end
 
   defp marshal_name(nif), do: :"marshalled-#{nif.type.name}"
+
+  def entrypoint(nif) do
+    if needs_marshal?(nif), do: marshal_name(nif), else: nif.type.name
+  end
 
   def render_elixir(nif = %{type: type}) do
     params =
@@ -32,10 +50,19 @@ defmodule Zig.Nif.Basic do
     def_or_defp = if nif.export, do: :def, else: :defp
 
     if needs_marshal?(nif) do
-      quote do
-        unquote(render_marshal_elixir(nif))
+      marshal_name = marshal_name(nif)
+      error_prongs = nif
+      |> error_prongs()
+      |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir]))
 
-        defp unquote(marshal_name(nif))(unquote_splicing(params)) do
+      quote do
+        unquote(def_or_defp)(unquote(type.name)(unquote_splicing(params))) do
+          unquote(marshal_name)(unquote_splicing(params))
+        catch
+          unquote(error_prongs)
+        end
+
+        defp unquote(marshal_name)(unquote_splicing(params)) do
           :erlang.nif_error(unquote(error_text))
         end
       end
@@ -48,33 +75,46 @@ defmodule Zig.Nif.Basic do
     end
   end
 
-  def render_erlang(nif = %{function: function}) do
+  def render_erlang(nif = %{type: type}) do
     vars =
-      case function.arity do
+      case type.arity do
         0 -> []
         n -> Enum.map(1..n, &{:var, :"_X#{&1}"})
       end
 
-    error_text = ~c'nif for function #{nif.entrypoint}/#{function.arity} not bound'
+    error_text = ~c'nif for function #{nif.entrypoint}/#{type.arity} not bound'
 
-    quote_erl(
-      """
-      unquote(function_name)(unquote(...vars)) ->
-        erlang:nif_error(unquote(error_text)).
-      """,
-      function_name: nif.entrypoint,
-      vars: vars,
-      error_text: error_text
-    )
-  end
+    if needs_marshal?(nif) do
+      error_prongs = []
 
-  defp render_marshal_elixir(_) do
-    quote do
+      quote_erl(
+        """
+        unquote(function_name)(unquote(...vars)) ->
+          try unquote(marshal_name)(unquote(...vars)) of
+          catch
+            unquote(...error_prongs)
+          end.
+
+        unquote(marshal_name)(unquote(...vars)) ->
+          erlang:nif_error(unquote(error_text)).
+        """,
+        function_name: nif.entrypoint,
+        vars: vars,
+        marshal_name: marshal_name(nif),
+        error_text: error_text,
+        error_prongs: error_prongs
+      )
+    else
+      quote_erl(
+        """
+        unquote(function_name)(unquote(...vars)) ->
+          erlang:nif_error(unquote(error_text)).
+        """,
+        function_name: nif.type.name,
+        vars: vars,
+        error_text: error_text
+      )
     end
-  end
-
-  defp render_marshal_erlang(_) do
-    quote_erl("", [])
   end
 
   require EEx
@@ -89,9 +129,4 @@ defmodule Zig.Nif.Basic do
   # note a raw "c" function does not need to have any changes made.
   def render_zig(nif = %{raw: :c}), do: ""
   def render_zig(nif), do: basic(nif)
-
-  def set_entrypoint(nif = %{function: %{name: name}}) do
-    entrypoint = if Nif.needs_marshal?(nif), do: :"marshalled-#{name}", else: name
-    %{nif | entrypoint: entrypoint}
-  end
 end

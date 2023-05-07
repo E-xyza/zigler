@@ -1,4 +1,4 @@
-#defmodule ZiglerTest.EasyC.BlasTest do
+# defmodule ZiglerTest.EasyC.BlasTest do
 #  use ZiglerTest.IntegrationCase, async: true
 #
 #  use Zig,
@@ -52,5 +52,5 @@
 #               daxpy_bin(3, 3.0, [1.0, 2.0, 3.0], 1, [4.0, 5.0, 6.0], 1)
 #    end
 #  end
-#end
+# end
 #

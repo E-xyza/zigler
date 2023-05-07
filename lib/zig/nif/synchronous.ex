@@ -1,6 +1,7 @@
 defmodule Zig.Nif.Synchronous do
   @behaviour Zig.Nif.Concurrency
 
+  alias Zig.Nif
   alias Zig.Nif.Basic
 
   @impl true
@@ -14,6 +15,6 @@ defmodule Zig.Nif.Synchronous do
 
   @impl true
   def table_entries(nif) do
-    [{nif.type.name, nif.type.arity, :synchronous}]
+    [{Basic.entrypoint(nif), nif.type.arity, :synchronous}]
   end
 end

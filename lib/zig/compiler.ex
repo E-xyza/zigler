@@ -264,8 +264,7 @@ defmodule Zig.Compiler do
       {:const, %{pub: false, position: const_position}, _} ->
         {:fn, fn_opts, _} = Analyzer.info_for(parsed, Atom.to_string(function_name))
 
-        {fn_file, fn_line} =
-          Analyzer.translate_location(parsed, file, fn_opts.position.line)
+        {fn_file, fn_line} = Analyzer.translate_location(parsed, file, fn_opts.position.line)
 
         {st_file, st_line} = Analyzer.translate_location(parsed, file, const_position.line)
 

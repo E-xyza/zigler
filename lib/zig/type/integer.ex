@@ -52,119 +52,122 @@ defmodule Zig.Type.Integer do
     concat(["~t(", to_string(type), ")"])
   end
 
-  def marshal_param(type = %{signedness: :unsigned, bits: bits}, _) when bits > 64 do
-    size = _next_power_of_two_ceil(bits)
-    max = typemax(type)
+  def marshals_param?(_), do: true
+  def marshals_return?(_), do: true
 
-    fn arg, index ->
-      quote bind_quoted: [arg: arg, size: size, index: index, max: max, name: to_string(type)] do
-        unless is_integer(arg),
-          do:
-            :erlang.error(
-              {:argument_error, index,
-               [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}]}
-            )
-
-        unless arg >= 0,
-          do:
-            :erlang.error(
-              {:argument_error, index,
-               [
-                 {"expected: integer (for `#{name}`)"},
-                 {"got: `#{inspect(arg)}`"},
-                 {"note: out of bounds (0..#{max})"}
-               ]}
-            )
-
-        unless arg <= max,
-          do:
-            :erlang.error(
-              {:argument_error, index,
-               [
-                 {"expected: integer (for `#{name}`)"},
-                 {"got: `#{inspect(arg)}`"},
-                 {"note: out of bounds (0..#{max})"}
-               ]}
-            )
-
-        <<arg::unsigned-integer-size(size)-native>>
-      end
-    end
-  end
-
-  def marshal_param(type = %{signedness: :signed, bits: bits}, _) when bits > 64 do
-    size = _next_power_of_two_ceil(bits)
-    max = typemax(type)
-    min = typemin(type)
-
-    fn arg, index ->
-      quote bind_quoted: [
-              arg: arg,
-              size: size,
-              index: index,
-              min: min,
-              max: max,
-              name: to_string(type)
-            ] do
-        unless is_integer(arg),
-          do:
-            :erlang.error(
-              {:argument_error, index,
-               [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}]}
-            )
-
-        unless arg >= min,
-          do:
-            :erlang.error(
-              {:argument_error, index,
-               [
-                 {"expected: integer (for `#{name}`)"},
-                 {"got: `#{inspect(arg)}`"},
-                 {"note: out of bounds (#{min}..#{max})"}
-               ]}
-            )
-
-        unless arg <= max,
-          do:
-            :erlang.error(
-              {:argument_error, index,
-               [
-                 {"expected: integer (for `#{name}`)"},
-                 {"got: `#{inspect(arg)}`"},
-                 {"note: out of bounds (#{min}..#{max})"}
-               ]}
-            )
-
-        <<arg::signed-integer-size(size)-native>>
-      end
-    end
-  end
-
-  def marshal_param(_, _), do: nil
-
-  def marshal_return(%{signedness: :unsigned, bits: bits}, _) when bits > 64 do
-    size = _next_power_of_two_ceil(bits)
-
-    fn arg ->
-      quote bind_quoted: [arg: arg, size: size] do
-        <<result::unsigned-integer-size(size)-native>> = arg
-        result
-      end
-    end
-  end
-
-  def marshal_return(%{signedness: :signed, bits: bits}, _) when bits > 64 do
-    size = _next_power_of_two_ceil(bits)
-
-    fn arg ->
-      quote bind_quoted: [arg: arg, size: size] do
-        <<result::signed-integer-size(size)-native>> = arg
-        result
-      end
-    end
-  end
-
-  def marshal_return(_, _), do: nil
+#  def marshal_param(type = %{signedness: :unsigned, bits: bits}, _) when bits > 64 do
+#    size = _next_power_of_two_ceil(bits)
+#    max = typemax(type)
+#
+#    fn arg, index ->
+#      quote bind_quoted: [arg: arg, size: size, index: index, max: max, name: to_string(type)] do
+#        unless is_integer(arg),
+#          do:
+#            :erlang.error(
+#              {:argument_error, index,
+#               [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}]}
+#            )
+#
+#        unless arg >= 0,
+#          do:
+#            :erlang.error(
+#              {:argument_error, index,
+#               [
+#                 {"expected: integer (for `#{name}`)"},
+#                 {"got: `#{inspect(arg)}`"},
+#                 {"note: out of bounds (0..#{max})"}
+#               ]}
+#            )
+#
+#        unless arg <= max,
+#          do:
+#            :erlang.error(
+#              {:argument_error, index,
+#               [
+#                 {"expected: integer (for `#{name}`)"},
+#                 {"got: `#{inspect(arg)}`"},
+#                 {"note: out of bounds (0..#{max})"}
+#               ]}
+#            )
+#
+#        <<arg::unsigned-integer-size(size)-native>>
+#      end
+#    end
+#  end
+#
+#  def marshal_param(type = %{signedness: :signed, bits: bits}, _) when bits > 64 do
+#    size = _next_power_of_two_ceil(bits)
+#    max = typemax(type)
+#    min = typemin(type)
+#
+#    fn arg, index ->
+#      quote bind_quoted: [
+#              arg: arg,
+#              size: size,
+#              index: index,
+#              min: min,
+#              max: max,
+#              name: to_string(type)
+#            ] do
+#        unless is_integer(arg),
+#          do:
+#            :erlang.error(
+#              {:argument_error, index,
+#               [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(arg)}`"}]}
+#            )
+#
+#        unless arg >= min,
+#          do:
+#            :erlang.error(
+#              {:argument_error, index,
+#               [
+#                 {"expected: integer (for `#{name}`)"},
+#                 {"got: `#{inspect(arg)}`"},
+#                 {"note: out of bounds (#{min}..#{max})"}
+#               ]}
+#            )
+#
+#        unless arg <= max,
+#          do:
+#            :erlang.error(
+#              {:argument_error, index,
+#               [
+#                 {"expected: integer (for `#{name}`)"},
+#                 {"got: `#{inspect(arg)}`"},
+#                 {"note: out of bounds (#{min}..#{max})"}
+#               ]}
+#            )
+#
+#        <<arg::signed-integer-size(size)-native>>
+#      end
+#    end
+#  end
+#
+#  def marshal_param(_, _), do: nil
+#
+#  def marshal_return(%{signedness: :unsigned, bits: bits}, _) when bits > 64 do
+#    size = _next_power_of_two_ceil(bits)
+#
+#    fn arg ->
+#      quote bind_quoted: [arg: arg, size: size] do
+#        <<result::unsigned-integer-size(size)-native>> = arg
+#        result
+#      end
+#    end
+#  end
+#
+#  def marshal_return(%{signedness: :signed, bits: bits}, _) when bits > 64 do
+#    size = _next_power_of_two_ceil(bits)
+#
+#    fn arg ->
+#      quote bind_quoted: [arg: arg, size: size] do
+#        <<result::signed-integer-size(size)-native>> = arg
+#        result
+#      end
+#    end
+#  end
+#
+#  def marshal_return(_, _), do: nil
 
   def _next_power_of_two_ceil(bits), do: _next_power_of_two_ceil(bits, 1, true)
 

@@ -184,7 +184,7 @@ defmodule Zig.Nif do
     |> Enum.map(fn
       {function, arity, concurrency} ->
         flags = Map.fetch!(@flags, concurrency)
-        ~s(.{.name="#{function}", .arity=#{arity}, .fptr=#{function}, .flags=#{flags}})
+        ~s(.{.name="#{function}", .arity=#{arity}, .fptr=#{nif.type.name}, .flags=#{flags}})
     end)
   end
 

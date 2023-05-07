@@ -19,5 +19,7 @@ defmodule Zig.Type.Error do
     Type.spec(child, context, opts)
   end
 
+  def error_prongs(_, :return), do: :error_return_prong
+
   def of(child), do: %__MODULE__{child: child}
 end

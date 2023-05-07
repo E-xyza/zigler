@@ -14,17 +14,17 @@ defprotocol Zig.Type do
   @type t ::
           Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :pid | :port | :term
 
-  @spec marshal_param(t, keyword) :: (Macro.t(), index :: non_neg_integer -> Macro.t()) | nil
-  @doc "elixir-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
-  def marshal_param(type, opts)
+  @spec marshals_param?(t) :: boolean
+  @doc "beam-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
+  def marshals_param?(type)
 
-  @spec marshal_return(t, keyword) :: (Macro.t() -> Macro.t()) | nil
-  @doc "elixir-side type conversions that might be necessary to get a zig return into an elixir return"
-  def marshal_return(type, opts)
+  @spec marshals_return?(t) :: boolean
+  @doc "beam-side type conversions that might be necessary to get a zig return into an elixir return"
+  def marshals_return?(type)
 
-  @doc "generates clauses to trap errors and convert them to expected errors"
-  @spec param_errors(t, keyword) :: (integer -> [Macro.t()]) | nil
-  def param_errors(type, opts)
+  @doc "catch prongs to correctly perform error handling, atom is a reference to function in `Zig.ErrorProng`"
+  @spec error_prongs(t, :argument | :return) :: [atom]
+  def error_prongs(type, context)
 
   @doc "generates make clauses in zig"
   @spec get_result(t, keyword) :: String.t()
@@ -196,73 +196,11 @@ defprotocol Zig.Type do
     quote bind_quoted: [inspect?: inspect?, module: module] do
       import Kernel, except: [to_string: 1]
 
-      def marshal_param(_, _), do: nil
-      def marshal_return(_, _), do: nil
+      def marshals_param?(_), do: false
+      def marshals_return?(_), do: false
 
-      # default parameter errors handling.
-      # TODO: simplify this!!
-      def param_errors(type, _opts) do
-        typename = "#{type}"
-
-        fn index ->
-          [
-            {quote do
-               {:argument_error, unquote(index), error_lines}
-             end,
-             quote do
-               case __STACKTRACE__ do
-                 [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
-                   indentation = &["\n     ", List.duplicate("| ", &1)]
-
-                   new_opts =
-                     Keyword.merge(opts,
-                       error_info: %{module: __MODULE__, function: :_format_error},
-                       zigler_error: %{
-                         unquote(index + 1) =>
-                           error_lines
-                           |> Enum.reduce({[], 0}, fn
-                             :enter, {so_far, indents} ->
-                               {so_far, indents + 1}
-
-                             error_line, {so_far, indents} ->
-                               error_msg =
-                                 error_line
-                                 |> Tuple.to_list()
-                                 |> Enum.map(fn
-                                   list when is_list(list) ->
-                                     list
-
-                                   string when is_binary(string) ->
-                                     string
-
-                                   {:inspect, content} ->
-                                     "#{inspect(content)}"
-
-                                   {:typename, typename} ->
-                                     String.replace(typename, ".#{__MODULE__}.", "")
-                                 end)
-                                 |> List.wrap()
-                                 |> List.insert_at(0, indentation.(indents))
-
-                               {[error_msg | so_far], indents}
-                           end)
-                           |> elem(0)
-                           |> Enum.reverse()
-                           |> List.insert_at(0, "\n")
-                           |> IO.iodata_to_binary()
-                       }
-                     )
-
-                   :erlang.raise(:error, :badarg, [{m, f, a, new_opts} | rest])
-
-                 stacktrace ->
-                   # no available stacktrace info
-                   :erlang.raise(:error, :badarg, stacktrace)
-               end
-             end}
-          ]
-        end
-      end
+      def error_prongs(_, :argument), do: [:argument_error_prong]
+      def error_prongs(_, :return), do: []
 
       def get_result(type, opts) do
         return_type = Keyword.fetch!(opts, :type)
@@ -273,9 +211,9 @@ defprotocol Zig.Type do
       def missing_size?(_), do: false
 
       defoverridable get_result: 2,
-                     marshal_param: 2,
-                     marshal_return: 2,
-                     param_errors: 2,
+                     marshals_param?: 1,
+                     marshals_return?: 1,
+                     error_prongs: 2,
                      needs_make?: 1,
                      missing_size?: 1
 
@@ -294,9 +232,10 @@ defprotocol Zig.Type do
       end
 
       defimpl Zig.Type do
-        defdelegate marshal_param(type, opts), to: module
-        defdelegate marshal_return(type, opts), to: module
-        defdelegate param_errors(type, opts), to: module
+        defdelegate marshals_param?(type), to: module
+        defdelegate marshals_return?(type), to: module
+        defdelegate error_prongs(type, context), to: module
+
         defdelegate to_call(type), to: module
         defdelegate return_allowed?(type), to: module
         defdelegate get_result(type, opts), to: module
@@ -310,9 +249,11 @@ defprotocol Zig.Type do
 end
 
 defimpl Zig.Type, for: Atom do
-  def marshal_param(_, _), do: nil
-  def marshal_return(_, _), do: nil
-  def param_errors(_, _), do: nil
+  def marshals_param?(_), do: false
+  def marshals_return?(_), do: false
+
+  def error_prongs(type, :argument), do: List.wrap(if type in ~w(pid port)a, do: :argument_error_prong)
+  def error_prongs(type, _), do: []
 
   def to_call(:erl_nif_term), do: "e.ErlNifTerm"
   def to_call(:term), do: "beam.term"
