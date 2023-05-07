@@ -198,12 +198,12 @@ defmodule Zig.Nif do
     |> Enum.at(@index_of[at])
   end
 
-  def validate_return!(function) do
+  def validate_return!(function, file, line) do
     unless Type.return_allowed?(function.return) do
       raise CompileError,
         description: "functions returning #{function.return} are not allowed",
-        file: function.file,
-        line: function.line
+        file: Path.relative_to_cwd(file),
+        line: line
     end
   end
 

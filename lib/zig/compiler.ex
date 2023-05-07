@@ -100,14 +100,13 @@ defmodule Zig.Compiler do
   end
 
   defp precompile(sema_functions, parsed_code, module, directory, opts) do
-    verify_soundness!(sema_functions, opts)
-
     render_fn = Keyword.fetch!(opts, :render)
 
     nif_functions =
       sema_functions
       |> Zig.Module.nifs_from_sema(Keyword.fetch!(opts, :nifs))
       |> assign_positions(parsed_code, opts)
+      |> verify_soundness!(Keyword.fetch!(opts, :parsed))
 
     function_code = Enum.map(nif_functions, &apply(Nif, render_fn, [&1]))
 
@@ -245,34 +244,33 @@ defmodule Zig.Compiler do
     |> Path.join(".zigler_compiler/#{env}/#{module}")
   end
 
-  defp verify_soundness!(sema, opts) do
-    Enum.each(sema, fn {_name, function} ->
-      raise_if_uses_private_struct!(function, opts)
-      Nif.validate_return!(function)
+  defp verify_soundness!(nif_functions, parsed) do
+    Enum.map(nif_functions, fn fun = %{type: type} ->
+      raise_if_uses_private_struct!(type, fun.file, parsed)
+      Nif.validate_return!(type, fun.file, fun.line)
+      fun
     end)
   end
 
   # verifies that none of the structs returned are private.
-  defp raise_if_uses_private_struct!(function = %{name: name}, opts) do
-    Enum.each(function.params, &raise_if_private_struct!(&1, name, "accepts", opts))
-    raise_if_private_struct!(function.return, name, "returns", opts)
+  defp raise_if_uses_private_struct!(function = %{name: name}, file, parsed) do
+    Enum.each(function.params, &raise_if_private_struct!(&1, file, name, "accepts", parsed))
+    raise_if_private_struct!(function.return, file, name, "returns", parsed)
     function
   end
 
-  defp raise_if_private_struct!(%Struct{name: name}, function_name, verb, opts) do
-    parsed = Keyword.fetch!(opts, :parsed)
-
+  defp raise_if_private_struct!(%Struct{name: name}, file, function_name, verb, parsed) do
     case Analyzer.info_for(parsed, name) do
       {:const, %{pub: false, position: const_position}, _} ->
         {:fn, fn_opts, _} = Analyzer.info_for(parsed, Atom.to_string(function_name))
 
         {fn_file, fn_line} =
-          Analyzer.translate_location(parsed, opts[:file], fn_opts.position.line)
+          Analyzer.translate_location(parsed, file, fn_opts.position.line)
 
-        {st_file, st_line} = Analyzer.translate_location(parsed, opts[:file], const_position.line)
+        {st_file, st_line} = Analyzer.translate_location(parsed, file, const_position.line)
 
         raise CompileError,
-          file: fn_file,
+          file: Path.relative_to_cwd(fn_file),
           line: fn_line,
           description:
             "the function `#{function_name}` #{verb} the struct `#{name}` which is not public (defined at #{st_file}:#{st_line})"
@@ -282,5 +280,5 @@ defmodule Zig.Compiler do
     end
   end
 
-  defp raise_if_private_struct!(_, _, _, _), do: :ok
+  defp raise_if_private_struct!(_, _, _, _, _), do: :ok
 end

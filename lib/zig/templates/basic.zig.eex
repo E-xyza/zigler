@@ -38,9 +38,9 @@ export fn <%= @type.name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTer
           return e.enif_raise_exception(env, beam.make(env, .{err, <%= index %>, beam.make_empty_list(env)}, .{}).v);
           <% end %>
         };
-        <%# if @opts |> Keyword.get(:args, %{}) |> Map.get(index, []) |> Keyword.get(:cleanup, true) do %>
-        //  defer beam.cleanup(arg<%# index %>, .{<%# if needs_size? do %>.size = size<%# index %>,<%# end %>});
-        <%# end %>
+        <%= if !@args || (@args |> Enum.at(index) |> Keyword.get(:cleanup, true)) do %>
+          defer beam.cleanup(arg<%= index %>, .{<%= if needs_size? do %>.size = size<%= index %>,<% end %>});
+        <% end %>
         <% end %>
         <%= case @type.params do %>
           <% [] -> %> _ = arg;

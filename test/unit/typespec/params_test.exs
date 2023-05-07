@@ -10,11 +10,12 @@ defmodule ZiglerTest.Unit.Typespec.ParamsTest do
   alias Zig.Type.Function
   alias Zig.Type.Slice
   alias Zig.Type.Struct
+  alias ZiglerTest.Spec
 
   import Type, only: :macros
 
   def make_spec(type) do
-    Function.spec(%Function{name: :params_test, arity: 1, params: [type], return: :void})
+    Spec.for(%Function{name: :params_test, arity: 1, params: [type], return: :void})
   end
 
   describe "when asking for a typespec return for basic types" do

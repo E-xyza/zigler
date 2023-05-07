@@ -71,7 +71,8 @@ defmodule ZiglerTest.Types.ManypointerTest do
         try do
           Code.compile_file("_manypointer_forbidden_output.exs", __DIR__)
         rescue
-          e -> e
+          e ->
+            e
         end
 
       assert %CompileError{

@@ -32,7 +32,7 @@ defmodule Zig.Type.Slice do
   # TYPE SPEC STUFF
 
   def spec(%{child: ~t(u8)}, :return, opts) do
-    if Keyword.fetch!(opts, :type) == :charlist,
+    if Keyword.fetch!(opts, :type) == :list,
       do: [Type.spec(~t(u8), :return, opts)],
       else: binary_form(~t(u8))
   end

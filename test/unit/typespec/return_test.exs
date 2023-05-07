@@ -205,7 +205,7 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
           return_test() :: [0..255]
         end
 
-      assert make_spec(~t([]u8), type: :charlist) == result
+      assert make_spec(~t([]u8), type: :list) == result
     end
 
     test "a int-slice returning function is list of integer" do
@@ -268,7 +268,7 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
           return_test() :: [0..255]
         end
 
-      assert make_spec(~t([*:0]u8), type: :charlist) == result
+      assert make_spec(~t([*:0]u8), type: :list) == result
     end
 
     test "array with u8 defaults to binary" do
@@ -286,7 +286,7 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
           return_test() :: [0..255]
         end
 
-      assert make_spec(~t([10]u8), type: :charlist) == result
+      assert make_spec(~t([10]u8), type: :list) == result
     end
 
     test "array with int defaults to list of integer" do
@@ -349,7 +349,7 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
           return_test() :: [0..255]
         end
 
-      assert make_spec(~t([*c]u8), type: :charlist) == result
+      assert make_spec(~t([*c]u8), type: :list) == result
     end
 
     test "c pointer pointer of u8 is assumed to be a null terminated list of strings" do

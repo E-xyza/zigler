@@ -3,6 +3,7 @@ defmodule ZiglerTest.Sema.FunctionTest do
 
   use Zig, otp_app: :zigler, precompile: false
 
+  alias Zig.Nif
   alias Zig.Type
   alias Zig.Sema
 
@@ -11,8 +12,8 @@ defmodule ZiglerTest.Sema.FunctionTest do
   setup_all do
     sema_map =
       __MODULE__
-      |> Sema.analyze_file!(nifs: {:auto, []})
-      |> Map.new(&{&1.name, &1})
+      |> Sema.analyze_file!(nifs: {:auto, []}, default_options: Nif.default_options())
+      |> elem(0)
 
     {:ok, sema_map}
   end
