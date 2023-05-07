@@ -9,17 +9,20 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
   alias Zig.Type.Function
   alias Zig.Type.Slice
   alias Zig.Type.Struct
+  alias ZiglerTest.Spec
 
   import Type, only: :macros
 
   def make_spec(type, opts \\ [type: :default]) do
-    Function.spec(%Function{
-      name: :return_test,
-      arity: 0,
-      params: [],
-      return: type,
-      opts: [return: opts]
-    })
+    Spec.for(
+      %Function{
+        name: :return_test,
+        arity: 0,
+        params: [],
+        return: type
+      },
+      return: opts
+    )
   end
 
   describe "when asking for a typespec return for basic types" do
@@ -472,13 +475,15 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
           return_test([0..255] | binary() | nil) :: <<_::16>>
         end
 
-      assert Function.spec(%Function{
-               name: :return_test,
-               arity: 0,
-               params: [~t([*c]u8)],
-               return: :void,
-               opts: [return: [type: :default, length: 2, arg: 0]]
-             }) == result
+      assert Spec.for(
+               %Function{
+                 name: :return_test,
+                 arity: 0,
+                 params: [~t([*c]u8)],
+                 return: :void
+               },
+               return: [type: :default, length: 2, arg: 0]
+             ) == result
     end
 
     test "it works when the length is not specified" do
@@ -487,13 +492,15 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
           return_test([0..255] | binary() | nil) :: binary()
         end
 
-      assert Function.spec(%Function{
-               name: :return_test,
-               arity: 0,
-               params: [~t([*c]u8)],
-               return: :void,
-               opts: [return: [type: :default, arg: 0]]
-             }) == result
+      assert Spec.for(
+               %Function{
+                 name: :return_test,
+                 arity: 0,
+                 params: [~t([*c]u8)],
+                 return: :void
+               },
+               return: [type: :default, arg: 0]
+             ) == result
     end
   end
 end

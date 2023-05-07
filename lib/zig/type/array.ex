@@ -39,7 +39,7 @@ defmodule Zig.Type.Array do
   def spec(type = %{child: ~t(u8)}, :return, opts) do
     # u8 defaults to binary
     case Keyword.fetch!(opts, :type) do
-      :charlist ->
+      :list ->
         [Type.spec(~t(u8), :return, opts)]
 
       t when t in ~w(default binary)a ->
@@ -55,7 +55,7 @@ defmodule Zig.Type.Array do
       :binary when not is_nil(binary_form) ->
         binary_form
 
-      other when other in ~w(default binary charlist)a ->
+      other when other in ~w(default binary list)a ->
         [Type.spec(child, :return, opts)]
     end
   end

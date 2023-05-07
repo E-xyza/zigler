@@ -1,11 +1,11 @@
 defmodule ZiglerTest.Types.SliceTest do
-  use ExUnit.Case, async: true
+  use ZiglerTest.IntegrationCase, async: true
 
   use Zig,
     otp_app: :zigler,
     leak_check: true,
     nifs: [
-      {:slice_u8_test, return: :charlist},
+      {:slice_u8_test, return: :list},
       ...
     ]
 

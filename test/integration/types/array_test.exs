@@ -1,13 +1,13 @@
 defmodule ZiglerTest.Types.ArrayTest do
-  use ExUnit.Case, async: true
+  use ZiglerTest.IntegrationCase, async: true
 
   use Zig,
     otp_app: :zigler,
     leak_check: true,
     nifs: [
       {:array_float_binary_test, return: :binary},
-      {:array_u8_test, return: :charlist},
-      {:mut_array_u8_test, return: :charlist},
+      {:array_u8_test, return: :list},
+      {:mut_array_u8_test, return: :list},
       {:fastlane_beam_term_ptr_test, return: :noclean},
       {:fastlane_erl_nif_term_ptr_test, return: :noclean},
       ...

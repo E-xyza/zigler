@@ -3,9 +3,11 @@ defmodule ZiglerTest.Unit.Typespec.RawTest do
 
   @moduletag :typespec
 
+  alias Zig.Nif
   alias Zig.Type
   alias Zig.Type.Function
   alias Zig.Type.Manypointer
+  alias ZiglerTest.Spec
 
   import Type, only: :macros
 
@@ -16,17 +18,19 @@ defmodule ZiglerTest.Unit.Typespec.RawTest do
           raw_test(term(), term()) :: term()
         end
 
-      assert Function.spec(%Function{
-               name: :raw_test,
-               arity: 2,
-               params: [
-                 :env,
-                 ~t(i32),
-                 %Manypointer{child: :term}
-               ],
-               return: :term,
-               opts: [raw: true, return: :default]
-             }) == result
+      assert Spec.for(
+               %Function{
+                 name: :raw_test,
+                 arity: 2,
+                 params: [
+                   :env,
+                   ~t(i32),
+                   %Manypointer{child: :term}
+                 ],
+                 return: :term
+               },
+               raw: :zig
+             ) == result
     end
   end
 end

@@ -1,5 +1,5 @@
 defmodule ZiglerTest.Types.IntegerTest do
-  use ExUnit.Case, async: true
+  use ZiglerTest.IntegrationCase, async: true
 
   @sizes [7, 8, 32, 48, 64]
 

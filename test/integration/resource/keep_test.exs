@@ -1,5 +1,5 @@
 defmodule ZiglerTest.Resource.KeepTest do
-  use ExUnit.Case, async: true
+  use ZiglerTest.IntegrationCase, async: true
 
   use Zig, otp_app: :zigler, resources: [:PidResource]
 

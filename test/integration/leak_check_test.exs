@@ -1,5 +1,5 @@
 defmodule ZiglerTest.LeakCheckTest do
-  use ExUnit.Case
+  use ZiglerTest.IntegrationCase, async: true
 
   use Zig,
     otp_app: :zigler,

@@ -53,7 +53,7 @@ defmodule Zig.Type.Cpointer do
   def spec(%{child: ~t(u8)}, :return, opts) do
     # assumed to be a null-terminated string
     case {opts[:length], Keyword.fetch!(opts, :type)} do
-      {_, :charlist} ->
+      {_, :list} ->
         quote context: Elixir do
           [0..255]
         end

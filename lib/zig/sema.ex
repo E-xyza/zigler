@@ -76,10 +76,10 @@ defmodule Zig.Sema do
         found_function
 
       integer when is_integer(integer) ->
-        %{found_function | args: List.duplicate(:term, integer), arity: integer}
+        %{found_function | params: List.duplicate(:term, integer), arity: integer}
 
       {:c, integer} when is_integer(integer) ->
-        %{found_function | args: List.duplicate(:erl_nif_term, integer), arity: integer}
+        %{found_function | params: List.duplicate(:erl_nif_term, integer), arity: integer}
     end
   end
 end

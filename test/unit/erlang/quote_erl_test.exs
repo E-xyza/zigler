@@ -1,4 +1,4 @@
-defmodule ZiglerTest.QuoteErlTest do
+defmodule ZiglerTest.Erlang.QuoteErlTest do
   use ExUnit.Case, async: true
   import Zig.QuoteErl
 

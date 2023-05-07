@@ -54,7 +54,7 @@ export fn <%= @type.name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTer
 
     <%= if @leak_check do %>
     if (alloc_instance.detectLeaks()) {
-        return beam.raise_elixir_exception(env, "RuntimeError", .{.message = "memory leak detected in function <%= inspect @name %>"}).v;
+        return beam.raise_elixir_exception(env, "RuntimeError", .{.message = "memory leak detected in function <%= inspect @type.name %>"}).v;
     }
     <% end %>
     return outer_result;

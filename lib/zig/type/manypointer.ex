@@ -35,7 +35,7 @@ defmodule Zig.Type.Manypointer do
   # only manypointers of [*:0]u8 are allowed to be returned.
   def spec(%{child: ~t(u8), has_sentinel?: true}, :return, opts) do
     case Keyword.fetch!(opts, :type) do
-      :charlist ->
+      :list ->
         [Type.spec(~t(u8), :return, opts)]
 
       type when type in ~w(default binary)a ->

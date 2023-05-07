@@ -1,12 +1,12 @@
 defmodule ZiglerTest.Types.ManypointerTest do
-  use ExUnit.Case, async: true
+  use ZiglerTest.IntegrationCase, async: true
 
   use Zig,
     otp_app: :zigler,
     leak_check: true,
     nifs: [
-      {:manypointer_u8_test, return: :charlist},
-      {:sentinel_terminated_u8_list_return_test, return: :charlist},
+      {:manypointer_u8_test, return: :list},
+      {:sentinel_terminated_u8_list_return_test, return: :list},
       ...
     ]
 

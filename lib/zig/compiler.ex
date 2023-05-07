@@ -82,7 +82,8 @@ defmodule Zig.Compiler do
          parsed_code = Zig.Parser.parse(base_code),
          manifest = Manifest.create(parsed_code),
          {sema_functions, new_nif_opts} = Sema.analyze_file!(module, opts),
-         new_opts = Keyword.merge(opts, nifs: new_nif_opts, manifest: manifest),
+         new_opts =
+           Keyword.merge(opts, nifs: new_nif_opts, manifest: manifest, parsed: parsed_code),
          function_code =
            precompile(sema_functions, parsed_code, module, assembly_directory, new_opts),
          {true, _} <- {compiled, new_opts} do
@@ -108,8 +109,7 @@ defmodule Zig.Compiler do
       |> Zig.Module.nifs_from_sema(Keyword.fetch!(opts, :nifs))
       |> assign_positions(parsed_code, opts)
 
-    function_code =
-      Enum.map(nif_functions, &apply(Nif, render_fn, [&1]))
+    function_code = Enum.map(nif_functions, &apply(Nif, render_fn, [&1]))
 
     nif_src_path = Path.join(directory, "nif.zig")
 
@@ -260,7 +260,7 @@ defmodule Zig.Compiler do
   end
 
   defp raise_if_private_struct!(%Struct{name: name}, function_name, verb, opts) do
-    parsed = opts[:parsed]
+    parsed = Keyword.fetch!(opts, :parsed)
 
     case Analyzer.info_for(parsed, name) do
       {:const, %{pub: false, position: const_position}, _} ->

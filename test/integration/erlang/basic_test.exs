@@ -1,5 +1,5 @@
-defmodule ZiglerTest.ErlangTest do
-  use ExUnit.Case, async: true
+defmodule ZiglerTest.Erlang.BasicTest do
+  use ZiglerTest.IntegrationCase, async: true
 
   @test_file to_charlist(Path.join(__DIR__, "src/test_zigler_erlang"))
 

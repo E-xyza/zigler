@@ -1,11 +1,11 @@
 defmodule ZiglerTest.Types.CPointerTest do
-  use ExUnit.Case, async: true
+  use ZiglerTest.IntegrationCase, async: true
 
   use Zig,
     otp_app: :zigler,
     leak_check: true,
     nifs: [
-      {:cpointer_u8_list_return_test, return: :charlist},
+      {:cpointer_u8_list_return_test, return: :list},
       ...
     ]
 

@@ -5,7 +5,7 @@ const resource = beam.resource;
 
 const OutputType = enum {
     default,
-    charlist,
+    list,
     binary,
     fn select(opts: anytype) OutputType {
         if (@hasField(@TypeOf(opts), "output_type")) {
@@ -225,7 +225,7 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype, 
     const Child = array_info.child;
     const output_type = OutputType.select(opts);
 
-    if (Child == u8 and output_type != .charlist) {
+    if (Child == u8 and output_type != .list) {
         // u8 arrays are by default marshalled into binaries.
         return make_binary(env, array_ptr[0..]);
     }
@@ -296,7 +296,7 @@ pub fn make_cpointer(env: beam.env, cpointer: anytype, comptime opts: anytype) b
 pub fn make_slice(env: beam.env, slice: anytype, comptime opts: anytype) beam.term {
     const output_type = OutputType.select(opts);
     // u8 slices default to binary and must be opt-in to get charlists out.
-    if (@TypeOf(slice) == []u8 and output_type != .charlist) {
+    if (@TypeOf(slice) == []u8 and output_type != .list) {
         return make_binary(env, slice);
     }
 

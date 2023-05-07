@@ -277,21 +277,11 @@ defmodule Zig.Nif do
     updated_opts =
       default_options()
       |> Keyword.merge(common_options)
-      |> Keyword.merge(substitute_atoms(opts))
+      |> Keyword.merge(Enum.map(opts, &normalize_option!/1))
 
     {function_name, updated_opts}
   end
 
-  defp substitute_atoms(opts) do
-    Enum.map(opts, fn
-      :leak_check -> {:leak_check, true}
-      :def -> {:export, true}
-      :defp -> {:export, false}
-      other -> other
-    end)
-  end
-
-  @concurrency_modes ~w(synchronous dirty_cpu dirty_io threaded yielding)a
   @nif_option_types %{
     concurrency: "one of `:synchronous`, `:dirty_cpu`, `:dirty_io`, `:threaded`, `:yielding`",
     leak_check: "boolean",
@@ -299,10 +289,21 @@ defmodule Zig.Nif do
     export: "boolean"
   }
 
-  # TODO: figure this out later
-  defp normalize_option!(concurrency) when concurrency in @concurrency_modes do
-    {:concurrency, concurrency}
-  end
+  @atom_options %{
+    leak_check: {:leak_check, true},
+    def: {:export, true},
+    defp: {:export, false},
+    dirty_cpu: {:concurrency, :dirty_cpu},
+    dirty_io: {:concurrency, :dirty_io},
+    synchronous: {:concurrency, :synchronous},
+    threaded: {:concurrency, :threaded},
+    yielding: {:concurrency, :yielding}
+  }
+
+  defp normalize_option!(atom) when is_map_key(@atom_options, atom),
+    do: Map.fetch!(@atom_options, atom)
+
+  defp normalize_option!(:defp), do: {}
 
   defp normalize_option!(option = {:leak_check, should_check}) when is_boolean(should_check),
     do: option
@@ -312,6 +313,10 @@ defmodule Zig.Nif do
   defp normalize_option!(option = {:export, should_export}) when is_boolean(should_export),
     do: option
 
+  defp normalize_option!(option = {:raw, integer}) when is_integer(integer), do: option
+
+  defp normalize_option!(option = {:raw, {:c, integer}}) when is_integer(integer), do: option
+
   @return_types [:list, :binary, :default]
   @return_option_types %{
     raw: "integer or `{:c, integer}`",
@@ -320,6 +325,7 @@ defmodule Zig.Nif do
     noclean: "boolean",
     length: "`integer` or `{:arg, integer}`"
   }
+
   defp normalize_option!({:return, return_opts}) do
     updated_return =
       return_opts
@@ -363,15 +369,14 @@ defmodule Zig.Nif do
         other ->
           raise CompileError, description: "unrecognized return option `#{inspect(other)}`"
       end)
+      |> Keyword.put_new(:type, :default)
 
     {:return, updated_return}
   end
 
-  defp normalize_option!(args_opts = {:args, args_opts}) do
-    args_opts
-  end
+  defp normalize_option!(args_opts = {:args, _}), do: args_opts
 
-  defp normalize_option({opt, value}) when is_map_key(@nif_option_types, opt) do
+  defp normalize_option!({opt, value}) when is_map_key(@nif_option_types, opt) do
     raise CompileError,
       description:
         "nif option :#{opt} must be #{Map.fetch!(@nif_option_types, opt)}, got: #{inspect(value)}"

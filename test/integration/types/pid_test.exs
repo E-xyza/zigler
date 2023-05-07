@@ -1,5 +1,5 @@
 defmodule ZiglerTest.Types.PidTest do
-  use ExUnit.Case, async: true
+  use ZiglerTest.IntegrationCase, async: true
 
   use Zig,
     leak_check: true,
