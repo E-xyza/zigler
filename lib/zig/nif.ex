@@ -7,9 +7,16 @@ defmodule Zig.Nif do
   stashed in the `Zig.Nif.Function` module.
   """
 
+  # nif gets an access behaviour so that it can be easily used in EEx
+  # files.
+  @behaviour Access
+
   @enforce_keys [:export, :concurrency, :type]
 
-  defstruct @enforce_keys ++ ~w(opts raw file line doc)a
+  @impl true
+  defdelegate fetch(function, key), to: Map
+
+  defstruct @enforce_keys ++ ~w(raw args return leak_check alias file line doc)a
 
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
@@ -25,9 +32,11 @@ defmodule Zig.Nif do
           export: boolean,
           concurrency: Synchronous | Threaded | Yielding | DirtyCpu | DirtyIo,
           type: Function.t(),
-          opts: keyword(),
-          # NB "c" not supported yet
           raw: nil | :zig | :c,
+          args: [keyword],
+          return: keyword,
+          leak_check: boolean(),
+          alias: nil | atom,
           file: nil | Path.t(),
           line: nil | non_neg_integer(),
           doc: nil | String.t()
@@ -72,23 +81,27 @@ defmodule Zig.Nif do
       export: Keyword.fetch!(opts, :export),
       concurrency: Map.get(@concurrency_modules, Keyword.fetch!(opts, :concurrency)),
       type: function,
-      opts: opts
+      raw: extract_raw(opts[:raw]),
+      args: opts[:args],
+      return: opts[:return],
+      leak_check: opts[:leak_check],
+      alias: opts[:alias]
     }
   end
 
-  # function retrieval and manipulation
-  defp find_function(sema_list, name) do
-    Enum.find(sema_list, &(&1.name == name)) || raise "unreachable"
+  defp extract_raw(raw_opt) do
+    case raw_opt do
+      nil -> nil
+      {:c, _} -> :c
+      number -> :zig
+    end
   end
-
-  defp adopt_options(function, :auto), do: function
-  defp adopt_options(function, opts), do: %{function | opts: opts}
 
   def render_elixir(nif = %{concurrency: concurrency}, opts \\ []) do
     typespec =
       if Keyword.get(opts, :typespec?, true) do
         quote do
-          @spec unquote(Function.spec(nif.type))
+          @spec unquote(spec(nif))
         end
       end
 
@@ -109,13 +122,6 @@ defmodule Zig.Nif do
       |> List.wrap()
 
     function
-  end
-
-  @spec needs_marshal?(t) :: boolean
-  # TODO: move this query into the concurrency module.
-  def needs_marshal?(nif) do
-    !!nif.param_marshalling_macros or !!nif.return_marshalling_macro or !!nif.param_error_macros or
-      match?(%Error{}, nif.function.return)
   end
 
   require EEx
@@ -167,8 +173,19 @@ defmodule Zig.Nif do
     Enum.map_join(nifs, ", ", &table_entries/1)
   end
 
+  @flags %{
+    synchronous: "0",
+    dirty_cpu: "e.ERL_NIF_DIRTY_JOB_CPU_BOUND",
+    dirty_io: "e.ERL_NIF_DIRTY_JOB_IO_BOUND"
+  }
+
   defp table_entries(nif) do
     nif.concurrency.table_entries(nif)
+    |> Enum.map(fn
+      {function, arity, concurrency} ->
+        flags = Map.fetch!(@flags, concurrency)
+        ~s(.{.name="#{function}", .arity=#{arity}, .fptr=#{function}, .flags=#{flags}})
+    end)
   end
 
   @index_of %{major: 0, minor: 1}
@@ -190,6 +207,52 @@ defmodule Zig.Nif do
     end
   end
 
+  def spec(nif) do
+    if nif.raw do
+      spec_raw(nif)
+    else
+      spec_coded(nif)
+    end
+  end
+
+  defp spec_raw(nif = %{type: type}) do
+    params =
+      List.duplicate(
+        quote do
+          term()
+        end,
+        type.arity
+      )
+
+    quote context: Elixir do
+      unquote(type.name)(unquote_splicing(params)) :: term()
+    end
+  end
+
+  defp spec_coded(nif = %{type: type, return: return_opts}) do
+    trimmed =
+      case type.params do
+        [:env | list] -> list
+        list -> list
+      end
+
+    param_types = Enum.map(trimmed, &Type.spec(&1, :params, []))
+
+    # TODO: check for easy_c
+    return =
+      if arg = return_opts[:arg] do
+        trimmed
+        |> Enum.at(arg)
+        |> Type.spec(:return, return_opts)
+      else
+        Type.spec(type.return, :return, return_opts)
+      end
+
+    quote context: Elixir do
+      unquote(type.name)(unquote_splicing(param_types)) :: unquote(return)
+    end
+  end
+
   #############################################################################
   ## OPTIONS NORMALIZATION
 
@@ -197,12 +260,13 @@ defmodule Zig.Nif do
   # into {atom(), []}, so that downstream they are easier to deal with.
 
   @doc false
-  def default_options, do: [
-    concurrency: :synchronous,
-    args: nil,
-    return: [type: :default],
-    export: true
-  ]
+  def default_options,
+    do: [
+      concurrency: :synchronous,
+      args: nil,
+      return: [type: :default],
+      export: true
+    ]
 
   @doc false
   def normalize_options!(function_name, common_options) when is_atom(function_name) do
@@ -316,4 +380,11 @@ defmodule Zig.Nif do
   defp normalize_option!(other) do
     raise CompileError, description: "unrecognized nif option `#{inspect(other)}`"
   end
+
+  # Access behaviour guards
+  @impl true
+  def get_and_update(_, _, _), do: raise("you should not update a function")
+
+  @impl true
+  def pop(_, _), do: raise("you should not pop a function")
 end

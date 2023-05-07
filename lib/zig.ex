@@ -276,7 +276,10 @@ defmodule Zig do
     module = __CALLER__.module
     if module in :erlang.loaded(), do: :code.purge(module)
 
-    opts = Options.normalize!(opts)
+    opts =
+      opts
+      |> Keyword.merge(mod_file: __CALLER__.file, mod_line: __CALLER__.line)
+      |> Options.normalize!()
 
     # TODO: check to make sure the otp_app exists
     case Keyword.fetch(opts, :otp_app) do

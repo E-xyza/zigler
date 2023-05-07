@@ -9,7 +9,7 @@ defmodule Zig.Sema do
   sema_zig_template = Path.join(__DIR__, "templates/sema.zig.eex")
   EEx.function_from_file(:defp, :file_for, sema_zig_template, [:assigns])
 
-  @spec analyze_file!(module :: module, opts :: keyword) :: [Function.t()]
+  @spec analyze_file!(module :: module, opts :: keyword) :: {%{atom() => Function.t()}, keyword}
   def analyze_file!(module, opts) do
     dir = Assembler.directory(module)
     sema_file = Path.join(dir, "sema.zig")
@@ -25,15 +25,30 @@ defmodule Zig.Sema do
 
     case Keyword.fetch!(opts, :nifs) do
       {:auto, specified} ->
+        default_options = Keyword.fetch!(opts, :default_options)
+
         # make sure all of the specified functions are in the nif list.
-        Map.new(specified, fn {name, opts} ->
-          find(name, functions_json, module, opts)
-        end)
+        {mapped_functions, new_fn_opts} =
+          functions_json
+          |> Enum.map(fn function_json = %{"name" => name} ->
+            atom_name = String.to_atom(name)
+
+            if function_opts = Keyword.get(specified, atom_name) do
+              {{atom_name, function_type(function_json, module, function_opts)},
+               {atom_name, function_opts}}
+            else
+              {{atom_name, function_type(function_json, module, default_options)},
+               {atom_name, default_options}}
+            end
+          end)
+          |> Enum.unzip()
+
+        {Map.new(mapped_functions), new_fn_opts}
 
       keyword when is_list(keyword) ->
-        Map.new(keyword, fn {name, opts} ->
-          find(name, functions_json, module, opts)
-        end)
+        {Map.new(keyword, fn {name, opts} ->
+           find(name, functions_json, module, opts)
+         end), keyword}
     end
   end
 

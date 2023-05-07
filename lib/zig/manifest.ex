@@ -50,19 +50,16 @@ defmodule Zig.Manifest do
     end
   end
 
-  def make_manifest(code) do
-    code
-    |> String.split("\n")
-    |> Enum.with_index(fn
-      "// ref " <> file_line, index ->
-        [file, line] = String.split(file_line, ":")
-        # note that line numbers are actually one-indexed.
-        [{index + 1, {Path.absname(file), String.to_integer(line)}}]
+  def create(%{comments: comments}) do
+    Enum.flat_map(comments, fn
+      {" ref " <> rest, %{line: anchor}} ->
+        [file, line] = String.split(rest, ":")
 
-      _, _ ->
+        [{anchor, {Path.absname(file), String.to_integer(line)}}]
+
+      _ ->
         []
     end)
-    |> Enum.flat_map(& &1)
   end
 
   def resolve(manifest, line) do

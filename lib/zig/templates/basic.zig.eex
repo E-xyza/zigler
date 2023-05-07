@@ -1,12 +1,11 @@
-<% needs_make? = Enum.any?(@params, &Type.needs_make?/1) %>
-<% leak_check? = @opts[:leak_check] %>
+<% needs_make? = Enum.any?(@type.params, &Type.needs_make?/1) %>
 
-export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) e.ErlNifTerm {
+export fn <%= @type.name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) e.ErlNifTerm {
     <%= if needs_make? do %>
     var error_info = beam.make_empty_list(env); 
     <% end %>
     <%# TODO: set up a proper allocator variable. %>
-    <%= if leak_check? do %>
+    <%= if @leak_check do %>
     var alloc_instance = beam.make_general_purpose_allocator_instance();
     // set the threadlocal beam.allocator, but only for this run.
     const old_allocator = beam.allocator;
@@ -15,7 +14,7 @@ export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [
     <% end %>
 
     const outer_result = get_result: {
-        <%= for {param_type, index} <- Nif.indexed_parameters(@params) do %>
+        <%= for {param_type, index} <- Nif.indexed_parameters(@type.params) do %>
         <% needs_size? = Type.missing_size?(param_type) %>
         <% needs_root? = match?(%Zig.Type.Resource{}, param_type) %>
 
@@ -39,21 +38,21 @@ export fn <%= Function.nif_alias_for(assigns) %>(env: beam.env, _: c_int, arg: [
           return e.enif_raise_exception(env, beam.make(env, .{err, <%= index %>, beam.make_empty_list(env)}, .{}).v);
           <% end %>
         };
-        <%= if @opts |> Keyword.get(:args, %{}) |> Map.get(index, []) |> Keyword.get(:cleanup, true) do %>
-          defer beam.cleanup(arg<%= index %>, .{<%= if needs_size? do %>.size = size<%= index %>,<% end %>});
+        <%# if @opts |> Keyword.get(:args, %{}) |> Map.get(index, []) |> Keyword.get(:cleanup, true) do %>
+        //  defer beam.cleanup(arg<%# index %>, .{<%# if needs_size? do %>.size = size<%# index %>,<%# end %>});
+        <%# end %>
         <% end %>
-        <% end %>
-        <%= case @params do %>
+        <%= case @type.params do %>
           <% [] -> %> _ = arg;
           <% [:env] -> %> _ = arg;
           <% _ ->  %>
         <% end %>
-        const result = nif.<%= @name %>(<%= Nif.indexed_args(@params) %>) <%= Nif.maybe_catch(@return) %>;
+        const result = nif.<%= @type.name %>(<%= Nif.indexed_args(@type.params) %>) <%= Nif.maybe_catch(@type.return) %>;
 
-        <%= Type.get_result(@return, @opts) %>
+        <%= Type.get_result(@type.return, @return) %>
     };
 
-    <%= if leak_check? do %>
+    <%= if @leak_check do %>
     if (alloc_instance.detectLeaks()) {
         return beam.raise_elixir_exception(env, "RuntimeError", .{.message = "memory leak detected in function <%= inspect @name %>"}).v;
     }

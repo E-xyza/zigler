@@ -265,7 +265,7 @@ defprotocol Zig.Type do
       end
 
       def get_result(type, opts) do
-        return_type = get_in(opts, [:return, :type]) || raise "return type not found"
+        return_type = Keyword.fetch!(opts, :type)
         "break :get_result beam.make(env, result, .{.output_type = .#{return_type}}).v;"
       end
 

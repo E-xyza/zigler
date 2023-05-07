@@ -19,6 +19,8 @@ defmodule Zig.Compiler do
   import Zig.QuoteErl
 
   defmacro __before_compile__(context = %{module: module, file: file}) do
+    # NOTE: this is going to be called only from Elixir.  Erlang will not call this.
+
     # TODO: verify that :otp_app exists
     code_dir = Path.dirname(file)
 
@@ -69,7 +71,6 @@ defmodule Zig.Compiler do
     precompiled = Keyword.get(opts, :precompile, true)
     compiled = Keyword.get(opts, :compile, true)
     renderer = Keyword.fetch!(opts, :render)
-    manifest = Manifest.make_manifest(base_code)
     src_file = Keyword.fetch!(opts, :src_file)
 
     with true <- assembled,
@@ -77,31 +78,38 @@ defmodule Zig.Compiler do
          assemble_opts = Keyword.merge(assemble_opts, from: code_dir),
          Assembler.assemble(module, assemble_opts),
          true <- precompiled,
-         sema_functions = Sema.analyze_file!(module, opts),
          # TODO: verify that this parsed correctly.
          parsed_code = Zig.Parser.parse(base_code),
-         new_opts = Keyword.put(opts, :parsed, parsed_code),
-         function_code = precompile(sema_functions, module, assembly_directory, new_opts),
-         true <- compiled do
+         manifest = Manifest.create(parsed_code),
+         {sema_functions, new_nif_opts} = Sema.analyze_file!(module, opts),
+         new_opts = Keyword.merge(opts, nifs: new_nif_opts, manifest: manifest),
+         function_code =
+           precompile(sema_functions, parsed_code, module, assembly_directory, new_opts),
+         {true, _} <- {compiled, new_opts} do
       # parser should only operate on parsed, valid zig code.
-      Command.compile(module, new_opts)
-      apply(__MODULE__, renderer, [base_code, function_code, module, manifest, opts])
+      Command.compile(module, opts)
+      apply(__MODULE__, renderer, [base_code, function_code, module, manifest, new_opts])
     else
       false ->
         apply(__MODULE__, renderer, [base_code, [], module, [], opts])
+
+      {false, new_opts} ->
+        apply(__MODULE__, renderer, [base_code, [], module, [], new_opts])
     end
   end
 
-  defp precompile(sema, module, directory, opts) do
-    verify_soundness!(sema, opts)
+  defp precompile(sema_functions, parsed_code, module, directory, opts) do
+    verify_soundness!(sema_functions, opts)
 
     render_fn = Keyword.fetch!(opts, :render)
 
-    nif_functions = Zig.Module.nifs_from_sema(sema, Keyword.fetch!(opts, :nifs))
+    nif_functions =
+      sema_functions
+      |> Zig.Module.nifs_from_sema(Keyword.fetch!(opts, :nifs))
+      |> assign_positions(parsed_code, opts)
 
-    raise "aaa"
-
-    function_code = Enum.map(nif_functions, &apply(Nif, render_fn, [&1]))
+    function_code =
+      Enum.map(nif_functions, &apply(Nif, render_fn, [&1]))
 
     nif_src_path = Path.join(directory, "nif.zig")
 
@@ -113,6 +121,34 @@ defmodule Zig.Compiler do
     Logger.debug("wrote nif.zig to #{nif_src_path}")
 
     function_code
+  end
+
+  defp assign_positions(nif_functions, parsed_code, opts) do
+    if opts[:easy_c] do
+      [mod_file: file, mod_line: line] = Keyword.take(opts, [:mod_file, :mod_line])
+      Enum.map(nif_functions, &%{&1 | file: file, line: line})
+    else
+      # we need the manifest here.
+      manifest = Keyword.fetch!(opts, :manifest)
+      file = Keyword.fetch!(opts, :mod_file)
+      Enum.map(nif_functions, &assign_position(&1, parsed_code, manifest, file))
+    end
+  end
+
+  defp assign_position(function, %{code: code}, manifest, file) do
+    name = function.alias || function.type.name
+
+    parsed_line =
+      Enum.find_value(code, fn
+        {:fn, %{position: %{line: line}}, vals} ->
+          if Keyword.get(vals, :name) == name, do: line
+
+        _ ->
+          false
+      end)
+
+    line = Manifest.resolve(manifest, parsed_line)
+    %{function | file: file, line: line}
   end
 
   def render_elixir(code, function_code, module, manifest, opts) do

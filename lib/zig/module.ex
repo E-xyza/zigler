@@ -15,8 +15,6 @@ defmodule Zig.Module do
     Enum.map(sema_list, fn
       {name, function} ->
         Nif.new(function, Keyword.fetch!(nif_opts, name))
-        |> dbg(limit: 25)
-        raise "foo"
     end)
   end
 
@@ -30,7 +28,7 @@ defmodule Zig.Module do
     Enum.map(nifs, &Nif.normalize_options(&1, common_options))
   end
 
-  def normalize_nifs_option!({:auto, _}, _,  _) do
+  def normalize_nifs_option!({:auto, _}, _, _) do
     # the auto form is not allowed to be used for easy_c nif modules.
     raise CompileError,
       description: "The `{:auto, list}` form is not allowed to be used for easy_c nifs"

@@ -33,7 +33,9 @@ defmodule Zig.Options do
 
     common = Keyword.merge(@default_options, Keyword.take(opts, @common_options))
 
-    Keyword.update(opts, :nifs, {:auto, common}, &Module.normalize_nifs_option!(&1, common, easy_c))
+    opts
+    |> Keyword.update(:nifs, {:auto, []}, &Module.normalize_nifs_option!(&1, common, easy_c))
+    |> Keyword.put(:default_options, common)
   end
 
   defp normalize_libs(opts) do

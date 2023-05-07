@@ -4,17 +4,10 @@ defmodule Zig.Type.Function do
   analysis on the zig code.
   """
 
-  # function gets an access behaviour so that it can be easily used in EEx
-  # files.
-  @behaviour Access
-
   defstruct [:name, :arity, :params, :return]
 
   alias Zig.Manifest
   alias Zig.Type
-
-  @impl true
-  defdelegate fetch(function, key), to: Map
 
   @type t :: %__MODULE__{
           name: atom(),
@@ -33,68 +26,10 @@ defmodule Zig.Type.Function do
       end
 
     function = %__MODULE__{
-      name: name,
+      name: String.to_atom(name),
       arity: arity,
       params: params,
       return: Type.from_json(return, module)
     }
   end
-
-  def spec(function) do
-    if function.opts[:raw] do
-      spec_raw(function)
-    else
-      spec_normal(function)
-    end
-  end
-
-  def spec_raw(function) do
-    params =
-      List.duplicate(
-        quote do
-          term()
-        end,
-        function.arity
-      )
-
-    quote context: Elixir do
-      unquote(function.name)(unquote_splicing(params)) :: term()
-    end
-  end
-
-  def spec_normal(function) do
-    trimmed =
-      case function.params do
-        [:env | list] -> list
-        list -> list
-      end
-
-    param_types = Enum.map(trimmed, &Type.spec(&1, :params, []))
-
-    return_opts =
-      function.opts
-      |> List.wrap()
-      |> Keyword.get(:return, [])
-
-    # TODO: check for easy_c
-    return =
-      if arg = return_opts[:arg] do
-        function.params
-        |> Enum.at(arg)
-        |> Type.spec(:return, return_opts)
-      else
-        Type.spec(function.return, :return, return_opts)
-      end
-
-    quote context: Elixir do
-      unquote(function.name)(unquote_splicing(param_types)) :: unquote(return)
-    end
-  end
-
-  # Access behaviour guards
-  @impl true
-  def get_and_update(_, _, _), do: raise("you should not update a function")
-
-  @impl true
-  def pop(_, _), do: raise("you should not pop a function")
 end
