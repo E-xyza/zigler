@@ -78,12 +78,10 @@ defmodule Zig.Compiler do
          Assembler.assemble(module, assemble_opts),
          true <- precompiled,
          sema_functions = Sema.analyze_file!(module, opts),
+         # TODO: verify that this parsed correctly.
          parsed_code = Zig.Parser.parse(base_code),
          new_opts = Keyword.put(opts, :parsed, parsed_code),
-         functions =
-           Enum.map(sema_functions, &Function.assign_parsed_info(&1, parsed_code, manifest)),
-         functions = Enum.map(functions, &Function.assign_file(&1, src_file)),
-         function_code = precompile(functions, module, assembly_directory, new_opts),
+         function_code = precompile(sema_functions, module, assembly_directory, new_opts),
          true <- compiled do
       # parser should only operate on parsed, valid zig code.
       Command.compile(module, new_opts)
@@ -97,15 +95,13 @@ defmodule Zig.Compiler do
   defp precompile(sema, module, directory, opts) do
     verify_soundness!(sema, opts)
 
-    nif_functions =
-      sema
-      |> Nif.from_sema(opts[:nifs])
-      |> remove_ignored(opts[:ignore])
-      |> assimilate_common_options(opts)
+    render_fn = Keyword.fetch!(opts, :render)
 
-    renderer = Keyword.fetch!(opts, :render)
+    nif_functions = Zig.Module.nifs_from_sema(sema, Keyword.fetch!(opts, :nifs))
 
-    function_code = Enum.map(nif_functions, &apply(Nif, renderer, [&1]))
+    raise "aaa"
+
+    function_code = Enum.map(nif_functions, &apply(Nif, render_fn, [&1]))
 
     nif_src_path = Path.join(directory, "nif.zig")
 
@@ -214,7 +210,7 @@ defmodule Zig.Compiler do
   end
 
   defp verify_soundness!(sema, opts) do
-    Enum.each(sema, fn function ->
+    Enum.each(sema, fn {_name, function} ->
       raise_if_uses_private_struct!(function, opts)
       Nif.validate_return!(function)
     end)
@@ -251,25 +247,4 @@ defmodule Zig.Compiler do
   end
 
   defp raise_if_private_struct!(_, _, _, _), do: :ok
-
-  @common_options [:leak_check]
-  defp assimilate_common_options(nifs, opts) when is_list(nifs) do
-    for nif <- nifs do
-      %{nif | function: assimilate_common_options(nif.function, opts)}
-    end
-  end
-
-  defp assimilate_common_options(nif, module_opts) when is_struct(nif) do
-    new_opts =
-      module_opts
-      |> Keyword.take(@common_options)
-      |> Keyword.merge(nif.opts)
-
-    %{nif | opts: new_opts}
-  end
-
-  defp remove_ignored(functions, ignored) do
-    ignored = List.wrap(ignored)
-    Enum.reject(functions, &(&1.function.name in ignored))
-  end
 end

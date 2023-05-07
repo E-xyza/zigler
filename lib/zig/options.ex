@@ -1,12 +1,18 @@
 defmodule Zig.Options do
   @moduledoc """
   parses and normalizes zig options.
+
+  Also sets up
+
+  `options.zig` file which is mapped to `@import("zigler_options")` in
+  `beam.zig`.  This is then exposed as `@import("beam").options` in your code.
   """
 
   alias Zig.EasyC
   alias Zig.Module
+  alias Zig.Nif
 
-  @spec normalize(keyword) :: keyword
+  @spec normalize!(keyword) :: keyword
   def normalize!(opts) do
     opts
     |> normalize_nifs_option!
@@ -15,61 +21,23 @@ defmodule Zig.Options do
     |> EasyC.normalize_aliasing()
   end
 
-  defp normalize_nifs_option!(opts) do
-    easy_c = Keyword.get(opts, :easy_c, false)
+  @common_options ~w(leak_check)a
+  @default_options Nif.default_options()
 
-    if easy_c and !Keyword.has_key?(opts, :nifs) do
+  defp normalize_nifs_option!(opts) do
+    easy_c = Keyword.get(opts, :easy_c)
+
+    if easy_c && !Keyword.has_key?(opts, :nifs) do
       raise CompileError, description: "nif specifications are required for easy_c nifs"
     end
 
-    Keyword.update(:nifs, {:auto, []}, &Module.normalize_nifs_option!(&1, easy_c))
+    common = Keyword.merge(@default_options, Keyword.take(opts, @common_options))
+
+    Keyword.update(opts, :nifs, {:auto, common}, &Module.normalize_nifs_option!(&1, common, easy_c))
   end
 
   defp normalize_libs(opts) do
     Keyword.put(opts, :link_lib, List.wrap(opts[:link_lib]))
-  end
-
-  @concurrency_modes ~w(dirty_cpu dirty_io threaded yielding)a
-
-  defp normalize_nif_opts(opts) do
-    Enum.map(opts, fn
-      {:return, return_opts} ->
-        normalized =
-          return_opts
-          |> List.wrap()
-          |> normalize_return_opts
-
-        {:return, normalized}
-
-      {:args, args_opts} ->
-        {:args, normalize_args_opts(args_opts)}
-
-      concurrency when concurrency in @concurrency_modes ->
-        {:concurrency, concurrency}
-
-      other ->
-        other
-    end)
-  end
-
-  @return_types [:charlist, :binary, :default]
-
-  defp normalize_return_opts(opts) do
-    Enum.map(opts, fn
-      integer when is_integer(integer) -> {:arg, integer}
-      type when type in @return_types -> {:type, type}
-      :noclean -> {:noclean, true}
-      other -> other
-    end)
-  end
-
-  defp normalize_args_opts(opts) do
-    Map.new(
-      case opts do
-        [{_, _} | _] -> opts
-        list -> Enum.with_index(list, fn opt, idx -> {idx, opt} end)
-      end
-    )
   end
 
   @use_gpa {:bool, "use_gpa", true}
@@ -84,5 +52,19 @@ defmodule Zig.Options do
     else
       opts
     end
+  end
+
+  require EEx
+  require Logger
+
+  options_zig_template = Path.join(__DIR__, "templates/options.zig.eex")
+  EEx.function_from_file(:defp, :options_zig, options_zig_template, [:assigns])
+
+  def build(_module, opts) do
+    build_zig_path = Path.join(opts[:to], "options.zig")
+
+    File.write!(build_zig_path, options_zig(opts))
+
+    Logger.debug("wrote options.zig to #{build_zig_path}")
   end
 end

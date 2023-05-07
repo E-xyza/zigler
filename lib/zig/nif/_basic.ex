@@ -59,12 +59,13 @@ defmodule Zig.Nif.Basic do
   basic = Path.join(__DIR__, "../templates/basic.zig.eex")
   EEx.function_from_file(:defp, :basic, basic, [:assigns])
 
-  basic_raw = Path.join(__DIR__, "../templates/basic_raw.zig.eex")
-  EEx.function_from_file(:defp, :basic_raw, basic_raw, [:assigns])
+  basic_raw_zig = Path.join(__DIR__, "../templates/basic_raw_zig.eex")
+  EEx.function_from_file(:defp, :basic_raw_zig, basic_raw_zig, [:assigns])
 
-  # there may be a "raw C" functionality implemented later.
-  def render_zig(%Nif{function: function = %{raw: :zig}}), do: basic_raw(function)
-  def render_zig(%Nif{function: function}), do: basic(function)
+  def render_zig(%{type: function, raw: :zig}), do: basic_raw_zig(function)
+  # note a raw "c" function does not need to have any changes made.
+  def render_zig(%{type: function, raw: :c}), do: ""
+  def render_zig(%{type: function}), do: basic(function)
 
   def set_entrypoint(nif = %{function: %{name: name}}) do
     entrypoint = if Nif.needs_marshal?(nif), do: :"marshalled-#{name}", else: name

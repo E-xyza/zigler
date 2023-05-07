@@ -33,21 +33,11 @@ defmodule Zig.Type.Function do
       end
 
     function = %__MODULE__{
-      name: String.to_atom(name),
+      name: name,
       arity: arity,
       params: params,
       return: Type.from_json(return, module)
     }
-  end
-
-  def nif_alias_for(%{opts: opts, name: name}) do
-    case opts[:alias] do
-      true ->
-        "#{name}_aliased_#{:erlang.phash2(name)}"
-
-      _ ->
-        name
-    end
   end
 
   def spec(function) do
@@ -100,28 +90,6 @@ defmodule Zig.Type.Function do
       unquote(function.name)(unquote_splicing(param_types)) :: unquote(return)
     end
   end
-
-  def assign_parsed_info(function, %{code: code}, manifest) do
-    if entry = Enum.find(code, &matches_name?(&1, function.name)) do
-      assign_parsed_info_(function, entry, manifest)
-    else
-      function
-    end
-  end
-
-  defp assign_parsed_info_(function, {:fn, options = %{position: position}, _}, manifest) do
-    fixed_line = Manifest.resolve(manifest, position.line)
-
-    %{function | doc: options.doc_comment, line: fixed_line}
-  end
-
-  def assign_file(function, file), do: %{function | file: Path.relative_to_cwd(file)}
-
-  defp matches_name?({:fn, _options, params}, function) do
-    Keyword.fetch!(params, :name) == function
-  end
-
-  defp matches_name?(_, _), do: false
 
   # Access behaviour guards
   @impl true

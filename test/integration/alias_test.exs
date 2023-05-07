@@ -4,7 +4,7 @@ defmodule ZiglerTest.AliasTest do
   use Zig,
     otp_app: :zigler,
     nifs: [
-      ok: [alias: true],
+      ...,
       renamed: [alias: :ok]
     ]
 

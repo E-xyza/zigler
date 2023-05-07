@@ -9,20 +9,14 @@ defmodule Zig.Nif do
 
   @enforce_keys [:export, :concurrency, :type]
 
-  defstruct @enforce_keys ++
-              [
-                :opts,
-                :raw,
-                :file,
-                :line,
-                :doc
-              ]
+  defstruct @enforce_keys ++ ~w(opts raw file line doc)a
 
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
   alias Zig.Nif.Synchronous
   alias Zig.Nif.Threaded
   alias Zig.Nif.Yielding
+  alias Zig.Type
   alias Zig.Type.Error
   alias Zig.Type.Function
   alias Zig.Resources
@@ -33,7 +27,7 @@ defmodule Zig.Nif do
           type: Function.t(),
           opts: keyword(),
           # NB "c" not supported yet
-          raw: :zig | :c,
+          raw: nil | :zig | :c,
           file: nil | Path.t(),
           line: nil | non_neg_integer(),
           doc: nil | String.t()
@@ -73,11 +67,12 @@ defmodule Zig.Nif do
   @doc """
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
-  def new(opts) do
+  def new(function, opts) do
     %__MODULE__{
       export: Keyword.fetch!(opts, :export),
       concurrency: Map.get(@concurrency_modules, Keyword.fetch!(opts, :concurrency)),
-
+      type: function,
+      opts: opts
     }
   end
 
@@ -93,7 +88,7 @@ defmodule Zig.Nif do
     typespec =
       if Keyword.get(opts, :typespec?, true) do
         quote do
-          @spec unquote(Function.spec(function))
+          @spec unquote(Function.spec(nif.type))
         end
       end
 
@@ -202,14 +197,123 @@ defmodule Zig.Nif do
   # into {atom(), []}, so that downstream they are easier to deal with.
 
   @doc false
-  def normalize_options!(function_name) when is_atom(function_name) do
-    {function_name, []}
+  def default_options, do: [
+    concurrency: :synchronous,
+    args: nil,
+    return: [type: :default],
+    export: true
+  ]
+
+  @doc false
+  def normalize_options!(function_name, common_options) when is_atom(function_name) do
+    {function_name, common_options}
   end
 
-  def normalize_options!({function_name, opts}) do
-    {function_name, Enum.map(opts, &normalize_option/1)}
+  def normalize_options!({function_name, opts}, common_options) do
+    updated_opts =
+      default_options()
+      |> Keyword.merge(common_options)
+      |> Keyword.merge(substitute_atoms(opts))
+
+    {function_name, updated_opts}
   end
+
+  defp substitute_atoms(opts) do
+    Enum.map(opts, fn
+      :leak_check -> {:leak_check, true}
+      :def -> {:export, true}
+      :defp -> {:export, false}
+      other -> other
+    end)
+  end
+
+  @concurrency_modes ~w(synchronous dirty_cpu dirty_io threaded yielding)a
+  @nif_option_types %{
+    concurrency: "one of `:synchronous`, `:dirty_cpu`, `:dirty_io`, `:threaded`, `:yielding`",
+    leak_check: "boolean",
+    alias: "atom",
+    export: "boolean"
+  }
 
   # TODO: figure this out later
-  defp normalize_option!(option), do: option
+  defp normalize_option!(concurrency) when concurrency in @concurrency_modes do
+    {:concurrency, concurrency}
+  end
+
+  defp normalize_option!(option = {:leak_check, should_check}) when is_boolean(should_check),
+    do: option
+
+  defp normalize_option!(option = {:alias, function}) when is_atom(function), do: option
+
+  defp normalize_option!(option = {:export, should_export}) when is_boolean(should_export),
+    do: option
+
+  @return_types [:list, :binary, :default]
+  @return_option_types %{
+    raw: "integer or `{:c, integer}`",
+    arg: "integer",
+    type: "one of `:list`, `:binary`, `:default`",
+    noclean: "boolean",
+    length: "`integer` or `{:arg, integer}`"
+  }
+  defp normalize_option!({:return, return_opts}) do
+    updated_return =
+      return_opts
+      |> List.wrap()
+      |> Enum.map(fn
+        integer when is_integer(integer) ->
+          {:arg, integer}
+
+        type when type in @return_types ->
+          {:type, type}
+
+        :noclean ->
+          {:noclean, true}
+
+        option = {:raw, integer} when is_integer(integer) ->
+          option
+
+        option = {:raw, {:c, integer}} when is_integer(integer) ->
+          option
+
+        option = {:arg, integer} when is_integer(integer) ->
+          option
+
+        option = {:type, type} when type in @return_types ->
+          option
+
+        option = {:noclean, boolean} when is_boolean(boolean) ->
+          option
+
+        option = {:length, integer} when is_integer(integer) ->
+          option
+
+        option = {:length, {:arg, integer}} when is_integer(integer) ->
+          option
+
+        option = {ret_opt, _} when is_map_key(@return_option_types, ret_opt) ->
+          raise CompileError,
+            description:
+              "return option `:#{ret_opt}` must be #{Map.fetch!(@return_option_types, ret_opt)}"
+
+        other ->
+          raise CompileError, description: "unrecognized return option `#{inspect(other)}`"
+      end)
+
+    {:return, updated_return}
+  end
+
+  defp normalize_option!(args_opts = {:args, args_opts}) do
+    args_opts
+  end
+
+  defp normalize_option({opt, value}) when is_map_key(@nif_option_types, opt) do
+    raise CompileError,
+      description:
+        "nif option :#{opt} must be #{Map.fetch!(@nif_option_types, opt)}, got: #{inspect(value)}"
+  end
+
+  defp normalize_option!(other) do
+    raise CompileError, description: "unrecognized nif option `#{inspect(other)}`"
+  end
 end

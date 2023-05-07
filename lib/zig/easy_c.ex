@@ -12,24 +12,10 @@ defmodule Zig.EasyC do
     end
   end
 
-  defp add_aliasing(:auto) do
-    raise "can't have `auto` on an easy_c module"
-  end
-
   defp add_aliasing(nifs) do
     Enum.map(nifs, fn
-      {:..., _, _} ->
-        raise "cant have `...` on an easy_c module"
-
       {fun, opts} ->
-        {fun, add_alias_nif(opts)}
-    end)
-  end
-
-  defp add_alias_nif(opts) do
-    Keyword.update(opts, :alias, true, fn
-      true -> true
-      alias_ -> :"easy_c.#{alias_}"
+        {fun, Keyword.update(opts, :alias, :"easy_c.#{fun}", &:"easy_c.#{&1}")}
     end)
   end
 end
