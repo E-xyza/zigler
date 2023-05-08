@@ -13,7 +13,7 @@ defmodule Zig.ErrorProng do
                 Keyword.merge(opts,
                   error_info: %{module: __MODULE__, function: :_format_error},
                   zigler_error: %{
-                    index + 1 =>
+                    (index + 1) =>
                       error_lines
                       |> Enum.reduce({[], 0}, fn
                         :enter, {so_far, indents} ->

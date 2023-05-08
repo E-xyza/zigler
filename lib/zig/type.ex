@@ -18,9 +18,15 @@ defprotocol Zig.Type do
   @doc "beam-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
   def marshals_param?(type)
 
+  @spec marshal_param(t, Macro.t(), non_neg_integer, :elixir | :erlang) :: Macro.t()
+  def marshal_param(type, variable, index, platform)
+
   @spec marshals_return?(t) :: boolean
   @doc "beam-side type conversions that might be necessary to get a zig return into an elixir return"
   def marshals_return?(type)
+
+  @spec marshal_return(t, Macro.t(), :elixir | :erlang) :: Macro.t()
+  def marshal_return(type, variable, platform)
 
   @doc "catch prongs to correctly perform error handling, atom is a reference to function in `Zig.ErrorProng`"
   @spec error_prongs(t, :argument | :return) :: [atom]
@@ -199,6 +205,9 @@ defprotocol Zig.Type do
       def marshals_param?(_), do: false
       def marshals_return?(_), do: false
 
+      def marshal_param(_, _, _, _), do: raise("unreachable")
+      def marshal_return(_, _, _), do: raise("unreachable")
+
       def error_prongs(_, :argument), do: [:argument_error_prong]
       def error_prongs(_, :return), do: []
 
@@ -212,7 +221,9 @@ defprotocol Zig.Type do
 
       defoverridable get_result: 2,
                      marshals_param?: 1,
+                     marshal_param: 4,
                      marshals_return?: 1,
+                     marshal_return: 3,
                      error_prongs: 2,
                      needs_make?: 1,
                      missing_size?: 1
@@ -233,7 +244,9 @@ defprotocol Zig.Type do
 
       defimpl Zig.Type do
         defdelegate marshals_param?(type), to: module
+        defdelegate marshal_param(type, variable, index, platform), to: module
         defdelegate marshals_return?(type), to: module
+        defdelegate marshal_return(type, variable, platform), to: module
         defdelegate error_prongs(type, context), to: module
 
         defdelegate to_call(type), to: module
@@ -252,7 +265,12 @@ defimpl Zig.Type, for: Atom do
   def marshals_param?(_), do: false
   def marshals_return?(_), do: false
 
-  def error_prongs(type, :argument), do: List.wrap(if type in ~w(pid port)a, do: :argument_error_prong)
+  def marshal_param(_, _, _, _), do: raise("unreachable")
+  def marshal_return(_, _, _), do: raise("unreachable")
+
+  def error_prongs(type, :argument),
+    do: List.wrap(if type in ~w(pid port)a, do: :argument_error_prong)
+
   def error_prongs(type, _), do: []
 
   def to_call(:erl_nif_term), do: "e.ErlNifTerm"

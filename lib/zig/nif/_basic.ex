@@ -20,16 +20,16 @@ defmodule Zig.Nif.Basic do
   # marshalling setup
 
   defp needs_marshal?(nif) do
-    Enum.any?(nif.type.params, &Type.marshals_param?/1)
-    or Type.marshals_return?(nif.type.return)
-    or error_prongs(nif) !== []
+    Enum.any?(nif.type.params, &Type.marshals_param?/1) or
+      Type.marshals_return?(nif.type.return) or
+      error_prongs(nif) !== []
   end
 
   defp error_prongs(nif) do
     nif.type.params
     |> Enum.map(&Type.error_prongs(&1, :argument))
     |> List.insert_at(0, Type.error_prongs(nif.type.return, :return))
-    |> List.flatten
+    |> List.flatten()
   end
 
   defp marshal_name(nif), do: :"marshalled-#{nif.type.name}"
@@ -39,10 +39,15 @@ defmodule Zig.Nif.Basic do
   end
 
   def render_elixir(nif = %{type: type}) do
-    params =
+    {empty_params, used_params} =
       case type.arity do
-        0 -> []
-        n -> Enum.map(1..n, &{:"_arg#{&1}", [], Elixir})
+        0 ->
+          []
+
+        n ->
+          1..n
+          |> Enum.map(&{{:"_arg#{&1}", [], Elixir}, {:"arg#{&1}", [], Elixir}})
+          |> Enum.unzip()
       end
 
     error_text = "nif for function #{type.name}/#{type.arity} not bound"
@@ -51,24 +56,50 @@ defmodule Zig.Nif.Basic do
 
     if needs_marshal?(nif) do
       marshal_name = marshal_name(nif)
-      error_prongs = nif
-      |> error_prongs()
-      |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir]))
+
+      error_prongs =
+        nif
+        |> error_prongs()
+        |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir]))
+
+      marshal_params =
+        type.params
+        |> Enum.zip(used_params)
+        |> Enum.with_index()
+        |> Enum.flat_map(fn {{param_type, param}, index} ->
+          List.wrap(
+            if Type.marshals_param?(param_type) do
+              Type.marshal_param(param_type, param, index, :elixir)
+            end
+          )
+        end)
+
+      return = quote do
+        return
+      end
+
+      marshal_return = if Type.marshals_return?(type.return) do
+        Type.marshal_return(type.return, return, :elixir)
+      else
+        return
+      end
 
       quote do
-        unquote(def_or_defp)(unquote(type.name)(unquote_splicing(params))) do
-          unquote(marshal_name)(unquote_splicing(params))
+        unquote(def_or_defp)(unquote(type.name)(unquote_splicing(used_params))) do
+          unquote_splicing(marshal_params)
+          return = unquote(marshal_name)(unquote_splicing(used_params))
+          unquote(marshal_return)
         catch
           unquote(error_prongs)
         end
 
-        defp unquote(marshal_name)(unquote_splicing(params)) do
+        defp unquote(marshal_name)(unquote_splicing(empty_params)) do
           :erlang.nif_error(unquote(error_text))
         end
       end
     else
       quote context: Elixir do
-        unquote(def_or_defp)(unquote(type.name)(unquote_splicing(params))) do
+        unquote(def_or_defp)(unquote(type.name)(unquote_splicing(empty_params))) do
           :erlang.nif_error(unquote(error_text))
         end
       end

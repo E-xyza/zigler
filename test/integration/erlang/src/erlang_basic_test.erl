@@ -1,4 +1,4 @@
--module(test_zigler_erlang).
+-module(erlang_basic_test).
 -compile({parse_transform, zigler}). 
 -export([foo/1, foo/0]).
 
