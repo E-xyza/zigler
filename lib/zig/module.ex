@@ -22,10 +22,12 @@ defmodule Zig.Module do
   ## OPTIONS NORMALIZATION
 
   @doc false
+  def normalize_nifs_option!(:auto, _, nil), do: {:auto, []}
+
   def normalize_nifs_option!({:auto, nifs}, common_options, nil) do
     # for erlang: we can specify that we want to automatically find functions,
     # but override the list of functions provided using the {:auto, list} form.
-    Enum.map(nifs, &Nif.normalize_options(&1, common_options))
+    Enum.map(nifs, &Nif.normalize_options!(&1, common_options))
   end
 
   def normalize_nifs_option!({:auto, _}, _, _) do

@@ -271,7 +271,7 @@ defimpl Zig.Type, for: Atom do
   def error_prongs(type, :argument),
     do: List.wrap(if type in ~w(pid port)a, do: :argument_error_prong)
 
-  def error_prongs(type, _), do: []
+  def error_prongs(_, _), do: []
 
   def to_call(:erl_nif_term), do: "e.ErlNifTerm"
   def to_call(:term), do: "beam.term"

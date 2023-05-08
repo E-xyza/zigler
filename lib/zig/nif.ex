@@ -62,7 +62,7 @@ defmodule Zig.Nif do
     if a nif function needs multiple parts, for example, for concurrency
     management, then multiple entries should be returned.
     """
-    @callback functions(Nif.t()) :: [table_entry]
+    @callback table_entries(Nif.t()) :: [table_entry]
   end
 
   @concurrency_modules %{
@@ -92,8 +92,8 @@ defmodule Zig.Nif do
   defp extract_raw(raw_opt) do
     case raw_opt do
       nil -> nil
-      {:c, _} -> :c
-      number -> :zig
+      {:c, arity} when is_integer(arity) -> :c
+      arity when is_integer(arity) -> :zig
     end
   end
 
@@ -215,7 +215,7 @@ defmodule Zig.Nif do
     end
   end
 
-  defp spec_raw(nif = %{type: type}) do
+  defp spec_raw(%{type: type}) do
     params =
       List.duplicate(
         quote do
@@ -229,7 +229,7 @@ defmodule Zig.Nif do
     end
   end
 
-  defp spec_coded(nif = %{type: type, return: return_opts}) do
+  defp spec_coded(%{type: type, return: return_opts}) do
     trimmed =
       case type.params do
         [:env | list] -> list
@@ -361,7 +361,7 @@ defmodule Zig.Nif do
         option = {:length, {:arg, integer}} when is_integer(integer) ->
           option
 
-        option = {ret_opt, _} when is_map_key(@return_option_types, ret_opt) ->
+        {ret_opt, _} when is_map_key(@return_option_types, ret_opt) ->
           raise CompileError,
             description:
               "return option `:#{ret_opt}` must be #{Map.fetch!(@return_option_types, ret_opt)}"

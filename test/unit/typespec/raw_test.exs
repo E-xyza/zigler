@@ -3,7 +3,6 @@ defmodule ZiglerTest.Unit.Typespec.RawTest do
 
   @moduletag :typespec
 
-  alias Zig.Nif
   alias Zig.Type
   alias Zig.Type.Function
   alias Zig.Type.Manypointer

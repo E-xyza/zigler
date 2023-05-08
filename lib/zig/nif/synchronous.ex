@@ -1,7 +1,6 @@
 defmodule Zig.Nif.Synchronous do
   @behaviour Zig.Nif.Concurrency
 
-  alias Zig.Nif
   alias Zig.Nif.Basic
 
   @impl true

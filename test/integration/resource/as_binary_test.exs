@@ -57,7 +57,7 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
     test "output as reference (default)" do
       ref_resource = output_manual("foobar", :reference)
       assert is_reference(ref_resource)
-      assert ~C'foobar' == unpack(ref_resource)
+      assert "foobar" == unpack(ref_resource)
     end
 
     test "output as binary" do
@@ -75,7 +75,7 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
     test "output as reference (default)" do
       ref_resource = output_auto("foobar")
       assert is_reference(ref_resource)
-      assert ~C'foobar' == unpack(ref_resource)
+      assert "foobar" == unpack(ref_resource)
     end
 
     test "output as binary, determined by return clause" do

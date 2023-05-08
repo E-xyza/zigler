@@ -16,13 +16,11 @@ defmodule Zig.Manifest do
 
       # note that this resolver has to be rebuilt here, so that zigler can be compile-time only.
 
-      defp __resolve(unquote(file), line) do
-        __resolve(@__zig_manifest, [], line)
-      end
+      defp __resolve(%{file_name: file, line: line}), do: __resolve(file, line)
 
-      defp __resolve(file, line) when is_binary(file) do
-        {file, line}
-      end
+      defp __resolve(unquote(file), line), do: __resolve(@__zig_manifest, [], line)
+
+      defp __resolve(file, line) when is_binary(file), do: {file, line}
 
       defp __resolve([head = {anchor_line, _} | rest], stack, line) when anchor_line < line do
         __resolve(rest, [head | stack], line)

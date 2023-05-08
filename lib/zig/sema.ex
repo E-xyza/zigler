@@ -1,6 +1,4 @@
 defmodule Zig.Sema do
-  alias Zig.Type
-
   require EEx
   alias Zig.Assembler
   alias Zig.Command

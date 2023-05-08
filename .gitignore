@@ -37,5 +37,6 @@ zigler-*.tar
 
 # module zig files
 .Elixir.*.zig
+.erlang*.zig
 # erlang module zig files
 .test_*.zig

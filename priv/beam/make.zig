@@ -295,8 +295,9 @@ pub fn make_cpointer(env: beam.env, cpointer: anytype, comptime opts: anytype) b
 
 pub fn make_slice(env: beam.env, slice: anytype, comptime opts: anytype) beam.term {
     const output_type = OutputType.select(opts);
+    const SliceType = @TypeOf(slice);
     // u8 slices default to binary and must be opt-in to get charlists out.
-    if (@TypeOf(slice) == []u8 and output_type != .list) {
+    if ((SliceType == []u8 or SliceType == []const u8) and output_type != .list) {
         return make_binary(env, slice);
     }
 

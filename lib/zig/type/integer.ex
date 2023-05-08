@@ -67,36 +67,43 @@ defmodule Zig.Type.Integer do
     max = typemax(type)
     min = typemin(type)
 
-    guards = quote bind_quoted: [variable: variable, name: to_string(type), index: index, max: max, min: min] do
-      unless is_integer(variable) do
-        :erlang.error(
-          {:argument_error, index,
-           [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(variable)}`"}]}
-        )
-      end
+    guards =
+      quote bind_quoted: [
+              variable: variable,
+              name: to_string(type),
+              index: index,
+              max: max,
+              min: min
+            ] do
+        unless is_integer(variable) do
+          :erlang.error(
+            {:argument_error, index,
+             [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(variable)}`"}]}
+          )
+        end
 
-      unless variable >= min do
-        :erlang.error(
-          {:argument_error, index,
-           [
-             {"expected: integer (for `#{name}`)"},
-             {"got: `#{inspect(variable)}`"},
-             {"note: out of bounds (#{min}..#{max})"}
-           ]}
-        )
-      end
+        unless variable >= min do
+          :erlang.error(
+            {:argument_error, index,
+             [
+               {"expected: integer (for `#{name}`)"},
+               {"got: `#{inspect(variable)}`"},
+               {"note: out of bounds (#{min}..#{max})"}
+             ]}
+          )
+        end
 
-      unless variable <= max do
-        :erlang.error(
-          {:argument_error, index,
-           [
-             {"expected: integer (for `#{name}`)"},
-             {"got: `#{inspect(variable)}`"},
-             {"note: out of bounds (#{min}..#{max})"}
-           ]}
-        )
+        unless variable <= max do
+          :erlang.error(
+            {:argument_error, index,
+             [
+               {"expected: integer (for `#{name}`)"},
+               {"got: `#{inspect(variable)}`"},
+               {"note: out of bounds (#{min}..#{max})"}
+             ]}
+          )
+        end
       end
-    end
 
     size = _next_power_of_two_ceil(type.bits)
 
@@ -106,6 +113,7 @@ defmodule Zig.Type.Integer do
           unquote(guards)
           unquote(variable) = <<unquote(variable)::unsigned-integer-size(unquote(size))-native>>
         end
+
       :signed ->
         quote do
           unquote(guards)
@@ -114,7 +122,24 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  defp marshal_param_erlang(type, variable, index), do: raise("not yet")
+  defp marshal_param_erlang(type, variable, _index) do
+    max = typemax(type)
+    min = typemin(type)
+
+    size = _next_power_of_two_ceil(type.bits)
+
+    """
+    #{variable}_m = case #{variable} of
+      X when not is_integer(X) ->
+        erlang:error(badarg);
+      X when X < #{min} ->
+        erlang:error(badarg);
+      X when X > #{max} ->
+        erlang:error(badarg);
+      X -> <<X:#{size}/native-#{type.signedness}-integer-unit:1>>
+    end,
+    """
+  end
 
   def marshal_return(type, variable, :elixir) do
     marshal_return_elixir(type, variable)
@@ -126,12 +151,14 @@ defmodule Zig.Type.Integer do
 
   defp marshal_return_elixir(type, variable) do
     size = _next_power_of_two_ceil(type.bits)
+
     case type.signedness do
       :unsigned ->
         quote do
           <<result::unsigned-integer-size(unquote(size))-native>> = unquote(variable)
           result
         end
+
       :signed ->
         quote do
           <<result::signed-integer-size(unquote(size))-native>> = unquote(variable)
@@ -140,7 +167,14 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  defp marshal_return_erlang(type, variable), do: raise("not yet")
+  defp marshal_return_erlang(type, variable) do
+    size = _next_power_of_two_ceil(type.bits)
+
+    """
+    <<NumberResult:#{size}/native-#{type.signedness}-integer>> = #{variable},
+    NumberResult
+    """
+  end
 
   def _next_power_of_two_ceil(bits), do: _next_power_of_two_ceil(bits, 1, true)
 

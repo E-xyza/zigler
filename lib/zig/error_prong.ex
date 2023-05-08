@@ -58,9 +58,28 @@ defmodule Zig.ErrorProng do
     end
   end
 
+  def argument_error_prong(:erlang) do
+    [
+      "error:{error, badarg, _ExtraStacktrace}:Stacktrace -> erlang:raise(error, badarg, Stacktrace)"
+    ]
+  end
+
   def error_return_prong(:elixir) do
     quote do
-      _, _ -> :bar
+      :error, {:error, type, extra_stacktrace} ->
+        new_stacktrace =
+          extra_stacktrace
+          |> Enum.map(fn %{compile_unit_name: module_str, symbol_name: fn_str, line_info: line_info} ->
+            {file, line} = __resolve(line_info)
+            {String.to_atom(module_str), String.to_atom(fn_str), :..., [file: file, line: line]}
+          end)
+          |> Enum.reverse(__STACKTRACE__)
+
+        :erlang.raise(:error, type, new_stacktrace)
     end
+  end
+
+  def error_return_prong(:erlang) do
+    ["error:{error, Type, _ExtraStacktrace}:Stacktrace -> erlang:raise(error, Type, Stacktrace)"]
   end
 end

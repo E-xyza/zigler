@@ -1,4 +1,4 @@
--module(erlang_multi_code_test).
+-module(erlang_multicode_test).
 -compile({parse_transform, zigler}). 
 -export([part1/0, part2/0]).
 

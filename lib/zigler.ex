@@ -1,5 +1,6 @@
 defmodule :zigler do
   alias Zig.Compiler
+  alias Zig.Options
 
   def parse_transform(ast, _opts) do
     Application.ensure_all_started(:logger)
@@ -15,8 +16,15 @@ defmodule :zigler do
         nil ->
           raise "No zig opts found"
 
-        {:attribute, _, :zig_opts, opts} ->
-          Keyword.put(opts, :src_file, file)
+        {:attribute, {line, _}, :zig_opts, opts} ->
+          opts
+          |> Keyword.merge(
+            mod_file: file,
+            mod_line: line,
+            render: :render_erlang,
+            ebin_dir: :priv
+          )
+          |> Options.normalize!()
       end
 
     otp_app =
@@ -25,6 +33,8 @@ defmodule :zigler do
         _ -> raise "No otp_app found in zig opts"
       end
 
+    # utility functions:  Make sure certain apps are running
+    # and make sure certain libraries are loaded.
     ensure_eex()
     ensure_libs()
     ensure_priv_dir(otp_app)
@@ -32,23 +42,22 @@ defmodule :zigler do
     {:attribute, _, :file, {file, _}} = Enum.find(ast, &match?({:attribute, _, :file, _}, &1))
     module_dir = Path.dirname(file)
 
-    exports =
-      Enum.reduce(ast, [], fn
-        {:attribute, _, :export, exports}, acc -> exports ++ acc
-        _, acc -> acc
-      end)
-
     module =
       case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
         nil -> raise "No module definition found"
         {:attribute, _, :module, module} -> module
       end
 
-    {code, pos} =
-      case Enum.find(ast, &match?({:attribute, _, :zig_code, _}, &1)) do
-        nil -> raise "No zig code found"
-        {:attribute, pos, :zig_code, code} -> {IO.iodata_to_binary(code), pos}
-      end
+    code =
+      ast
+      |> Enum.flat_map(fn
+        {:attribute, {line, _}, :zig_code, code} ->
+          ["// ref #{file}:#{line}", code]
+
+        _ ->
+          []
+      end)
+      |> IO.iodata_to_binary()
 
     code_dir =
       case Keyword.fetch(opts, :code_dir) do
@@ -62,20 +71,30 @@ defmodule :zigler do
           module_dir
       end
 
-    opts =
-      opts
-      |> Zig.normalize!()
-      |> Keyword.put(:render, :render_erlang)
-      |> Keyword.put(:ebin_dir, :priv)
-
     rendered_erlang = Compiler.compile(code, module, code_dir, opts)
 
+    ast =
+      ast
+      |> Enum.reject(&match?({:attribute, _, :zig_code, _}, &1))
+      |> append_attrib(:on_load, {:__init__, 0})
+      |> append_attrib(:zig_code, code)
+      |> Kernel.++(rendered_erlang)
+      |> Enum.sort_by(&elem(&1, 0), __MODULE__)
+
     ast
-    |> Enum.reject(&match?({:attribute, _, :export, _}, &1))
-    |> append_attrib(:export, exports)
-    |> append_attrib(:on_load, {:__init__, 0})
-    |> Kernel.++(rendered_erlang)
-    |> Enum.sort_by(&elem(&1, 0), __MODULE__)
+    |> Enum.each(fn
+      attribute when elem(attribute, 0) == :attribute -> :erl_pp.attribute(attribute)
+      function when elem(function, 0) == :function -> :erl_pp.function(function)
+      _ -> :ok
+    end)
+
+    ast
+  catch
+    a, b ->
+      a |> IO.inspect()
+      b |> IO.inspect()
+      __STACKTRACE__ |> IO.inspect()
+      []
   end
 
   defp append_attrib(ast, key, value), do: ast ++ [{:attribute, {1, 1}, key, value}]
@@ -117,11 +136,10 @@ defmodule :zigler do
 
   defp ensure_priv_dir(otp_app) do
     # makes sure the priv dir exists
-    dir =
-      otp_app
-      |> :code.lib_dir()
-      |> Path.join("priv")
-      |> File.mkdir_p!()
+    otp_app
+    |> :code.lib_dir()
+    |> Path.join("priv")
+    |> File.mkdir_p!()
   end
 
   defp path_relative_to(target, start) do

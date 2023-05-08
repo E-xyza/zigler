@@ -313,11 +313,7 @@ defmodule Zig do
         ]
       end
 
-    if opts[:dump] do
-      code |> Macro.to_string() |> Code.format_string!() |> IO.puts()
-    end
-
-    code
+    Zig.Macro.inspect(code, opts)
   end
 
   @doc """

@@ -70,6 +70,29 @@ defmodule Zig.QuoteErl do
     substitute_unquoted(rest, substitutions, [substitution | so_far])
   end
 
+  # unquote spliced prongs
+  defp substitute_unquoted(
+         [{:atom, _, :splice_prongs}, {@lparen, _}, {:atom, line, symbol}, {@rparen, _} | rest],
+         substitutions,
+         so_far
+       ) do
+    escaped =
+      substitutions
+      |> Keyword.fetch!(symbol)
+      |> Enum.map(fn clause ->
+        {:ok, tokens, _} =
+          clause
+          |> String.to_charlist()
+          |> :erl_scan.string()
+
+        tokens
+      end)
+      |> Enum.intersperse([{:";", line}])
+      |> List.flatten()
+
+    substitute_unquoted(rest, substitutions, Enum.reverse(escaped, so_far))
+  end
+
   defp substitute_unquoted([head | rest], substitutions, so_far),
     do: substitute_unquoted(rest, substitutions, [head | so_far])
 
@@ -78,14 +101,11 @@ defmodule Zig.QuoteErl do
   defp escaped_substitution(substitutions, key, line, opts \\ []) do
     splat = Keyword.get(opts, :splat, false)
 
-    case Access.fetch(substitutions, key) do
-      :error ->
-        raise KeyError, term: substitutions, key: key
-
-      {:ok, list} when is_list(list) and splat ->
+    case Keyword.fetch!(substitutions, key) do
+      list when is_list(list) and splat ->
         Enum.map(list, &escape(&1, line))
 
-      {:ok, term} ->
+      term ->
         escape(term, line)
     end
   end

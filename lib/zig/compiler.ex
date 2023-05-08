@@ -11,36 +11,26 @@ defmodule Zig.Compiler do
   alias Zig.EasyC
   alias Zig.Nif
   alias Zig.Sema
-  alias Zig.Type
-  alias Zig.Type.Function
   alias Zig.Type.Struct
   alias Zig.Manifest
 
   import Zig.QuoteErl
 
-  defmacro __before_compile__(context = %{module: module, file: file}) do
+  defmacro __before_compile__(%{module: module, file: file}) do
     # NOTE: this is going to be called only from Elixir.  Erlang will not call this.
+    # all functionality in this macro must be replicated when running compilation from
+    # erlang.
 
     # TODO: verify that :otp_app exists
     code_dir = Path.dirname(file)
+    opts = Module.get_attribute(module, :zigler_opts)
 
-    opts =
-      module
-      |> Module.get_attribute(:zigler_opts)
-      |> Keyword.put(:src_file, file)
-
-    output =
-      module
-      |> Module.get_attribute(:zig_code_parts)
-      |> Enum.reverse()
-      |> Enum.join()
-      |> compile(module, code_dir, Keyword.put(opts, :render, :render_elixir))
-
-    if opts[:dump] do
-      output |> Macro.to_string() |> Code.format_string!() |> IO.puts()
-    end
-
-    output
+    module
+    |> Module.get_attribute(:zig_code_parts)
+    |> Enum.reverse()
+    |> Enum.join()
+    |> compile(module, code_dir, Keyword.put(opts, :render, :render_elixir))
+    |> Zig.Macro.inspect(opts)
   end
 
   # note that this directory is made public so that it can be both accessed
@@ -71,7 +61,6 @@ defmodule Zig.Compiler do
     precompiled = Keyword.get(opts, :precompile, true)
     compiled = Keyword.get(opts, :compile, true)
     renderer = Keyword.fetch!(opts, :render)
-    src_file = Keyword.fetch!(opts, :src_file)
 
     with true <- assembled,
          assemble_opts = Keyword.take(opts, [:link_lib, :build_opts]),

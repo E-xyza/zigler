@@ -25,7 +25,7 @@ defmodule Zig.Type.Function do
         _ -> length(params)
       end
 
-    function = %__MODULE__{
+    %__MODULE__{
       name: String.to_atom(name),
       arity: arity,
       params: params,
