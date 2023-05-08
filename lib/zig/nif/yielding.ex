@@ -143,15 +143,15 @@ defmodule Zig.Nif.Yielding do
       // mark the resource for releasing here.
       __resource__.release(#{frame_ptr(nif.name)}, env, frame_resource);
 
-      var exception_reason: beam.term = undefined;
-      if (e.enif_has_pending_exception(yield_env, &exception_reason) == 1) {
-        // Propagate exceptions from yield_env
-        return e.enif_raise_exception(env, exception_reason);
-      }
-
       if (beam.yield_info.?.yield_frame) | _ | {
         return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler(nif.name)}, 1, &frame_resource);
       } else {
+
+        var exception_reason: beam.term = undefined;
+        if (e.enif_has_pending_exception(yield_env, &exception_reason) == 1) {
+          // Propagate exceptions from yield_env
+          return e.enif_raise_exception(env, exception_reason);
+        }
 
         // The response was created using yield_env, so it has to be copied back in the process env
         // TODO: this does not cover lists and maps, because enif_make_copy will just take care
@@ -203,7 +203,21 @@ defmodule Zig.Nif.Yielding do
         }
       } else {
         nosuspend await beam_frame.zig_frame;
-        return beam.yield_info.?.response;
+
+        // The response was created using yield_env, so it has to be copied back in the process env
+        // TODO: this does not cover lists and maps, because enif_make_copy will just take care
+        // of copying the outer term but the inner terms will still point to the old env
+        const result_term = beam.yield_info.?.response;
+
+        var exception_reason: beam.term = undefined;
+        if (e.enif_has_pending_exception(beam.yield_info.?.environment, &exception_reason) == 1) {
+          // Propagate exceptions from yield_env
+          return e.enif_raise_exception(env, exception_reason);
+        }
+
+        const copied_term = e.enif_make_copy(env, result_term);
+
+        return copied_term;
       }
 
       return e.enif_schedule_nif(env, "#{nif.name}", 0, #{rescheduler(nif.name)}, 1, argv);
