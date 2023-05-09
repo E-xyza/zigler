@@ -184,7 +184,7 @@ pub threadlocal var context: ExecutionContext = .process_bound;
 pub const Compared = enum { lt, eq, gt };
 
 pub fn compare(lhs: term, rhs: term) Compared {
-    const compared = e.enif_compare(lhs.v, rhs.v)
+    const compared = e.enif_compare(lhs.v, rhs.v);
 
     if (compared == 0) return .eq;
     if (compared < 0) return .lt;
