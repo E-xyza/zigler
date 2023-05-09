@@ -179,6 +179,17 @@ pub const make_stacktrace = stacktrace.to_term;
 const ExecutionContext = enum { process_bound, threaded, dirty, yielding, callback };
 pub threadlocal var context: ExecutionContext = .process_bound;
 
+// these atoms are used to conform to Elixir's Compare interface
+pub const Compared = enum { lt, eq, gt };
+
+pub fn compare(lhs: term, rhs: term) Compared {
+    const compared = e.enif_compare(lhs.v, rhs.v)
+
+    if (compared == 0) return .eq;
+    if (compared < 0) return .lt;
+    if (compared > 0) return .gt;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // options
 
@@ -234,7 +245,7 @@ pub const threads = @import("threads.zig");
 pub const Thread = threads.Thread;
 
 ///////////////////////////////////////////////////////////////////////////////
-// threads
+// yields
 
 pub const yield = @import("yield.zig").yield;
 
