@@ -69,7 +69,11 @@ defmodule Zig.ErrorProng do
       :error, {:error, type, extra_stacktrace} ->
         new_stacktrace =
           extra_stacktrace
-          |> Enum.map(fn %{compile_unit_name: module_str, symbol_name: fn_str, line_info: line_info} ->
+          |> Enum.map(fn %{
+                           compile_unit_name: module_str,
+                           symbol_name: fn_str,
+                           line_info: line_info
+                         } ->
             {file, line} = __resolve(line_info)
             {String.to_atom(module_str), String.to_atom(fn_str), :..., [file: file, line: line]}
           end)

@@ -39,7 +39,7 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
         try stream.objectField("name");
         try stream.emitString(name);
         try stream.objectField("payload");
-        try streamType(stream, res_type);
+        try stream.emitString(@typeName(res_type));
     } else {
         try emitType(stream, "struct");
         try stream.objectField("name");
@@ -167,7 +167,7 @@ fn streamType(stream: anytype, comptime T: type) !void {
                     try streamType(stream, eu.payload);
                 },
                 else => {
-                    @compileError("Unsupported return or argument type found in public function: " ++ @typeName(T));
+                    try emitType(stream, "unusable:" ++ @typeName(T));
                 },
             }
         },

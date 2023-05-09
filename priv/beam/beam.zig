@@ -171,6 +171,7 @@ pub const make_empty_list = make_.make_empty_list;
 pub const make_list_cell = make_.make_list_cell;
 pub const make_error_atom = make_.make_error_atom;
 pub const make_error_pair = make_.make_error_pair;
+pub const make_ref = make_.make_ref;
 pub const make_stacktrace = stacktrace.to_term;
 
 // special functions
@@ -214,6 +215,23 @@ pub const Resource = resource.Resource;
 
 pub const event = e.ErlNifEvent;
 pub const monitor = e.ErlNifMonitor;
+
+///////////////////////////////////////////////////////////////////////////////
+// env management
+
+pub const alloc_env = e.enif_alloc_env;
+pub const free_env = e.enif_free_env;
+
+pub fn copy(env_: env, term_: term) term {
+    return .{.v = e.enif_make_copy(env_, term_.v)};
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// threads
+
+pub const tid = e.ErlNifTid;
+pub const threads = @import("threads.zig");
+pub const Thread = threads.Thread;
 
 ///////////////////////////////////////////////////////////////////////////////
 // exception

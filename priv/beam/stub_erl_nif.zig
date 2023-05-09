@@ -261,7 +261,7 @@ pub fn enif_sizeof_resource(_: ?*anyopaque) c_uint { return 0; }
 pub fn enif_system_info(_: inf, _: usize) void {}
 pub fn enif_term_to_binary(_: env, _: term, _: bin) c_int { return 0; }
 pub fn enif_term_type(_: env, _: term) ttyp { return 0; }
-pub fn enif_thread_create(_: [*c]u8, _: ?*tid_, _: fn (?*anyopaque) ?*anyopaque, _: ?*anyopaque, _: top) c_int {
+pub fn enif_thread_create(_: [*c]u8, _: ?*tid_, _: *const fn (?*anyopaque) callconv(.C) ?*anyopaque, _: ?*anyopaque, _: top) c_int {
     return 0;
 }
 pub fn enif_thread_exit(_: ?*anyopaque) void {}

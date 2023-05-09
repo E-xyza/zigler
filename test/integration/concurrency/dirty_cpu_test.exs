@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Concurrency.DirtyCpu do
+defmodule ZiglerTest.Concurrency.DirtyCpuTest do
   use ZiglerTest.IntegrationCase, async: true
 
   use Zig, otp_app: :zigler, nifs: [dirty_cpu: [:dirty_cpu]]

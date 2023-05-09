@@ -37,8 +37,7 @@ defmodule ZiglerTest.Sema.ResourceTest do
              arity: 1,
              params: [
                %Resource{
-                 name: "Resource(nif.T,root,.{.Callbacks = null})",
-                 payload: %Zig.Type.Struct{name: "T"}
+                 name: "beam.Resource(nif.T,root,.{.Callbacks = null})",
                }
              ],
              return: %Struct{name: "T"}

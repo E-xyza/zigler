@@ -43,7 +43,7 @@ pub fn make(env: beam.env, value: anytype, comptime opts: anytype) beam.term {
         .ComptimeFloat => return make_comptime_float(env, value),
         .Void => return make_enum(env, .ok),
         else => {
-            @compileError("unusable type encountered");
+            @compileError("unusable type " ++ @typeName(T) ++ " encountered");
         },
     }
 }
@@ -389,4 +389,8 @@ pub fn make_error_pair(env: beam.env, payload: anytype, comptime opts: anytype) 
 
 pub fn make_error_atom(env: beam.env) beam.term {
     return make(env, .@"error", .{});
+}
+
+pub fn make_ref(env: beam.env) beam.term {
+    return .{ .v = e.enif_make_ref(env) };
 }
