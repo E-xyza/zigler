@@ -9,11 +9,9 @@ defmodule Zig.Type.Resource do
   def from_json(%{"name" => name, "payload" => payload}, module) do
     # TODO: use the Zig parser to do this in the future.
     name =
-      ~r/resource.Resource\(([a-zA-Z0-9_\.\[\]\(\)\s]+),sema/
+      ~r/resource.Resource\(([a-zA-Z0-9_\*\.\[\]\(\)\s]+),sema/
       |> Regex.replace(name, "Resource(#{payload},root")
       |> String.replace(".#{module}", "nif")
-      |> String.replace_prefix("", "beam.")
-      |> String.replace("(threads", "(beam.threads")
       |> String.replace("stub_erl_nif", "e")
 
     %__MODULE__{name: name}

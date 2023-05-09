@@ -234,6 +234,11 @@ pub const threads = @import("threads.zig");
 pub const Thread = threads.Thread;
 
 ///////////////////////////////////////////////////////////////////////////////
+// threads
+
+pub const yield = @import("yield.zig").yield;
+
+///////////////////////////////////////////////////////////////////////////////
 // exception
 
 pub fn raise_exception(env_: env, reason: anytype) term {

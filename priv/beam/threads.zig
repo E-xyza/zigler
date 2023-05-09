@@ -6,7 +6,10 @@ const BeamThreadFn = *const fn (?*anyopaque) callconv(.C) ?*anyopaque;
 
 const ThreadError = error{threaderror};
 
-pub threadlocal var thread_info: ?*anyopaque = null;
+pub const ThreadState = enum { prepped, launched, done, joined };
+
+pub threadlocal var this_thread: ?*anyopaque = null;
+pub threadlocal var thread_state: ?*ThreadState = null;
 
 pub fn Thread(comptime Function: type) type {
     const name = @typeName(Function);
@@ -28,47 +31,52 @@ pub fn Thread(comptime Function: type) type {
 
         tid: beam.tid,
         pid: beam.pid,
-        env: beam.env, // needs to be freed
+        env: beam.env,
         ref: beam.term,
-        retval: *Return, // needs to be freed
+        retpointer: *Return,
         payload: Payload,
         allocator: std.mem.Allocator,
         function: *const Function,
+        state: ThreadState,
 
-        fn wrapped(c_info: ?*anyopaque) callconv(.C) ?*anyopaque {
+        fn wrapped(void_thread: ?*anyopaque) callconv(.C) ?*anyopaque {
+            const thread = @ptrCast(*This, @alignCast(@alignOf(This), void_thread.?));
+            thread_state = &thread.state;
+            thread.state = .launched;
+            defer thread.state = .done;
+
             beam.context = .threaded;
-            thread_info = c_info;
-            const info = @ptrCast(*This, @alignCast(@alignOf(This), c_info.?));
+            this_thread = void_thread;
 
             if (Return == void) {
-                info.function(info.payload);
-                _ = beam.send(info.env, info.pid, .{ .done, info.ref }) catch @panic("process died before thread");
+                thread.function(thread.payload);
+                // ignore the failed send instruction if the process has been killed.
+                _ = beam.send(thread.env, thread.pid, .{ .done, thread.ref }) catch {};
                 return null;
             } else {
-                info.retval.* = info.function(info.payload);
-                _ = beam.send(info.env, info.pid, .{ .done, info.ref }) catch @panic("process died before thread");
-                return info.retval;
+                const result = thread.function(thread.payload);
+                thread.retpointer.* = result;
+                // ignore the failed send instruction if the process has been killed.
+                _ = beam.send(thread.env, thread.pid, .{ .done, thread.ref }) catch {};
+                return thread.retpointer;
             }
         }
 
-        pub fn prep(function: *const Function, payload: Payload, opts: anytype) !This {
-            var info: This = undefined;
-            errdefer beam.free_env(info.env);
+        pub fn prep(function: *const Function, payload: Payload, opts: anytype) !*This {
+            const allocator = if (@hasField(@TypeOf(opts), "allocator")) opts.allocator else beam.allocator;
+            const thread = try allocator.create(This);
+            errdefer allocator.destroy(thread);
 
-            if (@hasField(@TypeOf(opts), "allocator")) {
-                info.allocator = opts.allocator;
-            } else {
-                info.allocator = beam.allocator;
-            }
+            thread.env = beam.alloc_env();
+            errdefer beam.free_env(thread.env);
 
-            if (Return != void) {
-                info.retval = try info.allocator.create(Return);
-            }
+            thread.retpointer = try allocator.create(Return);
+            thread.allocator = allocator;
+            thread.function = function;
+            thread.payload = payload;
+            thread.state = .prepped;
 
-            info.function = function;
-            info.payload = payload;
-
-            return info;
+            return thread;
         }
 
         fn name_ptr() [*c]u8 {
@@ -83,7 +91,8 @@ pub fn Thread(comptime Function: type) type {
             self.pid = beam.self(env) catch @panic("threads must be started from a process");
             self.env = beam.alloc_env();
 
-            const resource = try Resource.create(self.*, .{});
+            const resource = try Resource.create(self, .{});
+
             const parent_ref = beam.make(env, resource, .{ .output_type = .default });
             self.ref = beam.copy(self.env, parent_ref);
 
@@ -91,29 +100,59 @@ pub fn Thread(comptime Function: type) type {
                 return error.threaderror;
             }
 
-            resource.update(self.*);
+            resource.release(); // this is ok since we have already made it, above.
 
             return parent_ref;
         }
 
-        pub fn get_thread_info() *This {
-            return @ptrCast(*This, @alignCast(@alignOf(This), thread_info.?));
+        pub fn get_info() *This {
+            return @ptrCast(*This, @alignCast(@alignOf(This), this_thread.?));
         }
 
-        pub fn join(self: This) !Return {
-            var retval: ?*anyopaque = null;
-            defer if (Return != void) {
-                self.allocator.destroy(self.retval);
-            };
+        pub fn join(self: *This) !Return {
 
-            if (e.enif_thread_join(self.tid, &retval) != 0) {
-                return error.threadjoinerror;
+                defer self.state = .joined;
+
+                var retval: ?*anyopaque = null;
+
+                if (e.enif_thread_join(self.tid, &retval) != 0) {
+                    return error.threadjoinerror;
+                }
+
+                if (Return != void) {
+                    self.retpointer = @ptrCast(*Return, @alignCast(return_align, retval.?));
+                    return self.retpointer.*;
+                }
+        }
+
+        pub fn cleanup(self: *This) void {
+            beam.free_env(self.env);
+            self.allocator.destroy(self.retpointer);
+            self.allocator.destroy(self);
+        }
+    };
+}
+
+pub fn ThreadCallbacks(comptime ThreadType: type) type {
+    return struct {
+        pub fn dtor(env: beam.env, thread_ptr: **ThreadType) void {
+            _ = env;
+            const thread = thread_ptr.*;
+
+            while (thread.state == .prepped) {
+                std.time.sleep(1000);
             }
 
-            if (Return != void) {
-                const result_ptr = @ptrCast(*Return, @alignCast(return_align, retval.?));
-                return result_ptr.*;
+            // only launched, done, and joined are available here
+            if (thread.state == .launched) {
+                thread.state = .done;
             }
+
+            if (thread.state != .joined) {
+               _ = thread.join() catch {};
+            }
+
+            thread.cleanup();
         }
     };
 }

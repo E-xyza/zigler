@@ -9,15 +9,16 @@ defmodule ZiglerTest.Concurrency.ThreadedManualTest do
   const beam = @import("beam");
 
   const Thread = beam.Thread(@TypeOf(myfun));
-  pub const ThreadResource = beam.Resource(Thread, @import("root"), .{});
+  pub const ThreadResource = beam.Resource(*Thread, @import("root"), .{
+    .Callbacks = beam.threads.ThreadCallbacks(Thread)
+  });
 
   fn myfun(x: u32) u32 {
     return x + 47;
   }
 
   pub fn launch(env: beam.env, x: u32) beam.term {
-    const thread = beam.allocator.create(Thread) catch unreachable;
-    thread.* = Thread.prep(myfun, x, .{}) catch unreachable;
+    const thread = Thread.prep(myfun, x, .{}) catch unreachable;
     return thread.start(env, ThreadResource) catch unreachable;
   }
 
