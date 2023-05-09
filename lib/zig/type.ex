@@ -125,6 +125,7 @@ defprotocol Zig.Type do
     case json do
       %{"type" => "unusable:" <> typename} ->
         raise CompileError, description: "zigler encountered the unusable type #{typename}"
+
       %{"type" => "bool"} ->
         Bool.from_json(json)
 

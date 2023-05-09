@@ -32,9 +32,9 @@ defmodule ZiglerTest.Concurrency.ThreadedYieldingManualTest do
   test "threaded function" do
     this = self()
 
-    spawn fn ->
+    spawn(fn ->
       launch(this)
-    end
+    end)
 
     assert_receive :done
   end

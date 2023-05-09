@@ -40,9 +40,11 @@ defmodule :zigler do
     ensure_priv_dir(otp_app)
 
     {:attribute, _, :file, {file, _}} = Enum.find(ast, &match?({:attribute, _, :file, _}, &1))
-    module_dir = file
-    |> Path.dirname()
-    |> Path.absname()
+
+    module_dir =
+      file
+      |> Path.dirname()
+      |> Path.absname()
 
     module =
       case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
@@ -154,13 +156,16 @@ defmodule :zigler do
     Enum.each(ast, fn
       tuple when elem(tuple, 0) == :attribute ->
         tuple
-        |> :erl_pp.attribute
+        |> :erl_pp.attribute()
         |> IO.puts()
+
       tuple when elem(tuple, 0) == :function ->
         tuple
-        |> :erl_pp.function
+        |> :erl_pp.function()
         |> IO.puts()
-      _ -> :ok
+
+      _ ->
+        :ok
     end)
 
     ast

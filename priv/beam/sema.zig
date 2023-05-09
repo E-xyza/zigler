@@ -15,7 +15,7 @@ fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
 }
 
 fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: type) !void {
-    if (en.fields.len == 0) {
+    if (en.fields.len <= 1) {
         try emitType(stream, "unusable:" ++ @typeName(T));
         return;
     }
