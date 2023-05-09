@@ -180,6 +180,7 @@ const ExecutionContext = enum { process_bound, threaded, dirty, yielding, callba
 pub threadlocal var context: ExecutionContext = .process_bound;
 
 // these atoms are used to conform to Elixir's Compare interface
+// see: https://hexdocs.pm/elixir/1.13/Enum.html#sort/2-sorting-structs
 pub const Compared = enum { lt, eq, gt };
 
 pub fn compare(lhs: term, rhs: term) Compared {
