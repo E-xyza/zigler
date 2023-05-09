@@ -110,8 +110,9 @@ pub fn Thread(comptime Function: type) type {
         }
 
         pub fn join(self: *This) !Return {
-
-                defer self.state = .joined;
+            if (@cmpxchgStrong(ThreadState, &self.state, .done, .joined, .Monotonic, .Monotonic)) | _ | {
+                return error.threadjoinerror;
+            }
 
                 var retval: ?*anyopaque = null;
 
@@ -144,9 +145,7 @@ pub fn ThreadCallbacks(comptime ThreadType: type) type {
             }
 
             // only launched, done, and joined are available here
-            if (thread.state == .launched) {
-                thread.state = .done;
-            }
+            _ = @cmpxchgStrong(ThreadState, &thread.state, .launched, .done, .Monotonic, .Monotonic);
 
             if (thread.state != .joined) {
                _ = thread.join() catch {};

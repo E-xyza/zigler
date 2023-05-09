@@ -75,7 +75,7 @@ defmodule Zig.ErrorProng do
                            line_info: line_info
                          } ->
             {file, line} = __resolve(line_info)
-            {String.to_atom(module_str), String.to_atom(fn_str), :..., [file: file, line: line]}
+            {String.to_atom(module_str), String.to_atom(fn_str), [:...], [file: file, line: line]}
           end)
           |> Enum.reverse(__STACKTRACE__)
 

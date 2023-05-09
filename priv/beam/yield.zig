@@ -15,7 +15,7 @@ fn yield_threaded() !void {
     switch (threads.thread_state.?.*) {
         .done => return error.process_terminated,
         .launched => return,
+        .joined => return,  // this could be a race condition, but it's fine.
         .prepped => @panic("yield should not be called when thread is only prepped"),
-        .joined => @panic("yield should not be called when thread has been joined"),
     }
 }

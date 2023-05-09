@@ -147,7 +147,7 @@ defmodule Zig.Nif.Basic do
           if Type.marshals_param?(param_type) do
             {{:var, :"#{var}_m"}, [so_far, Type.marshal_param(param_type, var, nil, :erlang)]}
           else
-            {var, so_far}
+            {{:var, var}, so_far}
           end
         end)
 
