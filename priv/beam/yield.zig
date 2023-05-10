@@ -11,11 +11,12 @@ pub fn yield(_: anytype) !void {
     }
 }
 
+fn is_thread_joining() bool {
+    return @atomicLoad(bool, threads.thread_joining, .Monotonic);
+}
+
 fn yield_threaded() !void {
-    switch (threads.thread_state.?.*) {
-        .done => return error.process_terminated,
-        .launched => return,
-        .joined => return,  // this could be a race condition, but it's fine.
-        .prepped => @panic("yield should not be called when thread is only prepped"),
+    if (is_thread_joining()) {
+        return error.process_terminated;
     }
 }

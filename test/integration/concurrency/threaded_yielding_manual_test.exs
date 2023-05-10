@@ -14,17 +14,18 @@ defmodule ZiglerTest.Concurrency.ThreadedYieldingManualTest do
     .Callbacks = beam.threads.ThreadCallbacks(Thread)
   });
 
-  fn myfun(pid : beam.pid) void {
+  fn myfun(pid : beam.pid) u32 {
       const env = Thread.get_info().env;
       var loop: bool = true;
       while (loop) {
           _ = beam.yield(.{}) catch { loop = false; };
       }
-      _ = beam.send(env, pid, .done) catch unreachable;
+      _ = beam.send(env, pid, .done) catch {};
+      return 47;
   }
 
   pub fn launch(env: beam.env, pid: beam.pid) beam.term {
-    const thread = Thread.prep(myfun, pid, .{}) catch unreachable;
+    const thread = Thread.create(myfun, pid, .{}) catch unreachable;
     return thread.start(env, ThreadResource) catch unreachable;
   }
   """
@@ -37,5 +38,6 @@ defmodule ZiglerTest.Concurrency.ThreadedYieldingManualTest do
     end)
 
     assert_receive :done
+    Process.sleep(10)
   end
 end

@@ -18,19 +18,19 @@ defmodule ZiglerTest.Concurrency.ThreadedManualTest do
   }
 
   pub fn launch(env: beam.env, x: u32) beam.term {
-    const thread = Thread.prep(myfun, x, .{}) catch unreachable;
+    const thread = Thread.create(myfun, x, .{}) catch unreachable;
     return thread.start(env, ThreadResource) catch unreachable;
   }
 
-  pub fn join(rsrc: ThreadResource) u32 {
+  pub fn join(rsrc: ThreadResource) void {
     const thread = ThreadResource.unpack(rsrc);
-    return thread.join() catch unreachable;
+    _ = thread.join(.{}) catch unreachable;
   }
   """
 
   test "threaded function" do
     assert ref = launch(100)
-    assert_receive {:done, ^ref}
-    assert 147 = join(ref)
+    assert_receive {:done, ^ref, 147}
+    assert join(ref)
   end
 end
