@@ -290,25 +290,29 @@ defimpl Zig.Type, for: Atom do
   def get_result(:term, _), do: "break :get_result result.v;"
 
   def get_result(:void, opts) do
-    case {get_in(opts, [:return, :arg]), get_in(opts, [:return, :length])} do
+    # TODO: move this out of void, and make it general?
+    return_type = Keyword.get(opts, :type, :default)
+
+    case {opts[:arg], opts[:length]} do
       {nil, _} ->
         "break :get_result beam.make(env, result, .{}).v;"
 
       {arg, nil} ->
         """
         _ = result;
-        break :get_result beam.make(env, arg#{arg}, .{}).v;
+        break :get_result beam.make(env, arg#{arg}, .{.output_type = .#{return_type}}).v;
         """
 
       {arg, {:arg, length_arg}} ->
-        return_type =
-          opts
-          |> Keyword.fetch!(:return)
-          |> Keyword.fetch!(:type)
-
         """
         _ = result;
         break :get_result beam.make(env, arg#{arg}[0..@intCast(usize, arg#{length_arg})], .{.output_type = .#{return_type}}).v;
+        """
+
+      {arg, length} when is_integer(length) ->
+        """
+        _ = result;
+        break :get_result beam.make(env, arg#{arg}[0..#{length})], .{.output_type = .#{return_type}}).v;
         """
     end
   end

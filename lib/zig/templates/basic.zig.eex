@@ -1,6 +1,6 @@
 <% needs_make? = Enum.any?(@type.params, &Type.needs_make?/1) %>
 
-export fn <%= @type.name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) e.ErlNifTerm {
+fn <%= @type.name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
     beam.context = .<%= context(@concurrency) %>;
     <%= if needs_make? do %>
     var error_info = beam.make_empty_list(env); 
@@ -48,6 +48,7 @@ export fn <%= @type.name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTer
           <% [:env] -> %> _ = arg;
           <% _ ->  %>
         <% end %>
+
         const result = nif.<%= @type.name %>(<%= Nif.indexed_args(@type.params) %>) <%= Nif.maybe_catch(@type.return) %>;
 
         <%= Type.get_result(@type.return, @return) %>
