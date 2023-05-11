@@ -68,9 +68,9 @@ defmodule Zig.Compiler do
          Assembler.assemble(module, assemble_opts),
          true <- precompiled,
          # TODO: verify that this parsed correctly.
-         {sema_functions, new_nif_opts} = Sema.analyze_file!(module, opts),
+         manifest = Manifest.create(base_code),
+         {sema_functions, new_nif_opts} = Sema.analyze_file!(module, manifest, opts),
          parsed_code = Zig.Parser.parse(base_code),
-         manifest = Manifest.create(parsed_code),
          new_opts =
            Keyword.merge(opts, nifs: new_nif_opts, manifest: manifest, parsed: parsed_code),
          function_code =

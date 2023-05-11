@@ -12,7 +12,7 @@ defmodule ZiglerTest.Sema.ResourceTest do
   setup_all do
     sema_map =
       __MODULE__
-      |> Sema.analyze_file!(nifs: {:auto, []}, default_options: Nif.default_options())
+      |> Sema.analyze_file!([], nifs: {:auto, []}, default_options: Nif.default_options())
       |> elem(0)
 
     {:ok, sema_map}

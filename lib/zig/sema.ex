@@ -2,13 +2,15 @@ defmodule Zig.Sema do
   require EEx
   alias Zig.Assembler
   alias Zig.Command
+  alias Zig.Manifest
   alias Zig.Type.Function
 
   sema_zig_template = Path.join(__DIR__, "templates/sema.zig.eex")
   EEx.function_from_file(:defp, :file_for, sema_zig_template, [:assigns])
 
-  @spec analyze_file!(module :: module, opts :: keyword) :: {%{atom() => Function.t()}, keyword}
-  def analyze_file!(module, opts) do
+  @spec analyze_file!(module :: module, Manifest.t(), opts :: keyword) ::
+          {%{atom() => Function.t()}, keyword}
+  def analyze_file!(module, manifest, opts) do
     dir = Assembler.directory(module)
     sema_file = Path.join(dir, "sema.zig")
 
@@ -48,6 +50,9 @@ defmodule Zig.Sema do
            find(name, functions_json, module, opts)
          end), keyword}
     end
+  rescue
+    e in Zig.CompileError ->
+      raise Zig.CompileError.to_error(e, manifest)
   end
 
   defp find(name, functions_json, module, opts) do

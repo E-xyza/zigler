@@ -26,13 +26,11 @@ defmodule Zig.Command do
 
       # TODO: better error parsing here
       {error, code} ->
-        message = "zig command failed: #{command} failed with error #{code}: #{error}"
-        Logger.error(message)
-        raise "failed"
+        raise Zig.CompileError, command: command, code: code, error: error
     end
   end
 
-  def build_sema(dir), do: run_zig("build sema", cd: dir)
+  def build_sema(dir), do: run_zig("build sema", cd: dir, stderr_to_stdout: true)
 
   def fmt(file) do
     run_zig("fmt #{file}", [])
