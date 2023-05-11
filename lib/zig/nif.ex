@@ -241,7 +241,7 @@ defmodule Zig.Nif do
     # TODO: check for easy_c
     return =
       if arg = return_opts[:arg] do
-        trimmed
+        param_types
         |> Enum.at(arg)
         |> Type.spec(:return, return_opts)
       else
