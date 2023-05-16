@@ -23,14 +23,21 @@ pub const ErlNifIOQueue = extern struct {};
 pub const ErlNifIOQueueOpts = extern struct {};
 pub const ErlNifMapIterator = extern struct {};
 pub const ErlNifMapIteratorEntry = extern struct {};
-pub const ErlNifResourceFlags = extern struct {};
-pub const ErlNifResourceTypeInit = extern struct {};
+pub const ErlNifResourceFlags = c_int;
 pub const ErlNifSelectFlags = extern struct {};
 pub const ErlNifEvent = extern struct {};
 pub const ErlNifRWLock = extern struct {};
 pub const ErlNifSysInfo = extern struct {};
 pub const ErlNifTSDKey = extern struct {};
 pub const SysIOVec = extern struct {};
+
+pub const ErlNifResourceTypeInit = extern struct {
+    dtor: ?* const fn (?*ErlNifEnv, ?*anyopaque) callconv(.C) void,
+    stop: ?* const fn (?*ErlNifEnv, ?*anyopaque, ErlNifEvent, c_int) callconv(.C) void,
+    down: ?* const fn (?*ErlNifEnv, ?*anyopaque, ?*ErlNifPid, ?*ErlNifMonitor) callconv(.C) void,
+    dyncall: ?* const fn (?*ErlNifEnv, ?*anyopaque, ?*anyopaque) callconv(.C) void,
+    members: c_int,
+};
 
 // enum types.  These types are enums in the BEAM, we're going to spoof them
 // as integers.
@@ -45,7 +52,7 @@ pub const ErlNifUniqueInteger = u64;
 const env = ?*ErlNifEnv;
 const bin = ?*ErlNifBinary;
 const res = ?*ErlNifResourceType;
-const ini = ?*ErlNifResourceTypeInit;
+const ini = ?*const ErlNifResourceTypeInit;
 const mon = ?*ErlNifMonitor;
 const pid = ?*ErlNifPid;
 const prt = ?*ErlNifPort;
@@ -309,3 +316,5 @@ pub const ERL_NIF_UNIQUE_MONOTONIC = 1;
 
 pub const ERL_NIF_INTERNAL_HASH = 0;
 pub const ERL_NIF_PHASH2 = 1;
+
+pub const ERL_NIF_RT_CREATE = 0;

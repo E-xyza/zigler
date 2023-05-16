@@ -17,15 +17,19 @@ defmodule Zig.Command do
   defp run_zig(command, opts) do
     args = String.split(command)
 
-    cmd_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
+    base_opts = Keyword.take(opts, [:cd])
+    error_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
     zig_cmd = executable_path(opts)
 
-    case System.cmd(zig_cmd, args, cmd_opts) do
+    case System.cmd(zig_cmd, args, base_opts) do
       {result, 0} ->
         result
 
       # TODO: better error parsing here
-      {error, code} ->
+      _ ->
+        # rerun it.  This is awful, but we need it to separate out
+        # stderr from stdout.
+        {error, code} = System.cmd(zig_cmd, args, error_opts)
         raise Zig.CompileError, command: command, code: code, error: error
     end
   end

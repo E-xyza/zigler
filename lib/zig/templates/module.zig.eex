@@ -8,20 +8,24 @@ const resource = beam.resource;
 const threads = beam.threads;
 
 <%= for nif <- @nifs do %>
-<%= render_zig(nif) %>
+<%= Nif.render_zig(nif) %>
 <% end %>
 
 <%= Resources.render(resources: @resources, module: @module) %>
 
 // this will be filled out later.
-export fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) c_int {
+fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.C) c_int {
+    load_resources(env);
+    <%= if @callbacks[:on_load] do %>
+    nif.<%= @callbacks[:on_load] %>(env, priv_data, .{.v = load_info});
+    <% else %>
     _ = priv_data;
     _ = load_info;
-    load_resources(env);
+    <% end %>
     return 0;
 }
 
-export var exported_nifs = [_]e.ErlNifFunc{<%= table_entries(@nifs) %>};
+var exported_nifs = [_]e.ErlNifFunc{<%= table_entries(@nifs) %>};
 
 const entry = e.ErlNifEntry{
     .major = <%= nif_version(:major) %>,

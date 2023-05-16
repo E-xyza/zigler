@@ -55,16 +55,19 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                 if (@hasDecl(Callbacks, "stop")) {
                     assert_type_matches(@TypeOf(Callbacks.stop), fn (beam.env, *T, beam.pid, beam.monitor) void);
                     init_struct.stop = Shimmed.stop;
+                    init_struct.members += 1;
                 }
 
                 if (@hasDecl(Callbacks, "down")) {
                     assert_type_matches(@TypeOf(Callbacks.down), fn (beam.env, *T, beam.event, bool) void);
                     init_struct.down = Shimmed.down;
+                    init_struct.members += 1;
                 }
 
                 if (@hasDecl(Callbacks, "dyncall")) {
                     assert_type_matches(@TypeOf(Callbacks.dyncall), fn (beam.env, *T, ?*anyopaque) void);
                     init_struct.dyncall = Shimmed.dyncall;
+                    init_struct.members += 1;
                 }
             }
 

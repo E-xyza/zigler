@@ -18,10 +18,15 @@ defmodule Zig.Sema do
     Command.fmt(sema_file)
     result = Command.build_sema(dir)
 
+    if opts[:dump_sema] do
+      IO.puts([IO.ANSI.yellow(), result, IO.ANSI.reset()])
+    end
+
     functions_json =
       result
       |> Jason.decode!()
       |> Map.fetch!("functions")
+      |> filter_ignores(opts)
 
     case Keyword.fetch!(opts, :nifs) do
       {:auto, specified} ->
@@ -84,5 +89,15 @@ defmodule Zig.Sema do
       {:c, integer} when is_integer(integer) ->
         %{found_function | params: List.duplicate(:erl_nif_term, integer), arity: integer}
     end
+  end
+
+  defp filter_ignores(functions, opts) do
+    ignores =
+      opts
+      |> Keyword.get(:ignore, [])
+      |> List.wrap()
+      |> Enum.map(&to_string/1)
+
+    Enum.reject(functions, &(&1["name"] in ignores))
   end
 end
