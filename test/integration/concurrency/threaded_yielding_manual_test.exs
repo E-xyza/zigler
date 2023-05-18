@@ -1,5 +1,8 @@
 defmodule ZiglerTest.Concurrency.ThreadedYieldingManualTest do
-  # recapitulates the threading process, except manually.
+  # this is a semi manual implementation of a threaded nif.  In order to do
+  # what it does, it defers all of what it does to the beam.threading namespace.
+  # this includes the thread object, locking primitives, state management, etc.
+  # it does, however, create and manage the Thread resource by itself.
 
   use ZiglerTest.IntegrationCase, async: true
 
@@ -10,41 +13,20 @@ defmodule ZiglerTest.Concurrency.ThreadedYieldingManualTest do
   const std = @import("std");
 
   const Thread = beam.Thread(@TypeOf(thread));
-  pub const ThreadResource = beam.Resource(Thread, @import("root"), .{
-    .Callbacks = beam.threads.ThreadCallbacks(Thread)
+  pub const ThreadResource = beam.Resource(*Thread, @import("root"), .{
+    .Callbacks = beam.threads.ThreadCallbacks(*Thread)
   });
 
-  //fn dtor(env: beam.env, res_ptr: ?*anyopaque) callconv(.C) void {
-  //  _ = env;
-  //  std.debug.print("destroyed\n", .{});
-  //  var rres_ptr: ?*anyopaque = undefined;
-  //  const res = @ptrCast(*Resource, @alignCast(@alignOf(Resource), res_ptr.?));
-  //  defer e.enif_free_env(res.env);
-  //  _ = e.enif_thread_join(res.tid, &rres_ptr);
-  //}
-
-  fn thread(info: beam.pid) u32 {
-    beam.context = .threaded;
-    const res = @ptrCast(*Resource, @alignCast(@alignOf(Resource), info.?));
-    std.debug.print("alive? {}\n", .{e.enif_is_process_alive(res.env, &res.pid)});
-    const result = e.enif_send(null, &res.pid, res.env, beam.make(res.env, .done, .{}).v);
-    _ = beam.send(res.env, res.pid, beam.make(res.env, .done, .{})) catch unreachable;
-    return 47;
+  fn thread(env: beam.env, pid: beam.pid) void {
+    _ = beam.send(env, pid, beam.make(env, .done, .{})) catch unreachable;
   }
 
-  pub fn launch(env: beam.env, pid: beam.pid) beam.term {
-    //const resptr = e.enif_alloc_resource(resource_type, @sizeOf(Resource));
-    //const resterm = e.enif_make_resource(env, resptr);
-    //defer e.enif_release_resource(resptr);
-//
-    //const res = @ptrCast(*Resource, @alignCast(@alignOf(Resource), resptr));
-//
-    //res.env = beam.alloc_env();
-    //res.pid = pid;
-    const resource_term = ThreadResource.create(res, .{});
-    res.ref = beam.copy(res.env, resource_term)
+  fn thread_unpack(args: beam.Payload(thread)) void {
+    thread(args[0], args[1]);
+  }
 
-    return beam.make(env, resource_term, .{});
+  pub fn launch(env: beam.env, pid: beam.pid) !beam.term {
+    return Thread.launch(ThreadResource, env, thread_unpack, .{env, pid});
   }
   """
 

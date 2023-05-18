@@ -4,14 +4,14 @@ const e = @import("erl_nif.zig");
 
 const BeamThreadFn = *const fn (?*anyopaque) callconv(.C) ?*anyopaque;
 
-const ThreadError = error{threaderror, threadtooktoolong, processterminated};
+const ThreadError = error{ threaderror, threadtooktoolong, processterminated };
 
 pub const ThreadState = enum {
     const This = @This();
-    prepped,  // harness has created the thread and is waiting for thread to check in.
-    running,  // thread has checked in
+    prepped, // harness has created the thread and is waiting for thread to check in.
+    running, // thread has checked in
     finished, // thread function has completed running
-    joined,   // all activity on the thread has completed.
+    joined, // all activity on the thread has completed.
 
     pub fn set(self: *This, state: ThreadState) void {
         @atomicStore(This, self, state, .Monotonic);
@@ -26,8 +26,8 @@ pub const ThreadState = enum {
     }
 
     pub fn wait_while(self: *This, state: ThreadState) void {
-        while (self.get() == state) { 
-            std.time.sleep(1000); 
+        while (self.get() == state) {
+            std.time.sleep(1000);
         }
     }
 
@@ -48,16 +48,8 @@ pub threadlocal var thread_joining: *bool = undefined;
 
 pub fn Thread(comptime Function: type) type {
     const name = @typeName(Function);
-    comptime var Payload: type = undefined;
-    comptime var Return: type = undefined;
-
-    switch (@typeInfo(Function)) {
-        .Fn => |F| {
-            Return = F.return_type.?;
-            Payload = F.args[0].arg_type.?;
-        },
-        else => @compileError("Expected a function type"),
-    }
+    comptime var Payload = beam.Payload(Function);
+    comptime var Return = @typeInfo(Function).Fn.return_type.?;
 
     const return_align = @alignOf(Return);
     _ = return_align;
@@ -69,45 +61,15 @@ pub fn Thread(comptime Function: type) type {
         pid: beam.pid = undefined,
         env: beam.env = undefined,
         ref: beam.term = undefined,
-        //payload: Payload,
-        //retptr: *Return,
-        //allocator: std.mem.Allocator,
-        //function: *const Function,
-        //state: ThreadState = .prepped,
-        //joining: bool = false,  // protected variable that should only be set by the first thread that tries to join.
 
-        pub fn create(function: *const Function, payload: Payload, opts: anytype) !*This {
-            const allocator = if (@hasField(@TypeOf(opts), "allocator")) opts.allocator else beam.allocator;
-            const self = try allocator.create(This);
-
-            self.* = .{
-                .env = beam.alloc_env(),
-                .payload = payload,
-                .allocator = allocator,
-                .function = function,
-                .retptr = try allocator.create(Return),
-            };
-            
-            return self; 
+        pub fn launch(comptime ThreadResource: type, env: beam.env, comptime exec_fun: fn (Payload) void, args: Payload) !beam.term {
+            _ = exec_fun;
+            _ = args;
+            _ = ThreadResource;
+            return beam.make(env, .ok, .{});
         }
 
-        pub fn start(self: *This, env: beam.env, comptime Resource: type) !beam.term {
-            self.pid = beam.self(env) catch @panic("threads must be started from a process");
-
-            const resource = try Resource.create(self, .{});
-
-            const parent_ref = beam.make(env, resource, .{ .output_type = .default });
-            self.ref = beam.copy(self.env, parent_ref);
-
-            if (e.enif_thread_create(name_ptr(), &self.tid, wrapped, self, null) != 0) {
-                return error.threaderror;
-            }
-
-            resource.release(); // this is ok since we have already made it, above.
-
-            return parent_ref;
-        }
-
+        // this is a wrapped function designed explicitly to be called by e.enif_thread_create.
         fn wrapped(void_thread: ?*anyopaque) callconv(.C) ?*anyopaque {
             const thread = @ptrCast(*This, @alignCast(@alignOf(This), void_thread.?));
             // set critical threadlocal variables
@@ -125,7 +87,7 @@ pub fn Thread(comptime Function: type) type {
             defer {
                 if (thread.state.exchange(.running, .finished)) |state| switch (state) {
                     .running => unreachable,
-                    .prepped => @panic("should not have regressed to prepped"), 
+                    .prepped => @panic("should not have regressed to prepped"),
                     .finished => @panic("should not have reached finished without executing thread"),
                     .joined => @panic("should not have reached joined without executing thread"),
                 };
@@ -178,19 +140,19 @@ pub fn Thread(comptime Function: type) type {
             _ = opts;
             // be the first thread to obtain a lock on the process.
             //if (self.lock_join()) {
-                //std.debug.print("a\n", .{});
-                //self.state.wait_until(.finished, opts) catch |err| {
-                //    std.debug.print("a thread failed to join because it took too long\n", .{});
-                //    return err;
-                //};
-                //std.debug.print("b\n", .{});
-                //if (!@hasField(@TypeOf(opts), "dontjoin")) {
-                    std.debug.print("b2\n", .{});
-                    _ = e.enif_thread_join(self.tid, null);
-                //}
-                //std.debug.print("c\n", .{});
-                //self.state.set(.joined);
-                //std.debug.print("d\n", .{});
+            //std.debug.print("a\n", .{});
+            //self.state.wait_until(.finished, opts) catch |err| {
+            //    std.debug.print("a thread failed to join because it took too long\n", .{});
+            //    return err;
+            //};
+            //std.debug.print("b\n", .{});
+            //if (!@hasField(@TypeOf(opts), "dontjoin")) {
+            std.debug.print("b2\n", .{});
+            _ = e.enif_thread_join(self.tid, null);
+            //}
+            //std.debug.print("c\n", .{});
+            //self.state.set(.joined);
+            //std.debug.print("d\n", .{});
             //} else {
             //    // someone else has already joined.
             //    self.state.wait_until(.joined, opts) catch |err| {
@@ -219,7 +181,9 @@ pub fn ThreadCallbacks(comptime ThreadType: type) type {
             const thread = thread_ptr.*;
             // always (at least attempt to) perform a thread join.
             // we can't do this yet because it will segfault.
-            _ = thread.join(.{.dontjoin = true}) catch { return; };
+            _ = thread.join(.{ .dontjoin = true }) catch {
+                return;
+            };
             // add some time?
             //thread.cleanup();
         }
@@ -233,6 +197,6 @@ fn is_thread_joining() bool {
 
 pub fn yield() !void {
     //if (is_thread_joining()) {
-        return error.processterminated;
+    return error.processterminated;
     //}
 }

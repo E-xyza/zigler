@@ -1,6 +1,6 @@
 <% needs_make? = Enum.any?(@type.params, &Type.needs_make?/1) %>
 
-fn <%= @type.name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
+fn <%= @type.name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
     beam.context = .<%= context(@concurrency) %>;
     <%= if needs_make? do %>
     var error_info = beam.make_empty_list(env); 
@@ -15,41 +15,52 @@ fn <%= @type.name %>(env: beam.env, _: c_int, arg: [*c] const e.ErlNifTerm) call
     <% end %>
 
     const outer_result = get_result: {
-        <%= for {param_type, index} <- Nif.indexed_parameters(@type.params) do %>
-        <% needs_size? = Type.missing_size?(param_type) %>
-        <% needs_root? = match?(%Zig.Type.Resource{}, param_type) %>
-
-        <%= if needs_size? do %>
-        var size<%= index %>: usize = undefined;
+        <%= for {param_type, index} <- Nif.indexed_parameters(@type.params), Type.missing_size?(param_type) do %>
+        var size<%= index %>:usize = undefined;
         <% end %>
 
-        const arg<%= index %> = 
-          beam.get(
-            <%= Type.to_call(param_type) %>, 
-            env, 
-            .{.v = arg[<%= index %>]}, 
+        const payload_opts = .{
+            <%= for {param_type, index} <- Nif.indexed_parameters(@type.params) do %>
             .{
-              <%= if needs_make? do %>.error_info = &error_info,<% end %>
-              <%= if needs_size? do%>.size = &size<%= index %>,<% end %>
-              <%= if needs_root? do%>.root = @This() <% end %>}) 
-          catch |err| {
-          <%= if needs_make? do %>
-          return e.enif_raise_exception(env, beam.make(env, .{err, <%= index %>, error_info}, .{}).v);
-          <% else %>
-          return e.enif_raise_exception(env, beam.make(env, .{err, <%= index %>, beam.make_empty_list(env)}, .{}).v);
-          <% end %>
+                <%= if needs_make? do %>.error_info = &error_info,<% end %>
+                <%= if Type.missing_size?(param_type) do%>.size = &size<%= index %>,<% end %>
+                <%= if match?(%Zig.Type.Resource{}, param_type) do%>.root = @This() <% end %>
+            },
+            <% end %>
         };
-        <%= if !@args || (@args |> Enum.at(index) |> Keyword.get(:cleanup, true)) do %>
-          defer beam.cleanup(arg<%= index %>, .{<%= if needs_size? do %>.size = size<%= index %>,<% end %>});
-        <% end %>
-        <% end %>
-        <%= case @type.params do %>
-          <% [] -> %> _ = arg;
-          <% [:env] -> %> _ = arg;
-          <% _ ->  %>
-        <% end %>
 
-        const result = nif.<%= @type.name %>(<%= Nif.indexed_args(@type.params) %>) <%= Nif.maybe_catch(@type.return) %>;
+        var error_index: u8 = undefined;
+
+        const payload = beam.payload.build(nif.<%= @type.name %>, env, argc, args, &error_index, payload_opts) catch |err| {
+            <%= if needs_make? do %>
+            return e.enif_raise_exception(env, beam.make(env, .{err, error_index, error_info}, .{}).v);
+            <% else %>
+            return e.enif_raise_exception(env, beam.make(env, .{err, error_index, beam.make_empty_list(env)}, .{}).v);
+            <% end %>
+        };
+
+        const cleanup_opts = 
+            <%= if @args do %>
+            .{
+                <%= for {param_type, index} <- Nif.indexed_parameters(@type.params) do %>
+                <%= if @args |> Enum.at(index) |> Keyword.get(:cleanup, true) do %>
+                .{
+                    <%= if Type.missing_size?(param_type) do %> 
+                    .size = size<%= index %>
+                    <% end %>
+                },
+                <% else %>
+                null,
+                <% end %>
+                <% end %>
+            };
+            <% else %>
+            null;
+            <% end %>
+
+        defer beam.payload.cleanup(payload, cleanup_opts);
+
+        const result = @call(.{}, nif.<%= @type.name %>, payload)<%= Nif.maybe_catch(@type.return) %>;
 
         <%= Type.get_result(@type.return, @return) %>
     };

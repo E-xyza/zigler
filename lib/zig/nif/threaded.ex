@@ -44,7 +44,7 @@ defmodule Zig.Nif.Threaded do
 
   @impl true
   threaded = Path.join(__DIR__, "../templates/threaded.zig.eex")
-  EEx.function_from_file(:defp, :render_zig, threaded, [:assigns])
+  EEx.function_from_file(:def, :render_zig, threaded, [:assigns])
 
   @impl true
   def table_entries(nif) do

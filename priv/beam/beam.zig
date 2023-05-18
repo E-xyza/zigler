@@ -154,6 +154,7 @@ const make_ = @import("make.zig");
 const cleanup_ = @import("cleanup.zig");
 const processes = @import("processes.zig");
 const stacktrace = @import("stacktrace.zig");
+pub const payload = @import("payload.zig");
 
 pub const get = get_.get;
 pub const make = make_.make;
@@ -173,6 +174,8 @@ pub const make_error_atom = make_.make_error_atom;
 pub const make_error_pair = make_.make_error_pair;
 pub const make_ref = make_.make_ref;
 pub const make_stacktrace = stacktrace.to_term;
+
+pub const Payload = payload.Payload;
 
 // special functions
 
@@ -235,7 +238,7 @@ pub const alloc_env = e.enif_alloc_env;
 pub const free_env = e.enif_free_env;
 
 pub fn copy(env_: env, term_: term) term {
-    return .{.v = e.enif_make_copy(env_, term_.v)};
+    return .{ .v = e.enif_make_copy(env_, term_.v) };
 }
 
 ///////////////////////////////////////////////////////////////////////////////
