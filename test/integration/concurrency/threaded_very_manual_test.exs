@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Concurrency.ThreadedYieldingVeryManualTest do
+defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
   # this is the absolute minimal implementation of a threaded nif that
   # correctly yields.  It doesn't use zigler's resource wrapping, but it
   # does correctly assign internal environments, does correctly join

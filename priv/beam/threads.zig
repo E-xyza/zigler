@@ -44,36 +44,75 @@ pub const ThreadState = enum {
 };
 
 pub threadlocal var this_thread: ?*anyopaque = null;
-pub threadlocal var thread_joining: *bool = undefined;
+pub threadlocal var process_terminated: *bool = undefined;
 
 pub fn Thread(comptime function: anytype) type {
     const F = @TypeOf(function);
     comptime var Payload = beam.Payload(function);
-    comptime var Return = @typeInfo(F).Fn.return_type.?;
+    comptime var Result = @typeInfo(F).Fn.return_type.?;
 
-    const return_align = @alignOf(Return);
+    const return_align = @alignOf(Result);
     _ = return_align;
 
     return struct {
         const This = @This();
 
+        pid: beam.pid,
+        env: beam.env,
         tid: beam.tid = undefined,
-        pid: beam.pid = undefined,
-        env: beam.env = undefined,
-        ref: beam.term = undefined,
+        refbin: e.ErlNifBinary = undefined,
+        state: ThreadState = .prepped,
+        terminated: bool = false,
 
-        pub fn launch(comptime ThreadResource: type, env: beam.env, args: Payload) !beam.term {
-            _ = args;
-            _ = ThreadResource;
-            return beam.make(env, .ok, .{});
+        allocator: std.mem.Allocator,
+        payload: Payload,
+        result: *Result,
+
+        pub fn launch(comptime ThreadResource: type, env: beam.env, argc: c_int, args: [*c]const e.ErlNifTerm, opts: anytype) !beam.term {
+            // thread struct necessities
+            const allocator = find_allocator(opts);
+            const thread_env = beam.alloc_env();
+
+            // initialize the payload
+            var error_index: u8 = undefined;
+            const payload = beam.payload.build(function, thread_env, argc, args, &error_index, opts.arg_opts) catch {
+                @panic("errors not implemented yet");
+            };
+
+            // initialize the thread struct
+            const threadptr = try beam.allocator.create(This);
+            errdefer beam.allocator.destroy(threadptr);
+
+            threadptr.* = .{ .env = thread_env, .pid = try beam.self(env), .payload = payload, .allocator = allocator, .result = try allocator.create(Result) };
+
+            // build the resource and bind it to beam term.
+            const resource = try ThreadResource.create(threadptr, .{});
+            const res_term = beam.make(env, resource, .{});
+
+            // copy the resource term into a binary so that we can resend it later.  We can't
+            // directly do an env copy on this term, because that will cause it to have an 
+            // extra ownership count on it, and will prevent it from being destroyed and
+            // we won't be able to trigger the resource destructor.
+            threadptr.refbin = try beam.term_to_binary(env, res_term);
+            errdefer beam.release_binary(&threadptr.refbin);
+
+            // launch the thread
+            _ = e.enif_thread_create(name_ptr(), &threadptr.tid, wrapped, threadptr, null);
+
+            threadptr.state.wait_until(.running, .{}) catch |err| {
+                // TODO: do a thread exit operation here.
+                return err;
+            };
+
+            return res_term;
         }
 
         // this is a wrapped function designed explicitly to be called by e.enif_thread_create.
         fn wrapped(void_thread: ?*anyopaque) callconv(.C) ?*anyopaque {
             const thread = @ptrCast(*This, @alignCast(@alignOf(This), void_thread.?));
             // set critical threadlocal variables
-            thread_joining = &thread.joining;
-            beam.allocator = &thread.allocator;
+            process_terminated = &thread.terminated;
+            beam.allocator = thread.allocator;
             beam.context = .threaded;
 
             if (thread.state.exchange(.prepped, .running)) |state| switch (state) {
@@ -84,6 +123,15 @@ pub fn Thread(comptime function: anytype) type {
             };
 
             defer {
+                // unpack the reference binary and send it to the parent process to signal 
+                // completion.  This stuff is "best effort", so errors can be discarded.
+
+                const bin = beam.binary_to_slice(thread.refbin);
+
+                if (beam.binary_to_term(thread.env, bin, .{})) |term| {
+                    _ = beam.send(thread.env, thread.pid, .{.done, term}) catch {};
+                } else | _ | {}
+
                 if (thread.state.exchange(.running, .finished)) |state| switch (state) {
                     .running => unreachable,
                     .prepped => @panic("should not have regressed to prepped"),
@@ -91,22 +139,16 @@ pub fn Thread(comptime function: anytype) type {
                     .joined => @panic("should not have reached joined without executing thread"),
                 };
             }
-
+            
             this_thread = void_thread;
 
-            if (Return == void) {
-                thread.function(thread.payload);
-                // ignore the failed send instruction if the process has been killed.
-                //_ = beam.send(thread.env, thread.pid, .{ .done, thread.ref }) catch {};
+            if (Result == void) {
+                @call(.{}, function, thread.payload);
                 return null;
             } else {
-                const result = thread.function(thread.payload);
-                thread.retptr.* = result;
-                // ignore the failed send instruction if the process has been killed.
-                //_ = beam.send(thread.env, thread.pid, .{ .done, thread.ref, result }) catch {};
-                //return thread.retpointer;
-
-                return thread.retptr;
+                const result = @call(.{}, function, thread.payload);
+                thread.result.* = result;
+                return thread.result;
             }
         }
 
@@ -139,23 +181,41 @@ pub fn Thread(comptime function: anytype) type {
         }
 
         pub fn cleanup(self: *This) void {
-            _ = self;
+            beam.release_binary(&self.refbin);
+            beam.free_env(self.env);
+            beam.allocator.destroy(self);
         }
     };
 }
 
 pub fn ThreadCallbacks(comptime ThreadType: type) type {
     return struct {
-        pub fn dtor(_: beam.env, thread_ptr: **ThreadType) void {
-            _ = thread_ptr;
+        pub fn dtor(_: beam.env, dtor_ref: **ThreadType) void {
+            std.debug.print("destroyed\n", .{});
+            const thread_ptr = dtor_ref.*;
+            thread_ptr.terminated = true;
+
+            std.debug.print("state: {}\n", .{thread_ptr.state.get()});
+
+            var rres_ptr: ?*anyopaque = undefined;
+            // expect this to be void *
+            _ = e.enif_thread_join(thread_ptr.tid, &rres_ptr);
+            thread_ptr.cleanup();
         }
     };
 }
 
-fn is_thread_joining() bool {
-    return @atomicLoad(bool, thread_joining, .Monotonic);
+fn is_process_terminated() bool {
+    return @atomicLoad(bool, process_terminated, .Monotonic);
 }
 
 pub fn yield() !void {
-    return error.processterminated;
+    if (is_process_terminated()) {
+        return error.processterminated;
+    }
+}
+
+// utilities
+fn find_allocator(opts: anytype) std.mem.Allocator {
+    return if (@hasField(@TypeOf(opts), "allocator")) opts.allocator else beam.allocator;
 }

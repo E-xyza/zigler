@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Concurrency.ThreadedYieldingSomeManualTest do
+defmodule ZiglerTest.Concurrency.ThreadedMoreManualTest do
   # this is a slightly less minimal implementation of a threaded nif that
   # correctly yields.  It does use zigler's resource wrapping,
   # does correctly join the thread, and does clean up the thread environment,
@@ -51,7 +51,7 @@ defmodule ZiglerTest.Concurrency.ThreadedYieldingSomeManualTest do
 
   pub fn launch(env: beam.env, pid: beam.pid) !beam.term {
     const threadptr = try beam.allocator.create(Thread);
-    errdefer beam.allocator.destroy(thread);
+    errdefer beam.allocator.destroy(threadptr);
 
     const resource = ThreadResource.create(threadptr, .{}) catch unreachable;
     const res_term = beam.make(env, resource, .{});

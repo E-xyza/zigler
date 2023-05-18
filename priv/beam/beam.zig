@@ -177,6 +177,16 @@ pub const make_stacktrace = stacktrace.to_term;
 
 pub const Payload = payload.Payload;
 
+//////////////////////////////////////////////////////////////////////////////
+// binaries
+
+pub const binaries = @import("binaries.zig");
+pub const binary_to_slice = binaries.binary_to_slice;
+pub const term_to_binary = binaries.term_to_binary;
+pub const binary_to_term = binaries.binary_to_term;
+pub const release_binary = binaries.release_binary;
+
+//////////////////////////////////////////////////////////////////////////////
 // special functions
 
 const ExecutionContext = enum { process_bound, threaded, dirty, yielding, callback };

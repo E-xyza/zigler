@@ -8,7 +8,7 @@ defmodule ZiglerTest.Concurrency.ThreadedManualTest do
   ~Z"""
   const beam = @import("beam");
 
-  const Thread = beam.Thread(@TypeOf(myfun));
+  const Thread = beam.Thread(myfun);
   pub const ThreadResource = beam.Resource(*Thread, @import("root"), .{
     .Callbacks = beam.threads.ThreadCallbacks(Thread)
   });
@@ -22,15 +22,14 @@ defmodule ZiglerTest.Concurrency.ThreadedManualTest do
     return thread.start(env, ThreadResource) catch unreachable;
   }
 
-  pub fn join(rsrc: ThreadResource) void {
+  pub fn join(rsrc: ThreadResource) u32 {
     const thread = ThreadResource.unpack(rsrc);
-    _ = thread.join(.{}) catch unreachable;
+    return thread.join(.{}) catch unreachable;
   }
   """
 
   test "threaded function" do
     assert ref = launch(100)
-    assert_receive {:done, ^ref, 147}
-    assert join(ref)
+    assert 147 = join(ref)
   end
 end
