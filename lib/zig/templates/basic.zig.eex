@@ -60,7 +60,7 @@ fn <%= @type.name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) 
 
         defer beam.payload.cleanup(payload, cleanup_opts);
 
-        const result = @call(.{}, nif.<%= @type.name %>, payload)<%= Nif.maybe_catch(@type.return) %>;
+        const result = @call(.{}, nif.<%= @type.name %>, payload) <%= Nif.maybe_catch(@type.return) %>;
 
         <%= Type.get_result(@type.return, @return) %>
     };

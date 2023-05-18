@@ -12,21 +12,17 @@ defmodule ZiglerTest.Concurrency.ThreadedYieldingManualTest do
   const beam = @import("beam");
   const std = @import("std");
 
-  const Thread = beam.Thread(@TypeOf(thread));
+  const Thread = beam.Thread(thread);
   pub const ThreadResource = beam.Resource(*Thread, @import("root"), .{
-    .Callbacks = beam.threads.ThreadCallbacks(*Thread)
+    .Callbacks = beam.threads.ThreadCallbacks(Thread)
   });
 
   fn thread(env: beam.env, pid: beam.pid) void {
     _ = beam.send(env, pid, beam.make(env, .done, .{})) catch unreachable;
   }
 
-  fn thread_unpack(args: beam.Payload(thread)) void {
-    thread(args[0], args[1]);
-  }
-
   pub fn launch(env: beam.env, pid: beam.pid) !beam.term {
-    return Thread.launch(ThreadResource, env, thread_unpack, .{env, pid});
+    return Thread.launch(ThreadResource, env, .{env, pid});
   }
   """
 

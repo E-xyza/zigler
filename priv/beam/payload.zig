@@ -69,7 +69,7 @@ pub fn build(fun: anytype, env: beam.env, argc: c_int, args: [*c]const e.ErlNifT
 
 fn build_with_env(fun: anytype, env: beam.env, argc: c_int, args: [*c]const e.ErlNifTerm, error_index: *u8, build_opts: anytype) !Payload(fun) {
     // assertions
-    const arity_ = arity(fun);
+    const arity_ = comptime arity(fun);
     if (argc != arity_) {
         @panic("nif function called with wrong arity");
     }
@@ -82,7 +82,7 @@ fn build_with_env(fun: anytype, env: beam.env, argc: c_int, args: [*c]const e.Er
     inline while (arg_index < arity_) : (arg_index += 1) {
         const payload_index = arg_index + 1;
         error_index.* = arg_index;
-        payload[payload_index] = try beam.get(@TypeOf(payload[payload_index]), env, args[arg_index], build_opts[arg_index]);
+        payload[payload_index] = try beam.get(@TypeOf(payload[payload_index]), env, .{.v = args[arg_index]}, build_opts[arg_index]);
     }
     return payload;
 }
