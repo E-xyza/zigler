@@ -41,7 +41,7 @@ pub const ThreadState = enum {
                 }
                 return false;
             },
-            else => return state == state_or_states
+            else => return state == state_or_states,
         }
     }
 
@@ -50,7 +50,8 @@ pub const ThreadState = enum {
         const time_limit = if (@hasField(@TypeOf(opts), "limit")) opts.limit else 50_000;
         const cycles = time_limit / 1000;
         var so_far: usize = 0;
-        while (check_against(self.get(), state_or_states)) : (so_far += 1) {
+
+        while (!check_against(self.get(), state_or_states)) : (so_far += 1) {
             if (so_far > cycles) return error.threadtooktoolong;
             std.time.sleep(1000);
         }
@@ -110,7 +111,7 @@ pub fn Thread(comptime function: anytype) type {
             // launch the thread
             _ = e.enif_thread_create(name_ptr(), &threadptr.tid, wrapped, threadptr, null);
 
-            threadptr.state.wait_until(.running, .{}) catch |err| {
+            threadptr.state.wait_until(.{ .running, .finished }, .{}) catch |err| {
                 // TODO: do a thread exit operation here.
                 return err;
             };
@@ -142,7 +143,7 @@ pub fn Thread(comptime function: anytype) type {
 
                 const bin = beam.binary_to_slice(thread.refbin);
 
-                const SendResult = enum{@"error", done};
+                const SendResult = enum { @"error", done };
 
                 const to_send: SendResult = if (thread.state.exchange(.running, .finished)) |state| switch (state) {
                     .failed => .@"error",
@@ -210,9 +211,6 @@ pub fn Thread(comptime function: anytype) type {
         }
 
         pub fn join(self: *This) !Result {
-            std.debug.print("a\n", .{});
-            defer std.debug.print("z\n", .{});
-
             // Mutex this over a boolean value so that only one thread can
             // perform the join at a time.  Other threads will be able to
             // obtain the result pointer, but they will need to wait for the
@@ -225,8 +223,6 @@ pub fn Thread(comptime function: anytype) type {
                 try self.state.wait_until(.{ .joined, .failed }, .{});
                 return self.join_result();
             }
-
-            std.debug.print("b\n", .{});
 
             if (self.state.exchange(.finished, .joining)) |fail_state| {
                 switch (fail_state) {
@@ -246,18 +242,16 @@ pub fn Thread(comptime function: anytype) type {
 
             defer self.state.set(.joined);
 
-            std.debug.print("c\n", .{});
-
             // this is outside of the above if statement because we need to do both the
             // case where the thread had already finished itself.
             // in the case of a successful join operation, the result value will have been
             // loaded into the result pointer slot.
             var result_void: ?*anyopaque = undefined;
 
-            std.debug.print("d\n", .{});
-
             if (e.enif_thread_join(self.tid, &result_void) == 0) {
-                self.result = @ptrCast(?*Result, @alignCast(@alignOf(Result), result_void));
+                if (Result != void) {
+                    self.result = @ptrCast(?*Result, @alignCast(@alignOf(Result), result_void));
+                }
                 return self.join_result();
             } else {
                 return error.processnotjoined;
@@ -265,7 +259,9 @@ pub fn Thread(comptime function: anytype) type {
         }
 
         pub fn cleanup(self: *This) void {
-            if (self.result) |result| {self.allocator.destroy(result);}
+            if (self.result) |result| {
+                self.allocator.destroy(result);
+            }
             beam.release_binary(&self.refbin);
             beam.free_env(self.env);
             beam.allocator.destroy(self);
