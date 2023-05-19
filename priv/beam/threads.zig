@@ -257,8 +257,7 @@ pub fn Thread(comptime function: anytype) type {
             std.debug.print("d\n", .{});
 
             if (e.enif_thread_join(self.tid, &result_void) == 0) {
-                const result = @ptrCast(*Result, @alignCast(@alignOf(Result), result_void.?));
-                errdefer self.allocator.destroy(result);
+                self.result = @ptrCast(?*Result, @alignCast(@alignOf(Result), result_void));
                 return self.join_result();
             } else {
                 return error.processnotjoined;
@@ -266,6 +265,7 @@ pub fn Thread(comptime function: anytype) type {
         }
 
         pub fn cleanup(self: *This) void {
+            if (self.result) |result| {self.allocator.destroy(result);}
             beam.release_binary(&self.refbin);
             beam.free_env(self.env);
             beam.allocator.destroy(self);
