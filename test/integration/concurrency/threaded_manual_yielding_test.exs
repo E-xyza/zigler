@@ -29,7 +29,6 @@ defmodule ZiglerTest.Concurrency.ThreadedManualYieldingTest do
   }
 
   pub fn launch(env: beam.env, pid_term: beam.term) !beam.term {
-    // note that the 'env' term has to be loaded by the launch function.
     var args = [_]e.ErlNifTerm{pid_term.v};
     return Thread.launch(ThreadResource, env, 1, &args, .{.arg_opts = .{.{}}});
   }

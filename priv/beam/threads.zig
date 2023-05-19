@@ -4,14 +4,16 @@ const e = @import("erl_nif.zig");
 
 const BeamThreadFn = *const fn (?*anyopaque) callconv(.C) ?*anyopaque;
 
-const ThreadError = error{ threaderror, threadtooktoolong, processterminated };
+const ThreadError = error{ threaderror, threadtooktoolong, processnotjoined, processterminated };
 
 pub const ThreadState = enum {
     const This = @This();
     prepped, // harness has created the thread and is waiting for thread to check in.
     running, // thread has checked in
     finished, // thread function has completed running
+    joining, // some thread is trying to join this thread
     joined, // all activity on the thread has completed.
+    failed, // something bad and unrecoverable has happened.
 
     pub fn set(self: *This, state: ThreadState) void {
         @atomicStore(This, self, state, .Monotonic);
@@ -31,12 +33,24 @@ pub const ThreadState = enum {
         }
     }
 
-    pub fn wait_until(self: *This, state: ThreadState, opts: anytype) !void {
+    fn check_against(state: This, state_or_states: anytype) bool {
+        switch (@typeInfo(@TypeOf(state_or_states))) {
+            .Struct => {
+                inline for (state_or_states) |check| {
+                    if (state == check) return true;
+                }
+                return false;
+            },
+            else => return state == state_or_states
+        }
+    }
+
+    pub fn wait_until(self: *This, state_or_states: anytype, opts: anytype) !void {
         // implement a 50 ms limit
         const time_limit = if (@hasField(@TypeOf(opts), "limit")) opts.limit else 50_000;
         const cycles = time_limit / 1000;
         var so_far: usize = 0;
-        while (self.get() != state) : (so_far += 1) {
+        while (check_against(self.get(), state_or_states)) : (so_far += 1) {
             if (so_far > cycles) return error.threadtooktoolong;
             std.time.sleep(1000);
         }
@@ -44,15 +58,12 @@ pub const ThreadState = enum {
 };
 
 pub threadlocal var this_thread: ?*anyopaque = null;
-pub threadlocal var process_terminated: *bool = undefined;
+pub threadlocal var local_join_started: *bool = undefined;
 
 pub fn Thread(comptime function: anytype) type {
     const F = @TypeOf(function);
     comptime var Payload = beam.Payload(function);
     comptime var Result = @typeInfo(F).Fn.return_type.?;
-
-    const return_align = @alignOf(Result);
-    _ = return_align;
 
     return struct {
         const This = @This();
@@ -62,11 +73,11 @@ pub fn Thread(comptime function: anytype) type {
         tid: beam.tid = undefined,
         refbin: e.ErlNifBinary = undefined,
         state: ThreadState = .prepped,
-        terminated: bool = false,
+        join_started: bool = false,
 
         allocator: std.mem.Allocator,
         payload: Payload,
-        result: *Result,
+        result: ?*Result = null,
 
         pub fn launch(comptime ThreadResource: type, env: beam.env, argc: c_int, args: [*c]const e.ErlNifTerm, opts: anytype) !beam.term {
             // thread struct necessities
@@ -90,7 +101,7 @@ pub fn Thread(comptime function: anytype) type {
             const res_term = beam.make(env, resource, .{});
 
             // copy the resource term into a binary so that we can resend it later.  We can't
-            // directly do an env copy on this term, because that will cause it to have an 
+            // directly do an env copy on this term, because that will cause it to have an
             // extra ownership count on it, and will prevent it from being destroyed and
             // we won't be able to trigger the resource destructor.
             threadptr.refbin = try beam.term_to_binary(env, res_term);
@@ -111,7 +122,7 @@ pub fn Thread(comptime function: anytype) type {
         fn wrapped(void_thread: ?*anyopaque) callconv(.C) ?*anyopaque {
             const thread = @ptrCast(*This, @alignCast(@alignOf(This), void_thread.?));
             // set critical threadlocal variables
-            process_terminated = &thread.terminated;
+            local_join_started = &thread.join_started;
             beam.allocator = thread.allocator;
             beam.context = .threaded;
 
@@ -119,36 +130,46 @@ pub fn Thread(comptime function: anytype) type {
                 .prepped => unreachable, // exchange can't return what it started with.
                 .running => @panic("should not have reached running before executing thread"),
                 .finished => @panic("should not have reached finished before executing thread"),
+                .joining => @panic("should not have reached joining before executing thread"),
                 .joined => @panic("should not have reached joined before executing thread"),
+                .failed => @panic("should not have reached failed before executing thread"),
             };
 
             defer {
-                // unpack the reference binary and send it to the parent process to signal 
+                // unpack the reference binary and send it to the parent process to signal
                 // completion.  This stuff is "best effort", so errors can be discarded.
+                // it's possible that the destination process has been killed.
 
                 const bin = beam.binary_to_slice(thread.refbin);
 
-                if (beam.binary_to_term(thread.env, bin, .{})) |term| {
-                    _ = beam.send(thread.env, thread.pid, .{.done, term}) catch {};
-                } else | _ | {}
+                const SendResult = enum{@"error", done};
 
-                if (thread.state.exchange(.running, .finished)) |state| switch (state) {
+                const to_send: SendResult = if (thread.state.exchange(.running, .finished)) |state| switch (state) {
+                    .failed => .@"error",
                     .running => unreachable,
                     .prepped => @panic("should not have regressed to prepped"),
                     .finished => @panic("should not have reached finished without executing thread"),
+                    .joining => @panic("should not have reached joining without executing thread"),
                     .joined => @panic("should not have reached joined without executing thread"),
-                };
+                } else .done;
+
+                if (beam.binary_to_term(thread.env, bin, .{})) |term| {
+                    _ = beam.send(thread.env, thread.pid, .{ to_send, term }) catch {};
+                } else |_| {}
             }
-            
+
             this_thread = void_thread;
 
             if (Result == void) {
                 @call(.{}, function, thread.payload);
                 return null;
             } else {
-                const result = @call(.{}, function, thread.payload);
-                thread.result.* = result;
-                return thread.result;
+                const result_ptr = thread.allocator.create(Result) catch {
+                    thread.state.set(.failed);
+                    return null;
+                };
+                result_ptr.* = @call(.{}, function, thread.payload);
+                return result_ptr;
             }
         }
 
@@ -170,14 +191,78 @@ pub fn Thread(comptime function: anytype) type {
             return true;
         }
 
-        pub fn is_joining(self: *This) bool {
-            return @atomicLoad(bool, &self.joining, .Monotonic);
+        fn has_join_started(self: *This) bool {
+            // true if the thread has gated through the join function.  false
+            // if it is not, with the side effect of flipping marking it as
+            // having gated.
+            return @cmpxchgStrong(bool, &self.join_started, false, true, .Monotonic, .Monotonic) != null;
         }
 
-        pub fn join(self: *This, comptime opts: anytype) !void {
-            _ = opts;
-            _ = self;
-            return;
+        fn join_result(self: *This) !Result {
+            if (Result == void) {
+                return;
+            }
+            if (self.result) |result| {
+                return result.*;
+            } else {
+                return error.threaderror;
+            }
+        }
+
+        pub fn join(self: *This) !Result {
+            std.debug.print("a\n", .{});
+            defer std.debug.print("z\n", .{});
+
+            // Mutex this over a boolean value so that only one thread can
+            // perform the join at a time.  Other threads will be able to
+            // obtain the result pointer, but they will need to wait for the
+            // join to be completed by the first thread doing.  Note that this
+            // boolean value will also be used by the thread loop to detect
+            // terminations.
+
+            if (self.has_join_started()) {
+                // TODO: make this an async function with yields.
+                try self.state.wait_until(.{ .joined, .failed }, .{});
+                return self.join_result();
+            }
+
+            std.debug.print("b\n", .{});
+
+            if (self.state.exchange(.finished, .joining)) |fail_state| {
+                switch (fail_state) {
+                    .running => {
+                        // TODO: make this an async function with yields.
+                        try self.state.wait_until(.finished, .{});
+                    },
+                    .failed => {
+                        return error.threaderror;
+                    },
+                    .joined => @panic("should not have reached joined inside the protected join body"),
+                    .joining => @panic("should not have reached joining inside the protected join body"),
+                    .finished => unreachable, // this is the start state, so it can't be reached.
+                    .prepped => @panic("should not have reached join before thread has started running"),
+                }
+            }
+
+            defer self.state.set(.joined);
+
+            std.debug.print("c\n", .{});
+
+            // this is outside of the above if statement because we need to do both the
+            // case where the thread had already finished itself.
+            // in the case of a successful join operation, the result value will have been
+            // loaded into the result pointer slot.
+            var result_void: ?*anyopaque = undefined;
+
+            std.debug.print("d\n", .{});
+
+            if (e.enif_thread_join(self.tid, &result_void) == 0) {
+                const result = @ptrCast(*Result, @alignCast(@alignOf(Result), result_void.?));
+                errdefer self.allocator.destroy(result);
+                return self.join_result();
+            } else {
+                return error.processnotjoined;
+            }
         }
 
         pub fn cleanup(self: *This) void {
@@ -191,26 +276,16 @@ pub fn Thread(comptime function: anytype) type {
 pub fn ThreadCallbacks(comptime ThreadType: type) type {
     return struct {
         pub fn dtor(_: beam.env, dtor_ref: **ThreadType) void {
-            std.debug.print("destroyed\n", .{});
             const thread_ptr = dtor_ref.*;
-            thread_ptr.terminated = true;
-
-            std.debug.print("state: {}\n", .{thread_ptr.state.get()});
-
-            var rres_ptr: ?*anyopaque = undefined;
-            // expect this to be void *
-            _ = e.enif_thread_join(thread_ptr.tid, &rres_ptr);
+            // join the thread at all costs, catch all failures, discard the result.
+            _ = thread_ptr.join() catch {};
             thread_ptr.cleanup();
         }
     };
 }
 
-fn is_process_terminated() bool {
-    return @atomicLoad(bool, process_terminated, .Monotonic);
-}
-
 pub fn yield() !void {
-    if (is_process_terminated()) {
+    if (@atomicLoad(bool, local_join_started, .Monotonic)) {
         return error.processterminated;
     }
 }
