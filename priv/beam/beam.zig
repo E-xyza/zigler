@@ -214,7 +214,7 @@ const large_beam_allocator = Allocator{
 const large_beam_allocator_vtable = Allocator.VTable{
     .alloc = large_beam_alloc,
     .resize = large_beam_resize,
-    .free = Allocator.NoOpFree(anyopaque).noOpFree,
+    .free = large_beam_free,
 };
 
 fn large_beam_alloc(_: *anyopaque, len: usize, alignment: u29, len_align: u29, return_address: usize) error{OutOfMemory}![]u8 {
@@ -237,6 +237,10 @@ fn large_beam_resize(
   if (new_len == 0) { return alignedFree(buf, buf_align); }
   if (len_align == 0) { return new_len; }
   return std.mem.alignBackwardAnyAlign(new_len, len_align);
+}
+
+fn large_beam_free(_: *anyopaque, buf: []u8, buf_align: u29, _: usize) void {
+  _ = alignedFree(buf, buf_align);
 }
 
 fn alignedAlloc(len: usize, alignment: u29, _: u29, _: usize) ![*]u8 {
