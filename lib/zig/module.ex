@@ -26,12 +26,21 @@ defmodule Zig.Module do
   EEx.function_from_file(:def, :module_file, nif, [:assigns])
 
   def render_zig(nifs, resources, callbacks, module) do
+    resources = append_concurrency_resources(resources, nifs)
     module_file(binding())
+  end
+
+  defp append_concurrency_resources(resources, nifs) do
+    nifs
+    |> Enum.flat_map(&(&1.concurrency.resources(&1)))
+    |> Kernel.++(resources)
   end
 
   # internal helpers
   defp table_entries(nifs) when is_list(nifs) do
-    Enum.map_join(nifs, ", ", &Nif.table_entries/1)
+    nifs
+    |> Enum.flat_map(&Nif.table_entries/1)
+    |> Enum.join(",")
   end
 
   @index_of %{major: 0, minor: 1}

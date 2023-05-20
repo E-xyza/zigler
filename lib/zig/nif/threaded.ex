@@ -1,16 +1,16 @@
 defmodule Zig.Nif.Threaded do
   @behaviour Zig.Nif.Concurrency
 
-  alias Zig.Nif.Basic
+  alias Zig.Nif
+  alias Zig.Type
   require EEx
 
   @impl true
-  def render_elixir(nif = %{type: type}) do
+  def render_elixir(nif = %{type: %{name: name, arity: arity}}) do
     def_or_defp = if nif.export, do: :def, else: :defp
-    entrypoint = entrypoint(nif)
 
     {empty_params, used_params} =
-      case type.arity do
+      case arity do
         0 ->
           {[], []}
 
@@ -21,20 +21,23 @@ defmodule Zig.Nif.Threaded do
       end
 
     quote context: Elixir do
-      unquote(def_or_defp)(unquote(type.name)(unquote_splicing(used_params))) do
-        ref = unquote(entrypoint)(unquote_splicing(used_params))
+      unquote(def_or_defp)(unquote(name)(unquote_splicing(used_params))) do
+        ref = unquote(entrypoint(nif, :launch))(unquote_splicing(used_params))
 
         receive do
-          {:ok, ^ref, result} ->
-            result
-
-          {:error, ^ref, error} ->
-            :erlang.raise(error)
+          {:done, ^ref} ->
+            unquote(entrypoint(nif, :join))(ref)
+          {:error, ^ref} ->
+            raise unquote("thread for function #{name} failed during launch")
         end
       end
 
-      defp unquote(entrypoint)(unquote_splicing(empty_params)) do
-        :erlang.nif_error(unquote("foobar"))
+      defp unquote(entrypoint(nif, :launch))(unquote_splicing(empty_params)) do
+        :erlang.nif_error(unquote("nif for function #{name}/#{arity} not bound"))
+      end
+
+      defp unquote(entrypoint(nif, :join))(_ref) do
+        :erlang.nif_error(unquote("nif for function #{name}/#{arity} not bound"))
       end
     end
   end
@@ -48,10 +51,19 @@ defmodule Zig.Nif.Threaded do
 
   @impl true
   def table_entries(nif) do
-    [{entrypoint(nif), nif.type.arity, :synchronous}]
+    launch = entrypoint(nif, :launch)
+    join = entrypoint(nif, :join)
+
+    [
+      {launch, nif.type.arity, :"@\"#{launch}\"", :synchronous},
+      {join, 1, :"@\"#{join}\"", :synchronous}
+    ]
   end
 
-  defp entrypoint(nif) do
-    :"thread-bootstrap-#{nif.type.name}"
+  defp entrypoint(nif, mode) do
+    :"#{nif.type.name}-#{mode}"
   end
+
+  @impl true
+  def resources(nif), do: [{:root, :"ThreadResource_#{nif.type.name}"}]
 end

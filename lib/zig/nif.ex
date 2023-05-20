@@ -26,7 +26,6 @@ defmodule Zig.Nif do
   alias Zig.Type
   alias Zig.Type.Error
   alias Zig.Type.Function
-  alias Zig.Resources
 
   @type t :: %__MODULE__{
           export: boolean,
@@ -55,7 +54,7 @@ defmodule Zig.Nif do
     @callback render_zig(Nif.t()) :: iodata
 
     @type concurrency :: :synchronous | :dirty_cpu | :dirty_io
-    @type table_entry :: {name :: atom, arity :: non_neg_integer, bootstrap :: concurrency}
+    @type table_entry :: {name :: atom, arity :: non_neg_integer, function_pointer :: atom, bootstrap :: concurrency}
 
     @doc """
     returns "table_entry" tuples which are then used to generate the nif table.
@@ -63,6 +62,7 @@ defmodule Zig.Nif do
     management, then multiple entries should be returned.
     """
     @callback table_entries(Nif.t()) :: [table_entry]
+    @callback resources(Nif.t()) :: [{:root, atom}]
   end
 
   @concurrency_modules %{
@@ -139,9 +139,9 @@ defmodule Zig.Nif do
   def table_entries(nif) do
     nif.concurrency.table_entries(nif)
     |> Enum.map(fn
-      {function, arity, concurrency} ->
+      {function, arity, fptr, concurrency} ->
         flags = Map.fetch!(@flags, concurrency)
-        ~s(.{.name="#{function}", .arity=#{arity}, .fptr=#{nif.type.name}, .flags=#{flags}})
+        ~s(.{.name="#{function}", .arity=#{arity}, .fptr=#{fptr}, .flags=#{flags}})
     end)
   end
 
