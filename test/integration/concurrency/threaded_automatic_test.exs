@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Concurrency.ThreadedTest do
+defmodule ZiglerTest.Concurrency.ThreadedAutomaticTest do
   use ZiglerTest.IntegrationCase, async: true
 
   use Zig, otp_app: :zigler, nifs: [threaded: [:threaded]]

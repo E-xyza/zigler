@@ -264,7 +264,7 @@ pub fn Thread(comptime function: anytype) type {
             }
             beam.release_binary(&self.refbin);
             beam.free_env(self.env);
-            beam.allocator.destroy(self);
+            self.allocator.destroy(self);
         }
     };
 }

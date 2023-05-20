@@ -24,7 +24,7 @@ defmodule ZiglerTest.Concurrency.ThreadedManualYieldingTest do
     }
 
     while (true) {
-      _ = beam.yield() catch return;
+      _ = beam.yield() catch { return; };
     }
   }
 
@@ -34,7 +34,7 @@ defmodule ZiglerTest.Concurrency.ThreadedManualYieldingTest do
   }
   """
 
-  test "threaded function" do
+  test "threaded yield due to garbage collection" do
     this = self()
 
     spawn(fn ->
