@@ -85,13 +85,6 @@ defmodule :zigler do
       |> Kernel.++(rendered_erlang)
       |> Enum.sort_by(&elem(&1, 0), __MODULE__)
 
-    ast
-    |> Enum.each(fn
-      attribute when elem(attribute, 0) == :attribute -> :erl_pp.attribute(attribute)
-      function when elem(function, 0) == :function -> :erl_pp.function(function)
-      _ -> :ok
-    end)
-
     if opts[:dump] do
       dump(ast)
     else

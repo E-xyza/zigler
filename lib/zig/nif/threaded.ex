@@ -4,6 +4,7 @@ defmodule Zig.Nif.Threaded do
   alias Zig.Nif
   alias Zig.Type
   require EEx
+  import Zig.QuoteErl
 
   @impl true
   def render_elixir(nif = %{type: %{name: name, arity: arity}}) do
@@ -43,7 +44,44 @@ defmodule Zig.Nif.Threaded do
   end
 
   @impl true
-  defdelegate render_erlang(nif), to: Basic
+  def render_erlang(nif = %{type: %{name: name, arity: arity}}) do
+    {unused_vars, used_vars} =
+      case arity do
+        0 ->
+          {[], []}
+
+        n ->
+          1..n
+          |> Enum.map(&{{:var, :"_X#{&1}"}, {:var, :"X#{&1}"}})
+          |> Enum.unzip()
+      end
+
+    quote_erl(
+        """
+        unquote(name)(unquote(...vars)) ->
+          Ref = unquote(launch_name)(unquote(...vars)),
+          receive
+            {done, Ref} ->
+              unquote(join_name)(Ref);
+            {error, Ref} ->
+              erlang:error(unquote(launch_fail_text))
+          end.
+
+        unquote(launch_name)(unquote(...unused_vars)) ->
+          erlang:nif_error(unquote(error_text)).
+
+        unquote(join_name)(_Ref) ->
+          erlang:nif_error(unquote(error_text)).
+        """,
+        name: name,
+        launch_name: entrypoint(nif, :launch),
+        join_name: entrypoint(nif, :join),
+        vars: used_vars,
+        unused_vars: unused_vars,
+        launch_fail_text: 'thread for function #{name} failed during launch',
+        error_text: 'nif for function #{name}/#{arity} not bound'
+    )
+  end
 
   @impl true
   threaded = Path.join(__DIR__, "../templates/threaded.zig.eex")
