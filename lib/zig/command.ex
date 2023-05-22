@@ -63,7 +63,7 @@ defmodule Zig.Command do
     :ok
   end
 
-  @local_zig Application.get_env(:zigler, :local_zig, false)
+  @local_zig Application.compile_env(:zigler, :local_zig, false)
 
   defp executable_path(zig_tree), do: executable_path(zig_tree, @local_zig)
 
