@@ -32,7 +32,7 @@ defmodule Zig.Doc.Parser do
 
     init_mod = %ExDoc.ModuleNode{
       doc_line: 1,
-      function_groups: ["Functions", "Values"],
+      docs_groups: ["Functions", "Values"],
       group: "Zig Structs",
       type: :module,
       id: base,
@@ -352,7 +352,7 @@ defmodule Zig.Doc.Parser do
       %ExDoc.ModuleNode{
         doc: doc_ast(IO.iodata_to_binary(doc), context.source_path, 1),
         doc_line: 1,
-        function_groups: [],
+        docs_groups: [],
         group: "Zig Errors",
         type: :exception,
         id: errname,
@@ -371,7 +371,7 @@ defmodule Zig.Doc.Parser do
     [
       %ExDoc.ModuleNode{
         doc_line: 1,
-        function_groups: [],
+        docs_groups: [],
         group: "Zig Errors",
         type: :exception,
         id: errname,
