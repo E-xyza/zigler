@@ -51,7 +51,7 @@ defmodule Zig.Type.Slice do
       {:return, type} when type in ~w(default charlist)a ->
         [Type.spec(child, :return, [])]
 
-      {:params, _} ->
+      {:param, _} ->
         if binary_form(child) do
           quote context: Elixir do
             unquote([Type.spec(child, :param, [])]) | unquote(binary_form(child))
