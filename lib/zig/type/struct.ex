@@ -50,10 +50,10 @@ defmodule Zig.Type.Struct do
 
   def to_call(struct), do: "#{mut(struct)}nif.#{struct.name}"
 
-  def spec(struct, :params, opts) do
-    optional = to_fields(struct.optional, :optional, :params, opts)
-    keyword = to_fields(struct.optional, :untagged, :params, opts)
-    required = to_fields(struct.required, :untagged, :params, opts)
+  def spec(struct, :param, opts) do
+    optional = to_fields(struct.optional, :optional, :param, opts)
+    keyword = to_fields(struct.optional, :untagged, :param, opts)
+    required = to_fields(struct.required, :untagged, :param, opts)
 
     if binary_form = binary_form(struct) do
       quote do

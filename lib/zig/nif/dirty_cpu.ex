@@ -18,7 +18,7 @@ defmodule Zig.Nif.DirtyCpu do
 
   @impl true
   def table_entries(nif = %{type: type}) do
-    [{Basic.entrypoint(nif), type.arity, type.name,  :dirty_cpu}]
+    [{Basic.entrypoint(nif), type.arity, type.name, :dirty_cpu}]
   end
 
   @impl true

@@ -25,7 +25,7 @@ defmodule ZiglerTest.EasyC.BlasTest do
 
     test "will reject invalid input" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `i32`)\n     got: `:foo`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `c_int`)\n     got: `:foo`\n",
                    fn ->
                      cblas_dasum(:foo, [1.0, 2.0, 3.0], 1)
                    end

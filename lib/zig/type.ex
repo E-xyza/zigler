@@ -300,19 +300,19 @@ defimpl Zig.Type, for: Atom do
       {arg, nil} ->
         """
         _ = result;
-        break :get_result beam.make(env, arg#{arg}, .{.output_type = .#{return_type}}).v;
+        break :get_result beam.make(env, payload[#{arg}], .{.output_type = .#{return_type}}).v;
         """
 
       {arg, {:arg, length_arg}} ->
         """
         _ = result;
-        break :get_result beam.make(env, arg#{arg}[0..@intCast(usize, arg#{length_arg})], .{.output_type = .#{return_type}}).v;
+        break :get_result beam.make(env, payload[#{arg}][0..@intCast(usize, payload[#{length_arg}])], .{.output_type = .#{return_type}}).v;
         """
 
       {arg, length} when is_integer(length) ->
         """
         _ = result;
-        break :get_result beam.make(env, arg#{arg}[0..#{length})], .{.output_type = .#{return_type}}).v;
+        break :get_result beam.make(env, payload[#{arg}][0..#{length})], .{.output_type = .#{return_type}}).v;
         """
     end
   end

@@ -54,7 +54,9 @@ defmodule Zig.Nif do
     @callback render_zig(Nif.t()) :: iodata
 
     @type concurrency :: :synchronous | :dirty_cpu | :dirty_io
-    @type table_entry :: {name :: atom, arity :: non_neg_integer, function_pointer :: atom, bootstrap :: concurrency}
+    @type table_entry ::
+            {name :: atom, arity :: non_neg_integer, function_pointer :: atom,
+             bootstrap :: concurrency}
 
     @doc """
     returns "table_entry" tuples which are then used to generate the nif table.
@@ -214,12 +216,12 @@ defmodule Zig.Nif do
         list -> list
       end
 
-    param_types = Enum.map(trimmed, &Type.spec(&1, :params, []))
+    param_types = Enum.map(trimmed, &Type.spec(&1, :param, []))
 
     # TODO: check for easy_c
     return =
       if arg = return_opts[:arg] do
-        param_types
+        type.params
         |> Enum.at(arg)
         |> Type.spec(:return, return_opts)
       else

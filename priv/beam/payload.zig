@@ -39,7 +39,9 @@ pub fn Payload(comptime function: anytype) type {
 // checks to see if the function has env as its first term
 
 fn is_env_first(fun: anytype) bool {
-    return switch (@typeInfo(@TypeOf(fun))) {
+    const T: type = if (@TypeOf(fun) == type) fun else @TypeOf(fun);
+
+    return switch (@typeInfo(T)) {
         .Fn => |f| (f.args.len > 0) and (f.args[0].arg_type == beam.env),
         .Struct => |s| (s.fields.len > 0) and (s.fields[0].field_type == beam.env),
         else => @compileError("is_env_first is only available for a functions and Payloads"),
@@ -82,7 +84,7 @@ fn build_with_env(fun: anytype, env: beam.env, argc: c_int, args: [*c]const e.Er
     inline while (arg_index < arity_) : (arg_index += 1) {
         const payload_index = arg_index + 1;
         error_index.* = arg_index;
-        payload[payload_index] = try beam.get(@TypeOf(payload[payload_index]), env, .{.v = args[arg_index]}, build_opts[arg_index]);
+        payload[payload_index] = try beam.get(@TypeOf(payload[payload_index]), env, .{ .v = args[arg_index] }, build_opts[arg_index]);
     }
     return payload;
 }
@@ -101,33 +103,31 @@ fn build_no_env(fun: anytype, env: beam.env, argc: c_int, args: [*c]const e.ErlN
     comptime var index = 0;
     inline while (index < arity_) : (index += 1) {
         error_index.* = index;
-        result[index] = try beam.get(@TypeOf(result[index]), env, .{.v = args[index]}, build_opts[index]);
+        result[index] = try beam.get(@TypeOf(result[index]), env, .{ .v = args[index] }, build_opts[index]);
     }
     return result;
 }
 
 pub fn cleanup(payload: anytype, comptime should_clean: anytype) void {
-    if (should_clean) |unwrapped_should_clean| {
-        if (comptime is_env_first(payload)) {
-            cleanup_with_env(payload, unwrapped_should_clean);
-        } else {
-            cleanup_no_env(payload, unwrapped_should_clean);
-        }
+    if (@TypeOf(should_clean) == @TypeOf(null)) return;
+
+    if (comptime is_env_first(@TypeOf(payload))) {
+        cleanup_with_env(payload, should_clean);
+    } else {
+        cleanup_no_env(payload, should_clean);
     }
 }
 
 fn cleanup_with_env(payload: anytype, comptime should_clean: anytype) void {
-    inline for (should_clean) |should_clean_item, index| {
-        if (should_clean_item) |cleanup_opts| {
-            beam.cleanup(payload[index + 1], cleanup_opts);
-        }
+    inline for (should_clean) |item_clean_opts, index| {
+        if (@TypeOf(item_clean_opts) == @TypeOf(null)) continue;
+        beam.cleanup(payload[index + 1], item_clean_opts);
     }
 }
 
 fn cleanup_no_env(payload: anytype, comptime should_clean: anytype) void {
-    inline for (should_clean) |should_clean_item, index| {
-        if (should_clean_item) |cleanup_opts| {
-            beam.cleanup(payload[index], cleanup_opts);
-        }
+    inline for (should_clean) |item_clean_opts, index| {
+        if (@TypeOf(item_clean_opts) == @TypeOf(null)) continue;
+        beam.cleanup(payload[index], item_clean_opts);
     }
 }

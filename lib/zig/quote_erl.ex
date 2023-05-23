@@ -32,7 +32,6 @@ defmodule Zig.QuoteErl do
         {:ok, result} -> result
       end
     end)
-
   rescue
     e ->
       IO.warn("quote_erl failed with #{inspect(e)}")

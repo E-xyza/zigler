@@ -60,14 +60,14 @@ defmodule Zig.Type.Array do
     end
   end
 
-  def spec(type = %{child: child}, :params, opts) do
+  def spec(type = %{child: child}, :param, opts) do
     # u8 defaults to binary
     if binary_form = binary_form(child, known_length(type)) do
       quote context: Elixir do
-        unquote([Type.spec(child, :params, opts)]) | unquote(binary_form)
+        unquote([Type.spec(child, :param, opts)]) | unquote(binary_form)
       end
     else
-      [Type.spec(child, :params, opts)]
+      [Type.spec(child, :param, opts)]
     end
   end
 

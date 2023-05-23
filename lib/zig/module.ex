@@ -32,7 +32,7 @@ defmodule Zig.Module do
 
   defp append_concurrency_resources(resources, nifs) do
     nifs
-    |> Enum.flat_map(&(&1.concurrency.resources(&1)))
+    |> Enum.flat_map(& &1.concurrency.resources(&1))
     |> Kernel.++(resources)
   end
 

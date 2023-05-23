@@ -14,7 +14,7 @@ defmodule Zig.Nif.Synchronous do
 
   @impl true
   def table_entries(nif = %{type: type}) do
-    [{Basic.entrypoint(nif), type.arity, type.name,  :synchronous}]
+    [{Basic.entrypoint(nif), type.arity, type.name, :synchronous}]
   end
 
   @impl true

@@ -37,9 +37,9 @@ defmodule Zig.Type.Slice do
       else: binary_form(~t(u8))
   end
 
-  def spec(%{child: ~t(u8)}, :params, opts) do
+  def spec(%{child: ~t(u8)}, :param, opts) do
     quote context: Elixir do
-      [unquote(Type.spec(~t(u8), :params, opts))] | unquote(binary_form(~t(u8)))
+      [unquote(Type.spec(~t(u8), :param, opts))] | unquote(binary_form(~t(u8)))
     end
   end
 
@@ -54,10 +54,10 @@ defmodule Zig.Type.Slice do
       {:params, _} ->
         if binary_form(child) do
           quote context: Elixir do
-            unquote([Type.spec(child, :params, [])]) | unquote(binary_form(child))
+            unquote([Type.spec(child, :param, [])]) | unquote(binary_form(child))
           end
         else
-          [Type.spec(child, :params, [])]
+          [Type.spec(child, :param, [])]
         end
     end
   end

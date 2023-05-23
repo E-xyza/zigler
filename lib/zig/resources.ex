@@ -7,11 +7,13 @@ defmodule Zig.Resources do
   EEx.function_from_file(:def, :render, resources, [:assigns])
 
   def resource_decl({:root, resource}), do: resource_decl(resource)
+
   def resource_decl(resource) when is_atom(resource) do
     "var typeFor#{resource}: *e.ErlNifResourceType = undefined;"
   end
 
   def resource_prong({:root, resource}), do: "#{resource} => typeFor#{resource},"
+
   def resource_prong(resource) when is_atom(resource) do
     "#{call_for(resource)} => typeFor#{resource},"
   end
@@ -19,6 +21,7 @@ defmodule Zig.Resources do
   def init_resource_type({:root, resource}, module) do
     "typeFor#{resource} = #{resource}.init(\"#{module}\", env);"
   end
+
   def init_resource_type(resource, module) when is_atom(resource) do
     "typeFor#{resource} = #{call_for(resource)}.init(\"#{module}\", env);"
   end

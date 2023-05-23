@@ -28,9 +28,9 @@ defmodule Zig.Type.Cpointer do
     end
   end
 
-  def spec(%{child: child}, :params, _opts) do
+  def spec(%{child: child}, :param, _opts) do
     has_solo? = match?(%Type.Struct{extern: true}, child)
-    child_form = Type.spec(child, :params, [])
+    child_form = Type.spec(child, :param, [])
 
     case {has_solo?, binary_form(child)} do
       {false, nil} ->

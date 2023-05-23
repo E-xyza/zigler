@@ -43,14 +43,14 @@ defmodule Zig.Type.Manypointer do
     end
   end
 
-  def spec(%{child: child, has_sentinel?: sentinel}, :params, opts)
+  def spec(%{child: child, has_sentinel?: sentinel}, :param, opts)
       when not sentinel or child == ~t(u8) do
     if binary_form = binary_form(child) do
       quote context: Elixir do
-        unquote([Type.spec(child, :params, opts)]) | unquote(binary_form)
+        unquote([Type.spec(child, :param, opts)]) | unquote(binary_form)
       end
     else
-      [Type.spec(child, :params, opts)]
+      [Type.spec(child, :param, opts)]
     end
   end
 

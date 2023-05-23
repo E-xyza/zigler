@@ -6,7 +6,7 @@ defmodule Zig.Nif.Threaded do
   alias Zig.Type
 
   require EEx
-  
+
   import Zig.QuoteErl
 
   @impl true
@@ -24,10 +24,10 @@ defmodule Zig.Nif.Threaded do
           |> Enum.unzip()
       end
 
-      error_prongs =
-        nif
-        |> error_prongs()
-        |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir]))
+    error_prongs =
+      nif
+      |> error_prongs()
+      |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir]))
 
     quote context: Elixir do
       unquote(def_or_defp)(unquote(name)(unquote_splicing(used_params))) do
@@ -36,6 +36,7 @@ defmodule Zig.Nif.Threaded do
         receive do
           {:done, ^ref} ->
             unquote(entrypoint(nif, :join))(ref)
+
           {:error, ^ref} ->
             raise unquote("thread for function #{name} failed during launch")
         end
@@ -67,29 +68,29 @@ defmodule Zig.Nif.Threaded do
       end
 
     quote_erl(
-        """
-        unquote(name)(unquote(...vars)) ->
-          Ref = unquote(launch_name)(unquote(...vars)),
-          receive
-            {done, Ref} ->
-              unquote(join_name)(Ref);
-            {error, Ref} ->
-              erlang:error(unquote(launch_fail_text))
-          end.
+      """
+      unquote(name)(unquote(...vars)) ->
+        Ref = unquote(launch_name)(unquote(...vars)),
+        receive
+          {done, Ref} ->
+            unquote(join_name)(Ref);
+          {error, Ref} ->
+            erlang:error(unquote(launch_fail_text))
+        end.
 
-        unquote(launch_name)(unquote(...unused_vars)) ->
-          erlang:nif_error(unquote(error_text)).
+      unquote(launch_name)(unquote(...unused_vars)) ->
+        erlang:nif_error(unquote(error_text)).
 
-        unquote(join_name)(_Ref) ->
-          erlang:nif_error(unquote(error_text)).
-        """,
-        name: name,
-        launch_name: entrypoint(nif, :launch),
-        join_name: entrypoint(nif, :join),
-        vars: used_vars,
-        unused_vars: unused_vars,
-        launch_fail_text: 'thread for function #{name} failed during launch',
-        error_text: 'nif for function #{name}/#{arity} not bound'
+      unquote(join_name)(_Ref) ->
+        erlang:nif_error(unquote(error_text)).
+      """,
+      name: name,
+      launch_name: entrypoint(nif, :launch),
+      join_name: entrypoint(nif, :join),
+      vars: used_vars,
+      unused_vars: unused_vars,
+      launch_fail_text: 'thread for function #{name} failed during launch',
+      error_text: 'nif for function #{name}/#{arity} not bound'
     )
   end
 
