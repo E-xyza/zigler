@@ -68,9 +68,9 @@ defmodule Zig.Compiler do
          Assembler.assemble(module, assemble_opts),
          true <- precompiled,
          # TODO: verify that this parsed correctly.
+         manifest = Manifest.create(base_code),
+         {sema_functions, new_nif_opts} = Sema.analyze_file!(module, manifest, opts),
          parsed_code = Zig.Parser.parse(base_code),
-         manifest = Manifest.create(parsed_code),
-         {sema_functions, new_nif_opts} = Sema.analyze_file!(module, opts),
          new_opts =
            Keyword.merge(opts, nifs: new_nif_opts, manifest: manifest, parsed: parsed_code),
          function_code =
@@ -99,14 +99,19 @@ defmodule Zig.Compiler do
 
     function_code = Enum.map(nif_functions, &apply(Nif, render_fn, [&1]))
 
-    nif_src_path = Path.join(directory, "nif.zig")
+    nif_src_path = Path.join(directory, "module.zig")
 
     resource_opts = Keyword.get(opts, :resources, [])
+    callbacks = Keyword.get(opts, :callbacks)
 
-    File.write!(nif_src_path, Nif.render_zig(nif_functions, resource_opts, module))
+    File.write!(
+      nif_src_path,
+      Zig.Module.render_zig(nif_functions, resource_opts, callbacks, module)
+    )
+
     Command.fmt(nif_src_path)
 
-    Logger.debug("wrote nif.zig to #{nif_src_path}")
+    Logger.debug("wrote module.zig to #{nif_src_path}")
 
     function_code
   end

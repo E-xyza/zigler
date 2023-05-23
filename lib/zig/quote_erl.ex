@@ -32,6 +32,11 @@ defmodule Zig.QuoteErl do
         {:ok, result} -> result
       end
     end)
+
+  rescue
+    e ->
+      IO.warn("quote_erl failed with #{inspect(e)}")
+      reraise e, __STACKTRACE__
   end
 
   defp substitute_unquoted(tokens, substitutions, so_far \\ [])

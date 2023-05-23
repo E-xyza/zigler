@@ -5,6 +5,7 @@ defmodule Zig.Module do
   """
 
   alias Zig.Nif
+  alias Zig.Resources
 
   @doc """
   obtains a list of Nif structs from the semantically analyzed content and
@@ -16,6 +17,40 @@ defmodule Zig.Module do
       {name, function} ->
         Nif.new(function, Keyword.fetch!(nif_opts, name))
     end)
+  end
+
+  # TODO: move this to Module, since this is module-common stuff.
+  require EEx
+
+  nif = Path.join(__DIR__, "templates/module.zig.eex")
+  EEx.function_from_file(:def, :module_file, nif, [:assigns])
+
+  def render_zig(nifs, resources, callbacks, module) do
+    resources = append_concurrency_resources(resources, nifs)
+    module_file(binding())
+  end
+
+  defp append_concurrency_resources(resources, nifs) do
+    nifs
+    |> Enum.flat_map(&(&1.concurrency.resources(&1)))
+    |> Kernel.++(resources)
+  end
+
+  # internal helpers
+  defp table_entries(nifs) when is_list(nifs) do
+    nifs
+    |> Enum.flat_map(&Nif.table_entries/1)
+    |> Enum.join(",")
+  end
+
+  @index_of %{major: 0, minor: 1}
+
+  defp nif_version(at) do
+    :nif_version
+    |> :erlang.system_info()
+    |> List.to_string()
+    |> String.split(".")
+    |> Enum.at(@index_of[at])
   end
 
   #############################################################################

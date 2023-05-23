@@ -34,7 +34,7 @@ pub fn build(b: *Builder) void {
 
     const lib = b.addSharedLibrary(
         "<%= @module %>",
-        "nif.zig",
+        "module.zig",
         .{ .versioned = .{.major = <%= @version.major %>,
                           .minor = <%= @version.minor %>,
                           .patch = <%= @version.patch %>}});

@@ -1,4 +1,7 @@
 defmodule Zig.Manifest do
+  # TODO: spec this better
+  @type t :: term
+
   defmacro resolver(manifest, file \\ nil) do
     # TODO: input the file as passed parameter in case we're putting it from a different place.
     file =
@@ -48,9 +51,12 @@ defmodule Zig.Manifest do
     end
   end
 
-  def create(%{comments: comments}) do
-    Enum.flat_map(comments, fn
-      {" ref " <> rest, %{line: anchor}} ->
+  def create(code) do
+    code
+    |> String.split("\n")
+    |> Enum.with_index(1)
+    |> Enum.flat_map(fn
+      {"// ref " <> rest, anchor} ->
         [file, line] = String.split(rest, ":")
 
         [{anchor, {Path.absname(file), String.to_integer(line)}}]

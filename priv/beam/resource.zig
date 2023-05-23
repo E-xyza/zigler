@@ -14,7 +14,18 @@ const CreateOpts = struct {
     released: bool = true,
 };
 
-const OutputType = enum { default, binary };
+const OutputType = enum {
+    default,
+    binary,
+
+    pub fn select(opts: anytype) OutputType {
+        if (@hasField(@TypeOf(opts), "output_type")) {
+            return opts.output_type;
+        } else {
+            return .default;
+        }
+    }
+};
 
 pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOpts) type {
     return struct {
@@ -44,16 +55,19 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                 if (@hasDecl(Callbacks, "stop")) {
                     assert_type_matches(@TypeOf(Callbacks.stop), fn (beam.env, *T, beam.pid, beam.monitor) void);
                     init_struct.stop = Shimmed.stop;
+                    init_struct.members += 1;
                 }
 
                 if (@hasDecl(Callbacks, "down")) {
                     assert_type_matches(@TypeOf(Callbacks.down), fn (beam.env, *T, beam.event, bool) void);
                     init_struct.down = Shimmed.down;
+                    init_struct.members += 1;
                 }
 
                 if (@hasDecl(Callbacks, "dyncall")) {
                     assert_type_matches(@TypeOf(Callbacks.dyncall), fn (beam.env, *T, ?*anyopaque) void);
                     init_struct.dyncall = Shimmed.dyncall;
+                    init_struct.members += 1;
                 }
             }
 
@@ -123,10 +137,11 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         }
 
         pub fn make(self: @This(), env: beam.env, comptime make_opts: anytype) beam.term {
-            const output_type: OutputType = make_opts.output_type;
+            const output_type = comptime OutputType.select(make_opts);
             defer self.maybe_release();
             switch (output_type) {
                 .default => {
+
                     return .{ .v = e.enif_make_resource(env, @ptrCast(*anyopaque, self.__payload)) };
                 },
                 .binary => {
@@ -153,24 +168,28 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                 }
 
                 fn dtor(env: beam.env, obj: ?*anyopaque) callconv(.C) void {
+                    beam.context = .callback;
                     if (@hasDecl(Callbacks, "dtor")) {
                         Callbacks.dtor(env, to_typed(obj));
                     }
                 }
 
                 fn down(env: beam.env, obj: ?*anyopaque, pid: [*c]beam.pid, monitor: [*c]beam.monitor) callconv(.C) void {
+                    beam.context = .callback;
                     if (@hasDecl(Callbacks, "down")) {
                         Callbacks.down(env, to_typed(obj), pid[0], monitor[0]);
                     }
                 }
 
                 fn stop(env: beam.env, obj: ?*anyopaque, event: beam.event, is_direct_call: c_int) callconv(.C) void {
+                    beam.context = .callback;
                     if (@hasDecl(Callbacks, "stop")) {
                         Callbacks.stop(env, to_typed(obj), event, is_direct_call != 0);
                     }
                 }
 
                 fn dyncall(env: beam.env, obj: ?*anyopaque, calldata: ?*anyopaque) callconv(.C) void {
+                    beam.context = .callback;
                     if (@hasDecl(Callbacks, "dyncall")) {
                         return Callbacks.dyncall(env, to_typed(obj), calldata);
                     }

@@ -162,22 +162,29 @@ pub fn get_enum(comptime T: type, env: beam.env, src: beam.term, opts: anytype) 
     const enum_info = @typeInfo(T).Enum;
     const IntType = enum_info.tag_type;
     comptime var int_values: [enum_info.fields.len]IntType = undefined;
+    comptime var only_one = enum_info.fields.len == 1;
     comptime for (int_values) |*value, index| {
         value.* = enum_info.fields[index].value;
     };
     const enum_values = std.enums.values(T);
 
-    errdefer error_expected(T, env, opts);
-    errdefer error_got(env, opts, src);
+    error_got(env, opts, src);
+    error_expected(T, env, opts);
 
     // prefer the integer form, fallback to string searches.
     switch (src.term_type(env)) {
         .integer => {
-            errdefer error_line(env, opts, .{ "note: not an integer value for ", .{ .typename, @typeName(T) }, " (should be one of `", .{ .inspect, int_values }, "`)" });
+            if (only_one) {
+                errdefer error_line(env, opts, .{ .{ .typename, @typeName(T) }, " (only has one value and does not map to integer, it may only be `", .{ .inspect, int_values[0] }, "`)" });
 
-            // put erasure on get_int setting the error_line
-            const result = try get_int(IntType, env, src, .{});
-            return try std.meta.intToEnum(T, result);
+                return error.argument_error;
+            } else {
+                errdefer error_line(env, opts, .{ "note: not an integer value for ", .{ .typename, @typeName(T) }, " (should be one of `", .{ .inspect, int_values }, "`)" });
+
+                // put erasure on get_int setting the error_line
+                const result = try get_int(IntType, env, src, .{});
+                return try std.meta.intToEnum(T, result);
+            }
         },
         .atom => {
             errdefer error_line(env, opts, .{ "note: not an atom value for ", .{ .typename, @typeName(T) }, " (should be one of `", .{ .inspect, enum_values }, "`)" });
@@ -403,7 +410,7 @@ pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: a
     if (slice_info.is_const) {
         return result_ptr[0..item_count];
     } else {
-        const alloc_count = if (slice_info.sentinel) | _ | item_count + 1 else item_count;
+        const alloc_count = if (slice_info.sentinel) |_| item_count + 1 else item_count;
         const result = try alloc.alloc(Child, alloc_count);
         std.mem.copy(Child, result, result_ptr[0..item_count]);
 
@@ -422,7 +429,7 @@ pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term, opts: any
     const alloc = allocator(opts);
 
     if (e.enif_get_list_length(env, src.v, &length) == 0) return GetError.unreachable_error;
-    const alloc_length = if (slice_info.sentinel) | _ | length + 1 else length;
+    const alloc_length = if (slice_info.sentinel) |_| length + 1 else length;
 
     const result = try alloc.alloc(Child, alloc_length);
     errdefer alloc.free(result);

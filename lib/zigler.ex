@@ -40,7 +40,11 @@ defmodule :zigler do
     ensure_priv_dir(otp_app)
 
     {:attribute, _, :file, {file, _}} = Enum.find(ast, &match?({:attribute, _, :file, _}, &1))
-    module_dir = Path.dirname(file)
+
+    module_dir =
+      file
+      |> Path.dirname()
+      |> Path.absname()
 
     module =
       case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
@@ -81,20 +85,11 @@ defmodule :zigler do
       |> Kernel.++(rendered_erlang)
       |> Enum.sort_by(&elem(&1, 0), __MODULE__)
 
-    ast
-    |> Enum.each(fn
-      attribute when elem(attribute, 0) == :attribute -> :erl_pp.attribute(attribute)
-      function when elem(function, 0) == :function -> :erl_pp.function(function)
-      _ -> :ok
-    end)
-
-    ast
-  catch
-    a, b ->
-      a |> IO.inspect()
-      b |> IO.inspect()
-      __STACKTRACE__ |> IO.inspect()
-      []
+    if opts[:dump] do
+      dump(ast)
+    else
+      ast
+    end
   end
 
   defp append_attrib(ast, key, value), do: ast ++ [{:attribute, {1, 1}, key, value}]
@@ -148,5 +143,24 @@ defmodule :zigler do
     |> Path.join("../#{target}/ebin")
     |> Path.absname()
     |> to_string
+  end
+
+  defp dump(ast) do
+    Enum.each(ast, fn
+      tuple when elem(tuple, 0) == :attribute ->
+        tuple
+        |> :erl_pp.attribute()
+        |> IO.puts()
+
+      tuple when elem(tuple, 0) == :function ->
+        tuple
+        |> :erl_pp.function()
+        |> IO.puts()
+
+      _ ->
+        :ok
+    end)
+
+    ast
   end
 end

@@ -12,7 +12,7 @@ defmodule ZiglerTest.Sema.ResourceTest do
   setup_all do
     sema_map =
       __MODULE__
-      |> Sema.analyze_file!(nifs: {:auto, []}, default_options: Nif.default_options())
+      |> Sema.analyze_file!([], nifs: {:auto, []}, default_options: Nif.default_options())
       |> elem(0)
 
     {:ok, sema_map}
@@ -37,8 +37,7 @@ defmodule ZiglerTest.Sema.ResourceTest do
              arity: 1,
              params: [
                %Resource{
-                 name: "Resource(nif.T,root,.{.Callbacks = null})",
-                 payload: %Zig.Type.Struct{name: "T"}
+                 name: "Resource(nif.T,root,.{.Callbacks = null})"
                }
              ],
              return: %Struct{name: "T"}

@@ -154,6 +154,7 @@ const make_ = @import("make.zig");
 const cleanup_ = @import("cleanup.zig");
 const processes = @import("processes.zig");
 const stacktrace = @import("stacktrace.zig");
+pub const payload = @import("payload.zig");
 
 pub const get = get_.get;
 pub const make = make_.make;
@@ -171,12 +172,37 @@ pub const make_empty_list = make_.make_empty_list;
 pub const make_list_cell = make_.make_list_cell;
 pub const make_error_atom = make_.make_error_atom;
 pub const make_error_pair = make_.make_error_pair;
+pub const make_ref = make_.make_ref;
 pub const make_stacktrace = stacktrace.to_term;
 
+pub const Payload = payload.Payload;
+
+//////////////////////////////////////////////////////////////////////////////
+// binaries
+
+pub const binaries = @import("binaries.zig");
+pub const binary_to_slice = binaries.binary_to_slice;
+pub const term_to_binary = binaries.term_to_binary;
+pub const binary_to_term = binaries.binary_to_term;
+pub const release_binary = binaries.release_binary;
+
+//////////////////////////////////////////////////////////////////////////////
 // special functions
 
 const ExecutionContext = enum { process_bound, threaded, dirty, yielding, callback };
 pub threadlocal var context: ExecutionContext = .process_bound;
+
+// these atoms are used to conform to Elixir's Compare interface
+// see: https://hexdocs.pm/elixir/1.13/Enum.html#sort/2-sorting-structs
+pub const Compared = enum { lt, eq, gt };
+
+pub fn compare(lhs: term, rhs: term) Compared {
+    const compared = e.enif_compare(lhs.v, rhs.v);
+
+    if (compared == 0) return .eq;
+    if (compared < 0) return .lt;
+    if (compared > 0) return .gt;
+}
 
 ///////////////////////////////////////////////////////////////////////////////
 // options
@@ -214,6 +240,28 @@ pub const Resource = resource.Resource;
 
 pub const event = e.ErlNifEvent;
 pub const monitor = e.ErlNifMonitor;
+
+///////////////////////////////////////////////////////////////////////////////
+// env management
+
+pub const alloc_env = e.enif_alloc_env;
+pub const free_env = e.enif_free_env;
+
+pub fn copy(env_: env, term_: term) term {
+    return .{ .v = e.enif_make_copy(env_, term_.v) };
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// threads
+
+pub const tid = e.ErlNifTid;
+pub const threads = @import("threads.zig");
+pub const Thread = threads.Thread;
+
+///////////////////////////////////////////////////////////////////////////////
+// yields
+
+pub const yield = @import("yield.zig").yield;
 
 ///////////////////////////////////////////////////////////////////////////////
 // exception

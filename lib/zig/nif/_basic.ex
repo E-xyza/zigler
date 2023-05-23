@@ -12,6 +12,9 @@ defmodule Zig.Nif.Basic do
 
   alias Zig.ErrorProng
   alias Zig.Nif
+  alias Zig.Nif.DirtyCpu
+  alias Zig.Nif.DirtyIo
+  alias Zig.Nif.Synchronous
   alias Zig.Type
 
   import Zig.QuoteErl
@@ -144,7 +147,7 @@ defmodule Zig.Nif.Basic do
           if Type.marshals_param?(param_type) do
             {{:var, :"#{var}_m"}, [so_far, Type.marshal_param(param_type, var, nil, :erlang)]}
           else
-            {var, so_far}
+            {{:var, var}, so_far}
           end
         end)
 
@@ -204,4 +207,10 @@ defmodule Zig.Nif.Basic do
   # note a raw "c" function does not need to have any changes made.
   def render_zig(%{raw: :c}), do: ""
   def render_zig(nif), do: basic(nif)
+
+  def context(DirtyCpu), do: :dirty
+  def context(DirtyIo), do: :dirty
+  def context(Synchronous), do: :process_bound
+
+  def resources(_), do: []
 end

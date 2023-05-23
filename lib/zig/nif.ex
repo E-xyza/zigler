@@ -26,7 +26,6 @@ defmodule Zig.Nif do
   alias Zig.Type
   alias Zig.Type.Error
   alias Zig.Type.Function
-  alias Zig.Resources
 
   @type t :: %__MODULE__{
           export: boolean,
@@ -55,7 +54,7 @@ defmodule Zig.Nif do
     @callback render_zig(Nif.t()) :: iodata
 
     @type concurrency :: :synchronous | :dirty_cpu | :dirty_io
-    @type table_entry :: {name :: atom, arity :: non_neg_integer, bootstrap :: concurrency}
+    @type table_entry :: {name :: atom, arity :: non_neg_integer, function_pointer :: atom, bootstrap :: concurrency}
 
     @doc """
     returns "table_entry" tuples which are then used to generate the nif table.
@@ -63,6 +62,7 @@ defmodule Zig.Nif do
     management, then multiple entries should be returned.
     """
     @callback table_entries(Nif.t()) :: [table_entry]
+    @callback resources(Nif.t()) :: [{:root, atom}]
   end
 
   @concurrency_modules %{
@@ -126,15 +126,23 @@ defmodule Zig.Nif do
 
   require EEx
 
-  nif = Path.join(__DIR__, "templates/nif.zig.eex")
-  EEx.function_from_file(:def, :nif_file, nif, [:assigns])
-
-  def render_zig(nifs, resources, module) do
-    nif_file(binding())
-  end
-
   def render_zig(nif = %__MODULE__{}) do
     nif.concurrency.render_zig(nif)
+  end
+
+  @flags %{
+    synchronous: "0",
+    dirty_cpu: "e.ERL_NIF_DIRTY_JOB_CPU_BOUND",
+    dirty_io: "e.ERL_NIF_DIRTY_JOB_IO_BOUND"
+  }
+
+  def table_entries(nif) do
+    nif.concurrency.table_entries(nif)
+    |> Enum.map(fn
+      {function, arity, fptr, concurrency} ->
+        flags = Map.fetch!(@flags, concurrency)
+        ~s(.{.name="#{function}", .arity=#{arity}, .fptr=#{fptr}, .flags=#{flags}})
+    end)
   end
 
   def indexed_parameters([:env | rest]) do
@@ -167,36 +175,6 @@ defmodule Zig.Nif do
   end
 
   def maybe_catch(_), do: nil
-
-  # internal helpers
-  defp table_entries(nifs) when is_list(nifs) do
-    Enum.map_join(nifs, ", ", &table_entries/1)
-  end
-
-  @flags %{
-    synchronous: "0",
-    dirty_cpu: "e.ERL_NIF_DIRTY_JOB_CPU_BOUND",
-    dirty_io: "e.ERL_NIF_DIRTY_JOB_IO_BOUND"
-  }
-
-  defp table_entries(nif) do
-    nif.concurrency.table_entries(nif)
-    |> Enum.map(fn
-      {function, arity, concurrency} ->
-        flags = Map.fetch!(@flags, concurrency)
-        ~s(.{.name="#{function}", .arity=#{arity}, .fptr=#{nif.type.name}, .flags=#{flags}})
-    end)
-  end
-
-  @index_of %{major: 0, minor: 1}
-
-  defp nif_version(at) do
-    :nif_version
-    |> :erlang.system_info()
-    |> List.to_string()
-    |> String.split(".")
-    |> Enum.at(@index_of[at])
-  end
 
   def validate_return!(function, file, line) do
     unless Type.return_allowed?(function.return) do
@@ -241,7 +219,7 @@ defmodule Zig.Nif do
     # TODO: check for easy_c
     return =
       if arg = return_opts[:arg] do
-        trimmed
+        param_types
         |> Enum.at(arg)
         |> Type.spec(:return, return_opts)
       else

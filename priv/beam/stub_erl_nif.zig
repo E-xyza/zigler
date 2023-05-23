@@ -7,9 +7,9 @@ const builtin = @import("builtin");
 pub const ERL_NIF_TERM = extern struct {};
 pub const ERL_NIF_MODULE = extern struct {};
 pub const ErlNifEnv = extern struct {};
-pub const ErlNifBinary = extern struct {};
+pub const ErlNifBinary = extern struct {data: [*c]u8, size: usize};
 pub const ErlNifResourceType = extern struct {};
-pub const ErlNifBinaryToTerm = extern struct {};
+pub const ErlNifBinaryToTerm = c_int;
 pub const ErlNifMonitor = extern struct {};
 pub const ErlNifPid = extern struct {};
 pub const ErlNifPort = extern struct {};
@@ -23,14 +23,21 @@ pub const ErlNifIOQueue = extern struct {};
 pub const ErlNifIOQueueOpts = extern struct {};
 pub const ErlNifMapIterator = extern struct {};
 pub const ErlNifMapIteratorEntry = extern struct {};
-pub const ErlNifResourceFlags = extern struct {};
-pub const ErlNifResourceTypeInit = extern struct {};
+pub const ErlNifResourceFlags = c_int;
 pub const ErlNifSelectFlags = extern struct {};
 pub const ErlNifEvent = extern struct {};
 pub const ErlNifRWLock = extern struct {};
 pub const ErlNifSysInfo = extern struct {};
 pub const ErlNifTSDKey = extern struct {};
 pub const SysIOVec = extern struct {};
+
+pub const ErlNifResourceTypeInit = extern struct {
+    dtor: ?* const fn (?*ErlNifEnv, ?*anyopaque) callconv(.C) void,
+    stop: ?* const fn (?*ErlNifEnv, ?*anyopaque, ErlNifEvent, c_int) callconv(.C) void,
+    down: ?* const fn (?*ErlNifEnv, ?*anyopaque, ?*ErlNifPid, ?*ErlNifMonitor) callconv(.C) void,
+    dyncall: ?* const fn (?*ErlNifEnv, ?*anyopaque, ?*anyopaque) callconv(.C) void,
+    members: c_int,
+};
 
 // enum types.  These types are enums in the BEAM, we're going to spoof them
 // as integers.
@@ -45,7 +52,7 @@ pub const ErlNifUniqueInteger = u64;
 const env = ?*ErlNifEnv;
 const bin = ?*ErlNifBinary;
 const res = ?*ErlNifResourceType;
-const ini = ?*ErlNifResourceTypeInit;
+const ini = ?*const ErlNifResourceTypeInit;
 const mon = ?*ErlNifMonitor;
 const pid = ?*ErlNifPid;
 const prt = ?*ErlNifPort;
@@ -261,7 +268,7 @@ pub fn enif_sizeof_resource(_: ?*anyopaque) c_uint { return 0; }
 pub fn enif_system_info(_: inf, _: usize) void {}
 pub fn enif_term_to_binary(_: env, _: term, _: bin) c_int { return 0; }
 pub fn enif_term_type(_: env, _: term) ttyp { return 0; }
-pub fn enif_thread_create(_: [*c]u8, _: ?*tid_, _: fn (?*anyopaque) ?*anyopaque, _: ?*anyopaque, _: top) c_int {
+pub fn enif_thread_create(_: [*c]u8, _: ?*tid_, _: *const fn (?*anyopaque) callconv(.C) ?*anyopaque, _: ?*anyopaque, _: top) c_int {
     return 0;
 }
 pub fn enif_thread_exit(_: ?*anyopaque) void {}
@@ -309,3 +316,5 @@ pub const ERL_NIF_UNIQUE_MONOTONIC = 1;
 
 pub const ERL_NIF_INTERNAL_HASH = 0;
 pub const ERL_NIF_PHASH2 = 1;
+
+pub const ERL_NIF_RT_CREATE = 0;

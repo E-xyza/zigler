@@ -2,13 +2,15 @@ defmodule Zig.Sema do
   require EEx
   alias Zig.Assembler
   alias Zig.Command
+  alias Zig.Manifest
   alias Zig.Type.Function
 
   sema_zig_template = Path.join(__DIR__, "templates/sema.zig.eex")
   EEx.function_from_file(:defp, :file_for, sema_zig_template, [:assigns])
 
-  @spec analyze_file!(module :: module, opts :: keyword) :: {%{atom() => Function.t()}, keyword}
-  def analyze_file!(module, opts) do
+  @spec analyze_file!(module :: module, Manifest.t(), opts :: keyword) ::
+          {%{atom() => Function.t()}, keyword}
+  def analyze_file!(module, manifest, opts) do
     dir = Assembler.directory(module)
     sema_file = Path.join(dir, "sema.zig")
 
@@ -16,10 +18,15 @@ defmodule Zig.Sema do
     Command.fmt(sema_file)
     result = Command.build_sema(dir)
 
+    if opts[:dump_sema] do
+      IO.puts([IO.ANSI.yellow(), result, IO.ANSI.reset()])
+    end
+
     functions_json =
       result
       |> Jason.decode!()
       |> Map.fetch!("functions")
+      |> filter_ignores(opts)
 
     case Keyword.fetch!(opts, :nifs) do
       {:auto, specified} ->
@@ -48,6 +55,9 @@ defmodule Zig.Sema do
            find(name, functions_json, module, opts)
          end), keyword}
     end
+  rescue
+    e in Zig.CompileError ->
+      raise Zig.CompileError.to_error(e, manifest)
   end
 
   defp find(name, functions_json, module, opts) do
@@ -79,5 +89,15 @@ defmodule Zig.Sema do
       {:c, integer} when is_integer(integer) ->
         %{found_function | params: List.duplicate(:erl_nif_term, integer), arity: integer}
     end
+  end
+
+  defp filter_ignores(functions, opts) do
+    ignores =
+      opts
+      |> Keyword.get(:ignore, [])
+      |> List.wrap()
+      |> Enum.map(&to_string/1)
+
+    Enum.reject(functions, &(&1["name"] in ignores))
   end
 end
