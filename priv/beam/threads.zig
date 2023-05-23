@@ -61,10 +61,28 @@ pub const ThreadState = enum {
 pub threadlocal var this_thread: ?*anyopaque = null;
 pub threadlocal var local_join_started: *bool = undefined;
 
+const ResultTag = enum{ ok, @"error"};
+
+fn ResultTypeFor(comptime F: type) type {
+    const NaiveReturnType = @typeInfo(F).Fn.return_type.?;
+    return switch (@typeInfo(NaiveReturnType)) {
+        .ErrorUnion => |eu| union (ResultTag) {
+            ok: eu.payload,
+            @"error": eu.error_set,
+        },
+        else => NaiveReturnType
+    };
+}
+
+fn makes_error_result__(comptime F: type) bool {
+    const NaiveReturnType = @typeInfo(F).Fn.return_type.?;
+    return (@typeInfo(NaiveReturnType) == .ErrorUnion);
+}
+
 pub fn Thread(comptime function: anytype) type {
     const F = @TypeOf(function);
     comptime var Payload = beam.Payload(function);
-    comptime var Result = @typeInfo(F).Fn.return_type.?;
+    comptime var Result = ResultTypeFor(F);
 
     return struct {
         const This = @This();
@@ -169,8 +187,19 @@ pub fn Thread(comptime function: anytype) type {
                     thread.state.set(.failed);
                     return null;
                 };
-                result_ptr.* = @call(.{}, function, thread.payload);
-                return result_ptr;
+
+                if (comptime makes_error_result__(F)) {
+                    if (@call(.{}, function, thread.payload)) |ok| {
+                        result_ptr.* = .{.ok = ok};
+                    } else |err| {
+                        result_ptr.* = .{.@"error" = err};
+                    }
+
+                    return result_ptr;
+                } else {
+                    result_ptr.* = @call(.{}, function, thread.payload);
+                    return result_ptr;
+                }
             }
         }
 
@@ -185,6 +214,10 @@ pub fn Thread(comptime function: anytype) type {
 
         pub fn get_info() *This {
             return @ptrCast(*This, @alignCast(@alignOf(This), this_thread.?));
+        }
+
+        pub fn makes_error_result() bool {
+            return makes_error_result__(F);
         }
 
         fn lock_join(self: *This) bool {
@@ -281,6 +314,7 @@ pub fn ThreadCallbacks(comptime ThreadType: type) type {
 }
 
 pub fn yield() !void {
+    // to be called only from the yield module.
     if (@atomicLoad(bool, local_join_started, .Monotonic)) {
         return error.processterminated;
     }

@@ -41,5 +41,14 @@ fn @"<%= @type.name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlN
         // TODO: fix this
         @panic("error joining thread");
     };
-    return beam.make(env, result, .{}).v;
+
+    if (comptime Thread_<%= @type.name %>.makes_error_result()) {
+        const result_term = switch(result) {
+            .ok => |ok_result| beam.make(env, ok_result, .{}),
+            .@"error" => |error_result| beam.raise_exception(env, error_result),
+        };
+        return result_term.v;
+    } else {
+        return beam.make(env, result, .{}).v;
+    }
 }
