@@ -1,9 +1,12 @@
 defmodule Zig.Nif.Threaded do
   @behaviour Zig.Nif.Concurrency
 
+  alias Zig.ErrorProng
   alias Zig.Nif
   alias Zig.Type
+
   require EEx
+  
   import Zig.QuoteErl
 
   @impl true
@@ -21,6 +24,11 @@ defmodule Zig.Nif.Threaded do
           |> Enum.unzip()
       end
 
+      error_prongs =
+        nif
+        |> error_prongs()
+        |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir]))
+
     quote context: Elixir do
       unquote(def_or_defp)(unquote(name)(unquote_splicing(used_params))) do
         ref = unquote(entrypoint(nif, :launch))(unquote_splicing(used_params))
@@ -31,6 +39,8 @@ defmodule Zig.Nif.Threaded do
           {:error, ^ref} ->
             raise unquote("thread for function #{name} failed during launch")
         end
+      catch
+        unquote(error_prongs)
       end
 
       defp unquote(entrypoint(nif, :launch))(unquote_splicing(empty_params)) do
@@ -104,4 +114,11 @@ defmodule Zig.Nif.Threaded do
 
   @impl true
   def resources(nif), do: [{:root, :"ThreadResource_#{nif.type.name}"}]
+
+  defp error_prongs(nif) do
+    nif.type.params
+    |> Enum.map(&Type.error_prongs(&1, :argument))
+    |> List.insert_at(0, Type.error_prongs(nif.type.return, :return))
+    |> List.flatten()
+  end
 end

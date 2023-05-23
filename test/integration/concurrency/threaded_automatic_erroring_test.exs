@@ -18,8 +18,19 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
   test "threaded function can error" do
     assert 48 = threaded(47)
 
-    assert_raise ErlangError, "foo", fn ->
-      threaded(42)
-    end
+    error =
+      try do
+        threaded(42)
+      rescue
+        e in ErlangError ->
+          %{payload: e.original, stacktrace: __STACKTRACE__}
+      end
+
+    assert %{payload: :BadNumber, stacktrace: [head, next | _]} = error
+
+    expected_file = Path.absname(__ENV__.file)
+
+    assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 13]} = head
+    assert {__MODULE__, :threaded, 1, [file: ^expected_file, line: 12]} = next
   end
 end
