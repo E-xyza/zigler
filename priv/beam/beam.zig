@@ -87,7 +87,7 @@
 //!
 //! const ok_slice="ok"[0..];
 //! fn to_ok_tuple(env: beam.env, value: i64) !beam.term {
-//!   var tuple_slice: []term = try beam.allocator.alloc(beam.term, 2);
+//!   var tuple_slice: []beam.term = try beam.allocator.alloc(beam.term, 2);
 //!   defer beam.allocator.free(tuple_slice);
 //!
 //!   tuple_slice[0] = beam.make_atom(env, ok_slice);
