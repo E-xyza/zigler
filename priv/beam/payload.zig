@@ -108,7 +108,7 @@ fn build_no_env(fun: anytype, env: beam.env, argc: c_int, args: [*c]const e.ErlN
     return result;
 }
 
-pub fn cleanup(payload: anytype, comptime should_clean: anytype) void {
+pub fn cleanup(payload: anytype, should_clean: anytype) void {
     if (@TypeOf(should_clean) == @TypeOf(null)) return;
 
     if (comptime is_env_first(@TypeOf(payload))) {
@@ -118,14 +118,14 @@ pub fn cleanup(payload: anytype, comptime should_clean: anytype) void {
     }
 }
 
-fn cleanup_with_env(payload: anytype, comptime should_clean: anytype) void {
+fn cleanup_with_env(payload: anytype, should_clean: anytype) void {
     inline for (should_clean) |item_clean_opts, index| {
         if (@TypeOf(item_clean_opts) == @TypeOf(null)) continue;
         beam.cleanup(payload[index + 1], item_clean_opts);
     }
 }
 
-fn cleanup_no_env(payload: anytype, comptime should_clean: anytype) void {
+fn cleanup_no_env(payload: anytype, should_clean: anytype) void {
     inline for (should_clean) |item_clean_opts, index| {
         if (@TypeOf(item_clean_opts) == @TypeOf(null)) continue;
         beam.cleanup(payload[index], item_clean_opts);

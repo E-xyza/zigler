@@ -213,4 +213,28 @@ defmodule Zig.Nif.Basic do
   def context(Synchronous), do: :process_bound
 
   def resources(_), do: []
+
+  # TODO: move this to "nif"
+  def cleanup_for(nil, param_type, index) do
+    type_cleanup(param_type, index)
+  end
+
+  def cleanup_for(arg_opts, param_type, index) do
+    arg_opts
+    |> Enum.at(index)
+    |> Keyword.get(:cleanup, true)
+    |> if do
+      type_cleanup(param_type, index)
+    else
+      "null,"
+    end
+  end
+
+  def type_cleanup(param_type, index) do
+    if Type.missing_size?(param_type) do
+      ".{.size = size#{index}},"
+    else
+      ".{},"
+    end
+  end
 end

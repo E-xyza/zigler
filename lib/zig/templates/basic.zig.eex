@@ -39,24 +39,9 @@ fn <%= @type.name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) 
             <% end %>
         };
 
-        const cleanup_opts = 
-            <%= if @args do %>
-            .{
-                <%= for {param_type, index} <- Nif.indexed_parameters(@type.params) do %>
-                <%= if @args |> Enum.at(index) |> Keyword.get(:cleanup, true) do %>
-                .{
-                    <%= if Type.missing_size?(param_type) do %> 
-                    .size = size<%= index %>
-                    <% end %>
-                },
-                <% else %>
-                null,
-                <% end %>
-                <% end %>
-            };
-            <% else %>
-            null;
-            <% end %>
+        const cleanup_opts = .{
+            <%= for {param_type, index} <- Nif.indexed_parameters(@type.params), do: cleanup_for(@args, param_type, index) %>
+        };
 
         defer beam.payload.cleanup(payload, cleanup_opts);
 
