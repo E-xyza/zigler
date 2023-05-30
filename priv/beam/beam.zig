@@ -255,13 +255,18 @@ pub fn copy(env_: env, term_: term) term {
 // threads
 
 pub const tid = e.ErlNifTid;
-pub const threads = @import("threads.zig");
+
+const threads = @import("threads.zig");
 pub const Thread = threads.Thread;
+pub const ThreadedCallbacks = threads.Callbacks;
 
 ///////////////////////////////////////////////////////////////////////////////
 // yields
 
-pub const yield = @import("yield.zig").yield;
+const yield_ = @import("yield.zig");
+pub const yield = yield_.yield;
+//pub const YieldingFrame = yield_.Frame;
+//pub const YieldingCallbacks = yield_.Callbacks;
 
 ///////////////////////////////////////////////////////////////////////////////
 // exception
@@ -285,4 +290,24 @@ pub fn raise_elixir_exception(env_: env, comptime module: []const u8, data: anyt
     _ = e.enif_make_map_put(env_, exception, make_into_atom(env_, "__exception__").v, make(env_, true, .{}).v, &exception);
 
     return raise_exception(env_, term{ .v = exception });
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// ETC
+
+// wrappedresult: for yielding and threaded nifs we have to do something a bit
+// different to wrap a zig error across the beam boundary.  This common utility
+// type is used for that.
+
+const WrappedResultTag = enum { ok, error_return_trace };
+
+pub fn WrappedResult(comptime FunctionType: type) type {
+    const NaiveReturnType = @typeInfo(FunctionType).Fn.return_type.?;
+    return switch (@typeInfo(NaiveReturnType)) {
+        .ErrorUnion => |eu| union(WrappedResultTag) {
+            ok: eu.payload,
+            error_return_trace: term,
+        },
+        else => NaiveReturnType,
+    };
 }

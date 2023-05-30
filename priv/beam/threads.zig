@@ -61,19 +61,6 @@ pub const ThreadState = enum {
 pub threadlocal var this_thread: ?*anyopaque = null;
 pub threadlocal var local_join_started: *bool = undefined;
 
-const ResultTag = enum { ok, @"error" };
-
-fn ResultTypeFor(comptime F: type) type {
-    const NaiveReturnType = @typeInfo(F).Fn.return_type.?;
-    return switch (@typeInfo(NaiveReturnType)) {
-        .ErrorUnion => |eu| union(ResultTag) {
-            ok: eu.payload,
-            @"error": beam.term,
-        },
-        else => NaiveReturnType,
-    };
-}
-
 fn makes_error_result__(comptime F: type) bool {
     const NaiveReturnType = @typeInfo(F).Fn.return_type.?;
     return (@typeInfo(NaiveReturnType) == .ErrorUnion);
@@ -81,8 +68,8 @@ fn makes_error_result__(comptime F: type) bool {
 
 pub fn Thread(comptime function: anytype) type {
     const F = @TypeOf(function);
-    comptime var Payload = beam.Payload(function);
-    comptime var Result = ResultTypeFor(F);
+    const Payload = beam.Payload(function);
+    const Result = beam.WrappedResult(F);
 
     return struct {
         const This = @This();
@@ -302,7 +289,7 @@ pub fn Thread(comptime function: anytype) type {
     };
 }
 
-pub fn ThreadCallbacks(comptime ThreadType: type) type {
+pub fn Callbacks(comptime ThreadType: type) type {
     return struct {
         pub fn dtor(_: beam.env, dtor_ref: **ThreadType) void {
             const thread_ptr = dtor_ref.*;

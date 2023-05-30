@@ -4,9 +4,9 @@
 const builtin = @import("builtin");
 
 // size zero types
-pub const ERL_NIF_TERM = extern struct {};
+pub const ERL_NIF_TERM = extern struct {v: c_int = 0};
 pub const ERL_NIF_MODULE = extern struct {};
-pub const ErlNifEnv = extern struct {};
+pub const ErlNifEnv = extern struct {v: c_int = 0};
 pub const ErlNifBinary = extern struct {data: [*c]u8, size: usize};
 pub const ErlNifResourceType = extern struct {};
 pub const ErlNifBinaryToTerm = c_int;
@@ -25,17 +25,28 @@ pub const ErlNifMapIterator = extern struct {};
 pub const ErlNifMapIteratorEntry = extern struct {};
 pub const ErlNifResourceFlags = c_int;
 pub const ErlNifSelectFlags = extern struct {};
-pub const ErlNifEvent = extern struct {};
+pub const ErlNifEvent = extern struct {v: c_int = 0};
 pub const ErlNifRWLock = extern struct {};
 pub const ErlNifSysInfo = extern struct {};
 pub const ErlNifTSDKey = extern struct {};
 pub const SysIOVec = extern struct {};
 
+// dependent function types.
+pub const ErlNifResourceDtor = fn (env, ?*anyopaque) callconv(.C) void;
+pub const ErlNifResourceDown = fn (env, ?*anyopaque, pid, mon) callconv(.C) void;
+pub const ErlNifResourceStop = fn (env, ?*anyopaque, event, c_int) callconv(.C) void;
+pub const ErlNifResourceDynCall = fn (env, ?*anyopaque, ?*anyopaque) callconv(.C) void;
+
+const dtor = ErlNifResourceDtor;
+const down = ErlNifResourceDown;
+const stop = ErlNifResourceStop;
+const dyncall = ErlNifResourceDynCall;
+
 pub const ErlNifResourceTypeInit = extern struct {
-    dtor: ?* const fn (?*ErlNifEnv, ?*anyopaque) callconv(.C) void,
-    stop: ?* const fn (?*ErlNifEnv, ?*anyopaque, ErlNifEvent, c_int) callconv(.C) void,
-    down: ?* const fn (?*ErlNifEnv, ?*anyopaque, ?*ErlNifPid, ?*ErlNifMonitor) callconv(.C) void,
-    dyncall: ?* const fn (?*ErlNifEnv, ?*anyopaque, ?*anyopaque) callconv(.C) void,
+    dtor: ?* const dtor,
+    stop: ?* const stop,
+    down: ?* const down,
+    dyncall: ?* const dyncall,
     members: c_int,
 };
 
@@ -83,18 +94,7 @@ const event = ErlNifEvent;
 const ttyp = ErlNifTermType;
 const tsdk = ErlNifTSDKey;
 
-// depentdent function types.
-pub const ErlNifResourceDtor = fn (env, ?*anyopaque) void;
-pub const ErlNifResourceDown = fn (env, ?*anyopaque, pid, mon) void;
-pub const ErlNifResourceStop = fn (env, ?*anyopaque, event, c_int) void;
-pub const ErlNifResourceDynCall = fn (env, ?*anyopaque, ?*anyopaque) void;
-
-const dtor = ErlNifResourceDtor;
-const down = ErlNifResourceDown;
-const stop = ErlNifResourceStop;
-const dcll = ErlNifResourceDynCall;
-
-const reentry = fn (env, c_int, [*c]const term) term;
+const reentry = fn (env, c_int, [*c]const term) callconv(.C) term;
 
 pub fn enif_alloc(_: usize) ?*anyopaque { return null; }
 pub fn enif_alloc_binary(_: usize, _: bin) c_int { return 0; }

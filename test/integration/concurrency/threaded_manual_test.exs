@@ -11,7 +11,7 @@ defmodule ZiglerTest.Concurrency.ThreadedManualTest do
 
   const Thread = beam.Thread(add_47);
   pub const ThreadResource = beam.Resource(*Thread, @import("root"), .{
-    .Callbacks = beam.threads.ThreadCallbacks(Thread)
+    .Callbacks = beam.ThreadedCallbacks(Thread)
   });
 
   fn add_47(x: u32) u32 {

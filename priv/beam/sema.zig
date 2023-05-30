@@ -181,6 +181,7 @@ fn streamType(stream: anytype, comptime T: type) !void {
 }
 
 pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.Fn) !void {
+    //@compileLog("in function", name);
     try stream.beginObject();
     try stream.objectField("name");
     try stream.emitString(name);
