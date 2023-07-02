@@ -3,10 +3,10 @@ defmodule Zig.Sema do
   alias Zig.Assembler
   alias Zig.Command
   alias Zig.Manifest
+  alias Zig.Type
   alias Zig.Type.Function
 
-  sema_zig_template = Path.join(__DIR__, "templates/sema.zig.eex")
-  EEx.function_from_file(:defp, :file_for, sema_zig_template, [:assigns])
+  defp file_for(_), do: raise "nope"
 
   @spec analyze_file!(module :: module, Manifest.t(), opts :: keyword) ::
           {%{atom() => Function.t()}, keyword}
@@ -99,5 +99,30 @@ defmodule Zig.Sema do
       |> Enum.map(&to_string/1)
 
     Enum.reject(functions, &(&1["name"] in ignores))
+  end
+
+  def run_sema(file, module \\ nil) do
+    # TODO: integrate error handling here, and make this a common nexus for
+    # file compilation
+    with {:ok, sema_str} <- Zig.Command.run_sema(file),
+         {:ok, sema_json} <- Jason.decode(sema_str) do
+      module_to_types(sema_json, module)
+    end
+  end
+
+  def module_to_types(%{"functions" => functions, "types" => types, "decls" => decls}, module) do
+    {:ok, %{
+      functions: Enum.map(functions, &Function.from_json(&1, module)),
+      types: Enum.map(types, &type_from_json(&1, module)),
+      decls: Enum.map(decls, &const_from_json/1)
+    }}
+  end
+
+  defp type_from_json(%{"name" => name, "type" => type}, module) do
+    %{name: String.to_atom(name), type: Type.from_json(type, module)}
+  end
+
+  defp const_from_json(%{"name" => name, "type" => type}) do
+    %{name: String.to_atom(name), type: String.to_atom(type)}
   end
 end

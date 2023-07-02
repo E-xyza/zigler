@@ -61,18 +61,4 @@ pub fn build(b: *Builder) void {
     <%= if @stage1 do %> lib.use_stage1 = true; <% end %>
 
     lib.install();
-
-    const exe = b.addExecutable("sema", "sema.zig");
-    exe.addSystemIncludePath(beam_system_dir);
-    exe.builder.reference_trace = 100;
-    exe.linkLibC();
-    exe.addPackage(erl_nif_pkg);
-    exe.addPackage(beam_pkg);
-    exe.addPackage(core_pkg);
-    exe.install();
-    <%= if @stage1 do %> exe.use_stage1 = true; <% end %>
-
-    const sema_step = b.step("sema", "Semantic Analysis");
-    const sema_cmd = exe.run();
-    sema_step.dependOn(&sema_cmd.step);
 }

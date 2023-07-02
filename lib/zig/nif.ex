@@ -49,8 +49,8 @@ defmodule Zig.Nif do
 
     alias Zig.Nif
 
-    @callback render_elixir(Zig.t()) :: Macro.t()
-    @callback render_erlang(Zig.t()) :: term
+    @callback render_elixir(Nif.t()) :: Macro.t()
+    @callback render_erlang(Nif.t()) :: term
     @callback render_zig(Nif.t()) :: iodata
 
     @type concurrency :: :synchronous | :dirty_cpu | :dirty_io

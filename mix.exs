@@ -30,8 +30,10 @@ defmodule Zigler.MixProject do
         main: "Zig",
         extras: ["README.md", "guides/nifs.md", "guides/resources.md"],
         groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
-        groups_for_modules: ["Under the hood": under_the_hood()]
-      ]
+        groups_for_modules: ["Under the hood": under_the_hood()],
+        zig_doc: [beam: [file: "priv/beam/beam.zig"]]
+      ],
+      aliases: [docs: "zig_doc"],
     ]
   end
 
@@ -44,17 +46,7 @@ defmodule Zigler.MixProject do
       Zig.Module,
       Zig.Parser,
       Zig.Typespec,
-      Zig.Command,
-      Zig.Doc.Parser,
-      Zig.Doc.Retriever,
-      Zig.Parser.Error,
-      Zig.Parser.Imports,
-      Zig.Patches,
-      Zig.Parser.Unit,
-      Zig.Parser.Resource,
-      Zig.Parser.ResourceCleanup,
-      Zig.Parser.Nif,
-      Zig.Parser
+      Zig.Command
     ]
   end
 
@@ -79,9 +71,12 @@ defmodule Zigler.MixProject do
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       # to parse the zig JSON
       {:jason, "~> 1.4"},
-      {:zig_parser, "~> 0.1"},
+      # zig parser is pinned to a version of zig parser because versions of zig parser
+      # are pinned to zig versions
+      {:zig_parser, "== 0.1.7"},
       # documentation
-      {:ex_doc, "~> 0.23", runtime: false}
+      {:ex_doc, "~> 0.29.4", runtime: false},
+      {:zig_doc, path: "../zig_doc", only: :dev, runtime: false}
     ]
   end
 end
