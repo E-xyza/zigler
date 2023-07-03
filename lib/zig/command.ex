@@ -34,8 +34,6 @@ defmodule Zig.Command do
     end
   end
 
-  def build_sema(dir), do: run_zig("build sema", cd: dir, stderr_to_stdout: true)
-
   def run_sema(file) do
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema.zig")

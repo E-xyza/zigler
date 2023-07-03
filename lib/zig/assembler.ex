@@ -21,8 +21,7 @@ defmodule Zig.Assembler do
 
     opts = Keyword.take(opts, [:to, :from, :link_lib, :build_opts, :stage1])
     opts = Keyword.merge([to: directory], opts)
-    # TODO: get to/from from opts.
-    Options.build(module, opts)
+
     Builder.build(module, opts)
   end
 end
