@@ -6,7 +6,7 @@ defmodule Zig.Sema do
   alias Zig.Type
   alias Zig.Type.Function
 
-  defp file_for(_), do: raise "nope"
+  defp file_for(_), do: raise("nope")
 
   @spec analyze_file!(module :: module, Manifest.t(), opts :: keyword) ::
           {%{atom() => Function.t()}, keyword}
@@ -111,11 +111,12 @@ defmodule Zig.Sema do
   end
 
   def module_to_types(%{"functions" => functions, "types" => types, "decls" => decls}, module) do
-    {:ok, %{
-      functions: Enum.map(functions, &Function.from_json(&1, module)),
-      types: Enum.map(types, &type_from_json(&1, module)),
-      decls: Enum.map(decls, &const_from_json/1)
-    }}
+    {:ok,
+     %{
+       functions: Enum.map(functions, &Function.from_json(&1, module)),
+       types: Enum.map(types, &type_from_json(&1, module)),
+       decls: Enum.map(decls, &const_from_json/1)
+     }}
   end
 
   defp type_from_json(%{"name" => name, "type" => type}, module) do

@@ -40,7 +40,9 @@ defmodule Zig.Command do
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema.zig")
     options_file = Path.join(priv_dir, "beam/sema_zigler_options.zig")
-    sema_command = "run #{sema_file} --pkg-begin analyte #{file} --pkg-begin zigler_options #{options_file} --pkg-end --pkg-end --pkg-begin zigler_options #{options_file} --pkg-end"
+
+    sema_command =
+      "run #{sema_file} --pkg-begin analyte #{file} --pkg-begin zigler_options #{options_file} --pkg-end --pkg-end --pkg-begin zigler_options #{options_file} --pkg-end"
 
     # Need to make this an OK tuple
     {:ok, run_zig(sema_command, stderr_to_stdout: true)}

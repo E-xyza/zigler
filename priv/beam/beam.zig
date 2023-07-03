@@ -209,9 +209,8 @@ const zigler_options = @import("zigler_options");
 
 const allocator_ = @import("allocator.zig");
 
-// pub const make_general_purpose_allocator_instance = allocator_.make_general_purpose_allocator_instance;
-// pub var general_purpose_allocator_instance = make_general_purpose_allocator_instance();
-// pub const general_purpose_allocator = general_purpose_allocator_instance.allocator();
+pub const general_purpose_allocator = allocator_.general_purpose_allocator;
+pub const raw_beam_allocator = allocator_.raw_beam_allocator;
 
 /// wraps `erl_nif_alloc` and `erl_nif_free` into the zig allocator interface.
 /// does a very simple implementation of this in the default case.
@@ -291,6 +290,7 @@ pub fn raise_elixir_exception(env_: env, comptime module: []const u8, data: anyt
 
 const WrappedResultTag = enum { ok, error_return_trace };
 
+/// <!-- ignore -->
 pub fn WrappedResult(comptime FunctionType: type) type {
     const NaiveReturnType = @typeInfo(FunctionType).Fn.return_type.?;
     return switch (@typeInfo(NaiveReturnType)) {
