@@ -7,17 +7,7 @@ defmodule Zig.Module do
   alias Zig.Nif
   alias Zig.Resources
 
-  @doc """
-  obtains a list of Nif structs from the semantically analyzed content and
-  the nif options that are a part of
-  """
-  # TODO: unit test this function directly.
-  def nifs_from_sema(sema_list, nif_opts) do
-    Enum.map(sema_list, fn
-      {name, function} ->
-        Nif.new(function, Keyword.fetch!(nif_opts, name))
-    end)
-  end
+  import Zig.QuoteErl
 
   # TODO: move this to Module, since this is module-common stuff.
   require EEx
@@ -51,6 +41,77 @@ defmodule Zig.Module do
     |> List.to_string()
     |> String.split(".")
     |> Enum.at(@index_of[at])
+  end
+
+  # CODE RENDERING
+
+  def render_elixir(code, function_code, module, manifest, opts) do
+    nif_name = "#{module}"
+
+    load_nif_fn =
+      case function_code do
+        [] ->
+          logger_msg = "module #{inspect(module)} does not compile its nifs"
+
+          quote do
+            def __load_nifs__ do
+              require Logger
+              Logger.info(unquote(logger_msg))
+            end
+          end
+
+        _ ->
+          quote do
+            def __load_nifs__ do
+              # LOADS the nifs from :code.lib_dir() <> "ebin", which is
+              # a path that has files correctly moved in to release packages.
+              require Logger
+
+              unquote(opts[:otp_app])
+              |> :code.lib_dir()
+              |> Path.join("ebin/lib")
+              |> Path.join(unquote(nif_name))
+              |> String.to_charlist()
+              |> :erlang.load_nif(0)
+              |> case do
+                :ok ->
+                  Logger.debug("loaded module at #{unquote(nif_name)}")
+
+                error = {:error, any} ->
+                  Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
+              end
+            end
+          end
+      end
+
+    quote do
+      @zig_code unquote(code)
+      unquote_splicing(function_code)
+      unquote(load_nif_fn)
+      require Zig.Manifest
+      Zig.Manifest.resolver(unquote(manifest))
+
+      def _format_error(_, [{_, _, _, opts} | _rest] = _stacktrace) do
+        if formatted = opts[:zigler_error], do: formatted, else: %{}
+      end
+    end
+  end
+
+  def render_erlang(_code, function_code, module, _manifest, opts) do
+    otp_app = Keyword.fetch!(opts, :otp_app)
+    module_name = Atom.to_charlist(module)
+
+    init_function =
+      quote_erl(
+        """
+        '__init__'() ->
+          erlang:load_nif(filename:join(code:priv_dir(unquote(otp_app)), unquote(module_id)), []).
+        """,
+        otp_app: otp_app,
+        module_id: ~C'lib/' ++ module_name
+      )
+
+    Enum.flat_map(function_code, & &1) ++ init_function
   end
 
   #############################################################################

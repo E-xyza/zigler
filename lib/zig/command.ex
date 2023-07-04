@@ -37,13 +37,34 @@ defmodule Zig.Command do
   def run_sema(file) do
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema.zig")
-    options_file = Path.join(priv_dir, "beam/sema_zigler_options.zig")
+    beam_file = Path.join(priv_dir, "beam/beam.zig")
+    erl_nif_file = Path.join(priv_dir, "beam/erl_nif.zig")
+    sema_on_file = Path.join(priv_dir, "beam/sema/on.zig")
 
-    sema_command =
-      "run #{sema_file} --pkg-begin analyte #{file} --pkg-begin zigler_options #{options_file} --pkg-end --pkg-end --pkg-begin zigler_options #{options_file} --pkg-end"
+    pkg_opts =
+      packages(
+        analyte:
+          {file,
+           beam: {beam_file, sema: sema_on_file, erl_nif: erl_nif_file}, erl_nif: erl_nif_file},
+        sema: sema_on_file
+      )
+
+    sema_command = "run #{sema_file} #{pkg_opts}"
+
+    IO.puts(sema_command)
 
     # Need to make this an OK tuple
     {:ok, run_zig(sema_command, stderr_to_stdout: true)}
+  end
+
+  def packages(packages) do
+    Enum.map_join(packages, " ", fn
+      {name, {file, deps}} ->
+        "--pkg-begin #{name} #{file} #{packages(deps)} --pkg-end"
+
+      {name, file} ->
+        "--pkg-begin #{name} #{file} --pkg-end"
+    end)
   end
 
   def fmt(file) do

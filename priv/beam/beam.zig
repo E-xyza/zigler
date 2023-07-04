@@ -103,7 +103,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const BeamMutex = @import("mutex.zig").BeamMutex;
 
-pub const is_sema = @import("zigler_options").sema;
+pub const is_sema = @import("sema").is_sema;
 
 pub inline fn ignore_when_sema() void {
     if (is_sema) unreachable;
@@ -147,7 +147,8 @@ const make_ = @import("make.zig");
 const cleanup_ = @import("cleanup.zig");
 const processes = @import("processes.zig");
 const stacktrace = @import("stacktrace.zig");
-const payload = @import("payload.zig");
+
+pub const payload = @import("payload.zig");
 
 /// get function.
 pub const get = get_.get;
@@ -209,8 +210,20 @@ const zigler_options = @import("zigler_options");
 
 const allocator_ = @import("allocator.zig");
 
+pub const make_general_purpose_allocator_instance = allocator_.make_general_purpose_allocator_instance;
+
+/// provides a BEAM allocator that can perform allocations with greater
+/// alignment than the machine word.  Note that this comes at the cost
+/// of some memory to store important metadata.
+///
+/// currently does not release memory that is resized.  For this behaviour
+/// use `beam.general_purpose_allocator`.
+///
+/// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
+pub const large_allocator = allocator_.large_allocator;
+
+/// implements `std.mem.GeneralPurposeAllocator` using the `beam.large_allocator`.
 pub const general_purpose_allocator = allocator_.general_purpose_allocator;
-pub const raw_beam_allocator = allocator_.raw_beam_allocator;
 
 /// wraps `erl_nif_alloc` and `erl_nif_free` into the zig allocator interface.
 /// does a very simple implementation of this in the default case.
@@ -218,7 +231,10 @@ pub const raw_beam_allocator = allocator_.raw_beam_allocator;
 /// the BEAM allocator wrapped in zig stdlib's `general_purpose_allocator`.
 /// This will provide you with thread-safety, double-free-safety, and the ability to
 /// check that there are no memory leaks.
+pub const raw_beam_allocator = allocator_.raw_beam_allocator;
 
+/// threadlocal variable that lets you set the allocator strategy used for the
+/// process 
 pub threadlocal var allocator = allocator_.raw_beam_allocator;
 
 ///////////////////////////////////////////////////////////////////////////////

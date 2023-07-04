@@ -63,15 +63,6 @@ fn raw_beam_free(
     e.enif_free(buf.ptr);
 }
 
-/// !value
-/// provides a BEAM allocator that can perform allocations with greater
-/// alignment than the machine word.  Note that this comes at the cost
-/// of some memory to store important metadata.
-///
-/// currently does not release memory that is resized.  For this behaviour
-/// use `beam.general_purpose_allocator`.
-///
-/// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
 pub const large_allocator = large_beam_allocator;
 
 const large_beam_allocator = Allocator{

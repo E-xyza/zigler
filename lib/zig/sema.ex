@@ -6,64 +6,74 @@ defmodule Zig.Sema do
   alias Zig.Type
   alias Zig.Type.Function
 
-  @spec analyze_file!(module :: module, Manifest.t(), opts :: keyword) ::
-          {%{atom() => Function.t()}, keyword}
+  @spec analyze_file!(module :: module, Manifest.t(), opts :: keyword) :: keyword
+  # updates the per-function options to include the semantically understood type
+  # information.  Also strips "auto" from the nif information to provide a finalized
+  # keyword list of functions with their options.
   def analyze_file!(module, manifest, opts) do
     # dir = Assembler.directory(module)
     file = Keyword.fetch!(opts, :file)
 
     functions =
-      case run_sema(file, module, opts) |> dbg(limit: 25) do
+      case run_sema(file, module, opts) do
         {:ok, sema} ->
           filter_ignores(sema.functions, opts)
       end
 
-    case Keyword.fetch!(opts, :nifs) |> dbg(limit: 25) do
-      {:auto, specified} ->
+    # `nifs` option could either be {:auto, keyword} which means that the full
+    # list of functions should be derived from the semantic analysis, determining
+    # which functions have `pub` declaration, with certain functions optionally
+    # having their specification overloaded.
+    #
+    # it could also be just a list of functions with their specifications, in
+    # which case those are the *only* functions that will be included.
+
+    case Keyword.fetch!(opts, :nifs) do
+      {:auto, specified_fns} ->
         default_options = Keyword.fetch!(opts, :default_options)
 
-        # make sure all of the specified functions are in the nif list.
-        Enum.reduce(
-          functions,
-          {Map.new(), []},
-          # TODO: make this its own function
-          fn function = %{name: name}, {new_types, new_opts} ->
-            function_opts = Keyword.get(opts, name, default_options)
-            # TODO: verify that this is/isn't necessary.
-            new_function = adjust_raw(function, function_opts)
+        # make sure all of the specified functions are indeed found by sema.
+        Enum.each(specified_fns, fn
+          {specified_fn, _} ->
+            unless Enum.any?(functions, &(&1.name == specified_fn)),
+              do:
+                raise(
+                  CompileError,
+                  "function #{specified_fn} not found in semantic analysis of functions."
+                )
+        end)
 
-            {Map.put(new_types, name, function), Keyword.put(new_opts, name, function_opts)}
+        Enum.map(
+          functions,
+          fn function = %{name: name} ->
+            function_opts = Keyword.get(specified_fns, name, default_options)
+
+            adjusted_function = adjust_raw(function, function_opts)
+
+            {name, Keyword.put(function_opts, :type, adjusted_function)}
           end
         )
 
-      fn_opts when is_list(fn_opts) ->
-        raise "unimplemented"
+      selected_fns when is_list(selected_fns) ->
+        Enum.map(selected_fns, fn
+          {selected_fn, function_opts} ->
+            function = Enum.find(functions, &(&1.name == selected_fn))
 
-        #{Map.new(keyword, fn {name, opts} ->
-        #   find(name, functions_json, module, opts)
-        # end), keyword}
+            unless function,
+              do:
+                raise(
+                  CompileError,
+                  "function #{selected_fn} not found in semantic analysis of functions."
+                )
+
+            adjusted_function = adjust_raw(function, function_opts)
+
+            {selected_fn, Keyword.put(function_opts, :type, adjusted_function)}
+        end)
     end
-
-#    raise "foo"
   rescue
     e in Zig.CompileError ->
       reraise Zig.CompileError.to_error(e, manifest), __STACKTRACE__
-  end
-
-  defp find(name, functions_json, module, opts) do
-    #str_name = Atom.to_string(name)
-    #str_alias = if alias_ = Keyword.get(opts, :alias), do: Atom.to_string(alias_)
-#
-    #cond do
-    #  function_json = Enum.find(functions_json, &(&1["name"] == str_name)) ->
-    #    {name, function_type(function_json, module, opts)}
-#
-    #  function_json = Enum.find(functions_json, &(&1["name"] == str_alias)) ->
-    #    {name, function_type(function_json, module, opts)}
-#
-    #  true ->
-    #    raise "function #{name} was specified in the nif list, but was not found in the zig file."
-    #end
   end
 
   defp adjust_raw(function, opts) do
