@@ -11,6 +11,13 @@ fn <%= @type.name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) 
     // set the threadlocal beam.allocator, but only for this run.
     const old_allocator = beam.allocator;
     beam.allocator = alloc_instance.allocator();
+
+    defer if (alloc_instance.detectLeaks()) {
+        return beam.raise_elixir_exception(env, "RuntimeError", .{.message = "memory leak detected in function <%= inspect @type.name %>"}).v;
+    }
+
+    defer beam.destroy_general_purpose_allocator_instance(alloc_instance);
+
     defer beam.allocator = old_allocator;
     <% end %>
 
@@ -50,10 +57,5 @@ fn <%= @type.name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) 
         <%= Type.get_result(@type.return, @return) %>
     };
 
-    <%= if @leak_check do %>
-    if (alloc_instance.detectLeaks()) {
-        return beam.raise_elixir_exception(env, "RuntimeError", .{.message = "memory leak detected in function <%= inspect @type.name %>"}).v;
-    }
-    <% end %>
     return outer_result;
 }
