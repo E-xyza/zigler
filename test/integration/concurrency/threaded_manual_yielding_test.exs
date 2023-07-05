@@ -15,7 +15,7 @@ defmodule ZiglerTest.Concurrency.ThreadedManualYieldingTest do
 
   const Thread = beam.Thread(thread);
   pub const ThreadResource = beam.Resource(*Thread, @import("root"), .{
-    .Callbacks = beam.threads.ThreadCallbacks(Thread)
+    .Callbacks = beam.ThreadedCallbacks(Thread)
   });
 
   fn thread(env: beam.env, pid: beam.pid) void {

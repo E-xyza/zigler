@@ -34,7 +34,7 @@ defmodule Zig.Command do
     end
   end
 
-  def run_sema(file) do
+  def run_sema(file, opts) do
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema.zig")
     beam_file = Path.join(priv_dir, "beam/beam.zig")
@@ -49,15 +49,13 @@ defmodule Zig.Command do
         sema: sema_on_file
       )
 
-    sema_command = "run #{sema_file} #{pkg_opts}"
-
-    IO.puts(sema_command)
+    sema_command = "run #{sema_file} #{pkg_opts} #{link_opts(opts)}"
 
     # Need to make this an OK tuple
     {:ok, run_zig(sema_command, stderr_to_stdout: true)}
   end
 
-  def packages(packages) do
+  defp packages(packages) do
     Enum.map_join(packages, " ", fn
       {name, {file, deps}} ->
         "--pkg-begin #{name} #{file} #{packages(deps)} --pkg-end"
@@ -65,6 +63,11 @@ defmodule Zig.Command do
       {name, file} ->
         "--pkg-begin #{name} #{file} --pkg-end"
     end)
+  end
+
+  defp link_opts(opts) do
+    # TODO: do we need a more sophisticated way of running this analysis?
+    if Keyword.get(opts, :easy_c), do: "-lc"
   end
 
   def fmt(file) do

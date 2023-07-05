@@ -16,8 +16,7 @@ defmodule Zig.Sema do
 
     functions =
       case run_sema(file, module, opts) do
-        {:ok, sema} ->
-          filter_ignores(sema.functions, opts)
+        {:ok, sema} -> sema.functions
       end
 
     # `nifs` option could either be {:auto, keyword} which means that the full
@@ -89,6 +88,24 @@ defmodule Zig.Sema do
     end
   end
 
+  def run_sema(file, module \\ nil, opts \\ []) do
+    # TODO: integrate error handling here, and make this a common nexus for
+    # file compilation
+    with {:ok, sema_str} <- Zig.Command.run_sema(file, opts),
+         {:ok, sema_json} <- Jason.decode(sema_str) do
+
+      if opts[:dump_sema] do
+        sema_json_pretty = Jason.encode!(sema_json, pretty: true)
+        IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
+      end
+
+      # filter out any functions present in "ignore" clause.
+      sema_json
+      |> Map.update!("functions", &filter_ignores(&1, opts))
+      |> module_to_types(module)
+    end
+  end
+
   defp filter_ignores(functions, opts) do
     ignores =
       opts
@@ -96,24 +113,10 @@ defmodule Zig.Sema do
       |> List.wrap()
       |> Enum.map(&to_string/1)
 
-    Enum.reject(functions, &(&1.name in ignores))
+    Enum.reject(functions, &(&1["name"] in ignores))
   end
 
-  def run_sema(file, module \\ nil, opts \\ []) do
-    # TODO: integrate error handling here, and make this a common nexus for
-    # file compilation
-    with {:ok, sema_str} <- Zig.Command.run_sema(file),
-         {:ok, sema_json} <- Jason.decode(sema_str) do
-      if opts[:dump_sema] do
-        sema_json_pretty = Jason.encode!(sema_json, pretty: true)
-        IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
-      end
-
-      module_to_types(sema_json, module)
-    end
-  end
-
-  def module_to_types(%{"functions" => functions, "types" => types, "decls" => decls}, module) do
+  defp module_to_types(%{"functions" => functions, "types" => types, "decls" => decls}, module) do
     {:ok,
      %{
        functions: Enum.map(functions, &Function.from_json(&1, module)),

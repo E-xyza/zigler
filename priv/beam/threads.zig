@@ -179,7 +179,7 @@ pub fn Thread(comptime function: anytype) type {
                     if (@call(.{}, function, thread.payload)) |ok| {
                         result_ptr.* = .{ .ok = ok };
                     } else |err| {
-                        result_ptr.* = .{ .@"error" = beam.make(thread.env, .{ .@"error", err, @errorReturnTrace()}, .{}) };
+                        result_ptr.* = .{ .error_return_trace = beam.make(thread.env, .{ .@"error", err, @errorReturnTrace()}, .{}) };
                     }
 
                     return result_ptr;
