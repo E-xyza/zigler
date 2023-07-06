@@ -138,7 +138,7 @@ defmodule Zig.Nif.Basic do
       error_prongs =
         nif
         |> error_prongs()
-        |> Enum.flat_map(&apply(ErrorProng, &1, [:erlang]))
+        |> Enum.flat_map(&apply(ErrorProng, &1, [:erlang, []]))
 
       {marshalled_vars, marshal_code} =
         type.params
