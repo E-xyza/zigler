@@ -3,6 +3,7 @@ defmodule Zig.Sema do
   alias Zig.Manifest
   alias Zig.Type
   alias Zig.Type.Function
+  alias Zig.Type.Struct
 
   @spec analyze_file!(module :: module, Manifest.t(), opts :: keyword) :: keyword
   # updates the per-function options to include the semantically understood type
@@ -13,8 +14,8 @@ defmodule Zig.Sema do
 
     functions =
       case run_sema(file, module, opts) do
-        {:ok, %{functions: functions}} ->
-          Enum.map(functions, &validate_usable!(&1, opts))
+        {:ok, %{functions: functions, types: types}} ->
+          Enum.map(functions, &validate_usable!(&1, types, opts))
           functions
       end
 
@@ -129,8 +130,10 @@ defmodule Zig.Sema do
     %{name: String.to_atom(name), type: String.to_atom(type)}
   end
 
-  defp validate_usable!(function, opts) do
-    with :ok <- validate_return(function.return) do
+  defp validate_usable!(function, types, opts) do
+    with :ok <- validate_args(function, types),
+         :ok <- validate_return(function.return),
+         :ok <- validate_struct_pub(function.return, types, "return", function.name) do
       :ok
     else
       {:error, msg} ->
@@ -172,7 +175,24 @@ defmodule Zig.Sema do
     end)
   end
 
-  alias Zig.Type
+  #defp validate_argument(type) do
+  #
+  #end
+
+  defp validate_args(function, types) do
+    function.params
+    |> Enum.with_index(1)
+    |> Enum.reduce_while(:ok, fn
+      {type, index}, :ok ->
+        case validate_struct_pub(type, types, "argument #{index}", function.name) do
+          :ok ->
+            {:cont, :ok}
+
+          error = {:error, _msg} ->
+            {:halt, error}
+        end
+    end)
+  end
 
   # explicitly, all return values that are permitted
   defp validate_return(type) do
@@ -182,4 +202,17 @@ defmodule Zig.Sema do
       {:error, "functions returning #{type} cannot be nifs"}
     end
   end
+
+  defp validate_struct_pub(%Struct{name: name}, types, location, function) do
+    Enum.reduce_while(types, {:error, "struct `#{name}` (#{location} of function `#{function}`) is not a `pub` struct"}, fn
+      %{name: type_name}, error = {:error, _} ->
+        if Atom.to_string(type_name) == name do
+          {:halt, :ok}
+        else
+          {:cont, error}
+        end
+    end)
+  end
+
+  defp validate_struct_pub(_, _, _, _), do: :ok
 end
