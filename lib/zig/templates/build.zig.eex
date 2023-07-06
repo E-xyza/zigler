@@ -11,17 +11,15 @@ pub fn build(b: *Builder) void {
         .source = .{ .path = "<%= Path.join(@beam_dir, "erl_nif.zig") %>"}
     };
 
-    // compile-time options that modify default settings in beam.zig
-
-    const opts_pkg = Pkg{
-        .name = "zigler_options",
-        .source = .{ .path = "options.zig" }
+    const no_sema_pkg = Pkg{
+        .name = "sema",
+        .source = .{ .path = "<%= Path.join(@beam_dir, "sema/off.zig") %>"}
     };
 
     const beam_pkg = Pkg{
         .name = "beam",
         .source = .{ .path = "<%= Path.join(@beam_dir, "beam.zig") %>"},
-        .dependencies = &.{erl_nif_pkg, opts_pkg},
+        .dependencies = &.{erl_nif_pkg, no_sema_pkg},
     };
 
     const core_pkg = Pkg{
@@ -57,18 +55,8 @@ pub fn build(b: *Builder) void {
     lib.setTarget(target);
 
     lib.linker_allow_shlib_undefined = true;
+
+    <%= if @stage1 do %> lib.use_stage1 = true; <% end %>
+
     lib.install();
-
-    const exe = b.addExecutable("sema", "sema.zig");
-    exe.addSystemIncludePath(beam_system_dir);
-    exe.builder.reference_trace = 100;
-    exe.linkLibC();
-    exe.addPackage(erl_nif_pkg);
-    exe.addPackage(beam_pkg);
-    exe.addPackage(core_pkg);
-    exe.install();
-
-    const sema_step = b.step("sema", "Semantic Analysis");
-    const sema_cmd = exe.run();
-    sema_step.dependOn(&sema_cmd.step);
 }

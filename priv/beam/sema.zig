@@ -181,19 +181,36 @@ fn streamType(stream: anytype, comptime T: type) !void {
 }
 
 pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.Fn) !void {
+   //  @compileLog("in function", name);
     try stream.beginObject();
     try stream.objectField("name");
     try stream.emitString(name);
     try stream.objectField("return");
-    try streamType(stream, fun.return_type.?);
+
+    if (fun.return_type) |return_type| {
+        try streamType(stream, return_type);
+    } else {
+        try stream.emitNull();
+    }
 
     try stream.objectField("params");
     try stream.beginArray();
     inline for (fun.args) |arg| {
         try stream.arrayElem();
-        try streamType(stream, arg.arg_type.?);
+        if (arg.arg_type) |arg_type| {
+            try streamType(stream, arg_type);
+        } else {
+            try stream.emitNull();
+        }
     }
     try stream.endArray();
+    try stream.endObject();
+}
+
+pub fn streamTypeX(stream: anytype, comptime name: anytype) !void {
+    try stream.beginObject();
+    try stream.objectField("name");
+    try stream.emitString(name);
     try stream.endObject();
 }
 
@@ -202,6 +219,7 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
     try stream.beginObject();
     try stream.objectField("functions");
     try stream.beginArray();
+    // functions are found in decls
     inline for (mod_info.decls) |decl| {
         if (decl.is_pub) {
             switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
@@ -209,11 +227,67 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
                     try stream.arrayElem();
                     try streamFun(stream, decl.name, fun);
                 },
-                // do something about types.
                 else => {},
             }
         }
     }
     try stream.endArray();
+
+    try stream.objectField("types");
+    try stream.beginArray();
+    // types are found in decls
+    inline for (mod_info.decls) |decl| {
+        if (decl.is_pub) {
+            switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
+                .Type => {
+                    const T = @field(Mod, decl.name);
+                    try stream.arrayElem();
+                    try stream.beginObject();
+                    try stream.objectField("name");
+                    try stream.emitString(decl.name);
+                    try stream.objectField("type");
+                    try streamType(stream, T);
+                    try stream.endObject();
+                },
+                else => {},
+            }
+        }
+    }
+    try stream.endArray();
+
+    try stream.objectField("decls");
+    try stream.beginArray();
+    inline for (mod_info.decls) |decl| {
+        if (decl.is_pub) {
+            switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
+                .Type => {},
+                .Fn => {},
+                else => {
+                    try stream.arrayElem();
+                    try stream.beginObject();
+                    try stream.objectField("name");
+                    try stream.emitString(decl.name);
+                    try stream.objectField("type");
+                    try stream.emitString(@typeName(@TypeOf(@field(Mod, decl.name))));
+                    try stream.endObject();
+                },
+            }
+        }
+    }
+    try stream.endArray();
+
     try stream.endObject();
+}
+
+const analyte = @import("analyte");
+const json = std.json;
+
+// possibly 100 is an over-conservative choice for function depth here.
+const JSON_DEPTH = 100;
+
+pub fn main() !void {
+    const stdout = std.io.getStdOut().writer();
+    var stream = json.writeStream(stdout, JSON_DEPTH);
+
+    try streamModule(&stream, analyte);
 }
