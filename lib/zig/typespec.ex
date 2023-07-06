@@ -115,17 +115,31 @@ defmodule Zig.Typespec do
 
     return_type = type_for(nif.retval)
 
-    {:@, [context: Elixir, import: Kernel],
-     [
-       {:spec, [context: Elixir],
-        [
-          {:"::", [],
-           [
-             {nif.name, [], argument_types},
-             return_type
-           ]}
-        ]}
-     ]}
+    if System.version() >= "1.14" do
+      {:@, [context: Elixir, imports: [{1, Kernel}]],
+       [
+         {:spec, [context: Elixir],
+          [
+            {:"::", [],
+             [
+               {nif.name, [], argument_types},
+               return_type
+             ]}
+          ]}
+       ]}
+    else
+      {:@, [context: Elixir, import: Kernel],
+       [
+         {:spec, [context: Elixir, import: Kernel],
+          [
+            {:"::", [],
+             [
+               {nif.name, [], argument_types},
+               return_type
+             ]}
+          ]}
+       ]}
+    end
   end
 
   defp type_for("[]u8"), do: @type_for["[]u8"]
