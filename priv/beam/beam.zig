@@ -101,7 +101,7 @@
 const e = @import("erl_nif.zig");
 const std = @import("std");
 const builtin = @import("builtin");
-const BeamMutex = @import("beam_mutex.zig").BeamMutex;
+pub const BeamMutex = @import("beam_mutex.zig").BeamMutex;
 
 ///////////////////////////////////////////////////////////////////////////////
 // BEAM allocator definitions
