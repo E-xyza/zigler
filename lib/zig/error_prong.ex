@@ -83,7 +83,6 @@ defmodule Zig.ErrorProng do
 
     quote do
       :error, {:error, type, extra_stacktrace} ->
-
         stacktrace = unquote(stacktrace_prep)
 
         new_stacktrace =

@@ -91,7 +91,6 @@ defmodule Zig.Compiler do
 
   defp precompile(module, directory, opts) do
     render_fn = Keyword.fetch!(opts, :render)
-    parsed_code = Keyword.fetch!(opts, :parsed)
 
     nif_functions =
       opts
@@ -117,6 +116,27 @@ defmodule Zig.Compiler do
     Logger.debug("wrote module.zig to #{nif_src_path}")
 
     function_code
+  end
+
+  require EEx
+  zig_alias_template = Path.join(__DIR__, "templates/alias.zig.eex")
+  EEx.function_from_file(:defp, :create_aliases, zig_alias_template, [:assigns])
+
+  defp dependencies_for(assemblies) do
+    Enum.map(assemblies, fn assembly ->
+      quote do
+        @external_resource unquote(assembly.source)
+      end
+    end)
+  end
+
+  #############################################################################
+  ## STEPS
+
+  def assembly_dir(env, module) do
+    System.tmp_dir()
+    |> String.replace("\\", "/")
+    |> Path.join(".zigler_compiler/#{env}/#{module}")
   end
 
   #  defp assign_positions(opts) do
@@ -158,62 +178,4 @@ defmodule Zig.Compiler do
   #    #%{function | file: file, line: line}
   #  end
   #
-
-  require EEx
-  zig_alias_template = Path.join(__DIR__, "templates/alias.zig.eex")
-  EEx.function_from_file(:defp, :create_aliases, zig_alias_template, [:assigns])
-
-  defp dependencies_for(assemblies) do
-    Enum.map(assemblies, fn assembly ->
-      quote do
-        @external_resource unquote(assembly.source)
-      end
-    end)
-  end
-
-  #############################################################################
-  ## STEPS
-
-  def assembly_dir(env, module) do
-    System.tmp_dir()
-    |> String.replace("\\", "/")
-    |> Path.join(".zigler_compiler/#{env}/#{module}")
-  end
-
-  #  defp verify_soundness!(nif_functions, parsed) do
-  #    Enum.map(nif_functions, fn fun = %{type: type} ->
-  #      raise_if_uses_private_struct!(type, fun.file, parsed)
-  #      Nif.validate_return!(type, fun.file, fun.line)
-  #      fun
-  #    end)
-  #  end
-  #
-  #  # verifies that none of the structs returned are private.
-  #  defp raise_if_uses_private_struct!(function = %{name: name}, file, parsed) do
-  #    Enum.each(function.params, &raise_if_private_struct!(&1, file, name, "accepts", parsed))
-  #    raise_if_private_struct!(function.return, file, name, "returns", parsed)
-  #    function
-  #  end
-  #
-  #  defp raise_if_private_struct!(%Struct{name: name}, file, function_name, verb, parsed) do
-  #    case Analyzer.info_for(parsed, name) do
-  #      {:const, %{pub: false, position: const_position}, _} ->
-  #        {:fn, fn_opts, _} = Analyzer.info_for(parsed, Atom.to_string(function_name))
-  #
-  #        {fn_file, fn_line} = Analyzer.translate_location(parsed, file, fn_opts.position.line)
-  #
-  #        {st_file, st_line} = Analyzer.translate_location(parsed, file, const_position.line)
-  #
-  #        raise CompileError,
-  #          file: Path.relative_to_cwd(fn_file),
-  #          line: fn_line,
-  #          description:
-  #            "the function `#{function_name}` #{verb} the struct `#{name}` which is not public (defined at #{st_file}:#{st_line})"
-  #
-  #      _ ->
-  #        :ok
-  #    end
-  #  end
-  #
-  #  defp raise_if_private_struct!(_, _, _, _, _), do: :ok
 end

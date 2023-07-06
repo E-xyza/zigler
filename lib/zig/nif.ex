@@ -16,7 +16,7 @@ defmodule Zig.Nif do
   @impl true
   defdelegate fetch(function, key), to: Map
 
-  defstruct @enforce_keys ++ ~w(name raw args return leak_check alias file line doc)a
+  defstruct @enforce_keys ++ ~w(name raw args return leak_check alias file line doc spec)a
 
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
@@ -39,7 +39,8 @@ defmodule Zig.Nif do
           alias: nil | atom,
           file: nil | Path.t(),
           line: nil | non_neg_integer(),
-          doc: nil | String.t()
+          doc: nil | String.t(),
+          spec: Macro.t()
         }
 
   defmodule Concurrency do
@@ -89,7 +90,8 @@ defmodule Zig.Nif do
       args: opts[:args],
       return: opts[:return],
       leak_check: opts[:leak_check],
-      alias: opts[:alias]
+      alias: opts[:alias],
+      spec: Keyword.get(opts, :spec, :auto)
     }
   end
 
@@ -101,12 +103,22 @@ defmodule Zig.Nif do
     end
   end
 
-  def render_elixir(nif = %{concurrency: concurrency}, opts \\ []) do
+  def render_elixir(nif = %{concurrency: concurrency}) do
     typespec =
-      if Keyword.get(opts, :typespec?, true) do
-        quote do
-          @spec unquote(spec(nif))
-        end
+      case nif.spec do
+        false ->
+          quote do
+          end
+
+        [{:->, _, [params, res]}] ->
+          quote do
+            @spec unquote(nif.name)(unquote_splicing(params)) :: unquote(res)
+          end
+
+        :auto ->
+          quote do
+            @spec unquote(spec(nif))
+          end
       end
 
     functions = concurrency.render_elixir(nif)
@@ -357,6 +369,8 @@ defmodule Zig.Nif do
   end
 
   defp normalize_option!(args_opts = {:args, _}), do: args_opts
+
+  defp normalize_option!(spec_opts = {:spec, _}), do: spec_opts
 
   defp normalize_option!({opt, value}) when is_map_key(@nif_option_types, opt) do
     raise CompileError,

@@ -8,7 +8,6 @@ defmodule Zig.Assembler do
   """
 
   alias Zig.Builder
-  alias Zig.Options
 
   @doc "staging directory for the zigler assembly"
   def directory(module) do
