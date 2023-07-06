@@ -16,7 +16,6 @@ defmodule Zig.Compiler do
   alias Zig.Type.Struct
   alias Zig.Manifest
 
-
   defmacro __before_compile__(%{module: module, file: file}) do
     # NOTE: this is going to be called only from Elixir.  Erlang will not call this.
     # all functionality in this macro must be replicated when running compilation from
@@ -70,9 +69,10 @@ defmodule Zig.Compiler do
          true <- precompiled,
          # TODO: verify that this parsed correctly.
          manifest = Manifest.create(base_code),
-         sema_nifs = Sema.analyze_file!(module, manifest, opts),
          parsed_code = Zig.Parser.parse(base_code),
-         new_opts = Keyword.merge(opts, nifs: sema_nifs, manifest: manifest, parsed: parsed_code),
+         new_opts = Keyword.merge(opts, manifest: manifest, parsed: parsed_code),
+         sema_nifs = Sema.analyze_file!(module, manifest, new_opts),
+         new_opts = Keyword.put(new_opts, :nifs, sema_nifs),
          function_code = precompile(module, assembly_directory, new_opts),
          {true, _} <- {compiled, new_opts} do
       # parser should only operate on parsed, valid zig code.

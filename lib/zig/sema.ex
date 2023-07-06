@@ -1,7 +1,5 @@
 defmodule Zig.Sema do
   require EEx
-  alias Zig.Assembler
-  alias Zig.Command
   alias Zig.Manifest
   alias Zig.Type
   alias Zig.Type.Function
@@ -11,12 +9,13 @@ defmodule Zig.Sema do
   # information.  Also strips "auto" from the nif information to provide a finalized
   # keyword list of functions with their options.
   def analyze_file!(module, manifest, opts) do
-    # dir = Assembler.directory(module)
     file = Keyword.fetch!(opts, :file)
 
     functions =
       case run_sema(file, module, opts) do
-        {:ok, sema} -> sema.functions
+        {:ok, %{functions: functions}} ->
+          Enum.map(functions, &validate_usable!(&1, opts))
+          functions
       end
 
     # `nifs` option could either be {:auto, keyword} which means that the full
@@ -34,12 +33,11 @@ defmodule Zig.Sema do
         # make sure all of the specified functions are indeed found by sema.
         Enum.each(specified_fns, fn
           {specified_fn, _} ->
-            unless Enum.any?(functions, &(&1.name == specified_fn)),
-              do:
-                raise(
-                  CompileError,
+            unless Enum.any?(functions, &(&1.name == specified_fn)) do
+              raise CompileError,
+                description:
                   "function #{specified_fn} not found in semantic analysis of functions."
-                )
+            end
         end)
 
         Enum.map(
@@ -58,12 +56,11 @@ defmodule Zig.Sema do
           {selected_fn, function_opts} ->
             function = Enum.find(functions, &(&1.name == selected_fn))
 
-            unless function,
-              do:
-                raise(
-                  CompileError,
+            unless function do
+              raise CompileError,
+                description:
                   "function #{selected_fn} not found in semantic analysis of functions."
-                )
+            end
 
             adjusted_function = adjust_raw(function, function_opts)
 
@@ -93,7 +90,6 @@ defmodule Zig.Sema do
     # file compilation
     with {:ok, sema_str} <- Zig.Command.run_sema(file, opts),
          {:ok, sema_json} <- Jason.decode(sema_str) do
-
       if opts[:dump_sema] do
         sema_json_pretty = Jason.encode!(sema_json, pretty: true)
         IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
@@ -131,5 +127,59 @@ defmodule Zig.Sema do
 
   defp const_from_json(%{"name" => name, "type" => type}) do
     %{name: String.to_atom(name), type: String.to_atom(type)}
+  end
+
+  defp validate_usable!(function, opts) do
+    with :ok <- validate_return(function.return) do
+      :ok
+    else
+      {:error, msg} ->
+        file_path =
+          opts
+          |> Keyword.fetch!(:mod_file)
+          |> Path.relative_to_cwd()
+
+        {_, %{position: %{line: raw_line}}, _} =
+          opts
+          |> Keyword.fetch!(:parsed)
+          |> find_function(function.name)
+
+        line =
+          opts
+          |> Keyword.fetch!(:manifest)
+          |> Manifest.resolve(raw_line)
+
+        raise CompileError,
+          description: msg,
+          file: file_path,
+          line: line
+    end
+  end
+
+  defp find_function(%{code: code}, function) do
+    Enum.find(code, fn
+      {:fn, _, fn_opts} ->
+        Keyword.fetch!(fn_opts, :name) == function
+
+      {:const, _, {^function, _}} ->
+        true
+
+      {:const, _, {^function, _, _}} ->
+        true
+
+      _ ->
+        false
+    end)
+  end
+
+  alias Zig.Type
+
+  # explicitly, all return values that are permitted
+  defp validate_return(type) do
+    if Type.return_allowed?(type) do
+      :ok
+    else
+      {:error, "functions returning #{type} cannot be nifs"}
+    end
   end
 end
