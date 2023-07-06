@@ -20,6 +20,9 @@ const raw_beam_allocator_vtable = Allocator.VTable{
     .free = raw_beam_free,
 };
 
+var general_purpose_allocator_instance = make_general_purpose_allocator_instance();
+pub const general_purpose_allocator = general_purpose_allocator_instance.allocator();
+
 fn raw_beam_alloc(
     _: *anyopaque,
     len: usize,
@@ -60,15 +63,6 @@ fn raw_beam_free(
     e.enif_free(buf.ptr);
 }
 
-/// !value
-/// provides a BEAM allocator that can perform allocations with greater
-/// alignment than the machine word.  Note that this comes at the cost
-/// of some memory to store important metadata.
-///
-/// currently does not release memory that is resized.  For this behaviour
-/// use `beam.general_purpose_allocator`.
-///
-/// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
 pub const large_allocator = large_beam_allocator;
 
 const large_beam_allocator = Allocator{

@@ -103,14 +103,7 @@ const std = @import("std");
 const builtin = @import("builtin");
 const BeamMutex = @import("mutex.zig").BeamMutex;
 
-pub const is_sema = switch (builtin.output_mode) {
-    .Exe => true,
-    .Lib => false,
-    else => unreachable,
-};
-
-// semantic analysis
-pub const sema = if (is_sema) @import("sema.zig") else void;
+pub const is_sema = @import("sema").is_sema;
 
 pub inline fn ignore_when_sema() void {
     if (is_sema) unreachable;
@@ -154,8 +147,10 @@ const make_ = @import("make.zig");
 const cleanup_ = @import("cleanup.zig");
 const processes = @import("processes.zig");
 const stacktrace = @import("stacktrace.zig");
+
 pub const payload = @import("payload.zig");
 
+/// get function.
 pub const get = get_.get;
 pub const make = make_.make;
 pub const cleanup = cleanup_.cleanup;
@@ -164,7 +159,6 @@ pub const send = processes.send;
 
 // special makers
 pub const make_pid = make_.make_pid;
-pub const make_port = make_.make_port;
 pub const make_into_atom = make_.make_into_atom;
 pub const make_cpointer = make_.make_cpointer;
 pub const make_binary = make_.make_binary;
@@ -180,7 +174,7 @@ pub const Payload = payload.Payload;
 //////////////////////////////////////////////////////////////////////////////
 // binaries
 
-pub const binaries = @import("binaries.zig");
+const binaries = @import("binaries.zig");
 pub const binary_to_slice = binaries.binary_to_slice;
 pub const term_to_binary = binaries.term_to_binary;
 pub const binary_to_term = binaries.binary_to_term;
@@ -196,12 +190,14 @@ pub threadlocal var context: ExecutionContext = .process_bound;
 // see: https://hexdocs.pm/elixir/1.13/Enum.html#sort/2-sorting-structs
 pub const Compared = enum { lt, eq, gt };
 
+/// compares two terms.
 pub fn compare(lhs: term, rhs: term) Compared {
     const compared = e.enif_compare(lhs.v, rhs.v);
 
     if (compared == 0) return .eq;
     if (compared < 0) return .lt;
     if (compared > 0) return .gt;
+    unreachable;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -209,28 +205,37 @@ pub fn compare(lhs: term, rhs: term) Compared {
 
 const zigler_options = @import("zigler_options");
 
-pub const options = struct {
-    pub const use_gpa = if (@hasDecl(zigler_options, "use_gpa")) zigler_options.use_gpa else false;
-};
-
 ///////////////////////////////////////////////////////////////////////////////
 // allocators
 
 const allocator_ = @import("allocator.zig");
 
 pub const make_general_purpose_allocator_instance = allocator_.make_general_purpose_allocator_instance;
-pub var general_purpose_allocator_instance = make_general_purpose_allocator_instance();
-pub const general_purpose_allocator = general_purpose_allocator_instance.allocator();
 
+/// provides a BEAM allocator that can perform allocations with greater
+/// alignment than the machine word.  Note that this comes at the cost
+/// of some memory to store important metadata.
 ///
+/// currently does not release memory that is resized.  For this behaviour
+/// use `beam.general_purpose_allocator`.
+///
+/// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
+pub const large_allocator = allocator_.large_allocator;
+
+/// implements `std.mem.GeneralPurposeAllocator` using the `beam.large_allocator`.
+pub const general_purpose_allocator = allocator_.general_purpose_allocator;
+
 /// wraps `erl_nif_alloc` and `erl_nif_free` into the zig allocator interface.
 /// does a very simple implementation of this in the default case.
 /// you may also set the `use_gpa` option, which will make the default beam allocator
 /// the BEAM allocator wrapped in zig stdlib's `general_purpose_allocator`.
 /// This will provide you with thread-safety, double-free-safety, and the ability to
 /// check that there are no memory leaks.
-///
-pub threadlocal var allocator = if (options.use_gpa) general_purpose_allocator else allocator_.raw_beam_allocator;
+pub const raw_beam_allocator = allocator_.raw_beam_allocator;
+
+/// threadlocal variable that lets you set the allocator strategy used for the
+/// process 
+pub threadlocal var allocator = allocator_.raw_beam_allocator;
 
 ///////////////////////////////////////////////////////////////////////////////
 // resources
@@ -255,13 +260,18 @@ pub fn copy(env_: env, term_: term) term {
 // threads
 
 pub const tid = e.ErlNifTid;
-pub const threads = @import("threads.zig");
+
+const threads = @import("threads.zig");
 pub const Thread = threads.Thread;
+pub const ThreadedCallbacks = threads.Callbacks;
 
 ///////////////////////////////////////////////////////////////////////////////
 // yields
 
-pub const yield = @import("yield.zig").yield;
+const yield_ = @import("yield.zig");
+pub const yield = yield_.yield;
+//pub const YieldingFrame = yield_.Frame;
+//pub const YieldingCallbacks = yield_.Callbacks;
 
 ///////////////////////////////////////////////////////////////////////////////
 // exception
@@ -285,4 +295,25 @@ pub fn raise_elixir_exception(env_: env, comptime module: []const u8, data: anyt
     _ = e.enif_make_map_put(env_, exception, make_into_atom(env_, "__exception__").v, make(env_, true, .{}).v, &exception);
 
     return raise_exception(env_, term{ .v = exception });
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// ETC
+
+// wrappedresult: for yielding and threaded nifs we have to do something a bit
+// different to wrap a zig error across the beam boundary.  This common utility
+// type is used for that.
+
+const WrappedResultTag = enum { ok, error_return_trace };
+
+/// <!-- ignore -->
+pub fn WrappedResult(comptime FunctionType: type) type {
+    const NaiveReturnType = @typeInfo(FunctionType).Fn.return_type.?;
+    return switch (@typeInfo(NaiveReturnType)) {
+        .ErrorUnion => |eu| union(WrappedResultTag) {
+            ok: eu.payload,
+            error_return_trace: term,
+        },
+        else => NaiveReturnType,
+    };
 }

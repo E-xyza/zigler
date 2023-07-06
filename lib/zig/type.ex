@@ -123,8 +123,21 @@ defprotocol Zig.Type do
 
   def from_json(json, module) do
     case json do
+      nil ->
+        # only allow during documentation sema passes
+        if module do
+          raise CompileError, description: "zigler encountered anytype"
+        else
+          :anytype
+        end
+
       %{"type" => "unusable:" <> typename} ->
-        raise CompileError, description: "zigler encountered the unusable type #{typename}"
+        # only allow during documentation sema passes
+        if module do
+          raise CompileError, description: "zigler encountered the unusable type #{typename}"
+        else
+          String.to_atom(typename)
+        end
 
       %{"type" => "bool"} ->
         Bool.from_json(json)

@@ -16,7 +16,7 @@ defmodule Zig.Nif do
   @impl true
   defdelegate fetch(function, key), to: Map
 
-  defstruct @enforce_keys ++ ~w(raw args return leak_check alias file line doc)a
+  defstruct @enforce_keys ++ ~w(name raw args return leak_check alias file line doc)a
 
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
@@ -28,6 +28,7 @@ defmodule Zig.Nif do
   alias Zig.Type.Function
 
   @type t :: %__MODULE__{
+          name: atom,
           export: boolean,
           concurrency: Synchronous | Threaded | Yielding | DirtyCpu | DirtyIo,
           type: Function.t(),
@@ -49,8 +50,8 @@ defmodule Zig.Nif do
 
     alias Zig.Nif
 
-    @callback render_elixir(Zig.t()) :: Macro.t()
-    @callback render_erlang(Zig.t()) :: term
+    @callback render_elixir(Nif.t()) :: Macro.t()
+    @callback render_erlang(Nif.t()) :: term
     @callback render_zig(Nif.t()) :: iodata
 
     @type concurrency :: :synchronous | :dirty_cpu | :dirty_io
@@ -78,11 +79,12 @@ defmodule Zig.Nif do
   @doc """
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
-  def new(function, opts) do
+  def new(name, opts) do
     %__MODULE__{
+      name: name,
       export: Keyword.fetch!(opts, :export),
       concurrency: Map.get(@concurrency_modules, Keyword.fetch!(opts, :concurrency)),
-      type: function,
+      type: opts[:type],
       raw: extract_raw(opts[:raw]),
       args: opts[:args],
       return: opts[:return],

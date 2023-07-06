@@ -32,7 +32,7 @@ defmodule ZiglerTest.Types.EnumTest do
 
     test "if you try to use an invalid atom" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer | atom (for `EnumType`)\n     got: `:zag`\n     note: not an atom value for EnumType (should be one of `[:foo, :bar]`)\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     note: not an atom value for EnumType (should be one of `[:foo, :bar]`)\n     expected: integer | atom (for `EnumType`)\n     got: `:zag`\n",
                    fn -> untagged_swap(:zag) end
     end
 

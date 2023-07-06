@@ -1,6 +1,6 @@
 const Thread_<%= @type.name %> = beam.Thread(nif.<%= @type.name %>);
 pub const ThreadResource_<%= @type.name %> = beam.Resource(*Thread_<%= @type.name %>, @This(), .{
-  .Callbacks = beam.threads.ThreadCallbacks(Thread_<%= @type.name %>)
+  .Callbacks = beam.ThreadedCallbacks(Thread_<%= @type.name %>)
 });
 
 <% needs_make? = Enum.any?(@type.params, &Type.needs_make?/1) %>
@@ -45,7 +45,7 @@ fn @"<%= @type.name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlN
     if (comptime Thread_<%= @type.name %>.makes_error_result()) {
         const result_term = switch(result) {
             .ok => |ok_result| beam.make(env, ok_result, .{}),
-            .@"error" => |error_result| beam.raise_exception(env, beam.copy(env, error_result)),
+            .error_return_trace => |error_result| beam.raise_exception(env, beam.copy(env, error_result)),
         };
         return result_term.v;
     } else {

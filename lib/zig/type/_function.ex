@@ -6,7 +6,6 @@ defmodule Zig.Type.Function do
 
   defstruct [:name, :arity, :params, :return]
 
-  alias Zig.Manifest
   alias Zig.Type
 
   @type t :: %__MODULE__{

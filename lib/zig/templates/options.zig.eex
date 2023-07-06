@@ -1,5 +1,0 @@
-<%= if assigns[:build_opts] do %>
-<%= for {type, name, initial_value} <- @build_opts do %>
-pub const <%= name %>: <%= type %> = <%= initial_value %>;
-<% end %>
-<% end %>

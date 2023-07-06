@@ -27,9 +27,7 @@ defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
     _ = term;
 
     const init_struct = e.ErlNifResourceTypeInit{ .dtor = dtor, .stop = null, .down = null, .dyncall = null, .members = 1 };
-    resource_type = e.enif_init_resource_type(env, "foobarbaz", &init_struct, e.ERL_NIF_RT_CREATE, null).?;
-
-    // TODO: let this error out.
+    resource_type = e.enif_init_resource_type(env, "threadedmanualresource", &init_struct, e.ERL_NIF_RT_CREATE, null).?;
   }
 
   fn thread(info: ?*anyopaque) callconv(.C) ?*anyopaque {
