@@ -28,7 +28,7 @@ defmodule Zig.Compiler do
     module
     |> Module.get_attribute(:zig_code_parts)
     |> Enum.reverse()
-    |> Enum.join()
+    |> IO.iodata_to_binary()
     |> compile(module, code_dir, Keyword.put(opts, :render, :render_elixir))
     |> Zig.Macro.inspect(opts)
   end
@@ -51,7 +51,9 @@ defmodule Zig.Compiler do
         functions when is_list(functions) -> create_aliases(nifs: functions)
       end
 
-    File.write!(module_nif_zig, [aliasing_code, easy_c_code, base_code])
+    full_code = IO.iodata_to_binary([aliasing_code, easy_c_code, base_code])
+
+    File.write!(module_nif_zig, full_code)
 
     if opts[:easy_c] do
       Command.fmt(module_nif_zig)
@@ -68,7 +70,7 @@ defmodule Zig.Compiler do
          Assembler.assemble(module, assemble_opts),
          true <- precompiled,
          # TODO: verify that this parsed correctly.
-         manifest = Manifest.create(base_code),
+         manifest = Manifest.create(full_code),
          parsed_code = Zig.Parser.parse(base_code),
          new_opts = Keyword.merge(opts, manifest: manifest, parsed: parsed_code),
          sema_nifs = Sema.analyze_file!(module, new_opts),

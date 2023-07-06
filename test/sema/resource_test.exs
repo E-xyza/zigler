@@ -14,9 +14,14 @@ defmodule ZiglerTest.Sema.ResourceTest do
 
     sema_map =
       __MODULE__
-      |> Sema.analyze_file!(nifs: {:auto, []}, default_options: Nif.default_options(), file: file, manifest: [])
+      |> Sema.analyze_file!(
+        nifs: {:auto, []},
+        default_options: Nif.default_options(),
+        file: file,
+        manifest: []
+      )
       |> Enum.map(fn {name, opts} -> {name, Keyword.fetch!(opts, :type)} end)
-      
+
     {:ok, sema_map}
   end
 

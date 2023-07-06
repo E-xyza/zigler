@@ -29,7 +29,7 @@ defprotocol Zig.Type do
   def marshal_return(type, variable, platform)
 
   @doc "catch prongs to correctly perform error handling, atom is a reference to function in `Zig.ErrorProng`"
-  @spec error_prongs(t, :argument | :return) :: [atom]
+  @spec error_prongs(t, :argument | :return) :: [{atom, [atom]}]
   def error_prongs(type, context)
 
   @doc "generates make clauses in zig"

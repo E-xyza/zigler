@@ -9,13 +9,17 @@ defmodule ZiglerTest.Sema.FunctionTest do
 
   import Type, only: :macros
 
-
   setup_all do
     file = Path.join(__DIR__, ".#{__MODULE__}.zig")
 
     sema_map =
       __MODULE__
-      |> Sema.analyze_file!(nifs: {:auto, []}, default_options: Nif.default_options(), file: file, manifest: [])
+      |> Sema.analyze_file!(
+        nifs: {:auto, []},
+        default_options: Nif.default_options(),
+        file: file,
+        manifest: []
+      )
       |> Enum.map(fn {name, opts} -> {name, Keyword.fetch!(opts, :type)} end)
 
     {:ok, sema_map}

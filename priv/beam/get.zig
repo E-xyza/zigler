@@ -748,7 +748,26 @@ inline fn error_enter(env: beam.env, opts: anytype, msg: anytype) void {
 fn typespec_for(comptime T: type) []const u8 {
     return switch (@typeInfo(T)) {
         .Int => "integer",
-        .Enum => "integer | atom",
+        .Enum => |en| make_enum: {
+            comptime {
+                var typespec: []const u8 = "";
+                var should_pipe = false;
+
+                for (en.fields) |field| {
+                     if (should_pipe) {
+                        typespec = typespec ++ " | ";
+                    }
+                    typespec = typespec ++ std.fmt.comptimePrint("{}", .{field.value});
+                    should_pipe = true;
+                }
+    
+                for (en.fields) |field| {
+                    typespec = typespec ++ " | " ++ ":" ++ field.name[0..];
+                }
+
+                break :make_enum typespec;
+            }
+        },
         .Float => "float | :infinity | :neg_infinity | :NaN",
         .Struct => |s| make_struct: {
             // resources require references

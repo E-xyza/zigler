@@ -21,7 +21,8 @@ defmodule Zig.Manifest do
 
       defp __resolve(%{file_name: file, line: line}), do: __resolve(file, line)
 
-      defp __resolve(unquote(file), line), do: __resolve(@__zig_manifest, [], line)
+      defp __resolve(unquote(file), line),
+        do: __resolve(@__zig_manifest, [], line)
 
       defp __resolve(file, line) when is_binary(file), do: {file, line}
 

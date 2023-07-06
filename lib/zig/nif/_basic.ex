@@ -79,7 +79,7 @@ defmodule Zig.Nif.Basic do
     error_prongs =
       nif
       |> error_prongs()
-      |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir]))
+      |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir, []]))
 
     marshal_params =
       type.params

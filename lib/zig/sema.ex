@@ -175,9 +175,9 @@ defmodule Zig.Sema do
     end)
   end
 
-  #defp validate_argument(type) do
+  # defp validate_argument(type) do
   #
-  #end
+  # end
 
   defp validate_args(function, types) do
     function.params
@@ -204,14 +204,18 @@ defmodule Zig.Sema do
   end
 
   defp validate_struct_pub(%Struct{name: name}, types, location, function) do
-    Enum.reduce_while(types, {:error, "struct `#{name}` (#{location} of function `#{function}`) is not a `pub` struct"}, fn
-      %{name: type_name}, error = {:error, _} ->
-        if Atom.to_string(type_name) == name do
-          {:halt, :ok}
-        else
-          {:cont, error}
-        end
-    end)
+    Enum.reduce_while(
+      types,
+      {:error, "struct `#{name}` (#{location} of function `#{function}`) is not a `pub` struct"},
+      fn
+        %{name: type_name}, error = {:error, _} ->
+          if Atom.to_string(type_name) == name do
+            {:halt, :ok}
+          else
+            {:cont, error}
+          end
+      end
+    )
   end
 
   defp validate_struct_pub(_, _, _, _), do: :ok

@@ -24,10 +24,12 @@ defmodule Zig.Nif.Threaded do
           |> Enum.unzip()
       end
 
+    ignore = [nif.name, :"#{nif.name}-join"]
+
     error_prongs =
       nif
       |> error_prongs()
-      |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir]))
+      |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir, ignore]))
 
     quote context: Elixir do
       unquote(def_or_defp)(unquote(name)(unquote_splicing(used_params))) do

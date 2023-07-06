@@ -14,7 +14,6 @@ defmodule Zig.CompileError do
       |> List.first()
       |> String.split(": error: ")
 
-
     file = Keyword.fetch!(opts, :file)
     manifest = Keyword.fetch!(opts, :manifest)
 

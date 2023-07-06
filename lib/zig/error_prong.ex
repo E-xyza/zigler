@@ -1,7 +1,7 @@
 defmodule Zig.ErrorProng do
   # default parameter errors handling.
 
-  def argument_error_prong(:elixir) do
+  def argument_error_prong(:elixir, _) do
     quote do
       :error, {:argument_error, index, error_lines} ->
         new_stacktrace =
@@ -58,15 +58,34 @@ defmodule Zig.ErrorProng do
     end
   end
 
-  def argument_error_prong(:erlang) do
+  def argument_error_prong(:erlang, _) do
     [
       "error:{error, badarg, _ExtraStacktrace}:Stacktrace -> erlang:raise(error, badarg, Stacktrace)"
     ]
   end
 
-  def error_return_prong(:elixir) do
+  def error_return_prong(:elixir, ignored) do
+    stacktrace_prep =
+      case ignored do
+        [] ->
+          quote do
+            __STACKTRACE__
+          end
+
+        list when is_list(list) ->
+          quote do
+            Enum.reject(
+              __STACKTRACE__,
+              &match?({__MODULE__, ignore, _, _} when ignore in unquote(ignored), &1)
+            )
+          end
+      end
+
     quote do
       :error, {:error, type, extra_stacktrace} ->
+
+        stacktrace = unquote(stacktrace_prep)
+
         new_stacktrace =
           extra_stacktrace
           |> Enum.map(fn %{
@@ -77,13 +96,13 @@ defmodule Zig.ErrorProng do
             {file, line} = __resolve(line_info)
             {String.to_atom(module_str), String.to_atom(fn_str), [:...], [file: file, line: line]}
           end)
-          |> Enum.reverse(__STACKTRACE__)
+          |> Enum.reverse(stacktrace)
 
         :erlang.raise(:error, type, new_stacktrace)
     end
   end
 
-  def error_return_prong(:erlang) do
+  def error_return_prong(:erlang, _) do
     ["error:{error, Type, _ExtraStacktrace}:Stacktrace -> erlang:raise(error, Type, Stacktrace)"]
   end
 end

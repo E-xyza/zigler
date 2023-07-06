@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Erlang.BasicTest do
+defmodule ZiglerTest.Erlang.ThreadedTest do
   use ZiglerTest.IntegrationCase, async: true
 
   @test_file to_charlist(Path.join(__DIR__, "src/erlang_threaded_test"))
