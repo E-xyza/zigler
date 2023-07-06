@@ -5,11 +5,11 @@ defmodule Zig.Sema do
   alias Zig.Type.Function
   alias Zig.Type.Struct
 
-  @spec analyze_file!(module :: module, Manifest.t(), opts :: keyword) :: keyword
+  @spec analyze_file!(module :: module, opts :: keyword) :: keyword
   # updates the per-function options to include the semantically understood type
   # information.  Also strips "auto" from the nif information to provide a finalized
   # keyword list of functions with their options.
-  def analyze_file!(module, manifest, opts) do
+  def analyze_file!(module, opts) do
     file = Keyword.fetch!(opts, :file)
 
     functions =
@@ -70,7 +70,7 @@ defmodule Zig.Sema do
     end
   rescue
     e in Zig.CompileError ->
-      reraise Zig.CompileError.to_error(e, manifest), __STACKTRACE__
+      reraise Zig.CompileError.to_error(e, opts), __STACKTRACE__
   end
 
   defp adjust_raw(function, opts) do

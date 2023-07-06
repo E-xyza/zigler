@@ -29,7 +29,7 @@ defmodule Zig.Command do
       _ ->
         # rerun it.  This is awful, but we need it to separate out
         # stderr from stdout.
-        {error, code} = System.cmd(zig_cmd, args, error_opts)
+        {error, code} = System.cmd(zig_cmd, args, error_opts) |> dbg(limit: 25)
         raise Zig.CompileError, command: command, code: code, error: error
     end
   end

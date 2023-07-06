@@ -7,18 +7,18 @@ defmodule Zig.CompileError do
 
   alias Zig.Manifest
 
-  def to_error(error, manifest) do
+  def to_error(error, opts) do
     [location_info, error_msg] =
       error.error
       |> String.split("\nerror:")
       |> List.first()
       |> String.split(": error: ")
 
+
+    file = Keyword.fetch!(opts, :file)
+    manifest = Keyword.fetch!(opts, :manifest)
+
     [_file, line, _column] = String.split(location_info, ":")
-
-    # TODO: do better file detetction here
-
-    [{_, {file, _}} | _] = manifest
 
     resolved_line = Manifest.resolve(manifest, String.to_integer(line))
 

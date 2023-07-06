@@ -71,7 +71,7 @@ defmodule Zig.Compiler do
          manifest = Manifest.create(base_code),
          parsed_code = Zig.Parser.parse(base_code),
          new_opts = Keyword.merge(opts, manifest: manifest, parsed: parsed_code),
-         sema_nifs = Sema.analyze_file!(module, manifest, new_opts),
+         sema_nifs = Sema.analyze_file!(module, new_opts),
          new_opts = Keyword.put(new_opts, :nifs, sema_nifs),
          function_code = precompile(module, assembly_directory, new_opts),
          {true, _} <- {compiled, new_opts} do
