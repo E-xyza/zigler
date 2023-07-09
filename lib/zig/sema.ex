@@ -9,15 +9,8 @@ defmodule Zig.Sema do
   # updates the per-function options to include the semantically understood type
   # information.  Also strips "auto" from the nif information to provide a finalized
   # keyword list of functions with their options.
-  def analyze_file!(module, opts) do
-    file = Keyword.fetch!(opts, :file)
-
-    functions =
-      case run_sema(file, module, opts) do
-        {:ok, %{functions: functions, types: types}} ->
-          Enum.map(functions, &validate_usable!(&1, types, opts))
-          functions
-      end
+  def analyze_file!(%{functions: functions, types: types}, opts) do
+    Enum.each(functions, &validate_usable!(&1, types, opts))
 
     # `nifs` option could either be {:auto, keyword} which means that the full
     # list of functions should be derived from the semantic analysis, determining
@@ -68,9 +61,6 @@ defmodule Zig.Sema do
             {selected_fn, Keyword.put(function_opts, :type, adjusted_function)}
         end)
     end
-  rescue
-    e in Zig.CompileError ->
-      reraise Zig.CompileError.to_error(e, opts), __STACKTRACE__
   end
 
   defp adjust_raw(function, opts) do
@@ -84,6 +74,15 @@ defmodule Zig.Sema do
       {:c, integer} when is_integer(integer) ->
         %{function | params: List.duplicate(:erl_nif_term, integer), arity: integer}
     end
+  end
+
+  def run_sema!(file, module \\ nil, opts \\ []) do
+    case run_sema(file, module, opts) do
+      {:ok, sema} -> sema
+    end
+  rescue
+    e in Zig.CompileError ->
+      reraise Zig.CompileError.to_error(e, opts), __STACKTRACE__
   end
 
   def run_sema(file, module \\ nil, opts \\ []) do
@@ -147,14 +146,14 @@ defmodule Zig.Sema do
           |> Keyword.fetch!(:parsed)
           |> find_function(function.name)
 
-        line =
+        {file, line} =
           opts
           |> Keyword.fetch!(:manifest)
-          |> Manifest.resolve(raw_line)
+          |> Manifest.resolve(file_path, raw_line)
 
         raise CompileError,
           description: msg,
-          file: file_path,
+          file: file,
           line: line
     end
   end
@@ -174,10 +173,6 @@ defmodule Zig.Sema do
         false
     end)
   end
-
-  # defp validate_argument(type) do
-  #
-  # end
 
   defp validate_args(function, types) do
     function.params

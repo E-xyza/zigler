@@ -14,13 +14,12 @@ defmodule Zig.CompileError do
       |> List.first()
       |> String.split(": error: ")
 
-    file = Keyword.fetch!(opts, :file)
     manifest = Keyword.fetch!(opts, :manifest)
 
-    [_file, line, _column] = String.split(location_info, ":")
+    [file, line, _column] = String.split(location_info, ":")
 
-    resolved_line = Manifest.resolve(manifest, String.to_integer(line))
+    {resolved_file, resolved_line} = Manifest.resolve(manifest, file, String.to_integer(line))
 
-    %CompileError{description: error_msg, file: file, line: resolved_line}
+    %CompileError{description: error_msg, file: resolved_file, line: resolved_line}
   end
 end

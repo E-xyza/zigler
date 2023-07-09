@@ -67,31 +67,31 @@ defmodule Zig.Manifest do
     end)
   end
 
-  def resolve(manifest, line) do
-    resolve(manifest, [], line)
+  def resolve(manifest, file, line) when is_integer(line) do
+    resolve(manifest, [], file, line)
   end
 
-  defp resolve([head = {lesser_line, _} | rest], stack, line) when lesser_line < line do
-    resolve(rest, [head | stack], line)
+  defp resolve([head = {lesser_line, _} | rest], stack, file, line) when lesser_line < line do
+    resolve(rest, [head | stack], file, line)
   end
 
-  defp resolve([{bigger_line, _} | _], stack, line) when bigger_line >= line do
+  defp resolve([{bigger_line, _} | _], stack, file, line) when bigger_line >= line do
     case List.first(stack) do
-      {anchor, {_, relative_line}} ->
-        line - anchor + relative_line
+      {anchor, {new_file, relative_line}} ->
+        {Path.relative_to_cwd(new_file), line - anchor + relative_line}
 
       _ ->
-        line
+        {file, line}
     end
   end
 
-  defp resolve([], stack, line) do
+  defp resolve([], stack, file, line) do
     case List.first(stack) do
-      {anchor, {_, relative_line}} ->
-        line - anchor + relative_line
+      {anchor, {new_file, relative_line}} ->
+        {Path.relative_to_cwd(new_file), line - anchor + relative_line}
 
       _ ->
-        line
+        {file, line}
     end
   end
 end

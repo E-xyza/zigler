@@ -10,19 +10,12 @@ defmodule ZiglerTest.Sema.ResourceTest do
   alias Zig.Sema
 
   setup_all do
-    file = Path.join(__DIR__, ".#{__MODULE__}.zig")
+    sema_result =
+      __DIR__
+      |> Path.join(".#{__MODULE__}.zig")
+      |> Sema.run_sema!(__MODULE__)
 
-    sema_map =
-      __MODULE__
-      |> Sema.analyze_file!(
-        nifs: {:auto, []},
-        default_options: Nif.default_options(),
-        file: file,
-        manifest: []
-      )
-      |> Enum.map(fn {name, opts} -> {name, Keyword.fetch!(opts, :type)} end)
-
-    {:ok, sema_map}
+    {:ok, sema_result}
   end
 
   ~Z"""
@@ -38,7 +31,7 @@ defmodule ZiglerTest.Sema.ResourceTest do
   }
   """
 
-  test "resource in parameter", %{res: res} do
+  test "resource in parameter", %{functions: [function]} do
     assert %Type.Function{
              name: :res,
              arity: 1,
@@ -48,6 +41,6 @@ defmodule ZiglerTest.Sema.ResourceTest do
                }
              ],
              return: %Struct{name: "T"}
-           } = res
+           } = function
   end
 end

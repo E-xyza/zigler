@@ -7,7 +7,7 @@ defmodule :zigler do
     Zig.Command.fetch("0.10.1")
 
     file =
-      Enum.find(ast, &match?({:attribute, _, :file, {file, _}}, &1))
+      Enum.find(ast, &match?({:attribute, _, :file, {_file, _}}, &1))
       |> elem(3)
       |> elem(0)
 

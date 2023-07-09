@@ -4,12 +4,13 @@ defmodule Zig.Module do
   module
   """
 
+  # TODO: write out a struct that will hold the nif options for the module.
+
   alias Zig.Nif
   alias Zig.Resources
 
   import Zig.QuoteErl
 
-  # TODO: move this to Module, since this is module-common stuff.
   require EEx
 
   nif = Path.join(__DIR__, "templates/module.zig.eex")

@@ -3,7 +3,7 @@ defmodule ZiglerTest.Integration.Typespec.OverrideTest do
 
   # NB: the code for this function is test/_support/tests
 
-  test "it is possible to override the typespec", %{module: module} do
+  test "it is possible to override the typespec" do
     assert {:ok,
             [
               {{:do_something, _},

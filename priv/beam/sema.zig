@@ -2,8 +2,18 @@ const std = @import("std");
 const resource = @import("resource.zig");
 const beam = @import("beam.zig");
 const e = @import("erl_nif.zig");
+const stub_erl_nif = @import("stub_erl_nif.zig");
 
-fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
+const analyte = @import("analyte");
+const json = std.json;
+
+// possibly 200 is an over-conservative choice for function depth here.
+const JSON_DEPTH = 200;
+const WriteError = std.fs.File.WriteError;
+const FileWriter = std.io.Writer(std.fs.File, WriteError, std.fs.File.write);
+const JsonStreamPtr = *json.WriteStream(FileWriter, JSON_DEPTH);
+
+fn streamInt(stream: JsonStreamPtr, comptime i: std.builtin.Type.Int) WriteError!void {
     try emitType(stream, "integer");
     try stream.objectField("signedness");
     switch (i.signedness) {
@@ -14,7 +24,7 @@ fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
     try stream.emitNumber(i.bits);
 }
 
-fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: type) !void {
+fn streamEnum(stream: JsonStreamPtr, comptime en: std.builtin.Type.Enum, comptime T: type) WriteError!void {
     if (en.fields.len <= 1) {
         try emitType(stream, "unusable:" ++ @typeName(T));
         return;
@@ -32,13 +42,15 @@ fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: t
     try stream.endObject();
 }
 
-fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) !void {
+fn streamFloat(stream: JsonStreamPtr, comptime f: std.builtin.Type.Float) WriteError!void {
     try emitType(stream, "float");
     try stream.objectField("bits");
     try stream.emitNumber(f.bits);
 }
 
-fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime name: []const u8) !void {
+fn streamStruct(stream: JsonStreamPtr, comptime s: std.builtin.Type.Struct, comptime S: type) WriteError!void {
+    const name = @typeName(S);
+
     if (resource.MaybeUnwrap(s)) |res_type| {
         try emitType(stream, "resource");
         try stream.objectField("name");
@@ -51,9 +63,8 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
         try stream.emitString(name);
         switch (s.layout) {
             .Packed => {
-                const OriginalType = @Type(.{ .Struct = s });
                 try stream.objectField("packed_size");
-                try stream.emitNumber(@bitSizeOf(OriginalType));
+                try stream.emitNumber(@bitSizeOf(S));
             },
             .Extern => {
                 try stream.objectField("extern");
@@ -85,7 +96,7 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime n
     }
 }
 
-fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) !void {
+fn streamArray(stream: JsonStreamPtr, comptime a: std.builtin.Type.Array, repr: anytype) WriteError!void {
     try emitType(stream, "array");
     try stream.objectField("len");
     try stream.emitNumber(a.len);
@@ -97,7 +108,7 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
     try stream.emitString(repr);
 }
 
-fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) !void {
+fn streamPointer(stream: JsonStreamPtr, comptime p: std.builtin.Type.Pointer, repr: anytype) WriteError!void {
     switch (p.size) {
         .One => {
             try emitType(stream, "pointer");
@@ -126,20 +137,20 @@ fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: an
     try streamType(stream, p.child);
 }
 
-fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) !void {
+fn streamOptional(stream: JsonStreamPtr, comptime o: std.builtin.Type.Optional) WriteError!void {
     try emitType(stream, "optional");
     try stream.objectField("child");
     try streamType(stream, o.child);
 }
 
-fn emitType(stream: anytype, comptime name: []const u8) !void {
+fn emitType(stream: JsonStreamPtr, comptime name: []const u8) WriteError!void {
     try stream.objectField("type");
     try stream.emitString(name);
 }
 
 var depth: usize = 0;
 
-fn streamType(stream: anytype, comptime T: type) !void {
+fn streamType(stream: JsonStreamPtr, comptime T: type) WriteError!void {
     try stream.beginObject();
     // catch special types pid, port and term
     switch (T) {
@@ -160,7 +171,7 @@ fn streamType(stream: anytype, comptime T: type) !void {
                 .Int => |i| try streamInt(stream, i),
                 .Enum => |en| try streamEnum(stream, en, T),
                 .Float => |f| try streamFloat(stream, f),
-                .Struct => |s| try streamStruct(stream, s, @typeName(T)),
+                .Struct => |s| try streamStruct(stream, s, T),
                 .Array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
                 .Pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
                 .Optional => |o| try streamOptional(stream, o),
@@ -180,7 +191,7 @@ fn streamType(stream: anytype, comptime T: type) !void {
     try stream.endObject();
 }
 
-pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.Fn) !void {
+pub fn streamFun(stream: JsonStreamPtr, comptime name: anytype, comptime fun: std.builtin.Type.Fn) WriteError!void {
    //  @compileLog("in function", name);
     try stream.beginObject();
     try stream.objectField("name");
@@ -207,21 +218,30 @@ pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.buil
     try stream.endObject();
 }
 
-pub fn streamTypeX(stream: anytype, comptime name: anytype) !void {
+pub fn streamTypeX(stream: JsonStreamPtr, comptime name: anytype) WriteError!void {
     try stream.beginObject();
     try stream.objectField("name");
     try stream.emitString(name);
     try stream.endObject();
 }
 
-pub fn streamModule(stream: anytype, comptime Mod: type) !void {
+fn ignore_decl(decl: anytype) bool {
+    // TODO: update this so that it can take the list of declarations to ignore
+    // as some sort of option to look up.
+    if (std.mem.eql(u8, decl.name, "make_general_purpose_allocator_instance")) {
+        return true;
+    }
+    return false;
+}
+
+pub fn streamModule(stream: JsonStreamPtr, comptime Mod: type) WriteError!void {
     const mod_info = @typeInfo(Mod).Struct;
     try stream.beginObject();
     try stream.objectField("functions");
     try stream.beginArray();
     // functions are found in decls
     inline for (mod_info.decls) |decl| {
-        if (decl.is_pub) {
+        if (decl.is_pub and !ignore_decl(decl)) {
             switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
                 .Fn => |fun| {
                     try stream.arrayElem();
@@ -279,13 +299,7 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
     try stream.endObject();
 }
 
-const analyte = @import("analyte");
-const json = std.json;
-
-// possibly 100 is an over-conservative choice for function depth here.
-const JSON_DEPTH = 100;
-
-pub fn main() !void {
+pub fn main() WriteError!void {
     const stdout = std.io.getStdOut().writer();
     var stream = json.writeStream(stdout, JSON_DEPTH);
 

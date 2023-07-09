@@ -6,7 +6,7 @@ defmodule Zig.Type.Resource do
 
   @type t :: %__MODULE__{name: String.t()}
 
-  def from_json(%{"name" => name, "payload" => payload}, module) do
+  def from_json(%{"name" => name, "payload" => payload}, module) when not is_nil(module) do
     # TODO: use the Zig parser to do this in the future.
     name =
       ~r/resource.Resource\(([a-zA-Z0-9_\*\.\[\]\(\)\s]+),sema/

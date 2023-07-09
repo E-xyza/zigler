@@ -45,7 +45,9 @@ defmodule Zig.Command do
       packages(
         analyte:
           {file,
-           beam: {beam_file, sema: sema_on_file, erl_nif: erl_nif_file}, erl_nif: erl_nif_file},
+           beam: {beam_file, sema: sema_on_file, erl_nif: erl_nif_file},
+           erl_nif: erl_nif_file,
+           sema: sema_on_file},
         sema: sema_on_file
       )
 

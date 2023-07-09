@@ -16,7 +16,7 @@ defmodule Zig.Nif do
   @impl true
   defdelegate fetch(function, key), to: Map
 
-  defstruct @enforce_keys ++ ~w(name raw args return leak_check alias file line doc spec)a
+  defstruct @enforce_keys ++ ~w(name raw args return leak_check alias doc spec)a
 
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
@@ -37,8 +37,6 @@ defmodule Zig.Nif do
           return: keyword,
           leak_check: boolean(),
           alias: nil | atom,
-          file: nil | Path.t(),
-          line: nil | non_neg_integer(),
           doc: nil | String.t(),
           spec: Macro.t()
         }
@@ -91,6 +89,7 @@ defmodule Zig.Nif do
       return: opts[:return],
       leak_check: opts[:leak_check],
       alias: opts[:alias],
+      doc: opts[:doc],
       spec: Keyword.get(opts, :spec, :auto)
     }
   end
@@ -104,6 +103,13 @@ defmodule Zig.Nif do
   end
 
   def render_elixir(nif = %{concurrency: concurrency}) do
+    doc =
+      if nif_doc = nif.doc do
+        quote do
+          @doc unquote(nif_doc)
+        end
+      end
+
     typespec =
       case nif.spec do
         false ->
@@ -124,6 +130,7 @@ defmodule Zig.Nif do
     functions = concurrency.render_elixir(nif)
 
     quote context: Elixir do
+      unquote(doc)
       unquote(typespec)
       unquote(functions)
     end
@@ -320,6 +327,8 @@ defmodule Zig.Nif do
     length: "`integer` or `{:arg, integer}`"
   }
 
+  @as_is_options ~w(args spec docs)a
+
   defp normalize_option!({:return, return_opts}) do
     updated_return =
       return_opts
@@ -368,9 +377,7 @@ defmodule Zig.Nif do
     {:return, updated_return}
   end
 
-  defp normalize_option!(args_opts = {:args, _}), do: args_opts
-
-  defp normalize_option!(spec_opts = {:spec, _}), do: spec_opts
+  defp normalize_option!(as_is = {tag, _}) when tag in @as_is_options, do: as_is
 
   defp normalize_option!({opt, value}) when is_map_key(@nif_option_types, opt) do
     raise CompileError,

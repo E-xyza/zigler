@@ -71,14 +71,17 @@ defmodule Zig.Compiler do
          true <- precompiled,
          # TODO: verify that this parsed correctly.
          manifest = Manifest.create(full_code),
+         new_opts = Keyword.merge(opts, manifest: manifest),
+         file = Keyword.fetch!(opts, :file),
+         sema_result = Sema.run_sema!(file, module, new_opts),
          parsed_code = Zig.Parser.parse(base_code),
-         new_opts = Keyword.merge(opts, manifest: manifest, parsed: parsed_code),
-         sema_nifs = Sema.analyze_file!(module, new_opts),
+         new_opts = Keyword.merge(new_opts, parsed: parsed_code),
+         sema_nifs = Sema.analyze_file!(sema_result, new_opts),
          new_opts = Keyword.put(new_opts, :nifs, sema_nifs),
          function_code = precompile(module, assembly_directory, new_opts),
          {true, _} <- {compiled, new_opts} do
       # parser should only operate on parsed, valid zig code.
-      Command.compile(module, opts)
+      Command.compile(module, new_opts)
       apply(Zig.Module, renderer, [base_code, function_code, module, manifest, new_opts])
     else
       false ->
@@ -95,8 +98,17 @@ defmodule Zig.Compiler do
     nif_functions =
       opts
       |> Keyword.fetch!(:nifs)
-      |> Enum.map(fn {name, opts} ->
-        Nif.new(name, opts)
+      |> Enum.map(fn {name, nif_opts} ->
+        doc = opts
+        |> Keyword.fetch!(:parsed)
+        |> Map.fetch!(:code)
+        |> Enum.find_value(fn
+          {:const, constopts, {^name, _, _}} -> constopts.doc_comment
+          {:fn, fnopts, fnparams} -> if fnparams[:name] == name, do: fnopts.doc_comment
+          _ -> nil
+        end)
+
+        Nif.new(name, Keyword.put(nif_opts, :doc, doc))
       end)
 
     function_code = Enum.map(nif_functions, &apply(Nif, render_fn, [&1]))
@@ -138,44 +150,4 @@ defmodule Zig.Compiler do
     |> String.replace("\\", "/")
     |> Path.join(".zigler_compiler/#{env}/#{module}")
   end
-
-  #  defp assign_positions(opts) do
-  #    nif_functions =
-  #
-  #    if opts[:easy_c] do
-  #  #    [mod_file: file, mod_line: line] = Keyword.take(opts, [:mod_file, :mod_line])
-  #  #    Enum.map(nif_functions, &%{&1 | file: file, line: line})
-  #
-  #      # not implemented yet
-  #    else
-  #      manifest = Keyword.fetch!(opts, :manifest)
-  #      file = Keyword.fetch!(opts, :mod_file)
-  #
-  #      Enum.map(nif_functions, &assign_position(&1, parsed_code, manifest, file))
-  #      raise "foo"
-  #    end
-  #  end
-  #
-  #  defp assign_position(nifs, code) do
-  #    nifs |> dbg(limit: 25)
-  #    code |> dbg(limit: 25)
-  #    raise "aaa"
-  #
-  #
-  #    #function, %{code: code}, manifest, file) do
-  #    #name = function.alias || function.type.name
-  ##
-  #    #parsed_line =
-  #    #  Enum.find_value(code, fn
-  #    #    {:fn, %{position: %{line: line}}, vals} ->
-  #    #      if Keyword.get(vals, :name) == name, do: line
-  ##
-  #    #    _ ->
-  #    #      false
-  #    #  end)
-  ##
-  #    #line = Manifest.resolve(manifest, parsed_line)
-  #    #%{function | file: file, line: line}
-  #  end
-  #
 end
