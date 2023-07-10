@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Resource.AsBinaryTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag :fails_macos
+
   use Zig,
     otp_app: :zigler,
     resources: [:StringResource],

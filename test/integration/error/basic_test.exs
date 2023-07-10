@@ -1,6 +1,8 @@
 defmodule ZiglerTest.ErrorReturn.BasicTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag :erroring
+
   use Zig, otp_app: :zigler
 
   ~Z"""
