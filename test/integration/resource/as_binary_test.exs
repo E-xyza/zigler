@@ -42,7 +42,9 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
 
   pub fn output_as_binary(src_string: []u8) StringResource {
     const new_string = beam.allocator.alloc(u8, src_string.len) catch unreachable;
+
     std.mem.copy(u8, new_string, src_string);
+
     return StringResource.create(new_string, .{}) catch unreachable;
   }
 

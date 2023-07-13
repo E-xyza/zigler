@@ -192,7 +192,7 @@ defmodule Zig.Nif do
   def maybe_catch(%Error{}) do
     """
     catch |err| {
-        return e.enif_raise_exception(env, beam.make(env, .{ .@"error", err, @errorReturnTrace()}, .{}).v);
+        return beam.raise_with_error_return(env, err, @errorReturnTrace()).v;
     }
     """
   end

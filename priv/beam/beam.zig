@@ -100,7 +100,6 @@
 
 const e = @import("erl_nif.zig");
 const std = @import("std");
-const builtin = @import("builtin");
 const BeamMutex = @import("mutex.zig").BeamMutex;
 
 pub const is_sema = @import("sema").is_sema;
@@ -235,7 +234,7 @@ pub const raw_beam_allocator = allocator_.raw_beam_allocator;
 
 /// threadlocal variable that lets you set the allocator strategy used for the
 /// process 
-pub threadlocal var allocator = allocator_.raw_beam_allocator;
+pub threadlocal var allocator: std.mem.Allocator = undefined;
 
 ///////////////////////////////////////////////////////////////////////////////
 // resources
@@ -295,6 +294,18 @@ pub fn raise_elixir_exception(env_: env, comptime module: []const u8, data: anyt
     _ = e.enif_make_map_put(env_, exception, make_into_atom(env_, "__exception__").v, make(env_, true, .{}).v, &exception);
 
     return raise_exception(env_, term{ .v = exception });
+}
+
+pub fn raise_with_error_return(env_: env, err: anytype, maybe_return_trace: ?*std.builtin.StackTrace) term {
+    if (comptime @import("builtin").target.isDarwin()) {
+        return raise_exception(env_, .{ .@"error", err});
+    } else {
+        if (maybe_return_trace) | return_trace | {
+            return raise_exception(env_, .{ .@"error", err, return_trace});
+        } else {
+            return raise_exception(env_, .{ .@"error", err});
+        }
+    }
 }
 
 ///////////////////////////////////////////////////////////////////////////////

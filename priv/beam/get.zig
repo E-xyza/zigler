@@ -400,7 +400,6 @@ pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: a
         .Float => |f| f.bits / 8,
         else => return GetError.argument_error,
     };
-    const alloc = allocator(opts);
 
     var str_res: e.ErlNifBinary = undefined;
     if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.unreachable_error;
@@ -410,8 +409,13 @@ pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: a
     if (slice_info.is_const) {
         return result_ptr[0..item_count];
     } else {
+        const alloc = allocator(opts);
         const alloc_count = if (slice_info.sentinel) |_| item_count + 1 else item_count;
-        const result = try alloc.alloc(Child, alloc_count);
+
+        const result = alloc.alloc(Child, alloc_count) catch | err | {
+            return err;
+        };
+
         std.mem.copy(Child, result, result_ptr[0..item_count]);
 
         if (slice_info.sentinel) |sentinel| {
