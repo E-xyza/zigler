@@ -305,14 +305,10 @@ pub fn raise_elixir_exception(env_: env, comptime module: []const u8, data: anyt
 }
 
 pub fn raise_with_error_return(env_: env, err: anytype, maybe_return_trace: ?*std.builtin.StackTrace) term {
-    if (comptime @import("builtin").target.isDarwin()) {
-        return raise_exception(env_, .{ .@"error", err});
+    if (maybe_return_trace) | return_trace | {
+        return raise_exception(env_, .{ .@"error", err, return_trace});
     } else {
-        if (maybe_return_trace) | return_trace | {
-            return raise_exception(env_, .{ .@"error", err, return_trace});
-        } else {
-            return raise_exception(env_, .{ .@"error", err});
-        }
+        return raise_exception(env_, .{ .@"error", err});
     }
 }
 

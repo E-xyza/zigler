@@ -36,6 +36,8 @@ fn @"<%= @type.name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.Er
 
 fn @"<%= @type.name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
     _ = argc;
+    // set beam.allocator due to reentry
+    beam.allocator = beam.raw_beam_allocator;
     const thread_rsrc = beam.get(ThreadResource_<%= @type.name %>, env, .{.v = args[0]}, .{}) catch {
         @panic("error getting thread resource");
     };

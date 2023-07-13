@@ -98,6 +98,8 @@ defmodule Zig.ErrorProng do
           |> Enum.reverse(stacktrace)
 
         :erlang.raise(:error, type, new_stacktrace)
+      :error, {:error, type} ->
+        :erlang.raise(:error, type, [])
     end
   end
 
