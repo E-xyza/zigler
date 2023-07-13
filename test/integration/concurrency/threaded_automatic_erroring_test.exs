@@ -32,6 +32,6 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
 
     expected_file = Path.absname(__ENV__.file)
 
-    assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 13]} = head
+    assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 15]} = head
   end
 end
