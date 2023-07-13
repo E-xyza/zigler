@@ -6,6 +6,9 @@ pub const ThreadResource_<%= @type.name %> = beam.Resource(*Thread_<%= @type.nam
 <% needs_make? = Enum.any?(@type.params, &Type.needs_make?/1) %>
 
 fn @"<%= @type.name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
+    // always use the raw_beam_allocator, we can set it to managed allocation elsewhere.
+    beam.allocator = beam.raw_beam_allocator;
+
     <%= for {param_type, index} <- Nif.indexed_parameters(@type.params), Type.missing_size?(param_type) do %>
     var size<%= index %>:usize = undefined;
     <% end %>

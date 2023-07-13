@@ -233,7 +233,15 @@ pub const general_purpose_allocator = allocator_.general_purpose_allocator;
 pub const raw_beam_allocator = allocator_.raw_beam_allocator;
 
 /// threadlocal variable that lets you set the allocator strategy used for the
-/// process 
+/// actively running nif.  
+/// 
+/// > #### {: .warning } 
+/// >
+/// > This threadlocal is set to `undefined` because we cannot trust loaded
+/// > dynamic libraries to properly set this on thread creation.  Each function
+/// > is responsible for setting this correctly whenever execution control is
+/// > returned to it.  `Raw` function calls do *not* set the allocator and 
+/// > must either set it themselves or always use `raw_beam_allocator`
 pub threadlocal var allocator: std.mem.Allocator = undefined;
 
 ///////////////////////////////////////////////////////////////////////////////
