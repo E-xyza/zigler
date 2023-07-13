@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag [threaded: true, erroring: true]
+
   use Zig, otp_app: :zigler, nifs: [threaded: [:threaded]]
 
   ~Z"""
@@ -30,6 +32,6 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
 
     expected_file = Path.absname(__ENV__.file)
 
-    assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 13]} = head
+    assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 15]} = head
   end
 end

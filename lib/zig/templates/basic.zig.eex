@@ -8,12 +8,10 @@ fn <%= @type.name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) 
     <%# TODO: set up a proper allocator variable. %>
     <%= if @leak_check do %>
     var gpa = beam.make_general_purpose_allocator_instance();
-
-    // set the threadlocal beam.allocator, but only while in this function.
-    // allocator should be returned back after run is complete.
-    const old_allocator = beam.allocator;
+    // set the threadlocal beam.allocator
     beam.allocator = gpa.allocator();
-    defer beam.allocator = old_allocator;
+    <% else %>
+    beam.allocator = beam.raw_beam_allocator;
     <% end %>
 
     const outer_result = get_result: {

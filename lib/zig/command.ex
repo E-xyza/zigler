@@ -103,12 +103,17 @@ defmodule Zig.Command do
 
     run_zig("build --prefix #{so_dir}", compile_opts)
 
-    lib_name = Path.join(so_dir, "lib/lib#{module}.so")
-    naked_name = Path.join(so_dir, "lib/#{module}.so")
+    dst_lib_name = Path.join(so_dir, "lib/#{module}.so")
 
-    File.rename!(lib_name, naked_name)
+    so_dir
+    |> Path.join(["lib/", src_lib_name(module)])
+    |> File.rename!(dst_lib_name)
 
-    Logger.debug("built library at #{naked_name}")
+    Logger.debug("built library at #{dst_lib_name}")
+  end
+
+  def targets do
+    run_zig("targets", [])
   end
 
   defp executable_path(opts) do
@@ -119,22 +124,24 @@ defmodule Zig.Command do
     end
   end
 
-  # defp maybe_rename_library_filename(fullpath) do
-  #  if Path.extname(fullpath) == ".dylib" do
-  #    fullpath
-  #    |> Path.dirname()
-  #    |> Path.join(Path.basename(fullpath, ".dylib") <> ".so")
-  #  else
-  #    fullpath
-  #  end
-  # end
+  defp src_lib_name(module) do
+    case :os.type() do
+      {:unix, :darwin} ->
+        "lib#{module}.dylib"
+
+      _ ->
+        "lib#{module}.so"
+    end
+  end
 
   #############################################################################
   ## download zig from online sources.
 
+  # TODO: move to target using :host as a parameter.
+
   @doc false
-  def version_name(version) do
-    "zig-#{get_os()}-#{get_arch()}-#{version}"
+  def os_arch do
+    "#{get_os()}-#{get_arch()}"
   end
 
   def get_os do
@@ -198,14 +205,11 @@ defmodule Zig.Command do
 
   @zig_dir_path Path.expand("../../zig", Path.dirname(__ENV__.file))
 
-  defp directory do
-    target_string = "zig-#{Target.string(:aaa)}-0.10.1"
-    Path.join(@zig_dir_path, target_string)
-  end
+  defp directory, do: Path.join(@zig_dir_path, "zig-#{os_arch()}-0.10.1")
 
   # TODO: rename this.
   def fetch(version) do
-    zig_dir = Path.join(@zig_dir_path, version_name(version))
+    zig_dir = directory()
     zig_executable = Path.join(zig_dir, "zig")
     :global.set_lock({__MODULE__, self()})
 
@@ -221,7 +225,7 @@ defmodule Zig.Command do
           ".tar.xz"
         end
 
-      archive = version_name(version) <> extension
+      archive = "zig" <> os_arch() <> extension
 
       # TODO: clean this up.
       Logger.configure(level: :info)

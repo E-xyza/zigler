@@ -10,24 +10,31 @@ defmodule Zig.Target do
   select the appropriate cross-compilation settings and libc.
   """
 
-  def string(_) do
-    # IO.warn("this needs to be fixed")
-    # lamesauce, but this will get things working.
+  alias Zig.Command
+
+  @target Mix.target()
+
+  def string do
+    if System.get_env("MIX_TARGET") do
+      :nothing
+    else
+      @target
+    end
+
     "linux-x86_64"
   end
 
   def target_struct(:host, zig_tree) do
-    {targets, 0} =
-      zig_tree
-      |> Path.join("zig")
-      |> System.cmd(["targets"])
+    Command.targets() |> IO.inspect()
 
-    %{"abi" => abi, "cpu" => %{"arch" => arch}, "os" => os} =
-      targets
-      |> Jason.decode!()
-      |> Map.get("native")
+    raise "aaa"
 
-    %{abi: abi, arch: arch, os: os}
+    # %{"abi" => abi, "cpu" => %{"arch" => arch}, "os" => os} =
+    #  targets
+    #  |> Jason.decode!()
+    #  |> Map.get("native")
+
+    # %{abi: abi, arch: arch, os: os}
   end
 
   def target_struct(_other, zig_tree) do

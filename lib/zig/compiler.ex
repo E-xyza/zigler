@@ -99,14 +99,15 @@ defmodule Zig.Compiler do
       opts
       |> Keyword.fetch!(:nifs)
       |> Enum.map(fn {name, nif_opts} ->
-        doc = opts
-        |> Keyword.fetch!(:parsed)
-        |> Map.fetch!(:code)
-        |> Enum.find_value(fn
-          {:const, constopts, {^name, _, _}} -> constopts.doc_comment
-          {:fn, fnopts, fnparams} -> if fnparams[:name] == name, do: fnopts.doc_comment
-          _ -> nil
-        end)
+        doc =
+          opts
+          |> Keyword.fetch!(:parsed)
+          |> Map.fetch!(:code)
+          |> Enum.find_value(fn
+            {:const, constopts, {^name, _, _}} -> constopts.doc_comment
+            {:fn, fnopts, fnparams} -> if fnparams[:name] == name, do: fnopts.doc_comment
+            _ -> nil
+          end)
 
         Nif.new(name, Keyword.put(nif_opts, :doc, doc))
       end)

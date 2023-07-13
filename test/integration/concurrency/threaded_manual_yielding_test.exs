@@ -6,6 +6,8 @@ defmodule ZiglerTest.Concurrency.ThreadedManualYieldingTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag :threaded
+
   use Zig, otp_app: :zigler, cleanup: false, resources: [:ThreadResource]
 
   ~Z"""

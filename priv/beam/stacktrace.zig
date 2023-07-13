@@ -26,6 +26,7 @@ fn make_trace_item(env: beam.env, debug_info: *DebugInfo, address: usize) beam.t
     const module = debug_info.getModuleForAddress(address) catch return make_empty_trace_item(env);
 
     const symbol_info = module.getSymbolAtAddress(beam.allocator, address) catch return make_empty_trace_item(env);
+
     defer symbol_info.deinit(beam.allocator);
 
     return beam.make(env, .{

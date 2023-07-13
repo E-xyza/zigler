@@ -24,6 +24,7 @@ defmodule ZiglerTest.LeakCheckTest do
   """
 
   describe "a leak is detected" do
+    @tag :erroring
     test "when you don't cleanup" do
       IO.puts(:stderr, """
       ====================================================
@@ -44,6 +45,7 @@ defmodule ZiglerTest.LeakCheckTest do
       assert 11 == no_leaky_string("some string")
     end
 
+    @tag :fails_macos
     test "when you don't leak check" do
       assert 11 == unchecked_leak("some string")
     end
