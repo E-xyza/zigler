@@ -102,7 +102,7 @@ defmodule Zig.Nif do
     end
   end
 
-  def render_elixir(nif = %{concurrency: concurrency}) do
+  def render_elixir(%{concurrency: concurrency} = nif) do
     doc =
       if nif_doc = nif.doc do
         quote do
@@ -149,7 +149,7 @@ defmodule Zig.Nif do
 
   require EEx
 
-  def render_zig(nif = %__MODULE__{}) do
+  def render_zig(%__MODULE__{} = nif) do
     nif.concurrency.render_zig(nif)
   end
 
@@ -306,17 +306,17 @@ defmodule Zig.Nif do
 
   defp normalize_option!(:defp), do: {}
 
-  defp normalize_option!(option = {:leak_check, should_check}) when is_boolean(should_check),
+  defp normalize_option!({:leak_check, should_check} = option) when is_boolean(should_check),
     do: option
 
-  defp normalize_option!(option = {:alias, function}) when is_atom(function), do: option
+  defp normalize_option!({:alias, function} = option) when is_atom(function), do: option
 
-  defp normalize_option!(option = {:export, should_export}) when is_boolean(should_export),
+  defp normalize_option!({:export, should_export} = option) when is_boolean(should_export),
     do: option
 
-  defp normalize_option!(option = {:raw, integer}) when is_integer(integer), do: option
+  defp normalize_option!({:raw, integer} = option) when is_integer(integer), do: option
 
-  defp normalize_option!(option = {:raw, {:c, integer}}) when is_integer(integer), do: option
+  defp normalize_option!({:raw, {:c, integer}} = option) when is_integer(integer), do: option
 
   @return_types [:list, :binary, :default]
   @return_option_types %{
@@ -377,7 +377,7 @@ defmodule Zig.Nif do
     {:return, updated_return}
   end
 
-  defp normalize_option!(as_is = {tag, _}) when tag in @as_is_options, do: as_is
+  defp normalize_option!({tag, _} = as_is) when tag in @as_is_options, do: as_is
 
   defp normalize_option!({opt, value}) when is_map_key(@nif_option_types, opt) do
     raise CompileError,

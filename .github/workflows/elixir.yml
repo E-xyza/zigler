@@ -23,8 +23,6 @@ jobs:
         elixir-version: ${{matrix.pair.elixir-version}}
     - name: Install Dependencies
       run: mix deps.get
-    - name: Run Linting
-      run: mix credo --strict
     - name: Run Tests
       env:
         RUNNING_CI: "true"

@@ -13,7 +13,7 @@ defmodule Zig.Type.Struct do
           mutable: boolean
         }
 
-  def from_json(json = %{"name" => name, "fields" => fields}, module) do
+  def from_json(%{"name" => name, "fields" => fields} = json, module) do
     {required, optional} = Enum.split_with(fields, & &1["required"])
     to_field = fn desc -> {String.to_atom(desc["name"]), Type.from_json(desc["type"], module)} end
 

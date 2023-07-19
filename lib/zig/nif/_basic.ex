@@ -40,7 +40,7 @@ defmodule Zig.Nif.Basic do
     if needs_marshal?(nif), do: marshal_name(nif), else: nif.type.name
   end
 
-  def render_elixir(nif = %{type: type}) do
+  def render_elixir(%{type: type} = nif) do
     {empty_params, used_params} =
       case type.arity do
         0 ->
@@ -68,7 +68,7 @@ defmodule Zig.Nif.Basic do
   end
 
   defp render_elixir_marshalled(
-         nif = %{type: type},
+         %{type: type} = nif,
          def_or_defp,
          empty_params,
          used_params,
@@ -120,7 +120,7 @@ defmodule Zig.Nif.Basic do
     end
   end
 
-  def render_erlang(nif = %{type: type}) do
+  def render_erlang(%{type: type} = nif) do
     {unused_vars, used_vars} =
       case type.arity do
         0 ->
@@ -203,7 +203,7 @@ defmodule Zig.Nif.Basic do
   basic_raw_zig = Path.join(__DIR__, "../templates/basic_raw_zig.eex")
   EEx.function_from_file(:defp, :basic_raw_zig, basic_raw_zig, [:assigns])
 
-  def render_zig(nif = %{raw: :zig}), do: basic_raw_zig(nif)
+  def render_zig(%{raw: :zig} = nif), do: basic_raw_zig(nif)
   # note a raw "c" function does not need to have any changes made.
   def render_zig(%{raw: :c}), do: ""
   def render_zig(nif), do: basic(nif)

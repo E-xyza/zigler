@@ -66,7 +66,7 @@ defmodule Zigler.MixProject do
   def deps do
     [
       # credo
-      {:credo, "~> 1.4.0", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7.0", only: [:dev, :test], runtime: false},
       # dialyzer
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       # to parse the zig JSON

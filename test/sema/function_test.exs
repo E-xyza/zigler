@@ -4,8 +4,8 @@ defmodule ZiglerTest.Sema.FunctionTest do
   use Zig, otp_app: :zigler, precompile: false
 
   alias Zig.Nif
-  alias Zig.Type
   alias Zig.Sema
+  alias Zig.Type
 
   import Type, only: :macros
 

@@ -10,7 +10,7 @@ defmodule Zig.Nif.Threaded do
   import Zig.QuoteErl
 
   @impl true
-  def render_elixir(nif = %{type: %{name: name, arity: arity}}) do
+  def render_elixir(%{type: %{name: name, arity: arity}} = nif) do
     def_or_defp = if nif.export, do: :def, else: :defp
 
     {empty_params, used_params} =
@@ -57,7 +57,7 @@ defmodule Zig.Nif.Threaded do
   end
 
   @impl true
-  def render_erlang(nif = %{type: %{name: name, arity: arity}}) do
+  def render_erlang(%{type: %{name: name, arity: arity}} = nif) do
     {unused_vars, used_vars} =
       case arity do
         0 ->

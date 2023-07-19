@@ -10,9 +10,9 @@ defmodule Zig.Compiler do
   alias Zig.Assembler
   alias Zig.Command
   alias Zig.EasyC
+  alias Zig.Manifest
   alias Zig.Nif
   alias Zig.Sema
-  alias Zig.Manifest
 
   defmacro __before_compile__(%{module: module, file: file}) do
     # NOTE: this is going to be called only from Elixir.  Erlang will not call this.

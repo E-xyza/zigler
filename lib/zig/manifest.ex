@@ -26,7 +26,7 @@ defmodule Zig.Manifest do
 
       defp __resolve(file, line) when is_binary(file), do: {file, line}
 
-      defp __resolve([head = {anchor_line, _} | rest], stack, line) when anchor_line < line do
+      defp __resolve([{anchor_line, _} = head | rest], stack, line) when anchor_line < line do
         __resolve(rest, [head | stack], line)
       end
 
@@ -71,7 +71,7 @@ defmodule Zig.Manifest do
     resolve(manifest, [], file, line)
   end
 
-  defp resolve([head = {lesser_line, _} | rest], stack, file, line) when lesser_line < line do
+  defp resolve([{lesser_line, _} = head | rest], stack, file, line) when lesser_line < line do
     resolve(rest, [head | stack], file, line)
   end
 

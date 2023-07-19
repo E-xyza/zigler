@@ -7,6 +7,7 @@ defmodule Zig.Command do
   """
 
   alias Zig.Assembler
+  alias Zig.Target
 
   require Logger
 
@@ -189,12 +190,7 @@ defmodule Zig.Command do
     """
 
   defp windows_warn do
-    Logger.warn("""
-    windows is not supported, but may work.
-
-    If you find an error in the process, please leave an issue at:
-    https://github.com/ityonemo/zigler/issues
-    """)
+    raise "windows is not supported, and will be supported in zigler 0.11"
   end
 
   @zig_dir_path Path.expand("../../zig", Path.dirname(__ENV__.file))

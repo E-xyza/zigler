@@ -5,14 +5,14 @@ defmodule Zig.Type.Integer do
 
   @type t :: %__MODULE__{
           signedness: :unsigned | :signed,
-          bits: 0..65535 | :big
+          bits: 0..65_535 | :big
         }
 
-  def parse(t = "u" <> number_str) do
+  def parse("u" <> number_str = t) do
     %__MODULE__{signedness: :unsigned, bits: get_bits!(number_str, t)}
   end
 
-  def parse(t = "i" <> number_str) do
+  def parse("i" <> number_str = t) do
     %__MODULE__{signedness: :signed, bits: get_bits!(number_str, t)}
   end
 
@@ -25,7 +25,7 @@ defmodule Zig.Type.Integer do
 
   def get_bits!(number_str, full_type) do
     case Integer.parse(number_str) do
-      {n, ""} when n in 0..65535 ->
+      {n, ""} when n in 0..65_535 ->
         n
 
       {n, ""} ->
@@ -197,13 +197,13 @@ defmodule Zig.Type.Integer do
 
   def spec(%{bits: 0}, _, _), do: 0
 
-  def spec(type = %{signedness: :unsigned}, _, _opts) do
+  def spec(%{signedness: :unsigned} = type, _, _opts) do
     quote context: Elixir do
       0..unquote(typemax(type))
     end
   end
 
-  def spec(type = %{signedness: :signed}, _, _opts) do
+  def spec(%{signedness: :signed} = type, _, _opts) do
     neg_typemin = -typemin(type)
 
     quote context: Elixir do

@@ -46,7 +46,7 @@ defmodule Zig.Resources do
 
   defp call_for_int(prefix, rest) do
     case Integer.parse(rest) do
-      {int, ""} when int in 0..65535 -> "#{prefix}#{int}"
+      {int, ""} when int in 0..65_535 -> "#{prefix}#{int}"
       _ -> "nif.#{prefix}#{rest}"
     end
   end

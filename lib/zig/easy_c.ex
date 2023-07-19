@@ -1,4 +1,6 @@
 defmodule Zig.EasyC do
+  @moduledoc false
+
   require EEx
 
   easy_c = Path.join(__DIR__, "templates/easy_c.zig.eex")

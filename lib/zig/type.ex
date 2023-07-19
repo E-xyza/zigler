@@ -270,7 +270,6 @@ defprotocol Zig.Type do
         defdelegate get_result(type, opts), to: module
         defdelegate needs_make?(type), to: module
         defdelegate missing_size?(type), to: module
-        defdelegate cleanup(type, opts), to: module
         defdelegate spec(type, context, opts), to: module
       end
     end

@@ -1,7 +1,7 @@
 defmodule Zig.Type.ParseError do
   defexception [:source, :reason]
 
-  def message(error = %{reason: nil}) do
+  def message(%{reason: nil} = error) do
     "the type #{error.source} is not a type usable by zigler"
   end
 

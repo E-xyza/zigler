@@ -26,17 +26,17 @@ defmodule Zig.Type.Array do
     }
   end
 
-  def to_string(array = %{mutable: true}), do: "*" <> to_string(%{array | mutable: false})
+  def to_string(%{mutable: true} = array), do: "*" <> to_string(%{array | mutable: false})
   def to_string(%{has_sentinel?: true, repr: repr}), do: repr
   def to_string(array), do: "[#{array.len}]#{Kernel.to_string(array.child)}"
 
-  def to_call(array = %{mutable: true}), do: "*" <> to_call(%{array | mutable: false})
+  def to_call(%{mutable: true} = array), do: "*" <> to_call(%{array | mutable: false})
   def to_call(%{has_sentinel?: true, repr: repr}), do: repr
   def to_call(array), do: "[#{array.len}]#{Type.to_call(array.child)}"
 
   def return_allowed?(array), do: Type.return_allowed?(array.child)
 
-  def spec(type = %{child: ~t(u8)}, :return, opts) do
+  def spec(%{child: ~t(u8)} = type, :return, opts) do
     # u8 defaults to binary
     case Keyword.fetch!(opts, :type) do
       :list ->
@@ -47,7 +47,7 @@ defmodule Zig.Type.Array do
     end
   end
 
-  def spec(type = %{child: child}, :return, opts) do
+  def spec(%{child: child} = type, :return, opts) do
     # other types defaults to binary
     binary_form = binary_form(child, known_length(type))
 
@@ -60,7 +60,7 @@ defmodule Zig.Type.Array do
     end
   end
 
-  def spec(type = %{child: child}, :param, opts) do
+  def spec(%{child: child} = type, :param, opts) do
     # u8 defaults to binary
     if binary_form = binary_form(child, known_length(type)) do
       quote context: Elixir do
