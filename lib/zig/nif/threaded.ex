@@ -91,8 +91,8 @@ defmodule Zig.Nif.Threaded do
       join_name: entrypoint(nif, :join),
       vars: used_vars,
       unused_vars: unused_vars,
-      launch_fail_text: 'thread for function #{name} failed during launch',
-      error_text: 'nif for function #{name}/#{arity} not bound'
+      launch_fail_text: ~c"thread for function #{name} failed during launch",
+      error_text: ~c"nif for function #{name}/#{arity} not bound"
     )
   end
 

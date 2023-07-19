@@ -10,86 +10,33 @@ defmodule Zig.Target do
   select the appropriate cross-compilation settings and libc.
   """
 
-  alias Zig.Command
+  defstruct [:arch, :os, :abi]
 
-  @target Mix.target()
+  @type t :: %__MODULE__{
+          arch: String.t(),
+          os: String.t(),
+          abi: String.t()
+        }
 
-  def string do
-    if System.get_env("MIX_TARGET") do
-      :nothing
+  # obtains the target from the
+  @spec resolve() :: nil | t
+  def resolve do
+    unless function_exported?(Mix, :target, 0) and Mix.target() === :host do
+      arch = System.get_env("TARGET_ARCH")
+      os = System.get_env("TARGET_OS")
+      abi = System.get_env("TARGET_ABI")
+
+      if arch && os && abi do
+        %__MODULE__{arch: arch, os: os, abi: abi}
+      end
+    end
+  end
+
+  def for_builder(target \\ resolve()) do
+    if target do
+      ".{.default_target=.{.cpu_arch = .#{target.arch}, .os_tag = .#{target.os}, .abi = .#{target.abi}}}"
     else
-      @target
+      ".{}"
     end
-
-    "linux-x86_64"
-  end
-
-  def target_struct(:host, zig_tree) do
-    Command.targets() |> IO.inspect()
-
-    raise "aaa"
-
-    # %{"abi" => abi, "cpu" => %{"arch" => arch}, "os" => os} =
-    #  targets
-    #  |> Jason.decode!()
-    #  |> Map.get("native")
-
-    # %{abi: abi, arch: arch, os: os}
-  end
-
-  def target_struct(_other, zig_tree) do
-    System.get_env()
-    |> target_struct_from_env(zig_tree)
-  end
-
-  def target_struct_from_env(
-        %{
-          "TARGET_ABI" => abi,
-          "TARGET_ARCH" => arch,
-          "TARGET_OS" => os,
-          "TARGET_CPU" => cpu
-        },
-        _zig_tree
-      ) do
-    %{abi: abi, arch: arch, os: os, cpu: cpu}
-  end
-
-  def target_struct_from_env(%{"CC" => cc}, _zig_tree) do
-    cc
-    |> System.cmd(~w(- -dumpmachine))
-    |> elem(0)
-    |> String.trim()
-    |> String.split("-")
-    |> Enum.reject(&(&1 == "unknown"))
-    |> case do
-      [arch, os, abi] -> %{arch: arch, os: os, abi: abi}
-    end
-  end
-
-  def target_struct_from_env(_, zig_tree) do
-    # fall back to the default zig identification
-    target_struct(:host, zig_tree)
-  end
-
-  defp to_structdef(t = %{cpu: cpu}) do
-    # NB: this uses zig's duck-typing facilities to only set the cpu_model field when cpu is provided.
-    # .explicit field is only available when it's arm; x86 will ignore this extra field.
-    ".{.default_target = .{.cpu_arch = .#{t.arch}, .os_tag = .#{t.os}, .abi = .#{t.abi}, .cpu_model = .{ .explicit = &std.Target.arm.cpu.#{cpu}}}}"
-  end
-
-  defp to_structdef(t) do
-    ".{.default_target = .{.cpu_arch = .#{t.arch}, .os_tag = .#{t.os}, .abi = .#{t.abi}}}"
-  end
-
-  defp dirs_for(target = %{os: "windows"}) do
-    ["lib/libc/include/any-windows-any/"] ++ dirs_for_specific(target)
-  end
-
-  defp dirs_for(target) do
-    ["lib/libc/musl/include"] ++ dirs_for_specific(target)
-  end
-
-  defp dirs_for_specific(%{abi: _abi, os: os, arch: arch}) do
-    ["lib/libc/include/#{arch}-#{os}-musl"]
   end
 end
