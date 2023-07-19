@@ -4,18 +4,17 @@ on: push
 
 jobs:
   ubuntu:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-20.04
     name: Linux OTP ${{matrix.pair.otp-version}} / Elixir ${{matrix.pair.elixir-version}}
     strategy:
       matrix:
         pair:
-          #- otp-version: '22.0'
-          #  elixir-version: '1.9.0'
-          #- otp-version: '23.0'
-          #  elixir-version: '1.10'
-          - otp-version: '23.0'
-            elixir-version: '1.11'
-
+          - otp-version: '25.0'
+            elixir-version: '1.13.4'
+          - otp-version: '26.0'
+            elixir-version: '1.14.5'
+          - otp-version: '26.0'
+            elixir-version: '1.15.2'
     steps:
     - uses: actions/checkout@v1
     - uses: erlef/setup-elixir@v1
@@ -36,8 +35,8 @@ jobs:
     strategy:
       matrix:
         pair:
-          - otp-version: '23.0'
-            elixir-version: '1.11'
+          - otp-version: '25.0'
+            elixir-version: '1.13.4'
     steps:
     - uses: actions/checkout@v1
     - name: Install Elixir
