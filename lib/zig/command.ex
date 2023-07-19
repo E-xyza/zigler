@@ -103,11 +103,11 @@ defmodule Zig.Command do
   end
 
   defp src_lib_name(module) do
-    case :os.type() do
-      {:unix, :darwin} ->
+    case {Target.resolve(), :os.type()} do
+      {nil, {:unix, :darwin}} ->
         "lib#{module}.dylib"
 
-      {_, :nt} ->
+      {nil, {_, :nt}} ->
         "#{module}.dll"
 
       _ ->
@@ -116,11 +116,11 @@ defmodule Zig.Command do
   end
 
   defp dst_lib_name(module) do
-    case :os.type() do
-      {:unix, :darwin} ->
+    case {Target.resolve(), :os.type()} do
+      {nil, {:unix, :darwin}} ->
         "#{module}.so"
 
-      {_, :nt} ->
+      {nil, {_, :nt}} ->
         "#{module}.dll"
 
       _ ->
