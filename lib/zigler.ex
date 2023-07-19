@@ -21,8 +21,7 @@ defmodule :zigler do
           |> Keyword.merge(
             mod_file: file,
             mod_line: line,
-            render: :render_erlang,
-            ebin_dir: :priv
+            render: :render_erlang
           )
           |> Options.normalize!()
       end

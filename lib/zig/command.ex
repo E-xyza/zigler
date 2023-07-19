@@ -7,7 +7,6 @@ defmodule Zig.Command do
   """
 
   alias Zig.Assembler
-  alias Zig.Target
 
   require Logger
 
@@ -17,19 +16,14 @@ defmodule Zig.Command do
   defp run_zig(command, opts) do
     args = String.split(command)
 
-    base_opts = Keyword.take(opts, [:cd])
-    error_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
+    base_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
     zig_cmd = executable_path(opts)
 
     case System.cmd(zig_cmd, args, base_opts) do
       {result, 0} ->
         result
 
-      # TODO: better error parsing here
-      _ ->
-        # rerun it.  This is awful, but we need it to separate out
-        # stderr from stdout.
-        {error, code} = System.cmd(zig_cmd, args, error_opts)
+      {error, code} ->
         raise Zig.CompileError, command: command, code: code, error: error
     end
   end
@@ -80,34 +74,18 @@ defmodule Zig.Command do
     assembly_dir = Assembler.directory(module)
 
     so_dir =
-      case Keyword.get(opts, :ebin_dir) do
-        :priv ->
-          opts
-          |> Keyword.fetch!(:otp_app)
-          |> :code.lib_dir()
-          |> Path.join("priv")
+      opts
+      |> Keyword.fetch!(:otp_app)
+      |> :code.priv_dir()
 
-        _ ->
-          opts
-          |> Keyword.fetch!(:otp_app)
-          |> :code.lib_dir()
-          |> Path.join("ebin")
-      end
+    lib_dir = Path.join(so_dir, "lib")
 
-    compile_opts =
-      Keyword.merge(
-        opts,
-        stderr_to_stdout: true,
-        cd: assembly_dir
-      )
+    run_zig("build --prefix #{so_dir}", cd: assembly_dir)
 
-    run_zig("build --prefix #{so_dir}", compile_opts)
+    src_lib_name = Path.join(lib_dir, src_lib_name(module))
+    dst_lib_name = Path.join(lib_dir, dst_lib_name(module))
 
-    dst_lib_name = Path.join(so_dir, "lib/#{module}.so")
-
-    so_dir
-    |> Path.join(["lib/", src_lib_name(module)])
-    |> File.rename!(dst_lib_name)
+    File.cp!(src_lib_name, dst_lib_name)
 
     Logger.debug("built library at #{dst_lib_name}")
   end
@@ -129,8 +107,24 @@ defmodule Zig.Command do
       {:unix, :darwin} ->
         "lib#{module}.dylib"
 
+      {_, :nt} ->
+        "#{module}.dll"
+
       _ ->
         "lib#{module}.so"
+    end
+  end
+
+  defp dst_lib_name(module) do
+    case :os.type() do
+      {:unix, :darwin} ->
+        "#{module}.so"
+
+      {_, :nt} ->
+        "#{module}.dll"
+
+      _ ->
+        "#{module}.so"
     end
   end
 

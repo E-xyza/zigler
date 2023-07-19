@@ -4,7 +4,7 @@ const Pkg = std.build.Pkg;
 
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
-    const target = b.standardTargetOptions(.{});
+    const target = b.standardTargetOptions(<%=Zig.Target.for_builder()%>);
 
     const erl_nif_pkg = Pkg{
         .name = "erl_nif",

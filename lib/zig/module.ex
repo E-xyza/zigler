@@ -69,8 +69,8 @@ defmodule Zig.Module do
               require Logger
 
               unquote(opts[:otp_app])
-              |> :code.lib_dir()
-              |> Path.join("ebin/lib")
+              |> :code.priv_dir()
+              |> Path.join("lib")
               |> Path.join(unquote(nif_name))
               |> String.to_charlist()
               |> :erlang.load_nif(0)

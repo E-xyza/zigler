@@ -7,13 +7,11 @@ defmodule Zig.Compiler do
 
   require Logger
 
-  alias Zig.Analyzer
   alias Zig.Assembler
   alias Zig.Command
   alias Zig.EasyC
   alias Zig.Nif
   alias Zig.Sema
-  alias Zig.Type.Struct
   alias Zig.Manifest
 
   defmacro __before_compile__(%{module: module, file: file}) do

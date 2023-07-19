@@ -28,7 +28,7 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
           %{payload: e.original, stacktrace: __STACKTRACE__}
       end
 
-    assert %{payload: :BadNumber, stacktrace: [head, next | _]} = error
+    assert %{payload: :BadNumber, stacktrace: [head | _]} = error
 
     expected_file = Path.absname(__ENV__.file)
 
