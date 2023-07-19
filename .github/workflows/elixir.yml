@@ -21,8 +21,38 @@ jobs:
       with:
         otp-version: ${{matrix.pair.otp-version}}
         elixir-version: ${{matrix.pair.elixir-version}}
-    - name: Install Dependencies
+
+    - uses: actions/cache@v1
+      id: deps-cache
+      with:
+        path: deps
+        key: ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+
+    - name: Install dependencies
       run: mix deps.get
+
+    - uses: actions/cache@v1
+      id: build-cache
+      with:
+        path: _build
+        key: ${{ runner.os }}-build-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+
+    - name: Compile base
+      run: mix compile
+
+    - name: Get Zig version
+      id: get-zig-version
+      run: echo "version=$(mix zig.version)" >> $GITHUB_OUTPUT
+
+    - uses: actions/cache@v1
+      id: zig-cache
+      with:
+        path: zig
+        key: ${{ runner.os }}-zig-${{ steps.get-zig-version.outputs.version }}
+
+    - name: Get Zig
+      run: mix zig.get
+
     - name: Run Tests
       env:
         RUNNING_CI: "true"
@@ -45,8 +75,38 @@ jobs:
       run: |
         mix local.hex --force
         mix local.rebar --force
-    - name: Install Dependencies
+
+    - uses: actions/cache@v1
+      id: deps-cache
+      with:
+        path: deps
+        key: ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+
+    - name: Install dependencies
       run: mix deps.get
+
+    - uses: actions/cache@v1
+      id: build-cache
+      with:
+        path: _build
+        key: ${{ runner.os }}-build-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+
+    - name: Compile base
+      run: mix compile
+
+    - name: Get Zig version
+      id: get-zig-version
+      run: echo "version=$(mix zig.version)" >> $GITHUB_OUTPUT
+
+    - uses: actions/cache@v1
+      id: zig-cache
+      with:
+        path: zig
+        key: ${{ runner.os }}-zig-${{ steps.get-zig-version.outputs.version }}
+
+    - name: Get Zig
+      run: mix zig.get
+
     - name: Run Tests
       env:
         RUNNING_CI: "true"

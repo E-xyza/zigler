@@ -380,4 +380,13 @@ defmodule Zig do
       "lib#{module.module}"
     end
   end
+
+  @doc """
+  version of zig supported by this version of zigler.
+
+  > ### API warning {: .warning }
+  >
+  > this API may change in the future.
+  """
+  def version, do: "0.10.1"
 end

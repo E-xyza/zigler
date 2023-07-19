@@ -198,7 +198,7 @@ defmodule Zig.Command do
   defp directory, do: Path.join(@zig_dir_path, "zig-#{os_arch()}-0.10.1")
 
   # TODO: rename this.
-  def fetch(version) do
+  def fetch!(version) do
     zig_dir = directory()
     zig_executable = Path.join(zig_dir, "zig")
     :global.set_lock({__MODULE__, self()})
@@ -215,7 +215,7 @@ defmodule Zig.Command do
           ".tar.xz"
         end
 
-      archive = "zig" <> os_arch() <> extension
+      archive = "zig-#{os_arch()}-#{Zig.version()}#{extension}"
 
       # TODO: clean this up.
       Logger.configure(level: :info)
@@ -237,7 +237,7 @@ defmodule Zig.Command do
     url = "https://ziglang.org/download/#{version}/#{archive}"
     Logger.info("downloading zig version #{version} (#{url}) and caching in #{@zig_dir_path}.")
 
-    case httpc_get(url) do
+    case httpc_get(url) |> dbg(limit: 25) do
       {:ok, %{status: 200, body: body}} ->
         # expected_checksum = Map.fetch!(@checksums, archive)
         # actual_checksum = :sha256 |> :crypto.hash(body) |> Base.encode16(case: :lower)
