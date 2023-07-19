@@ -237,7 +237,7 @@ defmodule Zig.Command do
     url = "https://ziglang.org/download/#{version}/#{archive}"
     Logger.info("downloading zig version #{version} (#{url}) and caching in #{@zig_dir_path}.")
 
-    case httpc_get(url) |> dbg(limit: 25) do
+    case httpc_get(url) do
       {:ok, %{status: 200, body: body}} ->
         # expected_checksum = Map.fetch!(@checksums, archive)
         # actual_checksum = :sha256 |> :crypto.hash(body) |> Base.encode16(case: :lower)
