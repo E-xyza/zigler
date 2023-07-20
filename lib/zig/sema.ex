@@ -85,7 +85,7 @@ defmodule Zig.Sema do
       reraise Zig.CompileError.to_error(e, opts), __STACKTRACE__
   end
 
-  def run_sema(file, module \\ nil, opts \\ []) do
+  def run_sema(file, module \\ nil, opts \\ [include_dir: []]) do
     # TODO: integrate error handling here, and make this a common nexus for
     # file compilation
     with {:ok, sema_str} <- Zig.Command.run_sema(file, opts),

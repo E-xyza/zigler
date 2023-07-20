@@ -11,7 +11,6 @@ defmodule Zigler.MixProject do
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
       deps: deps(),
-      aliases: [docs: "zig_doc", test: test_alias()],
       package: [
         description: "Zig nif library",
         licenses: ["MIT"],
@@ -31,7 +30,9 @@ defmodule Zigler.MixProject do
         extras: ["README.md", "guides/nifs.md", "guides/resources.md"],
         groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
         groups_for_modules: ["Under the hood": under_the_hood()],
-        zig_doc: [beam: [file: "priv/beam/beam.zig"]]
+        zig_doc: [
+          beam: [file: "priv/beam/beam.zig"]
+        ]
       ],
       aliases: [docs: "zig_doc"]
     ]
@@ -56,13 +57,6 @@ defmodule Zigler.MixProject do
   defp elixirc_paths(:test), do: ["lib", "test/_support"]
   defp elixirc_paths(_), do: ["lib"]
 
-  defp test_alias do
-    case :os.type() do
-      {:unix, :darwin} -> ["clean", "test"]
-      _ -> "test"
-    end
-  end
-
   def deps do
     [
       # credo
@@ -76,7 +70,7 @@ defmodule Zigler.MixProject do
       {:zig_parser, "== 0.1.8"},
       # documentation
       {:ex_doc, "~> 0.29.4", runtime: false},
-      {:zig_doc, path: "../zig_doc", only: :dev, runtime: false}
+      {:zig_doc, "~> 0.1.2", only: :dev, runtime: false}
     ]
   end
 end

@@ -23,8 +23,28 @@ defmodule Zig do
     by the BEAM's, which means that you have access to generic memory
     allocation *strategies* through its composable allocator scheme.
   - C integration.  It's very easy to design C-interop between Zig and C.
-    In fact, Zig is likely to be an easier glue language for C ABIs than
-    C.
+    Zigler has been designed to make it easier to use Zigler to build
+    C libraries than to use C directly see [Easy C](#module-easy-c).
+
+  ### Guides
+
+  Please consult the following guides for detailed topics:
+
+  - [different execution modes](nifs.html)
+  - [how to build BEAM `resources`](resources.html)
+  - deploying in erlang environments with [`zigler`](:zigler.html)
+
+  > ### Zig version support {: .warning }
+  >
+  > although the large-scale archictecture of zigler is settled,
+  > zigler features may break backwards compatibility until zig reaches
+  > 1.0
+
+  ### Nerves Support
+
+  Nerves is supported out of the box, and Zigler will be able to seamlessly
+  detect the cross-compilation information (os, architecture, runtime) and
+  build correctly for that target.
 
   ### Basic usage
 
@@ -47,7 +67,7 @@ defmodule Zig do
 
     ~Z\"""
     pub fn my_func(val: i64) i64 {
-      return val + 1;
+        return val + 1;
     }
     \"""
 
@@ -62,40 +82,93 @@ defmodule Zig do
   Zig will also make sure that your statically-typed Zig data are guarded
   when you marshal it from the dynamically-typed BEAM world.  However, you may
   only pass in and return certain types.  As an escape hatch, you may use
-  the `beam.term` type which is equivalent to the `ERLNIFTERM` type.  See
-  [`erl_nif`](erl_nif.html).
+  the [`beam.term`](beam.html#term) type which is a wrapped
+  [`ERL_NIF_TERM`](https://www.erlang.org/doc/man/erl_nif.html#ERL_NIF_TERM) type.
+  See [`erl_nif`](https://www.erlang.org/doc/man/erl_nif.html).
 
-  ### Guides
+  #### Environment
 
-  Please consult the following guides for detail topics:
+  For many functions, you'll need to import the [`beam`](beam.html) package and
+  create a function that takes a [`beam.env`](beam.html#env) as its first
+  argument.  This will enable you to directly access or create wrapped beam
+  term data.  The equivalent of the above code will be:
 
-  - [different execution modes](nifs.html)
-  - [how to build BEAM `resources`](resources.html)
-
-  ### Nerves Support
-
-  Nerves is supported out of the box, and Zigler will be able to seamlessly
-  detect the cross-compilation information (os, architecture, runtime) and
-  build correctly for that target.
-
-  ### Bring your own version of Zig
-
-  If you would like to use your system's local `zig` command, specify
-  this in your `use Zig` statement options.
+  #### Example
 
   ```
-  use Zig, otp_app: :my_app, local_zig: true
+  defmodule MyModule do
+    use Zig, otp_app: :my_app
+
+    ~Z\"""
+    const beam = @import("beam");
+
+    pub fn my_func(env: beam.env, val_term: beam.term) !beam.term {
+        const val = try beam.get(i64, env, val_term, .{});
+        return beam.make(env, val + 1, .{});
+    }
+    \"""
+  end
   ```
 
-  This will use `System.find_executable` to obtain the zig command. If
-  you want to specify a specific zig path, use the following:
+  For more details on [`get`](beam.html#get) and [`make`](beam.html#make)
+  functions see the [`beam`](beam.html) documentation.
 
-  ```
-  config :zigler, zig_path: "path/to/zig/command"
+  > #### Manual Term marshalling {: .warning }
+  >
+  > If you don't use automatic marshalling, Zigler will not be able
+  > to provide the following conveniences:
+  >
+  > - argument error details.  The zig code will raise a generic
+  >   BEAM `ArgumentError` but it won't have specific details about
+  >   what the expected type was and which argument was in error.
+  >
+  > - dialyzer type information for your function.  You will have
+  >   to supply that type information in your nif configuration.
+
+  ### Importing external files
+
+  If you need to write zig code outside of the module, just place it in
+  the same directory as your module.
+
+  #### Example
+
+  ```elixir
+  ~Z\"""
+  const extra_code = @import("extra_code.zig");
+
+  pub fn use_extra_code(val: i64) i64 {
+    return extra_code.extra_fn(val);
+  }
+
+  pub const forwarded_function = extra_code.forwarded_function;
+  \"""
   ```
 
-  Note that for minor versions prior to 1.0, zigler doesn't plan on
-  maintaining backward compatibility due to large architectural changes.
+  If you would like to include a custom c header file, create an subdirectory
+  of your module's directory and add it as an available include directory,
+  as shown here (in this case the subdirectory is called `include`).  The
+  Zig build system will add the include path(s) in the analysis and
+  compilation pipelines.
+
+  ```elixir
+  defmodule MyModule
+    use Zig,
+      otp_app: :my_app,
+      include_dir: "include"
+
+    ~Z\"""
+    const c = @cImport({
+      @cInclude("my_c_header.h");
+    });
+    ...
+    \"""
+  end
+  ```
+
+  If the c header defines `extern` functions, it's your responsibility to make
+  sure those externed functions are available by
+  [compiling other c files](#module-compiling-c-c-files) or
+  [using an external library](#module-external-libraries).
 
   ### External Libraries
 
@@ -107,7 +180,7 @@ defmodule Zig do
 
   #### Example (explicit library path)
 
-  ```
+  ```elixir
   defmodule Blas do
     use Zig,
       otp_app: :my_app,
@@ -117,6 +190,8 @@ defmodule Zig do
     const blas = @cImport({
       @cInclude("cblas.h");
     ...
+    \"""
+  end
   ```
 
   You can also link system libraries.  This relies on `zig build`'s ability
@@ -126,7 +201,7 @@ defmodule Zig do
 
   #### Example (system libraries)
 
-  ```
+  ```elixir
   defmodule Blas do
     use Zig,
       otp_app: :my_app,
@@ -136,11 +211,13 @@ defmodule Zig do
     const blas = @cImport({
       @cInclude("cblas.h");
     ...
+    \"""
+  end
   ```
 
   ### Compiling C/C++ files
 
-  You can direct zigler to use zig cc to compile C or C++ files that are in
+  You can direct zigler to compile C or C++ files that are in
   your directory tree.  Currently, you must explicitly pick each file, in the
   future, there may be support for directories (and selecting compile options)
   based on customizeable rules.
@@ -148,65 +225,54 @@ defmodule Zig do
   To do this, fill the "sources" option with a list of files (represented as
   strings), or a file/options pair (represented as a tuple).
 
-  ```
+  ```elixir
   defmodule UsesCOrCpp do
     use Zig,
       otp_app: :my_app,
-      link_libcpp: true,
-      include: ["my_header.h"],
-      sources: [
+      link_libcpp: true,  # note: optional for c-only code
+      include_dir: ["include"],
+      c_src: [
         "some_c_source.c",
-        {"some_cpp_source.cpp", ["-std=c++17"]}
+        {"some_cpp_source.cpp", ["-std=c++17"]},
+        {"directory_of_files/*", ["-std=c99"]},
       ]
 
     ~Z\"""
     ...
+    \"""
+  end
   ```
 
-  Don't forget to include relevant h files, and set the `link_libc: true`
-  and/or the `link_libcpp: true` options if your code needs the c or c++
-  standard libraries
+  ### Easy C
 
-  ### Compilation assistance
+  In some cases, you may have a C project that ships with a library and a
+  header file that you would like to mount as NIF functions in your module.
+  In this case, you can use the `easy_c` option to automate the work of
+  stitching your library into the module.  Note that in this case, you must
+  declare all of the function that you would like to import.  Here is an
+  example of importing three functions from the blas example as above.
+
+  For details of what the nif options mean, see: `Zig.EasyC`
+
+  ```elixir
+  defmodule BlasWithEasyC do
+    use Zig,
+      otp_app: :my_app,
+      easy_c: "cblas.h",
+      link_lib: {:system, "blas"},
+      nifs: [
+        :cblas_dasum,
+        cblas_daxpy: [return: [4, length: {:arg, 0}]],
+        daxpy_bin: [alias: :cblas_daxpy, return: [4, :binary, length: {:arg, 0}]]
+      ]
+  end
+  ```
+
+  ### Compilation debug
 
   If something should go wrong, Zigler will translate the Zig compiler error
-  into an Elixir compiler error, and let you know exactly which line in the
+  into an Elixir compiler error, and let you know which line in the
   `~Z` block it came from.
-
-  ### Importing files
-
-  If you need to write code outside, just place it in the same directory as
-  your module.
-
-  #### Example
-
-  ```
-  ~Z\"""
-  const extra_code = @import("extra_code.zig");
-
-  pub fn use_extra_code(val: i64) i64 {
-    return extra_code.extra_fn(val);
-  }
-  \"""
-  ```
-
-  If you would like to include a custom c header file, create an `include/`
-  directory inside your path tree and it will be available to zig as a default
-  search path as follows:
-
-  ```
-  ~Z\"""
-  const c = @cImport({
-    @cInclude("my_c_header.h");
-  });
-
-  ...
-  \"""
-  ```
-
-  If the c header defines `extern` functions, it's your responsibility to make
-  sure those externed functions are available by compiling other c files or
-  using a shared library.
 
   ### Documentation
 
@@ -214,7 +280,24 @@ defmodule Zig do
   front of the nif declaration, it will wind up in the correct place in your
   elixir documentation.
 
-  Note that the `//!` docstring is not supported.  use `@moduledoc` instead.
+  Note that the `//!` docstring is not supported.  Use `@moduledoc` instead.
+
+  ### Bring your own version of Zig
+
+  If you would like to use your system's local `zig` command, specify
+  this in your `use Zig` statement options.
+
+  ```elixir
+  use Zig, otp_app: :my_app, local_zig: true
+  ```
+
+  This will use `System.find_executable/1` to obtain the zig command. If
+  you want to specify a specific zig path, use the following:
+
+  ```elixir
+  use Zig, otp_app: :my_app, zig_path: "path/to/zig/command"
+  ```
+
   """
 
   alias Zig.Compiler
