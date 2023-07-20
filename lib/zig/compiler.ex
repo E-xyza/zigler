@@ -63,7 +63,7 @@ defmodule Zig.Compiler do
     renderer = Keyword.fetch!(opts, :render)
 
     with true <- assembled,
-         assemble_opts = Keyword.take(opts, [:link_lib, :build_opts, :stage1]),
+         assemble_opts = Keyword.take(opts, [:link_lib, :build_opts, :stage1, :include_dir, :c_src]),
          assemble_opts = Keyword.merge(assemble_opts, from: code_dir),
          Assembler.assemble(module, assemble_opts),
          true <- precompiled,

@@ -36,17 +36,17 @@ defmodule Zig do
   Simply `use Zig` in your module, providing the app atom in the property
   list.
 
-  Then, use the `sigil_Z/2` macro and write zig code.  Any nifs you define
-  should be preceded with the `/// nif: function_name/arity` zig docstring.
+  Then, use the `sigil_Z/2` macro and write zig code.  To present a function
+  as a nif in your module, simply export it from your code namespace by
+  making it a `pub` function in your zig code.
 
   #### Example
   ```
   defmodule MyModule do
-    use Zig
+    use Zig, otp_app: :my_app
 
     ~Z\"""
-    /// nif: my_func/1
-    fn my_func(val: i64) i64 {
+    pub fn my_func(val: i64) i64 {
       return val + 1;
     }
     \"""
@@ -74,49 +74,24 @@ defmodule Zig do
 
   ### Nerves Support
 
-  Nerves is supported out of the box, and the system should cross-compile
-  to arm ABI as necessary depending on what your nerves `:target` is.  You
-  may also directly specify a zig target using the
-  `use Zig, target: <target>` option.
-
-  ### Environment
-
-  Sometimes, you will need to pass the BEAM environment (which is the code
-  execution context, including process info, etc.) into the NIF function.  In
-  this case, you should pass it as the first argument, as a `beam.env` type
-  value.
-
-  #### Example
-
-  ```
-  defmodule MyModule do
-    use Zig
-
-    ~Z\"""
-    /// nif: my_func_with_env/1
-    fn my_func_with_env(env: beam.env, pid: beam.pid) void {
-      var sendable_term: []u64 = "ping"[0..];
-      var msg = beam.make_slice(env, sendable_term);
-      var res = e.enif_send(env, pid, env, msg);
-    }
-    \"""
-  end
-  ```
+  Nerves is supported out of the box, and Zigler will be able to seamlessly
+  detect the cross-compilation information (os, architecture, runtime) and
+  build correctly for that target.
 
   ### Bring your own version of Zig
 
-  If you would like to use your system's local `zig` command, set the
-  `local_zig` option in `config.exs`, which
+  If you would like to use your system's local `zig` command, specify
+  this in your `use Zig` statement options.
 
   ```
-  config :zigler, local_zig: true
+  use Zig, otp_app: :my_app, local_zig: true
   ```
 
   This will use `System.find_executable` to obtain the zig command. If
-  you want to specify the zig command manually, use the following:
+  you want to specify a specific zig path, use the following:
 
   ```
-  config :zigler, local_zig: "path/to/zig/command"
+  config :zigler, zig_path: "path/to/zig/command"
   ```
 
   Note that for minor versions prior to 1.0, zigler doesn't plan on
@@ -134,8 +109,9 @@ defmodule Zig do
 
   ```
   defmodule Blas do
-    use Zig,       libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
-      include: ["/usr/include/x86_64-linux-gnu"]
+    use Zig,
+      otp_app: :my_app,
+      link_lib: "path/to/libblas.a"
 
     ~Z\"""
     const blas = @cImport({
@@ -152,8 +128,9 @@ defmodule Zig do
 
   ```
   defmodule Blas do
-    use Zig,       system_libs: ["blas"],
-      include: ["/usr/include/x86_64-linux-gnu"]
+    use Zig,
+      otp_app: :my_app,
+      link_lib: {:system, "blas"}
 
     ~Z\"""
     const blas = @cImport({
@@ -173,7 +150,8 @@ defmodule Zig do
 
   ```
   defmodule UsesCOrCpp do
-    use Zig,       link_libc: true,
+    use Zig,
+      otp_app: :my_app,
       link_libcpp: true,
       include: ["my_header.h"],
       sources: [
@@ -195,18 +173,10 @@ defmodule Zig do
   into an Elixir compiler error, and let you know exactly which line in the
   `~Z` block it came from.
 
-  ### Syntactic Sugar
-
-  Some of the erlang nif terms can get unwieldy, especially in Zig, which
-  prefers terseness.  Each of the basic BEAM types is shadowed by a Zig type
-  in the `beam` module.  The `beam` struct is always imported into the header
-  of the zig file used, so all zig code in the same directory as the module
-  should have access to the `beam` struct if they `@import("beam.zig")`
-
   ### Importing files
 
-  If you need to write code outside of the basic module (you will, for anything
-  non-trivial), just place it in the same directory as your module.
+  If you need to write code outside, just place it in the same directory as
+  your module.
 
   #### Example
 
@@ -214,8 +184,7 @@ defmodule Zig do
   ~Z\"""
   const extra_code = @import("extra_code.zig");
 
-  /// nif: use_extra_code/1
-  fn use_extra_code(val: i64) i64 {
+  pub fn use_extra_code(val: i64) i64 {
     return extra_code.extra_fn(val);
   }
   \"""
@@ -231,7 +200,6 @@ defmodule Zig do
     @cInclude("my_c_header.h");
   });
 
-  // nif: my_nif/1
   ...
   \"""
   ```
@@ -246,25 +214,7 @@ defmodule Zig do
   front of the nif declaration, it will wind up in the correct place in your
   elixir documentation.
 
-  See `Zig.Doc` for more information on how to document in zig and what to
-  document.  See `Mix.Tasks.ZigDoc` for information on how to get your Elixir
-  project to incorporate zig documentation.
-
-  ### Tests
-
-  Use the builtin zig `test` keyword to write your internal zig unit tests.
-  These can be imported into an ExUnit module by following this example:
-
-  ```
-  defmodule MyTest do
-    use ExUnit.Case
-    use Zig.Unit
-    zigtest ModuleWithZigCode
-  end
-  ```
-
-  See `Zig.Unit` for more information.
-
+  Note that the `//!` docstring is not supported.  use `@moduledoc` instead.
   """
 
   alias Zig.Compiler

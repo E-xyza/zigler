@@ -46,7 +46,7 @@ defmodule Zig.Command do
         sema: sema_on_file
       )
 
-    sema_command = "run #{sema_file} #{pkg_opts} #{link_opts(opts)}"
+    sema_command = "run #{sema_file} #{pkg_opts} -lc #{link_opts(opts)}"
 
     # Need to make this an OK tuple
     {:ok, run_zig(sema_command, stderr_to_stdout: true)}
@@ -63,8 +63,9 @@ defmodule Zig.Command do
   end
 
   defp link_opts(opts) do
-    # TODO: do we need a more sophisticated way of running this analysis?
-    if Keyword.get(opts, :easy_c), do: "-lc"
+    opts
+    |> Keyword.fetch!(:include_dir)
+    |> Enum.map_join(" ", &"-I #{&1}")
   end
 
   def fmt(file) do

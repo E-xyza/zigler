@@ -76,7 +76,7 @@ defmodule Zig.Sema do
     end
   end
 
-  def run_sema!(file, module \\ nil, opts \\ []) do
+  def run_sema!(file, module \\ nil, opts \\ [include_dir: []]) do
     case run_sema(file, module, opts) do
       {:ok, sema} -> sema
     end

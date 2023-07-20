@@ -109,11 +109,17 @@ Thanks to Dave Cottlehuber @dch for testing.
 - special thanks to @jeremyowensboggs, who had a nicer upgrade implementation
   than mine.
 
-## 0.10.0
+## 0.10.1
 - Breaking changes:
   - nif selection is no longer done using inline docstrings
     - select nifs using `use Zig` options.
-- support for the following types:
+  - zig test has been deprecated, and may return as a plugin
+    library in the future
+  - zig doc has been deprecated for general use, though can
+    be used experimentally through `Zig.Doc`
+  - yielding nifs are not supported, but will return in 0.11
+    due to zig async not working in 0.10.x
+  - 
 
 
 ## Upcoming

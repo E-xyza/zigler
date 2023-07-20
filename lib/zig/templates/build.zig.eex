@@ -51,6 +51,16 @@ pub fn build(b: *Builder) void {
     lib.addObjectFile("<%= lib %>");
       <% end %>
     <% end %>
+
+    <%= for include <- @include_dir do %>
+    lib.addIncludePath("<%= include %>");
+    <% end %>
+
+    <%= for {c_src, c_src_opts} <- @c_src do %>
+    <% ccompileparams = Enum.map_join(c_src_opts, ", ", &~s("#{&1}")) %>
+    lib.addCSourceFile("<%= c_src %>",  &[_][]const u8{<%= ccompileparams %>});
+    <% end %>
+
     lib.setBuildMode(mode);
     lib.setTarget(target);
 

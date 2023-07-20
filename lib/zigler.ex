@@ -1,7 +1,62 @@
 defmodule :zigler do
+  @moduledoc """
+  Parse transform module for using Zigler with erlang.
+
+  For the canonical example, see:
+  https://www.erlang.org/doc/man/erl_id_trans.html
+
+  ## Prerequisites
+
+  In order to use Zigler in an erlang project, you must have the Elixir
+  runtime.   You may do this any way you wish, but Zigler recommends
+  rebar_mix:
+
+  https://github.com/Supersonido/rebar_mix
+
+  There are instructions on how to make sure Elixir is available at
+  compile time for your erlang project.
+
+  ## Building a Zig Module
+
+  General documentation on parse transforms is very light.  To use zigler as
+  a parse transform:
+
+  ```erlang
+  -module(my_erlang_module).
+  -compile({parse_transform, zigler}).
+  -export([...]).
+
+  -zig_code("
+  pub fn hello_world() [] const u8 {
+    return "Hello, world!";
+  }
+  ")
+
+  -zig_opts([{otp_app, my_app}]).
+  ```
+
+  This creates the `hello_world/0` function in your
+  module which returns the "Hello, world!" binary.
+
+  for options to be delivered in the `zig_opts` attribute, see the
+  `Zig` module documentation.
+
+  Note that the `...` for the `nifs` option is not representable in erlang AST.
+  Instead, use the atom `auto`.
+
+  > ### Note {: .warning }
+  >
+  > Erlang integration is highly experimental and the interface
+  > may be changed in the future.
+  """
+
   alias Zig.Compiler
   alias Zig.Options
 
+  @doc """
+  performs a parse transformation on the AST for an erlang module,
+  converting public functions in the
+  """
   def parse_transform(ast, _opts) do
     Application.ensure_all_started(:logger)
     Zig.Command.fetch!("0.10.1")
@@ -82,7 +137,7 @@ defmodule :zigler do
       |> append_attrib(:on_load, {:__init__, 0})
       |> append_attrib(:zig_code, code)
       |> Kernel.++(rendered_erlang)
-      |> Enum.sort_by(&elem(&1, 0), __MODULE__)
+      |> Enum.sort(__MODULE__)
 
     if opts[:dump] do
       dump(ast)
@@ -95,16 +150,16 @@ defmodule :zigler do
 
   @order %{file: 0, attribute: 1, function: 2, error: 3, eof: 10}
 
-  def compare(order1, order2) when is_integer(order1) and is_integer(order2) do
-    case order1 do
-      order1 when order1 < order2 -> :lt
-      order1 when order1 > order2 -> :gt
+  @doc false
+  # This is a comparison function for sorting the AST.  By implementing
+  # the compare/2 informal behaviour, we are able to sort the contents
+  # of erlang ast
+  def compare(ast1, ast2) do
+    case {Map.fetch!(@order, elem(ast1, 0)), Map.fetch!(@order, elem(ast2, 0))} do
+      {order1, order2} when order1 < order2 -> :lt
+      {order1, order2} when order1 > order2 -> :gt
       _ -> :eq
     end
-  end
-
-  def compare(type1, type2) when is_atom(type1) and is_atom(type2) do
-    compare(Map.fetch!(@order, type1), Map.fetch!(@order, type2))
   end
 
   defp ensure_eex do

@@ -1,5 +1,6 @@
 defmodule Zig.Macro do
-  @moduledoc false
+  @moduledoc """
+  """
 
   def inspect(macro, opts) do
     if opts[:dump] do

@@ -3,7 +3,6 @@ defmodule ZiglerTest.Sema.ResourceTest do
 
   use Zig, otp_app: :zigler, precompile: false
 
-  alias Zig.Nif
   alias Zig.Sema
   alias Zig.Type
   alias Zig.Type.Resource

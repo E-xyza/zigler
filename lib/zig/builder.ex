@@ -20,7 +20,9 @@ defmodule Zig.Builder do
       nif_path: Path.join(opts[:from], ".#{module}.zig"),
       beam_dir: Path.join(:code.priv_dir(:zigler), "beam"),
       link_lib: opts[:link_lib],
-      stage1: opts[:stage1]
+      stage1: opts[:stage1],
+      include_dir: opts[:include_dir],
+      c_src: opts[:c_src],
     }
 
     build_file = build_zig(assigns)

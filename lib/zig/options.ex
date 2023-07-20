@@ -18,6 +18,8 @@ defmodule Zig.Options do
     |> normalize_nifs_option!
     |> normalize_libs
     |> normalize_build_opts
+    |> normalize_include_dirs
+    |> normalize_c_src
     |> EasyC.normalize_aliasing()
   end
 
@@ -54,5 +56,66 @@ defmodule Zig.Options do
     else
       opts
     end
+  end
+
+  defp normalize_include_dirs(opts) do
+    Keyword.update(opts, :include_dir, [], fn
+      path_or_paths ->
+        path_or_paths
+        |> List.wrap()
+        |> Enum.map(&absolute_path_for(&1, opts))
+    end)
+  end
+
+  defp absolute_path_for(("/" <> _) = path, _opts), do: path
+
+  defp absolute_path_for(relative_path, opts) do
+    opts
+    |> Keyword.fetch!(:mod_file)
+    |> Path.dirname
+    |> Path.join(relative_path)
+  end
+
+  # converts optional c_src option to a list of
+  # {path, [<c compiler options>]}
+  defp normalize_c_src(opts) do
+    Keyword.update(opts, :c_src, [], fn
+      path_or_paths ->
+        path_or_paths
+        |> List.wrap()
+        |> Enum.flat_map(&normalize_c_src_paths(&1, opts))
+    end)
+  end
+
+  defp normalize_c_src_paths({path, c_opts}, opts) do
+    unless is_list(c_opts), do: raise "c options for c source files must be a list"
+
+    path
+    |> absolute_path_for(opts)
+    |> expand_directories
+    |> Enum.map(fn file -> {file, c_opts} end)
+  end
+
+  defp normalize_c_src_paths(path, opts) when is_binary(path) do
+    path
+    |> absolute_path_for(opts)
+    |> expand_directories
+    |> Enum.map(fn file -> {file, []} end)
+  end
+
+  defp expand_directories(path) do
+    List.wrap(if String.ends_with?(path, "/*") do
+      path = String.replace_suffix(path, "/*", "")
+      
+      path
+      |> File.ls!
+      |> Enum.flat_map(fn file ->
+        List.wrap(if String.ends_with?(file, ".c") or String.ends_with?(file, ".cpp") do
+          Path.join(path, file)
+        end)
+      end)
+    else
+      path
+    end)
   end
 end

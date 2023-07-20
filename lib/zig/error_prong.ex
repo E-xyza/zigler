@@ -1,5 +1,7 @@
 defmodule Zig.ErrorProng do
-  @moduledoc false
+  @moduledoc """
+  """
+
   # default parameter errors handling.
 
   def argument_error_prong(:elixir, _) do
