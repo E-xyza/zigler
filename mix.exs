@@ -74,8 +74,7 @@ defmodule Zigler.MixProject do
       {:zig_parser, "== 0.1.8"},
       # documentation
       {:ex_doc, "~> 0.30.0", runtime: false},
-      # "~> 0.1.2", only: :dev, runtime: false}
-      {:zig_doc, path: "../zig_doc", only: :dev, runtime: false}
+      {:zig_doc, "~> 0.1.3", only: :dev, runtime: false}
     ]
   end
 end

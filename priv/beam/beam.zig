@@ -816,6 +816,11 @@ pub const self = processes.self;
 /// This function is a context-aware wrapper over 
 /// [`e.enif_send`](https://www.erlang.org/doc/man/erl_nif.html#enif_send).
 /// that also serializes the message term using [`make`](#make)
+/// 
+/// > send from raw nifs {: .warning}
+/// >
+/// > This function has undefined behaviour when called from `raw` nifs.
+/// > use `e.enif_send` directly instead.
 pub const send = processes.send;
 
 // interfacing with functions
