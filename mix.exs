@@ -36,22 +36,43 @@ defmodule Zigler.MixProject do
       extras: ["README.md", "guides/nifs.md", "guides/resources.md"],
       groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
       groups_for_modules: [
-        "Under the hood": under_the_hood()
+        "Compilation Steps": compilation_steps(),
+        Types: ~r/Zig\.Type(^\.ParseError)/,
+        "Nif Modes": [~r/Zig\.Nif.+/, Zig.EasyC],
+        "Data Structures": data_structures(),
+        tools: tools()
       ],
       zig_doc: [beam: [file: "priv/beam/beam.zig"]]
     ]
   end
 
-  def under_the_hood do
+  defp compilation_steps do
     [
       Zig.Assembler,
-      Zig.Code,
-      Zig.Code.LongRunning,
+      Zig.Builder,
+      Zig.Command,
       Zig.Compiler,
+      Zig.Sema
+    ]
+  end
+
+  defp data_structures do
+    [
       Zig.Module,
-      Zig.Parser,
-      Zig.Typespec,
-      Zig.Command
+      Zig.Nif,
+      Zig.Manifest,
+      Zig.Resources
+    ]
+  end
+
+  defp tools do
+    [
+      Zig.Analyzer,
+      Zig.Macro,
+      Zig.Options,
+      Zig.QuoteErl,
+      Zig.ErrorProng,
+      Zig.Target
     ]
   end
 
