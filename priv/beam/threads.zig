@@ -60,6 +60,7 @@ pub const ThreadState = enum {
 
 pub threadlocal var this_thread: ?*anyopaque = null;
 pub threadlocal var local_join_started: *bool = undefined;
+pub threadlocal var self_pid: *const fn () beam.pid = undefined;
 
 fn makes_error_result__(comptime F: type) bool {
     const NaiveReturnType = @typeInfo(F).Fn.return_type.?;
@@ -113,6 +114,9 @@ pub fn Thread(comptime function: anytype) type {
             threadptr.refbin = try beam.term_to_binary(env, res_term);
             errdefer beam.release_binary(&threadptr.refbin);
 
+            // set the self_pid function
+            self_pid = &This.self_pid_fn;
+
             // launch the thread
             _ = e.enif_thread_create(name_ptr(), &threadptr.tid, wrapped, threadptr, null);
 
@@ -159,7 +163,7 @@ pub fn Thread(comptime function: anytype) type {
                     .joined => @panic("should not have reached joined without executing thread"),
                 } else .done;
 
-                if (beam.binary_to_term(thread.env, bin, .{})) |term| {
+                if (beam.binary_to_term(thread.env, bin)) |term| {
                     _ = beam.send(thread.env, thread.pid, .{ to_send, term }) catch {};
                 } else |_| {}
             }
@@ -205,6 +209,10 @@ pub fn Thread(comptime function: anytype) type {
 
         pub fn makes_error_result() bool {
             return makes_error_result__(F);
+        }
+
+        fn self_pid_fn() beam.pid {
+            return get_info().pid;
         }
 
         fn lock_join(self: *This) bool {

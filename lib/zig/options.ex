@@ -67,12 +67,12 @@ defmodule Zig.Options do
     end)
   end
 
-  defp absolute_path_for(("/" <> _) = path, _opts), do: path
+  defp absolute_path_for("/" <> _ = path, _opts), do: path
 
   defp absolute_path_for(relative_path, opts) do
     opts
     |> Keyword.fetch!(:mod_file)
-    |> Path.dirname
+    |> Path.dirname()
     |> Path.join(relative_path)
   end
 
@@ -88,7 +88,7 @@ defmodule Zig.Options do
   end
 
   defp normalize_c_src_paths({path, c_opts}, opts) do
-    unless is_list(c_opts), do: raise "c options for c source files must be a list"
+    unless is_list(c_opts), do: raise("c options for c source files must be a list")
 
     path
     |> absolute_path_for(opts)
@@ -104,18 +104,22 @@ defmodule Zig.Options do
   end
 
   defp expand_directories(path) do
-    List.wrap(if String.ends_with?(path, "/*") do
-      path = String.replace_suffix(path, "/*", "")
-      
-      path
-      |> File.ls!
-      |> Enum.flat_map(fn file ->
-        List.wrap(if String.ends_with?(file, ".c") or String.ends_with?(file, ".cpp") do
-          Path.join(path, file)
+    List.wrap(
+      if String.ends_with?(path, "/*") do
+        path = String.replace_suffix(path, "/*", "")
+
+        path
+        |> File.ls!()
+        |> Enum.flat_map(fn file ->
+          List.wrap(
+            if String.ends_with?(file, ".c") or String.ends_with?(file, ".cpp") do
+              Path.join(path, file)
+            end
+          )
         end)
-      end)
-    else
-      path
-    end)
+      else
+        path
+      end
+    )
   end
 end

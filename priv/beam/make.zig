@@ -1,7 +1,7 @@
 const beam = @import("beam.zig");
 const e = @import("erl_nif.zig");
 const std = @import("std");
-const resource = beam.resource;
+const resource = @import("resource.zig");
 
 const OutputType = enum {
     default,
@@ -271,7 +271,7 @@ pub fn make_manypointer(env: beam.env, manypointer: anytype, comptime opts: anyt
     }
 }
 
-pub fn make_cpointer(env: beam.env, cpointer: anytype, comptime opts: anytype) beam.term {
+fn make_cpointer(env: beam.env, cpointer: anytype, comptime opts: anytype) beam.term {
     const pointer = @typeInfo(@TypeOf(cpointer)).Pointer;
     const Child = pointer.child;
 
@@ -336,7 +336,7 @@ pub fn make_into_atom(env: beam.env, atom_string: []const u8) beam.term {
     return .{ .v = e.enif_make_atom_len(env, atom_string.ptr, atom_string.len) };
 }
 
-pub fn make_binary(env: beam.env, content: anytype) beam.term {
+fn make_binary(env: beam.env, content: anytype) beam.term {
     const T = @TypeOf(content);
     switch (@typeInfo(T)) {
         .Pointer => |P| {

@@ -25,16 +25,20 @@ defmodule Zigler.MixProject do
       dialyzer: [plt_add_deps: :transitive],
       preferred_cli_env: [dialyzer: :dev],
       source_url: "https://github.com/ityonemo/zigler/",
-      docs: [
-        main: "Zig",
-        extras: ["README.md", "guides/nifs.md", "guides/resources.md"],
-        groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
-        groups_for_modules: ["Under the hood": under_the_hood()],
-        zig_doc: [
-          beam: [file: "priv/beam/beam.zig"]
-        ]
-      ],
+      docs: docs(),
       aliases: [docs: "zig_doc"]
+    ]
+  end
+
+  defp docs do
+    [
+      main: "Zig",
+      extras: ["README.md", "guides/nifs.md", "guides/resources.md"],
+      groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
+      groups_for_modules: [
+        "Under the hood": under_the_hood()
+      ],
+      zig_doc: [beam: [file: "priv/beam/beam.zig"]]
     ]
   end
 
@@ -60,7 +64,7 @@ defmodule Zigler.MixProject do
   def deps do
     [
       # credo
-      {:credo, "~> 1.7.0", only: [:dev, :test], runtime: false},
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       # dialyzer
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       # to parse the zig JSON
@@ -69,8 +73,9 @@ defmodule Zigler.MixProject do
       # are pinned to zig versions
       {:zig_parser, "== 0.1.8"},
       # documentation
-      {:ex_doc, "~> 0.29.4", runtime: false},
-      {:zig_doc, "~> 0.1.2", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.30.0", runtime: false},
+      # "~> 0.1.2", only: :dev, runtime: false}
+      {:zig_doc, path: "../zig_doc", only: :dev, runtime: false}
     ]
   end
 end

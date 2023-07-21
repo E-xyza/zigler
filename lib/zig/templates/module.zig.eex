@@ -4,7 +4,6 @@ const nif = @import("nif");
 const Allocator = @import("std").mem.Allocator;
 const Resource = beam.Resource;
 const root = @This();
-const resource = beam.resource;
 const threads = beam.threads;
 
 <%= for nif <- @nifs do %>

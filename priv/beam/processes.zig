@@ -1,14 +1,25 @@
 const beam = @import("beam.zig");
 const e = @import("erl_nif.zig");
+const threads = @import("threads.zig");
 
 const PidError = error{ NotProcessBound, NotDelivered };
 
 pub fn self(env: beam.env) PidError!beam.pid {
     var pid: beam.pid = undefined;
-    if (e.enif_self(env, &pid)) |_| {
-        return pid;
-    } else {
-        return error.NotProcessBound;
+    switch (beam.context) {
+        .threaded => {
+            return threads.self_pid();
+        },
+        .callback => {
+            return error.NotProcessBound;
+        },
+        else => {
+            if (e.enif_self(env, &pid)) |_| {
+                return pid;
+            } else {
+                return error.NotProcessBound;
+            }
+        },
     }
 }
 

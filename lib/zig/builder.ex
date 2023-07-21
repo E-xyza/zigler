@@ -22,7 +22,7 @@ defmodule Zig.Builder do
       link_lib: opts[:link_lib],
       stage1: opts[:stage1],
       include_dir: opts[:include_dir],
-      c_src: opts[:c_src],
+      c_src: opts[:c_src]
     }
 
     build_file = build_zig(assigns)

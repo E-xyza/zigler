@@ -11,11 +11,9 @@ pub fn term_to_binary(env: beam.env, term: beam.term) !e.ErlNifBinary {
     return binary;
 }
 
-pub fn binary_to_term(env: beam.env, binary: []u8, opts: anytype) !beam.term {
-    const safe = if (@hasField(@TypeOf(opts), "safe")) opts.safe else false;
-    const fn_opt = if (safe) e.ERL_NIF_BIN2TERM_SAFE else 0;
+pub fn binary_to_term(env: beam.env, binary: []u8) !beam.term {
     var result: beam.term = undefined;
-    if (e.enif_binary_to_term(env, binary.ptr, binary.len, &result.v, fn_opt) == 0) return error.OutOfMemory;
+    if (e.enif_binary_to_term(env, binary.ptr, binary.len, &result.v, 0) == 0) return error.OutOfMemory;
     return result;
 }
 
