@@ -4,4 +4,6 @@ Logger.configure(level: :warning)
 # this is good for identifying segfaults.
 # Application.put_env(:zigler, :id_integration, true)
 
+ZiglerTest.MakeGuides.go()
+
 ExUnit.start()

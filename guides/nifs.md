@@ -4,12 +4,44 @@ Nifs are the entrypoint between your BEAM code and your C ABI code.
 Zigler provides semantics which are designed to make it easy to write
 safe NIF code with the safety, memory guarantees that Zig provides.
 
+## Prerequisites: `use Zig`
+
+Near the top of your module you should use the `use Zig` directive.  This
+will activate Zigler to seek zig code blocks and convert them to functions.
+You must provide the `otp_app` option, which enables Zigler to find
+a directory to place compilation artifacts (such as libraries) so that
+they can be shipped with releases.  By default, this will be `/priv/lib`.
+
+> ### compilation artifacts {: .warning }
+>
+> defaults for compilation artifacts may change in future versions of 
+> zigler.
+
+Note that we can ship zig code in *any* module in-place, so they will
+live alongside other functions or even other macro alterations you make
+to the module.  In this case, we'll build our code into a module that
+will be tested with ExUnit.
+
+```elixir
+defmodule NifGuideTest do
+  use Zig, otp_app: :zigler
+  use ExUnit.Case, async: true
+```
+
 ## Basic operation
+
+Once zigler has been activated for a module, write `~Z` code anywhere
+and this code will be assembled into a zig file that will be compiled
+into the nif artifact.  
+
+Then write your desired zig function Zigler will also mount functions 
+with the *same name* as the function in the body of the module.
+
+### Example: simple scalar values
 
 ```elixir
 ~Z"""
-/// nif: add_one/1
-fn add_one(input: i32) i32 {
+pub fn add_one(input: i32) i32 {
   return input + 1;
 }
 """
@@ -19,37 +51,37 @@ test "add one" do
 end
 ```
 
-simply define a zig `fn` with desired input/output parameters.  Zigler will
-generate a corresponding function in the surrounding Elixir module,
-and a mismatched value will raise a `FunctionClauseError`.  The
-following types are accepted as and outputs:
+Note that Zigler will automatically marshal input and output values
+across the nif boundary.  The following scalar types are accepted
+by zigler:
 
+- signed integer (`i0`..`i65535`), including non-power-of-two values
+- unsigned integer (`u0`..`u65535`), including non-power-of-two values
+- `usize`, `isize`, architecture-dependent size (roughly `size_t` and 
+  `ssize_t` in C)
+- `c_char`, `c_short`, `c_ushort`, `c_int`, `c_uint`, `c_ulong`, 
+  `c_longlong`, `c_ulonglong`, which are architecture-dependent
+  integer sizes mostly used for c interop.
+- floats `f16`, `f32`, and `f64`.
 - `bool`
-- `u8`
-- `u16`
-- `i32`
-- `u32`
-- `i64`
-- `u64`
-- `c_int` *
-- `c_uint` *
-- `c_long` *
-- `c_ulong` *
-- `isize`  *
-- `usize`
-- `beam.term`
-- `beam.pid`
 
-*only use these types to interface with C code and libraries.
+> #### Floating point datatypes {: .info }
+>
+> Floating point datatypes can take the atoms `:infinity`, 
+> `:neg_infinity`, and `:NaN`.
 
-Slices of all of the above, except `u8`, are also accepted (see below).
+> #### Boolean datatypes {: .info }
+>
+> You must pass boolean datatypes `true` or `false` atoms.
 
-### Example: Slices
+Zigler can also marshal list parameters into array, and array-like 
+datatypes:
+
+### Example: List-like datatypes
 
 ```elixir
 ~Z"""
-/// nif: sum/1
-fn sum(input: []f32) f32 {
+pub fn sum(input: []f32) f32 {
   var total: f32 = 0.0;
   for (input) | value | { total += value; }
   return total;
@@ -61,171 +93,48 @@ test "sum" do
 end
 ```
 
-### Example: Binaries
+The following list-like datatypes are allowed for parameters:
+- arrays `[3]T` for example.  Note the length is compile-time known.
+- slices `[]T`
+- pointers to arrays `*[3]T` for example.
+- multipointers `[*]T`
+- sentinel-terminated versions of all of the above.
+- cpointers `[*c]T`
 
-Binaries are marshalled into `u8` slices.
+### Example: List-like datatypes as binaries
+
+For all scalar child types, List-like datatypes may be passed as binaries,
+thus the following code works with no alteration:
 
 ```elixir
-~Z"""
-/// nif: capitalize/1
-fn capitalize(input: []u8) []u8 {
-  // note this is poorly bounds tested.
-  input[0] = input[0] - 32;
-  return input;
-}
-"""
-
-test "capitalize" do
-  assert "Foo" == capitalize("foo")
+test "sum, with binary input" do
+  assert 6.0 == sum(<<1.0 :: float-size(32)-native, 2.0 :: float-size(32)-native, 3.0 :: float-size(32)-native>>)
 end
 ```
 
-### Example: FunctionClauseError
+This also results in a natural interface for treating BEAM binaries as
+`u8` arrays or slices.
+
+#### Example: Marshalling errors
+
+Zigler will generate code that protects you from sending incompatible 
+datatypes to the desired function:
+
 ```elixir
 test "functionclauseerror" do
-  assert_raise FunctionClauseError, fn ->
-    capitalize(:atom)
+  assert_raise ArgumentError, """
+  errors were found at the given arguments:
+
+    * 1st argument: 
+  
+       expected: <<_::_ * 32>> | list(float | :infinity | :neg_infinity | :NaN) (for `[]f32`)
+       got: `:atom`
+  """, fn ->
+    sum(:atom)
   end
 end
 ```
 
-## Optional `beam.env` term
-
-In order to build complex terms to be consumed by the rest of the BEAM, you
-need to have access to the "environment" of the calling process.  In order
-to be provided this, you may request it as the first parameter to your
-zig function.  Play close attention to the arity of the nif declaration.
-
-
 ```elixir
-~Z"""
-/// nif: add_three/1
-fn add_three(env: beam.env, number: i32) beam.term {
-  return beam.make_ok_term(env, beam.make_i32(env, number + 3));
-}
-"""
-
-test "add_three" do
-  assert {:ok, 6} = add_three(3)
-end
-```
-
-## Allocation
-
-Use the [`beam.allocator`](beam.html#module-the-beam-allocator) to
-allocate memory when you need it.  The allocator conforms to the Zig allocator
-interface and importantly communicates allocations back to the BEAM for
-tracking.
-
-```elixir
-~Z"""
-// note: this function deliberately leaks memory!!
-
-/// nif: allocate_leak/0
-fn allocate_leak(env: beam.env) beam.term {
-  _ = beam.allocator.alloc(u8, 10_000_000)
-    catch return beam.raise_enomem(env);
-  return beam.make_ok(env);
-}
-"""
-
-test "allocate_leak" do
-  start_memory = :erlang.memory()[:total]
-  assert :ok == allocate_leak()
-  after_memory = :erlang.memory()[:total]
-
-  # evidence that we have leaked memory!
-  assert 8_000_000 < (after_memory - start_memory)
-end
-```
-
-## Yielding nifs
-
-If you want to launch your nif as a yielding, use the `yielding` attribute.
-This will allow the BEAM to schedule around the yield points.  This is the
-most desirable way of creating a long-running NIF (when it gets repaired).
-
-- it is safe to use the `beam.yield()` function in non-yielding functions.
-  you can thus write a yielding NIF function and then test the performance delta
-  with, for example dirty or threaded NIFs and decide if behaving correctly is
-  worth the performance cost.
-- if the running process is stopped by the VM, the nif will be caught by the
-  cleanup method and will return `beam.YieldError`.  You **must** catch this
-  error and return to allow the nif to be awaited.
-- future editions of this feature will let you forward the yield-error to the
-  cleanup method so you can use try instead of catch.
-
-```elixir
-~Z"""
-/// nif: yielding/0 yielding
-fn yielding(env: beam.env) beam.term {
-  var count: i32 = 0;
-
-  while (count < 10_000) {
-    //
-    // do some work here
-    //
-
-    // yield point
-    beam.yield() catch return beam.make_error(env);
-    count += 1;
-  }
-  return beam.make_ok(env);
-}
-"""
-
-test "yielding" do
-  assert :ok = yielding()
-end
-```
-
-## Threaded nifs
-
-If you want to launch your nif as threaded, use the `threaded` attribute.  Note that
-this a heavy handed operation that is inappropriate if you can do yielding or dirty
-nifs.  You should use this strategy if:
-
-- you are using 3rd party library code that can't take advantage of yielding nifs.
-- you may need to run more nifs concurrently than you have dirty schedulers
-- you don't mind the overhead of spinning up an OS thread.
-
-```elixir
-~Z"""
-/// nif: threaded/0 threaded
-fn threaded(env: beam.env) beam.term {
-  std.time.sleep(10_000_000);
-
-  return beam.make_ok(env);
-}
-"""
-
-test "threaded" do
-  assert :ok == threaded()
-end
-```
-
-## Dirty nifs
-
-If you want to launch your nif as a dirty, use the `dirty_cpu` or `dirty_io` attributes.
-Note that by default, your vm will only have a limited number of dirty schedulers
-available and launching the nif may fail if all of them are occupied.  You should use
-this strategy if:
-
-- you are using 3rd party library code that can't take advantage of yielding nifs.
-- you don't mind that dirty_cpu jobs will be queued by the system if there the request
-  rate exceeds availability.
-
-```elixir
-~Z"""
-/// nif: dirty_cpu/0 dirty_cpu
-fn dirty_cpu(env: beam.env) beam.term {
-  std.time.sleep(10_000_000);
-
-  return beam.make_ok(env);
-}
-"""
-
-test "dirty_cpu" do
-  assert :ok == dirty_cpu()
-end
+end # this section needed to end the module
 ```

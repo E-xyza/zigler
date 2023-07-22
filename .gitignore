@@ -35,6 +35,9 @@ zigler-*.tar
 /priv/lib/
 /priv/bin/
 
+# test files for guides
+/test/guides/*.exs
+
 # module zig files
 .Elixir.*.zig
 .erlang*.zig
