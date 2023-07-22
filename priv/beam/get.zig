@@ -653,10 +653,16 @@ fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term, opts
             }
         },
         .bitstring => {
-            if (struct_info.layout == .Packed) {
-                @compileError("not implemented yet");
-            } else {
-                return GetError.argument_error;
+            switch (struct_info.layout) {
+                .Packed, .Extern => {
+                    const B = *[@sizeOf(T)] u8;
+                    const bits = @ptrCast(B, result);
+                    const serial = try get(B, env, src, opts);
+                    std.mem.copy(u8, bits[0..], serial[0..]);
+                    return;
+                },
+                else =>
+                    return GetError.argument_error,
             }
         },
         else => return GetError.argument_error,

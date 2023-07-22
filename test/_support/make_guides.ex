@@ -6,7 +6,12 @@ defmodule ZiglerTest.MakeGuides do
     |> File.ls!()
     |> Enum.each(fn filename ->
       if String.ends_with?(filename, ".md") do
-        basename = Path.basename(filename, ".md")
+        basename =
+          filename
+          |> Path.basename(".md")
+          |> String.split("-")
+          |> Enum.at(1)
+
         dest_filename = String.replace_suffix(basename, "", "_test.exs")
 
         dest_stream =

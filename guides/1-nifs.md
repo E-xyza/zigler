@@ -63,7 +63,7 @@ by zigler:
   `c_longlong`, `c_ulonglong`, which are architecture-dependent
   integer sizes mostly used for c interop.
 - floats `f16`, `f32`, and `f64`.
-- `bool`
+- `bool` (use the atoms `true` or `false` exclusively)
 
 > #### Floating point datatypes {: .info }
 >
@@ -77,7 +77,7 @@ by zigler:
 Zigler can also marshal list parameters into array, and array-like 
 datatypes:
 
-### Example: List-like datatypes
+### Example: Array-like datatypes
 
 ```elixir
 ~Z"""
@@ -93,7 +93,7 @@ test "sum" do
 end
 ```
 
-The following list-like datatypes are allowed for parameters:
+The following array-like datatypes are allowed for parameters:
 - arrays `[3]T` (for example).  Note the length is compile-time known.
 - slices `[]T`
 - pointers to arrays `*[3]T` (for example).
@@ -101,9 +101,9 @@ The following list-like datatypes are allowed for parameters:
 - sentinel-terminated versions of all of the above.
 - cpointers `[*c]T`
 
-### Example: List-like datatypes as binaries
+### Example: Array-like datatypes as binaries
 
-For all scalar child types, List-like datatypes may be passed as binaries,
+For all scalar child types, Array-like datatypes may be passed as binaries,
 thus the following code works with no alteration:
 
 ```elixir

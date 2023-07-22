@@ -34,7 +34,7 @@ defmodule Zigler.MixProject do
     [
       main: "Zig",
       # , "guides/resources.md"],
-      extras: ["README.md", "guides/nifs.md"],
+      extras: ["README.md" | guides()],
       groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
       groups_for_modules: [
         "Compilation Steps": compilation_steps(),
@@ -45,6 +45,13 @@ defmodule Zigler.MixProject do
       ],
       zig_doc: [beam: [file: "priv/beam/beam.zig"]]
     ]
+  end
+
+  defp guides do
+    "guides"
+    |> File.ls!()
+    |> Enum.filter(&String.ends_with?(&1, ".md"))
+    |> Enum.map(&Path.join("guides", &1))
   end
 
   defp compilation_steps do

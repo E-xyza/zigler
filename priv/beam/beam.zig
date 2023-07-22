@@ -385,7 +385,7 @@ pub const get = get_.get;
 /// - this type is necessary for recursive make operations
 /// 
 /// ### `void`
-/// - returns nothing, effectively a noop
+/// - returns atom `:ok`
 /// - supporting this type makes metaprogramming easier.
 /// 
 /// ### [`pid`](#pid)
