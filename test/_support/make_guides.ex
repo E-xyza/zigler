@@ -50,7 +50,7 @@ defmodule ZiglerTest.MakeGuides do
   defp header(module) do
     """
     defmodule #{module} do
-      use ExUnit.Case, async: true
+      use ExUnit.Case
       use Zig, otp_app: :zigler
     """
   end

@@ -943,7 +943,7 @@ pub const general_purpose_allocator = allocator_.general_purpose_allocator;
 /// wraps [`e.enif_alloc`](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc) 
 /// and [`e.enif_free`](https://www.erlang.org/doc/man/erl_nif.html#enif_free) 
 /// into the zig standard library allocator interface.
-pub const raw_beam_allocator = allocator_.raw_beam_allocator;
+pub const raw_allocator = allocator_.raw_allocator;
 
 /// stores the allocator strategy for the currently running nif.
 /// 

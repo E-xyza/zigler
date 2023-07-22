@@ -1,7 +1,5 @@
 # Collection Datatypes
 
-Collection datatype parameters and returns have more specific detail.
-
 ## Returning array-like datatypes
 
 For array-like datatypes, we saw in [Using Nifs](1-nifs.html#example-array-like-datatypes) 

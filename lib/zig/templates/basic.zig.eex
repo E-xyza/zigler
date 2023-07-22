@@ -11,7 +11,7 @@ fn <%= @type.name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) 
     // set the threadlocal beam.allocator
     beam.allocator = gpa.allocator();
     <% else %>
-    beam.allocator = beam.raw_beam_allocator;
+    beam.allocator = beam.raw_allocator;
     <% end %>
 
     const outer_result = get_result: {

@@ -9,7 +9,7 @@ const Allocator = std.mem.Allocator;
 
 pub const MAX_ALIGN = 8;
 
-pub const raw_beam_allocator = Allocator{
+pub const raw_allocator = Allocator{
     .ptr = undefined,
     .vtable = &raw_beam_allocator_vtable,
 };
@@ -104,7 +104,7 @@ fn large_beam_free(_: *anyopaque, buf: []u8, buf_align: u29, _: usize) void {
 
 fn alignedAlloc(len: usize, alignment: u29, _: u29, _: usize) ![*]u8 {
   var safe_len = safeLen(len, alignment);
-  var alloc_slice: []u8 = try raw_beam_allocator.allocAdvanced(u8, MAX_ALIGN, safe_len, std.mem.Allocator.Exact.exact);
+  var alloc_slice: []u8 = try raw_allocator.allocAdvanced(u8, MAX_ALIGN, safe_len, std.mem.Allocator.Exact.exact);
 
   const unaligned_addr = @ptrToInt(alloc_slice.ptr);
   const aligned_addr = reAlign(unaligned_addr, alignment);
@@ -115,7 +115,7 @@ fn alignedAlloc(len: usize, alignment: u29, _: u29, _: usize) ![*]u8 {
 
 fn alignedFree(buf: []u8, alignment: u29) usize {
   var ptr = getPtrPtr(buf.ptr).*;
-  raw_beam_allocator.free(@intToPtr([*]u8, ptr)[0..safeLen(buf.len, alignment)]);
+  raw_allocator.free(@intToPtr([*]u8, ptr)[0..safeLen(buf.len, alignment)]);
   return 0;
 }
 
