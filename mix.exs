@@ -33,7 +33,8 @@ defmodule Zigler.MixProject do
   defp docs do
     [
       main: "Zig",
-      extras: ["README.md", "guides/nifs.md", "guides/resources.md"],
+      # , "guides/resources.md"],
+      extras: ["README.md", "guides/nifs.md"],
       groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
       groups_for_modules: [
         "Compilation Steps": compilation_steps(),

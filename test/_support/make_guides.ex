@@ -1,28 +1,25 @@
 defmodule ZiglerTest.MakeGuides do
-
-  defstruct lines: [], on: false
+  defstruct lines: [], on: false, needs_module: true, top: []
 
   def go do
     "guides"
-    |> File.ls!
+    |> File.ls!()
     |> Enum.each(fn filename ->
       if String.ends_with?(filename, ".md") do
+        basename = Path.basename(filename, ".md")
+        dest_filename = String.replace_suffix(basename, "", "_test.exs")
 
-      dest_filename = filename
-      |> Path.basename(".md")
-      |> String.replace_suffix("", "_test.exs")
+        dest_stream =
+          "test/guides"
+          |> Path.join(dest_filename)
+          |> File.stream!([])
 
-      dest_stream = "test/guides"
-      |> Path.join(dest_filename)
-      |> File.stream!([])
-
-      "guides"
-      |> Path.join(filename)
-      |> File.stream!([], :line)
-      |> Enum.reduce(%__MODULE__{}, &collect_sections/2)
-      |> Map.get(:lines)
-      |> Enum.reverse
-      |> Enum.into(dest_stream)
+        "guides"
+        |> Path.join(filename)
+        |> File.stream!([], :line)
+        |> Enum.reduce(%__MODULE__{needs_module: module(basename)}, &collect_sections/2)
+        |> prepare
+        |> Enum.into(dest_stream)
       end
     end)
   end
@@ -35,7 +32,23 @@ defmodule ZiglerTest.MakeGuides do
     if String.trim(line) == "```" do
       %{acc | on: false}
     else
-      %{acc | lines: [line | acc.lines]}
+      %{acc | lines: [line | acc.lines], needs_module: !(line =~ "defmodule") && acc.needs_module}
     end
   end
+
+  defp prepare(%{lines: lines, needs_module: false}), do: Enum.reverse(lines, ["end\n"])
+
+  defp prepare(%{lines: lines, needs_module: module}) do
+    [header(module) | Enum.reverse(lines, ["end\n"])]
+  end
+
+  defp header(module) do
+    """
+    defmodule #{module} do
+      use ExUnit.Case, async: true
+      use Zig, otp_app: :zigler
+    """
+  end
+
+  defp module(filename), do: "ZiglerTest.#{Macro.camelize(filename)}Test"
 end

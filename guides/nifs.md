@@ -4,7 +4,7 @@ Nifs are the entrypoint between your BEAM code and your C ABI code.
 Zigler provides semantics which are designed to make it easy to write
 safe NIF code with the safety, memory guarantees that Zig provides.
 
-## Prerequisites: `use Zig`
+## Preamble
 
 Near the top of your module you should use the `use Zig` directive.  This
 will activate Zigler to seek zig code blocks and convert them to functions.
@@ -28,7 +28,7 @@ defmodule NifGuideTest do
   use ExUnit.Case, async: true
 ```
 
-## Basic operation
+## Basic function writing
 
 Once zigler has been activated for a module, write `~Z` code anywhere
 and this code will be assembled into a zig file that will be compiled
@@ -94,9 +94,9 @@ end
 ```
 
 The following list-like datatypes are allowed for parameters:
-- arrays `[3]T` for example.  Note the length is compile-time known.
+- arrays `[3]T` (for example).  Note the length is compile-time known.
 - slices `[]T`
-- pointers to arrays `*[3]T` for example.
+- pointers to arrays `*[3]T` (for example).
 - multipointers `[*]T`
 - sentinel-terminated versions of all of the above.
 - cpointers `[*c]T`
@@ -115,13 +115,13 @@ end
 This also results in a natural interface for treating BEAM binaries as
 `u8` arrays or slices.
 
-#### Example: Marshalling errors
+### Example: Marshalling errors
 
 Zigler will generate code that protects you from sending incompatible 
 datatypes to the desired function:
 
 ```elixir
-test "functionclauseerror" do
+test "marshalling error" do
   assert_raise ArgumentError, """
   errors were found at the given arguments:
 
@@ -135,6 +135,44 @@ test "functionclauseerror" do
 end
 ```
 
+For more on marshalling collection datatypes, see [`collections`](collections.html).
+
+## Marshalling types manually
+
+You may also manually marshal types into and out of the beam by using the
+[`beam.term`](beam.html#term) datatype.  To do so, you must first import 
+the [`beam`](beam.html) package.  The `beam.term` type is an opaque, wrapped 
+datatype that ensures safe manipulation of terms as a token in your zig code.
+
+You will also need [`beam.env`](beam.html#env) environment variable to reference
+the execution environmet of your nif, to box and unbox data from the beam terms.
+
 ```elixir
-end # this section needed to end the module
+~Z"""
+const beam = @import("beam");
+
+pub fn manual_addone(env: beam.env, value_term: beam.term) !beam.term {
+    const value = try beam.get(i32, env, value_term, .{});
+    return beam.make(env, value + 1, .{});
+}
+"""
+
+test "manual marshalling" do
+  assert 48 == manual_addone(47)
+end
 ```
+
+### A few notes on the above code.
+
+- to marshal a value out of a `beam.term` and into a zig static type,
+  use [`beam.get`](beam.html#get).  This is a failable function, and in
+  this case we hoist the failure in the function return.
+- to marshal a value into a `beam.term` from a zig static type, use
+  [`beam.make`](beam.html#make).  This function *does not fail*.
+- for more information on the final options parameter of `get` and
+  `make`, see their respective documentation.
+- zigler will translate the hoisted marshalling failures into BEAM 
+  exceptions.
+- zigler automatically ignores the `beam.env` parameter in the first
+  position, and assigns the correct arity (1).  Compilation will
+  fail if a `beam.env` parameter is present in any other location.
