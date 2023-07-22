@@ -20,7 +20,7 @@ const raw_beam_allocator_vtable = Allocator.VTable{
     .free = raw_beam_free,
 };
 
-var general_purpose_allocator_instance = make_general_purpose_allocator_instance();
+pub var general_purpose_allocator_instance = make_general_purpose_allocator_instance();
 pub const general_purpose_allocator = general_purpose_allocator_instance.allocator();
 
 fn raw_beam_alloc(

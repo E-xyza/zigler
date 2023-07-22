@@ -918,7 +918,8 @@ const zigler_options = @import("zigler_options");
 ///////////////////////////////////////////////////////////////////////////////
 // allocators
 
-const allocator_ = @import("allocator.zig");
+/// <!-- ignore -->
+pub const allocator_ = @import("allocator.zig");
 
 pub const make_general_purpose_allocator_instance = allocator_.make_general_purpose_allocator_instance;
 
