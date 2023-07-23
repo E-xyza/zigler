@@ -8,10 +8,10 @@ defmodule ZiglerTest.Raw.ZigCallTest do
     ]
 
   # Note "raw" calls can't be called in managed threaded or yielding mode.
+  # TODO: put warnings on this
 
   ~Z"""
   const beam = @import("beam");
-  const e = @import("erl_nif");
 
   pub fn raw_call_erl_nif_term(env: beam.env, count: c_int, list: [*]const beam.term) beam.term {
     return beam.make(env, .{.count = count, .item = list[0]}, .{});

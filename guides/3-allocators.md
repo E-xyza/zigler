@@ -41,8 +41,8 @@ end
 > because the raw allocator directly wraps the beam allocator, according to
 > the documentation:
 >
-> > The returned pointer is suitably aligned for any built-in type that 
-> > fit (sic) in the allocated memory.
+> The returned pointer is suitably aligned for any built-in type that 
+> fit (sic) in the allocated memory.
 >
 > attempting to allocate memory aligned to a larger size (e.g. page-aligned 
 > allocation) will fail using this allocator.
@@ -134,7 +134,9 @@ pub fn leaks() !bool {
     const memory = try beam.general_purpose_allocator.alloc(u8, 8);
     defer beam.general_purpose_allocator.free(memory);
 
-    // note that we haven't freed it yet, that happens after deferral.
+    // note that we haven't freed it yet, that happens on deferral,
+    // which lands after the return call.
+
     return beam.allocator_.general_purpose_allocator_instance.detectLeaks();
 }
 
@@ -175,7 +177,7 @@ test "leak checks with allocator" do
 end
 ```
 
-> ### Raw nifs
+> ### Raw nifs {: .warning }
 >
 > For raw nifs, `beam.allocator` is not set, and may retain a value from an
 > arbitrary previous nif invocation.  Consider usage of `beam.allocator` in a

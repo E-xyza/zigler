@@ -28,7 +28,7 @@ defmodule ZiglerTest.Unit.Typespec.RawTest do
                  ],
                  return: :term
                },
-               raw: :zig
+               raw: :beam
              ) == result
     end
   end

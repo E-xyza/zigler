@@ -32,7 +32,7 @@ defmodule Zig.Nif do
           export: boolean,
           concurrency: Synchronous | Threaded | Yielding | DirtyCpu | DirtyIo,
           type: Function.t(),
-          raw: nil | :zig | :c,
+          raw: nil | :beam | :erl_nif | :c,
           args: [keyword],
           return: keyword,
           leak_check: boolean(),
@@ -84,7 +84,7 @@ defmodule Zig.Nif do
       export: Keyword.fetch!(opts, :export),
       concurrency: Map.get(@concurrency_modules, Keyword.fetch!(opts, :concurrency)),
       type: opts[:type],
-      raw: extract_raw(opts[:raw]),
+      raw: extract_raw(opts[:raw], opts[:type]),
       args: opts[:args],
       return: opts[:return],
       leak_check: opts[:leak_check],
@@ -94,11 +94,12 @@ defmodule Zig.Nif do
     }
   end
 
-  defp extract_raw(raw_opt) do
-    case raw_opt do
-      nil -> nil
-      {:c, arity} when is_integer(arity) -> :c
-      arity when is_integer(arity) -> :zig
+  defp extract_raw(raw_opt, %{return: return}) do
+    case {raw_opt, return} do
+      {nil, _} -> nil
+      {{:c, arity}, _} when is_integer(arity) -> :c
+      {arity, :term} when is_integer(arity) -> :beam
+      {arity, :erl_nif_term} when is_integer(arity) -> :erl_nif
     end
   end
 

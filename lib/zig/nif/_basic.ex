@@ -200,10 +200,16 @@ defmodule Zig.Nif.Basic do
   basic = Path.join(__DIR__, "../templates/basic.zig.eex")
   EEx.function_from_file(:defp, :basic, basic, [:assigns])
 
-  basic_raw_zig = Path.join(__DIR__, "../templates/basic_raw_zig.eex")
-  EEx.function_from_file(:defp, :basic_raw_zig, basic_raw_zig, [:assigns])
+  raw_beam = Path.join(__DIR__, "../templates/raw_beam.zig.eex")
+  EEx.function_from_file(:defp, :raw_beam, raw_beam, [:assigns])
 
-  def render_zig(%{raw: :zig} = nif), do: basic_raw_zig(nif)
+  raw_erl_nif = Path.join(__DIR__, "../templates/raw_erl_nif.zig.eex")
+  EEx.function_from_file(:defp, :raw_erl_nif, raw_erl_nif, [:assigns])
+
+  def render_zig(%{raw: :beam} = nif), do: raw_beam(nif)
+
+  def render_zig(%{raw: :erl_nif} = nif), do: raw_erl_nif(nif)
+
   # note a raw "c" function does not need to have any changes made.
   def render_zig(%{raw: :c}), do: ""
   def render_zig(nif), do: basic(nif)

@@ -41,7 +41,11 @@ defmodule ZiglerTest.MakeGuides do
     end
   end
 
-  defp prepare(%{lines: lines, needs_module: false}), do: Enum.reverse(lines, ["end\n"])
+  defp prepare(%{lines: [head | _] = lines, needs_module: false}) do
+    tail = if head =~ "#", do: [], else: ["end\n"]
+
+    Enum.reverse(lines, tail)
+  end
 
   defp prepare(%{lines: lines, needs_module: module}) do
     [header(module) | Enum.reverse(lines, ["end\n"])]

@@ -3,9 +3,10 @@ defmodule Zig.Sema do
   alias Zig.Manifest
   alias Zig.Type
   alias Zig.Type.Function
+  alias Zig.Type.Manypointer
   alias Zig.Type.Struct
 
-  @spec analyze_file!(module :: module, opts :: keyword) :: keyword
+  @spec analyze_file!(module :: map, opts :: keyword) :: keyword
   # updates the per-function options to include the semantically understood type
   # information.  Also strips "auto" from the nif information to provide a finalized
   # keyword list of functions with their options.
@@ -64,14 +65,16 @@ defmodule Zig.Sema do
   end
 
   defp adjust_raw(function, opts) do
-    case opts[:raw] do
-      nil ->
+    case {function, opts[:raw]} do
+      {_, nil} ->
         function
 
-      integer when is_integer(integer) ->
-        %{function | params: List.duplicate(:term, integer), arity: integer}
+      # use this to identify that the function is a raw call.  `child` could be
+      # either :term or :erl_nif_term.
+      {%{params: [:env, _, %Manypointer{child: child}]}, integer} when is_integer(integer) ->
+        %{function | params: List.duplicate(child, integer), arity: integer}
 
-      {:c, integer} when is_integer(integer) ->
+      {_, {:c, integer}} when is_integer(integer) ->
         %{function | params: List.duplicate(:erl_nif_term, integer), arity: integer}
     end
   end
