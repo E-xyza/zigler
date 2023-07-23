@@ -1,26 +1,26 @@
 # Using Nifs
 
-Nifs are the entrypoint between your BEAM code and your C ABI code.
-Zigler provides semantics which are designed to make it easy to write
-safe NIF code with the safety, memory guarantees that Zig provides.
+Nifs are the entrypoint between your BEAM code and your C ABI code.  Zigler 
+provides semantics which are designed to make it easy to write safe NIF code 
+with the safety, memory guarantees that Zig provides.
 
 ## Preamble
 
-Near the top of your module you should use the `use Zig` directive.  This
-will activate Zigler to seek zig code blocks and convert them to functions.
-You must provide the `otp_app` option, which enables Zigler to find
-a directory to place compilation artifacts (such as libraries) so that
-they can be shipped with releases.  By default, this will be `/priv/lib`.
+Near the top of your module you should use the `use Zig` directive.  This will 
+activate Zigler to seek zig code blocks and convert them to functions.  You 
+must provide the `otp_app` option, which enables Zigler to find a directory to 
+place compilation artifacts (such as libraries) so that they can be shipped 
+with releases.  By default, this will be `/priv/lib`.
 
 > ### compilation artifacts {: .warning }
 >
 > defaults for compilation artifacts may change in future versions of 
 > zigler.
 
-Note that we can ship zig code in *any* module in-place, so they will
-live alongside other functions or even other macro alterations you make
-to the module.  In this case, we'll build our code into a module that
-will be tested with ExUnit.
+Note that we can ship zig code in *any* module in-place, so they will live 
+alongside other functions or even other macro alterations you make to the 
+module.  In this case, we'll build our code into a module that will be tested 
+with ExUnit.
 
 ```elixir
 defmodule NifGuideTest do
@@ -30,12 +30,12 @@ defmodule NifGuideTest do
 
 ## Basic function writing
 
-Once zigler has been activated for a module, write `~Z` code anywhere
-and this code will be assembled into a zig file that will be compiled
-into the nif artifact.  
+Once zigler has been activated for a module, write `~Z` code anywhere and this 
+code will be assembled into a zig file that will be compiled into the nif 
+artifact.  
 
-Then write your desired zig function Zigler will also mount functions 
-with the *same name* as the function in the body of the module.
+Then write your desired zig function Zigler will also mount functions with the 
+*same name* as the function in the body of the module.
 
 ### Example: simple scalar values
 
@@ -51,9 +51,8 @@ test "add one" do
 end
 ```
 
-Note that Zigler will automatically marshal input and output values
-across the nif boundary.  The following scalar types are accepted
-by zigler:
+Note that Zigler will automatically marshal input and output values across the 
+nif boundary.  The following scalar types are accepted by zigler:
 
 - signed integer (`i0`..`i65535`), including non-power-of-two values
 - unsigned integer (`u0`..`u65535`), including non-power-of-two values
@@ -112,8 +111,8 @@ test "sum, with binary input" do
 end
 ```
 
-This also results in a natural interface for treating BEAM binaries as
-`u8` arrays or slices.
+This also results in a natural interface for treating BEAM binaries as `u8` 
+arrays or slices.
 
 ### Example: Marshalling errors
 

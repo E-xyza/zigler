@@ -50,6 +50,7 @@ defmodule Zigler.MixProject do
   defp guides do
     "guides"
     |> File.ls!()
+    |> Enum.sort()
     |> Enum.filter(&String.ends_with?(&1, ".md"))
     |> Enum.map(&Path.join("guides", &1))
   end

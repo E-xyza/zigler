@@ -17,12 +17,12 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
 
   pub const StringResourceCallbacks = struct {
       pub fn dtor(_: beam.env, pid: *[]u8) void {
-          beam.allocator.free(pid.*);
+          beam.raw_beam_allocator.free(pid.*);
       }
   };
 
   pub fn output_auto(src_string: []u8) StringResource {
-      const new_string = beam.allocator.alloc(u8, src_string.len) catch unreachable;
+      const new_string = beam.raw_beam_allocator.alloc(u8, src_string.len) catch unreachable;
       std.mem.copy(u8, new_string, src_string);
       return StringResource.create(new_string, .{}) catch unreachable;
   }
@@ -30,7 +30,7 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
   pub const OutputModes = enum {binary, reference, static};
 
   pub fn output_manual(env: beam.env, src_string: []u8, mode: OutputModes) beam.term {
-      const new_string = beam.allocator.alloc(u8, src_string.len) catch unreachable;
+      const new_string = beam.raw_beam_allocator.alloc(u8, src_string.len) catch unreachable;
       std.mem.copy(u8, new_string, src_string);
       const resource = StringResource.create(new_string, .{}) catch unreachable;
       return switch (mode) {
@@ -41,7 +41,7 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
   }
 
   pub fn output_as_binary(src_string: []u8) StringResource {
-    const new_string = beam.allocator.alloc(u8, src_string.len) catch unreachable;
+    const new_string = beam.raw_beam_allocator.alloc(u8, src_string.len) catch unreachable;
 
     std.mem.copy(u8, new_string, src_string);
 

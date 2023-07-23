@@ -22,7 +22,7 @@ defmodule ZiglerTest.Concurrency.ThreadedMoreManualTest do
         var rres_ptr: ?*anyopaque = undefined;
         _ = e.enif_thread_join(thread_ptr.tid, &rres_ptr);
         beam.free_env(thread_ptr.env);
-        beam.allocator.destroy(thread_ptr);
+        beam.raw_beam_allocator.destroy(thread_ptr);
       }
     }
   });
@@ -52,8 +52,8 @@ defmodule ZiglerTest.Concurrency.ThreadedMoreManualTest do
   }
 
   pub fn launch(env: beam.env, pid: beam.pid) !beam.term {
-    const threadptr = try beam.allocator.create(Thread);
-    errdefer beam.allocator.destroy(threadptr);
+    const threadptr = try beam.raw_beam_allocator.create(Thread);
+    errdefer beam.raw_beam_allocator.destroy(threadptr);
 
     const resource = ThreadResource.create(threadptr, .{}) catch unreachable;
     const res_term = beam.make(env, resource, .{});

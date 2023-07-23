@@ -269,15 +269,22 @@ pub fn get_resource(comptime T: type, env: beam.env, src: beam.term, opts: anyty
     errdefer error_expected(T, env, opts);
     errdefer error_got(env, opts, src);
 
+    // make sure it's a reference type
+    if (src.term_type(env) != .ref) {
+        return GetError.argument_error;
+    }
+
     var res: T = undefined;
-    const result = res.get(env, src, opts);
+    res.get(env, src, opts) catch {
+        error_line(env, opts, .{"note: the reference passed is not associated with a resource of the correct type"});
+        return GetError.argument_error;
+    };
 
     // by default, we keep the resource.
     if (should_keep(opts)) {
         res.keep();
     }
 
-    if (result == 0) return GetError.argument_error;
     return res;
 }
 

@@ -7,7 +7,6 @@ defmodule Zig.Command do
   """
 
   alias Zig.Assembler
-  alias Zig.Target
 
   require Logger
 

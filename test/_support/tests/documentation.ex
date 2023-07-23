@@ -15,6 +15,4 @@ defmodule ZiglerTest.Documentation do
       return term;
   }
   """
-
-  def eee, do: :ok
 end

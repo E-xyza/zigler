@@ -27,6 +27,8 @@ const OutputType = enum {
     }
 };
 
+const ResourceError = error{incorrect_resource_type};
+
 pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOpts) type {
     return struct {
         __payload: *T,
@@ -127,13 +129,14 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         // and make.zig modules.  They are not intended to be called directly
         // by end user.
 
-        pub fn get(self: *@This(), env: beam.env, src: beam.term, get_opts: anytype) c_int {
+        pub fn get(self: *@This(), env: beam.env, src: beam.term, get_opts: anytype) !void {
             if (@hasField(@TypeOf(get_opts), "released")) {
                 self.__should_release = get_opts.released;
             }
 
             const resource_target = @ptrCast(?*?*anyopaque, &self.__payload);
-            return e.enif_get_resource(env, src.v, self.resource_type(), resource_target);
+            if (e.enif_get_resource(env, src.v, self.resource_type(), resource_target) == 0)
+                return error.incorrect_resource_type;
         }
 
         pub fn make(self: @This(), env: beam.env, comptime make_opts: anytype) beam.term {

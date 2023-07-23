@@ -98,8 +98,10 @@ pub fn Thread(comptime function: anytype) type {
             };
 
             // initialize the thread struct
-            const threadptr = try beam.allocator.create(This);
-            errdefer beam.allocator.destroy(threadptr);
+            // this needs to be raw_beam_allocator because it will be cleared by the
+            // callback function, and the beam.allocator is undefined in that context.
+            const threadptr = try beam.raw_beam_allocator.create(This);
+            errdefer beam.raw_beam_allocator.destroy(threadptr);
 
             threadptr.* = .{ .env = thread_env, .pid = try beam.self(env), .payload = payload, .allocator = allocator, .result = try allocator.create(Result) };
 
@@ -292,7 +294,10 @@ pub fn Thread(comptime function: anytype) type {
             }
             beam.release_binary(&self.refbin);
             beam.free_env(self.env);
-            self.allocator.destroy(self);
+
+            // note that we allocated the thread pointer with raw_beam_allocator,
+            // so we must destroy it with the same allocator.
+            beam.raw_beam_allocator.destroy(self);
         }
     };
 }
