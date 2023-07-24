@@ -22,7 +22,8 @@ defmodule Zig.Builder do
       link_lib: opts[:link_lib],
       stage1: opts[:stage1],
       include_dir: opts[:include_dir],
-      c_src: opts[:c_src]
+      c_src: opts[:c_src],
+      packages: make_packages(opts)
     }
 
     build_file = build_zig(assigns)
@@ -33,5 +34,13 @@ defmodule Zig.Builder do
     Command.fmt(build_zig_path)
 
     Logger.debug("wrote build.zig to #{build_zig_path}")
+  end
+
+  defp make_packages(opts) do
+    List.wrap(if packages = opts[:packages] do
+      Enum.map(packages, fn {name, {path, deps}} ->
+        {name, Path.absname(path), Enum.map_join(deps, ", ", &"#{&1}_pkg")}
+      end)
+    end)
   end
 end

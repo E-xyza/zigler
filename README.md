@@ -52,10 +52,9 @@ This is now possible, using the magic of Zig.
 
 ```elixir
 defmodule ExampleZig do
-  use Zig
+  use Zig, otp_app: :zigler
   ~Z"""
-  /// nif: example_fun/2
-  fn example_fun(value1: f64, value2: f64) bool {
+  pub fn example_fun(value1: f64, value2: f64) bool {
     return value1 > value2;
   }
   """
@@ -72,15 +71,13 @@ It will also convert trickier types into types you care about, for example:
 
 ```elixir
 defmodule ZigCollections do
-  use Zig
+  use Zig, otp_app: :zigler
   ~Z"""
-  /// nif: string_count/1
-  fn string_count(string: []u8) i64 {
+  pub fn string_count(string: []u8) i64 {
     return @intCast(i64, string.len);
   }
 
-  /// nif: list_sum/1
-  fn list_sum(array: []f64) f64 {
+  pub fn list_sum(array: []f64) f64 {
     var sum: f64 = 0.0;
     for(array) | item | {
       sum += item;
@@ -101,10 +98,9 @@ so any zig code you import will play nice with the BEAM.
 
 ```elixir
 defmodule Allocations do
-  use Zig
+  use Zig, otp_app: :zigler
   ~Z"""
-  /// nif: double_atom/1
-  fn double_atom(env: beam.env, string: []u8) beam.term {
+  pub fn double_atom(env: beam.env, string: []u8) beam.term {
     var double_string = beam.allocator.alloc(u8, string.len * 2) catch {
       return beam.raise_enomem(env);
     };
@@ -130,34 +126,32 @@ It is a goal for Zigler to make using *it* to bind C libraries easier
 than using C to bind C libraries.  Here is an example:
 
 ```elixir
-defmodule BlasDynamic do
-  use Zig,     libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
-    include: ["/usr/include/x86_64-linux-gnu"],
-    link_libc: true
+defmodule Blas do
+  use Zig,     
+    otp_app: :zigler
+    link_lib: {:system, "blas"},
 
   ~Z"""
+  const beam = @import("beam");
   const blas = @cImport({
     @cInclude("cblas.h");
   });
 
-  /// nif: blas_axpy/3
-  fn blas_axpy(env: beam.env, a: f64, x: []f64, y: []f64) beam.term {
+  pub fn blas_axpy(env: beam.env, a: f64, x: []f64, y: []f64) beam.term {
     if (x.len != y.len) {
       return beam.raise_function_clause_error(env);
     }
 
     blas.cblas_daxpy(@intCast(c_int, x.len), a, x.ptr, 1, y.ptr, 1);
 
-    return beam.make_f64_list(env, y) catch {
-      return beam.raise_function_clause_error(env);
-    };
+    return y;
   }
   """
 end
 
 test "we can use a blas shared library" do
   # returns aX+Y
-  assert [11.0, 18.0] == BlasDynamic.blas_axpy(3.0, [2.0, 4.0], [5.0, 6.0])
+  assert [11.0, 18.0] == Blas.blas_axpy(3.0, [2.0, 4.0], [5.0, 6.0])
 end
 ```
 
@@ -171,11 +165,10 @@ Example:
 
 ```elixir
 defmodule Documentation do
-  use Zig
+  use Zig, otp_app: :zigler
   ~Z"""
   /// a zero-arity function which returns 47.
-  /// nif: zero_arity/0
-  fn zero_arity() i64 {
+  pub fn zero_arity() i64 {
     return 47;
   }
   """

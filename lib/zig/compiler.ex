@@ -65,7 +65,7 @@ defmodule Zig.Compiler do
 
     with true <- assembled,
          assemble_opts =
-           Keyword.take(opts, [:link_lib, :build_opts, :stage1, :include_dir, :c_src]),
+           Keyword.take(opts, [:link_lib, :build_opts, :stage1, :include_dir, :c_src, :packages]),
          assemble_opts = Keyword.merge(assemble_opts, from: code_dir),
          Assembler.assemble(module, assemble_opts),
          true <- precompiled,

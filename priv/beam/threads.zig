@@ -4,7 +4,7 @@ const e = @import("erl_nif.zig");
 
 const BeamThreadFn = *const fn (?*anyopaque) callconv(.C) ?*anyopaque;
 
-const ThreadError = error{ threaderror, threadtooktoolong, processnotjoined, processterminated };
+pub const ThreadError = error{ threaderror, threadtooktoolong, processnotjoined, processterminated };
 
 pub const ThreadState = enum {
     const This = @This();
@@ -98,10 +98,10 @@ pub fn Thread(comptime function: anytype) type {
             };
 
             // initialize the thread struct
-            // this needs to be raw_beam_allocator because it will be cleared by the
+            // this needs to be raw_allocator because it will be cleared by the
             // callback function, and the beam.allocator is undefined in that context.
-            const threadptr = try beam.raw_beam_allocator.create(This);
-            errdefer beam.raw_beam_allocator.destroy(threadptr);
+            const threadptr = try beam.raw_allocator.create(This);
+            errdefer beam.raw_allocator.destroy(threadptr);
 
             threadptr.* = .{ .env = thread_env, .pid = try beam.self(env), .payload = payload, .allocator = allocator, .result = try allocator.create(Result) };
 
@@ -295,9 +295,9 @@ pub fn Thread(comptime function: anytype) type {
             beam.release_binary(&self.refbin);
             beam.free_env(self.env);
 
-            // note that we allocated the thread pointer with raw_beam_allocator,
+            // note that we allocated the thread pointer with raw_allocator,
             // so we must destroy it with the same allocator.
-            beam.raw_beam_allocator.destroy(self);
+            beam.raw_allocator.destroy(self);
         }
     };
 }

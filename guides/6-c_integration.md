@@ -6,4 +6,4 @@ Zigler offers several tools to integrate your code with C code.
 
 ## linking against a C abi library
 
-## 
+## Easy-C

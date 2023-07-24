@@ -15,7 +15,7 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticTest do
         break;
       }
 
-      _ = beam.yield() catch {
+      _ = beam.yield(env) catch {
         _ = beam.send(env, resp, .killed) catch unreachable;
         break;
       };

@@ -1029,7 +1029,7 @@ pub const ThreadedCallbacks = threads.Callbacks;
 /// 
 /// See [nif documentation](https://www.erlang.org/doc/man/erl_nif.html#lengthy_work)
 /// for more detailed information about the concurrency strategies.
-/// - `.process_bound`: the execution context of a synchronous nif
+/// - `.synchronous`: the execution context of a synchronous nif
 /// - `.threaded`: the execution context of a nif that runs in its own os 
 ///   thread
 /// - `.dirty`: the execution context of a nif that runs on a dirty 
@@ -1044,7 +1044,7 @@ pub const ThreadedCallbacks = threads.Callbacks;
 /// > #### raw beam functions {: .warning }
 /// >
 /// > nifs called in `raw` mode are not assigned an execution context.
-pub const ExecutionContext = enum { process_bound, threaded, dirty, yielding, callback };
+pub const ExecutionContext = enum { synchronous, threaded, dirty, yielding, callback };
 
 /// threadlocal variable that stores the execution context for the nif
 /// 

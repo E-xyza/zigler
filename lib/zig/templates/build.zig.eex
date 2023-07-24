@@ -22,10 +22,19 @@ pub fn build(b: *Builder) void {
         .dependencies = &.{erl_nif_pkg, no_sema_pkg},
     };
 
+    <%= for {name, path, deps} <- @packages do %>
+    const <%= name %>_pkg = Pkg {
+        .name = "<%= name %>",
+        .source = .{ .path = "<%= path %>"},
+        .dependencies = &.{<%= deps %>},
+    };
+    <% end %>
+
+    <% package_list = Enum.map(@packages, fn {name, _, _} -> ", #{name}_pkg" end) %>
     const core_pkg = Pkg{
         .name = "nif",
         .source = .{ .path = "<%= @nif_path %>" },
-        .dependencies = &.{beam_pkg, erl_nif_pkg},
+        .dependencies = &.{beam_pkg, erl_nif_pkg<%= package_list %>},
     };
 
     const beam_system_dir = "<%= :code.root_dir() %>/erts-<%= :erlang.system_info(:version) %>/include";
@@ -43,6 +52,10 @@ pub fn build(b: *Builder) void {
     lib.addPackage(erl_nif_pkg);
     lib.addPackage(beam_pkg);
     lib.addPackage(core_pkg);
+    <%= for {name, _, _} <- @packages do %>
+    lib.addPackage(<%= name %>_pkg);
+    <% end %>
+
     <%= for lib <- @link_lib do %>
       <%= case lib do %>
         <% {:system, lib} -> %>

@@ -216,7 +216,7 @@ defmodule Zig.Nif.Basic do
 
   def context(DirtyCpu), do: :dirty
   def context(DirtyIo), do: :dirty
-  def context(Synchronous), do: :process_bound
+  def context(Synchronous), do: :synchronous
 
   def resources(_), do: []
 

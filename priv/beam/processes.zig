@@ -31,7 +31,7 @@ pub fn send(env: beam.env, dest: beam.pid, content: anytype) PidError!beam.term 
     // disable this in sema because pid pointers are not supported
 
     switch (beam.context) {
-        .process_bound, .callback, .dirty => {
+        .synchronous, .callback, .dirty => {
             if (e.enif_send(env, &pid, null, term.v) == 0) return error.NotDelivered;
         },
         .threaded, .yielding => {

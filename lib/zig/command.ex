@@ -7,6 +7,7 @@ defmodule Zig.Command do
   """
 
   alias Zig.Assembler
+  alias Zig.Target
 
   require Logger
 
@@ -35,13 +36,28 @@ defmodule Zig.Command do
     erl_nif_file = Path.join(priv_dir, "beam/erl_nif.zig")
     sema_on_file = Path.join(priv_dir, "beam/sema/on.zig")
 
+    package_opts = opts
+    |> Keyword.get(:packages)
+    |> List.wrap
+
+    package_files = Enum.map(package_opts, fn {name, {path, _}} -> {name, path} end)
+    ++ [beam: beam_file, erl_nif: erl_nif_file]
+
+    packages = Enum.map(package_opts, fn
+      {name, path} when is_binary(path) -> {name, path}
+      {name, {path, []}} -> {name, path}
+      {name, {path, deps}} ->
+        deps_keyword = Enum.map(deps, &{&1, Keyword.fetch!(package_files, &1)})
+        {name, {path, deps_keyword}}
+    end)
+
     pkg_opts =
       packages(
         analyte:
           {file,
-           beam: {beam_file, sema: sema_on_file, erl_nif: erl_nif_file},
+           [beam: {beam_file, sema: sema_on_file, erl_nif: erl_nif_file},
            erl_nif: erl_nif_file,
-           sema: sema_on_file},
+           sema: sema_on_file] ++ packages},
         sema: sema_on_file
       )
 

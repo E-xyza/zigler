@@ -175,12 +175,12 @@ pub const PointerResource = beam.Resource(*MyStruct, root, .{.Callbacks = Pointe
 
 pub const PointerResourceCallbacks = struct {
     pub fn dtor(env: beam.env, s: *MyStruct) void {
-        beam.raw_beam_allocator.destroy(s);
+        beam.raw_allocator.destroy(s);
     }
 }
 
 pub fn create_pointer_resource(number: u64) !StructResource {
-    const new_struct = beam.raw_beam_allocator.create(MyStruct);
+    const new_struct = beam.raw_allocator.create(MyStruct);
     new_struct.payload = number;
     return StructResource.create(new_struct, .{});
 }
@@ -199,7 +199,7 @@ end
 
 > ### pointer allocation strategy {: .warning }
 >
-> It is strongly recommended to use [`beam.raw_beam_allocator`](beam.html#raw_beam_allocator) 
+> It is strongly recommended to use [`beam.raw_allocator`](beam.html#raw_allocator) 
 > for your pointer payload allocators, as [`beam.allocator`](beam.html#allocator)
 > is undefined in the callback context.
 >
