@@ -102,6 +102,17 @@ the BEAM module catalog.
 
 ## adding packages
 
+It's possible to add zig files as packages using the `packages` 
+keyword option.  The name of the package is the key, and the value 
+is a tuple of the path to the zig file that acts as the package and
+a list of dependencies for the package.  
+
+### Example extra.zig
+
+```zig
+pub const value = 47;
+```
+
 ```elixir
 defmodule PackageFile do
   use ExUnit.Case, async: true
