@@ -1,7 +1,7 @@
 # don't test this unless the system has the cblas libray
 # for now we can only guarantee that for linux.
 if {:unix, :linux} == :os.type() do
-  defmodule ZiglerTest.EasyC.BlasTest do
+  defmodule ZiglerTest.Integration.CXX.EasyCTest do
     use ZiglerTest.IntegrationCase, async: true
 
     use Zig,

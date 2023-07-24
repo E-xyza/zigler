@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Integration.C.CTest do
+defmodule ZiglerTest.Integration.CXX.CTest do
   use ZiglerTest.IntegrationCase, async: true
 
   use Zig, otp_app: :zigler, include_dir: "include", c_src: "src/*"
