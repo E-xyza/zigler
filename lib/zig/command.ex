@@ -108,6 +108,9 @@ defmodule Zig.Command do
     src_lib_name = Path.join(lib_dir, src_lib_name(module))
     dst_lib_name = Path.join(lib_dir, dst_lib_name(module))
 
+    # on MacOS, we must delete the old library because otherwise library
+    # integrity checker will kill the process
+    File.rm(dst_lib_name)
     File.cp!(src_lib_name, dst_lib_name)
 
     Logger.debug("built library at #{dst_lib_name}")

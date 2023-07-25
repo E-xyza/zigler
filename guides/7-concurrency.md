@@ -116,11 +116,12 @@ defmodule Threaded do
   const std = @import("std");
   pub fn long_running(env: beam.env, pid: beam.pid) !void {
       // following code triggered when process is killed.
-      defer _ = beam.send(env, pid, .killed) catch {};
+      defer {
+        _ = beam.send(env, pid, .killed) catch {};
+      }
 
       while(true) {
           _ = try beam.send(env, pid, .unblock);
-          std.time.sleep(1_000_000);
           try beam.yield(env);
       }
   }
