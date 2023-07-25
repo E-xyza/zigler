@@ -16,6 +16,8 @@ def deps do
 end
 ```
 
+Then you should run `mix zig.get` to download Zig 0.10.1
+
 ## Installation: Erlang
 
 Erlang is only supported via rebar3.  You must enable the rebar_mix plugin and 

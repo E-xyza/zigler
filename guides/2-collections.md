@@ -371,10 +371,10 @@ test "argument errors" do
     * 1st argument: 
   
        expected: map | keyword (for `Arrow`)
-       got: `%{head: %{y: 3, x: 4}, tail: %{y: 1.0, x: 2}}`
+       got: `%{head: %{x: 4, y: 3}, tail: %{x: 2, y: 1.0}}`
        in field `:tail`:
        | expected: map | keyword (for `Point2D`)
-       | got: `%{y: 1.0, x: 2}`
+       | got: `%{x: 2, y: 1.0}`
        | in field `:y`:
        | | expected: integer (for `i32`)
        | | got: `1.0`
