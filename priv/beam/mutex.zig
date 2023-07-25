@@ -2,9 +2,7 @@
 
 const e = @import("erl_nif.zig");
 
-const MutexError = error {
-    CreationFail
-};
+const MutexError = error{CreationFail};
 
 pub fn BeamMutex(comptime name_: []const u8) type {
     return struct {
@@ -15,7 +13,11 @@ pub fn BeamMutex(comptime name_: []const u8) type {
         /// initializes the mutex.  Note this is failable.
         pub fn init(self: *Self) !void {
             if (self.mutex_ref) |_| {} else {
-                self.mutex_ref = e.enif_mutex_create(self.name) orelse
+                // Do this ptr-int dance since enif_mutex_create
+                // accepts char * instead of const char *
+                // TODO: use @constCast in Zig >= 0.11
+                self.mutex_ref =
+                    e.enif_mutex_create(@intToPtr([*c]u8, @ptrToInt(name.ptr))) orelse
                     return MutexError.CreationFail;
             }
         }
@@ -36,8 +38,7 @@ pub fn BeamMutex(comptime name_: []const u8) type {
                     break :zero true;
                 },
                 e.EBUSY => false,
-                _ => unreachable
-
+                _ => unreachable,
             };
         }
 

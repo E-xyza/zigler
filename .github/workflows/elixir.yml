@@ -17,7 +17,7 @@ jobs:
             elixir-version: '1.15.2'
     steps:
     - uses: actions/checkout@v1
-    - uses: erlef/setup-elixir@v1
+    - uses: erlef/setup-beam@v1
       with:
         otp-version: ${{matrix.pair.otp-version}}
         elixir-version: ${{matrix.pair.elixir-version}}

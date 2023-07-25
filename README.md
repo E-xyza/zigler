@@ -5,7 +5,7 @@ Library test status:
 
 ## Installation: Elixir
 
-Zigler is [available in Hex](https://hex.pm/zigler), and the package can be installed
+Zigler is [available in Hex](https://hex.pm/packages/zigler), and the package can be installed
 by adding `zigler` to your list of dependencies in `mix.exs`:
 
 ```elixir
