@@ -362,6 +362,8 @@ end
 > where your arguments failed to serialize:
 
 ```elixir
+# note: skipped because map key order is nondeterministic before 1.15
+@tag [skip: Version.compare(System.version(), "1.15.0") == :lt]
 test "argument errors" do
   assert_raise ArgumentError, """
   errors were found at the given arguments:

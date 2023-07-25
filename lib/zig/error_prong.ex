@@ -34,7 +34,7 @@ defmodule Zig.ErrorProng do
                                 string
 
                               {:inspect, content} ->
-                                "#{inspect(content)}"
+                                "#{inspect(content, custom_options: [sort_maps: true])}"
 
                               {:typename, typename} ->
                                 String.replace(typename, ".#{__MODULE__}.", "")
