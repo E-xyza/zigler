@@ -17,9 +17,11 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
   }
   """
 
-  test "threaded function can error" do
+  test "threaded function can succeed" do
     assert 48 = threaded(47)
+  end
 
+  test "threaded function can error" do
     error =
       try do
         threaded(42)

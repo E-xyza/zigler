@@ -87,6 +87,9 @@ pub fn Thread(comptime function: anytype) type {
         result: ?*Result = null,
 
         pub fn launch(comptime ThreadResource: type, env: beam.env, argc: c_int, args: [*c]const e.ErlNifTerm, opts: anytype) !beam.term {
+            // assign the context, as the self() function needs this to be correct.
+            beam.context = .synchronous;
+            
             // thread struct necessities
             const allocator = find_allocator(opts);
             const thread_env = beam.alloc_env();
@@ -185,11 +188,17 @@ pub fn Thread(comptime function: anytype) type {
                     if (@call(.{}, function, thread.payload)) |ok| {
                         result_ptr.* = .{ .ok = ok };
                     } else |err| {
-                        // TODO: fix this so that it returns an error return trace instead of
-                        // an empty list.  There is something that causes the stacktrace decoder
-                        // to fail here.
-                        const response = .{.@"error", err, beam.make_empty_list(thread.env)};
-                        result_ptr.* = .{ .error_return_trace = beam.make(thread.env, response, .{}) };
+                        // this is a thread error, sometimes the comptime semantics are unable to detect
+                        // that error.processterminated is a possibility (because yield() might or might not
+                        // be called in the function).  So we need to do a runtime check here.
+                        // TODO: do better by having a comptime function that checks the return trace.
+                        const TERMINATED = @errorToInt(error.processterminated);
+                        if (@errorToInt(err) == TERMINATED) {
+                            result_ptr.* = .{ .error_return_trace = beam.make_empty_list(thread.env)};
+                        } else {
+                            const response = .{.@"error", err, @errorReturnTrace()};
+                            result_ptr.* = .{ .error_return_trace = beam.make(thread.env, response, .{}) };
+                        }
                     }
 
                     return result_ptr;

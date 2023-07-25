@@ -27,6 +27,10 @@ pub fn send(env: beam.env, dest: beam.pid, content: anytype) PidError!beam.term 
     beam.ignore_when_sema();
 
     const term = beam.make(env, content, .{});
+
+    // enif_send is not const-correct so we have to assign a variable to the static 
+    // pid variable
+
     var pid = dest;
     // disable this in sema because pid pointers are not supported
 
