@@ -51,7 +51,22 @@ pub const pid = e.ErlNifPid;
 /// identical to [`?*e.ErlNifPort`](https://www.erlang.org/doc/man/erl_nif.html#ErlNifPort)
 pub const port = e.ErlNifPort;
 
-const TermType = enum(u64) { atom = e.ERL_NIF_TERM_TYPE_ATOM, bitstring = e.ERL_NIF_TERM_TYPE_BITSTRING, float = e.ERL_NIF_TERM_TYPE_FLOAT, fun = e.ERL_NIF_TERM_TYPE_FUN, integer = e.ERL_NIF_TERM_TYPE_INTEGER, list = e.ERL_NIF_TERM_TYPE_LIST, map = e.ERL_NIF_TERM_TYPE_MAP, pid = e.ERL_NIF_TERM_TYPE_PID, port = e.ERL_NIF_TERM_TYPE_PORT, ref = e.ERL_NIF_TERM_TYPE_REFERENCE, tuple = e.ERL_NIF_TERM_TYPE_TUPLE };
+/// A zig enum equivalent to [`e.ErlNifTermType`](https://www.erlang.org/doc/man/erl_nif.html#enif_term_type)
+/// 
+/// retrievable from [`term`](#term) using the [`term.term_type`](#term-term_type) method.
+pub const TermType = enum(e.ErlNifTermType) { 
+    atom = e.ERL_NIF_TERM_TYPE_ATOM, 
+    bitstring = e.ERL_NIF_TERM_TYPE_BITSTRING, 
+    float = e.ERL_NIF_TERM_TYPE_FLOAT, 
+    fun = e.ERL_NIF_TERM_TYPE_FUN, 
+    integer = e.ERL_NIF_TERM_TYPE_INTEGER, 
+    list = e.ERL_NIF_TERM_TYPE_LIST, 
+    map = e.ERL_NIF_TERM_TYPE_MAP, 
+    pid = e.ERL_NIF_TERM_TYPE_PID, 
+    port = e.ERL_NIF_TERM_TYPE_PORT, 
+    ref = e.ERL_NIF_TERM_TYPE_REFERENCE, 
+    tuple = e.ERL_NIF_TERM_TYPE_TUPLE
+};
 
 /// wrapped term.  
 /// 
@@ -70,6 +85,16 @@ const TermType = enum(u64) { atom = e.ERL_NIF_TERM_TYPE_ATOM, bitstring = e.ERL_
 ///     ```zig
 ///     .{.v = erl_nif_term_value}
 ///     ```
+/// 
+/// ### term_type
+/// 
+/// the struct function `term_type` returns the [`TermType`](#termtype) of the
+/// internal term.
+/// 
+/// ```zig
+/// const t = beam.term.make(env, 47, .{});
+/// const term_type = t.term_type(env); // -> .integer
+/// ```
 pub const term = if (is_sema) struct {
     v: e.ErlNifTerm,
     pub fn term_type(_: *const @This(), _: env) TermType {
