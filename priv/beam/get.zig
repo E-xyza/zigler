@@ -662,11 +662,9 @@ fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term, opts
         .bitstring => {
             switch (struct_info.layout) {
                 .Packed, .Extern => {
-                    const B = *[@sizeOf(T)] u8;
-                    const bits = @ptrCast(B, result);
-                    const serial = try get(B, env, src, opts);
-                    std.mem.copy(u8, bits[0..], serial[0..]);
-                    return;
+                    const B = [@sizeOf(T)]u8;
+                    const bits = @ptrCast(* align(@alignOf(T)) B, result);
+                    try fill_array(B, env, bits, src, opts);
                 },
                 else =>
                     return GetError.argument_error,

@@ -175,9 +175,10 @@ pub const PointerResource = beam.Resource(*MyStruct, root, .{.Callbacks = Pointe
 
 pub const PointerResourceCallbacks = struct {
     pub fn dtor(env: beam.env, s: *MyStruct) void {
+        _ = env;
         beam.raw_allocator.destroy(s);
     }
-}
+};
 
 pub fn create_pointer_resource(number: u64) !StructResource {
     const new_struct = beam.raw_allocator.create(MyStruct);
@@ -248,12 +249,12 @@ functions, respectively:
 
 ```elixir
 ~Z"""
-pub fn keep(resource: StructResource) void {
-    resource.keep()
+pub fn release(resource: StructResource) void {
+    resource.release();
 }
 
 pub fn keep(resource: StructResource) void {
-    resource.keep()
+    resource.keep();
 }
 """
 ```
