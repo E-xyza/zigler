@@ -20,6 +20,8 @@ defmodule Zig.Command do
     base_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
     zig_cmd = executable_path(opts)
 
+    Logger.debug("running command: #{zig_cmd} #{command}")
+
     case System.cmd(zig_cmd, args, base_opts) do
       {result, 0} ->
         result
@@ -60,6 +62,10 @@ defmodule Zig.Command do
            sema: sema_on_file] ++ packages},
         sema: sema_on_file
       )
+
+    # nerves will put in a `CC` command that we need to bypass because it misidentifies
+    # libc locations for statically linking it.
+    System.delete_env("CC")
 
     sema_command = "run #{sema_file} #{pkg_opts} -lc #{link_opts(opts)}"
 
