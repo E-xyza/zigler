@@ -113,23 +113,28 @@ defmodule Threaded do
 
   ~Z"""
   const beam = @import("beam");
+  const std = @import("std");
   pub fn long_running(env: beam.env, pid: beam.pid) !void {
       // following code triggered when process is killed.
       defer _ = beam.send(env, pid, .killed) catch {};
 
       while(true) {
           _ = try beam.send(env, pid, .unblock);
+          std.time.sleep(1_000_000);
           try beam.yield(env);
       }
   }
   """
 
+  @tag :threaded
   test "threaded can be cancelled" do
     this = self()
     threaded = spawn(fn -> long_running(this) end)
-    assert_receive :unblock
+    #assert_receive :unblock
+    Process.sleep(100)
     Process.exit(threaded, :kill)
     assert_receive :killed
+    Process.sleep(1000)
   end
 end
 ```

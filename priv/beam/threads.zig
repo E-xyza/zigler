@@ -47,7 +47,7 @@ pub const ThreadState = enum {
 
     pub fn wait_until(self: *This, state_or_states: anytype, opts: anytype) !void {
         // implement a 50 ms limit
-        const time_limit = if (@hasField(@TypeOf(opts), "limit")) opts.limit else 50_000;
+        const time_limit = if (@hasField(@TypeOf(opts), "limit")) opts.limit else 10_000;
         const cycles = time_limit / 1000;
         var so_far: usize = 0;
 
@@ -185,7 +185,11 @@ pub fn Thread(comptime function: anytype) type {
                     if (@call(.{}, function, thread.payload)) |ok| {
                         result_ptr.* = .{ .ok = ok };
                     } else |err| {
-                        result_ptr.* = .{ .error_return_trace = beam.make(thread.env, .{ .@"error", err, @errorReturnTrace()}, .{}) };
+                        // TODO: fix this so that it returns an error return trace instead of
+                        // an empty list.  There is something that causes the stacktrace decoder
+                        // to fail here.
+                        const response = .{.@"error", err, beam.make_empty_list(thread.env)};
+                        result_ptr.* = .{ .error_return_trace = beam.make(thread.env, response, .{}) };
                     }
 
                     return result_ptr;

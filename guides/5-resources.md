@@ -42,8 +42,7 @@ defmodule ResourceTest do
     otp_app: :zigler,
     resources: [
       :StructResource,
-      :PointerResource,
-      :AsBinaryResource
+      :PointerResource
     ]
 
   ~Z"""
@@ -174,19 +173,19 @@ The following functions are supported in the Callbacks, and are all optional.
 pub const PointerResource = beam.Resource(*MyStruct, root, .{.Callbacks = PointerResourceCallbacks});
 
 pub const PointerResourceCallbacks = struct {
-    pub fn dtor(env: beam.env, s: *MyStruct) void {
+    pub fn dtor(env: beam.env, s: **MyStruct) void {
         _ = env;
-        beam.raw_allocator.destroy(s);
+        beam.raw_allocator.destroy(s.*);
     }
 };
 
-pub fn create_pointer_resource(number: u64) !StructResource {
-    const new_struct = beam.raw_allocator.create(MyStruct);
+pub fn create_pointer_resource(number: u64) !PointerResource {
+    const new_struct = try beam.raw_allocator.create(MyStruct);
     new_struct.payload = number;
-    return StructResource.create(new_struct, .{});
+    return PointerResource.create(new_struct, .{});
 }
 
-pub fn retrieve_pointer_resource(resource: StructResource) u64 {
+pub fn retrieve_pointer_resource(resource: PointerResource) u64 {
     return resource.unpack().*.payload;
 }
 """
