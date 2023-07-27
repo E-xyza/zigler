@@ -842,7 +842,7 @@ pub const self = processes.self;
 /// [`e.enif_send`](https://www.erlang.org/doc/man/erl_nif.html#enif_send).
 /// that also serializes the message term using [`make`](#make)
 /// 
-/// > send from raw nifs {: .warning}
+/// > ### send from raw nifs {: .warning }
 /// >
 /// > This function has undefined behaviour when called from `raw` nifs.
 /// > use `e.enif_send` directly instead.
