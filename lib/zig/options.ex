@@ -23,7 +23,7 @@ defmodule Zig.Options do
     |> EasyC.normalize_aliasing()
   end
 
-  @common_options ~w(leak_check)a
+  @common_options ~w[leak_check]a
   @default_options Nif.default_options()
 
   defp normalize_nifs_option!(opts) do

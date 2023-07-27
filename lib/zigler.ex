@@ -175,7 +175,7 @@ defmodule :zigler do
   defp ensure_libs do
     # we can't put this dependency into rebar.config because it has resolution issues
     # since jason decimal requirement is 1.0.0 or 2.0.0
-    Enum.each(~w(jason zig_parser)a, fn lib ->
+    Enum.each(~w[jason zig_parser]a, fn lib ->
       lib
       |> path_relative_to(:zigler)
       |> String.to_charlist()

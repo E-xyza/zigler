@@ -4,9 +4,9 @@ default_locals = [
 ]
 
 [
-  inputs: ~w(
+  inputs: ~w[
     {mix,.formatter,.credo}.exs
     {config,lib,rel,test}/**/*.{ex,exs}
-  ),
+  ],
   locals_without_parens: default_locals
 ]

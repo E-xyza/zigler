@@ -46,8 +46,8 @@ pub const ThreadState = enum {
     }
 
     pub fn wait_until(self: *This, state_or_states: anytype, opts: anytype) !void {
-        // implement a 50 ms limit
-        const time_limit = if (@hasField(@TypeOf(opts), "limit")) opts.limit else 10_000;
+        // implement a 750 us limit
+        const time_limit = if (@hasField(@TypeOf(opts), "limit")) opts.limit else 750_000;
         const cycles = time_limit / 1000;
         var so_far: usize = 0;
 
@@ -320,7 +320,8 @@ pub fn Callbacks(comptime ThreadType: type) type {
         pub fn dtor(_: beam.env, dtor_ref: **ThreadType) void {
             const thread_ptr = dtor_ref.*;
             // join the thread at all costs, catch all failures, discard the result.
-            _ = thread_ptr.join() catch {};
+            // NB: this WILL cause a leak.
+            _ = thread_ptr.join() catch return;
             thread_ptr.cleanup();
         }
     };

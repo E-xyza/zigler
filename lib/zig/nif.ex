@@ -16,7 +16,7 @@ defmodule Zig.Nif do
   @impl true
   defdelegate fetch(function, key), to: Map
 
-  defstruct @enforce_keys ++ ~w(name raw args return leak_check alias doc spec)a
+  defstruct @enforce_keys ++ ~w[name raw args return leak_check alias doc spec]a
 
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
@@ -328,7 +328,7 @@ defmodule Zig.Nif do
     length: "`integer` or `{:arg, integer}`"
   }
 
-  @as_is_options ~w(args spec docs)a
+  @as_is_options ~w[args spec docs]a
 
   defp normalize_option!({:return, return_opts}) do
     updated_return =

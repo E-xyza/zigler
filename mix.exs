@@ -16,7 +16,7 @@ defmodule Zigler.MixProject do
         licenses: ["MIT"],
         # we need to package the zig BEAM adapters and the c include files as a part
         # of the hex packaging system.
-        files: ~w(lib mix.exs README* LICENSE* VERSIONS* priv/beam),
+        files: ~w[lib mix.exs README* LICENSE* VERSIONS* priv/beam],
         links: %{
           "GitHub" => "https://github.com/ityonemo/zigler",
           "Zig" => "https://ziglang.org/"

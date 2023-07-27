@@ -8,6 +8,7 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticTest do
   ~Z"""
   const std = @import("std");
   const beam = @import("beam");
+  const e = @import("erl_nif");
   pub fn threaded(env: beam.env, should_quit: bool, resp: beam.pid) void {
     var i: u32 = 0;
     while (true) : (i += 1) {

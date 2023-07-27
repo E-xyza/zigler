@@ -104,6 +104,12 @@ changes must be made to execute a function in threaded mode.
 The [`beam.yield`](beam.html#yield) function in dirty CPU mode will detect
 if the parent process has died and will return `error.processterminated`.
 
+> ### return from yield quickly! {: .warning }
+> 
+> You must return from the yield quickly (within 750us).  If you are 
+> unable to return quickly, then zigler run will cause the thread 
+> metadata to leak.  This will be fixed in zigler 0.11.
+
 ```elixir
 defmodule Threaded do
   use ExUnit.Case, async: true
@@ -116,6 +122,9 @@ defmodule Threaded do
   const std = @import("std");
   pub fn long_running(env: beam.env, pid: beam.pid) !void {
       // following code triggered when process is killed.
+      // note that unlike dirty functions, the lifetime of 
+      // env matches the lifetime of the function.
+
       defer {
         _ = beam.send(env, pid, .killed) catch {};
       }
