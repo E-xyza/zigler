@@ -30,9 +30,14 @@ defmodule Zig do
 
   Please consult the following guides for detailed topics:
 
-  - [different execution modes](nifs.html)
-  - [how to build BEAM `resources`](resources.html)
-  - deploying in erlang environments with [`zigler`](:zigler.html)
+  - [Using Nifs](1-nifs.html)
+  - [Collection datatypes](2-collections.html)
+  - [Allocator strategies](3-allocators.html)
+  - [Nif options](4-nif_options.html)
+  - [Resources](5-nif_options.html)
+  - [C integration](6-c_integration.html)
+  - [Concurrency strategies](7-concurrency.html)
+  - [Global module options](8-module_options.html)
 
   > ### Zig version support {: .warning }
   >
