@@ -1,0 +1,16 @@
+<%= for resource <- @resources, do: resource_decl(resource) %>
+
+pub fn set_resource(comptime T: type, type_ptr: **e.ErlNifResourceType) void {
+    type_ptr.* = switch (T) {
+        <%= for resource <- @resources, do: resource_prong(resource) %>
+        else => @compileError("a resource was attempted to be used for " ++ @typeName(T) ++ " but no resource was declared for it."),
+    };
+}
+
+fn load_resources(env: beam.env) void {
+    <%= case @resources do %>
+        <% [] -> %> _ = env;
+        <% resources -> %> 
+          <%= for resource <- resources, do: init_resource_type(resource, @module) %>
+    <% end %>
+}

@@ -1,0 +1,47 @@
+const beam = @import("beam");
+const e = @import("erl_nif");
+const nif = @import("nif");
+const Allocator = @import("std").mem.Allocator;
+const Resource = beam.Resource;
+const root = @This();
+const threads = beam.threads;
+
+<%= for nif <- @nifs do %>
+<%= Nif.render_zig(nif) %>
+<% end %>
+
+<%= Resources.render(resources: @resources, module: @module) %>
+
+// this will be filled out later.
+fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.C) c_int {
+    load_resources(env);
+    <%= if @callbacks[:on_load] do %>
+    return nif.<%= @callbacks[:on_load] %>(env, priv_data, .{.v = load_info});
+    <% else %>
+    _ = priv_data;
+    _ = load_info;
+    return 0;
+    <% end %>
+}
+
+var exported_nifs = [_]e.ErlNifFunc{<%= table_entries(@nifs) %>};
+
+const entry = e.ErlNifEntry{
+    .major = <%= nif_version(:major) %>,
+    .minor = <%= nif_version(:minor) %>,
+    .name = "<%= @module %>",
+    .num_of_funcs = exported_nifs.len,
+    .funcs = &exported_nifs,
+    .load = load,
+    .reload = null,   // never supported as of OTP 20
+    .upgrade = beam.loader.blank_upgrade, 
+    .unload = beam.loader.blank_unload,  
+    .vm_variant = "beam.vanilla",
+    .options = 1,
+    .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
+    .min_erts = "erts-<%= :erlang.system_info(:version)%>"
+};
+
+export fn nif_init() *const e.ErlNifEntry {
+    return &entry;
+}

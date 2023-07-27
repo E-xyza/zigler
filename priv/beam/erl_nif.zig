@@ -17,9 +17,11 @@
 //! refer to the [erlang documentation](https://erlang.org/doc/man/erl_nif.html)
 //! for available functions
 
-pub const e = @cImport({
-    @cInclude("erl_nif.h");
-});
+const builtin = @import("builtin");
+const stub = @import("stub_erl_nif.zig");
+const real = @cImport(@cInclude("erl_nif.h"));
+
+pub const e = if (builtin.output_mode == .Exe) stub else real;
 
 pub const ErlNifTerm = e.ERL_NIF_TERM;
 

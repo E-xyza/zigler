@@ -23,8 +23,28 @@ defmodule Zig do
     by the BEAM's, which means that you have access to generic memory
     allocation *strategies* through its composable allocator scheme.
   - C integration.  It's very easy to design C-interop between Zig and C.
-    In fact, Zig is likely to be an easier glue language for C ABIs than
-    C.
+    Zigler has been designed to make it easier to use Zigler to build
+    C libraries than to use C directly see [Easy C](#module-easy-c).
+
+  ### Guides
+
+  Please consult the following guides for detailed topics:
+
+  - [different execution modes](nifs.html)
+  - [how to build BEAM `resources`](resources.html)
+  - deploying in erlang environments with [`zigler`](:zigler.html)
+
+  > ### Zig version support {: .warning }
+  >
+  > although the large-scale archictecture of zigler is settled,
+  > zigler features may break backwards compatibility until zig reaches
+  > 1.0
+
+  ### Nerves Support
+
+  Nerves is supported out of the box, and Zigler will be able to seamlessly
+  detect the cross-compilation information (os, architecture, runtime) and
+  build correctly for that target.
 
   ### Basic usage
 
@@ -36,18 +56,18 @@ defmodule Zig do
   Simply `use Zig` in your module, providing the app atom in the property
   list.
 
-  Then, use the `sigil_Z/2` macro and write zig code.  Any nifs you define
-  should be preceded with the `/// nif: function_name/arity` zig docstring.
+  Then, use the `sigil_Z/2` macro and write zig code.  To present a function
+  as a nif in your module, simply export it from your code namespace by
+  making it a `pub` function in your zig code.
 
   #### Example
   ```
   defmodule MyModule do
-    use Zig
+    use Zig, otp_app: :my_app
 
     ~Z\"""
-    /// nif: my_func/1
-    fn my_func(val: i64) i64 {
-      return val + 1;
+    pub fn my_func(val: i64) i64 {
+        return val + 1;
     }
     \"""
 
@@ -62,65 +82,93 @@ defmodule Zig do
   Zig will also make sure that your statically-typed Zig data are guarded
   when you marshal it from the dynamically-typed BEAM world.  However, you may
   only pass in and return certain types.  As an escape hatch, you may use
-  the `beam.term` type which is equivalent to the `ERLNIFTERM` type.  See
-  [`erl_nif`](erl_nif.html).
+  the [`beam.term`](beam.html#term) type which is a wrapped
+  [`ERL_NIF_TERM`](https://www.erlang.org/doc/man/erl_nif.html#ERL_NIF_TERM) type.
+  See [`erl_nif`](https://www.erlang.org/doc/man/erl_nif.html).
 
-  ### Guides
+  #### Environment
 
-  Please consult the following guides for detail topics:
-
-  - [different execution modes](nifs.html)
-  - [how to build BEAM `resources`](resources.html)
-
-  ### Nerves Support
-
-  Nerves is supported out of the box, and the system should cross-compile
-  to arm ABI as necessary depending on what your nerves `:target` is.  You
-  may also directly specify a zig target using the
-  `use Zig, target: <target>` option.
-
-  ### Environment
-
-  Sometimes, you will need to pass the BEAM environment (which is the code
-  execution context, including process info, etc.) into the NIF function.  In
-  this case, you should pass it as the first argument, as a `beam.env` type
-  value.
+  For many functions, you'll need to import the [`beam`](beam.html) package and
+  create a function that takes a [`beam.env`](beam.html#env) as its first
+  argument.  This will enable you to directly access or create wrapped beam
+  term data.  The equivalent of the above code will be:
 
   #### Example
 
   ```
   defmodule MyModule do
-    use Zig
+    use Zig, otp_app: :my_app
 
     ~Z\"""
-    /// nif: my_func_with_env/1
-    fn my_func_with_env(env: beam.env, pid: beam.pid) void {
-      var sendable_term: []u64 = "ping"[0..];
-      var msg = beam.make_slice(env, sendable_term);
-      var res = e.enif_send(env, pid, env, msg);
+    const beam = @import("beam");
+
+    pub fn my_func(env: beam.env, val_term: beam.term) !beam.term {
+        const val = try beam.get(i64, env, val_term, .{});
+        return beam.make(env, val + 1, .{});
     }
     \"""
   end
   ```
 
-  ### Bring your own version of Zig
+  For more details on [`get`](beam.html#get) and [`make`](beam.html#make)
+  functions see the [`beam`](beam.html) documentation.
 
-  If you would like to use your system's local `zig` command, set the
-  `local_zig` option in `config.exs`, which
+  > #### Manual Term marshalling {: .warning }
+  >
+  > If you don't use automatic marshalling, Zigler will not be able
+  > to provide the following conveniences:
+  >
+  > - argument error details.  The zig code will raise a generic
+  >   BEAM `ArgumentError` but it won't have specific details about
+  >   what the expected type was and which argument was in error.
+  >
+  > - dialyzer type information for your function.  You will have
+  >   to supply that type information in your nif configuration.
 
+  ### Importing external files
+
+  If you need to write zig code outside of the module, just place it in
+  the same directory as your module.
+
+  #### Example
+
+  ```elixir
+  ~Z\"""
+  const extra_code = @import("extra_code.zig");
+
+  pub fn use_extra_code(val: i64) i64 {
+    return extra_code.extra_fn(val);
+  }
+
+  pub const forwarded_function = extra_code.forwarded_function;
+  \"""
   ```
-  config :zigler, local_zig: true
+
+  If you would like to include a custom c header file, create an subdirectory
+  of your module's directory and add it as an available include directory,
+  as shown here (in this case the subdirectory is called `include`).  The
+  Zig build system will add the include path(s) in the analysis and
+  compilation pipelines.
+
+  ```elixir
+  defmodule MyModule
+    use Zig,
+      otp_app: :my_app,
+      include_dir: "include"
+
+    ~Z\"""
+    const c = @cImport({
+      @cInclude("my_c_header.h");
+    });
+    ...
+    \"""
+  end
   ```
 
-  This will use `System.find_executable` to obtain the zig command. If
-  you want to specify the zig command manually, use the following:
-
-  ```
-  config :zigler, local_zig: "path/to/zig/command"
-  ```
-
-  Note that for minor versions prior to 1.0, zigler doesn't plan on
-  maintaining backward compatibility due to large architectural changes.
+  If the c header defines `extern` functions, it's your responsibility to make
+  sure those externed functions are available by
+  [compiling other c files](#module-compiling-c-c-files) or
+  [using an external library](#module-external-libraries).
 
   ### External Libraries
 
@@ -132,16 +180,18 @@ defmodule Zig do
 
   #### Example (explicit library path)
 
-  ```
+  ```elixir
   defmodule Blas do
     use Zig,
-      libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
-      include: ["/usr/include/x86_64-linux-gnu"]
+      otp_app: :my_app,
+      link_lib: "path/to/libblas.a"
 
     ~Z\"""
     const blas = @cImport({
       @cInclude("cblas.h");
     ...
+    \"""
+  end
   ```
 
   You can also link system libraries.  This relies on `zig build`'s ability
@@ -151,21 +201,23 @@ defmodule Zig do
 
   #### Example (system libraries)
 
-  ```
+  ```elixir
   defmodule Blas do
     use Zig,
-      system_libs: ["blas"],
-      include: ["/usr/include/x86_64-linux-gnu"]
+      otp_app: :my_app,
+      link_lib: {:system, "blas"}
 
     ~Z\"""
     const blas = @cImport({
       @cInclude("cblas.h");
     ...
+    \"""
+  end
   ```
 
   ### Compiling C/C++ files
 
-  You can direct zigler to use zig cc to compile C or C++ files that are in
+  You can direct zigler to compile C or C++ files that are in
   your directory tree.  Currently, you must explicitly pick each file, in the
   future, there may be support for directories (and selecting compile options)
   based on customizeable rules.
@@ -173,75 +225,54 @@ defmodule Zig do
   To do this, fill the "sources" option with a list of files (represented as
   strings), or a file/options pair (represented as a tuple).
 
-  ```
+  ```elixir
   defmodule UsesCOrCpp do
     use Zig,
-      link_libc: true,
-      link_libcpp: true,
-      include: ["my_header.h"],
-      sources: [
+      otp_app: :my_app,
+      link_libcpp: true,  # note: optional for c-only code
+      include_dir: ["include"],
+      c_src: [
         "some_c_source.c",
-        {"some_cpp_source.cpp", ["-std=c++17"]}
+        {"some_cpp_source.cpp", ["-std=c++17"]},
+        {"directory_of_files/*", ["-std=c99"]},
       ]
 
     ~Z\"""
     ...
+    \"""
+  end
   ```
 
-  Don't forget to include relevant h files, and set the `link_libc: true`
-  and/or the `link_libcpp: true` options if your code needs the c or c++
-  standard libraries
+  ### Easy C
 
-  ### Compilation assistance
+  In some cases, you may have a C project that ships with a library and a
+  header file that you would like to mount as NIF functions in your module.
+  In this case, you can use the `easy_c` option to automate the work of
+  stitching your library into the module.  Note that in this case, you must
+  declare all of the function that you would like to import.  Here is an
+  example of importing three functions from the blas example as above.
+
+  For details of what the nif options mean, see: `Zig.EasyC`
+
+  ```elixir
+  defmodule BlasWithEasyC do
+    use Zig,
+      otp_app: :my_app,
+      easy_c: "cblas.h",
+      link_lib: {:system, "blas"},
+      nifs: [
+        :cblas_dasum,
+        cblas_daxpy: [return: [4, length: {:arg, 0}]],
+        daxpy_bin: [alias: :cblas_daxpy, return: [4, :binary, length: {:arg, 0}]]
+      ]
+  end
+  ```
+
+  ### Compilation debug
 
   If something should go wrong, Zigler will translate the Zig compiler error
-  into an Elixir compiler error, and let you know exactly which line in the
+  into an Elixir compiler error, and let you know which line in the
   `~Z` block it came from.
-
-  ### Syntactic Sugar
-
-  Some of the erlang nif terms can get unwieldy, especially in Zig, which
-  prefers terseness.  Each of the basic BEAM types is shadowed by a Zig type
-  in the `beam` module.  The `beam` struct is always imported into the header
-  of the zig file used, so all zig code in the same directory as the module
-  should have access to the `beam` struct if they `@import("beam.zig")`
-
-  ### Importing files
-
-  If you need to write code outside of the basic module (you will, for anything
-  non-trivial), just place it in the same directory as your module.
-
-  #### Example
-
-  ```
-  ~Z\"""
-  const extra_code = @import("extra_code.zig");
-
-  /// nif: use_extra_code/1
-  fn use_extra_code(val: i64) i64 {
-    return extra_code.extra_fn(val);
-  }
-  \"""
-  ```
-
-  If you would like to include a custom c header file, create an `include/`
-  directory inside your path tree and it will be available to zig as a default
-  search path as follows:
-
-  ```
-  ~Z\"""
-  const c = @cImport({
-    @cInclude("my_c_header.h");
-  });
-
-  // nif: my_nif/1
-  ...
-  \"""
-  ```
-
-  If the c header defines `extern` functions, it's your responsibility to make
-  sure those externed functions are available by compiling other c files or
-  using a shared library.
 
   ### Documentation
 
@@ -249,89 +280,77 @@ defmodule Zig do
   front of the nif declaration, it will wind up in the correct place in your
   elixir documentation.
 
-  See `Zig.Doc` for more information on how to document in zig and what to
-  document.  See `Mix.Tasks.ZigDoc` for information on how to get your Elixir
-  project to incorporate zig documentation.
+  Note that the `//!` docstring is not supported.  Use `@moduledoc` instead.
 
-  ### Tests
+  ### Bring your own version of Zig
 
-  Use the builtin zig `test` keyword to write your internal zig unit tests.
-  These can be imported into an ExUnit module by following this example:
+  If you would like to use your system's local `zig` command, specify
+  this in your `use Zig` statement options.
 
-  ```
-  defmodule MyTest do
-    use ExUnit.Case
-    use Zig.Unit
-    zigtest ModuleWithZigCode
-  end
+  ```elixir
+  use Zig, otp_app: :my_app, local_zig: true
   ```
 
-  See `Zig.Unit` for more information.
+  This will use `System.find_executable/1` to obtain the zig command. If
+  you want to specify a specific zig path, use the following:
+
+  ```elixir
+  use Zig, otp_app: :my_app, zig_path: "path/to/zig/command"
+  ```
 
   """
 
   alias Zig.Compiler
-  alias Zig.Parser
-
+  alias Zig.Options
   # default release modes.
   # you can override these in your `use Zigler` statement.
   @spec __using__(keyword) :: Macro.t()
   defmacro __using__(opts) do
-    # mode = opts[:release_mode] || @default_release_mode
+    module = __CALLER__.module
+    if module in :erlang.loaded(), do: :code.purge(module)
+
+    opts =
+      opts
+      |> Keyword.merge(mod_file: __CALLER__.file, mod_line: __CALLER__.line)
+      |> Options.normalize!()
+
+    # TODO: check to make sure the otp_app exists
+    case Keyword.fetch(opts, :otp_app) do
+      {:ok, _app} ->
+        :ok
+
+      _ ->
+        raise CompileError,
+          description: "you must supply the otp_app for the nifs",
+          file: __CALLER__.file,
+          line: __CALLER__.line
+    end
 
     # clear out the assembly directory
+    # TODO: make sure this is accessible.
     Mix.env()
-    |> Compiler.assembly_dir(__CALLER__.module)
+    |> Compiler.assembly_dir(module)
     |> File.rm_rf!()
 
-    user_opts =
-      opts
-      |> Keyword.take(~w(libs resources dry_run c_includes system_include_dirs
-        local link_libc link_libcpp sources system_libs)a)
+    Module.register_attribute(module, :zig_code_parts, accumulate: true)
+    Module.register_attribute(module, :zig_code, persist: true)
+    Module.put_attribute(module, :zigler_opts, opts)
 
-    include_dirs =
-      opts
-      |> Keyword.get(:include, [])
-      |> Kernel.++(if has_include_dir?(__CALLER__), do: ["include"], else: [])
+    code =
+      quote do
+        import Zig, only: [sigil_Z: 2, sigil_z: 2]
+        @on_load :__load_nifs__
+        @before_compile Zig.Compiler
+        @zig_code_parts [
+          "// this code is autogenerated, do not check it into to your code repository\n\n"
+        ]
+      end
 
-    zigler! =
-      struct(
-        %Zig.Module{
-          file: Path.relative_to_cwd(__CALLER__.file),
-          module: __CALLER__.module,
-          imports: Zig.Module.imports(opts[:imports]),
-          include_dirs: include_dirs,
-          version: get_project_version(),
-          otp_app: get_app()
-        },
-        user_opts
-      )
-
-    zigler! = %{zigler! | code: Zig.Code.headers(zigler!)}
-
-    Module.register_attribute(__CALLER__.module, :zigler, persist: true)
-    Module.put_attribute(__CALLER__.module, :zigler, zigler!)
-
-    quote do
-      import Zig
-      require Zig.Compiler
-
-      @on_load :__load_nifs__
-
-      @before_compile Zig.Compiler
-    end
-  end
-
-  defp has_include_dir?(env) do
-    env.file
-    |> Path.dirname()
-    |> Path.join("include")
-    |> File.dir?()
+    Zig.Macro.inspect(code, opts)
   end
 
   @doc """
-  declares a string block to be included in the module's .zig source
-  file.  At least one of these blocks must define a nif.
+  declares a string block to be included in the module's .zig source file.
   """
   defmacro sigil_Z({:<<>>, meta, [zig_code]}, []) do
     quoted_code(zig_code, meta, __CALLER__)
@@ -346,32 +365,32 @@ defmodule Zig do
   end
 
   defp quoted_code(zig_code, meta, caller) do
+    opts = Module.get_attribute(caller.module, :zigler_opts)
+
+    if opts[:easy_c] do
+      raise CompileError,
+        description: "you can't use ~Z in easy_c nifs",
+        line: caller.line,
+        file: caller.file
+    end
+
     line = meta[:line]
     module = caller.module
     file = Path.relative_to_cwd(caller.file)
 
     quote bind_quoted: [module: module, zig_code: zig_code, file: file, line: line] do
-      zigler = Module.get_attribute(module, :zigler)
-
-      new_zigler =
-        zig_code
-        |> Parser.parse(zigler, file, line)
-
-      @zigler new_zigler
+      @zig_code_parts "// ref #{file}:#{line}\n"
+      @zig_code_parts zig_code
+      :nothing
     end
   end
 
-  defp get_project_version do
-    Mix.Project.get()
-    |> apply(:project, [])
-    |> Keyword.get(:version)
-    |> Version.parse!()
-  end
-
-  defp get_app do
-    Mix.Project.get()
-    |> apply(:project, [])
-    |> Keyword.get(:app)
+  @doc """
+  retrieves the zig code from any given module that was compiled with zigler
+  """
+  def code(module) do
+    [code] = Keyword.fetch!(module.__info__(:attributes), :zig_code)
+    code
   end
 
   @extension (case :os.type() do
@@ -394,4 +413,13 @@ defmodule Zig do
       "lib#{module.module}"
     end
   end
+
+  @doc """
+  version of zig supported by this version of zigler.
+
+  > ### API warning {: .warning }
+  >
+  > this API may change in the future.
+  """
+  def version, do: "0.10.1"
 end

@@ -9,47 +9,50 @@ jobs:
     strategy:
       matrix:
         pair:
-          #- otp-version: '22.0'
-          #  elixir-version: '1.9.0'
-          #- otp-version: '23.0'
-          #  elixir-version: '1.10'
-          - otp-version: '23.0'
-            elixir-version: '1.11'
-
+          - otp-version: '25.0'
+            elixir-version: '1.13.4'
+          - otp-version: '26.0'
+            elixir-version: '1.14.5'
+          - otp-version: '26.0'
+            elixir-version: '1.15.2'
     steps:
     - uses: actions/checkout@v1
     - uses: erlef/setup-beam@v1
       with:
         otp-version: ${{matrix.pair.otp-version}}
         elixir-version: ${{matrix.pair.elixir-version}}
-    - name: Install Dependencies
+
+    - uses: actions/cache@v1
+      id: deps-cache
+      with:
+        path: deps
+        key: ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+
+    - name: Install dependencies
       run: mix deps.get
-    - name: Run Linting
-      run: mix credo --strict
-    - name: Run Tests
-      env:
-        RUNNING_CI: "true"
-      run: mix test --exclude no_ci
-  macos:
-    runs-on: macos-latest
-    name: MacOS OTP ${{matrix.pair.otp-version}} / Elixir ${{matrix.pair.elixir-version}}
-    strategy:
-      matrix:
-        pair:
-          - otp-version: '23.0'
-            elixir-version: '1.11'
-    steps:
-    - uses: actions/checkout@v1
-    - name: Install Elixir
-      run: |
-        brew update
-        brew install elixir
-    - name: Setup mix
-      run: |
-        mix local.hex --force
-        mix local.rebar --force
-    - name: Install Dependencies
-      run: mix deps.get
+
+    - uses: actions/cache@v1
+      id: build-cache
+      with:
+        path: _build
+        key: ${{ runner.os }}-build-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+
+    - name: Compile base
+      run: mix compile
+
+    - name: Get Zig version
+      id: get-zig-version
+      run: echo "version=$(mix zig.version)" >> $GITHUB_OUTPUT
+
+    - uses: actions/cache@v1
+      id: zig-cache
+      with:
+        path: zig
+        key: ${{ runner.os }}-zig-${{ steps.get-zig-version.outputs.version }}
+
+    - name: Get Zig
+      run: mix zig.get
+
     - name: Run Tests
       env:
         RUNNING_CI: "true"

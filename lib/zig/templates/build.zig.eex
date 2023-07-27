@@ -1,70 +1,85 @@
 const std = @import("std");
 const Builder = std.build.Builder;
-<% target = target_struct(@compiler_target, zig_tree) %>
-const for_wasm = true;
+const Pkg = std.build.Pkg;
+
 pub fn build(b: *Builder) void {
     const mode = b.standardReleaseOptions();
-    const target = b.standardTargetOptions(<%= to_structdef target %>);
-    //const cflags = [_][]const u8{};
+    const target = b.standardTargetOptions(<%=Zig.Target.for_builder()%>);
+
+    const erl_nif_pkg = Pkg{
+        .name = "erl_nif",
+        .source = .{ .path = "<%= Path.join(@beam_dir, "erl_nif.zig") %>"}
+    };
+
+    const no_sema_pkg = Pkg{
+        .name = "sema",
+        .source = .{ .path = "<%= Path.join(@beam_dir, "sema/off.zig") %>"}
+    };
+
+    const beam_pkg = Pkg{
+        .name = "beam",
+        .source = .{ .path = "<%= Path.join(@beam_dir, "beam.zig") %>"},
+        .dependencies = &.{erl_nif_pkg, no_sema_pkg},
+    };
+
+    <%= for {name, path, deps} <- @packages do %>
+    const <%= name %>_pkg = Pkg {
+        .name = "<%= name %>",
+        .source = .{ .path = "<%= path %>"},
+        .dependencies = &.{<%= deps %>},
+    };
+    <% end %>
+
+    <% package_list = Enum.map(@packages, fn {name, _, _} -> ", #{name}_pkg" end) %>
+    const core_pkg = Pkg{
+        .name = "nif",
+        .source = .{ .path = "<%= @nif_path %>" },
+        .dependencies = &.{beam_pkg, erl_nif_pkg<%= package_list %>},
+    };
+
+    const beam_system_dir = "<%= :code.root_dir() %>/erts-<%= :erlang.system_info(:version) %>/include";
+
     const lib = b.addSharedLibrary(
-        "<%= @module_spec.module %>",
-        "<%= @code_file %>",
-        .{ .versioned = .{.major = <%= @module_spec.version.major %>,
-                          .minor = <%= @module_spec.version.minor %>,
-                          .patch = <%= @module_spec.version.patch %>}});
-    lib.addSystemIncludeDir("<%= :code.root_dir %>/erts-<%= :erlang.system_info(:version) %>/include");
-    <%= for dir <- dirs_for(target) do %>
-    lib.addSystemIncludeDir("<%= Path.join(zig_tree, dir) %>");
+        "<%= @module %>",
+        "module.zig",
+        .{ .versioned = .{.major = <%= @version.major %>,
+                          .minor = <%= @version.minor %>,
+                          .patch = <%= @version.patch %>}});
+    lib.linkage = .dynamic;
+
+    lib.addSystemIncludePath(beam_system_dir);
+    lib.linkLibC();
+    lib.addPackage(erl_nif_pkg);
+    lib.addPackage(beam_pkg);
+    lib.addPackage(core_pkg);
+    <%= for {name, _, _} <- @packages do %>
+    lib.addPackage(<%= name %>_pkg);
     <% end %>
-    <%= for system_include_dir <- @module_spec.system_include_dirs do %>
-    lib.addSystemIncludeDir("<%= system_include_dir %>");
+
+    <%= for lib <- @link_lib do %>
+      <%= case lib do %>
+        <% {:system, lib} -> %>
+    lib.linkSystemLibrary("<%= lib %>");
+        <% lib -> %>
+    lib.addObjectFile("<%= lib %>");
+      <% end %>
     <% end %>
-    <%= for include_dir <- @module_spec.include_dirs do %>
-    lib.addIncludeDir("<%= include_dir %>");
+
+    <%= for include <- @include_dir do %>
+    lib.addIncludePath("<%= include %>");
     <% end %>
+
+    <%= for {c_src, c_src_opts} <- @c_src do %>
+    <% ccompileparams = Enum.map_join(c_src_opts, ", ", &~s("#{&1}")) %>
+    lib.addCSourceFile("<%= c_src %>",  &[_][]const u8{<%= ccompileparams %>});
+    <% end %>
+
     lib.setBuildMode(mode);
     lib.setTarget(target);
-    <%= if @module_spec.link_libc do %>
-    // use libc if it has been asked for
-    lib.linkLibC();
-    <% end %>
-    <%= if @module_spec.link_libcpp do %>
-    // use libcpp if it has been asked for
-    lib.linkLibCpp();
-    <% end %>
-    <%= for system_lib <- @module_spec.system_libs do %>
-    lib.linkSystemLibrary("<%= system_lib %>");
-    <% end %>
-    <%= for source <- @module_spec.sources do %>
-    <%= case source do %>
-      <% {file, opts} -> %>
-        lib.addCSourceFile("<%= file %>", &[_][]const u8{<%= Enum.map_join(opts, ", ", &~s("#{&1}")) %>});
-      <% file -> %>
-        lib.addCSourceFile("<%= file %>", &[_][]const u8{});
-    <% end %>
-    <% end %>
-    <%= for lib <- @module_spec.libs do %>
-    <%= cond do %>
-      <% String.ends_with?(lib, ".so") -> %>
-    lib.linkSystemLibrary("<%= Path.basename(lib) %>");
-      <% String.ends_with?(lib, ".dll") -> %>
-    lib.linkSystemLibrary("<%= Path.basename(lib) %>");
-      <% String.ends_with?(lib, ".dylib") -> %>
-    lib.linkSystemLibrary("<%= Path.basename(lib) %>");
-      <% String.ends_with?(lib, ".a") -> %>
-    lib.addObjectFile("<%= Path.basename(lib) %>");
-      <% true -> %>
-        <% raise "invalid library file" %>
-    <% end %>
-    <% end %>
+
     lib.linker_allow_shlib_undefined = true;
-    // strip_symbols option?
-    lib.strip = <%= Mix.env() == :prod %>;
-    // future feature
-    //
-    // c files
-    // for (cfiles) |c_file| {
-    //     lib.addCSourceFile(c_file, &cflags);
-    // }
+
+    <%= if @stage1 do %> lib.use_stage1 = true; <% end %>
+
     lib.install();
 }

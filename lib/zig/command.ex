@@ -6,87 +6,162 @@ defmodule Zig.Command do
   `Zig.Builder` module.
   """
 
-  alias Zig.Builder
+  alias Zig.Assembler
+  alias Zig.Target
 
   require Logger
 
   #############################################################################
   ## API
 
-  def compile(compiler, zig_tree) do
-    zig_executable = executable_path(zig_tree)
+  defp run_zig(command, opts) do
+    args = String.split(command)
 
-    opts = [cd: compiler.assembly_dir, stderr_to_stdout: true]
+    base_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
+    zig_cmd = executable_path(opts)
 
-    Logger.debug(
-      "compiling nif for module #{inspect(compiler.module_spec.module)} in path #{
-        compiler.assembly_dir
-      }"
-    )
+    Logger.debug("running command: #{zig_cmd} #{command}")
 
-    Builder.build(compiler, zig_tree)
+    case System.cmd(zig_cmd, args, base_opts) do
+      {result, 0} ->
+        result
 
-    case System.cmd(zig_executable, ["build"], opts) do
-      {_, 0} ->
-        :ok
-
-      {err, _} ->
-        alias Zig.Parser.Error
-        Error.parse(err, compiler)
+      {error, code} ->
+        raise Zig.CompileError, command: command, code: code, error: error
     end
-
-    lib_dir =
-      compiler.module_spec.otp_app
-      |> :code.lib_dir()
-      |> Path.join("ebin")
-
-    source_library_filename = Zig.nif_name(compiler.module_spec)
-
-    library_filename = maybe_rename_library_filename(source_library_filename)
-
-    # copy the compiled library over to the lib/nif directory.
-    File.mkdir_p!(lib_dir)
-
-    compiler.assembly_dir
-    |> Path.join("zig-out/lib/#{source_library_filename}")
-    |> File.cp!(Path.join(lib_dir, library_filename))
-
-    # link the compiled library to be unversioned.
-    symlink_filename = Path.join(lib_dir, "#{library_filename}")
-
-    unless File.exists?(symlink_filename) do
-      lib_dir
-      |> Path.join(library_filename)
-      |> File.ln_s!(symlink_filename)
-    end
-
-    :ok
   end
 
-  @local_zig Application.compile_env(:zigler, :local_zig, false)
+  def run_sema(file, opts) do
+    priv_dir = :code.priv_dir(:zigler)
+    sema_file = Path.join(priv_dir, "beam/sema.zig")
+    beam_file = Path.join(priv_dir, "beam/beam.zig")
+    erl_nif_file = Path.join(priv_dir, "beam/erl_nif.zig")
+    sema_on_file = Path.join(priv_dir, "beam/sema/on.zig")
 
-  defp executable_path(zig_tree), do: executable_path(zig_tree, @local_zig)
+    package_opts = opts
+    |> Keyword.get(:packages)
+    |> List.wrap
 
-  defp executable_path(zig_tree, false), do: Path.join(zig_tree, "zig")
-  defp executable_path(_, true), do: System.find_executable("zig")
-  defp executable_path(_, path), do: path
+    package_files = Enum.map(package_opts, fn {name, {path, _}} -> {name, path} end)
+    ++ [beam: beam_file, erl_nif: erl_nif_file]
 
-  defp maybe_rename_library_filename(fullpath) do
-    if Path.extname(fullpath) == ".dylib" do
-      fullpath
-      |> Path.dirname()
-      |> Path.join(Path.basename(fullpath, ".dylib") <> ".so")
-    else
-      fullpath
+    packages = Enum.map(package_opts, fn
+      {name, path} when is_binary(path) -> {name, path}
+      {name, {path, []}} -> {name, path}
+      {name, {path, deps}} ->
+        deps_keyword = Enum.map(deps, &{&1, Keyword.fetch!(package_files, &1)})
+        {name, {path, deps_keyword}}
+    end)
+
+    pkg_opts =
+      packages(
+        analyte:
+          {file,
+           [beam: {beam_file, sema: sema_on_file, erl_nif: erl_nif_file},
+           erl_nif: erl_nif_file,
+           sema: sema_on_file] ++ packages},
+        sema: sema_on_file
+      )
+
+    # nerves will put in a `CC` command that we need to bypass because it misidentifies
+    # libc locations for statically linking it.
+    System.delete_env("CC")
+
+    sema_command = "run #{sema_file} #{pkg_opts} -lc #{link_opts(opts)}"
+
+    # Need to make this an OK tuple
+    {:ok, run_zig(sema_command, stderr_to_stdout: true)}
+  end
+
+  defp packages(packages) do
+    Enum.map_join(packages, " ", fn
+      {name, {file, deps}} ->
+        "--pkg-begin #{name} #{file} #{packages(deps)} --pkg-end"
+
+      {name, file} ->
+        "--pkg-begin #{name} #{file} --pkg-end"
+    end)
+  end
+
+  defp link_opts(opts) do
+    opts
+    |> Keyword.fetch!(:include_dir)
+    |> Enum.map_join(" ", &"-I #{&1}")
+  end
+
+  def fmt(file) do
+    run_zig("fmt #{file}", [])
+  end
+
+  def compile(module, opts) do
+    assembly_dir = Assembler.directory(module)
+
+    so_dir =
+      opts
+      |> Keyword.fetch!(:otp_app)
+      |> :code.priv_dir()
+
+    lib_dir = Path.join(so_dir, "lib")
+
+    run_zig("build --prefix #{so_dir}", cd: assembly_dir)
+
+    src_lib_name = Path.join(lib_dir, src_lib_name(module))
+    dst_lib_name = Path.join(lib_dir, dst_lib_name(module))
+
+    # on MacOS, we must delete the old library because otherwise library
+    # integrity checker will kill the process
+    File.rm(dst_lib_name)
+    File.cp!(src_lib_name, dst_lib_name)
+
+    Logger.debug("built library at #{dst_lib_name}")
+  end
+
+  def targets do
+    run_zig("targets", [])
+  end
+
+  defp executable_path(opts) do
+    cond do
+      opts[:local_zig] -> System.find_executable("zig")
+      path = opts[:zig_path] -> path
+      true -> Path.join(directory(), "zig")
+    end
+  end
+
+  defp src_lib_name(module) do
+    case {Target.resolve(), :os.type()} do
+      {nil, {:unix, :darwin}} ->
+        "lib#{module}.dylib"
+
+      {nil, {_, :nt}} ->
+        "#{module}.dll"
+
+      _ ->
+        "lib#{module}.so"
+    end
+  end
+
+  defp dst_lib_name(module) do
+    case {Target.resolve(), :os.type()} do
+      {nil, {:unix, :darwin}} ->
+        "#{module}.so"
+
+      {nil, {_, :nt}} ->
+        "#{module}.dll"
+
+      _ ->
+        "#{module}.so"
     end
   end
 
   #############################################################################
   ## download zig from online sources.
 
+  # TODO: move to target using :host as a parameter.
+
   @doc false
-  def version_name(version) do
-    "zig-#{get_os()}-#{get_arch()}-#{version}"
+  def os_arch do
+    "#{get_os()}-#{get_arch()}"
   end
 
   def get_os do
@@ -140,18 +215,16 @@ defmodule Zig.Command do
     """
 
   defp windows_warn do
-    Logger.warn("""
-    windows is not supported, but may work.
-
-    If you find an error in the process, please leave an issue at:
-    https://github.com/ityonemo/zigler/issues
-    """)
+    raise "windows is not supported, and will be supported in zigler 0.11"
   end
 
   @zig_dir_path Path.expand("../../zig", Path.dirname(__ENV__.file))
 
-  def fetch(version) do
-    zig_dir = Path.join(@zig_dir_path, version_name(version))
+  defp directory, do: Path.join(@zig_dir_path, "zig-#{os_arch()}-0.10.1")
+
+  # TODO: rename this.
+  def fetch!(version) do
+    zig_dir = directory()
     zig_executable = Path.join(zig_dir, "zig")
     :global.set_lock({__MODULE__, self()})
 
@@ -167,8 +240,9 @@ defmodule Zig.Command do
           ".tar.xz"
         end
 
-      archive = version_name(version) <> extension
+      archive = "zig-#{os_arch()}-#{Zig.version()}#{extension}"
 
+      # TODO: clean this up.
       Logger.configure(level: :info)
 
       zig_download_path = Path.join(@zig_dir_path, archive)
@@ -181,31 +255,8 @@ defmodule Zig.Command do
     :global.del_lock({__MODULE__, self()})
   end
 
-  # https://ziglang.org/download/#release-0.9.0
-  @checksums %{
-    "zig-linux-x86_64-0.9.1.tar.xz" =>
-      "be8da632c1d3273f766b69244d80669fe4f5e27798654681d77c992f17c237d7",
-    "zig-linux-i386-0.9.1.tar.xz" =>
-      "e776844fecd2e62fc40d94718891057a1dbca1816ff6013369e9a38c874374ca",
-    "zig-linux-riscv64-0.9.1.tar.xz" =>
-      "208dea53662c2c52777bd9e3076115d2126a4f71aed7f2ff3b8fe224dc3881aa",
-    "zig-linux-aarch64-0.9.1.tar.xz" =>
-      "5d99a39cded1870a3fa95d4de4ce68ac2610cca440336cfd252ffdddc2b90e66",
-    "zig-linux-armv7a-0.9.1.tar.xz" =>
-      "6de64456cb4757a555816611ea697f86fba7681d8da3e1863fa726a417de49be",
-    "zig-macos-x86_64-0.9.1.tar.xz" =>
-      "2d94984972d67292b55c1eb1c00de46580e9916575d083003546e9a01166754c",
-    "zig-macos-aarch64-0.9.1.tar.xz" =>
-      "8c473082b4f0f819f1da05de2dbd0c1e891dff7d85d2c12b6ee876887d438287",
-    "zig-windows-x86_64-0.9.1.zip" =>
-      "443da53387d6ae8ba6bac4b3b90e9fef4ecbe545e1c5fa3a89485c36f5c0e3a2",
-    "zig-windows-i386-0.9.1.zip" =>
-      "74a640ed459914b96bcc572183a8db687bed0af08c30d2ea2f8eba03ae930f69",
-    "zig-windows-aarch64-0.9.1.zip" =>
-      "621bf95f54dc3ff71466c5faae67479419951d7489e40e87fd26d195825fb842",
-    "zig-freebsd-x86_64-0.9.1.tar.xz" =>
-      "4e06009bd3ede34b72757eec1b5b291b30aa0d5046dadd16ecb6b34a02411254"
-  }
+  # https://ziglang.org/download/#release-0.10.1
+  # @checksums %{}
 
   defp download_zig_archive(zig_download_path, version, archive) do
     url = "https://ziglang.org/download/#{version}/#{archive}"
@@ -213,12 +264,12 @@ defmodule Zig.Command do
 
     case httpc_get(url) do
       {:ok, %{status: 200, body: body}} ->
-        expected_checksum = Map.fetch!(@checksums, archive)
-        actual_checksum = :sha256 |> :crypto.hash(body) |> Base.encode16(case: :lower)
+        # expected_checksum = Map.fetch!(@checksums, archive)
+        # actual_checksum = :sha256 |> :crypto.hash(body) |> Base.encode16(case: :lower)
 
-        if expected_checksum != actual_checksum do
-          raise "checksum mismatch: expected #{expected_checksum}, got #{actual_checksum}"
-        end
+        # if expected_checksum != actual_checksum do
+        #  raise "checksum mismatch: expected #{expected_checksum}, got #{actual_checksum}"
+        # end
 
         File.write!(zig_download_path, body)
 

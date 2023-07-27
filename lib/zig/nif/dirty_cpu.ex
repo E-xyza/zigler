@@ -1,25 +1,26 @@
 defmodule Zig.Nif.DirtyCpu do
-  @moduledoc false
+  @moduledoc """
+  Dirty Cpu Nifs run dirty, on the cpu
+  """
 
-  alias Zig.Nif.{Adapter, Synchronous}
+  @behaviour Zig.Nif.Concurrency
 
-  @behaviour Adapter
+  alias Zig.Nif.Basic
 
   @impl true
-  defdelegate zig_adapter(nif, module), to: Synchronous
+  defdelegate render_elixir(nif), to: Basic
 
   @impl true
-  def nif_table_entries(nif) do
-    """
-      e.ErlNifFunc{
-        .name = "#{nif.name}",
-        .arity = #{nif.arity},
-        .fptr = __#{nif.name}_shim__,
-        .flags = e.ERL_NIF_DIRTY_JOB_CPU_BOUND,
-      },
-    """
+  defdelegate render_erlang(nif), to: Basic
+
+  @impl true
+  defdelegate render_zig(nif), to: Basic
+
+  @impl true
+  def table_entries(%{type: type} = nif) do
+    [{Basic.entrypoint(nif), type.arity, type.name, :dirty_cpu}]
   end
 
   @impl true
-  defdelegate beam_adapter(nif), to: Synchronous
+  defdelegate resources(nif), to: Basic
 end

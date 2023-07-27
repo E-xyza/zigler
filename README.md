@@ -3,7 +3,7 @@
 Library test status:
 ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI/badge.svg)
 
-## Installation
+## Installation: Elixir
 
 Zigler is [available in Hex](https://hex.pm/packages/zigler), and the package can be installed
 by adding `zigler` to your list of dependencies in `mix.exs`:
@@ -11,9 +11,26 @@ by adding `zigler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:zigler, "~> 0.9.1", runtime: false}
+    {:zigler, "~> 0.10.1", runtime: false}
   ]
 end
+```
+
+Then you should run `mix zig.get` to download Zig 0.10.1
+
+## Installation: Erlang
+
+Erlang is only supported via rebar3.  You must enable the rebar_mix plugin and 
+add zigler to your deps in rebar3.
+
+Note that erlang support is highly experimental.  Please submit issues if you 
+have difficulty.
+
+```erlang
+{plugins, [rebar_mix]}.
+
+{deps, [{zigler, "0.10"}]}.
+
 ```
 
 ## Documentation
@@ -24,7 +41,7 @@ Docs can be found at [https://hexdocs.pm/zigler](https://hexdocs.pm/zigler).
 
 - Linux
 - FreeBSD (tested, but not subjected to CI)
-- MacOS (I believe it works but is still officially untested)
+- MacOS
 
 - Nerves cross-compilation is supported out of the box.
 
@@ -37,10 +54,9 @@ This is now possible, using the magic of Zig.
 
 ```elixir
 defmodule ExampleZig do
-  use Zig
+  use Zig, otp_app: :zigler
   ~Z"""
-  /// nif: example_fun/2
-  fn example_fun(value1: f64, value2: f64) bool {
+  pub fn example_fun(value1: f64, value2: f64) bool {
     return value1 > value2;
   }
   """
@@ -57,15 +73,13 @@ It will also convert trickier types into types you care about, for example:
 
 ```elixir
 defmodule ZigCollections do
-  use Zig
+  use Zig, otp_app: :zigler
   ~Z"""
-  /// nif: string_count/1
-  fn string_count(string: []u8) i64 {
+  pub fn string_count(string: []u8) i64 {
     return @intCast(i64, string.len);
   }
 
-  /// nif: list_sum/1
-  fn list_sum(array: []f64) f64 {
+  pub fn list_sum(array: []f64) f64 {
     var sum: f64 = 0.0;
     for(array) | item | {
       sum += item;
@@ -86,10 +100,9 @@ so any zig code you import will play nice with the BEAM.
 
 ```elixir
 defmodule Allocations do
-  use Zig
+  use Zig, otp_app: :zigler
   ~Z"""
-  /// nif: double_atom/1
-  fn double_atom(env: beam.env, string: []u8) beam.term {
+  pub fn double_atom(env: beam.env, string: []u8) beam.term {
     var double_string = beam.allocator.alloc(u8, string.len * 2) catch {
       return beam.raise_enomem(env);
     };
@@ -115,39 +128,36 @@ It is a goal for Zigler to make using *it* to bind C libraries easier
 than using C to bind C libraries.  Here is an example:
 
 ```elixir
-defmodule BlasDynamic do
-  use Zig,
-    libs: ["/usr/lib/x86_64-linux-gnu/blas/libblas.so"],
-    include: ["/usr/include/x86_64-linux-gnu"],
-    link_libc: true
+defmodule Blas do
+  use Zig,     
+    otp_app: :zigler
+    link_lib: {:system, "blas"},
 
   ~Z"""
+  const beam = @import("beam");
   const blas = @cImport({
     @cInclude("cblas.h");
   });
 
-  /// nif: blas_axpy/3
-  fn blas_axpy(env: beam.env, a: f64, x: []f64, y: []f64) beam.term {
+  pub fn blas_axpy(env: beam.env, a: f64, x: []f64, y: []f64) beam.term {
     if (x.len != y.len) {
       return beam.raise_function_clause_error(env);
     }
 
     blas.cblas_daxpy(@intCast(c_int, x.len), a, x.ptr, 1, y.ptr, 1);
 
-    return beam.make_f64_list(env, y) catch {
-      return beam.raise_function_clause_error(env);
-    };
+    return y;
   }
   """
 end
 
 test "we can use a blas shared library" do
   # returns aX+Y
-  assert [11.0, 18.0] == BlasDynamic.blas_axpy(3.0, [2.0, 4.0], [5.0, 6.0])
+  assert [11.0, 18.0] == Blas.blas_axpy(3.0, [2.0, 4.0], [5.0, 6.0])
 end
 ```
 
-### Documentation
+### Documentation (Elixir-only)
 
 You can document nif functions, local functions, zig structs, variables, and types.
 If you document a nif function, it will be a part of the module documentation, and
@@ -157,21 +167,44 @@ Example:
 
 ```elixir
 defmodule Documentation do
-  use Zig
+  use Zig, otp_app: :zigler
   ~Z"""
   /// a zero-arity function which returns 47.
-  /// nif: zero_arity/0
-  fn zero_arity() i64 {
+  pub fn zero_arity() i64 {
     return 47;
   }
   """
 end
 ```
 
-## Formatting
+### Formatting (Elixir-only)
 
-A mix format plugin is available through the `zigler_format` package. 
+A mix format plugin is available through the `zigler_format` package.
 [See the installation instructions](https://github.com/v0idpwn/zigler_format#installation)
+
+## Erlang support
+
+Use of Zigler with erlang is possible using parse transforms.  Annotate the zig
+code into a `zig_code` attribute and pass zigler options (identical to the elixir
+options) into a `zig_opts` attribute.  Zigler will then create appropriate
+functions matching the zig functions.
+
+```erlang
+-module(erlang_zigler_module).
+-compile({parse_transform, zigler}). 
+-export([foo/1, foo/0]).
+
+-zig_code("
+pub fn foo() i32 {
+    return 47;
+}
+").
+
+-zig_opts([{otp_app, zigler}]).
+
+foo(X) ->
+    47 + X.
+```
 
 ## Zigler Principles
 

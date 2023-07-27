@@ -109,10 +109,20 @@ Thanks to Dave Cottlehuber @dch for testing.
 - special thanks to @jeremyowensboggs, who had a nicer upgrade implementation
   than mine.
 
+## 0.10.1
+- complete overhaul of entire zig system
+- Breaking changes:
+  - `beam.get`, `beam.make`
+  - nif selection is no longer done using inline docstrings
+    - select nifs using `use Zig` options.
+  - zig test has been deprecated, and may return as a plugin
+    library in the future
+  - zig doc has been deprecated for general use, though can
+    be used experimentally through `Zig.Doc`
+  - yielding nifs are not supported, but will return in 0.11
+    due to zig async not working in 0.10.x
+
+
 ## Upcoming
-- more intelligent support for FunctionCallError reporting
-- support for more types (zig tuples <-> beam tuples, arrays, optionals)
 - `beam.call` which will call erlang or elixir modules (but only in yielding or
   threaded contexts)
-- massive refactor of making terms.  Expect beam.make_* functions to be
-  completely overhauled.
