@@ -11,6 +11,9 @@
 //! const beam = @import("beam")
 //! ```
 //!
+//! If there's something you need which is not provided, you can also
+//! import `erl_nif` package which provides direct access to the
+//! equivalent calls from [`erl_nif.h`](https://www.erlang.org/doc/man/erl_nif.html)
 
 const e = @import("erl_nif.zig");
 const std = @import("std");
