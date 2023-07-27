@@ -18,13 +18,13 @@ defmodule Zigler.MixProject do
         # of the hex packaging system.
         files: ~w[lib mix.exs README* LICENSE* VERSIONS* priv/beam],
         links: %{
-          "GitHub" => "https://github.com/ityonemo/zigler",
+          "GitHub" => "https://github.com/E-xyza/zigler",
           "Zig" => "https://ziglang.org/"
         }
       ],
       dialyzer: [plt_add_deps: :transitive],
       preferred_cli_env: [dialyzer: :dev],
-      source_url: "https://github.com/ityonemo/zigler/",
+      source_url: "https://github.com/E-xyza/zigler/",
       docs: docs(),
       aliases: [docs: "zig_doc"]
     ]
