@@ -1185,3 +1185,8 @@ pub fn raise_with_error_return(env_: env, err: anytype, maybe_return_trace: ?*st
         return raise_exception(env_, .{ .@"error", err});
     }
 }
+
+// unignore this on 0.11, if this is validated
+
+/// <!-- ignore -->
+pub const Mutex = @import("mutex.zig").Mutex;

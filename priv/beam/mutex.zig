@@ -4,7 +4,7 @@ const e = @import("erl_nif.zig");
 
 const MutexError = error{CreationFail};
 
-pub fn BeamMutex(comptime name_: []const u8) type {
+pub fn Mutex(comptime name_: []const u8) type {
     return struct {
         mutex_ref: ?*e.ErlNifMutex = null,
         const name: []const u8 = name_;
