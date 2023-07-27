@@ -110,7 +110,9 @@ Thanks to Dave Cottlehuber @dch for testing.
   than mine.
 
 ## 0.10.1
+- complete overhaul of entire zig system
 - Breaking changes:
+  - `beam.get`, `beam.make`
   - nif selection is no longer done using inline docstrings
     - select nifs using `use Zig` options.
   - zig test has been deprecated, and may return as a plugin
@@ -119,7 +121,6 @@ Thanks to Dave Cottlehuber @dch for testing.
     be used experimentally through `Zig.Doc`
   - yielding nifs are not supported, but will return in 0.11
     due to zig async not working in 0.10.x
-  - 
 
 
 ## Upcoming
