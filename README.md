@@ -102,6 +102,8 @@ so any zig code you import will play nice with the BEAM.
 defmodule Allocations do
   use Zig, otp_app: :zigler
   ~Z"""
+  const beam = @import("beam");
+
   pub fn double_atom(env: beam.env, string: []u8) beam.term {
     var double_string = beam.allocator.alloc(u8, string.len * 2) catch {
       return beam.raise_enomem(env);

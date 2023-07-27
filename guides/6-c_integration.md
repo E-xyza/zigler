@@ -114,8 +114,8 @@ It then calculates the linear transformation `ax + y` using these vectors.
 
 > ### "in-out" parameters {: .info }
 >
-> that the `y` parameter is an "in-out" parameter.  Instead of returning a
-> result, the results are written into the y pointer.
+> The `y` parameter in this function is an "in-out" parameter.  Instead of 
+> returning a result, the results are written into the y pointer.
 >
 > to specify that it's an in-out parameter, we put an integer (which is the
 > 0-indexed index of the argument which is the out parameter).

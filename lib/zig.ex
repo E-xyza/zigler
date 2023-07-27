@@ -130,6 +130,16 @@ defmodule Zig do
   > - dialyzer type information for your function.  You will have
   >   to supply that type information in your nif configuration.
 
+  ### Functions missing from [`beam`](beam.html)
+
+  The `beam` module doesn't comprehensively contain all nif functions.
+  For functions that correspond to [`erl_nif.h`](https://www.erlang.org/doc/man/erl_nif.html)
+  you can import the erl_nif package, which has the `erl_nif` C API
+
+  ```zig
+  const erl_nif = @import("erl_nif");
+  ```
+
   ### Importing external files
 
   If you need to write zig code outside of the module, just place it in
