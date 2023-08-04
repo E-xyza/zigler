@@ -227,6 +227,7 @@ pub fn enif_ioq_create(_: ioqo) ioq {
     return null;
 }
 pub fn enif_ioq_destroy(_: ioq) void {}
+
 pub fn enif_ioq_deq(_: ioq, _: usize, _: ?*usize) c_int {
     return 0;
 }
@@ -326,9 +327,10 @@ pub fn enif_make_existing_atom_len(_: env, _: [*c]const u8, _: usize, _: trm, _:
 pub fn enif_make_int(_: env, _: c_int) term {
     return .{};
 }
-pub fn enif_make_int64(_: env, _: u64) term {
+pub fn enif_make_int64(_: env, _: i64) term {
     return .{};
 }
+
 // don't use the variadic list functions.
 // pub fn enif_make_list(...)
 // pub fn enif_make_list1(...)
