@@ -180,7 +180,7 @@ pub fn enif_make_double(_: env, _: f64) term { return .{}; }
 pub fn enif_make_existing_atom(_: env, _: [*c]const u8, _: trm, _: cenc) c_int { return 0; }
 pub fn enif_make_existing_atom_len(_: env, _: [*c]const u8, _: usize, _: trm, _: cenc) c_int { return 0; }
 pub fn enif_make_int(_: env, _: c_int) term { return .{}; }
-pub fn enif_make_int64(_: env, _: u64) term { return .{}; }
+pub fn enif_make_int64(_: env, _: i64) term { return .{}; }
 // don't use the variadic list functions.
 // pub fn enif_make_list(...)
 // pub fn enif_make_list1(...)
