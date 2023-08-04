@@ -70,7 +70,7 @@ fn streamStruct(stream: JsonStreamPtr, comptime s: std.builtin.Type.Struct, comp
                 try stream.objectField("extern");
                 try stream.emitBool(true);
             },
-            .Auto => {}
+            .Auto => {},
         }
         try stream.objectField("fields");
         try stream.beginArray();
@@ -192,7 +192,7 @@ fn streamType(stream: JsonStreamPtr, comptime T: type) WriteError!void {
 }
 
 pub fn streamFun(stream: JsonStreamPtr, comptime name: anytype, comptime fun: std.builtin.Type.Fn) WriteError!void {
-   //  @compileLog("in function", name);
+    //  @compileLog("in function", name);
     try stream.beginObject();
     try stream.objectField("name");
     try stream.emitString(name);
