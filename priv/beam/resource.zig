@@ -144,7 +144,6 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
             defer self.maybe_release();
             switch (output_type) {
                 .default => {
-
                     return .{ .v = e.enif_make_resource(env, @ptrCast(*anyopaque, self.__payload)) };
                 },
                 .binary => {

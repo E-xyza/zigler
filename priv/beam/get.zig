@@ -419,7 +419,7 @@ pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: a
         const alloc = allocator(opts);
         const alloc_count = if (slice_info.sentinel) |_| item_count + 1 else item_count;
 
-        const result = alloc.alloc(Child, alloc_count) catch | err | {
+        const result = alloc.alloc(Child, alloc_count) catch |err| {
             return err;
         };
 
@@ -663,11 +663,10 @@ fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term, opts
             switch (struct_info.layout) {
                 .Packed, .Extern => {
                     const B = [@sizeOf(T)]u8;
-                    const bits = @ptrCast(* align(@alignOf(T)) B, result);
+                    const bits = @ptrCast(*align(@alignOf(T)) B, result);
                     try fill_array(B, env, bits, src, opts);
                 },
-                else =>
-                    return GetError.argument_error,
+                else => return GetError.argument_error,
             }
         },
         else => return GetError.argument_error,
@@ -769,13 +768,13 @@ fn typespec_for(comptime T: type) []const u8 {
                 var should_pipe = false;
 
                 for (en.fields) |field| {
-                     if (should_pipe) {
+                    if (should_pipe) {
                         typespec = typespec ++ " | ";
                     }
                     typespec = typespec ++ std.fmt.comptimePrint("{}", .{field.value});
                     should_pipe = true;
                 }
-    
+
                 for (en.fields) |field| {
                     typespec = typespec ++ " | " ++ ":" ++ field.name[0..];
                 }
