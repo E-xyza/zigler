@@ -1,5 +1,5 @@
 const beam = @import("beam.zig");
-const e = @import("erl_nif.zig");
+const e = @import("erl_nif");
 const threads = @import("threads.zig");
 
 const PidError = error{ NotProcessBound, NotDelivered };
@@ -28,7 +28,7 @@ pub fn send(env: beam.env, dest: beam.pid, content: anytype) PidError!beam.term 
 
     const term = beam.make(env, content, .{});
 
-    // enif_send is not const-correct so we have to assign a variable to the static 
+    // enif_send is not const-correct so we have to assign a variable to the static
     // pid variable
 
     var pid = dest;

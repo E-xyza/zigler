@@ -1,4 +1,4 @@
-#defmodule ZiglerTest.Documentation do
+# defmodule ZiglerTest.Documentation do
 #  use Zig, otp_app: :zigler, nifs: [..., no_docs: [docs: false]]
 #
 #  ~Z"""
@@ -15,4 +15,4 @@
 #      return term;
 #  }
 #  """
-#end
+# end

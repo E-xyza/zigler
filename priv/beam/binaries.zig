@@ -1,4 +1,4 @@
-const e = @import("erl_nif.zig");
+const e = @import("erl_nif");
 const beam = @import("beam.zig");
 
 pub fn binary_to_slice(binary: e.ErlNifBinary) []u8 {

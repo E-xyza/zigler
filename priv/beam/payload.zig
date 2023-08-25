@@ -1,6 +1,6 @@
 const std = @import("std");
+const e = @import("erl_nif");
 const beam = @import("beam.zig");
-const e = @import("erl_nif.zig");
 
 pub fn Payload(comptime function: anytype) type {
     const T = if (@TypeOf(function) == type) function else @TypeOf(function);
@@ -15,7 +15,7 @@ pub fn Payload(comptime function: anytype) type {
     var fields: []const SF = &[_]SF{};
     const decls = [0]std.builtin.Type.Declaration{};
 
-    for (args) |arg, index| {
+    for (args, 0..) |arg, index| {
         const new_field = [1]SF{.{
             .name = std.fmt.comptimePrint("{}", .{index}),
             .field_type = arg.arg_type.?,
@@ -119,14 +119,14 @@ pub fn cleanup(payload: anytype, should_clean: anytype) void {
 }
 
 fn cleanup_with_env(payload: anytype, should_clean: anytype) void {
-    inline for (should_clean) |item_clean_opts, index| {
+    inline for (should_clean, 0..) |item_clean_opts, index| {
         if (@TypeOf(item_clean_opts) == @TypeOf(null)) continue;
         beam.cleanup(payload[index + 1], item_clean_opts);
     }
 }
 
 fn cleanup_no_env(payload: anytype, should_clean: anytype) void {
-    inline for (should_clean) |item_clean_opts, index| {
+    inline for (should_clean, 0..) |item_clean_opts, index| {
         if (@TypeOf(item_clean_opts) == @TypeOf(null)) continue;
         beam.cleanup(payload[index], item_clean_opts);
     }

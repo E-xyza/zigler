@@ -37,9 +37,11 @@ pub fn cleanup(what: anytype, opts: anytype) void {
             cleanup_pointer(what, opts);
         },
         .Optional => {
-            if (what) |pointer| {cleanup(pointer, opts); }
+            if (what) |pointer| {
+                cleanup(pointer, opts);
+            }
         },
-        .Struct => |s| {
+        .Struct => |_| {
             //if (resource.MaybeUnwrap(s)) |_| {
             //    cleanup_resource(what, opts);
             //}
@@ -57,8 +59,8 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
             allocator(opts).destroy(ptr);
         },
         .Slice => {
-            if (@typeInfo(T).Pointer.sentinel) | _ | {
-                allocator(opts).free(@ptrCast([]u8, ptr));
+            if (@typeInfo(T).Pointer.sentinel) |_| {
+                allocator(opts).free(@ptrCast(ptr));
             } else {
                 allocator(opts).free(ptr);
             }

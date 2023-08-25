@@ -1,25 +1,18 @@
 const std = @import("std");
-const Builder = std.build.Builder;
-const Pkg = std.build.Pkg;
 
-pub fn build(b: *Builder) void {
-    const mode = b.standardReleaseOptions();
+pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(<%=Zig.Target.for_builder()%>);
+    const optimize = b.standardOptimizeOption(.{});
 
     const erl_nif_pkg = Pkg{
         .name = "erl_nif",
         .source = .{ .path = "<%= Path.join(@beam_dir, "erl_nif.zig") %>"}
     };
 
-    const no_sema_pkg = Pkg{
-        .name = "sema",
-        .source = .{ .path = "<%= Path.join(@beam_dir, "sema/off.zig") %>"}
-    };
-
     const beam_pkg = Pkg{
         .name = "beam",
         .source = .{ .path = "<%= Path.join(@beam_dir, "beam.zig") %>"},
-        .dependencies = &.{erl_nif_pkg, no_sema_pkg},
+        .dependencies = &.{erl_nif_pkg},
     };
 
     <%= for {name, path, deps} <- @packages do %>

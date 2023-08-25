@@ -1,5 +1,5 @@
 const beam = @import("beam.zig");
-const e = @import("erl_nif.zig");
+const e = @import("erl_nif");
 const std = @import("std");
 //const resource = @import("resource.zig");
 
@@ -62,7 +62,7 @@ pub fn make_pid(_: beam.env, pid: beam.pid) beam.term {
     // super bogus and super sketchy code:
     // this code will fail to work if the OTP team ever changes
     // their internal pid representation away from this!
-    return .{ .v = @bitCast(e.ErlNifTerm, pid.pid) };
+    return .{ .v = @bitCast(pid.pid) };
 }
 
 pub fn make_null(env: beam.env) beam.term {
@@ -92,23 +92,23 @@ fn make_int(env: beam.env, value: anytype) beam.term {
     switch (int.signedness) {
         .signed => switch (int.bits) {
             0 => return .{ .v = e.enif_make_int(env, 0) },
-            1...32 => return .{ .v = e.enif_make_int(env, @intCast(i32, value)) },
-            33...64 => return .{ .v = e.enif_make_int64(env, @intCast(i64, value)) },
+            1...32 => return .{ .v = e.enif_make_int(env, @as(i32, @intCast(value))) },
+            33...64 => return .{ .v = e.enif_make_int64(env, @as(i64, @intCast(value))) },
             else => {},
         },
         .unsigned => switch (int.bits) {
             0 => return .{ .v = e.enif_make_int(env, 0) },
-            1...32 => return .{ .v = e.enif_make_uint(env, @intCast(u32, value)) },
-            33...64 => return .{ .v = e.enif_make_uint64(env, @intCast(u64, value)) },
+            1...32 => return .{ .v = e.enif_make_uint(env, @as(u32, @intCast(value))) },
+            33...64 => return .{ .v = e.enif_make_uint64(env, @as(u64, @intCast(value))) },
             else => {
                 const Bigger = std.meta.Int(.unsigned, comptime try std.math.ceilPowerOfTwo(u16, int.bits));
                 const buf_size = @sizeOf(Bigger);
                 var result: e.ErlNifTerm = undefined;
-                var intermediate = @intCast(Bigger, value);
+                var intermediate = @as(Bigger, @intCast(value));
                 var buf = e.enif_make_new_binary(env, buf_size, &result);
 
                 // transfer content.
-                std.mem.copy(u8, buf[0..buf_size], @ptrCast([*]u8, &intermediate)[0..buf_size]);
+                std.mem.copy(u8, buf[0..buf_size], @as([*]u8, @ptrCast(&intermediate))[0..buf_size]);
 
                 return .{ .v = result };
             },
@@ -137,7 +137,7 @@ fn make_comptime_int(env: beam.env, value: anytype) beam.term {
 }
 
 pub fn make_comptime_float(env: beam.env, comptime float: comptime_float) beam.term {
-    return beam.make(env, @floatCast(f64, float), .{});
+    return beam.make(env, @as(f64, @floatCast(float)), .{});
 }
 
 const EMPTY_TUPLE_LIST = [_]beam.term{};
@@ -149,7 +149,7 @@ fn make_struct(env: beam.env, value: anytype, comptime opts: anytype) beam.term 
             @compileError("The tuple size is too large for the erlang virtual machine");
         }
         var tuple_list: [value.len]e.ErlNifTerm = undefined;
-        inline for (tuple_list) |*tuple_item, index| {
+        inline for (tuple_list, 0..) |*tuple_item, index| {
             const tuple_term = value[index];
             if (@TypeOf(tuple_term) == beam.term) {
                 tuple_item.* = tuple_term.v;
@@ -158,15 +158,15 @@ fn make_struct(env: beam.env, value: anytype, comptime opts: anytype) beam.term 
             }
         }
         return .{ .v = e.enif_make_tuple_from_array(env, &tuple_list, value.len) };
-    //} else if (resource.MaybeUnwrap(struct_info)) |_| {
-    //    return value.make(env, opts);
+        //} else if (resource.MaybeUnwrap(struct_info)) |_| {
+        //    return value.make(env, opts);
     } else {
         const fields = struct_info.fields;
         var result: e.ErlNifTerm = undefined;
         var keys: [fields.len]e.ErlNifTerm = undefined;
         var vals: [fields.len]e.ErlNifTerm = undefined;
 
-        inline for (fields) |field, index| {
+        inline for (fields, 0..) |field, index| {
             if (field.name.len > 255) {
                 @compileError("the length of the struct field name is too large for the erlang virtual machine");
             }
@@ -198,7 +198,7 @@ fn make_error(env: beam.env, value: anytype) beam.term {
 }
 
 fn make_float(env: beam.env, value: anytype) beam.term {
-    const floatval = @floatCast(f64, value);
+    const floatval = @as(f64, @floatCast(value));
     if (std.math.isNan(value)) return make_enum(env, .NaN);
     if (std.math.isPositiveInf(value)) return make_enum(env, .infinity);
     if (std.math.isNegativeInf(value)) return make_enum(env, .neg_infinity);
@@ -239,7 +239,7 @@ fn make_array_from_pointer(comptime T: type, env: beam.env, array_ptr: anytype, 
         beam.term => {
             // since beam.term is guaranteed to be a packed struct of only
             // e.ErlNifTerm, this is always guaranteed to work.
-            const ptr = @ptrCast([*]const e.ErlNifTerm, array_ptr);
+            const ptr = @as([*]const e.ErlNifTerm, @ptrCast(array_ptr));
             return .{ .v = e.enif_make_list_from_array(env, ptr, array_info.len) };
         },
         e.ErlNifTerm => {
@@ -278,14 +278,14 @@ fn make_cpointer(env: beam.env, cpointer: anytype, comptime opts: anytype) beam.
     if (cpointer) |_| {
         // the following two types have inferrable sentinels
         if (Child == u8) {
-            return make(env, @ptrCast([*:0]u8, cpointer), opts);
+            return make(env, @as([*:0]u8, @ptrCast(cpointer)), opts);
         }
         if (@typeInfo(Child) == .Pointer) {
-            return make(env, @ptrCast([*:null]Child, cpointer), opts);
+            return make(env, @as([*:null]Child, @ptrCast(cpointer)), opts);
         }
 
         switch (@typeInfo(Child)) {
-            .Struct => return make(env, @ptrCast(*Child, cpointer), opts),
+            .Struct => return make(env, @as(*Child, @ptrCast(cpointer)), opts),
             else => @compileError("this is not supported"),
         }
     } else {
@@ -311,11 +311,11 @@ pub fn make_slice(env: beam.env, slice: anytype, comptime opts: anytype) beam.te
         []beam.term => {
             // since beam.term is guaranteed to be a packed struct of only
             // e.ErlNifTerm, this is always guaranteed to work.
-            const ptr = @ptrCast([*]const e.ErlNifTerm, slice.ptr);
-            return .{ .v = e.enif_make_list_from_array(env, ptr, @intCast(c_uint, slice.len)) };
+            const ptr = @as([*]const e.ErlNifTerm, @ptrCast(slice.ptr));
+            return .{ .v = e.enif_make_list_from_array(env, ptr, @as(c_uint, @intCast(slice.len))) };
         },
         []e.ErlNifTerm => {
-            return .{ .v = e.enif_make_list_from_array(env, slice.ptr, @intCast(c_uint, slice.len)) };
+            return .{ .v = e.enif_make_list_from_array(env, slice.ptr, @as(c_uint, @intCast(slice.len))) };
         },
         else => {
             var tail = e.enif_make_list_from_array(env, null, 0);
@@ -344,7 +344,7 @@ fn make_binary(env: beam.env, content: anytype) beam.term {
             switch (P.size) {
                 .Slice => {
                     const byte_size = @sizeOf(Child) * content.len;
-                    const u8buf = @ptrCast([*]const u8, content.ptr);
+                    const u8buf = @as([*]const u8, @ptrCast(content.ptr));
                     return make_binary_from_u8_slice(env, u8buf[0..byte_size]);
                 },
                 // it is possible that this is a const pointer to an array in memory.
@@ -353,7 +353,7 @@ fn make_binary(env: beam.env, content: anytype) beam.term {
                         @compileError("make_binary is only supported for array and slice pointers");
                     }
                     const byte_size = @sizeOf(@typeInfo(Child).Array.child) * content.len;
-                    const u8buf = @ptrCast([*]const u8, content);
+                    const u8buf = @as([*]const u8, @ptrCast(content));
                     return make_binary_from_u8_slice(env, u8buf[0..byte_size]);
                 },
                 else => @compileError("make_binary is only supported for array and slice pointers"),
@@ -361,7 +361,7 @@ fn make_binary(env: beam.env, content: anytype) beam.term {
         },
         .Array => |A| {
             const byte_size = @sizeOf(A.child) * content.len;
-            const u8buf = @ptrCast([*]const u8, &content);
+            const u8buf = @as([*]const u8, @ptrCast(&content));
             return make_binary_from_u8_slice(env, u8buf[0..byte_size]);
         },
         else => @compileError("make_binary is only supported for slices and arrays"),

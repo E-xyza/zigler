@@ -1,6 +1,6 @@
 const std = @import("std");
 const beam = @import("beam.zig");
-const e = @import("erl_nif.zig").e;
+const e = @import("erl_nif").e;
 
 const builtin = std.builtin;
 const Allocator = std.mem.Allocator;
@@ -144,7 +144,6 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
             defer self.maybe_release();
             switch (output_type) {
                 .default => {
-
                     return .{ .v = e.enif_make_resource(env, @ptrCast(self.__payload)) };
                 },
                 .binary => {
@@ -233,7 +232,7 @@ fn resource_alloc(
     }
     // don't deal with alignment issues at the moment.
     const resource_type = @as(*e.ErlNifResourceType, @ptrCast(resource_ptr));
-    const ptr = e.enif_alloc_resource(resource_type, @intCast(c_uint, len)) orelse return error.OutOfMemory;
+    const ptr = e.enif_alloc_resource(resource_type, @as(c_uint, @intCast(len))) orelse return error.OutOfMemory;
     return @ptrCast(ptr)[0..len];
 }
 

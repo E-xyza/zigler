@@ -1,6 +1,6 @@
 //! general-purpose BEAM mutex wrapped into the zig mutex interface
 
-const e = @import("erl_nif.zig");
+const e = @import("erl_nif");
 
 const MutexError = error{CreationFail};
 
@@ -13,11 +13,8 @@ pub fn Mutex(comptime name_: []const u8) type {
         /// initializes the mutex.  Note this is failable.
         pub fn init(self: *Self) !void {
             if (self.mutex_ref) |_| {} else {
-                // Do this ptr-int dance since enif_mutex_create
-                // accepts char * instead of const char *
-                // TODO: use @constCast in Zig >= 0.11
                 self.mutex_ref =
-                    e.enif_mutex_create(@intToPtr([*c]u8, @ptrToInt(name.ptr))) orelse
+                    e.enif_mutex_create(@constCast(name.ptr)) orelse
                     return MutexError.CreationFail;
             }
         }

@@ -35,8 +35,7 @@ defmodule Zig.Command do
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema.zig")
     beam_file = Path.join(priv_dir, "beam/beam.zig")
-    erl_nif_file = Path.join(priv_dir, "beam/erl_nif.zig")
-    sema_on_file = Path.join(priv_dir, "beam/sema/on.zig")
+    erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
 
     package_opts =
       opts
@@ -60,16 +59,19 @@ defmodule Zig.Command do
           {name, {path, deps_keyword}}
       end)
 
+    erl_nif_pkg = {:erl_nif, erl_nif_file}
+    beam_pkg = {:beam, {beam_file, [erl_nif_pkg]}}
+
     packages =
       [
+        erl_nif_pkg,
+        beam_pkg,
         analyte:
           {file,
            [
-             beam: {beam_file, sema: sema_on_file, erl_nif: erl_nif_file},
-             erl_nif: erl_nif_file,
-             sema: sema_on_file
-           ] ++ packages},
-        sema: sema_on_file
+             beam_pkg,
+             erl_nif_pkg
+           ] ++ packages}
       ]
 
     deps =
@@ -100,31 +102,15 @@ defmodule Zig.Command do
 
   defp package_mods(packages) do
     packages
-    |> Enum.flat_map(fn 
+    |> Enum.flat_map(fn
       {name, {file, deps}} ->
         ["--mod #{name}:#{package_deps(deps)}:#{file}"] ++ package_mods(deps)
+
       {name, file} ->
         ["--mod #{name}::#{file}"]
     end)
-    |> Enum.uniq
+    |> Enum.uniq()
   end
-
-  # defp packages(packages) do
-  #  Enum.map(packages, fn 
-  #    {name, file} ->
-  #      [--]
-  #  end)
-  #  packages |> dbg(limit: 25)
-  #  raise "eee"
-  #
-  #  #Enum.map_join(packages, " ", fn
-  #  #  {name, {file, deps}} ->
-  #  #    "--pkg-begin #{name} #{file} #{packages(deps)} --pkg-end"
-  #  #
-  #  #  {name, file} ->
-  #  #    "--pkg-begin #{name} #{file} --pkg-end"
-  #  #end)
-  # end
 
   defp link_opts(opts) do
     opts

@@ -1,8 +1,6 @@
 const std = @import("std");
-//const resource = @import("resource.zig");
-//const beam = @import("beam.zig");
-const e = @import("erl_nif.zig");
-const stub_erl_nif = @import("stub_erl_nif.zig");
+const beam = @import("beam");
+const e = @import("erl_nif");
 
 const analyte = @import("analyte");
 const json = std.json;
@@ -10,18 +8,18 @@ const json = std.json;
 // possibly 200 is an over-conservative choice for function depth here.
 const WriteError = std.fs.File.WriteError;
 const FileWriter = std.io.Writer(std.fs.File, WriteError, std.fs.File.write);
-const JsonStreamPtr = *json.WriteStream(FileWriter, .{.assumed_correct = {}});
+const JsonStreamPtr = *json.WriteStream(FileWriter, .{ .assumed_correct = {} });
 
-//fn streamInt(stream: JsonStreamPtr, comptime i: std.builtin.Type.Int) WriteError!void {
-//    try emitType(stream, "integer");
-//    try stream.objectField("signedness");
-//    switch (i.signedness) {
-//        .unsigned => try stream.emitString("unsigned"),
-//        .signed => try stream.emitString("signed"),
-//    }
-//    try stream.objectField("bits");
-//    try stream.emitNumber(i.bits);
-//}
+fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) WriteError!void {
+    try emitType(stream, "integer");
+    try stream.objectField("signedness");
+    switch (i.signedness) {
+        .unsigned => try stream.write("unsigned"),
+        .signed => try stream.write("signed"),
+    }
+    try stream.objectField("bits");
+    try stream.write(i.bits);
+}
 //
 //fn streamEnum(stream: JsonStreamPtr, comptime en: std.builtin.Type.Enum, comptime T: type) WriteError!void {
 //    if (en.fields.len <= 1) {
@@ -142,81 +140,81 @@ const JsonStreamPtr = *json.WriteStream(FileWriter, .{.assumed_correct = {}});
 //    try streamType(stream, o.child);
 //}
 //
-//fn emitType(stream: JsonStreamPtr, comptime name: []const u8) WriteError!void {
-//    try stream.objectField("type");
-//    try stream.emitString(name);
-//}
-//
-//var depth: usize = 0;
-//
-//fn streamType(stream: JsonStreamPtr, comptime T: type) WriteError!void {
-//    try stream.beginObject();
-//    // catch special types pid, port and term
-//    switch (T) {
-//        e.ErlNifPid => {
-//            try emitType(stream, "pid");
-//        },
-//        beam.term => {
-//            try emitType(stream, "term");
-//        },
-//        e.ErlNifTerm => {
-//            try emitType(stream, "erl_nif_term");
-//        },
-//        beam.env => {
-//            try emitType(stream, "env");
-//        },
-//        else => {
-//            switch (@typeInfo(T)) {
-//                .Int => |i| try streamInt(stream, i),
-//                .Enum => |en| try streamEnum(stream, en, T),
-//                .Float => |f| try streamFloat(stream, f),
-//                .Struct => |s| try streamStruct(stream, s, T),
-//                .Array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
-//                .Pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
-//                .Optional => |o| try streamOptional(stream, o),
-//                .Bool => try emitType(stream, "bool"),
-//                .Void => try emitType(stream, "void"),
-//                .ErrorUnion => |eu| {
-//                    try emitType(stream, "error");
-//                    try stream.objectField("child");
-//                    try streamType(stream, eu.payload);
-//                },
-//                else => {
-//                    try emitType(stream, "unusable:" ++ @typeName(T));
-//                },
-//            }
-//        },
-//    }
-//    try stream.endObject();
-//}
-//
-//pub fn streamFun(stream: JsonStreamPtr, comptime name: anytype, comptime fun: std.builtin.Type.Fn) WriteError!void {
-//   //  @compileLog("in function", name);
-//    try stream.beginObject();
-//    try stream.objectField("name");
-//    try stream.emitString(name);
-//    try stream.objectField("return");
-//
-//    if (fun.return_type) |return_type| {
-//        try streamType(stream, return_type);
-//    } else {
-//        try stream.emitNull();
-//    }
-//
-//    try stream.objectField("params");
-//    try stream.beginArray();
-//    inline for (fun.args) |arg| {
-//        try stream.arrayElem();
-//        if (arg.arg_type) |arg_type| {
-//            try streamType(stream, arg_type);
-//        } else {
-//            try stream.emitNull();
-//        }
-//    }
-//    try stream.endArray();
-//    try stream.endObject();
-//}
-//
+fn emitType(stream: anytype, comptime name: []const u8) WriteError!void {
+    try stream.objectField("type");
+    try stream.write(name);
+}
+
+fn streamType(stream: anytype, comptime T: type) WriteError!void {
+    try stream.beginObject();
+    // catch special types pid, port and term
+    switch (T) {
+        e.ErlNifPid => {
+            try emitType(stream, "pid");
+        },
+        beam.term => {
+            try emitType(stream, "term");
+        },
+        e.ErlNifTerm => {
+            try emitType(stream, "erl_nif_term");
+        },
+        beam.env => {
+            try emitType(stream, "env");
+        },
+        else => {
+            switch (@typeInfo(T)) {
+                .Int => |i| try streamInt(stream, i),
+                //                .Enum => |en| try streamEnum(stream, en, T),
+                //                .Float => |f| try streamFloat(stream, f),
+                //                .Struct => |s| try streamStruct(stream, s, T),
+                //                .Array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
+                //                .Pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
+                //                .Optional => |o| try streamOptional(stream, o),
+                //                .Bool => try emitType(stream, "bool"),
+                //                .Void => try emitType(stream, "void"),
+                //                .ErrorUnion => |eu| {
+                //                    try emitType(stream, "error");
+                //                    try stream.objectField("child");
+                //                    try streamType(stream, eu.payload);
+                //                },
+                else => {
+                    try emitType(stream, "unusable:" ++ @typeName(T));
+                },
+            }
+        },
+    }
+    try stream.endObject();
+}
+
+pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.Fn) WriteError!void {
+    try stream.beginObject();
+
+    // emit name
+    try stream.objectField("name");
+    try stream.write(name);
+
+    // emit return type
+    try stream.objectField("return");
+    if (fun.return_type) |return_type| {
+        try streamType(stream, return_type);
+    } else {
+        try stream.write(null);
+    }
+
+    // emit params
+    try stream.objectField("params");
+    try stream.beginArray();
+    inline for (fun.params) |param| {
+        if (param.type) |T| {
+            try streamType(stream, T);
+        } else {
+            try stream.write(null);
+        }
+    }
+    try stream.endArray();
+    try stream.endObject();
+}
+
 //pub fn streamTypeX(stream: JsonStreamPtr, comptime name: anytype) WriteError!void {
 //    try stream.beginObject();
 //    try stream.objectField("name");
@@ -233,77 +231,64 @@ const JsonStreamPtr = *json.WriteStream(FileWriter, .{.assumed_correct = {}});
 //    return false;
 //}
 //
-//pub fn streamModule(stream: JsonStreamPtr, comptime Mod: type) WriteError!void {
-//    const mod_info = @typeInfo(Mod).Struct;
-//    try stream.beginObject();
-//    try stream.objectField("functions");
-//    try stream.beginArray();
-//    // functions are found in decls
-//    inline for (mod_info.decls) |decl| {
-//        if (decl.is_pub and !ignore_decl(decl)) {
-//            switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
-//                .Fn => |fun| {
-//                    try stream.arrayElem();
-//                    try streamFun(stream, decl.name, fun);
-//                },
-//                else => {},
-//            }
-//        }
-//    }
-//    try stream.endArray();
-//
-//    try stream.objectField("types");
-//    try stream.beginArray();
-//    // types are found in decls
-//    inline for (mod_info.decls) |decl| {
-//        if (decl.is_pub) {
-//            switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
-//                .Type => {
-//                    const T = @field(Mod, decl.name);
-//                    try stream.arrayElem();
-//                    try stream.beginObject();
-//                    try stream.objectField("name");
-//                    try stream.emitString(decl.name);
-//                    try stream.objectField("type");
-//                    try streamType(stream, T);
-//                    try stream.endObject();
-//                },
-//                else => {},
-//            }
-//        }
-//    }
-//    try stream.endArray();
-//
-//    try stream.objectField("decls");
-//    try stream.beginArray();
-//    inline for (mod_info.decls) |decl| {
-//        if (decl.is_pub) {
-//            switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
-//                .Type => {},
-//                .Fn => {},
-//                else => {
-//                    try stream.arrayElem();
-//                    try stream.beginObject();
-//                    try stream.objectField("name");
-//                    try stream.emitString(decl.name);
-//                    try stream.objectField("type");
-//                    try stream.emitString(@typeName(@TypeOf(@field(Mod, decl.name))));
-//                    try stream.endObject();
-//                },
-//            }
-//        }
-//    }
-//    try stream.endArray();
-//
-//    try stream.endObject();
-//}
-//
+pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
+    const mod_info = @typeInfo(Mod).Struct;
+    try stream.beginObject();
+    try stream.objectField("functions");
+    try stream.beginArray();
+    // functions are found in decls
+    inline for (mod_info.decls) |decl| {
+        const decl_info = @typeInfo(@TypeOf(@field(Mod, decl.name)));
+        if (.Fn == decl_info) {
+            try streamFun(stream, decl.name, decl_info.Fn);
+        }
+    }
+    try stream.endArray();
+
+    try stream.objectField("types");
+    try stream.beginArray();
+    // types are found in decls
+    inline for (mod_info.decls) |decl| {
+        switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
+            .Type => {
+                const T = @field(Mod, decl.name);
+                try stream.beginObject();
+                try stream.objectField("name");
+                try stream.write(decl.name);
+                try stream.objectField("type");
+                try streamType(stream, T);
+                try stream.endObject();
+            },
+            else => {},
+        }
+    }
+    try stream.endArray();
+
+    try stream.objectField("decls");
+    try stream.beginArray();
+    inline for (mod_info.decls) |decl| {
+        switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
+            .Type => {},
+            .Fn => {},
+            else => {
+                try stream.arrayElem();
+                try stream.beginObject();
+                try stream.objectField("name");
+                try stream.emitString(decl.name);
+                try stream.objectField("type");
+                try stream.emitString(@typeName(@TypeOf(@field(Mod, decl.name))));
+                try stream.endObject();
+            },
+        }
+    }
+    try stream.endArray();
+
+    try stream.endObject();
+}
+
 pub fn main() WriteError!void {
     const stdout = std.io.getStdOut().writer();
     var stream = json.writeStream(stdout, .{});
 
-    try stream.beginObject();
-    try stream.endObject();
-
-    //try streamModule(&stream, @typeInfo(analyte));
+    try streamModule(&stream, analyte);
 }

@@ -1,6 +1,6 @@
 const beam = @import("beam.zig");
 const threads = @import("threads.zig");
-const e = @import("erl_nif.zig");
+const e = @import("erl_nif");
 
 pub fn yield(env: beam.env) !void {
     switch (beam.context) {
@@ -9,6 +9,7 @@ pub fn yield(env: beam.env) !void {
         else => {
             if (e.enif_is_current_process_alive(env) == 0) {
                 return error.processterminated;
-            }}
+            }
+        },
     }
 }

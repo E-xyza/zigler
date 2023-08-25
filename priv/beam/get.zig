@@ -1,5 +1,5 @@
 const beam = @import("beam.zig");
-const e = @import("erl_nif.zig");
+const e = @import("erl_nif");
 const std = @import("std");
 // const resource = @import("resource.zig");
 
@@ -81,13 +81,14 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term, opts: anytype) G
                 // it is *supposed* to be marshalled into the nif.
                 if (e.enif_inspect_binary(env, src.v, &result) == 0) return GetError.unreachable_error;
 
-                var buf: Bigger = 0;
-                std.mem.copy(u8, @ptrCast([*]u8, &buf)[0..bytes], result.data[0..bytes]);
+                const buf: Bigger = 0;
+                const buf_ptr: [*]u8 = @ptrCast(&buf);
+                std.mem.copy(u8, buf_ptr[0..bytes], result.data[0..bytes]);
                 // check to make sure that the top bits are all zeros.
                 const top_bit_count = (bytes * 8 - int.bits);
                 if (@clz(buf) < top_bit_count) return GetError.argument_error;
 
-                return @intCast(T, buf);
+                return @as(T, @intCast(buf));
             },
         },
         .unsigned => switch (int.bits) {
@@ -114,12 +115,12 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term, opts: anytype) G
                 if (e.enif_inspect_binary(env, src.v, &result) == 0) return GetError.unreachable_error;
 
                 var buf: Bigger = 0;
-                std.mem.copy(u8, @ptrCast([*]u8, &buf)[0..bytes], result.data[0..bytes]);
+                std.mem.copy(u8, @as([*]u8, @ptrCast(&buf))[0..bytes], result.data[0..bytes]);
                 // check to make sure that the top bits are all zeros.
                 const top_bit_count = (bytes * 8 - int.bits);
                 if (@clz(buf) < top_bit_count) return GetError.argument_error;
 
-                return @intCast(T, buf);
+                return @as(T, @intCast(buf));
             },
         },
     }
@@ -155,7 +156,7 @@ inline fn lowerInt(comptime T: type, env: beam.env, src: beam.term, result: anyt
         return GetError.argument_error;
     }
 
-    return @intCast(T, result);
+    return @as(T, @intCast(result));
 }
 
 pub fn get_enum(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
@@ -163,7 +164,7 @@ pub fn get_enum(comptime T: type, env: beam.env, src: beam.term, opts: anytype) 
     const IntType = enum_info.tag_type;
     comptime var int_values: [enum_info.fields.len]IntType = undefined;
     comptime var only_one = enum_info.fields.len == 1;
-    comptime for (int_values) |*value, index| {
+    comptime for (int_values, 0..) |*value, index| {
         value.* = enum_info.fields[index].value;
     };
     const enum_values = std.enums.values(T);
@@ -216,7 +217,7 @@ pub fn get_float(comptime T: type, env: beam.env, src: beam.term, opts: anytype)
             // this is not failable.
             _ = e.enif_get_double(env, src.v, &float);
 
-            return @floatCast(T, float);
+            return @as(T, @floatCast(float));
         },
         .atom => {
             // erase the errors coming back from get_enum!
@@ -242,7 +243,7 @@ pub fn get_float(comptime T: type, env: beam.env, src: beam.term, opts: anytype)
 }
 
 pub fn get_atom(env: beam.env, src: beam.term, buf: *[256]u8) ![]u8 {
-    const len = @intCast(usize, e.enif_get_atom(env, src.v, buf, 256, e.ERL_NIF_LATIN1));
+    const len = @as(usize, @intCast(e.enif_get_atom(env, src.v, buf, 256, e.ERL_NIF_LATIN1)));
     if (len == 0) return GetError.argument_error;
     return buf[0 .. len - 1];
 }
@@ -253,15 +254,17 @@ pub fn get_struct(comptime T: type, env: beam.env, src: beam.term, opts: anytype
         else => unreachable,
     };
 
+    _ = struct_info;
+
     //if (resource.MaybeUnwrap(struct_info)) |_| {
     //    return get_resource(T, env, src, opts);
     //} else {
-        errdefer error_expected(T, env, opts);
-        errdefer error_got(env, opts, src);
+    errdefer error_expected(T, env, opts);
+    errdefer error_got(env, opts, src);
 
-        var result: T = undefined;
-        try fill_struct(T, env, &result, src, opts);
-        return result;
+    var result: T = undefined;
+    try fill_struct(T, env, &result, src, opts);
+    return result;
     //}
 }
 
@@ -314,7 +317,7 @@ fn get_tuple_to_buf(env: beam.env, src: beam.term, buf: anytype) !void {
     if (result == 0) return GetError.argument_error;
     if (arity != child_type_info.Array.len) return GetError.argument_error;
 
-    for (buf) |*slot, index| {
+    for (buf, 0..) |*slot, index| {
         slot.* = .{ .v = src_array[index] };
     }
 }
@@ -411,7 +414,7 @@ pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: a
     var str_res: e.ErlNifBinary = undefined;
     if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.unreachable_error;
     const item_count = str_res.size / bytes;
-    const result_ptr = @ptrCast([*]Child, @alignCast(@alignOf(Child), str_res.data));
+    const result_ptr = @as([*]Child, @ptrCast(@alignCast(str_res.data)));
 
     if (slice_info.is_const) {
         return result_ptr[0..item_count];
@@ -419,17 +422,17 @@ pub fn get_slice_binary(comptime T: type, env: beam.env, src: beam.term, opts: a
         const alloc = allocator(opts);
         const alloc_count = if (slice_info.sentinel) |_| item_count + 1 else item_count;
 
-        const result = alloc.alloc(Child, alloc_count) catch | err | {
+        const result = alloc.alloc(Child, alloc_count) catch |err| {
             return err;
         };
 
         std.mem.copy(Child, result, result_ptr[0..item_count]);
 
         if (slice_info.sentinel) |sentinel| {
-            result[item_count] = @ptrCast(*const Child, @alignCast(@alignOf(Child), sentinel)).*;
+            result[item_count] = @as(*const Child, @ptrCast(@alignCast(sentinel))).*;
         }
 
-        return @ptrCast(T, result);
+        return @as(T, @ptrCast(result));
     }
 }
 
@@ -446,7 +449,7 @@ pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term, opts: any
     errdefer alloc.free(result);
 
     var list: e.ErlNifTerm = src.v;
-    for (result) |*item, index| {
+    for (result, 0..) |*item, index| {
         var head: e.ErlNifTerm = undefined;
         if (e.enif_get_list_cell(env, list, &head, &list) == 0) return GetError.unreachable_error;
         item.* = get(Child, env, .{ .v = head }, opts) catch |err| {
@@ -460,19 +463,19 @@ pub fn get_slice_list(comptime T: type, env: beam.env, src: beam.term, opts: any
     if (e.enif_is_empty_list(env, list) == 0) return GetError.unreachable_error;
 
     if (slice_info.sentinel) |sentinel| {
-        result[length] = @ptrCast(*const Child, @alignCast(@alignOf(Child), sentinel)).*;
+        result[length] = @as(*const Child, @ptrCast(@alignCast(sentinel))).*;
     }
 
-    return @ptrCast(T, result);
+    return @as(T, @ptrCast(result));
 }
 
 pub fn get_manypointer(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
     // this is equivalent to creating a slice and then discarding the length term
     const Child = @typeInfo(T).Pointer.child;
     const slice = try get_slice([]Child, env, src, opts);
-    const result = @ptrCast(T, slice.ptr);
+    const result = @as(T, @ptrCast(slice.ptr));
     if (@typeInfo(T).Pointer.sentinel) |sentinel_ptr| {
-        result[slice.len] = @ptrCast(*const Child, @alignCast(@alignOf(Child), sentinel_ptr)).*;
+        result[slice.len] = @as(*const Child, @ptrCast(@alignCast(sentinel_ptr))).*;
     }
     if (@hasField(@TypeOf(opts), "size")) {
         opts.size.* = slice.len;
@@ -540,7 +543,7 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term, opts:
             // however, don't call enif_get_list_length because that incurs a second
             // pass through the array.
             var tail = src.v;
-            for (result.*) |*item, index| {
+            for (result.*, 0..) |*item, index| {
                 var head: e.ErlNifTerm = undefined;
                 if (e.enif_get_list_cell(env, tail, &head, &tail) != 0) {
                     item.* = get(Child, env, .{ .v = head }, opts) catch |err| {
@@ -567,7 +570,7 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term, opts:
             const expected_size = array_info.len * @sizeOf(Child);
 
             var str_res: e.ErlNifBinary = undefined;
-            var u8_result_ptr = @ptrCast([*]u8, result);
+            var u8_result_ptr = @as([*]u8, @ptrCast(result));
 
             if (e.enif_inspect_binary(env, src.v, &str_res) == 0) return GetError.unreachable_error;
 
@@ -602,7 +605,7 @@ fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term, opts
                 } else {
                     // note that this is a comptime if.
                     if (field.default_value) |default_value| {
-                        @field(result.*, field.name) = @ptrCast(*const F, @alignCast(@alignOf(F), default_value)).*;
+                        @field(result.*, field.name) = @as(*const F, @ptrCast(@alignCast(default_value))).*;
                     } else {
                         // can't return this directly due to compilation error.
                         failed = true;
@@ -651,7 +654,7 @@ fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term, opts
                 if (!@field(registry, field.name)) {
                     const Tf = field.field_type;
                     if (field.default_value) |defaultptr| {
-                        @field(result.*, field.name) = @ptrCast(*const Tf, @alignCast(@alignOf(Tf), defaultptr)).*;
+                        @field(result.*, field.name) = @as(*const Tf, @ptrCast(@alignCast(defaultptr))).*;
                     } else {
                         error_line(env, opts, .{ "note: ", .{ .typename, @typeName(T) }, " requires the field `:", field.name, "`, which is missing.)" });
                         return GetError.argument_error;
@@ -663,11 +666,10 @@ fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term, opts
             switch (struct_info.layout) {
                 .Packed, .Extern => {
                     const B = [@sizeOf(T)]u8;
-                    const bits = @ptrCast(* align(@alignOf(T)) B, result);
+                    const bits = @as(*align(@alignOf(T)) B, @ptrCast(result));
                     try fill_array(B, env, bits, src, opts);
                 },
-                else =>
-                    return GetError.argument_error,
+                else => return GetError.argument_error,
             }
         },
         else => return GetError.argument_error,
@@ -682,7 +684,7 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
 
     var fields: [source_fields.len]std.builtin.Type.StructField = undefined;
 
-    for (source_fields) |source_field, index| {
+    for (source_fields, 0..) |source_field, index| {
         fields[index] = .{ .name = source_field.name, .field_type = bool, .default_value = &default, .is_comptime = false, .alignment = @alignOf(*bool) };
     }
 
@@ -769,13 +771,13 @@ fn typespec_for(comptime T: type) []const u8 {
                 var should_pipe = false;
 
                 for (en.fields) |field| {
-                     if (should_pipe) {
+                    if (should_pipe) {
                         typespec = typespec ++ " | ";
                     }
                     typespec = typespec ++ std.fmt.comptimePrint("{}", .{field.value});
                     should_pipe = true;
                 }
-    
+
                 for (en.fields) |field| {
                     typespec = typespec ++ " | " ++ ":" ++ field.name[0..];
                 }

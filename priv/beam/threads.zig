@@ -1,6 +1,6 @@
 const std = @import("std");
 const beam = @import("beam.zig");
-const e = @import("erl_nif.zig");
+const e = @import("erl_nif");
 
 const BeamThreadFn = *const fn (?*anyopaque) callconv(.C) ?*anyopaque;
 
@@ -89,7 +89,7 @@ pub fn Thread(comptime function: anytype) type {
         pub fn launch(comptime ThreadResource: type, env: beam.env, argc: c_int, args: [*c]const e.ErlNifTerm, opts: anytype) !beam.term {
             // assign the context, as the self() function needs this to be correct.
             beam.context = .synchronous;
-            
+
             // thread struct necessities
             const allocator = find_allocator(opts);
             const thread_env = beam.alloc_env();
@@ -135,7 +135,7 @@ pub fn Thread(comptime function: anytype) type {
 
         // this is a wrapped function designed explicitly to be called by e.enif_thread_create.
         fn wrapped(void_thread: ?*anyopaque) callconv(.C) ?*anyopaque {
-            const thread = @ptrCast(*This, @alignCast(@alignOf(This), void_thread.?));
+            const thread = @as(*This, @ptrCast(@alignCast(void_thread.?)));
             // set critical threadlocal variables
             local_join_started = &thread.join_started;
             beam.allocator = thread.allocator;
@@ -192,11 +192,11 @@ pub fn Thread(comptime function: anytype) type {
                         // that error.processterminated is a possibility (because yield() might or might not
                         // be called in the function).  So we need to do a runtime check here.
                         // TODO: do better by having a comptime function that checks the return trace.
-                        const TERMINATED = @errorToInt(error.processterminated);
-                        if (@errorToInt(err) == TERMINATED) {
-                            result_ptr.* = .{ .error_return_trace = beam.make_empty_list(thread.env)};
+                        const TERMINATED = @intFromError(error.processterminated);
+                        if (@intFromError(err) == TERMINATED) {
+                            result_ptr.* = .{ .error_return_trace = beam.make_empty_list(thread.env) };
                         } else {
-                            const response = .{.@"error", err, @errorReturnTrace()};
+                            const response = .{ .@"error", err, @errorReturnTrace() };
                             result_ptr.* = .{ .error_return_trace = beam.make(thread.env, response, .{}) };
                         }
                     }
@@ -215,11 +215,11 @@ pub fn Thread(comptime function: anytype) type {
             // not const-correct.  In the future, we should actually fix this
             // by giving each thread a dynamic name, so that `name` can have
             // debug information attached.
-            return @intToPtr([*c]u8, @ptrToInt(&name));
+            return @constCast(&name);
         }
 
         pub fn get_info() *This {
-            return @ptrCast(*This, @alignCast(@alignOf(This), this_thread.?));
+            return @as(*This, @ptrCast(@alignCast(this_thread.?)));
         }
 
         pub fn makes_error_result() bool {
@@ -293,7 +293,7 @@ pub fn Thread(comptime function: anytype) type {
 
             if (e.enif_thread_join(self.tid, &result_void) == 0) {
                 if (Result != void) {
-                    self.result = @ptrCast(?*Result, @alignCast(@alignOf(Result), result_void));
+                    self.result = @as(?*Result, @ptrCast(@alignCast(result_void)));
                 }
                 return self.join_result();
             } else {
