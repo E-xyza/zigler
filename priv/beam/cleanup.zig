@@ -1,6 +1,6 @@
 const std = @import("std");
 const beam = @import("beam.zig");
-const resource = @import("resource.zig");
+//const resource = @import("resource.zig");
 
 const CPointerTags = enum { One, Many };
 pub fn CPointerCleanup(comptime T: type) type {
@@ -40,9 +40,9 @@ pub fn cleanup(what: anytype, opts: anytype) void {
             if (what) |pointer| {cleanup(pointer, opts); }
         },
         .Struct => |s| {
-            if (resource.MaybeUnwrap(s)) |_| {
-                cleanup_resource(what, opts);
-            }
+            //if (resource.MaybeUnwrap(s)) |_| {
+            //    cleanup_resource(what, opts);
+            //}
         },
         else => {},
     }

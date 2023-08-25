@@ -1,7 +1,7 @@
 const beam = @import("beam.zig");
 const e = @import("erl_nif.zig");
 const std = @import("std");
-const resource = @import("resource.zig");
+// const resource = @import("resource.zig");
 
 const GetError = error{ argument_error, unreachable_error };
 
@@ -253,41 +253,41 @@ pub fn get_struct(comptime T: type, env: beam.env, src: beam.term, opts: anytype
         else => unreachable,
     };
 
-    if (resource.MaybeUnwrap(struct_info)) |_| {
-        return get_resource(T, env, src, opts);
-    } else {
+    //if (resource.MaybeUnwrap(struct_info)) |_| {
+    //    return get_resource(T, env, src, opts);
+    //} else {
         errdefer error_expected(T, env, opts);
         errdefer error_got(env, opts, src);
 
         var result: T = undefined;
         try fill_struct(T, env, &result, src, opts);
         return result;
-    }
+    //}
 }
 
-pub fn get_resource(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
-    errdefer error_expected(T, env, opts);
-    errdefer error_got(env, opts, src);
-
-    // make sure it's a reference type
-    if (src.term_type(env) != .ref) {
-        return GetError.argument_error;
-    }
-
-    var res: T = undefined;
-    res.get(env, src, opts) catch {
-        error_line(env, opts, .{"note: the reference passed is not associated with a resource of the correct type"});
-        return GetError.argument_error;
-    };
-
-    // by default, we keep the resource.
-    if (should_keep(opts)) {
-        res.keep();
-    }
-
-    return res;
-}
-
+//pub fn get_resource(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
+//    errdefer error_expected(T, env, opts);
+//    errdefer error_got(env, opts, src);
+//
+//    // make sure it's a reference type
+//    if (src.term_type(env) != .ref) {
+//        return GetError.argument_error;
+//    }
+//
+//    var res: T = undefined;
+//    res.get(env, src, opts) catch {
+//        error_line(env, opts, .{"note: the reference passed is not associated with a resource of the correct type"});
+//        return GetError.argument_error;
+//    };
+//
+//    // by default, we keep the resource.
+//    if (should_keep(opts)) {
+//        res.keep();
+//    }
+//
+//    return res;
+//}
+//
 fn should_keep(opts: anytype) bool {
     if (@hasField(@TypeOf(opts), "keep")) {
         return opts.keep;
@@ -786,9 +786,9 @@ fn typespec_for(comptime T: type) []const u8 {
         .Float => "float | :infinity | :neg_infinity | :NaN",
         .Struct => |s| make_struct: {
             // resources require references
-            if (resource.MaybeUnwrap(s)) |_| {
-                break :make_struct "reference";
-            }
+            //if (resource.MaybeUnwrap(s)) |_| {
+            //    break :make_struct "reference";
+            //}
             // everything else is "reported as a generic map or keyword, binary if packed"
             break :make_struct "map | keyword" ++ if (s.layout == .Packed) " | binary" else "";
         },

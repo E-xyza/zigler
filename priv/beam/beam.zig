@@ -993,8 +993,8 @@ pub threadlocal var allocator: std.mem.Allocator = undefined;
 ///////////////////////////////////////////////////////////////////////////////
 // resources
 
-const resource = @import("resource.zig");
-pub const Resource = resource.Resource;
+//const resource = @import("resource.zig");
+//pub const Resource = resource.Resource;
 
 /// identical to `e.ErlNifEvent`.  This is an event datatype that the BEAM
 /// documentation does not describe.

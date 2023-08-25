@@ -430,11 +430,11 @@ defmodule Zig do
   end
 
   @doc """
-  version of zig supported by this version of zigler.
+  default version of zig supported by this version of zigler.
 
   > ### API warning {: .warning }
   >
   > this API may change in the future.
   """
-  def version, do: "0.10.1"
+  def version, do: "0.11.0"
 end

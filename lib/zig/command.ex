@@ -22,7 +22,7 @@ defmodule Zig.Command do
 
     Logger.debug("running command: #{zig_cmd} #{command}")
 
-    case System.cmd(zig_cmd, args, base_opts) do
+    case System.cmd(zig_cmd, args, base_opts) |> dbg(limit: 25) do
       {result, 0} ->
         result
 
@@ -38,50 +38,93 @@ defmodule Zig.Command do
     erl_nif_file = Path.join(priv_dir, "beam/erl_nif.zig")
     sema_on_file = Path.join(priv_dir, "beam/sema/on.zig")
 
-    package_opts = opts
-    |> Keyword.get(:packages)
-    |> List.wrap
+    package_opts =
+      opts
+      |> Keyword.get(:packages)
+      |> List.wrap()
 
-    package_files = Enum.map(package_opts, fn {name, {path, _}} -> {name, path} end)
-    ++ [beam: beam_file, erl_nif: erl_nif_file]
+    package_files =
+      Enum.map(package_opts, fn {name, {path, _}} -> {name, path} end) ++
+        [beam: beam_file, erl_nif: erl_nif_file]
 
-    packages = Enum.map(package_opts, fn
-      {name, path} when is_binary(path) -> {name, path}
-      {name, {path, []}} -> {name, path}
-      {name, {path, deps}} ->
-        deps_keyword = Enum.map(deps, &{&1, Keyword.fetch!(package_files, &1)})
-        {name, {path, deps_keyword}}
-    end)
+    packages =
+      Enum.map(package_opts, fn
+        {name, path} when is_binary(path) ->
+          {name, path}
 
-    pkg_opts =
-      packages(
+        {name, {path, []}} ->
+          {name, path}
+
+        {name, {path, deps}} ->
+          deps_keyword = Enum.map(deps, &{&1, Keyword.fetch!(package_files, &1)})
+          {name, {path, deps_keyword}}
+      end)
+
+    packages =
+      [
         analyte:
           {file,
-           [beam: {beam_file, sema: sema_on_file, erl_nif: erl_nif_file},
-           erl_nif: erl_nif_file,
-           sema: sema_on_file] ++ packages},
+           [
+             beam: {beam_file, sema: sema_on_file, erl_nif: erl_nif_file},
+             erl_nif: erl_nif_file,
+             sema: sema_on_file
+           ] ++ packages},
         sema: sema_on_file
-      )
+      ]
+
+    deps =
+      packages
+      |> package_deps()
+      |> String.replace_prefix("", "--deps ")
+
+    mods =
+      packages
+      |> package_mods()
+      |> Enum.join(" ")
 
     # nerves will put in a `CC` command that we need to bypass because it misidentifies
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    sema_command = "run #{sema_file} #{pkg_opts} -lc #{link_opts(opts)}"
+    sema_command = "run #{sema_file} #{deps} #{mods} -lc #{link_opts(opts)}"
 
     # Need to make this an OK tuple
     {:ok, run_zig(sema_command, stderr_to_stdout: true)}
   end
 
-  defp packages(packages) do
-    Enum.map_join(packages, " ", fn
-      {name, {file, deps}} ->
-        "--pkg-begin #{name} #{file} #{packages(deps)} --pkg-end"
-
-      {name, file} ->
-        "--pkg-begin #{name} #{file} --pkg-end"
-    end)
+  defp package_deps(packages) do
+    packages
+    |> Keyword.keys()
+    |> Enum.map_join(",", &to_string/1)
   end
+
+  defp package_mods(packages) do
+    packages
+    |> Enum.flat_map(fn 
+      {name, {file, deps}} ->
+        ["--mod #{name}:#{package_deps(deps)}:#{file}"] ++ package_mods(deps)
+      {name, file} ->
+        ["--mod #{name}::#{file}"]
+    end)
+    |> Enum.uniq
+  end
+
+  # defp packages(packages) do
+  #  Enum.map(packages, fn 
+  #    {name, file} ->
+  #      [--]
+  #  end)
+  #  packages |> dbg(limit: 25)
+  #  raise "eee"
+  #
+  #  #Enum.map_join(packages, " ", fn
+  #  #  {name, {file, deps}} ->
+  #  #    "--pkg-begin #{name} #{file} #{packages(deps)} --pkg-end"
+  #  #
+  #  #  {name, file} ->
+  #  #    "--pkg-begin #{name} #{file} --pkg-end"
+  #  #end)
+  # end
 
   defp link_opts(opts) do
     opts
@@ -220,7 +263,7 @@ defmodule Zig.Command do
 
   @zig_dir_path Path.expand("../../zig", Path.dirname(__ENV__.file))
 
-  defp directory, do: Path.join(@zig_dir_path, "zig-#{os_arch()}-0.10.1")
+  defp directory, do: Path.join(@zig_dir_path, "zig-#{os_arch()}-#{Zig.version()}")
 
   # TODO: rename this.
   def fetch!(version) do
@@ -254,9 +297,6 @@ defmodule Zig.Command do
 
     :global.del_lock({__MODULE__, self()})
   end
-
-  # https://ziglang.org/download/#release-0.10.1
-  # @checksums %{}
 
   defp download_zig_archive(zig_download_path, version, archive) do
     url = "https://ziglang.org/download/#{version}/#{archive}"

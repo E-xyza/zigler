@@ -93,7 +93,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
 
             var allocator = Allocator{ .ptr = undefined, .vtable = &resource_vtable };
 
-            root.set_resource(@This(), @ptrCast(**e.ErlNifResourceType, &allocator.ptr));
+            root.set_resource(@This(), @ptrCast(&allocator.ptr));
 
             const resource_payload = try allocator.create(T);
             resource_payload.* = data;
@@ -109,12 +109,12 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
 
         pub fn release(self: @This()) void {
             beam.ignore_when_sema();
-            e.enif_release_resource(@ptrCast(*anyopaque, self.__payload));
+            e.enif_release_resource(@ptrCast(self.__payload));
         }
 
         pub fn keep(self: @This()) void {
             beam.ignore_when_sema();
-            _ = e.enif_keep_resource(@ptrCast(*anyopaque, self.__payload));
+            _ = e.enif_keep_resource(@ptrCast(self.__payload));
         }
 
         pub fn unpack(self: @This()) T {
@@ -134,7 +134,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                 self.__should_release = get_opts.released;
             }
 
-            const resource_target = @ptrCast(?*?*anyopaque, &self.__payload);
+            const resource_target = @as(?*?*anyopaque, @ptrCast(&self.__payload));
             if (e.enif_get_resource(env, src.v, self.resource_type(), resource_target) == 0)
                 return error.incorrect_resource_type;
         }
@@ -145,13 +145,13 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
             switch (output_type) {
                 .default => {
 
-                    return .{ .v = e.enif_make_resource(env, @ptrCast(*anyopaque, self.__payload)) };
+                    return .{ .v = e.enif_make_resource(env, @ptrCast(self.__payload)) };
                 },
                 .binary => {
                     const encoder = if (@hasField(@TypeOf(make_opts), "encoder")) make_opts.encoder else default_encoder;
                     assert_type_matches(@TypeOf(encoder), fn (*const T) []const u8);
                     const bytes: []const u8 = encoder(self.__payload);
-                    return .{ .v = e.enif_make_resource_binary(env, @ptrCast(*anyopaque, self.__payload), bytes.ptr, bytes.len) };
+                    return .{ .v = e.enif_make_resource_binary(env, @ptrCast(self.__payload), bytes.ptr, bytes.len) };
                 },
             }
         }
@@ -167,7 +167,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         fn MakeShimmed(comptime Callbacks: type) type {
             return struct {
                 fn to_typed(obj: ?*anyopaque) *T {
-                    return @ptrCast(*T, @alignCast(@alignOf(T), obj.?));
+                    return @ptrCast(@alignCast(@alignOf(T), obj.?));
                 }
 
                 fn dtor(env: beam.env, obj: ?*anyopaque) callconv(.C) void {
@@ -232,9 +232,9 @@ fn resource_alloc(
         return error.OutOfMemory;
     }
     // don't deal with alignment issues at the moment.
-    const resource_type = @ptrCast(*e.ErlNifResourceType, resource_ptr);
+    const resource_type = @as(*e.ErlNifResourceType, @ptrCast(resource_ptr));
     const ptr = e.enif_alloc_resource(resource_type, @intCast(c_uint, len)) orelse return error.OutOfMemory;
-    return @ptrCast([*]u8, ptr)[0..len];
+    return @ptrCast(ptr)[0..len];
 }
 
 fn noresize(_: *anyopaque, _: []u8, _: u29, _: usize, _: u29, _: usize) ?usize {

@@ -18,7 +18,18 @@ defmodule Zig.Assembler do
     directory = directory(module)
     File.mkdir_p!(directory)
 
-    opts = Keyword.take(opts, [:to, :from, :link_lib, :build_opts, :stage1, :include_dir, :c_src, :packages])
+    opts =
+      Keyword.take(opts, [
+        :to,
+        :from,
+        :link_lib,
+        :build_opts,
+        :stage1,
+        :include_dir,
+        :c_src,
+        :packages
+      ])
+
     opts = Keyword.merge([to: directory], opts)
 
     Builder.build(module, opts)
