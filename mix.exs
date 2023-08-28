@@ -6,7 +6,7 @@ defmodule Zigler.MixProject do
 
     [
       app: :zigler,
-      version: "0.10.1",
+      version: "0.10.2",
       elixir: "~> 1.13",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
@@ -33,7 +33,6 @@ defmodule Zigler.MixProject do
   defp docs do
     [
       main: "Zig",
-      # , "guides/resources.md"],
       extras: ["README.md" | guides(Mix.env())],
       groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
       groups_for_modules: [
@@ -101,9 +100,9 @@ defmodule Zigler.MixProject do
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       # to parse the zig JSON
       {:jason, "~> 1.4"},
-      # zig parser is pinned to a version of zig parser because versions of zig parser
-      # are pinned to zig versions
-      {:zig_parser, "== 0.1.8"},
+      # zig parser is pinned to 0.1.x series of zig parser, since this
+      # is pinned to 0.10.x series of zig.
+      {:zig_parser, "~> 0.1.9"},
       # documentation
       {:ex_doc, "~> 0.30.0", only: :dev, runtime: false},
       {:zig_doc, "~> 0.1.3", only: :dev, runtime: false}

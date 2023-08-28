@@ -18,6 +18,7 @@ defmodule Zig.Command do
     args = String.split(command)
 
     base_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
+
     zig_cmd = executable_path(opts)
 
     Logger.debug("running command: #{zig_cmd} #{command}")
@@ -70,7 +71,7 @@ defmodule Zig.Command do
     sema_command = "run #{sema_file} #{pkg_opts} -lc #{link_opts(opts)}"
 
     # Need to make this an OK tuple
-    {:ok, run_zig(sema_command, stderr_to_stdout: true)}
+    {:ok, run_zig(sema_command, run_zig_opts(opts, stderr_to_stdout: true))}
   end
 
   defp packages(packages) do
@@ -89,8 +90,8 @@ defmodule Zig.Command do
     |> Enum.map_join(" ", &"-I #{&1}")
   end
 
-  def fmt(file) do
-    run_zig("fmt #{file}", [])
+  def fmt(file, opts) do
+    run_zig("fmt #{file}", opts)
   end
 
   def compile(module, opts) do
@@ -103,7 +104,7 @@ defmodule Zig.Command do
 
     lib_dir = Path.join(so_dir, "lib")
 
-    run_zig("build --prefix #{so_dir}", cd: assembly_dir)
+    run_zig("build --prefix #{so_dir}", run_zig_opts(opts, cd: assembly_dir))
 
     src_lib_name = Path.join(lib_dir, src_lib_name(module))
     dst_lib_name = Path.join(lib_dir, dst_lib_name(module))
@@ -116,8 +117,8 @@ defmodule Zig.Command do
     Logger.debug("built library at #{dst_lib_name}")
   end
 
-  def targets do
-    run_zig("targets", [])
+  def targets(opts) do
+    run_zig("targets", opts)
   end
 
   defp executable_path(opts) do
@@ -297,5 +298,11 @@ defmodule Zig.Command do
 
   def unarchive_zig(archive) do
     System.cmd("tar", ["xvf", archive], cd: @zig_dir_path)
+  end
+
+  defp run_zig_opts(opts, cmd_opts) do
+    opts
+    |> Keyword.take([:local_zig])
+    |> Keyword.merge(cmd_opts)
   end
 end

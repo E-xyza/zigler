@@ -55,7 +55,7 @@ defmodule Zig.Compiler do
     File.write!(module_nif_zig, full_code)
 
     if opts[:easy_c] do
-      Command.fmt(module_nif_zig)
+      Command.fmt(module_nif_zig, opts)
     end
 
     assembled = Keyword.get(opts, :assemble, true)
@@ -65,7 +65,7 @@ defmodule Zig.Compiler do
 
     with true <- assembled,
          assemble_opts =
-           Keyword.take(opts, [:link_lib, :build_opts, :stage1, :include_dir, :c_src, :packages]),
+           Keyword.take(opts, [:link_lib, :build_opts, :stage1, :include_dir, :c_src, :packages, :local_zig]),
          assemble_opts = Keyword.merge(assemble_opts, from: code_dir),
          Assembler.assemble(module, assemble_opts),
          true <- precompiled,
@@ -124,7 +124,7 @@ defmodule Zig.Compiler do
       Zig.Module.render_zig(nif_functions, resource_opts, callbacks, module)
     )
 
-    Command.fmt(nif_src_path)
+    Command.fmt(nif_src_path, opts)
 
     Logger.debug("wrote module.zig to #{nif_src_path}")
 
