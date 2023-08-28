@@ -31,7 +31,7 @@ defmodule Zig.Builder do
     build_zig_path = Path.join(opts[:to], "build.zig")
 
     File.write!(build_zig_path, build_file)
-    Command.fmt(build_zig_path)
+    Command.fmt(build_zig_path, opts)
 
     Logger.debug("wrote build.zig to #{build_zig_path}")
   end

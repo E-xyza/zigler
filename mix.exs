@@ -33,7 +33,6 @@ defmodule Zigler.MixProject do
   defp docs do
     [
       main: "Zig",
-      # , "guides/resources.md"],
       extras: ["README.md" | guides(Mix.env())],
       groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
       groups_for_modules: [
