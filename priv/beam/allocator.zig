@@ -26,40 +26,34 @@ pub const general_purpose_allocator = general_purpose_allocator_instance.allocat
 fn raw_beam_alloc(
     _: *anyopaque,
     len: usize,
-    ptr_align: u29,
-    _: u29,
+    ptr_align: u8,
     _: usize,
-) Allocator.Error![]u8 {
-    if (ptr_align > MAX_ALIGN) {
-        return error.OutOfMemory;
-    }
-    const ptr = e.enif_alloc(len) orelse return error.OutOfMemory;
-    return @as([*]u8, @ptrCast(ptr))[0..len];
+) ?[*]u8 {
+    if (ptr_align > MAX_ALIGN) return null;
+    const ptr = e.enif_alloc(len) orelse return null;
+    return @as([*]u8, @ptrCast(ptr));
 }
 
 fn raw_beam_resize(
     _: *anyopaque,
     buf: []u8,
-    _: u29,
+    _: u8,
     new_len: usize,
-    _: u29,
     _: usize,
-) ?usize {
+) bool {
+    if (new_len <= buf.len) return true;
     if (new_len == 0) {
         e.enif_free(buf.ptr);
-        return 0;
+        return true;
     }
-    if (new_len <= buf.len) {
-        return new_len;
-    }
-    // Is this the right thing to do???
-    return null;
+    // We are never able to increase the size of a pointer.
+    return false;
 }
 
 fn raw_beam_free(
     _: *anyopaque,
     buf: []u8,
-    _: u29,
+    _: u8,
     _: usize,
 ) void {
     e.enif_free(buf.ptr);
@@ -78,41 +72,9 @@ const large_beam_allocator_vtable = Allocator.VTable{
     .free = large_beam_free,
 };
 
-fn large_beam_alloc(_: *anyopaque, len: usize, alignment: u29, len_align: u29, return_address: usize) error{OutOfMemory}![]u8 {
-    var ptr = try alignedAlloc(len, alignment, len_align, return_address);
-    if (len_align == 0) {
-        return ptr[0..len];
-    }
-    return ptr[0..std.mem.alignBackwardAnyAlign(len, len_align)];
-}
-
-fn large_beam_resize(
-    _: *anyopaque,
-    buf: []u8,
-    buf_align: u29,
-    new_len: usize,
-    len_align: u29,
-    _: usize,
-) ?usize {
-    if (new_len > buf.len) {
-        return null;
-    }
-    if (new_len == 0) {
-        return alignedFree(buf, buf_align);
-    }
-    if (len_align == 0) {
-        return new_len;
-    }
-    return std.mem.alignBackwardAnyAlign(new_len, len_align);
-}
-
-fn large_beam_free(_: *anyopaque, buf: []u8, buf_align: u29, _: usize) void {
-    _ = alignedFree(buf, buf_align);
-}
-
-fn alignedAlloc(len: usize, alignment: u29, _: u29, _: usize) ![*]u8 {
+fn large_beam_alloc(_: *anyopaque, len: usize, alignment: u8, _: usize) ?[*]u8 {
     var safe_len = safeLen(len, alignment);
-    var alloc_slice: []u8 = try raw_allocator.allocAdvanced(u8, MAX_ALIGN, safe_len, std.mem.Allocator.Exact.exact);
+    var alloc_slice: []u8 = raw_allocator.allocWithOptions(u8, safe_len, MAX_ALIGN, null) catch return null;
 
     const unaligned_addr = @intFromPtr(alloc_slice.ptr);
     const aligned_addr = reAlign(unaligned_addr, alignment);
@@ -121,18 +83,33 @@ fn alignedAlloc(len: usize, alignment: u29, _: u29, _: usize) ![*]u8 {
     return aligned_addr;
 }
 
-fn alignedFree(buf: []u8, alignment: u29) usize {
+fn large_beam_resize(
+    _: *anyopaque,
+    buf: []u8,
+    alignment: u8,
+    new_len: usize,
+    _: usize
+) bool {
+    if (new_len <= buf.len) return true;
+    if (new_len == 0) return alignedFree(buf, alignment);
+    return false;
+}
+
+fn large_beam_free(_: *anyopaque, buf: []u8, alignment: u8, _: usize) void {
+    _ = alignedFree(buf, alignment);
+}
+
+fn alignedFree(buf: []u8, alignment: u8) bool {
     const ptr = getPtrPtr(buf.ptr).*;
-    const slice = @as([*]u8, @intFromPtr(ptr));
-    raw_allocator.free(slice[0..safeLen(buf.len, alignment)]);
-    return 0;
+    const slice = @as([*]u8, @ptrFromInt(ptr));
+    return raw_allocator.free(slice[0..safeLen(buf.len, alignment)]);
 }
 
-fn reAlign(unaligned_addr: usize, alignment: u29) [*]u8 {
-    return @ptrFromInt(std.mem.alignForward(unaligned_addr + @sizeOf(usize), alignment));
+fn reAlign(unaligned_addr: usize, alignment: u8) usize {
+    return std.mem.alignForwardLog2(unaligned_addr + @sizeOf(usize), alignment);
 }
 
-fn safeLen(len: usize, alignment: u29) usize {
+fn safeLen(len: usize, alignment: u8) usize {
     return len + alignment - @sizeOf(usize) + MAX_ALIGN;
 }
 

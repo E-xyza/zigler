@@ -4,50 +4,75 @@ pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(<%=Zig.Target.for_builder()%>);
     const optimize = b.standardOptimizeOption(.{});
 
-    const erl_nif_pkg = Pkg{
-        .name = "erl_nif",
-        .source = .{ .path = "<%= Path.join(@beam_dir, "erl_nif.zig") %>"}
-    };
+    const erl_nif = b.createModule(
+        .{
+            .source_file = .{.cwd_relative = "<%= Path.join(@beam_dir, "erl_nif.zig")%>"},
+            .dependencies = &[_]std.Build.ModuleDependency{},
+        });
 
-    const beam_pkg = Pkg{
-        .name = "beam",
-        .source = .{ .path = "<%= Path.join(@beam_dir, "beam.zig") %>"},
-        .dependencies = &.{erl_nif_pkg},
-    };
+    const beam = b.createModule(
+        .{
+            .source_file = .{.cwd_relative = "<%= Path.join(@beam_dir, "beam.zig")%>"},
+            .dependencies = &[_]std.Build.ModuleDependency{.{
+                .name = "erl_nif",
+                .module = erl_nif
+            }}
+        });
 
     <%= for {name, path, deps} <- @packages do %>
-    const <%= name %>_pkg = Pkg {
-        .name = "<%= name %>",
-        .source = .{ .path = "<%= path %>"},
-        .dependencies = &.{<%= deps %>},
-    };
+    const <%= name %>_mod = b.createModule(
+        .{
+            .source_file = .{.cwd_relative = "<%= path %>"},
+            .dependencies = &[_]std.Build.ModuleDependency{
+            <%= for dep <- deps do %>
+                .{
+                    .name = "<%= dep %>",
+                    .module = <%= dep %>_mod
+                }
+            <% end %>
+            }
+        });
     <% end %>
 
-    <% package_list = Enum.map(@packages, fn {name, _, _} -> ", #{name}_pkg" end) %>
-    const core_pkg = Pkg{
-        .name = "nif",
-        .source = .{ .path = "<%= @nif_path %>" },
-        .dependencies = &.{beam_pkg, erl_nif_pkg<%= package_list %>},
-    };
+    <% module_list = Enum.map(@packages, fn {name, _, _} -> ", #{name}_mod" end) %>
+
+    const nif = b.createModule(.{
+        .source_file = .{.cwd_relative = "<%= @nif_path %>"},
+        .dependencies = &[_]std.Build.ModuleDependency{.{
+            .name = "erl_nif",
+            .module = erl_nif
+        }, .{
+            .name = "beam",
+            .module = beam
+        }
+        <%= for module <- module_list do %>
+        , .{
+            .name = "<%= module %>",
+            .module = <%= module %>_mod
+        }
+        <% end %>
+        }
+    });
+
+    const lib = b.addSharedLibrary(.{
+        .name = "<%= @module %>",
+        .root_source_file = .{.path = "module.zig"},
+        .version = .{.major = <%= @version.major %>,
+                     .minor = <%= @version.minor %>,
+                     .patch = <%= @version.patch %>},
+        .target = target,
+        .optimize = optimize,
+    });
 
     const beam_system_dir = "<%= :code.root_dir() %>/erts-<%= :erlang.system_info(:version) %>/include";
 
-    const lib = b.addSharedLibrary(
-        "<%= @module %>",
-        "module.zig",
-        .{ .versioned = .{.major = <%= @version.major %>,
-                          .minor = <%= @version.minor %>,
-                          .patch = <%= @version.patch %>}});
-    lib.linkage = .dynamic;
+    lib.addSystemIncludePath(.{.cwd_relative = beam_system_dir});
 
-    lib.addSystemIncludePath(beam_system_dir);
     lib.linkLibC();
-    lib.addPackage(erl_nif_pkg);
-    lib.addPackage(beam_pkg);
-    lib.addPackage(core_pkg);
-    <%= for {name, _, _} <- @packages do %>
-    lib.addPackage(<%= name %>_pkg);
-    <% end %>
+
+    lib.addModule("erl_nif", erl_nif);
+    lib.addModule("beam", beam);
+    lib.addModule("nif", nif);
 
     <%= for lib <- @link_lib do %>
       <%= case lib do %>
@@ -67,12 +92,6 @@ pub fn build(b: *std.Build) void {
     lib.addCSourceFile("<%= c_src %>",  &[_][]const u8{<%= ccompileparams %>});
     <% end %>
 
-    lib.setBuildMode(mode);
-    lib.setTarget(target);
 
-    lib.linker_allow_shlib_undefined = true;
-
-    <%= if @stage1 do %> lib.use_stage1 = true; <% end %>
-
-    lib.install();
+    b.installArtifact(lib);
 }

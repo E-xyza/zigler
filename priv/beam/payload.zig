@@ -5,8 +5,8 @@ const beam = @import("beam.zig");
 pub fn Payload(comptime function: anytype) type {
     const T = if (@TypeOf(function) == type) function else @TypeOf(function);
 
-    const args = switch (@typeInfo(T)) {
-        .Fn => |f| f.args,
+    const params = switch (@typeInfo(T)) {
+        .Fn => |f| f.params,
         else => @compileError("Payload is only available for a function"),
     };
 
@@ -15,10 +15,10 @@ pub fn Payload(comptime function: anytype) type {
     var fields: []const SF = &[_]SF{};
     const decls = [0]std.builtin.Type.Declaration{};
 
-    for (args, 0..) |arg, index| {
+    for (params, 0..) |param, index| {
         const new_field = [1]SF{.{
             .name = std.fmt.comptimePrint("{}", .{index}),
-            .field_type = arg.arg_type.?,
+            .type = param.type.?,
             .default_value = null,
             .is_comptime = false,
             .alignment = 4,
@@ -42,8 +42,8 @@ fn is_env_first(fun: anytype) bool {
     const T: type = if (@TypeOf(fun) == type) fun else @TypeOf(fun);
 
     return switch (@typeInfo(T)) {
-        .Fn => |f| (f.args.len > 0) and (f.args[0].arg_type == beam.env),
-        .Struct => |s| (s.fields.len > 0) and (s.fields[0].field_type == beam.env),
+        .Fn => |f| (f.params.len > 0) and (f.params[0].type == beam.env),
+        .Struct => |s| (s.fields.len > 0) and (s.fields[0].type == beam.env),
         else => @compileError("is_env_first is only available for a functions and Payloads"),
     };
 }
@@ -52,7 +52,7 @@ fn is_env_first(fun: anytype) bool {
 
 fn arity(fun: anytype) u8 {
     return switch (@typeInfo(@TypeOf(fun))) {
-        .Fn => |f| if (comptime is_env_first(fun)) f.args.len - 1 else f.args.len,
+        .Fn => |f| if (comptime is_env_first(fun)) f.params.len - 1 else f.params.len,
         .Struct => |s| if (comptime is_env_first(fun)) s.fields.len - 1 else s.fields.len,
         else => @compileError("arity is only available for a function"),
     };

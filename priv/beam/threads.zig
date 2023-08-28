@@ -176,7 +176,7 @@ pub fn Thread(comptime function: anytype) type {
             this_thread = void_thread;
 
             if (Result == void) {
-                @call(.{}, function, thread.payload);
+                @call(.auto, function, thread.payload);
                 return null;
             } else {
                 const result_ptr = thread.allocator.create(Result) catch {
@@ -185,7 +185,7 @@ pub fn Thread(comptime function: anytype) type {
                 };
 
                 if (comptime makes_error_result__(F)) {
-                    if (@call(.{}, function, thread.payload)) |ok| {
+                    if (@call(.auto, function, thread.payload)) |ok| {
                         result_ptr.* = .{ .ok = ok };
                     } else |err| {
                         // this is a thread error, sometimes the comptime semantics are unable to detect
@@ -203,7 +203,7 @@ pub fn Thread(comptime function: anytype) type {
 
                     return result_ptr;
                 } else {
-                    result_ptr.* = @call(.{}, function, thread.payload);
+                    result_ptr.* = @call(.auto, function, thread.payload);
                     return result_ptr;
                 }
             }

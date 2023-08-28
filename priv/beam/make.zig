@@ -149,7 +149,7 @@ fn make_struct(env: beam.env, value: anytype, comptime opts: anytype) beam.term 
             @compileError("The tuple size is too large for the erlang virtual machine");
         }
         var tuple_list: [value.len]e.ErlNifTerm = undefined;
-        inline for (tuple_list, 0..) |*tuple_item, index| {
+        inline for (&tuple_list, 0..) |*tuple_item, index| {
             const tuple_term = value[index];
             if (@TypeOf(tuple_term) == beam.term) {
                 tuple_item.* = tuple_term.v;

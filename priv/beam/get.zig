@@ -81,7 +81,7 @@ pub fn get_int(comptime T: type, env: beam.env, src: beam.term, opts: anytype) G
                 // it is *supposed* to be marshalled into the nif.
                 if (e.enif_inspect_binary(env, src.v, &result) == 0) return GetError.unreachable_error;
 
-                const buf: Bigger = 0;
+                var buf: Bigger = 0;
                 const buf_ptr: [*]u8 = @ptrCast(&buf);
                 std.mem.copy(u8, buf_ptr[0..bytes], result.data[0..bytes]);
                 // check to make sure that the top bits are all zeros.

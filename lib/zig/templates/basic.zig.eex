@@ -45,22 +45,18 @@ fn <%= @type.name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) 
 
         defer beam.payload.cleanup(payload, cleanup_opts);
 
-        const result = @call(.{}, nif.<%= @type.name %>, payload) <%= Nif.maybe_catch(@type.return) %>;
+        const result = @call(.auto, nif.<%= @type.name %>, payload) <%= Nif.maybe_catch(@type.return) %>;
 
         <%= Type.get_result(@type.return, @return) %>
     };
 
     <%= if @leak_check do %>
-    // NB: confusing!  True if leaks, False if doesn't leak.
-    return if (gpa.deinit()) beam.raise_elixir_exception(env, "RuntimeError", .{.message = "memory leak detected in function `<%= @type.name %>/<%= @type.arity %>`"}).v else outer_result;
-    
-    // NB: this changes to the following code in 0.11: 
-    //switch (gpa.deinit()) {
-    //    .ok => 
-    //        return outer_result,
-    //    .leak =>
-    //        return beam.raise_elixir_exception(env, "RuntimeError", .{.message = "memory leak detected in function `<%= @type.name %>`"}).v
-    //}
+    switch (gpa.deinit()) {
+        .ok => 
+            return outer_result,
+        .leak =>
+            return beam.raise_elixir_exception(env, "RuntimeError", .{.message = "memory leak detected in function `<%= @type.name %>`"}).v
+    }
     <% else %>
     return outer_result;
     <% end %>
