@@ -19,7 +19,7 @@ defmodule ZiglerTest.Types.ArrayTest do
   fn common_array_fun(passed: anytype) @TypeOf(passed) {
     var returned : @TypeOf(passed) = undefined;
 
-    for (passed) |value, index| {
+    for (passed, 0..) |value, index| {
       returned[index] = value + 1;
     }
 
@@ -108,7 +108,7 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   ~Z"""
   fn common_array_mut(passed: anytype) void {
-    for (passed.*) |*value| { value.* += 1; }
+    for (passed) |*value| { value.* += 1; }
   }
 
   pub fn mut_array_float_test(passed: *[3]f64) *[3]f64 {
@@ -160,7 +160,7 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   pub fn fastlane_beam_term_test(env: beam.env, passed: [3]beam.term) [3]beam.term {
     var result: [3]beam.term = undefined;
-    for (result) |*item, index| {
+    for (&result, 0..) |*item, index| {
       var value: f64 = beam.get(f64, env, passed[index], .{}) catch unreachable;
       item.* = beam.make(env, value + 1.0, .{});
     }
@@ -169,7 +169,7 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   pub fn fastlane_erl_nif_term_test(env: beam.env, passed: [3]e.ErlNifTerm) [3]e.ErlNifTerm {
     var result: [3]e.ErlNifTerm = undefined;
-    for (result) |*item, index| {
+    for (&result, 0..) |*item, index| {
       var value: f64 = beam.get(f64, env, .{.v = passed[index]}, .{}) catch unreachable;
       item.* = beam.make(env, value + 1.0, .{}).v;
     }
@@ -177,7 +177,7 @@ defmodule ZiglerTest.Types.ArrayTest do
   }
 
   pub fn fastlane_beam_term_ptr_test(env: beam.env, passed: *[3]beam.term) *[3]beam.term {
-    for (passed.*) |*item| {
+    for (passed) |*item| {
       var value: f64 = beam.get(f64, env, item.*, .{}) catch unreachable;
       item.* = beam.make(env, value + 1.0, .{});
     }
@@ -185,7 +185,7 @@ defmodule ZiglerTest.Types.ArrayTest do
   }
 
   pub fn fastlane_erl_nif_term_ptr_test(env: beam.env, passed: *[3]e.ErlNifTerm) *[3]e.ErlNifTerm {
-    for (passed.*) |*item| {
+    for (passed) |*item| {
       var value: f64 = beam.get(f64, env, .{.v = item.*}, .{}) catch unreachable;
       item.* = beam.make(env, value + 1.0, .{}).v;
     }

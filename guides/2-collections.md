@@ -17,7 +17,7 @@ pub fn return_array(input: f32) [3]f32 {
   var result: [3]f32 = undefined;
 
   // set each item in the array:
-  for (result) |*item, index| {
+  for (&result, 0..) |*item, index| {
     item.* = input + @intToFloat(f32, index);
   }
   return result;

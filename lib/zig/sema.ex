@@ -93,10 +93,10 @@ defmodule Zig.Sema do
     # file compilation
     with {:ok, sema_str} <- Zig.Command.run_sema(file, opts),
          {:ok, sema_json} <- Jason.decode(sema_str) do
-      # if opts[:dump_sema] do
-      sema_json_pretty = Jason.encode!(sema_json, pretty: true)
-      IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
-      # end
+      if opts[:dump_sema] do
+        sema_json_pretty = Jason.encode!(sema_json, pretty: true)
+        IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
+      end
 
       # filter out any functions present in "ignore" clause.
       sema_json

@@ -80,7 +80,7 @@ fn large_beam_alloc(_: *anyopaque, len: usize, alignment: u8, _: usize) ?[*]u8 {
     const aligned_addr = reAlign(unaligned_addr, alignment);
 
     getPtrPtr(aligned_addr).* = unaligned_addr;
-    return aligned_addr;
+    return @ptrFromInt(aligned_addr);
 }
 
 fn large_beam_resize(
@@ -91,7 +91,10 @@ fn large_beam_resize(
     _: usize
 ) bool {
     if (new_len <= buf.len) return true;
-    if (new_len == 0) return alignedFree(buf, alignment);
+    if (new_len == 0) {
+        alignedFree(buf, alignment);
+        return true;
+    }
     return false;
 }
 
@@ -99,10 +102,10 @@ fn large_beam_free(_: *anyopaque, buf: []u8, alignment: u8, _: usize) void {
     _ = alignedFree(buf, alignment);
 }
 
-fn alignedFree(buf: []u8, alignment: u8) bool {
-    const ptr = getPtrPtr(buf.ptr).*;
+fn alignedFree(buf: []u8, alignment: u8) void {
+    const ptr = getPtrPtr(@intFromPtr(buf.ptr)).*;
     const slice = @as([*]u8, @ptrFromInt(ptr));
-    return raw_allocator.free(slice[0..safeLen(buf.len, alignment)]);
+    raw_allocator.free(slice[0..safeLen(buf.len, alignment)]);
 }
 
 fn reAlign(unaligned_addr: usize, alignment: u8) usize {
@@ -113,8 +116,8 @@ fn safeLen(len: usize, alignment: u8) usize {
     return len + alignment - @sizeOf(usize) + MAX_ALIGN;
 }
 
-fn getPtrPtr(aligned_ptr: [*]u8) *usize {
-    return @as(*usize, @ptrFromInt(@intFromPtr(aligned_ptr) - @sizeOf(usize)));
+fn getPtrPtr(aligned_ptr: usize) *usize {
+    return @as(*usize, @ptrFromInt(aligned_ptr - @sizeOf(usize)));
 }
 
 const BeamGpa = std.heap.GeneralPurposeAllocator(.{ .thread_safe = true });

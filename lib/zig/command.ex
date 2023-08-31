@@ -22,7 +22,7 @@ defmodule Zig.Command do
 
     Logger.debug("running command: #{zig_cmd} #{command}")
 
-    case System.cmd(zig_cmd, args, base_opts) |> dbg(limit: 25) do
+    case System.cmd(zig_cmd, args, base_opts) do
       {result, 0} ->
         result
 

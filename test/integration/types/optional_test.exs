@@ -13,7 +13,7 @@ defmodule ZiglerTest.Types.OptionalTest do
   pub fn nullable_array_test(value: ?[3]u64) ?[3]u64 {
     if (value) |v| {
       var result: [3]u64 = undefined;
-      for (v) |item, index| {
+      for (v, 0..) |item, index| {
         result[index] = item + 1;
       }
       return result;

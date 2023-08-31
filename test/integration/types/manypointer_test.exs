@@ -83,11 +83,11 @@ defmodule ZiglerTest.Types.ManypointerTest do
   var stbr_result = [_]u8{'b', 'a', 'r', 0};
 
   pub fn sentinel_terminated_binary_return_test() [*:0]u8 {
-    return @ptrCast([*:0]u8, &stbr_result);
+    return @ptrCast(&stbr_result);
   }
 
   pub fn sentinel_terminated_u8_list_return_test() [*:0]u8 {
-    return @ptrCast([*:0]u8, &stbr_result);
+    return @ptrCast(&stbr_result);
   }
   """
 

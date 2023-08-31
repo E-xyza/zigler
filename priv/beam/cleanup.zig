@@ -60,7 +60,7 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
         },
         .Slice => {
             if (@typeInfo(T).Pointer.sentinel) |_| {
-                allocator(opts).free(@ptrCast(ptr));
+                allocator(opts).free(@as([]u8, @ptrCast(ptr)));
             } else {
                 allocator(opts).free(ptr);
             }

@@ -164,7 +164,7 @@ pub fn get_enum(comptime T: type, env: beam.env, src: beam.term, opts: anytype) 
     const IntType = enum_info.tag_type;
     comptime var int_values: [enum_info.fields.len]IntType = undefined;
     comptime var only_one = enum_info.fields.len == 1;
-    comptime for (int_values, 0..) |*value, index| {
+    comptime for (&int_values, 0..) |*value, index| {
         value.* = enum_info.fields[index].value;
     };
     const enum_values = std.enums.values(T);
@@ -543,7 +543,7 @@ fn fill_array(comptime T: type, env: beam.env, result: *T, src: beam.term, opts:
             // however, don't call enif_get_list_length because that incurs a second
             // pass through the array.
             var tail = src.v;
-            for (result.*, 0..) |*item, index| {
+            for (result, 0..) |*item, index| {
                 var head: e.ErlNifTerm = undefined;
                 if (e.enif_get_list_cell(env, tail, &head, &tail) != 0) {
                     item.* = get(Child, env, .{ .v = head }, opts) catch |err| {
@@ -592,7 +592,7 @@ fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term, opts
             var failed: bool = false;
             // look for each of the fields:
             inline for (struct_info.fields) |field| {
-                const F = field.field_type;
+                const F = field.type;
                 const field_atom = beam.make_into_atom(env, field.name);
                 var map_value: e.ErlNifTerm = undefined;
                 if (e.enif_get_map_value(env, src.v, field_atom.v, &map_value) == 1) {
@@ -636,7 +636,7 @@ fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term, opts
                 // scan the list of fields to see if we have found one.
                 scan_fields: inline for (struct_info.fields) |field| {
                     if (std.mem.eql(u8, atom_name, field.name)) {
-                        @field(result.*, field.name) = get(field.field_type, env, value, opts) catch |err| {
+                        @field(result.*, field.name) = get(field.type, env, value, opts) catch |err| {
                             if (err == GetError.argument_error) {
                                 error_enter(env, opts, .{ "in field `:", field.name, "`:" });
                             }
@@ -652,7 +652,7 @@ fn fill_struct(comptime T: type, env: beam.env, result: *T, src: beam.term, opts
             inline for (struct_info.fields) |field| {
                 // skip anything that was defined in the last section.
                 if (!@field(registry, field.name)) {
-                    const Tf = field.field_type;
+                    const Tf = field.type;
                     if (field.default_value) |defaultptr| {
                         @field(result.*, field.name) = @as(*const Tf, @ptrCast(@alignCast(defaultptr))).*;
                     } else {
@@ -685,7 +685,7 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
     var fields: [source_fields.len]std.builtin.Type.StructField = undefined;
 
     for (source_fields, 0..) |source_field, index| {
-        fields[index] = .{ .name = source_field.name, .field_type = bool, .default_value = &default, .is_comptime = false, .alignment = @alignOf(*bool) };
+        fields[index] = .{ .name = source_field.name, .type = bool, .default_value = &default, .is_comptime = false, .alignment = @alignOf(*bool) };
     }
 
     const decls = [0]std.builtin.Type.Declaration{};

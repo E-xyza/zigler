@@ -41,7 +41,7 @@ defmodule ZiglerTest.Types.SliceNoLeakCheckTest do
 
     // catch unreachable because this is just a basic test
     var returned = beam.allocator.alloc(Child, passed.len) catch unreachable;
-    for (passed) |value, index| {
+    for (passed, 0..) |value, index| {
       returned[index] = value + 1;
     }
     return returned;
