@@ -122,6 +122,13 @@ Thanks to Dave Cottlehuber @dch for testing.
   - yielding nifs are not supported, but will return in 0.11
     due to zig async not working in 0.10.x
 
+## 0.10.2
+- fixes local_zig bug
+- fixes zigler parser issue
+
+## 0.10.3
+- fixes c_src issue with semantic analysis
+
 
 ## Upcoming
 - `beam.call` which will call erlang or elixir modules (but only in yielding or

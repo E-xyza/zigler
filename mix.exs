@@ -6,7 +6,7 @@ defmodule Zigler.MixProject do
 
     [
       app: :zigler,
-      version: "0.10.2",
+      version: "0.10.3",
       elixir: "~> 1.13",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
