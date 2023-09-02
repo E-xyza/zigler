@@ -1,7 +1,7 @@
 defmodule ZiglerTest.Integration.CXX.CAltTest do
   use ZiglerTest.IntegrationCase, async: true
 
-  use Zig, otp_app: :zigler, include_dir: "include", c_src: "src/*"
+  use Zig, otp_app: :zigler, include_dir: "include", c_src: {"src/c.c", ["-Wall"]}
 
   ~Z"""
   const c = @cImport(@cInclude("c.h"));

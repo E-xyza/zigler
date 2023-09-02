@@ -77,10 +77,23 @@ defmodule Zig.Command do
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    sema_command = "run #{sema_file} #{pkg_opts} -lc #{link_opts(opts)}"
+    sema_command = "run #{sema_file} #{pkg_opts} -lc #{link_opts(opts)} #{c_files(opts)}"
 
     # Need to make this an OK tuple
     {:ok, run_zig(sema_command, run_zig_opts(opts, stderr_to_stdout: true))}
+  end
+
+  def c_files(opts) do
+    opts
+    |> Keyword.fetch!(:c_src)
+    |> Enum.map(fn 
+      {file, []} -> 
+        file
+      {file, flags} ->
+        flag_content = Enum.join(flags, " ")
+        "-cflags #{flag_content} -- #{file}"
+    end)
+    |> Enum.join(" ")
   end
 
   defp packages(packages) do
