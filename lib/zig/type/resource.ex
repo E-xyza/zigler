@@ -9,7 +9,7 @@ defmodule Zig.Type.Resource do
   def from_json(%{"name" => name}, module) when not is_nil(module) do
     # TODO: use the Zig parser to do this in the future.
     regex = ~r/resource.Resource\(([a-zA-Z0-9_\*\.\[\]\(\)\s]+),sema/
-    [match, type] = Regex.run(regex, name)
+    [_, type] = Regex.run(regex, name)
 
     new_name = Regex.replace(regex, name, "resource.Resource(#{type},root")
     |> String.replace(".#{module}", "nif")

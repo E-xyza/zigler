@@ -33,49 +33,49 @@ defmodule ZiglerTest.Resource.KeepTest do
   }
   """
 
-  test "you can create then release an item" #do
-  #  this = self()
-#
-  #  spawn(fn -> create_released(this) end)
-#
-  #  assert_receive :cleaned, 100
-  #end
-#
-  #test "an unkept resource is never released" do
-  #  this = self()
-#
-  #  spawn(fn ->
-  #    this
-  #    |> create_released()
-  #    |> keep()
-  #  end)
-#
-  #  refute_receive :cleaned, 500
-  #end
-#
-  #describe "you can manually use beam.get to" do
-  #  test "decide to not keep" do
-  #    this = self()
-#
-  #    spawn(fn ->
-  #      this
-  #      |> create_released()
-  #      |> manual_keep(false)
-  #    end)
-#
-  #    assert_receive :cleaned, 100
-  #  end
-#
-  #  test "decide to keep" do
-  #    this = self()
-#
-  #    spawn(fn ->
-  #      this
-  #      |> create_released()
-  #      |> manual_keep(true)
-  #    end)
-#
-  #    refute_receive :cleaned, 500
-  #  end
-  #end
+  test "you can create then release an item" do
+    this = self()
+
+    spawn(fn -> create_released(this) end)
+
+    assert_receive :cleaned, 100
+  end
+
+  test "an unkept resource is never released" do
+    this = self()
+
+    spawn(fn ->
+      this
+      |> create_released()
+      |> keep()
+    end)
+
+    refute_receive :cleaned, 500
+  end
+
+  describe "you can manually use beam.get to" do
+    test "decide to not keep" do
+      this = self()
+
+      spawn(fn ->
+        this
+        |> create_released()
+        |> manual_keep(false)
+      end)
+
+      assert_receive :cleaned, 100
+    end
+
+    test "decide to keep" do
+      this = self()
+
+      spawn(fn ->
+        this
+        |> create_released()
+        |> manual_keep(true)
+      end)
+
+      refute_receive :cleaned, 500
+    end
+  end
 end

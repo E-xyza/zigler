@@ -34,27 +34,27 @@ defmodule ZiglerTest.Resource.CleanupTest do
   }
   """
 
-  test "a function call will keep resources, with no cleanup it doesn't release" #do
-  #  this = self()
-#
-  #  spawn(fn ->
-  #    this
-  #    |> create_released()
-  #    |> maybe_release(false)
-  #  end)
-#
-  #  refute_receive :cleaned, 500
-  #end
-#
-  #test "a function call will keep resources, you can manually release" do
-  #  this = self()
-#
-  #  spawn(fn ->
-  #    this
-  #    |> create_released()
-  #    |> maybe_release(true)
-  #  end)
-#
-  #  assert_receive :cleaned, 100
-  #end
+  test "a function call will keep resources, with no cleanup it doesn't release" do
+    this = self()
+
+    spawn(fn ->
+      this
+      |> create_released()
+      |> maybe_release(false)
+    end)
+
+    refute_receive :cleaned, 500
+  end
+
+  test "a function call will keep resources, you can manually release" do
+    this = self()
+
+    spawn(fn ->
+      this
+      |> create_released()
+      |> maybe_release(true)
+    end)
+
+    assert_receive :cleaned, 100
+  end
 end

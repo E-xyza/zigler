@@ -31,39 +31,39 @@ defmodule ZiglerTest.Resource.ReleaseTest do
   }
   """
 
-  test "you can create a released item" #do
-#    this = self()
-#
-#    spawn(fn ->
-#      create_released(this)
-#    end)
-#
-#    assert_receive :cleaned, 100
-#    Process.sleep(500)
-#    # adds this in to make sure we don't segfault.
-#  end
-#
-#  test "you can create then release an item" do
-#    this = self()
-#
-#    spawn(fn ->
-#      this
-#      |> create_no_release()
-#      |> release()
-#    end)
-#
-#    assert_receive :cleaned, 100
-#    Process.sleep(500)
-#    # adds this in to make sure we don't segfault.
-#  end
-#
-#  test "an unkept resource is never released" do
-#    this = self()
-#
-#    spawn(fn ->
-#      create_no_release(this)
-#    end)
-#
-#    refute_receive :cleaned, 500
-#  end
+  test "you can create a released item" do
+    this = self()
+
+    spawn(fn ->
+      create_released(this)
+    end)
+
+    assert_receive :cleaned, 100
+    Process.sleep(500)
+    # adds this in to make sure we don't segfault.
+  end
+
+  test "you can create then release an item" do
+    this = self()
+
+    spawn(fn ->
+      this
+      |> create_no_release()
+      |> release()
+    end)
+
+    assert_receive :cleaned, 100
+    Process.sleep(500)
+    # adds this in to make sure we don't segfault.
+  end
+
+  test "an unkept resource is never released" do
+    this = self()
+
+    spawn(fn ->
+      create_no_release(this)
+    end)
+
+    refute_receive :cleaned, 500
+  end
 end
