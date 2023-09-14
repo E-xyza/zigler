@@ -1,7 +1,6 @@
 defmodule ZiglerTest.Resource.AsBinaryTest do
   use ZiglerTest.IntegrationCase, async: true
 
-  @tag :skip
   test "skipped"
 #
 #  @moduletag :fails_macos

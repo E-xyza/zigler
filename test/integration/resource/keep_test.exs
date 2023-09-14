@@ -1,39 +1,39 @@
 defmodule ZiglerTest.Resource.KeepTest do
   use ZiglerTest.IntegrationCase, async: true
 
-  #use Zig, otp_app: :zigler, resources: [:PidResource]
+  use Zig, otp_app: :zigler, resources: [:PidResource]
 
-  #~Z"""
-  #const beam = @import("beam");
-  #const std = @import("std");
-  #const Resource = beam.Resource;
-#
-  #pub const PidResource = Resource(beam.pid, @import("root"), .{.Callbacks = PidResourceCallbacks});
-#
-  #pub const PidResourceCallbacks = struct {
-  #    pub fn dtor(env: beam.env, pid: *beam.pid) void {
-  #        _ = beam.send(env, pid.*, .cleaned) catch unreachable;
-  #    }
-  #};
-#
-  #pub fn create_released(pid: beam.pid) PidResource {
-  #    const resource = PidResource.create(pid, .{}) catch unreachable;
-  #    return resource;
-  #}
-#
-  #pub fn keep(resource: PidResource) void {
-  #    resource.keep();
-  #}
-#
-  #pub fn manual_keep(env: beam.env, term: beam.term, should_keep: bool) void {
-  #    const resource = beam.get(PidResource, env, term, .{.keep = false}) catch unreachable;
-  #    if (should_keep) {
-  #        resource.keep();
-  #    }
-  #}
-  #"""
-#
-  #test "you can create then release an item" do
+  ~Z"""
+  const beam = @import("beam");
+  const std = @import("std");
+  const Resource = beam.Resource;
+
+  pub const PidResource = Resource(beam.pid, @import("root"), .{.Callbacks = PidResourceCallbacks});
+
+  pub const PidResourceCallbacks = struct {
+      pub fn dtor(env: beam.env, pid: *beam.pid) void {
+          _ = beam.send(env, pid.*, .cleaned) catch unreachable;
+      }
+  };
+
+  pub fn create_released(pid: beam.pid) PidResource {
+      const resource = PidResource.create(pid, .{}) catch unreachable;
+      return resource;
+  }
+
+  pub fn keep(resource: PidResource) void {
+      resource.keep();
+  }
+
+  pub fn manual_keep(env: beam.env, term: beam.term, should_keep: bool) void {
+      const resource = beam.get(PidResource, env, term, .{.keep = false}) catch unreachable;
+      if (should_keep) {
+          resource.keep();
+      }
+  }
+  """
+
+  test "you can create then release an item" #do
   #  this = self()
 #
   #  spawn(fn -> create_released(this) end)
@@ -78,6 +78,4 @@ defmodule ZiglerTest.Resource.KeepTest do
   #    refute_receive :cleaned, 500
   #  end
   #end
-
-  test "this module skipped"
 end

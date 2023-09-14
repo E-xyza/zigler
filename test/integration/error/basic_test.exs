@@ -1,7 +1,6 @@
 defmodule ZiglerTest.ErrorReturn.BasicTest do
   use ZiglerTest.IntegrationCase, async: true
 
-  @tag :skip
   test "skipped"
 
 #  @moduletag :erroring
