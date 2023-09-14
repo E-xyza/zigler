@@ -76,7 +76,7 @@ defmodule ZigCollections do
   use Zig, otp_app: :zigler
   ~Z"""
   pub fn string_count(string: []u8) i64 {
-    return @intCast(i64, string.len);
+    return @intCast(string.len);
   }
 
   pub fn list_sum(array: []f64) f64 {
@@ -146,7 +146,7 @@ defmodule Blas do
       return beam.raise_function_clause_error(env);
     }
 
-    blas.cblas_daxpy(@intCast(c_int, x.len), a, x.ptr, 1, y.ptr, 1);
+    blas.cblas_daxpy(@intCast(x.len), a, x.ptr, 1, y.ptr, 1);
 
     return y;
   }

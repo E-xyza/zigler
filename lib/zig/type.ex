@@ -154,6 +154,9 @@ defprotocol Zig.Type do
       %{"type" => "float"} ->
         Float.from_json(json)
 
+      %{"type" => "struct", "fields" => [%{"name" => "__payload"}, %{"name" => "__should_release"}]} ->
+        Resource.from_json(json, module)
+
       %{"type" => "struct"} ->
         Struct.from_json(json, module)
 
@@ -176,9 +179,6 @@ defprotocol Zig.Type do
 
       %{"type" => "optional"} ->
         Optional.from_json(json, module)
-
-      %{"type" => "resource"} ->
-        Resource.from_json(json, module)
 
       %{"type" => "error"} ->
         Error.from_json(json, module)
@@ -318,7 +318,7 @@ defimpl Zig.Type, for: Atom do
       {arg, {:arg, length_arg}} ->
         """
         _ = result;
-        break :get_result beam.make(env, payload[#{arg}][0..@intCast(usize, payload[#{length_arg}])], .{.output_type = .#{return_type}}).v;
+        break :get_result beam.make(env, payload[#{arg}][0..@intCast(payload[#{length_arg}])], .{.output_type = .#{return_type}}).v;
         """
 
       {arg, length} when is_integer(length) ->

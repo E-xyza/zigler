@@ -20,7 +20,7 @@ defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
   fn dtor(env: beam.env, res_ptr: ?*anyopaque) callconv(.C) void {
     _ = env;
     var rres_ptr: ?*anyopaque = undefined;
-    const res = @ptrCast(*Resource, @alignCast(@alignOf(Resource), res_ptr.?));
+    const res: *Resource = @ptrCast(@alignCast(res_ptr.?));
     defer e.enif_free_env(res.env);
     _ = e.enif_thread_join(res.tid, &rres_ptr);
   }
@@ -35,20 +35,12 @@ defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
 
   fn thread(info: ?*anyopaque) callconv(.C) ?*anyopaque {
     beam.context = .threaded;
-    const res = @ptrCast(*Resource, @alignCast(@alignOf(Resource), info.?));
+    const res: *Resource = @ptrCast(@alignCast(info.?));
     _ = beam.send(res.env, res.pid, beam.make(res.env, .done, .{})) catch unreachable;
     return null;
   }
 
   const namename = "mythread";
-
-  fn name_ptr() [*c]u8 {
-      // this needs to be done like this because enif_thread_create is
-      // not const-correct.  In the future, we should actually fix this
-      // by giving each thread a dynamic name, so that `name` can have
-      // debug information attached.
-      return @intToPtr([*c]u8, @ptrToInt(&namename));
-  }
 
   const Resource = struct {
     env: beam.env,
@@ -61,12 +53,12 @@ defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
     const resterm = e.enif_make_resource(env, resptr);
     defer e.enif_release_resource(resptr);
 
-    const res = @ptrCast(*Resource, @alignCast(@alignOf(Resource), resptr));
+    const res: *Resource = @ptrCast(@alignCast(resptr));
 
     res.env = beam.alloc_env();
     res.pid = pid;
 
-    _ = e.enif_thread_create(name_ptr(), &res.tid, thread, resptr, null);
+    _ = e.enif_thread_create(@constCast(namename.ptr), &res.tid, thread, resptr, null);
     return .{.v = resterm};
   }
   """

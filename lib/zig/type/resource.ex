@@ -6,15 +6,16 @@ defmodule Zig.Type.Resource do
 
   @type t :: %__MODULE__{name: String.t()}
 
-  def from_json(%{"name" => name, "payload" => payload}, module) when not is_nil(module) do
+  def from_json(%{"name" => name}, module) when not is_nil(module) do
     # TODO: use the Zig parser to do this in the future.
-    name =
-      ~r/resource.Resource\(([a-zA-Z0-9_\*\.\[\]\(\)\s]+),sema/
-      |> Regex.replace(name, "Resource(#{payload},root")
-      |> String.replace(".#{module}", "nif")
-      |> String.replace("stub_erl_nif", "e")
+    regex = ~r/resource.Resource\(([a-zA-Z0-9_\*\.\[\]\(\)\s]+),sema/
+    [match, type] = Regex.run(regex, name)
 
-    %__MODULE__{name: name}
+    new_name = Regex.replace(regex, name, "resource.Resource(#{type},root")
+    |> String.replace(".#{module}", "nif")
+    |> String.replace("stub_erl_nif", "e")
+
+    %__MODULE__{name: new_name}
   end
 
   def to_string(resource), do: resource.name

@@ -1,7 +1,7 @@
 const beam = @import("beam.zig");
 const e = @import("erl_nif");
 const std = @import("std");
-// const resource = @import("resource.zig");
+const resource = @import("resource.zig");
 
 const GetError = error{ argument_error, unreachable_error };
 
@@ -254,43 +254,41 @@ pub fn get_struct(comptime T: type, env: beam.env, src: beam.term, opts: anytype
         else => unreachable,
     };
 
-    _ = struct_info;
+    if (resource.MaybeUnwrap(struct_info)) |_| {
+        return get_resource(T, env, src, opts);
+    } else {
+        errdefer error_expected(T, env, opts);
+        errdefer error_got(env, opts, src);
 
-    //if (resource.MaybeUnwrap(struct_info)) |_| {
-    //    return get_resource(T, env, src, opts);
-    //} else {
+        var result: T = undefined;
+        try fill_struct(T, env, &result, src, opts);
+        return result;
+    }
+}
+
+pub fn get_resource(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
     errdefer error_expected(T, env, opts);
     errdefer error_got(env, opts, src);
 
-    var result: T = undefined;
-    try fill_struct(T, env, &result, src, opts);
-    return result;
-    //}
+    // make sure it's a reference type
+    if (src.term_type(env) != .ref) {
+        return GetError.argument_error;
+    }
+
+    var res: T = undefined;
+    res.get(env, src, opts) catch {
+        error_line(env, opts, .{"note: the reference passed is not associated with a resource of the correct type"});
+        return GetError.argument_error;
+    };
+
+    // by default, we keep the resource.
+    if (should_keep(opts)) {
+        res.keep();
+    }
+
+    return res;
 }
 
-//pub fn get_resource(comptime T: type, env: beam.env, src: beam.term, opts: anytype) !T {
-//    errdefer error_expected(T, env, opts);
-//    errdefer error_got(env, opts, src);
-//
-//    // make sure it's a reference type
-//    if (src.term_type(env) != .ref) {
-//        return GetError.argument_error;
-//    }
-//
-//    var res: T = undefined;
-//    res.get(env, src, opts) catch {
-//        error_line(env, opts, .{"note: the reference passed is not associated with a resource of the correct type"});
-//        return GetError.argument_error;
-//    };
-//
-//    // by default, we keep the resource.
-//    if (should_keep(opts)) {
-//        res.keep();
-//    }
-//
-//    return res;
-//}
-//
 fn should_keep(opts: anytype) bool {
     if (@hasField(@TypeOf(opts), "keep")) {
         return opts.keep;
@@ -530,7 +528,10 @@ fn fill(comptime T: type, env: beam.env, result: *T, src: beam.term, opts: anyty
     switch (@typeInfo(T)) {
         .Array => try fill_array(T, env, result, src, opts),
         .Struct => try fill_struct(T, env, result, src, opts),
-        else => @compileError("unhandlable type encountered in fill"),
+        else => {
+            @compileLog(T);
+            @compileError("unhandlable type encountered in fill");
+        },
     }
 }
 

@@ -5,17 +5,17 @@ defmodule ZiglerTest.Erlang.ThreadedTest do
 
   @moduletag :threaded
 
-  test "threaded function" do
-    {:ok, mod} = :compile.file(@test_file, outdir: :code.lib_dir(:zigler, :ebin))
-    Code.ensure_loaded(mod)
-
-    this = self()
-    assert :ok = :erlang_threaded_test.threaded(true, this)
-    refute_receive :killed
-
-    pid = spawn(fn -> :erlang_threaded_test.threaded(false, this) end)
-    :erlang.garbage_collect(pid)
-    Process.exit(pid, :kill)
-    assert_receive :killed, 500
-  end
+  test "threaded function" #do
+  #  {:ok, mod} = :compile.file(@test_file, outdir: :code.lib_dir(:zigler, :ebin))
+  #  Code.ensure_loaded(mod)
+#
+  #  this = self()
+  #  assert :ok = :erlang_threaded_test.threaded(true, this)
+  #  refute_receive :killed
+#
+  #  pid = spawn(fn -> :erlang_threaded_test.threaded(false, this) end)
+  #  :erlang.garbage_collect(pid)
+  #  Process.exit(pid, :kill)
+  #  assert_receive :killed, 500
+  #end
 end

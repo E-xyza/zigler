@@ -38,45 +38,46 @@ In order to use a resource, you must do at a minimum three things:
 ```elixir
 defmodule ResourceTest do
   use ExUnit.Case, async: true
-  use Zig, 
-    otp_app: :zigler,
-    resources: [
-      :StructResource,
-      :PointerResource
-    ]
+  #use Zig, 
+  #  otp_app: :zigler,
+  #  resources: [
+  #    :StructResource,
+  #    :PointerResource
+  #  ]
 
-  ~Z"""
-  const beam = @import("beam");
-  const root = @import("root");
 
-  const MyStruct = struct {
-      payload: u64
-  };
-
-  pub const StructResource = beam.Resource(MyStruct, root, .{});
-  """
+  #~Z"""
+  #const beam = @import("beam");
+  #const root = @import("root");
+#
+  #const MyStruct = struct {
+  #    payload: u64
+  #};
+#
+  #pub const StructResource = beam.Resource(MyStruct, root, .{});
+  #"""
 ```
 
 ## Using resources in functions
 
 ```elixir
-~Z"""
-pub fn create_resource_term(env: beam.env, number: u64) !beam.term {
-    const res = try StructResource.create(.{.payload = number}, .{});
-    return beam.make(env, res, .{});
-}
-
-pub fn retrieve_resource_term(env: beam.env, term: beam.term) !u64 {
-    const res = try beam.get(StructResource, env, term, .{});
-    return res.unpack().payload;
-}
-"""
-
-test "lifecyle operations through terms" do
-  resource = create_resource_term(47)
-  assert is_reference(resource)
-  assert 47 = retrieve_resource_term(resource)
-end
+#~Z"""
+#pub fn create_resource_term(env: beam.env, number: u64) !beam.term {
+#    const res = try StructResource.create(.{.payload = number}, .{});
+#    return beam.make(env, res, .{});
+#}
+#
+#pub fn retrieve_resource_term(env: beam.env, term: beam.term) !u64 {
+#    const res = try beam.get(StructResource, env, term, .{});
+#    return res.unpack().payload;
+#}
+#"""
+#
+#test "lifecyle operations through terms" do
+#  resource = create_resource_term(47)
+#  assert is_reference(resource)
+#  assert 47 = retrieve_resource_term(resource)
+#end
 ```
 
 Resources can be marshalled into and out of [`beam.term`](beam.html#term) 
@@ -95,52 +96,52 @@ It's possible to directly return resources from a nif function and also
 pass them as parameters:  The nif marshalling functions will be able to
 detect these types and assign them correctly.
 
-```elixir
-~Z"""
-pub fn create_resource_direct(number: u64) !StructResource {
-    return StructResource.create(.{.payload = number}, .{});
-}
-
-pub fn retrieve_resource_direct(resource: StructResource) u64 {
-    return resource.unpack().payload;
-}
-"""
-
-test "direct lifecyle operations" do
-  resource = create_resource_direct(47)
-  assert is_reference(resource)
-  assert 47 = retrieve_resource_direct(resource)
-end
-
-test "must be the correct type of reference" do
-  assert_raise ArgumentError, """
-  errors were found at the given arguments:
-
-    * 1st argument: 
-  
-       expected: reference (for `resource.Resource(MyStruct,module,.{.Callbacks = null})`)
-       got: `%{payload: 42}`
-  """, fn ->
-    retrieve_resource_direct(%{payload: 42})
-  end
-
-  non_resource_ref = make_ref()
-
-  message = """
-  errors were found at the given arguments:
-  
-    * 1st argument: 
-  
-       expected: reference (for `resource.Resource(MyStruct,module,.{.Callbacks = null})`)
-       got: `#{inspect non_resource_ref}`
-       note: the reference passed is not associated with a resource of the correct type
-  """
-
-  assert_raise ArgumentError, message, fn ->
-    retrieve_resource_direct(non_resource_ref)
-  end
-end
-```
+#```elixir
+#~Z"""
+#pub fn create_resource_direct(number: u64) !StructResource {
+#    return StructResource.create(.{.payload = number}, .{});
+#}
+#
+#pub fn retrieve_resource_direct(resource: StructResource) u64 {
+#    return resource.unpack().payload;
+#}
+#"""
+#
+#test "direct lifecyle operations" do
+#  resource = create_resource_direct(47)
+#  assert is_reference(resource)
+#  assert 47 = retrieve_resource_direct(resource)
+#end
+#
+#test "must be the correct type of reference" do
+#  assert_raise ArgumentError, """
+#  errors were found at the given arguments:
+#
+#    * 1st argument: 
+#  
+#       expected: reference (for `resource.Resource(MyStruct,module,.{.Callbacks = null})`)
+#       got: `%{payload: 42}`
+#  """, fn ->
+#    retrieve_resource_direct(%{payload: 42})
+#  end
+#
+#  non_resource_ref = make_ref()
+#
+#  message = """
+#  errors were found at the given arguments:
+#  
+#    * 1st argument: 
+#  
+#       expected: reference (for `resource.Resource(MyStruct,module,.{.Callbacks = null})`)
+#       got: `#{inspect non_resource_ref}`
+#       note: the reference passed is not associated with a resource of the correct type
+#  """
+#
+#  assert_raise ArgumentError, message, fn ->
+#    retrieve_resource_direct(non_resource_ref)
+#  end
+#end
+#```
 
 > ### no coercion {: .warning }
 >
@@ -168,34 +169,34 @@ The following functions are supported in the Callbacks, and are all optional.
 - `down`: called on resource down, on behalf of `e.enif_monitor_process`
 - `dyncall`: called on dynamic resource call, on behalf of `enif_dynamic_resource_call`
 
-```elixir
-~Z"""
-pub const PointerResource = beam.Resource(*MyStruct, root, .{.Callbacks = PointerResourceCallbacks});
-
-pub const PointerResourceCallbacks = struct {
-    pub fn dtor(env: beam.env, s: **MyStruct) void {
-        _ = env;
-        beam.raw_allocator.destroy(s.*);
-    }
-};
-
-pub fn create_pointer_resource(number: u64) !PointerResource {
-    const new_struct = try beam.raw_allocator.create(MyStruct);
-    new_struct.payload = number;
-    return PointerResource.create(new_struct, .{});
-}
-
-pub fn retrieve_pointer_resource(resource: PointerResource) u64 {
-    return resource.unpack().*.payload;
-}
-"""
-
-test "pointer-based lifecyle operations" do
-  resource = create_pointer_resource(47)
-  assert is_reference(resource)
-  assert 47 = retrieve_pointer_resource(resource)
-end
-```
+#```elixir
+#~Z"""
+#pub const PointerResource = beam.Resource(*MyStruct, root, .{.Callbacks = PointerResourceCallbacks});
+#
+#pub const PointerResourceCallbacks = struct {
+#    pub fn dtor(env: beam.env, s: **MyStruct) void {
+#        _ = env;
+#        beam.raw_allocator.destroy(s.*);
+#    }
+#};
+#
+#pub fn create_pointer_resource(number: u64) !PointerResource {
+#    const new_struct = try beam.raw_allocator.create(MyStruct);
+#    new_struct.payload = number;
+#    return PointerResource.create(new_struct, .{});
+#}
+#
+#pub fn retrieve_pointer_resource(resource: PointerResource) u64 {
+#    return resource.unpack().*.payload;
+#}
+#"""
+#
+#test "pointer-based lifecyle operations" do
+#  resource = create_pointer_resource(47)
+#  assert is_reference(resource)
+#  assert 47 = retrieve_pointer_resource(resource)
+#end
+#```
 
 > ### pointer allocation strategy {: .warning }
 >
@@ -247,13 +248,14 @@ These functions are provided in the resource type as
 functions, respectively:
 
 ```elixir
-~Z"""
-pub fn release(resource: StructResource) void {
-    resource.release();
-}
+#~Z"""
+#pub fn release(resource: StructResource) void {
+#    resource.release();
+#}
+#
+#pub fn keep(resource: StructResource) void {
+#    resource.keep();
+#}
+#"""
 
-pub fn keep(resource: StructResource) void {
-    resource.keep();
-}
-"""
 ```

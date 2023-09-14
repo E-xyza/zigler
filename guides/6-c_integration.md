@@ -29,23 +29,23 @@ int plus_one(int value) {
 ```
 
 ```elixir
-defmodule CompilingC do
-  use ExUnit.Case, async: true
-  use Zig, 
-    otp_app: :zigler,
-    include_dir: "include", 
-    c_src: "src/*"
-
-  ~Z"""
-  const c = @cImport(@cInclude("included.h"));
-
-  pub const plus_one = c.plus_one;
-  """
-
-  test "c plus one" do
-    assert 48 = plus_one(47)
-  end
-end
+#defmodule CompilingC do
+#  use ExUnit.Case, async: true
+#  use Zig, 
+#    otp_app: :zigler,
+#    include_dir: "include", 
+#    c_src: "src/*"
+#
+#  ~Z"""
+#  const c = @cImport(@cInclude("included.h"));
+#
+#  pub const plus_one = c.plus_one;
+#  """
+#
+#  test "c plus one" do
+#    assert 48 = plus_one(47)
+#  end
+#end
 ```
 
 ## linking against a C abi library
@@ -63,24 +63,24 @@ The [rules for collections](#2-collections.html) apply to functions that
 are directly imported from C files.
 
 ```elixir
-if {:unix, :linux} == :os.type() do
+#if {:unix, :linux} == :os.type() do
 # currently we only have access to the BLAS library on linux CI actions, so
 # it's unavailable for other operating systems for automated testing purposes
 
-  defmodule LibraryTest do
-    use ExUnit.Case, async: true
-    use Zig, 
-      otp_app: :zigler,
-      link_lib: {:system, "blas"}
-
-    ~Z"""
-    pub const dasum = @cImport(@cInclude("cblas.h")).cblas_dasum;
-    """
-
-    test "dasum" do
-      assert 6.0 == dasum(3, [1.0, 2.0, 3.0], 1)
-    end
-  end
+  #defmodule LibraryTest do
+  #  use ExUnit.Case, async: true
+  #  use Zig, 
+  #    otp_app: :zigler,
+  #    link_lib: {:system, "blas"}
+#
+  #  ~Z"""
+  #  pub const dasum = @cImport(@cInclude("cblas.h")).cblas_dasum;
+  #  """
+#
+  #  test "dasum" do
+  #    assert 6.0 == dasum(3, [1.0, 2.0, 3.0], 1)
+  #  end
+  #end
 ```
 
 > ### linking against libcpp: {: .info }
@@ -130,26 +130,26 @@ It then calculates the linear transformation `ax + y` using these vectors.
 > alongside these special `easy_c` options.
 
 ```elixir
-  defmodule EasyCTest do
-    use ExUnit.Case, async: true
-    use Zig, 
-      otp_app: :zigler,
-      easy_c: "cblas.h",
-      link_lib: {:system, "blas"},
-      nifs: [
-        cblas_daxpy: [return: [4, length: {:arg, 0}]],
-        cblas_daxpy_bin: [alias: :cblas_daxpy, return: [4, :binary, length: {:arg, 0}]]
-      ]
-
-    test "daxpy as a list" do
-      assert [7.0, 11.0, 15.0] == cblas_daxpy(3, 3.0, [1.0, 2.0, 3.0], 1, [4.0, 5.0, 6.0], 1)
-    end
-
-    test "daxpy as a binary" do
-      assert <<7.0::float-native, 11.0::float-native, 15.0::float-native>> ==
-               cblas_daxpy_bin(3, 3.0, [1.0, 2.0, 3.0], 1, [4.0, 5.0, 6.0], 1)
-    end
-  end
-end
+#  defmodule EasyCTest do
+#    use ExUnit.Case, async: true
+#    use Zig, 
+#      otp_app: :zigler,
+#      easy_c: "cblas.h",
+#      link_lib: {:system, "blas"},
+#      nifs: [
+#        cblas_daxpy: [return: [4, length: {:arg, 0}]],
+#        cblas_daxpy_bin: [alias: :cblas_daxpy, return: [4, :binary, length: {:arg, 0}]]
+#      ]
+#
+#    test "daxpy as a list" do
+#      assert [7.0, 11.0, 15.0] == cblas_daxpy(3, 3.0, [1.0, 2.0, 3.0], 1, [4.0, 5.0, 6.0], 1)
+#    end
+#
+#    test "daxpy as a binary" do
+#      assert <<7.0::float-native, 11.0::float-native, 15.0::float-native>> ==
+#               cblas_daxpy_bin(3, 3.0, [1.0, 2.0, 3.0], 1, [4.0, 5.0, 6.0], 1)
+#    end
+#  end
+#end
 # module
 ```

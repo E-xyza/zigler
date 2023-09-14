@@ -39,7 +39,6 @@ fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: t
     try stream.endObject();
 }
 
-
 fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) WriteError!void {
     try beginType(stream, "float");
     try stream.objectField("bits");
@@ -49,47 +48,40 @@ fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) WriteError!v
 fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S: type) WriteError!void {
     const name = @typeName(S);
 
-    //if (resource.MaybeUnwrap(s)) |res_type| {
-    //    try beginType(stream, "resource");
-    //    try stream.objectField("name");
-    //    try stream.emitString(name);
-    //    try stream.objectField("payload");
-    //    try stream.emitString(@typeName(res_type));
-    //} else {
-        try beginType(stream, "struct");
+    try beginType(stream, "struct");
+    try stream.objectField("name");
+    try stream.write(name);
+    switch (s.layout) {
+        .Packed => {
+            try stream.objectField("packed_size");
+            try stream.write(@bitSizeOf(S));
+        },
+        .Extern => {
+            try stream.objectField("extern");
+            try stream.write(true);
+        },
+        .Auto => {},
+    }
+    try stream.objectField("fields");
+    try stream.beginArray();
+    inline for (s.fields) |field| {
+        try stream.beginObject();
         try stream.objectField("name");
-        try stream.write(name);
-        switch (s.layout) {
-            .Packed => {
-                try stream.objectField("packed_size");
-                try stream.write(@bitSizeOf(S));
-            },
-            .Extern => {
-                try stream.objectField("extern");
-                try stream.write(true);
-            },
-            .Auto => {}
+        try stream.write(field.name);
+        try stream.objectField("type");
+        try streamType(stream, field.type);
+        try stream.objectField("required");
+        if (field.default_value) |default_value| {
+            _ = default_value;
+            try stream.write(false);
+        } else {
+            try stream.write(true);
         }
-        try stream.objectField("fields");
-        try stream.beginArray();
-        inline for (s.fields) |field| {
-            try stream.beginObject();
-            try stream.objectField("name");
-            try stream.write(field.name);
-            try stream.objectField("type");
-            try streamType(stream, field.type);
-            try stream.objectField("required");
-            if (field.default_value) |default_value| {
-                _ = default_value;
-                try stream.write(false);
-            } else {
-                try stream.write(true);
-            }
-            try stream.objectField("alignment");
-            try stream.write(field.alignment);
-            try stream.endObject();
-        }
-        try stream.endArray();
+        try stream.objectField("alignment");
+        try stream.write(field.alignment);
+        try stream.endObject();
+    }
+    try stream.endArray();
     //}
 }
 
@@ -104,7 +96,6 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
     try stream.objectField("repr");
     try stream.write(repr);
 }
-
 
 fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) WriteError!void {
     switch (p.size) {
@@ -134,7 +125,6 @@ fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: an
     try stream.objectField("child");
     try streamType(stream, p.child);
 }
-
 
 fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) WriteError!void {
     try beginType(stream, "optional");
@@ -174,11 +164,11 @@ fn streamType(stream: anytype, comptime T: type) WriteError!void {
                 .Optional => |o| try streamOptional(stream, o),
                 .Bool => try beginType(stream, "bool"),
                 .Void => try beginType(stream, "void"),
-                //                .ErrorUnion => |eu| {
-                //                    try beginType(stream, "error");
-                //                    try stream.objectField("child");
-                //                    try streamType(stream, eu.payload);
-                //                },
+                .ErrorUnion => |eu| {
+                    try beginType(stream, "error");
+                    try stream.objectField("child");
+                    try streamType(stream, eu.payload);
+                },
                 else => {
                     try beginType(stream, "unusable:" ++ @typeName(T));
                 },

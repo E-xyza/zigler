@@ -1,6 +1,6 @@
 const std = @import("std");
 const beam = @import("beam.zig");
-const e = @import("erl_nif").e;
+const e = @import("erl_nif");
 
 const builtin = std.builtin;
 const Allocator = std.mem.Allocator;
@@ -166,7 +166,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         fn MakeShimmed(comptime Callbacks: type) type {
             return struct {
                 fn to_typed(obj: ?*anyopaque) *T {
-                    return @ptrCast(@alignCast(@alignOf(T), obj.?));
+                    return @ptrCast(@alignCast(obj.?));
                 }
 
                 fn dtor(env: beam.env, obj: ?*anyopaque) callconv(.C) void {
@@ -210,7 +210,7 @@ pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
     if (!std.mem.eql(u8, s.fields[0].name, "__payload")) return null;
     if (!std.mem.eql(u8, s.fields[1].name, "__should_release")) return null;
 
-    switch (@typeInfo(s.fields[0].field_type)) {
+    switch (@typeInfo(s.fields[0].type)) {
         .Pointer => |p| {
             if (p.size != .One) return null;
             if (p.is_allowzero) return null;
@@ -223,29 +223,20 @@ pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
 fn resource_alloc(
     resource_ptr: *anyopaque,
     len: usize,
-    ptr_align: u29,
-    _: u29,
+    ptr_align: u8,
     _: usize,
-) Allocator.Error![]u8 {
-    if (ptr_align > MAX_ALIGN) {
-        return error.OutOfMemory;
-    }
+) ?[*]u8 {
+    if (ptr_align > MAX_ALIGN) return null;
     // don't deal with alignment issues at the moment.
     const resource_type = @as(*e.ErlNifResourceType, @ptrCast(resource_ptr));
-    const ptr = e.enif_alloc_resource(resource_type, @as(c_uint, @intCast(len))) orelse return error.OutOfMemory;
-    return @ptrCast(ptr)[0..len];
+    const ptr = e.enif_alloc_resource(resource_type, @as(c_uint, @intCast(len))) orelse return null;
+    return @ptrCast(ptr);
 }
-
-fn noresize(_: *anyopaque, _: []u8, _: u29, _: usize, _: u29, _: usize) ?usize {
-    return null;
-}
-
-fn nofree(_: *anyopaque, _: []u8, _: u29, _: usize) void {}
 
 const resource_vtable = Allocator.VTable{
     .alloc = resource_alloc,
-    .resize = noresize,
-    .free = nofree,
+    .resize = std.mem.Allocator.noResize,
+    .free = std.mem.Allocator.noFree,
 };
 
 fn assert_type_matches(comptime t1: type, comptime t2: type) void {

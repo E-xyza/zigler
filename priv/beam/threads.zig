@@ -215,7 +215,7 @@ pub fn Thread(comptime function: anytype) type {
             // not const-correct.  In the future, we should actually fix this
             // by giving each thread a dynamic name, so that `name` can have
             // debug information attached.
-            return @constCast(&name);
+            return @constCast(@as([*c]const u8, name));
         }
 
         pub fn get_info() *This {

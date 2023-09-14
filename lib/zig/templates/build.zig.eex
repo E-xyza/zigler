@@ -84,12 +84,12 @@ pub fn build(b: *std.Build) void {
     <% end %>
 
     <%= for include <- @include_dir do %>
-    lib.addIncludePath("<%= include %>");
+    lib.addIncludePath(.{.cwd_relative = "<%= include %>"});
     <% end %>
 
     <%= for {c_src, c_src_opts} <- @c_src do %>
     <% ccompileparams = Enum.map_join(c_src_opts, ", ", &~s("#{&1}")) %>
-    lib.addCSourceFile("<%= c_src %>",  &[_][]const u8{<%= ccompileparams %>});
+    lib.addCSourceFile(.{.path = .{.cwd_relative = "<%= c_src %>"}, .flags = &[_][]const u8{<%= ccompileparams %>}});
     <% end %>
 
 

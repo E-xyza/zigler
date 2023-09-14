@@ -72,52 +72,65 @@ const large_beam_allocator_vtable = Allocator.VTable{
     .free = large_beam_free,
 };
 
-fn large_beam_alloc(_: *anyopaque, len: usize, alignment: u8, _: usize) ?[*]u8 {
-    var safe_len = safeLen(len, alignment);
-    var alloc_slice: []u8 = raw_allocator.allocWithOptions(u8, safe_len, MAX_ALIGN, null) catch return null;
-
-    const unaligned_addr = @intFromPtr(alloc_slice.ptr);
-    const aligned_addr = reAlign(unaligned_addr, alignment);
-
-    getPtrPtr(aligned_addr).* = unaligned_addr;
-    return @ptrFromInt(aligned_addr);
+fn large_beam_alloc(
+    _: *anyopaque,
+    len: usize,
+    log2_align: u8,
+    return_address: usize,
+) ?[*]u8 {
+    _ = return_address;
+    if (len == 0) return null;
+    return alignedAlloc(len, log2_align);
 }
 
 fn large_beam_resize(
     _: *anyopaque,
     buf: []u8,
-    alignment: u8,
+    log2_buf_align: u8,
     new_len: usize,
-    _: usize
+    return_address: usize,
 ) bool {
-    if (new_len <= buf.len) return true;
-    if (new_len == 0) {
-        alignedFree(buf, alignment);
+    _ = log2_buf_align;
+    _ = return_address;
+    if (new_len <= buf.len) {
         return true;
     }
     return false;
 }
 
-fn large_beam_free(_: *anyopaque, buf: []u8, alignment: u8, _: usize) void {
-    _ = alignedFree(buf, alignment);
+fn large_beam_free(
+    _: *anyopaque,
+    buf: []u8,
+    log2_buf_align: u8,
+    return_address: usize,
+) void {
+    _ = log2_buf_align;
+    _ = return_address;
+    alignedFree(buf.ptr);
 }
 
-fn alignedFree(buf: []u8, alignment: u8) void {
-    const ptr = getPtrPtr(@intFromPtr(buf.ptr)).*;
-    const slice = @as([*]u8, @ptrFromInt(ptr));
-    raw_allocator.free(slice[0..safeLen(buf.len, alignment)]);
+fn alignedAlloc(len: usize, log2_align: u8) ?[*]u8 {
+    const alignment = @as(usize, 1) << @as(Allocator.Log2Align, @intCast(log2_align));
+
+    // Thin wrapper around regular malloc, overallocate to account for
+    // alignment padding and store the original malloc()'ed pointer before
+    // the aligned address.
+    const raw_ptr = e.enif_alloc(len + alignment - 1 + @sizeOf(usize)) orelse return null;
+    const unaligned_addr = @intFromPtr(raw_ptr);
+    const unaligned_ptr = @as([*]u8, @ptrCast(raw_ptr));
+    const aligned_addr = std.mem.alignForward(usize, unaligned_addr + @sizeOf(usize), alignment);
+    const aligned_ptr = unaligned_ptr + (aligned_addr - unaligned_addr);
+    getHeader(aligned_ptr).* = unaligned_ptr;
+
+    return aligned_ptr;
 }
 
-fn reAlign(unaligned_addr: usize, alignment: u8) usize {
-    return std.mem.alignForwardLog2(unaligned_addr + @sizeOf(usize), alignment);
+fn alignedFree(ptr: [*]u8) void {
+    e.enif_free(getHeader(ptr).*);
 }
 
-fn safeLen(len: usize, alignment: u8) usize {
-    return len + alignment - @sizeOf(usize) + MAX_ALIGN;
-}
-
-fn getPtrPtr(aligned_ptr: usize) *usize {
-    return @as(*usize, @ptrFromInt(aligned_ptr - @sizeOf(usize)));
+fn getHeader(ptr: [*]u8) *[*]u8 {
+    return @as(*[*]u8, @ptrFromInt(@intFromPtr(ptr) - @sizeOf(usize)));
 }
 
 const BeamGpa = std.heap.GeneralPurposeAllocator(.{ .thread_safe = true });
