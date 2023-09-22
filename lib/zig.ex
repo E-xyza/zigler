@@ -34,7 +34,7 @@ defmodule Zig do
   - [Collection datatypes](2-collections.html)
   - [Allocator strategies](3-allocators.html)
   - [Nif options](4-nif_options.html)
-  - [Resources](5-nif_options.html)
+  - [Resources](5-resources.html)
   - [C integration](6-c_integration.html)
   - [Concurrency strategies](7-concurrency.html)
   - [Global module options](8-module_options.html)
