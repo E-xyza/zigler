@@ -23,9 +23,9 @@ module.  In this case, we'll build our code into a module that will be tested
 with ExUnit.
 
 ```elixir
-#defmodule NifGuideTest do
-#  use Zig, otp_app: :zigler
-#  use ExUnit.Case, async: true
+defmodule NifGuideTest do
+  use Zig, otp_app: :zigler
+  use ExUnit.Case, async: true
 ```
 
 ## Basic function writing
@@ -40,15 +40,15 @@ Then write your desired zig function Zigler will also mount functions with the
 ### Example: simple scalar values
 
 ```elixir
-#~Z"""
-#pub fn add_one(input: i32) i32 {
-#  return input + 1;
-#}
-#"""
-#
-#test "add one" do
-#  assert 48 == add_one(47)
-#end
+~Z"""
+pub fn add_one(input: i32) i32 {
+  return input + 1;
+}
+"""
+
+test "add one" do
+  assert 48 == add_one(47)
+end
 ```
 
 Note that Zigler will automatically marshal input and output values across the 
@@ -79,17 +79,17 @@ datatypes:
 ### Example: Array-like datatypes
 
 ```elixir
-#~Z"""
-#pub fn sum(input: []f32) f32 {
-#  var total: f32 = 0.0;
-#  for (input) | value | { total += value; }
-#  return total;
-#}
-#"""
-#
-#test "sum" do
-#  assert 6.0 == sum([1.0, 2.0, 3.0])
-#end
+~Z"""
+pub fn sum(input: []f32) f32 {
+  var total: f32 = 0.0;
+  for (input) | value | { total += value; }
+  return total;
+}
+"""
+
+test "sum" do
+  assert 6.0 == sum([1.0, 2.0, 3.0])
+end
 ```
 
 The following array-like datatypes are allowed for parameters:
@@ -106,9 +106,9 @@ For all scalar child types, Array-like datatypes may be passed as binaries,
 thus the following code works with no alteration:
 
 ```elixir
-#test "sum, with binary input" do
-#  assert 6.0 == sum(<<1.0 :: float-size(32)-native, 2.0 :: float-size(32)-native, 3.0 :: float-size(32)-native>>)
-#end
+test "sum, with binary input" do
+  assert 6.0 == sum(<<1.0 :: float-size(32)-native, 2.0 :: float-size(32)-native, 3.0 :: float-size(32)-native>>)
+end
 ```
 
 This also results in a natural interface for treating BEAM binaries as `u8` 
@@ -120,18 +120,18 @@ Zigler will generate code that protects you from sending incompatible
 datatypes to the desired function:
 
 ```elixir
-#test "marshalling error" do
-#  assert_raise ArgumentError, """
-#  errors were found at the given arguments:
-#
-#    * 1st argument: 
-#  
-#       expected: <<_::_ * 32>> | list(float | :infinity | :neg_infinity | :NaN) (for `[]f32`)
-#       got: `:atom`
-#  """, fn ->
-#    sum(:atom)
-#  end
-#end
+test "marshalling error" do
+  assert_raise ArgumentError, """
+  errors were found at the given arguments:
+
+    * 1st argument: 
+  
+       expected: <<_::_ * 32>> | list(float | :infinity | :neg_infinity | :NaN) (for `[]f32`)
+       got: `:atom`
+  """, fn ->
+    sum(:atom)
+  end
+end
 ```
 
 For more on marshalling collection datatypes, see [`collections`](collections.html).
@@ -147,18 +147,18 @@ You will also need [`beam.env`](beam.html#env) environment variable to reference
 the execution environmet of your nif, to box and unbox data from the beam terms.
 
 ```elixir
-#~Z"""
-#const beam = @import("beam");
-#
-#pub fn manual_addone(env: beam.env, value_term: beam.term) !beam.term {
-#    const value = try beam.get(i32, env, value_term, .{});
-#    return beam.make(env, value + 1, .{});
-#}
-#"""
-#
-#test "manual marshalling" do
-#  assert 48 == manual_addone(47)
-#end
+~Z"""
+const beam = @import("beam");
+
+pub fn manual_addone(env: beam.env, value_term: beam.term) !beam.term {
+    const value = try beam.get(i32, env, value_term, .{});
+    return beam.make(env, value + 1, .{});
+}
+"""
+
+test "manual marshalling" do
+  assert 48 == manual_addone(47)
+end
 ```
 
 ### A few notes on the above code.

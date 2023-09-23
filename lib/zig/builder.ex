@@ -40,7 +40,7 @@ defmodule Zig.Builder do
     List.wrap(
       if packages = opts[:packages] do
         Enum.map(packages, fn {name, {path, deps}} ->
-          {name, Path.absname(path), Enum.map_join(deps, ", ", &"#{&1}_pkg")}
+          {name, Path.absname(path), deps}
         end)
       end
     )
