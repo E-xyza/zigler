@@ -35,9 +35,7 @@ defmodule ZiglerTest.Sema.ResourceTest do
              name: :res,
              arity: 1,
              params: [
-               %Resource{
-                 name: "Resource(nif.T,root,.{.Callbacks = null})"
-               }
+               %Resource{}
              ],
              return: %Struct{name: "T"}
            } = function

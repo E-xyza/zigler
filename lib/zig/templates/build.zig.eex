@@ -89,7 +89,7 @@ pub fn build(b: *std.Build) void {
 
     <%= for {c_src, c_src_opts} <- @c_src do %>
     <% ccompileparams = Enum.map_join(c_src_opts, ", ", &~s("#{&1}")) %>
-    lib.addCSourceFile(.{.path = .{.cwd_relative = "<%= c_src %>"}, .flags = &[_][]const u8{<%= ccompileparams %>}});
+    lib.addCSourceFile(.{.file = .{.cwd_relative = "<%= c_src %>"}, .flags = &[_][]const u8{<%= ccompileparams %>}});
     <% end %>
 
 

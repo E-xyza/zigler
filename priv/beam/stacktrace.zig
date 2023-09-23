@@ -44,7 +44,7 @@ pub fn to_term(
     const debug_info = getSelfDebugInfo() catch return beam.make(env, .nil, .{});
 
     var frame_index: usize = 0;
-    var frames_left: usize = std.math.min(stacktrace.index, stacktrace.instruction_addresses.len);
+    var frames_left: usize = @min(stacktrace.index, stacktrace.instruction_addresses.len);
     var stacktrace_term = beam.make_empty_list(env);
 
     while (frames_left != 0) : ({

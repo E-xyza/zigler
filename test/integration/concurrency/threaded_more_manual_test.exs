@@ -6,68 +6,66 @@ defmodule ZiglerTest.Concurrency.ThreadedMoreManualTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
-#  @moduletag :threaded
-#
-#  use Zig, otp_app: :zigler, cleanup: false, resources: [:ThreadResource]
-#
-#  ~Z"""
-#  const beam = @import("beam");
-#  const std = @import("std");
-#  const e = @import("erl_nif");
-#
-#  pub const ThreadResource = beam.Resource(*Thread, @import("root"), .{
-#    .Callbacks = struct {
-#      pub fn dtor(_: beam.env, dtor_ref: **Thread) void {
-#        const thread_ptr = dtor_ref.*;
-#        var rres_ptr: ?*anyopaque = undefined;
-#        _ = e.enif_thread_join(thread_ptr.tid, &rres_ptr);
-#        beam.free_env(thread_ptr.env);
-#        beam.raw_allocator.destroy(thread_ptr);
-#      }
-#    }
-#  });
-#
-#  const Thread = struct {
-#    env: beam.env,
-#    pid: beam.pid,
-#    tid: beam.tid,
-#    ref: beam.term
-#  };
-#
-#  fn thread(info: ?*anyopaque) callconv(.C) ?*anyopaque {
-#    beam.context = .threaded;
-#    const thr = @ptrCast(*Thread, @alignCast(@alignOf(Thread), info.?));
-#    _ = beam.send(thr.env, thr.pid, beam.make(thr.env, .done, .{})) catch unreachable;
-#    return null;
-#  }
-#
-#  const namename = "mythread";
-#
-#  pub fn launch(env: beam.env, pid: beam.pid) !beam.term {
-#    const threadptr = try beam.raw_allocator.create(Thread);
-#    errdefer beam.raw_allocator.destroy(threadptr);
-#
-#    const resource = ThreadResource.create(threadptr, .{}) catch unreachable;
-#    const res_term = beam.make(env, resource, .{});
-#
-#    threadptr.env = beam.alloc_env();
-#    threadptr.pid = pid;
-#    threadptr.ref = beam.copy(threadptr.env, res_term);
-#
-#    _ = e.enif_thread_create(@constCast(namename), &threadptr.tid, thread, threadptr, null);
-#    return res_term;
-#  }
-#  """
-#
-#  test "threaded function" do
-#    this = self()
-#
-#    spawn(fn ->
-#      launch(this)
-#    end)
-#
-#    assert_receive :done, 500
-#  end
+  @moduletag :threaded
 
-  test "skipped"
+  use Zig, otp_app: :zigler, cleanup: false, resources: [:ThreadResource]
+
+  ~Z"""
+  const beam = @import("beam");
+  const std = @import("std");
+  const e = @import("erl_nif");
+
+  pub const ThreadResource = beam.Resource(*Thread, @import("root"), .{
+    .Callbacks = struct {
+      pub fn dtor(_: beam.env, dtor_ref: **Thread) void {
+        const thread_ptr = dtor_ref.*;
+        var rres_ptr: ?*anyopaque = undefined;
+        _ = e.enif_thread_join(thread_ptr.tid, &rres_ptr);
+        beam.free_env(thread_ptr.env);
+        beam.raw_allocator.destroy(thread_ptr);
+      }
+    }
+  });
+
+  const Thread = struct {
+    env: beam.env,
+    pid: beam.pid,
+    tid: beam.tid,
+    ref: beam.term
+  };
+
+  fn thread(info: ?*anyopaque) callconv(.C) ?*anyopaque {
+    beam.context = .threaded;
+    const thr: *Thread = @ptrCast(@alignCast(info.?));
+    _ = beam.send(thr.env, thr.pid, beam.make(thr.env, .done, .{})) catch unreachable;
+    return null;
+  }
+
+  const namename = "mythread";
+
+  pub fn launch(env: beam.env, pid: beam.pid) !beam.term {
+    const threadptr = try beam.raw_allocator.create(Thread);
+    errdefer beam.raw_allocator.destroy(threadptr);
+
+    const resource = ThreadResource.create(threadptr, .{}) catch unreachable;
+    const res_term = beam.make(env, resource, .{});
+
+    threadptr.env = beam.alloc_env();
+    threadptr.pid = pid;
+    threadptr.ref = beam.copy(threadptr.env, res_term);
+
+    _ = e.enif_thread_create(@constCast(namename), &threadptr.tid, thread, threadptr, null);
+    return res_term;
+  }
+  """
+
+  test "threaded function" do
+    this = self()
+
+    spawn(fn ->
+      launch(this)
+    end)
+
+    assert_receive :done, 500
+  end
 end

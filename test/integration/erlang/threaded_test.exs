@@ -5,7 +5,7 @@ defmodule ZiglerTest.Erlang.ThreadedTest do
 
   @moduletag :threaded
 
-  test "threaded function" #do
+  test "threaded function" # do
   #  {:ok, mod} = :compile.file(@test_file, outdir: :code.lib_dir(:zigler, :ebin))
   #  Code.ensure_loaded(mod)
 #

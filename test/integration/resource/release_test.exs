@@ -39,8 +39,6 @@ defmodule ZiglerTest.Resource.ReleaseTest do
     end)
 
     assert_receive :cleaned, 100
-    Process.sleep(500)
-    # adds this in to make sure we don't segfault.
   end
 
   test "you can create then release an item" do
@@ -53,8 +51,6 @@ defmodule ZiglerTest.Resource.ReleaseTest do
     end)
 
     assert_receive :cleaned, 100
-    Process.sleep(500)
-    # adds this in to make sure we don't segfault.
   end
 
   test "an unkept resource is never released" do

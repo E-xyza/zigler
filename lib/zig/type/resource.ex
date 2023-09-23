@@ -2,20 +2,16 @@ defmodule Zig.Type.Resource do
   alias Zig.Type
   use Type
 
-  defstruct [:name]
+  # put in a dummy content that will render resources as "unreachable".
+  defstruct [name: :unreachable]
 
-  @type t :: %__MODULE__{name: String.t()}
+  @type t :: %__MODULE__{
+    name: atom
+  }
 
-  def from_json(%{"name" => name}, module) when not is_nil(module) do
-    # TODO: use the Zig parser to do this in the future.
-    regex = ~r/resource.Resource\(([a-zA-Z0-9_\*\.\[\]\(\)\s]+),sema/
-    [_, type] = Regex.run(regex, name)
-
-    new_name = Regex.replace(regex, name, "resource.Resource(#{type},root")
-    |> String.replace(".#{module}", "nif")
-    |> String.replace("stub_erl_nif", "e")
-
-    %__MODULE__{name: new_name}
+  def from_json(_, _) do
+    # name must be assigned from the outer calling context
+    %__MODULE__{}
   end
 
   def to_string(resource), do: resource.name
