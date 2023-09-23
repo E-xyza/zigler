@@ -24,10 +24,10 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticTest do
   }
   """
 
-  test "threaded function" # do
-  #  assert :ok = threaded(true, self())
-  #  refute_receive :killed
-  #end
+  test "threaded function" do
+    assert :ok = threaded(true, self())
+    refute_receive :killed
+  end
 
   test "threaded function gc's" do
     this = self()

@@ -6,7 +6,6 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
   use Zig, otp_app: :zigler, nifs: [threaded: [:threaded]]
 
   ~Z"""
-  const std = @import("std");
   const beam = @import("beam");
 
   const ThreadError = error{BadNumber};
@@ -17,23 +16,23 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
   }
   """
 
-  test "threaded function can succeed" #do
-  #  assert 48 = threaded(47)
-  #end
+  test "threaded function can succeed" do
+    assert 48 = threaded(47)
+  end
 
-  test "threaded function can error" #do
-  #  error =
-  #    try do
-  #      threaded(42)
-  #    rescue
-  #      e in ErlangError ->
-  #        %{payload: e.original, stacktrace: __STACKTRACE__}
-  #    end
-#
-  #  assert %{payload: :BadNumber, stacktrace: [head | _]} = error
-#
-  #  expected_file = Path.absname(__ENV__.file)
-#
-  #  assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 15]} = head
-  #end
+  test "threaded function can error" do
+    error =
+      try do
+        threaded(42)
+      rescue
+        e in ErlangError ->
+          %{payload: e.original, stacktrace: __STACKTRACE__}
+      end
+
+    assert %{payload: :BadNumber, stacktrace: [head | _]} = error
+
+    expected_file = Path.absname(__ENV__.file)
+
+    assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 15]} = head
+  end
 end

@@ -38,12 +38,11 @@ fn @"<%= @type.name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlN
     _ = argc;
     // set beam.allocator due to reentry
     beam.allocator = beam.raw_allocator;
-    _ = args;
-    const thread_rsrc: ThreadResource_<%= @type.name %> = undefined;
-    //const thread_rsrc = beam.get(ThreadResource_<%= @type.name %>, env, .{.v = args[0]}, .{}) catch {
-    //    @panic("error getting thread resource");
-    //};
+    const thread_rsrc = beam.get(ThreadResource_<%= @type.name %>, env, .{.v = args[0]}, .{}) catch {
+        @panic("error getting thread resource");
+    };
     const thread = ThreadResource_<%= @type.name %>.unpack(thread_rsrc);
+    
     const result = thread.join() catch {
         // TODO: fix this
         @panic("error joining thread");
@@ -51,13 +50,11 @@ fn @"<%= @type.name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlN
 
     if (comptime Thread_<%= @type.name %>.makes_error_result()) {
         const result_term = switch(result) {
-            .ok => // |ok_result| beam.make(env, ok_result, .{}),
-              beam.raise_exception(env, .foo),
+            .ok => |ok_result| beam.make(env, ok_result, .{}),
             .error_return_trace => |error_result| beam.raise_exception(env, beam.copy(env, error_result)),
         };
         return result_term.v;
     } else {
-        return beam.make(env, .foo, .{}).v;
-        // return beam.make(env, result, .{}).v;
+        return beam.make(env, result, .{}).v;
     }
 }
