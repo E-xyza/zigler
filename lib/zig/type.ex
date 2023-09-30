@@ -154,7 +154,10 @@ defprotocol Zig.Type do
       %{"type" => "float"} ->
         Float.from_json(json)
 
-      %{"type" => "struct", "fields" => [%{"name" => "__payload"}, %{"name" => "__should_release"}]} ->
+      %{
+        "type" => "struct",
+        "fields" => [%{"name" => "__payload"}, %{"name" => "__should_release"}]
+      } ->
         Resource.from_json(json, module)
 
       %{"type" => "struct"} ->

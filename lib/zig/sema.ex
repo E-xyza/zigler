@@ -144,7 +144,7 @@ defmodule Zig.Sema do
           |> Keyword.fetch!(:mod_file)
           |> Path.relative_to_cwd()
 
-        {_, %{position: %{line: raw_line}}, _} =
+        %{location: {raw_line, _}} =
           opts
           |> Keyword.fetch!(:parsed)
           |> find_function(function.name)
@@ -163,17 +163,9 @@ defmodule Zig.Sema do
 
   defp find_function(%{code: code}, function) do
     Enum.find(code, fn
-      {:fn, _, fn_opts} ->
-        Keyword.fetch!(fn_opts, :name) == function
-
-      {:const, _, {^function, _}} ->
-        true
-
-      {:const, _, {^function, _, _}} ->
-        true
-
-      _ ->
-        false
+      %Zig.Parser.Function{name: ^function} -> true
+      %Zig.Parser.Const{name: ^function} -> true
+      _ -> false
     end)
   end
 

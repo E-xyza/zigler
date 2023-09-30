@@ -3,11 +3,11 @@ defmodule Zig.Type.Resource do
   use Type
 
   # put in a dummy content that will render resources as "unreachable".
-  defstruct [name: :unreachable]
+  defstruct name: :unreachable
 
   @type t :: %__MODULE__{
-    name: atom
-  }
+          name: atom
+        }
 
   def from_json(_, _) do
     # name must be assigned from the outer calling context
