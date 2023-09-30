@@ -55,7 +55,7 @@ fn <%= @type.name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) 
         .ok => 
             return outer_result,
         .leak =>
-            return beam.raise_elixir_exception(env, "RuntimeError", .{.message = "memory leak detected in function `<%= @type.name %>`"}).v
+            return beam.raise_elixir_exception(env, "RuntimeError", .{.message = "memory leak detected in function `<%= @type.name %>/<%= @type.arity %>`"}).v
     }
     <% else %>
     return outer_result;

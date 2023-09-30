@@ -119,7 +119,7 @@ test "must be the correct type of reference" do
 
     * 1st argument: 
   
-       expected: reference (for `resource.Resource(MyStruct,module,.{.Callbacks = null})`)
+       expected: reference (for `beam.Resource(MyStruct, @import(\"root\"), .{...})`)
        got: `%{payload: 42}`
   """, fn ->
     retrieve_resource_direct(%{payload: 42})
@@ -132,7 +132,7 @@ test "must be the correct type of reference" do
   
     * 1st argument: 
   
-       expected: reference (for `resource.Resource(MyStruct,module,.{.Callbacks = null})`)
+       expected: reference (for `beam.Resource(MyStruct, @import(\"root\"), .{...})`)
        got: `#{inspect non_resource_ref}`
        note: the reference passed is not associated with a resource of the correct type
   """

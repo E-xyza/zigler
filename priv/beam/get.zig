@@ -751,7 +751,11 @@ inline fn error_expected(comptime T: type, env: beam.env, opts: anytype) void {
         break :ts typespec_for(T);
     };
 
-    error_line(env, opts, .{ "expected: ", typespec, " (for `", .{ .typename, @typeName(T) }, "`)" });
+    const typename = comptime tn: {
+        break :tn typename_for(T);
+    };
+
+    error_line(env, opts, .{ "expected: ", typespec, " (for `", .{ .typename, typename }, "`)" });
 }
 
 inline fn error_got(env: beam.env, opts: anytype, src: beam.term) void {
@@ -787,14 +791,11 @@ fn typespec_for(comptime T: type) []const u8 {
             }
         },
         .Float => "float | :infinity | :neg_infinity | :NaN",
-        .Struct => |s| make_struct: {
+        .Struct => |s| 
             // resources require references
-            //if (resource.MaybeUnwrap(s)) |_| {
-            //    break :make_struct "reference";
-            //}
+            if (resource.MaybeUnwrap(s)) |_| "reference" else
             // everything else is "reported as a generic map or keyword, binary if packed"
-            break :make_struct "map | keyword" ++ if (s.layout == .Packed) " | binary" else "";
-        },
+              "map | keyword" ++ if (s.layout == .Packed) " | binary" else "",
         .Bool => "boolean",
         .Array => |a| maybe_array_term(a, @sizeOf(T)),
         .Pointer => |p| switch (p.size) {
@@ -812,6 +813,22 @@ fn typespec_for(comptime T: type) []const u8 {
         },
         else => @compileError("unreachable"),
     };
+}
+
+fn typename_for(comptime T: type) []const u8 {
+    return switch (@typeInfo(T)) {
+        .Struct => |s|  if (resource.MaybeUnwrap(s)) |_| refname_for(T) else @typeName(T),
+        else => @typeName(T)
+    };
+}
+
+fn refname_for(comptime T: type) []const u8 {
+    inline for (@typeInfo(T).Struct.fields) |field| {
+        if (std.mem.eql(u8, field.name, "__payload")) {
+            return "beam.Resource(" ++ @typeName(@typeInfo(field.type).Pointer.child) ++ ", @import(\"root\"), .{...})";
+        }
+    }
+    unreachable;
 }
 
 fn maybe_array_term(comptime term_info: anytype, comptime array_bytes: usize) []const u8 {
