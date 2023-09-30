@@ -104,8 +104,7 @@ defmodule Zig.Compiler do
           |> Keyword.fetch!(:parsed)
           |> Map.fetch!(:code)
           |> Enum.find_value(fn
-            {:const, constopts, {^name, _, _}} -> constopts.doc_comment
-            {:fn, fnopts, fnparams} -> if fnparams[:name] == name, do: fnopts.doc_comment
+            %{name: ^name, doc_comment: doc_comment} -> doc_comment
             _ -> nil
           end)
 
