@@ -831,10 +831,15 @@ pub const self = processes.self;
 /// [`e.enif_send`](https://www.erlang.org/doc/man/erl_nif.html#enif_send).
 /// that also serializes the message term using [`make`](#make)
 ///
-/// > ### send from raw nifs {: .warning }
+/// > ### send from raw nifs or out of bounds callbacks {: .warning }
 /// >
-/// > This function has undefined behaviour when called from `raw` nifs.
-/// > use `e.enif_send` directly instead.
+/// > This function has undefined behaviour when called from `raw` nifs or
+/// > callbacks that are `out of bounds` (e.g. if a new thread is started
+/// > from a posix call that is not managed by zigler)
+/// >
+/// > in these cases, use `e.enif_send` directly instead.  Note you may
+/// > have to create the `beam.term` from an environment *first*.
+///
 pub const send = processes.send;
 
 // interfacing with functions
