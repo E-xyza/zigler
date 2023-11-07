@@ -33,7 +33,6 @@ defmodule Zigler.MixProject do
   defp docs do
     [
       main: "Zig",
-      # , "guides/resources.md"],
       extras: ["README.md" | guides(Mix.env())],
       groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
       groups_for_modules: [
@@ -103,10 +102,10 @@ defmodule Zigler.MixProject do
       {:jason, "~> 1.4"},
       # zig parser is pinned to a version of zig parser because versions of zig parser
       # are pinned to zig versions
-      {:zig_parser, "~> 0.3.1"},
+      {:zig_parser, "~> 0.3.0"},
       # documentation
       {:ex_doc, "~> 0.30.0", only: :dev, runtime: false},
-      {:zig_doc, path: "../zig_doc", only: :dev, runtime: false}
+      {:zig_doc, "~> 0.3.1", only: :dev, runtime: false}
     ]
   end
 end
