@@ -174,6 +174,9 @@ defprotocol Zig.Type do
         |> __MODULE__.from_json(module)
         |> Map.replace!(:mutable, true)
 
+      %{"type" => "pointer", "child" => child = %{"type" => "unusable:anyopaque"}} ->
+        :anyopaque_pointer
+
       %{"type" => "manypointer"} ->
         Manypointer.from_json(json, module)
 

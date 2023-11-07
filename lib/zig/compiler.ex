@@ -12,6 +12,7 @@ defmodule Zig.Compiler do
   alias Zig.EasyC
   alias Zig.Manifest
   alias Zig.Nif
+  alias Zig.Options
   alias Zig.Sema
   alias Zig.Manifest
 
@@ -22,7 +23,11 @@ defmodule Zig.Compiler do
 
     # TODO: verify that :otp_app exists
     code_dir = Path.dirname(file)
-    opts = Module.get_attribute(module, :zigler_opts)
+
+    opts =
+      module
+      |> Module.get_attribute(:zigler_opts)
+      |> Options.normalize!()
 
     module
     |> Module.get_attribute(:zig_code_parts)

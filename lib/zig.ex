@@ -327,7 +327,7 @@ defmodule Zig do
     opts =
       opts
       |> Keyword.merge(mod_file: __CALLER__.file, mod_line: __CALLER__.line)
-      |> Options.normalize!()
+      |> Options.elixir_normalize!()
 
     # TODO: check to make sure the otp_app exists
     case Keyword.fetch(opts, :otp_app) do
@@ -349,10 +349,11 @@ defmodule Zig do
 
     Module.register_attribute(module, :zig_code_parts, accumulate: true)
     Module.register_attribute(module, :zig_code, persist: true)
-    Module.put_attribute(module, :zigler_opts, opts)
 
     code =
       quote do
+        @zigler_opts unquote(opts)
+
         import Zig, only: [sigil_Z: 2, sigil_z: 2]
         @on_load :__load_nifs__
         @before_compile Zig.Compiler

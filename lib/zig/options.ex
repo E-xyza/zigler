@@ -12,10 +12,68 @@ defmodule Zig.Options do
   alias Zig.Module
   alias Zig.Nif
 
+  @spec elixir_normalize!(keyword) :: keyword
+  @doc """
+  Performs early normalization of options.  For Elixir only, this converts
+  all AST representations which must be escaped before moving on to presenting
+  options to the Zigler compiler.
+  """
+  def elixir_normalize!(opts) do
+    # if the nifs option exists (explicit specification of nifs), then search
+    # through any nifs that define typespecs and macro-escape them.
+    opts
+    |> Keyword.replace_lazy(:nifs, &escape_nif_specs/1)
+    |> set_auto(opts)
+  end
+
+  defp escape_nif_specs(opts) do
+    Enum.flat_map(opts, fn
+      :auto ->
+        []
+
+      {:..., _, nil} ->
+        []
+
+      function when is_atom(function) ->
+        [{:function, []}]
+
+      {nif, nif_opts} ->
+        [{nif, escape_spec(nif_opts)}]
+    end)
+  end
+
+  defp escape_spec(nif_opts) do
+    Enum.map(nif_opts, fn
+      {:spec, spec} -> {:spec, Macro.escape(spec)}
+      other -> other
+    end)
+  end
+
+  def set_auto(new_opts, old_opts) do
+    explicit_auto = old_opts
+    |> Keyword.get(:nifs)
+    |> List.wrap()
+    |> Enum.any?(fn
+      :auto -> true
+      {:..., _, nil} -> true
+      _ -> false
+    end)
+
+    cond do
+      explicit_auto ->
+        Keyword.update!(new_opts, :nifs, &{:auto, &1})
+      Keyword.get(new_opts, :nifs) ->
+        new_opts
+      true ->
+        # this is the implicit auto case
+        Keyword.put(new_opts, :nifs, {:auto, []})
+    end
+  end
+
   @spec normalize!(keyword) :: keyword
   def normalize!(opts) do
     opts
-    |> normalize_nifs_option!
+    |> normalize_nifs
     |> normalize_libs
     |> normalize_build_opts
     |> normalize_include_dirs
@@ -23,21 +81,19 @@ defmodule Zig.Options do
     |> EasyC.normalize_aliasing()
   end
 
-  @common_options ~w[leak_check]a
+  @common_options_keys ~w[leak_check]a
   @default_options Nif.default_options()
 
-  defp normalize_nifs_option!(opts) do
-    easy_c = Keyword.get(opts, :easy_c)
+  def normalize_nifs(opts) do
+    common_options = Keyword.take(opts, @common_options_keys)
+    opts = Keyword.merge(opts, default_options: @default_options)
 
-    if easy_c && !Keyword.has_key?(opts, :nifs) do
-      raise CompileError, description: "nif specifications are required for easy_c nifs"
-    end
-
-    common = Keyword.merge(@default_options, Keyword.take(opts, @common_options))
-
-    opts
-    |> Keyword.update(:nifs, {:auto, []}, &Module.normalize_nifs_option!(&1, common, easy_c))
-    |> Keyword.put(:default_options, common)
+    Keyword.update!(opts, :nifs, fn
+      {:auto, opts} ->
+        {:auto, Enum.map(opts, &Nif.normalize_options!(&1, common_options))}
+      opts ->
+        Enum.map(opts, &Nif.normalize_options!(&1, common_options))
+    end)
   end
 
   defp normalize_libs(opts) do
