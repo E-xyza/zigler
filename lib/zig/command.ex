@@ -32,7 +32,7 @@ defmodule Zig.Command do
 
   def run_sema(file, opts) do
     priv_dir = :code.priv_dir(:zigler)
-    sema_file = Path.join(priv_dir, "beam/sema.zig")
+    sema_file = Keyword.get(opts, :sema_context, Path.join(priv_dir, "beam/sema.zig"))
     beam_file = Path.join(priv_dir, "beam/beam.zig")
     erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
 
@@ -40,10 +40,12 @@ defmodule Zig.Command do
       opts
       |> Keyword.get(:packages)
       |> List.wrap()
+    
+    erl_nif_pkg = {:erl_nif, erl_nif_file}
 
     package_files =
       Enum.map(package_opts, fn {name, {path, _}} -> {name, path} end) ++
-        [beam: beam_file, erl_nif: erl_nif_file]
+        [beam: {beam_file, [erl_nif_pkg]}, erl_nif: erl_nif_file]
 
     packages =
       Enum.map(package_opts, fn
@@ -58,7 +60,6 @@ defmodule Zig.Command do
           {name, {path, deps_keyword}}
       end)
 
-    erl_nif_pkg = {:erl_nif, erl_nif_file}
     beam_pkg = {:beam, {beam_file, [erl_nif_pkg]}}
 
     packages =

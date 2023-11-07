@@ -29,23 +29,23 @@ int plus_one(int value) {
 ```
 
 ```elixir
-#defmodule CompilingC do
-#  use ExUnit.Case, async: true
-#  use Zig, 
-#    otp_app: :zigler,
-#    include_dir: "include", 
-#    c_src: "src/*"
-#
-#  ~Z"""
-#  const c = @cImport(@cInclude("included.h"));
-#
-#  pub const plus_one = c.plus_one;
-#  """
-#
-#  test "c plus one" do
-#    assert 48 = plus_one(47)
-#  end
-#end
+defmodule CompilingC do
+  use ExUnit.Case, async: true
+  use Zig, 
+    otp_app: :zigler,
+    include_dir: "include", 
+    c_src: "src/*"
+
+  ~Z"""
+  const c = @cImport(@cInclude("included.h"));
+
+  pub const plus_one = c.plus_one;
+  """
+
+  test "c plus one" do
+    assert 48 = plus_one(47)
+  end
+end
 ```
 
 ## linking against a C abi library

@@ -103,10 +103,10 @@ defmodule Zigler.MixProject do
       {:jason, "~> 1.4"},
       # zig parser is pinned to a version of zig parser because versions of zig parser
       # are pinned to zig versions
-      {:zig_parser, "~> 0.2.2"},
+      {:zig_parser, "~> 0.3.1"},
       # documentation
-      {:ex_doc, "~> 0.30.0", only: :dev, runtime: false}
-      # {:zig_doc, "~> 0.1.3", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.30.0", only: :dev, runtime: false},
+      {:zig_doc, path: "../zig_doc", only: :dev, runtime: false}
     ]
   end
 end

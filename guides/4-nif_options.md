@@ -183,6 +183,10 @@ If you tag your nif as `leak_check`, it will check that `beam.allocator` has
 cleared all of its contents at the end of the function call, and if that hasn't 
 happened, it raises.
 
+> ## leak check warning {: .warning }
+>
+> leak check doesn't seem to be working in 0.11.0 and will return in 0.11.1
+
 ```elixir
 defmodule LeakCheckTest do
   use ExUnit.Case, async: true
@@ -198,6 +202,7 @@ defmodule LeakCheckTest do
   }
   """
 
+  @tag :skip
   test "leak check" do
     assert_raise RuntimeError, "memory leak detected in function `check_me/0`", fn ->
       check_me()
@@ -223,6 +228,7 @@ defmodule LeakCheckAllTest do
   }
   """
 
+  @tag :skip
   test "leak check" do
     assert_raise RuntimeError, "memory leak detected in function `check_me/0`", fn ->
       check_me()

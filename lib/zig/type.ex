@@ -174,7 +174,7 @@ defprotocol Zig.Type do
         |> __MODULE__.from_json(module)
         |> Map.replace!(:mutable, true)
 
-      %{"type" => "pointer", "child" => child = %{"type" => "unusable:anyopaque"}} ->
+      %{"type" => "pointer", "child" => %{"type" => "unusable:anyopaque"}} ->
         :anyopaque_pointer
 
       %{"type" => "manypointer"} ->
@@ -206,6 +206,18 @@ defprotocol Zig.Type do
 
       %{"type" => "term"} ->
         :term
+
+      %{"type" => "e.ErlNifBinary"} ->
+        :erl_nif_binary
+
+        %{"type" => "e.ErlNifEvent"} ->
+          :erl_nif_event
+
+      %{"type" => "pointer", "child" => %{"type" => "e.ErlNifBinary"}} ->
+        :erl_nif_binary_pointer
+
+      %{"type" => "pointer", "child" => %{"type" => "builtin.StackTrace"}} ->
+        :stacktrace
     end
   end
 

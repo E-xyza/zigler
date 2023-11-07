@@ -9,7 +9,6 @@ defmodule Zig.Options do
   """
 
   alias Zig.EasyC
-  alias Zig.Module
   alias Zig.Nif
 
   @spec elixir_normalize!(keyword) :: keyword
@@ -35,7 +34,7 @@ defmodule Zig.Options do
         []
 
       function when is_atom(function) ->
-        [{:function, []}]
+        [{function, []}]
 
       {nif, nif_opts} ->
         [{nif, escape_spec(nif_opts)}]
@@ -47,6 +46,16 @@ defmodule Zig.Options do
       {:spec, spec} -> {:spec, Macro.escape(spec)}
       other -> other
     end)
+  end
+
+  def erlang_normalize!(opts) do
+    opts
+    |> Keyword.replace_lazy(:nifs, fn
+      :auto -> []
+      [:auto | rest] -> rest
+      explicit -> explicit
+    end)
+    |> set_auto(opts)
   end
 
   def set_auto(new_opts, old_opts) do

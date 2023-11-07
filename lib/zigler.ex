@@ -67,7 +67,7 @@ defmodule :zigler do
       |> elem(0)
 
     opts =
-      case Enum.find(ast, &match?({:attribute, _, :zig_opts, _}, &1)) do
+      case Enum.find(ast, &match?({:attribute, _, :zig_opts, _}, &1))  do
         nil ->
           raise "No zig opts found"
 
@@ -78,6 +78,7 @@ defmodule :zigler do
             mod_line: line,
             render: :render_erlang
           )
+          |> Options.erlang_normalize!()
           |> Options.normalize!()
       end
 

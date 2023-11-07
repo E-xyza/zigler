@@ -1,7 +1,8 @@
 const std = @import("std");
 const beam = @import("beam");
 const e = @import("erl_nif");
-const analyte = @import("analyte");
+const stubs = @import("sema_stubs.zig");
+
 const json = std.json;
 
 // possibly 200 is an over-conservative choice for function depth here.
@@ -222,8 +223,16 @@ pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
     // functions are found in decls
     inline for (mod_info.decls) |decl| {
         const decl_info = @typeInfo(@TypeOf(@field(Mod, decl.name)));
+        comptime var is_stubbed: bool = false;
+        inline for (stubs.functions) |stub| {
+            comptime var found = std.mem.eql(u8, stub.name, decl.name);
+            if (found) {
+                try stub.stream(stream);
+                is_stubbed = true;
+            }
+        }
 
-        if (.Fn == decl_info) {
+        if (!is_stubbed and .Fn == decl_info) {
            try streamFun(stream, decl.name, decl_info.Fn);
         }
     }
@@ -274,5 +283,5 @@ pub fn main() WriteError!void {
     const stdout = std.io.getStdOut().writer();
     var stream = json.writeStream(stdout, .{});
 
-    try streamModule(&stream, analyte);
+    try streamModule(&stream, beam);
 }

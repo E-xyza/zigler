@@ -20,21 +20,21 @@ pub fn build(b: *std.Build) void {
         });
 
     <%= for {name, path, deps} <- @packages do %>
-    const <%= name %>_mod = b.createModule(
+    const <%= name %> = b.createModule(
         .{
             .source_file = .{.cwd_relative = "<%= path %>"},
             .dependencies = &[_]std.Build.ModuleDependency{
             <%= for dep <- deps do %>
                 .{
                     .name = "<%= dep %>",
-                    .module = <%= dep %>_mod
+                    .module = <%= dep %>
                 }
             <% end %>
             }
         });
     <% end %>
 
-    <% module_list = Enum.map(@packages, fn {name, _, _} -> ", #{name}_mod" end) %>
+    <% module_list = Enum.map(@packages, fn {name, _, _} -> "#{name}" end) %>
 
     const nif = b.createModule(.{
         .source_file = .{.cwd_relative = "<%= @nif_path %>"},
@@ -48,7 +48,7 @@ pub fn build(b: *std.Build) void {
         <%= for module <- module_list do %>
         , .{
             .name = "<%= module %>",
-            .module = <%= module %>_mod
+            .module = <%= module %>
         }
         <% end %>
         }

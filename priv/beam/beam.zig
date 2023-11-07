@@ -378,6 +378,7 @@ pub const payload = @import("payload.zig");
 /// - `error_info`: pointer to a [`term`](#term) that can be populated with error
 ///   information that gets propagated on failure to convert.  If omitted, the code
 ///   to produce these errors will get optimized out.
+
 pub const get = get_.get;
 
 /// <!-- topic: Term Management; args: _, value, options -->
@@ -917,7 +918,7 @@ pub const term_to_binary = binaries.term_to_binary;
 
 /// <!-- topic: Term Management; args: _, string -->
 ///
-/// converts a `[]u8` to a `t:term/0`.  The string must be encoded using erlang term format.
+/// converts a `[]u8` to a `t:term/0`.  The binary must be encoded using erlang term format.
 ///
 /// This is a thin wrapper over [`e.enif_binary_to_term`](https://www.erlang.org/doc/man/erl_nif.html#enif_binary_to_term).
 pub const binary_to_term = binaries.binary_to_term;
