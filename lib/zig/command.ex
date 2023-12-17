@@ -40,7 +40,7 @@ defmodule Zig.Command do
       opts
       |> Keyword.get(:packages)
       |> List.wrap()
-    
+
     erl_nif_pkg = {:erl_nif, erl_nif_file}
 
     package_files =

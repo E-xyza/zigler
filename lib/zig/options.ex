@@ -59,20 +59,23 @@ defmodule Zig.Options do
   end
 
   def set_auto(new_opts, old_opts) do
-    explicit_auto = old_opts
-    |> Keyword.get(:nifs)
-    |> List.wrap()
-    |> Enum.any?(fn
-      :auto -> true
-      {:..., _, nil} -> true
-      _ -> false
-    end)
+    explicit_auto =
+      old_opts
+      |> Keyword.get(:nifs)
+      |> List.wrap()
+      |> Enum.any?(fn
+        :auto -> true
+        {:..., _, nil} -> true
+        _ -> false
+      end)
 
     cond do
       explicit_auto ->
         Keyword.update!(new_opts, :nifs, &{:auto, &1})
+
       Keyword.get(new_opts, :nifs) ->
         new_opts
+
       true ->
         # this is the implicit auto case
         Keyword.put(new_opts, :nifs, {:auto, []})
@@ -100,6 +103,7 @@ defmodule Zig.Options do
     Keyword.update!(opts, :nifs, fn
       {:auto, opts} ->
         {:auto, Enum.map(opts, &Nif.normalize_options!(&1, common_options))}
+
       opts ->
         Enum.map(opts, &Nif.normalize_options!(&1, common_options))
     end)
