@@ -23,13 +23,16 @@ defmodule Mix.Tasks.Zig.Get do
   recommended to change these arguments.
   """
 
-  defstruct ~w(version path arch os url file)a
+  defstruct ~w(version path arch os url file tar_command)a
 
   def run(app_opts) do
     :ssl.cipher_suites(:all, :"tlsv1.2")
     :application.ensure_all_started(:inets)
 
-    opts = parse_opts(app_opts)
+    opts =
+      app_opts
+      |> parse_opts()
+      |> ensure_tar()
 
     opts
     |> ensure_destination
@@ -93,8 +96,25 @@ defmodule Mix.Tasks.Zig.Get do
 
   defp decode_os_info([arch, _vendor, os | _]), do: {os, arch}
 
+  defp ensure_tar(%{os: "windows"} = opts), do: opts
+
+  defp ensure_tar(opts) do
+    if tar_command = System.find_executable("tar") do
+      %{opts | tar_command: tar_command}
+    else
+      Mix.raise("tar command is required to install zig on this system architecture but not found.  Please install tar and try again.")
+    end
+  end
+
   defp ensure_destination(opts) do
+    target_directory = Path.join(opts.path, "zig-#{opts.os}-#{opts.arch}-#{opts.version}")
+
+    if File.exists?(target_directory) do
+      Mix.raise("destination directory #{target_directory} already exists.  Please remove it and try again.")
+    end
+
     File.mkdir_p(opts.path)
+    
     opts
   end
 
@@ -151,8 +171,7 @@ defmodule Mix.Tasks.Zig.Get do
   end
 
   def extract({:binary, bin}, opts) do
-    # performs gzip inflate first, then tar.
-    {:spawn_executable, System.find_executable("tar")}
+    {:spawn_executable, opts.tar_command}
     |> Port.open(args: ~w(-xJf -), cd: opts[:cwd])
     |> Port.command(bin)
 
