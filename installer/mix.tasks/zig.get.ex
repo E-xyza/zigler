@@ -23,7 +23,7 @@ defmodule Mix.Tasks.Zig.Get do
   recommended to change these arguments.
   """
 
-  defstruct ~w(version path arch os url file tar_command)a
+  defstruct ~w(version path arch os url file)a
 
   def run(app_opts) do
     :ssl.cipher_suites(:all, :"tlsv1.2")
@@ -99,10 +99,18 @@ defmodule Mix.Tasks.Zig.Get do
   defp ensure_tar(%{os: "windows"} = opts), do: opts
 
   defp ensure_tar(opts) do
-    if tar_command = System.find_executable("tar") do
-      %{opts | tar_command: tar_command}
-    else
-      Mix.raise("tar command is required to install zig on this system architecture but not found.  Please install tar and try again.")
+    cond do
+      System.get_env("TAR_COMMAND") ->
+        opts
+
+      tar_command = System.find_executable("tar") ->
+        System.put_env("TAR_COMMAND", tar_command)
+        opts
+
+      true ->
+        Mix.raise(
+          "tar command is required to install zig on this system architecture but not found.  Please install tar and try again."
+        )
     end
   end
 
@@ -110,11 +118,13 @@ defmodule Mix.Tasks.Zig.Get do
     target_directory = Path.join(opts.path, "zig-#{opts.os}-#{opts.arch}-#{opts.version}")
 
     if File.exists?(target_directory) do
-      Mix.raise("destination directory #{target_directory} already exists.  Please remove it and try again.")
+      Mix.raise(
+        "destination directory #{target_directory} already exists.  Please remove it and try again."
+      )
     end
 
     File.mkdir_p(opts.path)
-    
+
     opts
   end
 
@@ -129,7 +139,7 @@ defmodule Mix.Tasks.Zig.Get do
   defp extension(%{os: "windows"}), do: "zip"
   defp extension(_), do: "tar.xz"
 
-  defp request(%{file: file}) do
+  defp request(%{file: file}) when not is_nil(file) do
     IO.puts("Obtaining Zig compiler toolchain from #{file}")
     File.read!(file)
   end
@@ -171,7 +181,7 @@ defmodule Mix.Tasks.Zig.Get do
   end
 
   def extract({:binary, bin}, opts) do
-    {:spawn_executable, opts.tar_command}
+    {:spawn_executable, System.fetch_env!("TAR_COMMAND")}
     |> Port.open(args: ~w(-xJf -), cd: opts[:cwd])
     |> Port.command(bin)
 
