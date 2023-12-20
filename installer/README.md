@@ -2,7 +2,8 @@
 
 Provides `zig.get` installer as an archive.
 
-This installer will 
+This installer will obtain the zig compiler toolchain and put it into 
+a user cache directory.
 
 To install from Hex, run:
 

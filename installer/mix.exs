@@ -44,7 +44,6 @@ defmodule Zig.Get.MixProject do
     [
       {:ex_doc, "~> 0.24", only: :dev},
       {:minisign, "~> 0.1"},
-      {:floki, "~> 0.35"}
     ]
   end
 

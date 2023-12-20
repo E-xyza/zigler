@@ -37,8 +37,9 @@ defmodule Mix.Tasks.Zig.Get do
   defstruct ~w(version path arch os url file verify public_key signature)a
 
   def run(app_opts) do
+    Application.ensure_all_started([:inets, :ssl, :crypto])
+
     :ssl.cipher_suites(:all, :"tlsv1.2")
-    :application.ensure_all_started(:inets)
 
     opts =
       app_opts
@@ -80,6 +81,10 @@ defmodule Mix.Tasks.Zig.Get do
 
   defp parse_opts(["--arch", arch | rest], so_far) do
     parse_opts(rest, %{so_far | arch: arch})
+  end
+
+  defp parse_opts(["--public-key", pk | rest], so_far) do
+    parse_opts(rest, %{so_far | public_key: pk})
   end
 
   @default_version Zig.Get.MixProject.project()[:version]
@@ -152,13 +157,16 @@ defmodule Mix.Tasks.Zig.Get do
     if System.get_env("VERIFY") == "false", do: %{opts | verify: false}, else: opts
   end
 
-  defp get_public_key(%{verify: false} = opts), do: opts
+  defp get_public_key(%{verify: false} = opts) do
+    IO.warn("extracting an unverified version of zig compiler toolchain")
+    opts
+  end
+  defp get_public_key(%{public_key: pk} = opts) when is_binary(pk), do: opts
   defp get_public_key(opts) do
     # this might be fragile.
     public_key = http_get!("https://ziglang.org/download/")
-    |> Floki.parse_document!()
-    |> Floki.find("[role=\"main\"] .container pre code")
-    |> Floki.text
+    |> then(&Regex.run(~r[<code>(.*)</code>], &1))
+    |> Enum.at(1)
     |> String.trim
     %{opts | public_key: public_key}
   end
