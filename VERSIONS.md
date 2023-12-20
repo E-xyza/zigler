@@ -122,7 +122,15 @@ Thanks to Dave Cottlehuber @dch for testing.
   - yielding nifs are not supported, but will return in 0.11
     due to zig async not working in 0.10.x
 
+## 0.12.0
+- breakout `zig.get` into its own package to prevent dependency problems.
 
 ## Upcoming
-- `beam.call` which will call erlang or elixir modules (but only in yielding or
-  threaded contexts)
+- `precompiled` mode that will let you obtain packages with precompiled assets.
+- Breaking changes:
+  - threadlocal `context` in function calls, elimination of passing `beam.env` into your functions
+  - makes `beam.get/make` functions `context`-aware, with all context-dependent things overridable.
+
+## Possible
+- `beam.call` which lets you call back a beam function.
+- `struct` which lets you declare a struct inside your zig code as the module's struct
