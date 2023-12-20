@@ -8,9 +8,9 @@ defmodule Mix.Tasks.Zig.Get do
 
   It expects the path of the project as an argument.
 
-      $ mix zig.get [--version VERSION] [--from FROM] [--path PATH] [--os OS] [--arch ARCH] [--public-key PUBLIC_KEY]
+      $ mix zig.get [--version VERSION] [--from FROM] [--os OS] [--arch ARCH] [--public-key PUBLIC_KEY]
 
-  the zigler compiler will be downloaded to PATH/VERSION
+  the zigler compiler will be downloaded to ZIG_ARCHIVE_PATH/VERSION
 
   if unspecified, VERSION defaults to the major/minor version of zig.get
 
@@ -20,7 +20,7 @@ defmodule Mix.Tasks.Zig.Get do
   https://ziglang.org/download/ note that obtaining the public key in this fashion is 
   fragile and provided only for convenience.
 
-  if unspecified, PATH defaults to the user cache path given by
+  if unspecified, ZIG_ARCHIVE_PATH defaults to the user cache path given by
   `:filename.basedir/3` with application name `"zigler"`.
 
   OS and ARCH will be detected from the current build system.  It's not
@@ -32,6 +32,7 @@ defmodule Mix.Tasks.Zig.Get do
     only useful for non-windows architectures.
   - `NO_VERIFY`: disable signature verification of the downloaded file.  
     Not recommended. 
+  - `ZIG_ARCHIVE_PATH`: path to desired directory to achive the zig compiler toolchain.
   """
 
   defstruct ~w(version path arch os url file verify public_key signature)a
@@ -44,6 +45,7 @@ defmodule Mix.Tasks.Zig.Get do
     opts =
       app_opts
       |> parse_opts()
+      |> set_archive_path()
       |> ensure_tar()
       |> select_no_verify()
       |> get_public_key()
@@ -71,10 +73,6 @@ defmodule Mix.Tasks.Zig.Get do
     parse_opts(rest, %{so_far | file: file})
   end
 
-  defp parse_opts(["--path", path | rest], so_far) do
-    parse_opts(rest, %{so_far | path: to_charlist(Path.expand(path))})
-  end
-
   defp parse_opts(["--os", os | rest], so_far) do
     parse_opts(rest, %{so_far | os: os})
   end
@@ -85,6 +83,13 @@ defmodule Mix.Tasks.Zig.Get do
 
   defp parse_opts(["--public-key", pk | rest], so_far) do
     parse_opts(rest, %{so_far | public_key: pk})
+  end
+
+  defp set_archive_path(opts) do
+    case System.get_env("ZIG_ARCHIVE_PATH", "") do
+      "" -> opts
+      path -> %{opts | path: to_charlist(Path.expand(path))}
+    end
   end
 
   @default_version Zig.Get.MixProject.project()[:version]
