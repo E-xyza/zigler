@@ -7,6 +7,7 @@ default_locals = [
   inputs: ~w[
     {mix,.formatter,.credo}.exs
     {config,lib,rel,test}/**/*.{ex,exs}
+    installer/**/*.{ex,exs}
   ],
   locals_without_parens: default_locals
 ]
