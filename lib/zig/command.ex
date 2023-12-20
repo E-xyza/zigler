@@ -150,12 +150,50 @@ defmodule Zig.Command do
   end
 
   defp executable_path(opts) do
+    # executable_path resolves zig executable in the following fashion:
+    #
+    # 1. check for zig in `ZIG_ARCHIVE_PATH` env path
+    # 2. check for zig cached in `:filename.basedir/3`
+    # 3. look for zig using System.find_executable
+    #
+
     cond do
-      opts[:local_zig] -> System.find_executable("zig")
-      path = opts[:zig_path] -> path
-      true -> Path.join(directory(), "zig")
+      path = find_from_env() -> path
+      path = find_in_basedir() -> path 
+      path = System.find_executable("zig") -> path
+      true ->
+        raise CompileError, description: "zig executable not found"
     end
   end
+
+  defp find_from_env do
+    if (path = System.get_env("ZIG_ARCHIVE_PATH", "")) != "" do
+      versioned_path(path)
+    end
+  end
+
+  defp find_in_basedir do
+    :user_cache
+    |> :filename.basedir("zigler")
+    |> versioned_path()
+  end
+
+  defp versioned_path(path) do
+    {os, arch} = os_info()
+
+    zig_executable = Path.join(path, "zig-#{os}-#{arch}-#{@default_version}/zig")
+    if File.exists?(zig_executable), do: zig_executable
+  end
+
+  defp os_info do
+    :system_architecture
+    |> :erlang.system_info()
+    |> to_string
+    |> String.split("-")
+    |> decode_os_info()
+  end
+
+  defp decode_os_info([arch, _vendor, os | _]), do: {os, arch}
 
   defp src_lib_name(module) do
     case {Target.resolve(), :os.type()} do
@@ -181,147 +219,5 @@ defmodule Zig.Command do
       _ ->
         "#{module}.so"
     end
-  end
-
-  #############################################################################
-  ## download zig from online sources.
-
-  # TODO: move to target using :host as a parameter.
-
-  @doc false
-  def os_arch do
-    "#{get_os()}-#{get_arch()}"
-  end
-
-  def get_os do
-    case :os.type() do
-      {:unix, :linux} ->
-        "linux"
-
-      {:unix, :freebsd} ->
-        "freebsd"
-
-      {:unix, :darwin} ->
-        "macos"
-
-      {_, :nt} ->
-        windows_warn()
-        "windows"
-    end
-  end
-
-  @arches %{
-    "i386" => "i386",
-    "i486" => "i386",
-    "i586" => "i386",
-    "x86_64" => "x86_64",
-    "armv6" => "armv6kz",
-    "armv7" => "armv7a",
-    "aarch64" => "aarch64",
-    "amd64" => "x86_64",
-    "win32" => "i386",
-    "win64" => "x86_64"
-  }
-
-  # note this is the architecture of the machine where compilation is
-  # being done, not the target architecture of cross-compiled
-  def get_arch do
-    arch =
-      :system_architecture
-      |> :erlang.system_info()
-      |> List.to_string()
-
-    Enum.find_value(@arches, fn
-      {prefix, zig_arch} -> if String.starts_with?(arch, prefix), do: zig_arch
-    end) || raise arch_warn()
-  end
-
-  defp arch_warn,
-    do: """
-      it seems like you are compiling from an unsupported architecture:
-        #{:erlang.system_info(:system_architecture)}
-      Please leave an issue at https://github.com/ityonemo/zigler/issues
-    """
-
-  defp windows_warn do
-    raise "windows is not supported, and will be supported in zigler 0.11"
-  end
-
-  @zig_dir_path Path.expand("../../zig", Path.dirname(__ENV__.file))
-
-  defp directory, do: Path.join(@zig_dir_path, "zig-#{os_arch()}-#{Zig.version()}")
-
-  # TODO: rename this.
-  def fetch!(version) do
-    zig_dir = directory()
-    zig_executable = Path.join(zig_dir, "zig")
-    :global.set_lock({__MODULE__, self()})
-
-    unless File.exists?(zig_executable) do
-      # make sure the zig directory path exists and is ready.
-      File.mkdir_p!(@zig_dir_path)
-
-      # make sure that we're in the correct operating system.
-      extension =
-        if match?({_, :nt}, :os.type()) do
-          ".zip"
-        else
-          ".tar.xz"
-        end
-
-      archive = "zig-#{os_arch()}-#{Zig.version()}#{extension}"
-
-      # TODO: clean this up.
-      Logger.configure(level: :info)
-
-      zig_download_path = Path.join(@zig_dir_path, archive)
-      download_zig_archive(zig_download_path, version, archive)
-
-      # untar the zig directory.
-      unarchive_zig(archive)
-    end
-
-    :global.del_lock({__MODULE__, self()})
-  end
-
-  defp download_zig_archive(zig_download_path, version, archive) do
-    url = "https://ziglang.org/download/#{version}/#{archive}"
-    Logger.info("downloading zig version #{version} (#{url}) and caching in #{@zig_dir_path}.")
-
-    case httpc_get(url) do
-      {:ok, %{status: 200, body: body}} ->
-        # expected_checksum = Map.fetch!(@checksums, archive)
-        # actual_checksum = :sha256 |> :crypto.hash(body) |> Base.encode16(case: :lower)
-
-        # if expected_checksum != actual_checksum do
-        #  raise "checksum mismatch: expected #{expected_checksum}, got #{actual_checksum}"
-        # end
-
-        File.write!(zig_download_path, body)
-
-      _ ->
-        raise "failed to download the appropriate zig archive."
-    end
-  end
-
-  defp httpc_get(url) do
-    {:ok, _} = Application.ensure_all_started(:ssl)
-    {:ok, _} = Application.ensure_all_started(:inets)
-    headers = []
-    request = {String.to_charlist(url), headers}
-    http_options = [timeout: 600_000]
-    options = [body_format: :binary]
-
-    case :httpc.request(:get, request, http_options, options) do
-      {:ok, {{_, status, _}, headers, body}} ->
-        {:ok, %{status: status, headers: headers, body: body}}
-
-      other ->
-        other
-    end
-  end
-
-  def unarchive_zig(archive) do
-    System.cmd("tar", ["xvf", archive], cd: @zig_dir_path)
   end
 end
