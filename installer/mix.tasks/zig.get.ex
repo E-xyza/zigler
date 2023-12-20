@@ -82,23 +82,17 @@ defmodule Mix.Tasks.Zig.Get do
     parse_opts(rest, %{so_far | arch: arch})
   end
 
+  @default_version Zig.Get.MixProject.project()[:version]
+
   defp defaults do
     {os, arch} = os_info()
 
     %__MODULE__{
-      version: default_version(),
+      version: @default_version,
       path: :filename.basedir(:user_cache, ~C"zigler"),
       os: os,
       arch: arch
     }
-  end
-
-  defp default_version do
-    :application.info()
-    |> Keyword.fetch!(:loaded)
-    |> List.keyfind(:zig_get, 0)
-    |> elem(2)
-    |> to_string()
   end
 
   defp os_info do
