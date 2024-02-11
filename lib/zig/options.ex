@@ -21,7 +21,7 @@ defmodule Zig.Options do
     # if the nifs option exists (explicit specification of nifs), then search
     # through any nifs that define typespecs and macro-escape them.
     opts
-    |> Keyword.replace_lazy(:nifs, &escape_nif_specs/1)
+    |> replace_lazy(:nifs, &escape_nif_specs/1)
     |> set_auto(opts)
   end
 
@@ -50,7 +50,7 @@ defmodule Zig.Options do
 
   def erlang_normalize!(opts) do
     opts
-    |> Keyword.replace_lazy(:nifs, fn
+    |> replace_lazy(:nifs, fn
       :auto -> []
       [:auto | rest] -> rest
       explicit -> explicit
@@ -186,5 +186,13 @@ defmodule Zig.Options do
         path
       end
     )
+  end
+
+  def replace_lazy(opts, key, fun) do
+    if Keyword.has_key?(opts, key) do
+      Keyword.update!(opts, key, fun)
+    else
+      opts
+    end
   end
 end
