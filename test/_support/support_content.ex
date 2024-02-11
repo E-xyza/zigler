@@ -7,7 +7,7 @@ defmodule ZiglerTest.SupportContent do
   def ensure_lib(path_to_lib, path_to_code) do
     unless File.exists?(path_to_lib) do
       zig_path = Path.join(directory(), "zig")
-      System.cmd(zig_path, ~w(build-lib #{path_to_code} -femit-bin=#{path_to_lib})) 
+      System.cmd(zig_path, ~w(build-lib #{path_to_code} -fPIC -static -femit-bin=#{path_to_lib}))
 
       o_file = "#{path_to_lib}.o"
 

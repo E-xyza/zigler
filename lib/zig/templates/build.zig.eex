@@ -79,7 +79,7 @@ pub fn build(b: *std.Build) void {
         <% {:system, lib} -> %>
     lib.linkSystemLibrary("<%= lib %>");
         <% lib -> %>
-    lib.addObjectFile("<%= lib %>");
+    lib.addObjectFile(.{.path = "<%= lib %>"});
       <% end %>
     <% end %>
 
