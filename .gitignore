@@ -43,3 +43,6 @@ zigler-*.tar
 .erlang*.zig
 # erlang module zig files
 .test_*.zig
+
+# any .a files
+*.a
