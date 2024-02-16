@@ -12,6 +12,17 @@ which will include zig bugfixes as well as zigler bugfixes.
 
 ## Installation: Elixir
 
+### Zig dependency
+
+Prior to installing Zigler, you should install zig via `mix zig.get`.  To do so, install the
+archive mix task:
+
+`mix archive.install hex zig_get`
+
+And then run `mix zig.get`
+
+### Main installation
+
 Zigler is [available in Hex](https://hex.pm/packages/zigler), and the package can be installed
 by adding `zigler` to your list of dependencies in `mix.exs`:
 
@@ -22,8 +33,6 @@ def deps do
   ]
 end
 ```
-
-Then you should run `mix zig.get` to download Zig 0.11.0
 
 ## Installation: Erlang
 

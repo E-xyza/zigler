@@ -210,8 +210,8 @@ defprotocol Zig.Type do
       %{"type" => "e.ErlNifBinary"} ->
         :erl_nif_binary
 
-        %{"type" => "e.ErlNifEvent"} ->
-          :erl_nif_event
+      %{"type" => "e.ErlNifEvent"} ->
+        :erl_nif_event
 
       %{"type" => "pointer", "child" => %{"type" => "e.ErlNifBinary"}} ->
         :erl_nif_binary_pointer
