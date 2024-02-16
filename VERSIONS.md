@@ -122,6 +122,9 @@ Thanks to Dave Cottlehuber @dch for testing.
   - yielding nifs are not supported, but will return in 0.11
     due to zig async not working in 0.10.x
 
+## 0.11.1
+- fixes to zig installation.  Now use `mix zig.get` installer
+
 
 ## Upcoming
 - `beam.call` which will call erlang or elixir modules (but only in yielding or
