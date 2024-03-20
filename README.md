@@ -3,14 +3,19 @@
 Library test status:
 ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI/badge.svg)
 
-## Version 0.11.0 warning
-
-Several compile-time niceties are broken, such as line and file translation and
-there is a compile time warning about multiple function matches.  I needed to
-release 0.11.0 quickly.  Hopefully these will be fixed with the 0.11.1 release
-which will include zig bugfixes as well as zigler bugfixes.
-
 ## Installation: Elixir
+
+### Zig dependency
+
+Prior to installing Zigler, you should install zig via mix zig.get. To do so, install the minisign and zig.get mix tasks:
+
+`mix archive.install hex minisign` 
+
+`mix archive.install hex zig_get`
+
+And then run `mix zig.get`
+
+### Main Installation
 
 Zigler is [available in Hex](https://hex.pm/packages/zigler), and the package can be installed
 by adding `zigler` to your list of dependencies in `mix.exs`:
@@ -18,14 +23,20 @@ by adding `zigler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:zigler, "~> 0.11.0", runtime: false}
+    {:zigler, "~> 0.12.0", runtime: false}
   ]
 end
 ```
 
-Then you should run `mix zig.get` to download Zig 0.11.0
-
 ## Installation: Erlang
+
+### Zig dependency
+
+TBD.
+
+`~/.cache/zigler/zig-linux-<arch>-0.11.1`
+
+### Main Installation
 
 Erlang is only supported via rebar3.  You must enable the rebar_mix plugin and 
 add zigler to your deps in rebar3.
@@ -36,7 +47,7 @@ have difficulty.
 ```erlang
 {plugins, [rebar_mix]}.
 
-{deps, [{zigler, "0.11"}]}.
+{deps, [{zigler, "0.12"}]}.
 
 ```
 

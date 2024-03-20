@@ -53,13 +53,16 @@ pub fn cleanup(what: anytype, opts: anytype) void {
 fn cleanup_pointer(ptr: anytype, opts: anytype) void {
     const Opts = @TypeOf(opts);
     const T = @TypeOf(ptr);
-    switch (@typeInfo(T).Pointer.size) {
+    const info = @typeInfo(T).Pointer;
+    if (info.is_const) return;
+
+    switch (info.size) {
         .One => {
             // TODO: more detailed cleanup.
             allocator(opts).destroy(ptr);
         },
         .Slice => {
-            if (@typeInfo(T).Pointer.sentinel) |_| {
+            if (info.sentinel) |_| {
                 allocator(opts).free(@as([]u8, @ptrCast(ptr)));
             } else {
                 allocator(opts).free(ptr);
@@ -72,7 +75,7 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
             // pointer, plus the selfsame options tuple.  Specifying a size assumes that
             // the underlying memory was created using a slice operation.
             if (@hasField(Opts, "size")) {
-                if (@typeInfo(T).Pointer.is_allowzero) {
+                if (info.is_allowzero) {
                     if (ptr) |_| {
                         const underlying_slice = ptr[0..opts.size];
                         allocator(opts).free(underlying_slice);

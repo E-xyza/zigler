@@ -47,3 +47,5 @@ zigler-*.tar
 .erlang*.zig
 # erlang module zig files
 .test_*.zig
+# other compiled files
+*.a
