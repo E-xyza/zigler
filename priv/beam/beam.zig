@@ -117,9 +117,8 @@ pub const payload = @import("payload.zig");
 ///
 /// The arguments are as follows:
 /// 1. destination type
-/// 2. [environment](#env)
-/// 3. term to convert
-/// 4. struct (usually passed as anonymous) of keyword options for additional features.
+/// 2. term to convert
+/// 3. struct (usually passed as anonymous) of keyword options for additional features.
 ///   See [supported options](#get-supported-options)
 ///
 /// See also [`make`](#make) for the reverse operation.
@@ -374,11 +373,18 @@ pub const payload = @import("payload.zig");
 ///
 /// ## Supported options
 ///
+/// - `env`: required for `raw` nifs.  If not provided, defaults to the context's
+///   environment.
 /// - `allocator`: the allocator to use for allocations.  If not provided, defaults
-///   to `beam.allocator`.
+///   to the context's environment.
 /// - `error_info`: pointer to a [`term`](#term) that can be populated with error
 ///   information that gets propagated on failure to convert.  If omitted, the code
 ///   to produce these errors will get optimized out.
+/// - `keep` (`bool`, only applies to references):
+///   if `true` (default) the refcount will be increased on the term as a result of 
+///   performing the `get` operation.
+/// - `size` (`* usize`, only applies to manypointer or `[*c]`):
+///   optional in-out parameter to retrieve the size of the slice
 pub const get = get_.get;
 
 /// <!-- topic: Term Management; args: _, value, options -->
