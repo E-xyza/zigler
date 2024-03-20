@@ -149,7 +149,7 @@ defmodule Zig.Command do
     run_zig("targets", [])
   end
 
-  defp executable_path(opts) do
+  def executable_path(opts \\ []) do
     cond do
       opts[:local_zig] -> System.find_executable("zig")
       path = opts[:zig_path] -> path
@@ -244,84 +244,16 @@ defmodule Zig.Command do
     """
 
   defp windows_warn do
-    raise "windows is not supported, and will be supported in zigler 0.11"
+    raise "windows is not supported, and will be supported in zigler 0.12"
   end
 
-  @zig_dir_path Path.expand("../../zig", Path.dirname(__ENV__.file))
-
-  defp directory, do: Path.join(@zig_dir_path, "zig-#{os_arch()}-#{Zig.version()}")
-
-  # TODO: rename this.
-  def fetch!(version) do
-    zig_dir = directory()
-    zig_executable = Path.join(zig_dir, "zig")
-    :global.set_lock({__MODULE__, self()})
-
-    unless File.exists?(zig_executable) do
-      # make sure the zig directory path exists and is ready.
-      File.mkdir_p!(@zig_dir_path)
-
-      # make sure that we're in the correct operating system.
-      extension =
-        if match?({_, :nt}, :os.type()) do
-          ".zip"
-        else
-          ".tar.xz"
-        end
-
-      archive = "zig-#{os_arch()}-#{Zig.version()}#{extension}"
-
-      # TODO: clean this up.
-      Logger.configure(level: :info)
-
-      zig_download_path = Path.join(@zig_dir_path, archive)
-      download_zig_archive(zig_download_path, version, archive)
-
-      # untar the zig directory.
-      unarchive_zig(archive)
-    end
-
-    :global.del_lock({__MODULE__, self()})
+  defp directory do
+    :user_cache
+    |> :filename.basedir("zigler")
+    |> Path.join(zig_dir_name())
   end
 
-  defp download_zig_archive(zig_download_path, version, archive) do
-    url = "https://ziglang.org/download/#{version}/#{archive}"
-    Logger.info("downloading zig version #{version} (#{url}) and caching in #{@zig_dir_path}.")
-
-    case httpc_get(url) do
-      {:ok, %{status: 200, body: body}} ->
-        # expected_checksum = Map.fetch!(@checksums, archive)
-        # actual_checksum = :sha256 |> :crypto.hash(body) |> Base.encode16(case: :lower)
-
-        # if expected_checksum != actual_checksum do
-        #  raise "checksum mismatch: expected #{expected_checksum}, got #{actual_checksum}"
-        # end
-
-        File.write!(zig_download_path, body)
-
-      _ ->
-        raise "failed to download the appropriate zig archive."
-    end
-  end
-
-  defp httpc_get(url) do
-    {:ok, _} = Application.ensure_all_started(:ssl)
-    {:ok, _} = Application.ensure_all_started(:inets)
-    headers = []
-    request = {String.to_charlist(url), headers}
-    http_options = [timeout: 600_000]
-    options = [body_format: :binary]
-
-    case :httpc.request(:get, request, http_options, options) do
-      {:ok, {{_, status, _}, headers, body}} ->
-        {:ok, %{status: status, headers: headers, body: body}}
-
-      other ->
-        other
-    end
-  end
-
-  def unarchive_zig(archive) do
-    System.cmd("tar", ["xvf", archive], cd: @zig_dir_path)
+  defp zig_dir_name do
+    "zig-#{os_arch()}-0.11.0"
   end
 end

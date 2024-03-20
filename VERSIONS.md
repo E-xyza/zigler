@@ -123,8 +123,8 @@ Thanks to Dave Cottlehuber @dch for testing.
     due to zig async not working in 0.10.x
 
 ## 0.11.1
-- fixes to zig installation.  Now use `mix zig.get` installer
-
+- fixes to zig installation.  Now use `mix zig.get` installer pipeline instead
+- various bugfixes
 
 ## Upcoming
 - `beam.call` which will call erlang or elixir modules (but only in yielding or

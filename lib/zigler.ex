@@ -59,7 +59,6 @@ defmodule :zigler do
   """
   def parse_transform(ast, _opts) do
     Application.ensure_all_started(:logger)
-    Zig.Command.fetch!("0.10.1")
 
     file =
       Enum.find(ast, &match?({:attribute, _, :file, {_file, _}}, &1))

@@ -3,23 +3,29 @@
 Library test status:
 ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI/badge.svg)
 
-## Version 0.11.0 warning
+## Version 0.11.1 warning
 
 Several compile-time niceties are broken, such as line and file translation and
-there is a compile time warning about multiple function matches.  I needed to
-release 0.11.0 quickly.  Hopefully these will be fixed with the 0.11.1 release
-which will include zig bugfixes as well as zigler bugfixes.
+there is a compile time warning about multiple function matches.  These will be
+addressed in the 0.12.0 release.
 
 ## Installation: Elixir
 
 ### Zig dependency
 
 Prior to installing Zigler, you should install zig via `mix zig.get`.  To do so, install the
-archive mix task:
+`minisign` and `zig.get` mix tasks:
 
+`mix archive.install hex minisign`
 `mix archive.install hex zig_get`
 
 And then run `mix zig.get`
+
+If you're using erlang, please install zig in the following locations:
+
+#### Linux
+
+`~/.cache/zigler/zig-linux-<arch>-0.11.1`
 
 ### Main installation
 
