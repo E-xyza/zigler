@@ -211,7 +211,7 @@ fn make_float(value: anytype, opts: anytype) beam.term {
     if (std.math.isNan(value)) return make_enum(.NaN, opts);
     if (std.math.isPositiveInf(value)) return make_enum(.infinity, opts);
     if (std.math.isNegativeInf(value)) return make_enum(.neg_infinity, opts);
-    return .{ .v = e.enif_make_double(floatval, opts) };
+    return .{ .v = e.enif_make_double(env(opts), floatval) };
 }
 
 fn make_bool(value: bool, opts: anytype) beam.term {

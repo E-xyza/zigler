@@ -550,7 +550,7 @@ fn fill(comptime T: type, result: *T, src: beam.term, opts: anytype) GetError!vo
 fn fill_array(comptime T: type, result: *T, src: beam.term, opts: anytype) GetError!void {
     const array_info = @typeInfo(T).Array;
     const Child = array_info.child;
-    switch (src.term_type(env)) {
+    switch (src.term_type(env(opts))) {
         .list => {
             // try to fill the array, if the lengths mismatch, then throw an error.
             // however, don't call enif_get_list_length because that incurs a second

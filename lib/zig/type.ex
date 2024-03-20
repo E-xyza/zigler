@@ -247,7 +247,7 @@ defprotocol Zig.Type do
 
       def get_result(type, opts) do
         return_type = Keyword.fetch!(opts, :type)
-        "break :get_result beam.make(env, result, .{.output_type = .#{return_type}}).v;"
+        "break :get_result beam.make(result, .{.output_type = .#{return_type}}).v;"
       end
 
       def needs_make?(_), do: true
@@ -316,7 +316,7 @@ defimpl Zig.Type, for: Atom do
   def return_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
 
   def get_result(:erl_nif_term, _), do: "break :get_result result;"
-  def get_result(:pid, _), do: "break :get_result beam.make(env, result, .{}).v;"
+  def get_result(:pid, _), do: "break :get_result beam.make(result, .{}).v;"
   def get_result(:term, _), do: "break :get_result result.v;"
 
   def get_result(:void, opts) do
@@ -325,24 +325,24 @@ defimpl Zig.Type, for: Atom do
 
     case {opts[:arg], opts[:length]} do
       {nil, _} ->
-        "break :get_result beam.make(env, result, .{}).v;"
+        "break :get_result beam.make(result, .{}).v;"
 
       {arg, nil} ->
         """
         _ = result;
-        break :get_result beam.make(env, payload[#{arg}], .{.output_type = .#{return_type}}).v;
+        break :get_result beam.make(payload[#{arg}], .{.output_type = .#{return_type}}).v;
         """
 
       {arg, {:arg, length_arg}} ->
         """
         _ = result;
-        break :get_result beam.make(env, payload[#{arg}][0..@intCast(payload[#{length_arg}])], .{.output_type = .#{return_type}}).v;
+        break :get_result beam.make(payload[#{arg}][0..@intCast(payload[#{length_arg}])], .{.output_type = .#{return_type}}).v;
         """
 
       {arg, length} when is_integer(length) ->
         """
         _ = result;
-        break :get_result beam.make(env, payload[#{arg}][0..#{length})], .{.output_type = .#{return_type}}).v;
+        break :get_result beam.make(payload[#{arg}][0..#{length})], .{.output_type = .#{return_type}}).v;
         """
     end
   end

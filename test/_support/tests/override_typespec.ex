@@ -3,9 +3,9 @@ defmodule ZiglerTest.OverrideTypespec do
 
   ~Z"""
   const beam = @import("beam");
-  pub fn do_something(env: beam.env, term: beam.term) beam.term {
-      const value = beam.get(i32, env, term, .{}) catch unreachable;
-      return beam.make(env, value + 47, .{});
+  pub fn do_something(term: beam.term) beam.term {
+      const value = beam.get(i32, term, .{}) catch unreachable;
+      return beam.make(value + 47, .{});
   }
   """
 end

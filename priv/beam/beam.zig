@@ -1076,6 +1076,12 @@ pub const Context = struct { mode: ContextMode, env: env, allocator: std.mem.All
 /// > `raw` function calls do not set `context`
 pub threadlocal var context: Context = undefined;
 
+/// <!-- topic: Context -->
+/// convenience function to get the context's execution environment
+pub fn get_env() env {
+    return context.env;
+}
+
 ///////////////////////////////////////////////////////////////////////////////
 // CONCURRENCY MODES
 
