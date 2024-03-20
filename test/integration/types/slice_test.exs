@@ -33,6 +33,10 @@ defmodule ZiglerTest.Types.SliceTest do
     return common_slice_fun(passed);
   }
 
+  pub fn slice_const_test(passed: []const u8) usize {
+    return passed.len;
+  }
+
   fn common_slice_copy_fun(passed: anytype) @TypeOf(passed) {
     const Child = @typeInfo(@TypeOf(passed)).Pointer.child;
 
@@ -86,6 +90,12 @@ defmodule ZiglerTest.Types.SliceTest do
 
     test "the default output" do
       assert "bcd" == slice_string_test("abc")
+    end
+  end
+
+  describe "for const u8 strings" do
+    test "it works" do
+      assert 3 == slice_const_test("abc")
     end
   end
 
