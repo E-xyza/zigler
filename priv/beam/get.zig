@@ -402,7 +402,7 @@ pub fn get_slice(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_expected(T, opts);
     errdefer error_got(src, opts);
 
-    switch (src.term_type(env)) {
+    switch (src.term_type(env(opts))) {
         .bitstring => return get_slice_binary(T, src, opts),
         .list => return get_slice_list(T, src, opts),
         else => return GetError.argument_error,

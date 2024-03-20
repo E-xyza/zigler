@@ -1168,8 +1168,10 @@ pub fn WrappedResult(comptime FunctionType: type) type {
 /// <!-- topic: Exceptions -->
 /// The equivalent of [`error`](https://www.erlang.org/doc/man/erlang.html#error-1)
 /// in erlang.
-pub fn raise_exception(env_: env, reason: anytype) term {
-    return term{ .v = e.enif_raise_exception(env_, make(env_, reason, .{}).v) };
+pub fn raise_exception(reason: anytype, opts: anytype) term {
+    const T = @TypeOf(opts);
+    const env_ = if (@hasField(T, "env")) opts.env else context.env;
+    return term{ .v = e.enif_raise_exception(env_, make(reason, opts).v) };
 }
 
 /// <!-- topic: Exceptions -->
@@ -1183,10 +1185,13 @@ pub fn raise_exception(env_: env, reason: anytype) term {
 /// > #### Exception structs are not checked {: .warning }
 /// >
 /// > The validity of the exception struct is not checked when using this function.
-pub fn raise_elixir_exception(env_: env, comptime module: []const u8, data: anytype) term {
+pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: anytype) term {
     if (@typeInfo(@TypeOf(data)) != .Struct) {
         @compileError("elixir exceptions must be structs");
     }
+
+    const T = @TypeOf(opts);
+    var env_ = if (@hasField(T, "env")) opts.env else context.env;
 
     const name = comptime name: {
         break :name "Elixir." ++ module;
@@ -1194,10 +1199,10 @@ pub fn raise_elixir_exception(env_: env, comptime module: []const u8, data: anyt
     var exception: e.ErlNifTerm = undefined;
     const initial = make(env_, data, .{});
 
-    _ = e.enif_make_map_put(env_, initial.v, make_into_atom(env_, "__struct__").v, make_into_atom(env_, name).v, &exception);
-    _ = e.enif_make_map_put(env_, exception, make_into_atom(env_, "__exception__").v, make(env_, true, .{}).v, &exception);
+    _ = e.enif_make_map_put(env_, initial.v, make_into_atom("__struct__", opts).v, make_into_atom(name, opts).v, &exception);
+    _ = e.enif_make_map_put(env_, exception, make_into_atom("__exception__", opts).v, make(true, opts).v, &exception);
 
-    return raise_exception(env_, term{ .v = exception });
+    return raise_exception(term{ .v = exception }, opts);
 }
 
 /// <!-- topic: Exceptions -->
@@ -1208,11 +1213,11 @@ pub fn raise_elixir_exception(env_: env, comptime module: []const u8, data: anyt
 /// stacktrace.  In order to concatenate this stacktrace onto your BEAM
 /// exception, the function that wraps the nif must be able to catch the
 /// error and append the zig error return trace to the existing stacktrace.
-pub fn raise_with_error_return(env_: env, err: anytype, maybe_return_trace: ?*std.builtin.StackTrace) term {
+pub fn raise_with_error_return(err: anytype, maybe_return_trace: ?*std.builtin.StackTrace, opts: anytype) term {
     if (maybe_return_trace) |return_trace| {
-        return raise_exception(env_, .{ .@"error", err, return_trace });
+        return raise_exception(.{ .@"error", err, return_trace }, opts);
     } else {
-        return raise_exception(env_, .{ .@"error", err });
+        return raise_exception(.{ .@"error", err }, opts);
     }
 }
 

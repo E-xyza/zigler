@@ -379,7 +379,7 @@ fn make_binary(content: anytype, opts: anytype) beam.term {
 
 fn make_binary_from_u8_slice(slice: []const u8, opts: anytype) beam.term {
     var result: beam.term = undefined;
-    var buf = e.enif_make_new_binary(slice.len, &result.v, opts);
+    var buf = e.enif_make_new_binary(env(opts), slice.len, &result.v);
     std.mem.copy(u8, buf[0..slice.len], slice);
     return result;
 }

@@ -170,34 +170,46 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                 }
 
                 fn dtor(env: beam.env, obj: ?*anyopaque) callconv(.C) void {
-                    beam.context = .callback;
+                    set_callback_context(env);
+
                     if (@hasDecl(Callbacks, "dtor")) {
-                        Callbacks.dtor(env, to_typed(obj));
+                        Callbacks.dtor(to_typed(obj));
                     }
                 }
 
                 fn down(env: beam.env, obj: ?*anyopaque, pid: [*c]beam.pid, monitor: [*c]beam.monitor) callconv(.C) void {
-                    beam.context = .callback;
+                    set_callback_context(env);
+
                     if (@hasDecl(Callbacks, "down")) {
-                        Callbacks.down(env, to_typed(obj), pid[0], monitor[0]);
+                        Callbacks.down(to_typed(obj), pid[0], monitor[0]);
                     }
                 }
 
                 fn stop(env: beam.env, obj: ?*anyopaque, event: beam.event, is_direct_call: c_int) callconv(.C) void {
-                    beam.context = .callback;
+                    set_callback_context(env);
+
                     if (@hasDecl(Callbacks, "stop")) {
-                        Callbacks.stop(env, to_typed(obj), event, is_direct_call != 0);
+                        Callbacks.stop(to_typed(obj), event, is_direct_call != 0);
                     }
                 }
 
                 fn dyncall(env: beam.env, obj: ?*anyopaque, calldata: ?*anyopaque) callconv(.C) void {
-                    beam.context = .callback;
+                    set_callback_context(env);
+
                     if (@hasDecl(Callbacks, "dyncall")) {
-                        return Callbacks.dyncall(env, to_typed(obj), calldata);
+                        return Callbacks.dyncall(to_typed(obj), calldata);
                     }
                 }
             };
         }
+    };
+}
+
+fn set_callback_context(env: beam.env) void {
+    beam.context = .{
+        .mode = .callback,
+        .env = env,
+        .allocator = beam.allocator,
     };
 }
 
