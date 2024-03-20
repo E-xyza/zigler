@@ -262,7 +262,7 @@ pub fn get_float(comptime T: type, src: beam.term, opts: anytype) !T {
     }
 }
 
-pub fn get_atom(src: beam.term, buf: *[256]u8, opts) ![]u8 {
+pub fn get_atom(src: beam.term, buf: *[256]u8, opts: anytype) ![]u8 {
     const len = @as(usize, @intCast(e.enif_get_atom(env(opts), src.v, buf, 256, e.ERL_NIF_LATIN1)));
     if (len == 0) return GetError.argument_error;
     return buf[0 .. len - 1];
