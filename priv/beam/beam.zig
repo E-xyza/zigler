@@ -111,6 +111,7 @@ const stacktrace = @import("stacktrace.zig");
 /// <!-- ignore -->
 pub const payload = @import("payload.zig");
 
+
 /// <!-- topic: Term Management; args: dest_type, _, source_term, options -->
 /// converts BEAM [`term`](#term) dynamic types into static zig types
 ///
@@ -378,7 +379,6 @@ pub const payload = @import("payload.zig");
 /// - `error_info`: pointer to a [`term`](#term) that can be populated with error
 ///   information that gets propagated on failure to convert.  If omitted, the code
 ///   to produce these errors will get optimized out.
-
 pub const get = get_.get;
 
 /// <!-- topic: Term Management; args: _, value, options -->
@@ -1014,6 +1014,63 @@ pub fn copy(env_: env, term_: term) term {
 }
 
 ///////////////////////////////////////////////////////////////////////////////
+// CONTEXT
+
+/// <!-- topic: Context -->
+/// a tag identifying the type of context in which the nif is running
+///
+/// See [nif documentation](https://www.erlang.org/doc/man/erl_nif.html#lengthy_work)
+/// for more detailed information about the concurrency strategies.
+/// - `.synchronous`: the execution context of a synchronous nif
+/// - `.threaded`: the execution context of a nif that runs in its own os
+///   thread
+/// - `.dirty`: the execution context of a nif that runs on a dirty
+///   scheduler
+/// - `.yielding`: the execution context of a nif that runs cooperatively with
+///   the BEAM scheduler
+/// - `.callback`: the execution context of module setup/teardown callbacks or
+///   a resource destruction callback
+///
+/// See [`context`](#context) for the threadlocal variable that stores this.
+///
+/// > #### raw beam functions {: .warning }
+/// >
+/// > nifs called in `raw` mode are not assigned an execution context.
+pub const ContextMode = enum { synchronous, threaded, dirty, yielding, callback };
+
+/// <!-- topic: Context -->
+///
+/// a datastructure containing information that is local to the current call.
+/// managed entrypoints into any given nif (any nif that isn't raw) will set
+/// have access to the threadlocal `context/0` variable.
+///
+/// ### Fields
+/// - `mode`: the concurrency mode of the nif
+/// - `env`: the environment of the nif
+/// - `allocator`: the allocator to use for allocations
+pub const Context = struct { mode: ContextMode, env: env, allocator: std.mem.Allocator };
+
+/// <!-- topic: Context -->
+/// threadlocal variable that stores the execution context for the nif.
+/// Execution of any managed (non-raw) nif is guaranteed to have access to
+/// this variable, and the value of this variable will not be changed
+/// across any reentries into the function (for example, for yielding nifs)
+///
+/// If you spawn a thread from your nif, you should copy anything you need
+/// out of this variable.
+///
+/// See [`Context`](#executioncontext) for the list of fields.
+///
+/// > #### context starts undefined {: .warning }
+/// >
+/// > This threadlocal is set to `undefined` because of architectural differences:
+/// > we cannot trust loaded dynamic libraries to properly set this on thread
+/// > creation.
+/// >
+/// > `raw` function calls do not set `context`
+pub threadlocal var context: Context = undefined;
+
+///////////////////////////////////////////////////////////////////////////////
 // CONCURRENCY MODES
 
 /// identical to `e.ErlNifTid`.  This is a thread id datatype that the BEAM.
@@ -1044,40 +1101,6 @@ pub const Thread = threads.Thread;
 ///
 /// see [`Resource`](#Resource) for more details on the callbacks.
 pub const ThreadedCallbacks = threads.Callbacks;
-
-/// a tag identifying the context in which the nif is running
-///
-/// See [nif documentation](https://www.erlang.org/doc/man/erl_nif.html#lengthy_work)
-/// for more detailed information about the concurrency strategies.
-/// - `.synchronous`: the execution context of a synchronous nif
-/// - `.threaded`: the execution context of a nif that runs in its own os
-///   thread
-/// - `.dirty`: the execution context of a nif that runs on a dirty
-///   scheduler
-/// - `.yielding`: the execution context of a nif that runs cooperatively with
-///   the BEAM scheduler
-/// - `.callback`: the execution context of module setup/teardown callbacks or
-///   a resource destruction callback
-///
-/// See [`context`](#context) for the threadlocal variable that stores this.
-///
-/// > #### raw beam functions {: .warning }
-/// >
-/// > nifs called in `raw` mode are not assigned an execution context.
-pub const ExecutionContext = enum { synchronous, threaded, dirty, yielding, callback };
-
-/// threadlocal variable that stores the execution context for the nif
-///
-/// See [`ExecutionContext`](#executioncontext) for the list of valid enums.
-///
-/// > #### context starts undefined {: .warning }
-/// >
-/// > This threadlocal is set to `undefined` because of architectural differences:
-/// > we cannot trust loaded dynamic libraries to properly set this on thread
-/// > creation.
-/// >
-/// > `raw` function calls do not set `context`
-pub threadlocal var context: ExecutionContext = undefined;
 
 const yield_ = @import("yield.zig");
 
