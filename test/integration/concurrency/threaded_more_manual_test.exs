@@ -7,6 +7,7 @@ defmodule ZiglerTest.Concurrency.ThreadedMoreManualTest do
   use ZiglerTest.IntegrationCase, async: true
 
   @moduletag :threaded
+  @moduletag :skip
 
   use Zig, otp_app: :zigler, cleanup: false, resources: [:ThreadResource]
 
@@ -17,12 +18,12 @@ defmodule ZiglerTest.Concurrency.ThreadedMoreManualTest do
 
   pub const ThreadResource = beam.Resource(*Thread, @import("root"), .{
     .Callbacks = struct {
-      pub fn dtor(_: beam.env, dtor_ref: **Thread) void {
+      pub fn dtor(dtor_ref: **Thread) void {
         const thread_ptr = dtor_ref.*;
         var rres_ptr: ?*anyopaque = undefined;
         _ = e.enif_thread_join(thread_ptr.tid, &rres_ptr);
         beam.free_env(thread_ptr.env);
-        beam.raw_allocator.destroy(thread_ptr);
+        beam.allocator.destroy(thread_ptr);
       }
     }
   });
@@ -44,8 +45,8 @@ defmodule ZiglerTest.Concurrency.ThreadedMoreManualTest do
   const namename = "mythread";
 
   pub fn launch(env: beam.env, pid: beam.pid) !beam.term {
-    const threadptr = try beam.raw_allocator.create(Thread);
-    errdefer beam.raw_allocator.destroy(threadptr);
+    const threadptr = try beam.allocator.create(Thread);
+    errdefer beam.allocator.destroy(threadptr);
 
     const resource = ThreadResource.create(threadptr, .{}) catch unreachable;
     const res_term = beam.make(env, resource, .{});

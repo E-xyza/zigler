@@ -6,28 +6,28 @@ datastructures are all allocator-agnostic.
 Zigler ships with three primary allocators, though you can certainly build
 allocator strategies *on top* of those allocators.
 
-## Raw Beam Allocator
+## Basic Allocator
 
-The first allocator is `raw_allocator`.  This allocator wraps the 
-[nif allocator](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc) 
-provided by the BEAM.  You should use this allocator over `malloc` because it
-often saves a syscall by using existing preallocated memory pools, because
-it allows the VM to track how much memory your NIF is using, and possibly
-gives better memory placement to avoid cache misses in your execution
-thread.
+The first allocator is `allocator`, which we will call `basic allocator`.  
+This allocator wraps the [nif allocator](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc) 
+provided by the BEAM in the zig allocator interface.  You should generally
+use this allocator over `malloc` because it often saves a syscall by using 
+existing preallocated memory pools, because it allows the VM to track how 
+much memory your NIF is using, and possibly gives better memory placement 
+to avoid cache misses in your execution thread.
 
 ```elixir
 ~Z"""
 const beam = @import("beam");
 
-pub fn allocate_raw(env: beam.env, count: usize) !beam.term {
-    var slice = try beam.raw_allocator.alloc(u16, count);
-    defer beam.raw_allocator.free(slice);
+pub fn allocate_raw(count: usize) !beam.term {
+    var slice = try beam.allocator.alloc(u16, count);
+    defer beam.allocator.free(slice);
 
     for (slice, 0..) |*entry, index| {
         entry.* = @intCast(index);
     }
-    return beam.make(env, slice, .{});
+    return beam.make(slice, .{});
 }
 """
 
@@ -36,9 +36,9 @@ test "raw allocator" do
 end
 ```
 
-> ### raw allocator limitations {: .warning }
+> ### allocator limitations {: .warning }
 >
-> because the raw allocator directly wraps the beam allocator, according to
+> because the basic allocator directly wraps the beam allocator, according to
 > the documentation:
 >
 > The returned pointer is suitably aligned for any built-in type that 
@@ -60,11 +60,11 @@ end
 var global_zigler: []u8 = undefined;
 
 pub fn zigler_alloc() !void {
-    global_zigler = try beam.raw_allocator.alloc(u8, 1_000_000);
+    global_zigler = try beam.allocator.alloc(u8, 1_000_000);
 }
 
 pub fn zigler_free() void {
-    beam.raw_allocator.free(global_zigler);
+    beam.allocator.free(global_zigler);
 }
 
 const c_stdlib = @cImport(@cInclude("stdlib.h"));
@@ -152,36 +152,6 @@ test "leak checks with general purpose allocator" do
 end
 ```
 
-## beam.allocator
-
-Zigler provides a `threadlocal` variable: `beam.allocator`.  This is set on entry
-into the nif and defaults to `beam.raw_allocator`
-
-```elixir
-~Z"""
-pub fn basic(env: beam.env) !beam.term {
-    const slice = try beam.allocator.alloc(u16, 4);
-    defer beam.allocator.free(slice);
-
-    for (slice, 0..) |*item, index| {
-        item.* = @intCast(index);
-    }
-
-    return beam.make(env, slice, .{});
-}
-"""
-
-test "leak checks with allocator" do
-  assert [0, 1, 2, 3] = basic()
-end
-```
-
-> ### Raw nifs {: .warning }
->
-> For raw nifs, `beam.allocator` is not set, and may retain a value from an
-> arbitrary previous nif invocation.  Consider usage of `beam.allocator` in a
-> raw nif to be undefined unless it is set in the raw nif.
-
 ## Custom allocators
 
 Because zigler's allocators conform to zig's allocator interface, you can use
@@ -190,9 +160,9 @@ from an imported zig package.
 
 ```elixir
 ~Z"""
-const std = @import("std");
+pub fn with_arena() !beam.term {
+    const std = @import("std");
 
-pub fn with_arena(env: beam.env) !beam.term {
     var arena = std.heap.ArenaAllocator.init(beam.allocator);
     defer arena.deinit();
 
@@ -205,7 +175,7 @@ pub fn with_arena(env: beam.env) !beam.term {
         item.* = @intCast(index);
     }
 
-    return beam.make(env, slice, .{});
+    return beam.make(slice, .{});
 }
 """
 
@@ -214,3 +184,32 @@ test "arena allocator" do
 end
 ```
 
+### Custom allocators in `beam.get`
+
+If you choose to use a custom allocator, you may use it in the `beam.get`
+functions to instantiate data where it's the allocator's responsibility to
+free it at the end.
+
+```elixir
+~Z"""
+pub fn arena_sum(array: beam.term) !u64 {
+    const std = @import("std");
+
+    var arena = std.heap.ArenaAllocator.init(beam.allocator);
+    defer arena.deinit();
+    const arena_allocator = arena.allocator();
+
+    const slice = try beam.get([]u64, array, .{.allocator = arena_allocator});
+
+    var total: u64 = 0;
+
+    for (slice) |item| { total += item; }
+
+    return total;
+}
+"""
+
+test "arena sum" do
+  assert 6 == arena_sum([1, 2, 3])
+end
+```

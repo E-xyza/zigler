@@ -101,10 +101,10 @@ pub fn Thread(comptime function: anytype) type {
             };
 
             // initialize the thread struct
-            // this needs to be raw_allocator because it will be cleared by the
+            // this needs to be allocator because it will be cleared by the
             // callback function, and the beam.allocator is undefined in that context.
-            const threadptr = try beam.raw_allocator.create(This);
-            errdefer beam.raw_allocator.destroy(threadptr);
+            const threadptr = try beam.allocator.create(This);
+            errdefer beam.allocator.destroy(threadptr);
 
             threadptr.* = .{ .env = thread_env, .pid = try beam.self(env), .payload = payload, .allocator = allocator, .result = try allocator.create(Result) };
 
@@ -138,6 +138,7 @@ pub fn Thread(comptime function: anytype) type {
             const thread = @as(*This, @ptrCast(@alignCast(void_thread.?)));
             // set critical threadlocal variables
             local_join_started = &thread.join_started;
+            if (true) @panic("fix this:");
             beam.allocator = thread.allocator;
             beam.context = .threaded;
 
@@ -194,7 +195,7 @@ pub fn Thread(comptime function: anytype) type {
                         // TODO: do better by having a comptime function that checks the return trace.
                         const TERMINATED = @intFromError(error.processterminated);
                         if (@intFromError(err) == TERMINATED) {
-                            result_ptr.* = .{ .error_return_trace = beam.make_empty_list(thread.env) };
+                            result_ptr.* = .{ .error_return_trace = beam.make_empty_list(.{}) };
                         } else {
                             const response = .{ .@"error", err, @errorReturnTrace() };
                             result_ptr.* = .{ .error_return_trace = beam.make(thread.env, response, .{}) };
@@ -308,16 +309,16 @@ pub fn Thread(comptime function: anytype) type {
             beam.release_binary(&self.refbin);
             beam.free_env(self.env);
 
-            // note that we allocated the thread pointer with raw_allocator,
+            // note that we allocated the thread pointer with allocator,
             // so we must destroy it with the same allocator.
-            beam.raw_allocator.destroy(self);
+            beam.allocator.destroy(self);
         }
     };
 }
 
 pub fn Callbacks(comptime ThreadType: type) type {
     return struct {
-        pub fn dtor(_: beam.env, dtor_ref: **ThreadType) void {
+        pub fn dtor(dtor_ref: **ThreadType) void {
             const thread_ptr = dtor_ref.*;
             // join the thread at all costs, catch all failures, discard the result.
             // NB: this WILL cause a leak.

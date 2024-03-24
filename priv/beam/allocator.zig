@@ -9,7 +9,7 @@ const Allocator = std.mem.Allocator;
 
 pub const MAX_ALIGN = 8;
 
-pub const raw_allocator = Allocator{
+pub const allocator = Allocator{
     .ptr = undefined,
     .vtable = &raw_beam_allocator_vtable,
 };

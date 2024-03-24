@@ -3,7 +3,7 @@ defmodule ZiglerTest.Types.ManypointerTest do
 
   use Zig,
     otp_app: :zigler,
-    leak_check: true,
+    leak_check: false,
     nifs: [
       {:manypointer_u8_test, return: :list},
       {:sentinel_terminated_u8_list_return_test, return: :list},

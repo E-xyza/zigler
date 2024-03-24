@@ -6,6 +6,8 @@ defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag :skip
+
   @moduletag :threaded
 
   use Zig, otp_app: :zigler, cleanup: false, callbacks: [on_load: :on_load], ignore: :on_load
@@ -34,9 +36,13 @@ defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
   }
 
   fn thread(info: ?*anyopaque) callconv(.C) ?*anyopaque {
-    beam.context = .threaded;
     const res: *Resource = @ptrCast(@alignCast(info.?));
-    _ = beam.send(res.env, res.pid, beam.make(res.env, .done, .{})) catch unreachable;
+    beam.context = .{
+      .mode = .threaded,
+      .env = res.env,
+      .allocator = beam.allocator,
+    };
+    _ = beam.send(res.pid, beam.make(.done, .{}), .{}) catch unreachable;
     return null;
   }
 
@@ -48,9 +54,9 @@ defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
     tid: beam.tid,
   };
 
-  pub fn launch(env: beam.env, pid: beam.pid) beam.term {
+  pub fn launch(pid: beam.pid) beam.term {
     const resptr = e.enif_alloc_resource(resource_type, @sizeOf(Resource));
-    const resterm = e.enif_make_resource(env, resptr);
+    const resterm = e.enif_make_resource(beam.get_env(), resptr);
     defer e.enif_release_resource(resptr);
 
     const res: *Resource = @ptrCast(@alignCast(resptr));

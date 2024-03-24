@@ -6,15 +6,14 @@ pub const ThreadResource_<%= @type.name %> = beam.Resource(*Thread_<%= @type.nam
 <% needs_make? = Enum.any?(@type.params, &Type.needs_make?/1) %>
 
 fn @"<%= @type.name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
-    // always use the raw_allocator, we can set it to managed allocation elsewhere.
-    beam.allocator = beam.raw_allocator;
+    // always use the allocator, we can set it to managed allocation elsewhere.
 
     <%= for {param_type, index} <- Nif.indexed_parameters(@type.params), Type.missing_size?(param_type) do %>
     var size<%= index %>:usize = undefined;
     <% end %>
 
     <%= if needs_make? do %>
-    var error_info = beam.make_empty_list(env); 
+    var error_info = beam.make_empty_list(.{}); 
     <% end %>
 
     const payload_opts = .{
@@ -36,8 +35,8 @@ fn @"<%= @type.name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.Er
 
 fn @"<%= @type.name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
     _ = argc;
-    // set beam.allocator due to reentry
-    beam.allocator = beam.raw_allocator;
+    // set context due to reentry
+    @panic("not implemented yet");
     const thread_rsrc = beam.get(ThreadResource_<%= @type.name %>, env, .{.v = args[0]}, .{}) catch {
         @panic("error getting thread resource");
     };

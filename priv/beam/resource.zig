@@ -27,6 +27,10 @@ const OutputType = enum {
     }
 };
 
+fn env(opts: anytype) beam.env {
+    return if (@hasField(@TypeOf(opts), "env")) opts.env else beam.context.env;
+}
+
 const ResourceError = error{incorrect_resource_type};
 
 pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOpts) type {
@@ -40,7 +44,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         /// initialization function, which should be called at runtime by the module's init function.  The
         /// primary job of this function is to assign the resource type generating function to
         /// the root namespace.
-        pub fn init(comptime module: []const u8, env: beam.env) *e.ErlNifResourceType {
+        pub fn init(comptime module: []const u8, init_opts: anytype) *e.ErlNifResourceType {
             // load em up.  Note all callbacks are optional and may be set to null.
             // see: https://www.erlang.org/doc/man/erl_nif.html#enif_init_resource_type
             var init_struct = e.ErlNifResourceTypeInit{ .dtor = null, .stop = null, .down = null, .dyncall = null, .members = 0 };
@@ -49,31 +53,31 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                 const Shimmed = MakeShimmed(Callbacks);
 
                 if (@hasDecl(Callbacks, "dtor")) {
-                    assert_type_matches(@TypeOf(Callbacks.dtor), fn (beam.env, *T) void);
+                    assert_type_matches(@TypeOf(Callbacks.dtor), fn (*T) void);
                     init_struct.dtor = Shimmed.dtor;
                     init_struct.members += 1;
                 }
 
                 if (@hasDecl(Callbacks, "stop")) {
-                    assert_type_matches(@TypeOf(Callbacks.stop), fn (beam.env, *T, beam.pid, beam.monitor) void);
+                    assert_type_matches(@TypeOf(Callbacks.stop), fn (*T, beam.pid, beam.monitor) void);
                     init_struct.stop = Shimmed.stop;
                     init_struct.members += 1;
                 }
 
                 if (@hasDecl(Callbacks, "down")) {
-                    assert_type_matches(@TypeOf(Callbacks.down), fn (beam.env, *T, beam.event, bool) void);
+                    assert_type_matches(@TypeOf(Callbacks.down), fn (*T, beam.event, bool) void);
                     init_struct.down = Shimmed.down;
                     init_struct.members += 1;
                 }
 
                 if (@hasDecl(Callbacks, "dyncall")) {
-                    assert_type_matches(@TypeOf(Callbacks.dyncall), fn (beam.env, *T, ?*anyopaque) void);
+                    assert_type_matches(@TypeOf(Callbacks.dyncall), fn (*T, ?*anyopaque) void);
                     init_struct.dyncall = Shimmed.dyncall;
                     init_struct.members += 1;
                 }
             }
 
-            return e.enif_init_resource_type(env, @typeName(T) ++ "-" ++ module, &init_struct, e.ERL_NIF_RT_CREATE, null).?;
+            return e.enif_init_resource_type(env(init_opts), @typeName(T) ++ "-" ++ module, &init_struct, e.ERL_NIF_RT_CREATE, null).?;
         }
 
         pub fn resource_type(_: @This()) *e.ErlNifResourceType {
@@ -129,28 +133,28 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         // and make.zig modules.  They are not intended to be called directly
         // by end user.
 
-        pub fn get(self: *@This(), env: beam.env, src: beam.term, get_opts: anytype) !void {
+        pub fn get(self: *@This(), src: beam.term, get_opts: anytype) !void {
             if (@hasField(@TypeOf(get_opts), "released")) {
                 self.__should_release = get_opts.released;
             }
 
             const resource_target = @as(?*?*anyopaque, @ptrCast(&self.__payload));
-            if (e.enif_get_resource(env, src.v, self.resource_type(), resource_target) == 0)
+            if (e.enif_get_resource(env(get_opts), src.v, self.resource_type(), resource_target) == 0)
                 return error.incorrect_resource_type;
         }
 
-        pub fn make(self: @This(), env: beam.env, comptime make_opts: anytype) beam.term {
-            const output_type = comptime OutputType.select(make_opts);
+        pub fn make(self: @This(), make_opts: anytype) beam.term {
+            const output_type = OutputType.select(make_opts);
             defer self.maybe_release();
             switch (output_type) {
                 .default => {
-                    return .{ .v = e.enif_make_resource(env, @ptrCast(self.__payload)) };
+                    return .{ .v = e.enif_make_resource(env(make_opts), @ptrCast(self.__payload)) };
                 },
                 .binary => {
                     const encoder = if (@hasField(@TypeOf(make_opts), "encoder")) make_opts.encoder else default_encoder;
                     assert_type_matches(@TypeOf(encoder), fn (*const T) []const u8);
                     const bytes: []const u8 = encoder(self.__payload);
-                    return .{ .v = e.enif_make_resource_binary(env, @ptrCast(self.__payload), bytes.ptr, bytes.len) };
+                    return .{ .v = e.enif_make_resource_binary(env(make_opts), @ptrCast(self.__payload), bytes.ptr, bytes.len) };
                 },
             }
         }
@@ -169,32 +173,32 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                     return @ptrCast(@alignCast(obj.?));
                 }
 
-                fn dtor(env: beam.env, obj: ?*anyopaque) callconv(.C) void {
-                    set_callback_context(env);
+                fn dtor(env_: beam.env, obj: ?*anyopaque) callconv(.C) void {
+                    set_callback_context(env_);
 
                     if (@hasDecl(Callbacks, "dtor")) {
                         Callbacks.dtor(to_typed(obj));
                     }
                 }
 
-                fn down(env: beam.env, obj: ?*anyopaque, pid: [*c]beam.pid, monitor: [*c]beam.monitor) callconv(.C) void {
-                    set_callback_context(env);
+                fn down(env_: beam.env, obj: ?*anyopaque, pid: [*c]beam.pid, monitor: [*c]beam.monitor) callconv(.C) void {
+                    set_callback_context(env_);
 
                     if (@hasDecl(Callbacks, "down")) {
                         Callbacks.down(to_typed(obj), pid[0], monitor[0]);
                     }
                 }
 
-                fn stop(env: beam.env, obj: ?*anyopaque, event: beam.event, is_direct_call: c_int) callconv(.C) void {
-                    set_callback_context(env);
+                fn stop(env_: beam.env, obj: ?*anyopaque, event: beam.event, is_direct_call: c_int) callconv(.C) void {
+                    set_callback_context(env_);
 
                     if (@hasDecl(Callbacks, "stop")) {
                         Callbacks.stop(to_typed(obj), event, is_direct_call != 0);
                     }
                 }
 
-                fn dyncall(env: beam.env, obj: ?*anyopaque, calldata: ?*anyopaque) callconv(.C) void {
-                    set_callback_context(env);
+                fn dyncall(env_: beam.env, obj: ?*anyopaque, calldata: ?*anyopaque) callconv(.C) void {
+                    set_callback_context(env_);
 
                     if (@hasDecl(Callbacks, "dyncall")) {
                         return Callbacks.dyncall(to_typed(obj), calldata);
@@ -205,10 +209,10 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
     };
 }
 
-fn set_callback_context(env: beam.env) void {
+fn set_callback_context(env_: beam.env) void {
     beam.context = .{
         .mode = .callback,
-        .env = env,
+        .env = env_,
         .allocator = beam.allocator,
     };
 }

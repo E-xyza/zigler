@@ -111,7 +111,6 @@ const stacktrace = @import("stacktrace.zig");
 /// <!-- ignore -->
 pub const payload = @import("payload.zig");
 
-
 /// <!-- topic: Term Management; args: dest_type, _, source_term, options -->
 /// converts BEAM [`term`](#term) dynamic types into static zig types
 ///
@@ -381,7 +380,7 @@ pub const payload = @import("payload.zig");
 ///   information that gets propagated on failure to convert.  If omitted, the code
 ///   to produce these errors will get optimized out.
 /// - `keep` (`bool`, only applies to references):
-///   if `true` (default) the refcount will be increased on the term as a result of 
+///   if `true` (default) the refcount will be increased on the term as a result of
 ///   performing the `get` operation.
 /// - `size` (`* usize`, only applies to manypointer or `[*c]`):
 ///   optional in-out parameter to retrieve the size of the slice
@@ -969,24 +968,7 @@ pub const general_purpose_allocator = allocator_.general_purpose_allocator;
 /// wraps [`e.enif_alloc`](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc)
 /// and [`e.enif_free`](https://www.erlang.org/doc/man/erl_nif.html#enif_free)
 /// into the zig standard library allocator interface.
-pub const raw_allocator = allocator_.raw_allocator;
-
-/// stores the allocator strategy for the currently running nif.
-///
-/// this variable is threadlocal, so that each called NIF can set it as a
-/// global variable and not pass it around.
-///
-/// > #### allocator starts undefined {: .warning }
-/// >
-/// > This threadlocal is set to `undefined` because of architectural
-/// > differences:  we cannot trust loaded dynamic libraries to properly set
-/// > this on thread creation.  Each function is responsible for setting
-/// > allocator correctly whenever execution control is returned to it.
-/// >
-/// > `raw` function calls do *not* set the allocator and
-/// > must either set it themselves or always use a specific allocator
-/// > strategy in its function calls.
-pub threadlocal var allocator: std.mem.Allocator = undefined;
+pub const allocator = allocator_.allocator;
 
 ///////////////////////////////////////////////////////////////////////////////
 // resources
@@ -1197,7 +1179,7 @@ pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: 
         break :name "Elixir." ++ module;
     };
     var exception: e.ErlNifTerm = undefined;
-    const initial = make(env_, data, .{});
+    const initial = make(data, .{});
 
     _ = e.enif_make_map_put(env_, initial.v, make_into_atom("__struct__", opts).v, make_into_atom(name, opts).v, &exception);
     _ = e.enif_make_map_put(env_, exception, make_into_atom("__exception__", opts).v, make(true, opts).v, &exception);
