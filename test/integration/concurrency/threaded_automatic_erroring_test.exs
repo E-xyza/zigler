@@ -20,7 +20,7 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
     assert 48 = threaded(47)
   end
 
-  # note the line numbers might not be correct.
+  # note the line numbers might not be correct, hence the skip.
   @tag :skip
   test "threaded function can error" do
     error =

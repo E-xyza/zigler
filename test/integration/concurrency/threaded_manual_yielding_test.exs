@@ -20,9 +20,9 @@ defmodule ZiglerTest.Concurrency.ThreadedManualYieldingTest do
     .Callbacks = beam.ThreadedCallbacks(Thread)
   });
 
-  fn thread(env: beam.env, pid: beam.pid) void {
+  fn thread(pid: beam.pid) void {
     defer {
-      _ = beam.send(env, pid, beam.make(env, .done, .{})) catch {};
+      _ = beam.send(pid, .done, .{}) catch {};
     }
 
     while (true) {
@@ -30,9 +30,9 @@ defmodule ZiglerTest.Concurrency.ThreadedManualYieldingTest do
     }
   }
 
-  pub fn launch(env: beam.env, pid_term: beam.term) !beam.term {
+  pub fn launch(pid_term: beam.term) !beam.term {
     var args = [_]e.ErlNifTerm{pid_term.v};
-    return Thread.launch(ThreadResource, env, 1, &args, .{.arg_opts = .{.{}}});
+    return Thread.launch(ThreadResource, 1, &args, .{.{}});
   }
   """
 

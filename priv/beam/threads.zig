@@ -90,7 +90,11 @@ pub fn Thread(comptime function: anytype) type {
         pub fn launch(comptime ThreadResource: type, argc: c_int, args: [*c]const e.ErlNifTerm, payload_opts: anytype) !beam.term {
             // assign the context, as the self() function needs this to be correct.
             // note that opts MUST contain `payload_opts` field, which is a 
-            beam.context.mode = .synchronous;
+            switch (beam.context.mode) {
+                // allow these modes for future expansion.
+                .synchronous, .dirty => {},
+                else => @panic("threaded functions must be launched from synchronous, dirty_io, or dirty_cpu contexts.")
+            }
 
             // thread struct necessities
             const allocator = options.allocator(.{});
@@ -140,9 +144,12 @@ pub fn Thread(comptime function: anytype) type {
             const thread = @as(*This, @ptrCast(@alignCast(void_thread.?)));
             // set critical threadlocal variables
             local_join_started = &thread.join_started;
-            if (true) @panic("fix this:");
-            beam.allocator = thread.allocator;
-            beam.context = .threaded;
+
+            beam.context = .{
+                .mode = .threaded,
+                .allocator = thread.allocator,
+                .env = thread.env,
+            };
 
             if (thread.state.exchange(.prepped, .running)) |state| switch (state) {
                 .prepped => unreachable, // exchange can't return what it started with.
@@ -171,8 +178,8 @@ pub fn Thread(comptime function: anytype) type {
                     .joined => @panic("should not have reached joined without executing thread"),
                 } else .done;
 
-                if (beam.binary_to_term(thread.env, bin)) |term| {
-                    _ = beam.send(thread.env, thread.pid, .{ to_send, term }) catch {};
+                if (beam.binary_to_term(bin, .{})) |term| {
+                    _ = beam.send(thread.pid, .{ to_send, term }, .{}) catch {};
                 } else |_| {}
             }
 
@@ -200,7 +207,7 @@ pub fn Thread(comptime function: anytype) type {
                             result_ptr.* = .{ .error_return_trace = beam.make_empty_list(.{}) };
                         } else {
                             const response = .{ .@"error", err, @errorReturnTrace() };
-                            result_ptr.* = .{ .error_return_trace = beam.make(thread.env, response, .{}) };
+                            result_ptr.* = .{ .error_return_trace = beam.make(response, .{}) };
                         }
                     }
 

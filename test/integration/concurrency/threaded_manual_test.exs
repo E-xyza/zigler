@@ -3,7 +3,6 @@ defmodule ZiglerTest.Concurrency.ThreadedManualTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
-  @tag :skip
   @moduletag :threaded
 
   use Zig, otp_app: :zigler, cleanup: false, resources: [:ThreadResource]
@@ -24,7 +23,7 @@ defmodule ZiglerTest.Concurrency.ThreadedManualTest do
   pub fn launch(x: beam.term) !beam.term {
     var args = [_]e.ErlNifTerm{x.v};
     // note that .env just needs to be there and have the right type, so we use beam.context.env.
-    return Thread.launch(ThreadResource, 1, &args, .{.payload_opts = .{.{.env = beam.context.env}}});
+    return Thread.launch(ThreadResource, 1, &args, .{.{.env = beam.context.env}});
   }
 
   pub fn join(rsrc: ThreadResource) u32 {

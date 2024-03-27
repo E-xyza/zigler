@@ -36,20 +36,26 @@ defmodule ZiglerTest.Concurrency.ThreadedMoreManualTest do
   };
 
   fn thread(info: ?*anyopaque) callconv(.C) ?*anyopaque {
-    beam.context = .threaded;
     const thr: *Thread = @ptrCast(@alignCast(info.?));
-    _ = beam.send(thr.env, thr.pid, beam.make(thr.env, .done, .{})) catch unreachable;
+
+    beam.context = .{
+      .mode = .threaded,
+      .env = thr.env,
+      .allocator = beam.allocator,
+    };
+
+    _ = beam.send(thr.pid, .done, .{}) catch unreachable;
     return null;
   }
 
   const namename = "mythread";
 
-  pub fn launch(env: beam.env, pid: beam.pid) !beam.term {
+  pub fn launch(pid: beam.pid) !beam.term {
     const threadptr = try beam.allocator.create(Thread);
     errdefer beam.allocator.destroy(threadptr);
 
     const resource = ThreadResource.create(threadptr, .{}) catch unreachable;
-    const res_term = beam.make(env, resource, .{});
+    const res_term = beam.make(resource, .{});
 
     threadptr.env = beam.alloc_env();
     threadptr.pid = pid;

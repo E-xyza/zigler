@@ -6,8 +6,6 @@ defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
-  @moduletag :skip
-
   @moduletag :threaded
 
   use Zig, otp_app: :zigler, cleanup: false, callbacks: [on_load: :on_load], ignore: :on_load

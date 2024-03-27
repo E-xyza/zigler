@@ -10,7 +10,8 @@ fn @"<%= @type.name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.Er
     // set context due to reentry
     beam.context = .{
         .env = env,
-        .mode = .threaded,
+        // TODO: make this configurable
+        .mode = .synchronous,
         // TODO: make this be configurable
         .allocator = beam.allocator
     };
