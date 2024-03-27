@@ -11,8 +11,8 @@ defmodule ZiglerTest.Resource.ReleaseTest do
   pub const PidResource = Resource(beam.pid, @import("root"), .{.Callbacks = PidResourceCallbacks});
 
   pub const PidResourceCallbacks = struct {
-      pub fn dtor(env: beam.env, pid: *beam.pid) void {
-          _ = beam.send(env, pid.*, .cleaned) catch unreachable;
+      pub fn dtor(pid: *beam.pid) void {
+          _ = beam.send(pid.*, .cleaned, .{.clear = false}) catch unreachable;
       }
   };
 
