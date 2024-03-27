@@ -150,9 +150,9 @@ the execution environmet of your nif, to box and unbox data from the beam terms.
 ~Z"""
 const beam = @import("beam");
 
-pub fn manual_addone(env: beam.env, value_term: beam.term) !beam.term {
-    const value = try beam.get(i32, env, value_term, .{});
-    return beam.make(env, value + 1, .{});
+pub fn manual_addone(value_term: beam.term) !beam.term {
+    const value = try beam.get(i32, value_term, .{});
+    return beam.make(value + 1, .{});
 }
 """
 

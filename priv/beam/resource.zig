@@ -1,6 +1,7 @@
 const std = @import("std");
 const beam = @import("beam.zig");
 const e = @import("erl_nif");
+const options = @import("options.zig");
 
 const builtin = std.builtin;
 const Allocator = std.mem.Allocator;
@@ -26,10 +27,6 @@ const OutputType = enum {
         }
     }
 };
-
-fn env(opts: anytype) beam.env {
-    return if (@hasField(@TypeOf(opts), "env")) opts.env else beam.context.env;
-}
 
 const ResourceError = error{incorrect_resource_type};
 
@@ -77,7 +74,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                 }
             }
 
-            return e.enif_init_resource_type(env(init_opts), @typeName(T) ++ "-" ++ module, &init_struct, e.ERL_NIF_RT_CREATE, null).?;
+            return e.enif_init_resource_type(options.env(init_opts), @typeName(T) ++ "-" ++ module, &init_struct, e.ERL_NIF_RT_CREATE, null).?;
         }
 
         pub fn resource_type(_: @This()) *e.ErlNifResourceType {
@@ -139,7 +136,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
             }
 
             const resource_target = @as(?*?*anyopaque, @ptrCast(&self.__payload));
-            if (e.enif_get_resource(env(get_opts), src.v, self.resource_type(), resource_target) == 0)
+            if (e.enif_get_resource(options.env(get_opts), src.v, self.resource_type(), resource_target) == 0)
                 return error.incorrect_resource_type;
         }
 
@@ -148,13 +145,13 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
             defer self.maybe_release();
             switch (output_type) {
                 .default => {
-                    return .{ .v = e.enif_make_resource(env(make_opts), @ptrCast(self.__payload)) };
+                    return .{ .v = e.enif_make_resource(options.env(make_opts), @ptrCast(self.__payload)) };
                 },
                 .binary => {
                     const encoder = if (@hasField(@TypeOf(make_opts), "encoder")) make_opts.encoder else default_encoder;
                     assert_type_matches(@TypeOf(encoder), fn (*const T) []const u8);
                     const bytes: []const u8 = encoder(self.__payload);
-                    return .{ .v = e.enif_make_resource_binary(env(make_opts), @ptrCast(self.__payload), bytes.ptr, bytes.len) };
+                    return .{ .v = e.enif_make_resource_binary(options.env(make_opts), @ptrCast(self.__payload), bytes.ptr, bytes.len) };
                 },
             }
         }

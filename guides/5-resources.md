@@ -62,13 +62,13 @@ defmodule ResourceTest do
 
 ```elixir
 ~Z"""
-pub fn create_resource_term(env: beam.env, number: u64) !beam.term {
+pub fn create_resource_term(number: u64) !beam.term {
     const res = try StructResource.create(.{.payload = number}, .{});
-    return beam.make(env, res, .{});
+    return beam.make(res, .{});
 }
 
-pub fn retrieve_resource_term(env: beam.env, term: beam.term) !u64 {
-    const res = try beam.get(StructResource, env, term, .{});
+pub fn retrieve_resource_term(term: beam.term) !u64 {
+    const res = try beam.get(StructResource, term, .{});
     return res.unpack().payload;
 }
 """

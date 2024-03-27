@@ -122,19 +122,19 @@ defmodule Allocations do
   ~Z"""
   const beam = @import("beam");
 
-  pub fn double_atom(env: beam.env, string: []u8) beam.term {
-    var double_string = beam.allocator.alloc(u8, string.len * 2) catch {
+  pub fn double_atom(string: []u8) beam.term {
+    var double_string = beam.context.allocator.alloc(u8, string.len * 2) catch {
       return beam.raise_enomem(env);
     };
 
-    defer beam.allocator.free(double_string);
+    defer beam.context.allocator.free(double_string);
 
     for (string) | char, i | {
       double_string[i] = char;
       double_string[i + string.len] = char;
     }
 
-    return beam.make_atom(env, double_string);
+    return beam.make_atom(double_string, .{});
   }
   """
 end
@@ -159,9 +159,9 @@ defmodule Blas do
     @cInclude("cblas.h");
   });
 
-  pub fn blas_axpy(env: beam.env, a: f64, x: []f64, y: []f64) beam.term {
+  pub fn blas_axpy(a: f64, x: []f64, y: []f64) beam.term {
     if (x.len != y.len) {
-      return beam.raise_function_clause_error(env);
+      return beam.raise_function_clause_error(.{});
     }
 
     blas.cblas_daxpy(@intCast(x.len), a, x.ptr, 1, y.ptr, 1);

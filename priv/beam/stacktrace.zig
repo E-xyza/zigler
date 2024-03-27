@@ -1,19 +1,18 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const beam = @import("beam.zig");
+const options = @import("options.zig");
+
 const DebugInfo = std.debug.DebugInfo;
 
 var self_debug_info: ?DebugInfo = null;
 
-inline fn allocator(opts: anytype) std.mem.Allocator {
-    return if (@hasField(@TypeOf(opts), "allocator")) opts.allocator else beam.context.allocator;
-}
 
 fn getSelfDebugInfo(opts: anytype) !*DebugInfo {
     if (self_debug_info) |*info| {
         return info;
     } else {
-        self_debug_info = try std.debug.openSelfDebugInfo(allocator(opts));
+        self_debug_info = try std.debug.openSelfDebugInfo(options.allocator(opts));
         return &self_debug_info.?;
     }
 }
@@ -30,7 +29,7 @@ fn make_trace_item(debug_info: *DebugInfo, address: usize, opts: anytype) beam.t
     const module = debug_info.getModuleForAddress(address) catch return make_empty_trace_item(opts);
     const symbol_info = module.getSymbolAtAddress(beam.allocator, address) catch return make_empty_trace_item(opts);
 
-    defer symbol_info.deinit(allocator(opts));
+    defer symbol_info.deinit(options.allocator(opts));
 
     return beam.make(.{
         .line_info = symbol_info.line_info,

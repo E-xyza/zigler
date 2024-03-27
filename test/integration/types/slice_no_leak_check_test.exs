@@ -95,18 +95,18 @@ defmodule ZiglerTest.Types.SliceNoLeakCheckTest do
   ~Z"""
   const e = @import("erl_nif");
 
-  pub fn fastlane_beam_term_test(env: beam.env, passed: []beam.term) []beam.term {
+  pub fn fastlane_beam_term_test( passed: []beam.term) []beam.term {
     for (passed) |*item| {
-      var value: f64 = beam.get(f64, env, item.*, .{}) catch unreachable;
-      item.* = beam.make(env, value + 1.0, .{});
+      var value: f64 = beam.get(f64, item.*, .{}) catch unreachable;
+      item.* = beam.make(value + 1.0, .{});
     }
     return passed;
   }
 
-  pub fn fastlane_erl_nif_term_test(env: beam.env, passed: []e.ErlNifTerm) []e.ErlNifTerm {
+  pub fn fastlane_erl_nif_term_test(passed: []e.ErlNifTerm) []e.ErlNifTerm {
     for (passed) |*item| {
-      var value: f64 = beam.get(f64, env, .{.v = item.*}, .{}) catch unreachable;
-      item.* = beam.make(env, value + 1.0, .{}).v;
+      var value: f64 = beam.get(f64, .{.v = item.*}, .{}) catch unreachable;
+      item.* = beam.make(value + 1.0, .{}).v;
     }
     return passed;
   }

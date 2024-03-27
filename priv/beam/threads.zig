@@ -1,6 +1,7 @@
 const std = @import("std");
 const beam = @import("beam.zig");
 const e = @import("erl_nif");
+const options = @import("options.zig");
 
 const BeamThreadFn = *const fn (?*anyopaque) callconv(.C) ?*anyopaque;
 
@@ -86,17 +87,18 @@ pub fn Thread(comptime function: anytype) type {
         payload: Payload,
         result: ?*Result = null,
 
-        pub fn launch(comptime ThreadResource: type, env: beam.env, argc: c_int, args: [*c]const e.ErlNifTerm, opts: anytype) !beam.term {
+        pub fn launch(comptime ThreadResource: type, argc: c_int, args: [*c]const e.ErlNifTerm, opts: anytype) !beam.term {
             // assign the context, as the self() function needs this to be correct.
-            beam.context = .synchronous;
+            // note that opts MUST contain `payload_opts` field, which is a 
+            beam.context.mode = .synchronous;
 
             // thread struct necessities
-            const allocator = find_allocator(opts);
+            const allocator = options.allocator(opts);
             const thread_env = beam.alloc_env();
 
             // initialize the payload
             var error_index: u8 = undefined;
-            const payload = beam.payload.build(function, thread_env, argc, args, &error_index, opts.arg_opts) catch {
+            const payload = beam.payload.build(function, argc, args, &error_index, opts, opts.payload_opts) catch {
                 @panic("errors not implemented yet");
             };
 
@@ -106,17 +108,17 @@ pub fn Thread(comptime function: anytype) type {
             const threadptr = try beam.allocator.create(This);
             errdefer beam.allocator.destroy(threadptr);
 
-            threadptr.* = .{ .env = thread_env, .pid = try beam.self(env), .payload = payload, .allocator = allocator, .result = try allocator.create(Result) };
+            threadptr.* = .{ .env = thread_env, .pid = try beam.self(opts), .payload = payload, .allocator = allocator, .result = try allocator.create(Result) };
 
             // build the resource and bind it to beam term.
-            const resource = try ThreadResource.create(threadptr, .{});
-            const res_term = beam.make(env, resource, .{});
+            const resource = try ThreadResource.create(threadptr, opts);
+            const res_term = beam.make(resource, opts);
 
             // copy the resource term into a binary so that we can resend it later.  We can't
             // directly do an env copy on this term, because that will cause it to have an
             // extra ownership count on it, and will prevent it from being destroyed and
             // we won't be able to trigger the resource destructor.
-            threadptr.refbin = try beam.term_to_binary(env, res_term);
+            threadptr.refbin = try beam.term_to_binary(res_term, opts);
             errdefer beam.release_binary(&threadptr.refbin);
 
             // set the self_pid function
@@ -125,7 +127,7 @@ pub fn Thread(comptime function: anytype) type {
             // launch the thread
             _ = e.enif_thread_create(name_ptr(), &threadptr.tid, wrapped, threadptr, null);
 
-            threadptr.state.wait_until(.{ .running, .finished }, .{}) catch |err| {
+            threadptr.state.wait_until(.{ .running, .finished }, opts) catch |err| {
                 // TODO: do a thread exit operation here.
                 return err;
             };
@@ -335,7 +337,3 @@ pub fn yield() !void {
     }
 }
 
-// utilities
-fn find_allocator(opts: anytype) std.mem.Allocator {
-    return if (@hasField(@TypeOf(opts), "allocator")) opts.allocator else beam.allocator;
-}

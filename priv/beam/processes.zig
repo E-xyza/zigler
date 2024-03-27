@@ -1,5 +1,6 @@
 const beam = @import("beam.zig");
 const e = @import("erl_nif");
+const options = @import("options.zig");
 const threads = @import("threads.zig");
 
 const PidError = error{ NotProcessBound, NotDelivered };
@@ -14,7 +15,7 @@ pub fn self(opts: anytype) PidError!beam.pid {
             return error.NotProcessBound;
         },
         else => {
-            if (e.enif_self(env(opts), &pid)) |_| {
+            if (e.enif_self(options.env(opts), &pid)) |_| {
                 return pid;
             } else {
                 return error.NotProcessBound;
@@ -26,6 +27,12 @@ pub fn self(opts: anytype) PidError!beam.pid {
 pub fn send(dest: beam.pid, content: anytype, opts: anytype) PidError!beam.term {
     beam.ignore_when_sema();
 
+    defer {
+        if (options.should_clear(opts)) {
+            beam.clear(options.env(opts));
+        }
+    }
+
     const term = beam.make(content, opts);
 
     // enif_send is not const-correct so we have to assign a variable to the static
@@ -36,19 +43,11 @@ pub fn send(dest: beam.pid, content: anytype, opts: anytype) PidError!beam.term 
 
     switch (beam.context.mode) {
         .synchronous, .callback, .dirty => {
-            if (e.enif_send(env(opts), &pid, null, term.v) == 0) return error.NotDelivered;
+            if (e.enif_send(options.env(opts), &pid, null, term.v) == 0) return error.NotDelivered;
         },
-        .threaded, .yielding => {
-            if (e.enif_send(null, &pid, env(opts), term.v) == 0) return error.NotDelivered;
+        .threaded, .yielding, .dirty_yield => {
+            if (e.enif_send(null, &pid, options.env(opts), term.v) == 0) return error.NotDelivered;
         },
     }
     return term;
-}
-
-inline fn env(opts: anytype) beam.env {
-    const T = @TypeOf(opts);
-    if (@hasField(T, "env")) {
-        return opts.env;
-    }
-    return beam.context.env;
 }

@@ -18,6 +18,7 @@
 const e = @import("erl_nif");
 const std = @import("std");
 const BeamMutex = @import("mutex.zig").BeamMutex;
+const options = @import("options.zig");
 
 /// <!-- ignore -->
 pub inline fn ignore_when_sema() void {
@@ -138,8 +139,8 @@ pub const payload = @import("payload.zig");
 /// ```
 ///
 /// ```zig
-/// pub fn do_get(env: beam.env, term: beam.term) void {
-///     const x: i32 = beam.get(i32, env, term, .{});  // -> x = 47
+/// pub fn do_get(term: beam.term) void {
+///     const x: i32 = beam.get(i32, term, .{});  // -> x = 47
 ///     ...
 /// }
 /// ```
@@ -157,8 +158,8 @@ pub const payload = @import("payload.zig");
 ///
 /// ```zig
 /// const EnumType = enum {foo, bar};
-/// pub fn do_get(env: beam.env, term: beam.term) void {
-///     const x: EnumType = beam.get(EnumType, env, term, .{});  // -> x = .foo
+/// pub fn do_get(term: beam.term) void {
+///     const x: EnumType = beam.get(EnumType, term, .{});  // -> x = .foo
 ///     ...
 /// }
 /// ```
@@ -175,8 +176,8 @@ pub const payload = @import("payload.zig");
 /// ```
 ///
 /// ```zig
-/// pub fn do_get(env: beam.env, term: beam.term) void {
-///     const x: f32 = beam.get(f32, env, term, .{});  // -> x = 47.0
+/// pub fn do_get(term: beam.term) void {
+///     const x: f32 = beam.get(f32, term, .{});  // -> x = 47.0
 ///     ...
 /// }
 /// ```
@@ -208,8 +209,8 @@ pub const payload = @import("payload.zig");
 ///   bar: InnerType
 /// };
 ///
-/// pub fn do_get(env: beam.env, term: beam.term) void {
-///     const x = beam.get(StructType, env, term, .{});  // -> x = .{foo: 47, bar: .{baz: .quux}}
+/// pub fn do_get(term: beam.term) void {
+///     const x = beam.get(StructType, term, .{});  // -> x = .{foo: 47, bar: .{baz: .quux}}
 ///     ...
 /// }
 /// ```
@@ -224,8 +225,8 @@ pub const payload = @import("payload.zig");
 /// ```
 ///
 /// ```zig
-/// pub fn do_get(env: beam.env, term: beam.term) void {
-///     const x: bool = beam.get(bool, env, term, .{});  // -> x = true
+/// pub fn do_get(term: beam.term) void {
+///     const x: bool = beam.get(bool, term, .{});  // -> x = true
 ///     ...
 /// }
 /// ```
@@ -248,8 +249,8 @@ pub const payload = @import("payload.zig");
 /// ```
 ///
 /// ```zig
-/// pub fn do_get(env: beam.env, term: beam.term) void {
-///     const x = beam.get([3]i32, env, term, .{});  // -> x = .{47, 48, 49}
+/// pub fn do_get(term: beam.term) void {
+///     const x = beam.get([3]i32, term, .{});  // -> x = .{47, 48, 49}
 ///     ...
 /// }
 /// ```
@@ -269,8 +270,8 @@ pub const payload = @import("payload.zig");
 /// ```zig
 /// const MyStruct = struct { foo: i32 };
 ///
-/// pub fn do_get(env: beam.env, term: beam.term) void {
-///     const x = beam.get(*MyStruct, env, term, .{});  // -> x = a pointer to .{.foo = 47}
+/// pub fn do_get(term: beam.term) void {
+///     const x = beam.get(*MyStruct, term, .{});  // -> x = a pointer to .{.foo = 47}
 ///     ...
 /// }
 /// ```
@@ -290,8 +291,8 @@ pub const payload = @import("payload.zig");
 /// ```
 ///
 /// ```zig
-/// pub fn do_get(env: beam.env, term: beam.term) void {
-///     const x = beam.get([]i32, env, term, .{});  // -> x = a pointer to .{47, 48, 49}
+/// pub fn do_get(term: beam.term) void {
+///     const x = beam.get([]i32, term, .{});  // -> x = a pointer to .{47, 48, 49}
 ///     ...
 /// }
 /// ```
@@ -318,8 +319,8 @@ pub const payload = @import("payload.zig");
 /// ```
 ///
 /// ```zig
-/// pub fn do_get(env: beam.env, term: beam.term) void {
-///     const x = beam.get([*]i32, env, term, .{});  // -> x = a pointer to .{47, 48, 49}
+/// pub fn do_get(term: beam.term) void {
+///     const x = beam.get([*]i32, term, .{});  // -> x = a pointer to .{47, 48, 49}
 ///     ...
 /// }
 /// ```
@@ -346,8 +347,8 @@ pub const payload = @import("payload.zig");
 /// ```
 ///
 /// ```zig
-/// pub fn do_get(env: beam.env, term: beam.term) void {
-///     const x = beam.get([*]i32, env, term, .{});  // -> x = a pointer to .{47, 48, 49}
+/// pub fn do_get(term: beam.term) void {
+///     const x = beam.get([*]i32, term, .{});  // -> x = a pointer to .{47, 48, 49}
 ///     ...
 /// }
 /// ```
@@ -364,8 +365,8 @@ pub const payload = @import("payload.zig");
 /// ```
 ///
 /// ```zig
-/// pub fn do_get(env: beam.env, term: beam.term) void {
-///     const x = beam.get(?i32, env, term, .{});  // -> x = null
+/// pub fn do_get(term: beam.term) void {
+///     const x = beam.get(?i32, term, .{});  // -> x = null
 ///     ...
 /// }
 /// ```
@@ -427,8 +428,8 @@ pub const get = get_.get;
 /// #### Example
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
-///   return beam.make(env, 47, .{});
+/// pub fn do_make() beam.term {
+///   return beam.make(47, .{});
 /// }
 /// ```
 ///
@@ -446,8 +447,8 @@ pub const get = get_.get;
 /// #### Example
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
-///   return beam.make(env, 47.0, .{});
+/// pub fn do_make() beam.term {
+///   return beam.make(47.0, .{});
 /// }
 /// ```
 ///
@@ -462,8 +463,8 @@ pub const get = get_.get;
 /// #### Example
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
-///   return beam.make(env, true, .{});
+/// pub fn do_make() beam.term {
+///   return beam.make(true, .{});
 /// }
 /// ```
 ///
@@ -484,9 +485,9 @@ pub const get = get_.get;
 /// ```zig
 /// const EnumType = enum {foo, bar};
 ///
-/// pub fn do_make(env: beam.env) beam.term {
+/// pub fn do_make() beam.term {
 ///   const e = EnumType.foo;
-///   return beam.make(env, e, .{});
+///   return beam.make(e, .{});
 /// }
 /// ```
 ///
@@ -495,16 +496,16 @@ pub const get = get_.get;
 /// ```zig
 /// const ErrorType = error {foo, bar};
 ///
-/// pub fn do_make(env: beam.env) beam.term {
-///   return beam.make(env, error.foo, .{});
+/// pub fn do_make() beam.term {
+///   return beam.make(error.foo, .{});
 /// }
 /// ```
 ///
 /// with an enum literal:
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
-///   return beam.make(env, .foo, .{});
+/// pub fn do_make() beam.term {
+///   return beam.make(.foo, .{});
 /// }
 /// ```
 ///
@@ -528,17 +529,17 @@ pub const get = get_.get;
 /// with null literal:
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
-///   return beam.make(env, null, .{});
+/// pub fn do_make() beam.term {
+///   return beam.make(null, .{});
 /// }
 /// ```
 ///
 /// with an optional type:
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
+/// pub fn do_make() beam.term {
 ///   const value: ?i32 = null;
-///   return beam.make(env, value, .{});
+///   return beam.make(value, .{});
 /// }
 /// ```
 ///
@@ -564,8 +565,8 @@ pub const get = get_.get;
 /// array, u8, output as `t:binary/0`:
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
-///   return beam.make(env, "foo", .{});
+/// pub fn do_make() beam.term {
+///   return beam.make("foo", .{});
 /// }
 /// ```
 ///
@@ -576,8 +577,8 @@ pub const get = get_.get;
 /// array, u8, output as `t:list/0`:
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
-///   return beam.make(env, "foo", .{.output_type = .list});
+/// pub fn do_make() beam.term {
+///   return beam.make("foo", .{.output_type = .list});
 /// }
 /// ```
 ///
@@ -588,9 +589,9 @@ pub const get = get_.get;
 /// array, u16, output as `t:list/0`:
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
+/// pub fn do_make() beam.term {
 ///   const list = [_]u16{47, 48, 49}
-///   return beam.make(env, list, .{});
+///   return beam.make(list, .{});
 /// }
 /// ```
 ///
@@ -601,9 +602,9 @@ pub const get = get_.get;
 /// array, u16, output as `t:binary/0`:
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
+/// pub fn do_make() beam.term {
 ///   const list = [_]u16{47, 48, 49}
-///   return beam.make(env, list, .{.output_type = .binary});
+///   return beam.make(list, .{.output_type = .binary});
 /// }
 /// ```
 ///
@@ -624,8 +625,8 @@ pub const get = get_.get;
 /// #### Examples
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
-///   return beam.make(env, .{.foo = 123, .bar = "bar", .baz = .baz}, .{});
+/// pub fn do_make() beam.term {
+///   return beam.make(.{.foo = 123, .bar = "bar", .baz = .baz}, .{});
 /// }
 /// ```
 ///
@@ -644,8 +645,8 @@ pub const get = get_.get;
 /// #### Examples
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
-///   return beam.make(env, .{.ok, "foo", 47}, .{});
+/// pub fn do_make() beam.term {
+///   return beam.make(.{.ok, "foo", 47}, .{});
 /// }
 /// ```
 ///
@@ -664,9 +665,9 @@ pub const get = get_.get;
 /// #### Examples
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
+/// pub fn do_make() beam.term {
 ///   const array = [_]i32{47, 48, 49}
-///   return beam.make(env, &array, .{});
+///   return beam.make(&array, .{});
 /// }
 /// ```
 ///
@@ -689,9 +690,9 @@ pub const get = get_.get;
 /// #### Examples
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
+/// pub fn do_make() beam.term {
 ///   const slice = [_]i32{47, 48, 49}[0..]; // note this is now a slice
-///   return beam.make(env, &slice, .{});
+///   return beam.make(&slice, .{});
 /// }
 /// ```
 ///
@@ -713,10 +714,10 @@ pub const get = get_.get;
 /// #### Examples
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
+/// pub fn do_make() beam.term {
 ///   const slice = [_]i32{47, 48, 49, 0}[0..];
 ///   const ptr = @ptrCast([*:0], &slice.ptr);
-///   return beam.make(env, &slice, .{});
+///   return beam.make(&slice, .{});
 /// }
 /// ```
 ///
@@ -737,10 +738,10 @@ pub const get = get_.get;
 /// #### Examples
 ///
 /// ```zig
-/// pub fn do_make(env: beam.env) beam.term {
+/// pub fn do_make() beam.term {
 ///   const slice = [_]i32{47, 48, 49, 0}[0..];
 ///   const ptr = @ptrCast([*:0], &slice.ptr);
-///   return beam.make(env, &slice, .{});
+///   return beam.make(&slice, .{});
 /// }
 /// ```
 ///
@@ -996,6 +997,13 @@ pub const alloc_env = e.enif_alloc_env;
 pub const free_env = e.enif_free_env;
 
 /// <!-- topic: Env -->
+/// Synonym for [`e.enif_clear_env`](https://www.erlang.org/doc/man/erl_nif.html#enif_clear_env)
+///
+/// Note: unlike for [`e.enif_send`] you do not need to call this function after calling
+/// [`send`]
+pub const clear_env = e.enif_clear_env;
+
+/// <!-- topic: Env -->
 /// copies a term from one env to to another
 pub fn copy(env_: env, term_: term) term {
     return .{ .v = e.enif_make_copy(env_, term_.v) };
@@ -1018,13 +1026,15 @@ pub fn copy(env_: env, term_: term) term {
 ///   the BEAM scheduler
 /// - `.callback`: the execution context of module setup/teardown callbacks or
 ///   a resource destruction callback
+/// - `.dirty_yield`: the execution context of a dirty nif whose parent process
+///   has been terminated but the nif is still running.
 ///
 /// See [`context`](#context) for the threadlocal variable that stores this.
 ///
 /// > #### raw beam functions {: .warning }
 /// >
 /// > nifs called in `raw` mode are not assigned an execution context.
-pub const ContextMode = enum { synchronous, threaded, dirty, yielding, callback };
+pub const ContextMode = enum { synchronous, threaded, dirty, yielding, callback, dirty_yield };
 
 /// <!-- topic: Context -->
 ///
@@ -1151,9 +1161,7 @@ pub fn WrappedResult(comptime FunctionType: type) type {
 /// The equivalent of [`error`](https://www.erlang.org/doc/man/erlang.html#error-1)
 /// in erlang.
 pub fn raise_exception(reason: anytype, opts: anytype) term {
-    const T = @TypeOf(opts);
-    const env_ = if (@hasField(T, "env")) opts.env else context.env;
-    return term{ .v = e.enif_raise_exception(env_, make(reason, opts).v) };
+    return term{ .v = e.enif_raise_exception(options.env(opts), make(reason, opts).v) };
 }
 
 /// <!-- topic: Exceptions -->
@@ -1172,8 +1180,7 @@ pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: 
         @compileError("elixir exceptions must be structs");
     }
 
-    const T = @TypeOf(opts);
-    var env_ = if (@hasField(T, "env")) opts.env else context.env;
+    var env_ = options.env(opts);
 
     const name = comptime name: {
         break :name "Elixir." ++ module;

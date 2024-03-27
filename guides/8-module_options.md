@@ -51,16 +51,14 @@ defmodule ZiglerTest.LoadTest do
 
   var priv_data: u64 = undefined; 
 
-  pub fn load_function(env: beam.env, priv_data_ptr: [*c]?*anyopaque, init_term: beam.term) c_int {
+  pub fn load_function(priv_data_ptr: [*c]?*anyopaque, init_term: beam.term, _: anytype) c_int {
       priv_data = 47;
       priv_data_ptr.* = &priv_data;
-      _ = init_term;
-      _ = env;
       return 0;
   }
 
-  pub fn get_priv_data(env: beam.env) u64 {
-      const priv_data_ptr: *u64 = @ptrCast(@alignCast(e.enif_priv_data(env)));
+  pub fn get_priv_data() u64 {
+      const priv_data_ptr: *u64 = @ptrCast(@alignCast(e.enif_priv_data(beam.context.env)));
       return priv_data_ptr.*;
   }
 

@@ -26,7 +26,7 @@ defmodule ZiglerTest.Concurrency.ThreadedManualYieldingTest do
     }
 
     while (true) {
-      _ = beam.yield(env) catch { return; };
+      _ = beam.yield() catch { return; };
     }
   }
 

@@ -1,5 +1,6 @@
 const std = @import("std");
 const beam = @import("beam.zig");
+const options = @import("options.zig");
 //const resource = @import("resource.zig");
 
 const CPointerTags = enum { One, Many };
@@ -94,7 +95,7 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
 }
 
 fn cleanup_resource(res: anytype, opts: anytype) void {
-    if (should_cleanup(opts)) {
+    if (options.should_cleanup(opts)) {
         res.release();
     }
 }
@@ -103,10 +104,6 @@ fn maybe_cleanup_pointer_with_function(ptr: anytype, opts: anytype) void {
     const T = @TypeOf(opts.cleanup);
     switch (@typeInfo(T)) {
         .Null => return,
-        .Fn => opts.cleanup(ptr, opts),
+        .Fn => options.cleanup(ptr, opts),
     }
-}
-
-fn should_cleanup(opts: anytype) bool {
-    return if (@hasField(@TypeOf(opts), "cleanup")) opts.cleanup else true;
 }

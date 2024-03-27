@@ -107,9 +107,9 @@ defmodule Zig do
     ~Z\"""
     const beam = @import("beam");
 
-    pub fn my_func(env: beam.env, val_term: beam.term) !beam.term {
-        const val = try beam.get(i64, env, val_term, .{});
-        return beam.make(env, val + 1, .{});
+    pub fn my_func(val_term: beam.term) !beam.term {
+        const val = try beam.get(i64, val_term, .{});
+        return beam.make(val + 1, .{});
     }
     \"""
   end

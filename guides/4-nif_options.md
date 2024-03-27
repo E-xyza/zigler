@@ -70,12 +70,12 @@ defmodule RawCallTest do
   const beam = @import("beam");
   const e = @import("erl_nif");
 
-  pub fn raw_call_beam(env: beam.env, count: c_int, list: [*]const beam.term) beam.term {
-      return beam.make(env, .{.count = count, .item = list[0]}, .{});
+  pub fn raw_call_beam(count: c_int, list: [*]const beam.term) beam.term {
+      return beam.make(.{.count = count, .item = list[0]}, .{});
   }
 
-  pub fn raw_call_erl_nif(env: beam.env, count: c_int, list: [*]const e.ErlNifTerm) e.ErlNifTerm {
-      return beam.make(env, .{.count = count, .item = beam.term{.v = list[0]}}, .{}).v;
+  pub fn raw_call_erl_nif(count: c_int, list: [*]const e.ErlNifTerm) e.ErlNifTerm {
+      return beam.make(.{.count = count, .item = beam.term{.v = list[0]}}, .{}).v;
   }
   """
 
@@ -259,9 +259,9 @@ defmodule Override do
 
   ~Z"""
   const beam = @import("beam");
-  pub fn typespec_override(env: beam.env, term: beam.term) !beam.term {
-      const input = try beam.get(u32, env, term, .{});
-      return beam.make(env, input + 1, .{});
+  pub fn typespec_override(term: beam.term) !beam.term {
+      const input = try beam.get(u32, term, .{});
+      return beam.make(input + 1, .{});
   }
   """
 end

@@ -39,23 +39,17 @@ defmodule DirtyCpu do
   const beam = @import("beam");
   const e = @import("erl_nif");
   // this is a dirty_cpu nif.
-  pub fn long_running(env: beam.env, pid: beam.pid) !void {
+  pub fn long_running(pid: beam.pid) !void {
       // following code triggered when process is killed.
       defer {
-        // note that the environment of the parent process is dead,
-        // so we have to manually create a new environment and send
-        // from it.
-
-        const env2 = beam.alloc_env();
-        const msg = beam.make(env2, .killed, .{});
+        const msg = beam.make(.killed, .{});
         var pid2 = pid;
-        _ = e.enif_send(null, &pid2, env2, msg.v);
-        beam.free_env(env2);
+        _ = e.enif_send(&pid2, msg.v, .{});
       }
 
       while(true) {
-          _ = try beam.send(env, pid, .unblock);
-          try beam.yield(env);
+          _ = try beam.send(pid, .unblock, .{});
+          try beam.yield();
       }
   }
   """
@@ -120,18 +114,16 @@ defmodule Threaded do
   ~Z"""
   const beam = @import("beam");
   const std = @import("std");
-  pub fn long_running(env: beam.env, pid: beam.pid) !void {
+  pub fn long_running(pid: beam.pid) !void {
       // following code triggered when process is killed.
-      // note that unlike dirty functions, the lifetime of 
-      // env matches the lifetime of the function.
 
       defer {
-        _ = beam.send(env, pid, .killed) catch {};
+        _ = beam.send(pid, .killed, .{}) catch {};
       }
 
       while(true) {
-          _ = try beam.send(env, pid, .unblock);
-          try beam.yield(env);
+          _ = try beam.send(pid, .unblock, .{});
+          try beam.yield();
       }
   }
   """

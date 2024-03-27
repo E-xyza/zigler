@@ -79,12 +79,12 @@ of the resulting data is `native`.
 ~Z"""
 const beam = @import("beam");
 
-pub fn return_slice_binary(env: beam.env, input: []f32) beam.term {
+pub fn return_slice_binary(input: []f32) beam.term {
   // set each item in the array:
   for (input, 0..) |*item, index| {
     item.* = item.* + @as(f32, @floatFromInt(index));
   }
-  return beam.make(env, input, .{.output_type = .binary});
+  return beam.make(input, .{.output_type = .binary});
 }
 """
 
@@ -170,8 +170,8 @@ Enum literals can be converted to atoms using [`beam.make`](beam.html#make).
 
 ```elixir
 ~Z"""
-pub fn make_literal(env: beam.env) beam.term {
-  return beam.make(env, .some_new_literal, .{});
+pub fn make_literal() beam.term {
+  return beam.make(.some_new_literal, .{});
 }
 """
 
@@ -219,8 +219,8 @@ It's possible to return anonymous structs as well, using
 
 ```elixir
 ~Z"""
-pub fn anonymous_struct(env: beam.env) beam.term {
-    return beam.make(env, .{.foo = .bar}, .{});
+pub fn anonymous_struct() beam.term {
+    return beam.make(.{.foo = .bar}, .{});
 }
 """
 
@@ -237,8 +237,8 @@ BEAM tuples using zig tuples, when passed to [`beam.make`](beam.html#make).
 
 ```elixir
 ~Z"""
-pub fn tuple(env: beam.env) beam.term {
-    return beam.make(env, .{.ok, 47}, .{});
+pub fn tuple() beam.term {
+    return beam.make(.{.ok, 47}, .{});
 }
 """
 
@@ -454,14 +454,14 @@ pub fn leaks() !*Point2D {
     return point;
 }
 
-pub fn no_leak(env: beam.env) !beam.term {
+pub fn no_leak() !beam.term {
     var point = try beam.allocator.create(Point2D);
     defer beam.allocator.destroy(point);
 
     point.x = 47;
     point.y = 50;
 
-    return beam.make(env, point, .{});
+    return beam.make(point, .{});
 }
 """
 

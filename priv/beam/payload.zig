@@ -49,13 +49,13 @@ fn arity(fun: anytype) u8 {
 // builds up a payload tuple for a function.  the error_index parameter is an in-out parameter that stores the
 // index of which parameter failed to be stuffed into the payload tuple.  Only access it in the case that
 // build function fails.
-pub fn build(fun: anytype, argc: c_int, args: [*c]const e.ErlNifTerm, error_index: *u8, build_opts: anytype) !Payload(fun) {
+pub fn build(fun: anytype, argc: c_int, args: [*c]const e.ErlNifTerm, error_index: *u8, payload_opts: anytype) !Payload(fun) {
     // assertions
     const arity_ = comptime arity(fun);
     if (argc != arity_) {
         @panic("nif function called with wrong arity");
     }
-    if (build_opts.len != arity_) {
+    if (payload_opts.len != arity_) {
         @compileError("mismatched arity and build opts");
     }
 
@@ -63,7 +63,7 @@ pub fn build(fun: anytype, argc: c_int, args: [*c]const e.ErlNifTerm, error_inde
     comptime var index = 0;
     inline while (index < arity_) : (index += 1) {
         error_index.* = index;
-        result[index] = try beam.get(@TypeOf(result[index]), .{ .v = args[index] }, build_opts[index]);
+        result[index] = try beam.get(@TypeOf(result[index]), .{ .v = args[index] }, payload_opts[index]);
     }
     return result;
 }
