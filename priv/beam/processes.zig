@@ -27,12 +27,6 @@ pub fn self(opts: anytype) PidError!beam.pid {
 pub fn send(dest: beam.pid, content: anytype, opts: anytype) PidError!beam.term {
     beam.ignore_when_sema();
 
-    defer {
-        if (options.should_clear(opts)) {
-            beam.clear(options.env(opts));
-        }
-    }
-
     const term = beam.make(content, opts);
 
     // enif_send is not const-correct so we have to assign a variable to the static
@@ -46,6 +40,12 @@ pub fn send(dest: beam.pid, content: anytype, opts: anytype) PidError!beam.term 
             if (e.enif_send(options.env(opts), &pid, null, term.v) == 0) return error.NotDelivered;
         },
         .threaded, .yielding, .dirty_yield => {
+            defer {
+                if (options.should_clear(opts)) {
+                    beam.clear_env(options.env(opts));
+                }
+            }
+
             if (e.enif_send(null, &pid, options.env(opts), term.v) == 0) return error.NotDelivered;
         },
     }

@@ -15,19 +15,6 @@ const CreateOpts = struct {
     released: bool = true,
 };
 
-const OutputType = enum {
-    default,
-    binary,
-
-    pub fn select(opts: anytype) OutputType {
-        if (@hasField(@TypeOf(opts), "output_type")) {
-            return opts.output_type;
-        } else {
-            return .default;
-        }
-    }
-};
-
 const ResourceError = error{incorrect_resource_type};
 
 pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOpts) type {
@@ -141,8 +128,9 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         }
 
         pub fn make(self: @This(), make_opts: anytype) beam.term {
-            const output_type = OutputType.select(make_opts);
+            const output_type = options.output(make_opts);
             defer self.maybe_release();
+
             switch (output_type) {
                 .default => {
                     return .{ .v = e.enif_make_resource(options.env(make_opts), @ptrCast(self.__payload)) };
@@ -153,6 +141,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                     const bytes: []const u8 = encoder(self.__payload);
                     return .{ .v = e.enif_make_resource_binary(options.env(make_opts), @ptrCast(self.__payload), bytes.ptr, bytes.len) };
                 },
+                else => @panic("resources only support default and binary output types")
             }
         }
 
@@ -160,7 +149,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
             return switch (T) {
                 []const u8 => payload.*,
                 []u8 => payload.*,
-                else => @compileError("a resource only has default encoder for strings"),
+                else => @panic("a resource only has default encoder for strings"),
             };
         }
 

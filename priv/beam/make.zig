@@ -10,7 +10,7 @@ const OutputType = enum {
     binary,
     fn select(opts: anytype) OutputType {
         if (@hasField(@TypeOf(opts), "output_type")) {
-            return opts.output_type;
+            return opts.output;
         } else {
             return .default;
         }

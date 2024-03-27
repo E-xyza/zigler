@@ -578,7 +578,7 @@ pub const get = get_.get;
 ///
 /// ```zig
 /// pub fn do_make() beam.term {
-///   return beam.make("foo", .{.output_type = .list});
+///   return beam.make("foo", .{.output = .list});
 /// }
 /// ```
 ///
@@ -604,7 +604,7 @@ pub const get = get_.get;
 /// ```zig
 /// pub fn do_make() beam.term {
 ///   const list = [_]u16{47, 48, 49}
-///   return beam.make(list, .{.output_type = .binary});
+///   return beam.make(list, .{.output = .binary});
 /// }
 /// ```
 ///
@@ -838,6 +838,11 @@ pub const self = processes.self;
 /// [`e.enif_send`](https://www.erlang.org/doc/man/erl_nif.html#enif_send).
 /// that also serializes the message term using [`make`](#make)
 ///
+/// ### Options
+///
+/// - `clear` (boolean): whether the environment should be cleared after
+///   sending the message.  Defaults to `true`.  See information befow.
+///
 /// > ### send from raw nifs or out of bounds callbacks {: .warning }
 /// >
 /// > This function has undefined behaviour when called from `raw` nifs or
@@ -847,6 +852,14 @@ pub const self = processes.self;
 /// > in these cases, use `e.enif_send` directly instead.  Note you may
 /// > have to create the `beam.term` from an environment *first*.
 ///
+/// > ### clearing your environment {: .info }
+/// >
+/// > normally when calling `e.enif_send` you would need to call `e.enif_clear_env`
+/// > to recycle the environment after sending.  You do not need to do this
+/// > for this function; it gets called automatically.  If you are certain that
+/// > the send operation is the last operation in your function call, you may
+/// > call the function as `send(data, .{.clear = false})` and the clear_env
+/// > function will not be called.
 pub const send = processes.send;
 
 // interfacing with functions

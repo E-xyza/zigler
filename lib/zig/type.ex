@@ -247,7 +247,7 @@ defprotocol Zig.Type do
 
       def get_result(type, opts) do
         return_type = Keyword.fetch!(opts, :type)
-        "break :get_result beam.make(result, .{.output_type = .#{return_type}}).v;"
+        "break :get_result beam.make(result, .{.output = .#{return_type}}).v;"
       end
 
       def needs_make?(_), do: true
@@ -330,19 +330,19 @@ defimpl Zig.Type, for: Atom do
       {arg, nil} ->
         """
         _ = result;
-        break :get_result beam.make(payload[#{arg}], .{.output_type = .#{return_type}}).v;
+        break :get_result beam.make(payload[#{arg}], .{.output = .#{return_type}}).v;
         """
 
       {arg, {:arg, length_arg}} ->
         """
         _ = result;
-        break :get_result beam.make(payload[#{arg}][0..@intCast(payload[#{length_arg}])], .{.output_type = .#{return_type}}).v;
+        break :get_result beam.make(payload[#{arg}][0..@intCast(payload[#{length_arg}])], .{.output = .#{return_type}}).v;
         """
 
       {arg, length} when is_integer(length) ->
         """
         _ = result;
-        break :get_result beam.make(payload[#{arg}][0..#{length})], .{.output_type = .#{return_type}}).v;
+        break :get_result beam.make(payload[#{arg}][0..#{length})], .{.output = .#{return_type}}).v;
         """
     end
   end
