@@ -139,14 +139,6 @@ defmodule Zig.Compiler do
   zig_alias_template = Path.join(__DIR__, "templates/alias.zig.eex")
   EEx.function_from_file(:defp, :create_aliases, zig_alias_template, [:assigns])
 
-  defp dependencies_for(assemblies) do
-    Enum.map(assemblies, fn assembly ->
-      quote do
-        @external_resource unquote(assembly.source)
-      end
-    end)
-  end
-
   #############################################################################
   ## STEPS
 
