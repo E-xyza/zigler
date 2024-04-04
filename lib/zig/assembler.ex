@@ -33,11 +33,12 @@ defmodule Zig.Assembler do
 
     opts = Keyword.merge([to: directory], opts)
 
-    opts = if Keyword.has_key?(opts, :link_lib) do
-      Keyword.put(opts, :link_lib, adjust_link_lib(opts[:link_lib], opts[:from]))
-    end
+    opts =
+      if Keyword.has_key?(opts, :link_lib) do
+        Keyword.put(opts, :link_lib, adjust_link_lib(opts[:link_lib], opts[:from]))
+      end
 
-    #Enum.each(opts[:link_lib], fn 
+    # Enum.each(opts[:link_lib], fn 
     #  {:system, _} -> :pass
     #  lib -> 
     #    target = Path.join(opts[:to], lib)
@@ -46,7 +47,7 @@ defmodule Zig.Assembler do
     #      |> Path.join(lib)
     #      |> File.ln_s!(target)
     #    end
-    #end)
+    # end)
 
     Builder.build(module, opts)
   end

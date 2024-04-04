@@ -1,4 +1,7 @@
-ZiglerTest.SupportContent.ensure_lib("test/integration/cxx/libtest.a", "test/integration/cxx/test.zig")
+ZiglerTest.SupportContent.ensure_lib(
+  "test/integration/cxx/libtest.a",
+  "test/integration/cxx/test.zig"
+)
 
 defmodule ZiglerTest.Integration.CXX.LinkLibLocalTest do
   use ZiglerTest.IntegrationCase, async: true

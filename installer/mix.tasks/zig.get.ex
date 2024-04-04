@@ -159,13 +159,16 @@ defmodule Mix.Tasks.Zig.Get do
   end
 
   defp get_public_key(%{verify: false} = opts), do: opts
+
   defp get_public_key(opts) do
     # this might be fragile.
-    public_key = http_get!("https://ziglang.org/download/")
-    |> Floki.parse_document!()
-    |> Floki.find("[role=\"main\"] .container pre code")
-    |> Floki.text
-    |> String.trim
+    public_key =
+      http_get!("https://ziglang.org/download/")
+      |> Floki.parse_document!()
+      |> Floki.find("[role=\"main\"] .container pre code")
+      |> Floki.text()
+      |> String.trim()
+
     %{opts | public_key: public_key}
   end
 
@@ -229,15 +232,18 @@ defmodule Mix.Tasks.Zig.Get do
         ],
         body_format: :binary
       )
+
     body
   end
 
   defp fetch_signature!(%{verify: false} = opts), do: opts
+
   defp fetch_signature!(opts) do
     %{opts | signature: http_get!(opts.url ++ ~c'.minisig')}
   end
 
   defp verify_signature!({bin, %{verify: false}}), do: bin
+
   defp verify_signature!({bin, opts}) do
     Minisign.verify!(bin, opts.signature, opts.public_key)
     bin
