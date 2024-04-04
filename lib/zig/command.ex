@@ -91,7 +91,7 @@ defmodule Zig.Command do
     sema_command = "run #{sema_file} #{deps} #{mods} -lc #{link_opts(opts)}"
 
     # Need to make this an OK tuple
-    {:ok, run_zig(sema_command, stderr_to_stdout: true)}
+    {:ok, run_zig(sema_command, Keyword.put(opts, :stderr_to_stdout, true))}
   end
 
   defp package_deps(packages) do
@@ -118,8 +118,8 @@ defmodule Zig.Command do
     |> Enum.map_join(" ", &"-I #{&1}")
   end
 
-  def fmt(file) do
-    run_zig("fmt #{file}", [])
+  def fmt(file, opts \\ []) do
+    run_zig("fmt #{file}", opts)
   end
 
   def compile(module, opts) do
@@ -132,7 +132,7 @@ defmodule Zig.Command do
 
     lib_dir = Path.join(so_dir, "lib")
 
-    run_zig("build --prefix #{so_dir}", cd: assembly_dir)
+    run_zig("build --prefix #{so_dir}", Keyword.put(opts, :cd, assembly_dir))
 
     src_lib_name = Path.join(lib_dir, src_lib_name(module))
     dst_lib_name = Path.join(lib_dir, dst_lib_name(module))

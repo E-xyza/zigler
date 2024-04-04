@@ -1,7 +1,4 @@
 defmodule ZiglerTest.SupportContent do
-
-  @zig_dir_path Path.expand("../../zig", Path.dirname(__ENV__.file))
-
   def ensure_lib(path_to_lib, path_to_code) do
     unless File.exists?(path_to_lib) do
       zig_path = Zig.Command.executable_path()

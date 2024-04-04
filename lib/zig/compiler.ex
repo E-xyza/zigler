@@ -70,7 +70,15 @@ defmodule Zig.Compiler do
 
     with true <- assembled,
          assemble_opts =
-           Keyword.take(opts, [:link_lib, :build_opts, :stage1, :include_dir, :c_src, :packages]),
+           Keyword.take(opts, [
+             :link_lib,
+             :build_opts,
+             :stage1,
+             :include_dir,
+             :c_src,
+             :packages,
+             :local_zig
+           ]),
          assemble_opts = Keyword.merge(assemble_opts, from: code_dir),
          Assembler.assemble(module, assemble_opts),
          true <- precompiled,
@@ -128,7 +136,7 @@ defmodule Zig.Compiler do
       Zig.Module.render_zig(nif_functions, resource_opts, callbacks, module)
     )
 
-    Command.fmt(nif_src_path)
+    Command.fmt(nif_src_path, opts)
 
     Logger.debug("wrote module.zig to #{nif_src_path}")
 
@@ -138,14 +146,6 @@ defmodule Zig.Compiler do
   require EEx
   zig_alias_template = Path.join(__DIR__, "templates/alias.zig.eex")
   EEx.function_from_file(:defp, :create_aliases, zig_alias_template, [:assigns])
-
-  defp dependencies_for(assemblies) do
-    Enum.map(assemblies, fn assembly ->
-      quote do
-        @external_resource unquote(assembly.source)
-      end
-    end)
-  end
 
   #############################################################################
   ## STEPS

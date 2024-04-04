@@ -27,7 +27,8 @@ defmodule Zig.Assembler do
         :stage1,
         :include_dir,
         :c_src,
-        :packages
+        :packages,
+        :local_zig
       ])
 
     opts = Keyword.merge([to: directory], opts)
@@ -53,7 +54,7 @@ defmodule Zig.Assembler do
   defp adjust_link_lib(link_lib, from) do
     Enum.map(link_lib, fn
       {:system, _} = system -> system
-      lib -> Path.join(from, lib)
+      lib -> Path.expand(lib, from)
     end)
   end
 end
