@@ -52,6 +52,7 @@ defmodule ZiglerTest.LoadTest do
   var priv_data: u64 = undefined; 
 
   pub fn load_function(priv_data_ptr: [*c]?*anyopaque, init_term: beam.term, _: anytype) c_int {
+      _ = init_term;
       priv_data = 47;
       priv_data_ptr.* = &priv_data;
       return 0;

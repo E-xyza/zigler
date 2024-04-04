@@ -166,13 +166,17 @@ defmodule Mix.Tasks.Zig.Get do
     IO.warn("extracting an unverified version of zig compiler toolchain")
     opts
   end
+
   defp get_public_key(%{public_key: pk} = opts) when is_binary(pk), do: opts
+
   defp get_public_key(opts) do
     # this might be fragile.
-    public_key = http_get!("https://ziglang.org/download/")
-    |> then(&Regex.run(~r[<code>(.*)</code>], &1))
-    |> Enum.at(1)
-    |> String.trim
+    public_key =
+      http_get!("https://ziglang.org/download/")
+      |> then(&Regex.run(~r[<code>(.*)</code>], &1))
+      |> Enum.at(1)
+      |> String.trim()
+
     %{opts | public_key: public_key}
   end
 
@@ -236,15 +240,18 @@ defmodule Mix.Tasks.Zig.Get do
         ],
         body_format: :binary
       )
+
     body
   end
 
   defp fetch_signature!(%{verify: false} = opts), do: opts
+
   defp fetch_signature!(opts) do
     %{opts | signature: http_get!(opts.url ++ ~c'.minisig')}
   end
 
   defp verify_signature!({bin, %{verify: false}}), do: bin
+
   defp verify_signature!({bin, opts}) do
     Minisign.verify!(bin, opts.signature, opts.public_key)
     bin

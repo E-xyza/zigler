@@ -74,7 +74,7 @@ pub fn get_int(comptime T: type, src: beam.term, opts: anytype) GetError!T {
 
                 // This should fail if it's not a binary.  Note there isn't much we can do here because
                 // it is *supposed* to be marshalled into the nif.
-                if (e.enif_inspect_binary(src.v, &result) == 0) return GetError.unreachable_error;
+                if (e.enif_inspect_binary(options.env(opts), src.v, &result) == 0) return GetError.unreachable_error;
 
                 var buf: Bigger = 0;
                 const buf_ptr: [*]u8 = @ptrCast(&buf);

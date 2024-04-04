@@ -44,7 +44,7 @@ defmodule DirtyCpu do
       defer {
         const msg = beam.make(.killed, .{});
         var pid2 = pid;
-        _ = e.enif_send(&pid2, msg.v, .{});
+        _ = beam.send(&pid2, msg, .{});
       }
 
       while(true) {

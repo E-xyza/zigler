@@ -6,8 +6,8 @@ defmodule ZiglerTest.Make.StructTest do
   ~Z"""
   const beam = @import("beam");
 
-  pub fn make_map(env: beam.env) beam.term {
-    return beam.make(env, .{.foo = 47, .bar = "test"}, .{});
+  pub fn make_map() beam.term {
+    return beam.make(.{.foo = 47, .bar = "test"}, .{});
   }
   """
 

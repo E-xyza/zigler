@@ -9,14 +9,14 @@ defmodule ZiglerTest.Types.RawTest do
   const beam = @import("beam");
   const e = @import("erl_nif");
 
-  pub fn raw_erl_nif_term(env: beam.env, term: e.ErlNifTerm) e.ErlNifTerm {
-    var number: f64 = beam.get(f64, env, .{.v = term}, .{}) catch unreachable;
-    return beam.make(env, number + 1.0, .{}).v;
+  pub fn raw_erl_nif_term(term: e.ErlNifTerm) e.ErlNifTerm {
+    var number: f64 = beam.get(f64, .{.v = term}, .{}) catch unreachable;
+    return beam.make(number + 1.0, .{}).v;
   }
 
-  pub fn raw_beam_term(env: beam.env, term: beam.term) beam.term {
-    var number: f64 = beam.get(f64, env, term, .{}) catch unreachable;
-    return beam.make(env, number + 1.0, .{});
+  pub fn raw_beam_term(term: beam.term) beam.term {
+    var number: f64 = beam.get(f64, term, .{}) catch unreachable;
+    return beam.make(number + 1.0, .{});
   }
   """
 

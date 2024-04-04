@@ -158,9 +158,15 @@ defmodule Zig.Command do
     #
 
     cond do
-      path = find_from_env() -> path
-      path = find_in_basedir() -> path 
-      path = System.find_executable("zig") -> path
+      path = find_from_env() ->
+        path
+
+      path = find_in_basedir() ->
+        path
+
+      path = System.find_executable("zig") ->
+        path
+
       true ->
         raise CompileError, description: "zig executable not found"
     end

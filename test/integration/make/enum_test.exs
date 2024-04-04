@@ -6,8 +6,8 @@ defmodule ZiglerTest.Make.EnumTest do
   ~Z"""
   const beam = @import("beam");
 
-  pub fn make_anonymous_enum(env: beam.env) beam.term {
-    return beam.make(env, .foo, .{});
+  pub fn make_anonymous_enum() beam.term {
+    return beam.make(.foo, .{});
   }
   """
 
@@ -18,8 +18,8 @@ defmodule ZiglerTest.Make.EnumTest do
   ~Z"""
   const e = enum { bar };
 
-  pub fn make_enum(env: beam.env) beam.term {
-    return beam.make(env, e.bar, .{});
+  pub fn make_enum() beam.term {
+    return beam.make(e.bar, .{});
   }
   """
 
@@ -30,8 +30,8 @@ defmodule ZiglerTest.Make.EnumTest do
   ~Z"""
   const err = error { baz };
 
-  pub fn make_error(env: beam.env) beam.term {
-    return beam.make(env, err.baz, .{});
+  pub fn make_error() beam.term {
+    return beam.make(err.baz, .{});
   }
   """
 
