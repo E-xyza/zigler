@@ -27,7 +27,8 @@ defmodule Zig.Assembler do
         :stage1,
         :include_dir,
         :c_src,
-        :packages
+        :packages,
+        :local_zig
       ])
 
     opts = Keyword.merge([to: directory], opts)
