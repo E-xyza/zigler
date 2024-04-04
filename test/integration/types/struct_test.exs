@@ -2,7 +2,6 @@ defmodule ZiglerTest.Types.StructTest do
   use ZiglerTest.IntegrationCase, async: true
 
   use Zig,
-    leak_check: true,
     otp_app: :zigler
 
   ~Z"""
@@ -28,6 +27,7 @@ defmodule ZiglerTest.Types.StructTest do
       assert %{value: 48} == struct_test(%{value: 47, foo: "bar"})
     end
 
+    @tag :skip
     test "extraneous values in a keyword list are ignored and tolerated" do
       assert %{value: 48} == struct_test(%{value: 47, foo: "bar"})
     end

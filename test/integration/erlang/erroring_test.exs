@@ -1,6 +1,7 @@
 defmodule ZiglerTest.Erlang.ErroringTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag :erlang
   @moduletag :erroring
 
   @test_file to_charlist(Path.join(__DIR__, "src/erlang_erroring_test"))

@@ -6,12 +6,12 @@ defmodule ZiglerTest.Make.ComptimeTest do
   ~Z"""
   const beam = @import("beam");
 
-  pub fn make_comptime_int(env: beam.env) beam.term {
-    return beam.make(env, 47, .{});
+  pub fn make_comptime_int() beam.term {
+    return beam.make(47, .{});
   }
 
-  pub fn make_comptime_float(env: beam.env) beam.term {
-    return beam.make(env, 47.0, .{});
+  pub fn make_comptime_float() beam.term {
+    return beam.make(47.0, .{});
   }
   """
 

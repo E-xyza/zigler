@@ -6,12 +6,12 @@ defmodule ZiglerTest.Make.ErrorAtomTest do
   ~Z"""
   const beam = @import("beam");
 
-  pub fn test_error_atom(env: beam.env) beam.term {
-    return beam.make_error_atom(env);
+  pub fn test_error_atom() beam.term {
+    return beam.make_error_atom(.{});
   }
 
-  pub fn test_error_pair(env: beam.env) beam.term {
-    return beam.make_error_pair(env, .some_error, .{});
+  pub fn test_error_pair() beam.term {
+    return beam.make_error_pair(.some_error, .{});
   }
   """
 

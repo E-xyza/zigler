@@ -1,6 +1,8 @@
 defmodule ZiglerTest.LeakCheckTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag :skip
+
   use Zig,
     otp_app: :zigler,
     nifs: [

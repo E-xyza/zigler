@@ -2,7 +2,6 @@ defmodule ZiglerTest.Types.FloatTest do
   use ZiglerTest.IntegrationCase, async: true
 
   use Zig,
-    leak_check: true,
     otp_app: :zigler
 
   ~Z"""

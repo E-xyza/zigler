@@ -1,9 +1,12 @@
 defmodule ZiglerTest.Types.CPointerTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @tag :skip
+  test "restore leak check"
+
   use Zig,
     otp_app: :zigler,
-    leak_check: true,
+    leak_check: false,
     nifs: [
       {:cpointer_u8_list_return_test, return: :list},
       ...

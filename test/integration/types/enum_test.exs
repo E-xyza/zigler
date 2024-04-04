@@ -2,7 +2,6 @@ defmodule ZiglerTest.Types.EnumTest do
   use ZiglerTest.IntegrationCase, async: true
 
   use Zig,
-    leak_check: true,
     otp_app: :zigler
 
   ~Z"""

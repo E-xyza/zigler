@@ -6,8 +6,8 @@ defmodule ZiglerTest.Make.TupleTest do
   ~Z"""
   const beam = @import("beam");
 
-  pub fn make_ok_tuple(env: beam.env) beam.term {
-    return beam.make(env, .{.ok, 47}, .{});
+  pub fn make_ok_tuple() beam.term {
+    return beam.make(.{.ok, 47}, .{});
   }
   """
 

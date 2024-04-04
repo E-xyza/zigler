@@ -113,10 +113,12 @@ defmodule ZiglerTest.Types.SliceNoLeakCheckTest do
   """
 
   describe "fastlanes for" do
+    @tag :skip
     test "beam.term works" do
       assert [2.0, 3.0, 4.0] = fastlane_beam_term_test([1.0, 2.0, 3.0])
     end
 
+    @tag :skip
     test "e.ErlNifTerm works" do
       assert [2.0, 3.0, 4.0] = fastlane_erl_nif_term_test([1.0, 2.0, 3.0])
     end

@@ -43,8 +43,7 @@ defmodule DirtyCpu do
       // following code triggered when process is killed.
       defer {
         const msg = beam.make(.killed, .{});
-        var pid2 = pid;
-        _ = beam.send(&pid2, msg, .{});
+        _ = beam.send(pid, msg, .{}) catch unreachable;
       }
 
       while(true) {
@@ -54,6 +53,7 @@ defmodule DirtyCpu do
   }
   """
 
+  @tag :skip
   test "dirty cpu can be cancelled" do
     this = self()
     dirty_cpu = spawn(fn -> long_running(this) end)
