@@ -52,6 +52,17 @@ defmodule Zig.Module do
   # NB: this is going to become more complex for security reasons.
   @type precompiledspec() :: Path.t
 
+  def new(opts, caller) do
+    case {Keyword.fetch(opts, :language), Keyword.fetch(opts, :otp_app)} do
+      {{:ok, :elixir}, :error} -> raise CompileError, description: "(module #{inspect caller.module}) you must supply an `otp_app` option to `use Zig`", file: caller.file
+      {{:ok, :erlang}, :error} -> raise CompileError, description: "(module #{inspect caller.module}) you must supply an `otp_app` option to `zig_opts()`", file: caller.file
+      _ -> :ok
+    end
+
+    struct!(__MODULE__, opts)
+  end
+
+
   import Zig.QuoteErl
 
   require EEx

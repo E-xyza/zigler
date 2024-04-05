@@ -324,22 +324,14 @@ defmodule Zig do
     module = __CALLER__.module
     if module in :erlang.loaded(), do: :code.purge(module)
 
+    opts = Keyword.put(opts, :language, :elixir)
+
+    _ = Zig.Module.new(opts, __CALLER__)
+
     opts =
       opts
       |> Keyword.merge(mod_file: __CALLER__.file, mod_line: __CALLER__.line)
       |> Options.elixir_normalize!()
-
-    # TODO: check to make sure the otp_app exists
-    case Keyword.fetch(opts, :otp_app) do
-      {:ok, _app} ->
-        :ok
-
-      _ ->
-        raise CompileError,
-          description: "you must supply the otp_app for the nifs",
-          file: __CALLER__.file,
-          line: __CALLER__.line
-    end
 
     # clear out the assembly directory
     # TODO: make sure this is accessible.
