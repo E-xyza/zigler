@@ -9,6 +9,49 @@ defmodule Zig.Module do
   alias Zig.Nif
   alias Zig.Resources
 
+  @enforce_keys [:otp_app]
+
+  defstruct @enforce_keys ++ [
+    :on_load,
+    :upgrade,
+    :easy_c,
+    :extern,
+    :build_zig,
+    :precompiled,
+    language: :elixir,
+    nifs: [],
+    packages: [],
+    dump: false,
+    dump_build_zig: false,
+    include_dir: [],
+    link_lib: [],
+    link_libcpp: false,
+    c_src: []
+  ]
+
+  @type t :: %__MODULE__{
+    otp_app: atom(),
+    on_load: atom(),
+    upgrade: atom(),
+    easy_c: nil | Path.t(),
+    extern: nil | Path.t(),
+    language: :elixir | :erlang,
+    nifs: [Nif.t()],
+    packages: [packagespec()],
+    dump: boolean,
+    dump_build_zig: boolean,
+    build_zig: nil | Path.t,
+    precompiled: nil | precompiledspec(),
+    include_dir: [],
+    link_lib: [],
+    link_libcpp: false,
+    c_src: []
+  }
+
+  @type packagespec() :: {name :: atom(), {path :: Path.t(), deps :: [atom]}}
+  # NB: this is going to become more complex for security reasons.
+  @type precompiledspec() :: Path.t
+
   import Zig.QuoteErl
 
   require EEx
