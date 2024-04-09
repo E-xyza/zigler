@@ -3,7 +3,7 @@ defmodule Zig.Macro do
   """
 
   def inspect(macro, opts) do
-    if opts[:dump] do
+    if opts.dump do
       macro
       |> Macro.to_string()
       |> IO.puts()

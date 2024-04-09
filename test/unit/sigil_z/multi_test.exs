@@ -1,17 +1,17 @@
 defmodule ZiglerTest.SigilZ.MultiTest do
   use ExUnit.Case, async: true
-  use Zig, otp_app: :zigler, precompile: false
+  use Zig, otp_app: :zigler
 
   ~Z"""
-  fn first() u16 { return 47; }
+  pub fn first() u16 { return 47; }
   """
 
   ~Z"""
-  fn next() u16 { return 47; }
+  pub fn next() u16 { return 47; }
   """
 
   ~Z"""
-  fn last() u16 { return 47; }
+  pub fn last() u16 { return 47; }
   """
 
   setup do

@@ -4,64 +4,126 @@ defmodule Zig.Module do
   module
   """
 
-  # TODO: write out a struct that will hold the nif options for the module.
+  # TODO: write out a struct that will hold the nif opts for the module.
 
   alias Zig.Nif
   alias Zig.Resources
 
-  @enforce_keys [:otp_app]
+  @enforce_keys [:otp_app, :module, :file]
 
-  defstruct @enforce_keys ++ [
-    :on_load,
-    :upgrade,
-    :easy_c,
-    :extern,
-    :build_zig,
-    :precompiled,
-    language: :elixir,
-    nifs: [],
-    packages: [],
-    dump: false,
-    dump_build_zig: false,
-    include_dir: [],
-    link_lib: [],
-    link_libcpp: false,
-    c_src: []
-  ]
+  defstruct @enforce_keys ++
+              [
+                :on_load,
+                :upgrade,
+                :easy_c,
+                :extern,
+                :build_zig,
+                :precompiled,
+                :nif_code_path,
+                :manifest,
+                :manifest_module,
+                language: Elixir,
+                nifs: [],
+                ignore: [],
+                packages: [],
+                resources: [],
+                dump: false,
+                dump_sema: false,
+                dump_build_zig: false,
+                include_dir: [],
+                link_lib: [],
+                link_libcpp: false,
+                c_src: [],
+                callbacks: [],
+                nif_opts: []
+              ]
 
   @type t :: %__MODULE__{
-    otp_app: atom(),
-    on_load: atom(),
-    upgrade: atom(),
-    easy_c: nil | Path.t(),
-    extern: nil | Path.t(),
-    language: :elixir | :erlang,
-    nifs: [Nif.t()],
-    packages: [packagespec()],
-    dump: boolean,
-    dump_build_zig: boolean,
-    build_zig: nil | Path.t,
-    precompiled: nil | precompiledspec(),
-    include_dir: [],
-    link_lib: [],
-    link_libcpp: false,
-    c_src: []
-  }
+          otp_app: atom(),
+          module: atom(),
+          file: Path.t(),
+          on_load: atom(),
+          upgrade: atom(),
+          easy_c: nil | Path.t(),
+          extern: nil | Path.t(),
+          nif_code_path: nil | Path.t(),
+          manifest: nil | Manifest.t(),
+          manifest_module: nil | module(),
+          language: Elixir | :erlang,
+          nifs: [Nif.t()],
+          ignore: [atom()],
+          packages: [packagespec()],
+          resources: [atom()],
+          dump: boolean,
+          dump_sema: boolean,
+          dump_build_zig: boolean | :stdout | :stderr | Path.t,
+          build_zig: nil | Path.t(),
+          precompiled: nil | precompiledspec(),
+          include_dir: [],
+          link_lib: [],
+          link_libcpp: false,
+          c_src: [],
+          callbacks: callback_opts(),
+          nif_opts: global_nif_opts()
+        }
 
   @type packagespec() :: {name :: atom(), {path :: Path.t(), deps :: [atom]}}
   # NB: this is going to become more complex for security reasons.
-  @type precompiledspec() :: Path.t
+  @type precompiledspec() :: Path.t()
+  @type callback_opts() :: [on_load: atom(), on_upgrade: atom(), on_unload: atom()]
+  @type global_nif_opts() :: [cleanup: boolean, leak_check: boolean, ignore: boolean]
+
+  @nif_opts ~w[cleanup leak_check ignore]a
 
   def new(opts, caller) do
+    # make sure that the caller has declared otp_app here.
     case {Keyword.fetch(opts, :language), Keyword.fetch(opts, :otp_app)} do
-      {{:ok, :elixir}, :error} -> raise CompileError, description: "(module #{inspect caller.module}) you must supply an `otp_app` option to `use Zig`", file: caller.file
-      {{:ok, :erlang}, :error} -> raise CompileError, description: "(module #{inspect caller.module}) you must supply an `otp_app` option to `zig_opts()`", file: caller.file
-      _ -> :ok
+      {{:ok, :elixir}, :error} ->
+        raise CompileError,
+          description:
+            "(module #{inspect(caller.module)}) you must supply an `otp_app` option to `use Zig`",
+          file: caller.file
+
+      {{:ok, :erlang}, :error} ->
+        raise CompileError,
+          description:
+            "(module #{inspect(caller.module)}) you must supply an `otp_app` option to `zig_opts()`",
+          file: caller.file
+
+      _ ->
+        :ok
     end
 
-    struct!(__MODULE__, opts)
+    opts
+    |> Keyword.drop(@nif_opts)
+    |> Keyword.merge(
+      nif_opts: Keyword.take(opts, @nif_opts),
+      module: caller.module,
+      file: caller.file
+    )
+    |> normalize_options()
+    |> then(&struct!(__MODULE__, &1))
   end
 
+  defp normalize_options(opts) do
+    opts
+    # |> normalize_nifs
+    # |> normalize_libs
+    # |> normalize_build_opts
+    # |> normalize_include_dirs
+    # |> normalize_c_src
+    # |> EasyC.normalize_aliasing()
+  end
+
+  # defp normalize_nifs(opts) do
+  #  Keyword.update!(opts, :nifs, fn
+  #    {:auto, opts} ->
+  #      {:auto, Enum.map(opts, &Nif.normalize_options!(&1, common_options))}
+
+  #    opts ->
+  #      Enum.map(opts, &Nif.normalize_options!(&1, common_options))
+  #  end)
+  # end
 
   import Zig.QuoteErl
 

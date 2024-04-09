@@ -324,27 +324,17 @@ defmodule Zig do
     module = __CALLER__.module
     if module in :erlang.loaded(), do: :code.purge(module)
 
-    opts = Keyword.put(opts, :language, :elixir)
-
-    _ = Zig.Module.new(opts, __CALLER__)
-
     opts =
       opts
-      |> Keyword.merge(mod_file: __CALLER__.file, mod_line: __CALLER__.line)
-      |> Options.elixir_normalize!()
-
-    # clear out the assembly directory
-    # TODO: make sure this is accessible.
-    Mix.env()
-    |> Compiler.assembly_dir(module)
-    |> File.rm_rf!()
+      |> Keyword.put(:language, :elixir)
+      |> Zig.Module.new(__CALLER__)
 
     Module.register_attribute(module, :zig_code_parts, accumulate: true)
     Module.register_attribute(module, :zig_code, persist: true)
 
     code =
       quote do
-        @zigler_opts unquote(opts)
+        @zigler_opts unquote(Macro.escape(opts))
 
         import Zig, only: [sigil_Z: 2, sigil_z: 2]
         @on_load :__load_nifs__

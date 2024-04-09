@@ -1,9 +1,9 @@
 defmodule ZiglerTest.SigilZ.OneTest do
   use ExUnit.Case, async: true
-  use Zig, otp_app: :zigler, precompile: false, nifs: [:nif]
+  use Zig, otp_app: :zigler
 
   ~Z"""
-  fn nif() u16 { return 47; }
+  pub fn nif() u16 { return 47; }
   """
 
   setup do

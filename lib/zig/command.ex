@@ -30,16 +30,15 @@ defmodule Zig.Command do
     end
   end
 
-  def run_sema(file, opts) do
+  def run_sema!(file, opts) do
+    # TODO: add availability of further options here.
+
     priv_dir = :code.priv_dir(:zigler)
-    sema_file = Keyword.get(opts, :sema_context, Path.join(priv_dir, "beam/sema.zig"))
+    sema_file = Path.join(priv_dir, "beam/sema.zig")
     beam_file = Path.join(priv_dir, "beam/beam.zig")
     erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
 
-    package_opts =
-      opts
-      |> Keyword.get(:packages)
-      |> List.wrap()
+    package_opts = opts.packages
 
     erl_nif_pkg = {:erl_nif, erl_nif_file}
 
@@ -90,8 +89,7 @@ defmodule Zig.Command do
 
     sema_command = "run #{sema_file} #{deps} #{mods} -lc #{link_opts(opts)}"
 
-    # Need to make this an OK tuple
-    {:ok, run_zig(sema_command, stderr_to_stdout: true)}
+    run_zig(sema_command, stderr_to_stdout: true)
   end
 
   defp package_deps(packages) do
@@ -113,9 +111,7 @@ defmodule Zig.Command do
   end
 
   defp link_opts(opts) do
-    opts
-    |> Keyword.fetch!(:include_dir)
-    |> Enum.map_join(" ", &"-I #{&1}")
+    Enum.map_join(opts.include_dir, " ", &"-I #{&1}")
   end
 
   def fmt(file) do

@@ -6,7 +6,7 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   use Zig,
     otp_app: :zigler,
-    #leak_check: true,
+    # leak_check: true,
     nifs: [
       {:array_float_binary_test, return: :binary},
       {:array_u8_test, return: :list},

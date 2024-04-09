@@ -79,41 +79,31 @@ defmodule Zig.Sema do
     end
   end
 
-  def run_sema!(file, module \\ nil, opts \\ [include_dir: []]) do
-    case run_sema(file, module, opts) do
-      {:ok, sema} -> sema
-    end
+  def run_sema!(opts) do
+    opts.nif_code_path
+    |> Zig.Command.run_sema!(opts)
+    |> Jason.decode!()
+    |> tap(&maybe_dump(&1, opts))
+    |> filter_ignores(opts)
+    |> module_to_types(opts)
   rescue
     e in Zig.CompileError ->
       reraise Zig.CompileError.to_error(e, opts), __STACKTRACE__
   end
 
-  def run_sema(file, module \\ nil, opts \\ []) do
-    opts = Keyword.put_new(opts, :include_dir, [])
-    # TODO: integrate error handling here, and make this a common nexus for
-    # file compilation
-    with {:ok, sema_str} <- Zig.Command.run_sema(file, opts),
-         {:ok, sema_json} <- Jason.decode(sema_str) do
-      if opts[:dump_sema] do
-        sema_json_pretty = Jason.encode!(sema_json, pretty: true)
-        IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
-      end
-
-      # filter out any functions present in "ignore" clause.
-      sema_json
-      |> Map.update!("functions", &filter_ignores(&1, opts))
-      |> module_to_types(module)
+  defp maybe_dump(sema_json, opts) do
+    if opts.dump_sema do
+      sema_json_pretty = Jason.encode!(sema_json, pretty: true)
+      IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
     end
   end
 
-  defp filter_ignores(functions, opts) do
-    ignores =
-      opts
-      |> Keyword.get(:ignore, [])
-      |> List.wrap()
-      |> Enum.map(&to_string/1)
-
-    Enum.reject(functions, &(&1["name"] in ignores))
+  defp filter_ignores(json, opts) do
+    ignores = Enum.map(opts.ignore, &"#{&1}")
+    Map.update!(json, "functions", fn 
+      functions ->
+        Enum.reject(functions, &(&1["name"] in ignores))
+    end)
   end
 
   defp module_to_types(%{"functions" => functions, "types" => types, "decls" => decls}, module) do

@@ -6,12 +6,14 @@ defmodule ZiglerTest.CompilerError.NoOtpAppTest do
       assert_raise CompileError,
                    "nofile: (module NoOtpApp) you must supply an `otp_app` option to `use Zig`",
                    fn ->
-                     Code.compile_quoted(quote do
-                      defmodule NoOtpApp do
-                        use Zig
-                      end
-                    end)
+                     Code.compile_quoted(
+                       quote do
+                         defmodule NoOtpApp do
+                           use Zig
+                         end
+                       end
+                     )
                    end
     end
-  end 
+  end
 end
