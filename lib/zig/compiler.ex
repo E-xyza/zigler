@@ -43,9 +43,9 @@ defmodule Zig.Compiler do
     |> tap(&Builder.build/1)
     |> Manifest.create(base_code)
     |> Sema.run_sema!()
-    |> then(&Parser.parse!(base_code, &1))
-    |> then(fn _ -> raise "foo" end)
+    |> apply_parser(base_code)
     |> Sema.analyze_file!()
+    |> then(fn _ -> raise "foo" end)
     |> precompile
     |> Command.compile!()
     |> case do
@@ -97,6 +97,10 @@ defmodule Zig.Compiler do
     #  {false, new_opts} ->
     #    apply(Zig.Module, renderer, [base_code, [], module, [], new_opts])
     # end
+  end
+
+  defp apply_parser(module, base_code) do
+    %{module | parsed: Parser.parse(base_code)}
   end
 
   defp precompile(opts) do

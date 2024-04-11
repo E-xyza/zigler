@@ -1,10 +1,20 @@
 defmodule Zig.Sema do
+  @moduledoc false
   require EEx
   alias Zig.Manifest
   alias Zig.Type
   alias Zig.Type.Function
   alias Zig.Type.Manypointer
   alias Zig.Type.Struct
+
+  @enforce_keys [:functions, :types, :decls]
+  defstruct @enforce_keys
+
+  @type t :: %__MODULE__{
+          functions: [Function.t()],
+          types: keyword(Type.t()),
+          decls: keyword(Type.t())
+        }
 
   @spec analyze_file!(module :: map, opts :: keyword) :: keyword
   # updates the per-function options to include the semantically understood type
@@ -86,6 +96,7 @@ defmodule Zig.Sema do
     |> tap(&maybe_dump(&1, opts))
     |> filter_ignores(opts)
     |> module_to_types(opts)
+    |> then(&Map.replace!(opts, :sema, &1))
   rescue
     e in Zig.CompileError ->
       reraise Zig.CompileError.to_error(e, opts), __STACKTRACE__
@@ -100,19 +111,19 @@ defmodule Zig.Sema do
 
   defp filter_ignores(json, opts) do
     ignores = Enum.map(opts.ignore, &"#{&1}")
-    Map.update!(json, "functions", fn 
+
+    Map.update!(json, "functions", fn
       functions ->
         Enum.reject(functions, &(&1["name"] in ignores))
     end)
   end
 
   defp module_to_types(%{"functions" => functions, "types" => types, "decls" => decls}, module) do
-    {:ok,
-     %{
-       functions: Enum.map(functions, &Function.from_json(&1, module)),
-       types: Enum.map(types, &type_from_json(&1, module)),
-       decls: Enum.map(decls, &const_from_json/1)
-     }}
+    %__MODULE__{
+      functions: Enum.map(functions, &Function.from_json(&1, module)),
+      types: Enum.map(types, &type_from_json(&1, module)),
+      decls: Enum.map(decls, &const_from_json/1)
+    }
   end
 
   defp type_from_json(%{"name" => name, "type" => type}, module) do
