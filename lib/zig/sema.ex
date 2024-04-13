@@ -2,6 +2,7 @@ defmodule Zig.Sema do
   @moduledoc false
   require EEx
   alias Zig.Manifest
+  alias Zig.Module
   alias Zig.Type
   alias Zig.Type.Function
   alias Zig.Type.Manypointer
@@ -16,109 +17,42 @@ defmodule Zig.Sema do
           decls: keyword(Type.t())
         }
 
-  @spec analyze_file!(module :: map, opts :: keyword) :: keyword
-  # updates the per-function options to include the semantically understood type
-  # information.  Also strips "auto" from the nif information to provide a finalized
-  # keyword list of functions with their options.
-  def analyze_file!(%{functions: functions, types: types}, opts) do
-    Enum.each(functions, &validate_usable!(&1, types, opts))
+  # PHASE 1:  SEMA EXECUTION
 
-    # `nifs` option could either be {:auto, keyword} which means that the full
-    # list of functions should be derived from the semantic analysis, determining
-    # which functions have `pub` declaration, with certain functions optionally
-    # having their specification overloaded.
-    #
-    # it could also be just a list of functions with their specifications, in
-    # which case those are the *only* functions that will be included.
-
-    case Keyword.fetch!(opts, :nifs) do
-      {:auto, specified_fns} ->
-        default_options = Keyword.fetch!(opts, :default_options)
-
-        # make sure all of the specified functions are indeed found by sema.
-        Enum.each(specified_fns, fn
-          {specified_fn, _} ->
-            unless Enum.any?(functions, &(&1.name == specified_fn)) do
-              raise CompileError,
-                description:
-                  "function #{specified_fn} not found in semantic analysis of functions."
-            end
-        end)
-
-        Enum.map(
-          functions,
-          fn function = %{name: name} ->
-            function_opts = Keyword.get(specified_fns, name, default_options)
-
-            adjusted_function = adjust_raw(function, function_opts)
-
-            {name, Keyword.put(function_opts, :type, adjusted_function)}
-          end
-        )
-
-      selected_fns when is_list(selected_fns) ->
-        Enum.map(selected_fns, fn
-          {selected_fn, function_opts} ->
-            function = Enum.find(functions, &(&1.name == selected_fn))
-
-            unless function do
-              raise CompileError,
-                description:
-                  "function #{selected_fn} not found in semantic analysis of functions."
-            end
-
-            adjusted_function = adjust_raw(function, function_opts)
-
-            {selected_fn, Keyword.put(function_opts, :type, adjusted_function)}
-        end)
-    end
-  end
-
-  defp adjust_raw(function, opts) do
-    case {function, opts[:raw]} do
-      {_, nil} ->
-        function
-
-      # use this to identify that the function is a raw call.  `child` could be
-      # either :term or :erl_nif_term.
-      {%{params: [:env, _, %Manypointer{child: child}]}, integer} when is_integer(integer) ->
-        %{function | params: List.duplicate(child, integer), arity: integer}
-
-      {_, {:c, integer}} when is_integer(integer) ->
-        %{function | params: List.duplicate(:erl_nif_term, integer), arity: integer}
-    end
-  end
-
-  def run_sema!(opts) do
-    opts.nif_code_path
-    |> Zig.Command.run_sema!(opts)
+  @spec run_sema!(Module.t()) :: Module.t()
+  # performs the first stage of semantic analysis:
+  # actually executing the zig command to obtain the semantic analysis of the
+  # desired file.
+  def run_sema!(module) do
+    module.nif_code_path
+    |> Zig.Command.run_sema!(module)
     |> Jason.decode!()
-    |> tap(&maybe_dump(&1, opts))
-    |> filter_ignores(opts)
-    |> module_to_types(opts)
-    |> then(&Map.replace!(opts, :sema, &1))
+    |> tap(&maybe_dump(&1, module))
+    |> validate_callbacks(module)
+    |> reject_ignored(module)
+    |> integrate_sema(module)
+    |> then(&Map.replace!(module, :sema, &1))
   rescue
     e in Zig.CompileError ->
-      reraise Zig.CompileError.to_error(e, opts), __STACKTRACE__
+      reraise Zig.CompileError.resolve(e, module), __STACKTRACE__
   end
 
-  defp maybe_dump(sema_json, opts) do
-    if opts.dump_sema do
-      sema_json_pretty = Jason.encode!(sema_json, pretty: true)
-      IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
-    end
+  defp validate_callbacks(sema, _module) do
+    IO.warn("not implemented yet")
+    sema
   end
 
-  defp filter_ignores(json, opts) do
-    ignores = Enum.map(opts.ignore, &"#{&1}")
+  # removes "ignored" and "callback" functions from the semantic analysis.
+  defp reject_ignored(json, module) do
+    ignored = Enum.map(module.ignore, &"#{&1}") ++ Enum.map(module.callbacks, &"#{elem(&1, 1)}")
 
     Map.update!(json, "functions", fn
       functions ->
-        Enum.reject(functions, &(&1["name"] in ignores))
+        Enum.reject(functions, &(&1["name"] in ignored))
     end)
   end
 
-  defp module_to_types(%{"functions" => functions, "types" => types, "decls" => decls}, module) do
+  defp integrate_sema(%{"functions" => functions, "types" => types, "decls" => decls}, module) do
     %__MODULE__{
       functions: Enum.map(functions, &Function.from_json(&1, module)),
       types: Enum.map(types, &type_from_json(&1, module)),
@@ -134,81 +68,175 @@ defmodule Zig.Sema do
     %{name: String.to_atom(name), type: String.to_atom(type)}
   end
 
-  defp validate_usable!(function, types, opts) do
-    with :ok <- validate_args(function, types),
-         :ok <- validate_return(function.return),
-         :ok <- validate_struct_pub(function.return, types, "return", function.name) do
-      :ok
-    else
-      {:error, msg} ->
-        file_path =
-          opts
-          |> Keyword.fetch!(:mod_file)
-          |> Path.relative_to_cwd()
-
-        %{location: {raw_line, _}} =
-          opts
-          |> Keyword.fetch!(:parsed)
-          |> find_function(function.name)
-
-        {file, line} =
-          opts
-          |> Keyword.fetch!(:manifest)
-          |> Manifest.resolve(file_path, raw_line)
-
-        raise CompileError,
-          description: msg,
-          file: file,
-          line: line
+  defp maybe_dump(sema_json, module) do
+    if module.dump_sema do
+      sema_json_pretty = Jason.encode!(sema_json, pretty: true)
+      IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
     end
   end
 
-  defp find_function(%{code: code}, function) do
-    Enum.find(code, fn
-      %Zig.Parser.Function{name: ^function} -> true
-      %Zig.Parser.Const{name: ^function} -> true
-      _ -> false
-    end)
-  end
+  @spec analyze_file!(Module.t()) :: Module.t()
+  # updates the per-function options to include the semantically understood type
+  # information.  Also strips "auto" from the nif information to provide a finalized
+  # keyword list of functions with their options.
+  def analyze_file!(%{sema: %{functions: functions, types: types}} = module) do
+    # Enum.each(functions, &validate_usable!(&1, types, module))
 
-  defp validate_args(function, types) do
-    function.params
-    |> Enum.with_index(1)
-    |> Enum.reduce_while(:ok, fn
-      {type, index}, :ok ->
-        case validate_struct_pub(type, types, "argument #{index}", function.name) do
-          :ok ->
-            {:cont, :ok}
+    # `nifs` option could either be {:auto, keyword} which means that the full
+    # list of functions should be derived from the semantic analysis, determining
+    # which functions have `pub` declaration, with certain functions optionally
+    # having their specification overloaded.
+    #
+    # it could also be just a list of functions with their specifications, in
+    # which case those are the *only* functions that will be included.
 
-          error = {:error, _msg} ->
-            {:halt, error}
-        end
-    end)
-  end
+    nifs = case module.nifs do
+      {:auto, specified_fns} ->
+        Enum.map(functions, fn function ->
+          # TODO: apply options from specified functions, if it matches.
 
-  # explicitly, all return values that are permitted
-  defp validate_return(type) do
-    if Type.return_allowed?(type) do
-      :ok
-    else
-      {:error, "functions returning #{type} cannot be nifs"}
-    end
-  end
-
-  defp validate_struct_pub(%Struct{name: name}, types, location, function) do
-    Enum.reduce_while(
-      types,
-      {:error, "struct `#{name}` (#{location} of function `#{function}`) is not a `pub` struct"},
-      fn
-        %{name: type_name}, error = {:error, _} ->
-          if Atom.to_string(type_name) == name do
-            {:halt, :ok}
+          function
+        end)
+      #    default_options = Keyword.fetch!(module, :default_options)
+      #
+      #    # make sure all of the specified functions are indeed found by sema.
+      #    Enum.each(specified_fns, fn
+      #      {specified_fn, _} ->
+      #        unless Enum.any?(functions, &(&1.name == specified_fn)) do
+      #          raise CompileError,
+      #            description:
+      #              "function #{specified_fn} not found in semantic analysis of functions."
+      #        end
+      #    end)
+      #
+      #    Enum.map(
+      #      functions,
+      #      fn function = %{name: name} ->
+      #        function_opts = Keyword.get(specified_fns, name, default_options)
+      #
+      #        adjusted_function = adjust_raw(function, function_opts)
+      #
+      #        {name, Keyword.put(function_opts, :type, adjusted_function)}
+      #      end
+      #    )
+      #
+      selected_fns when is_list(selected_fns) ->
+        Enum.map(selected_fns, fn {name, function_opts} ->
+          if function = Enum.find(functions, &(&1.name == name)) do
+            name
+            |> Nif.new(function_opts)
+            |> apply_from_sema(function)
           else
-            {:cont, error}
+            raise CompileError,
+              description: "function #{name} not found in semantic analysis of functions.",
+              file: module.file
           end
-      end
-    )
+        end)
+
+        # TODO: warn when a function
+    end
+
+    %{module | nifs: nifs}
   end
 
-  defp validate_struct_pub(_, _, _, _), do: :ok
+  defp apply_from_sema(nif, sema) do
+    nif
+  end
+
+  #  defp adjust_raw(function, opts) do
+  #    case {function, opts[:raw]} do
+  #      {_, nil} ->
+  #        function
+  #
+  #      # use this to identify that the function is a raw call.  `child` could be
+  #      # either :term or :erl_nif_term.
+  #      {%{params: [:env, _, %Manypointer{child: child}]}, integer} when is_integer(integer) ->
+  #        %{function | params: List.duplicate(child, integer), arity: integer}
+  #
+  #      {_, {:c, integer}} when is_integer(integer) ->
+  #        %{function | params: List.duplicate(:erl_nif_term, integer), arity: integer}
+  #    end
+  #  end
+  #
+  #
+  
+
+  #
+  #  defp validate_usable!(function, types, opts) do
+  #    with :ok <- validate_args(function, types),
+  #         :ok <- validate_return(function.return),
+  #         :ok <- validate_struct_pub(function.return, types, "return", function.name) do
+  #      :ok
+  #    else
+  #      {:error, msg} ->
+  #        file_path =
+  #          opts
+  #          |> Keyword.fetch!(:mod_file)
+  #          |> Path.relative_to_cwd()
+  #
+  #        %{location: {raw_line, _}} =
+  #          opts
+  #          |> Keyword.fetch!(:parsed)
+  #          |> find_function(function.name)
+  #
+  #        {file, line} =
+  #          opts
+  #          |> Keyword.fetch!(:manifest)
+  #          |> Manifest.resolve(file_path, raw_line)
+  #
+  #        raise CompileError,
+  #          description: msg,
+  #          file: file,
+  #          line: line
+  #    end
+  #  end
+  #
+  #  defp find_function(%{code: code}, function) do
+  #    Enum.find(code, fn
+  #      %Zig.Parser.Function{name: ^function} -> true
+  #      %Zig.Parser.Const{name: ^function} -> true
+  #      _ -> false
+  #    end)
+  #  end
+  #
+  #  defp validate_args(function, types) do
+  #    function.params
+  #    |> Enum.with_index(1)
+  #    |> Enum.reduce_while(:ok, fn
+  #      {type, index}, :ok ->
+  #        case validate_struct_pub(type, types, "argument #{index}", function.name) do
+  #          :ok ->
+  #            {:cont, :ok}
+  #
+  #          error = {:error, _msg} ->
+  #            {:halt, error}
+  #        end
+  #    end)
+  #  end
+  #
+  #  # explicitly, all return values that are permitted
+  #  defp validate_return(type) do
+  #    if Type.return_allowed?(type) do
+  #      :ok
+  #    else
+  #      {:error, "functions returning #{type} cannot be nifs"}
+  #    end
+  #  end
+  #
+  #  defp validate_struct_pub(%Struct{name: name}, types, location, function) do
+  #    Enum.reduce_while(
+  #      types,
+  #      {:error, "struct `#{name}` (#{location} of function `#{function}`) is not a `pub` struct"},
+  #      fn
+  #        %{name: type_name}, error = {:error, _} ->
+  #          if Atom.to_string(type_name) == name do
+  #            {:halt, :ok}
+  #          else
+  #            {:cont, error}
+  #          end
+  #      end
+  #    )
+  #  end
+  #
+  #  defp validate_struct_pub(_, _, _, _), do: :ok
 end

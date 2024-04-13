@@ -52,7 +52,7 @@ defmodule Zig.Module do
           manifest: nil | Manifest.t(),
           manifest_module: nil | module(),
           language: Elixir | :erlang,
-          nifs: [Nif.t()],
+          nifs: nif_opts() | [Nif.t()],
           ignore: [atom()],
           packages: [packagespec()],
           resources: [atom()],
@@ -73,7 +73,22 @@ defmodule Zig.Module do
   # NB: this is going to become more complex for security reasons.
   @type precompiledspec() :: Path.t()
   @type callback_opts() :: [on_load: atom(), on_upgrade: atom(), on_unload: atom()]
-  @type global_nif_opts() :: [cleanup: boolean, leak_check: boolean, ignore: boolean]
+  @type nif_opts() :: [
+          cleanup: boolean,
+          leak_check: boolean,
+          ignore: boolean,
+          export: boolean,
+          concurrency: Zig.Nif.Concurrency.concurrency(),
+          raw: boolean(),
+          args: %{optional(integer) => arg_opts()},
+          return: :list | :binary,
+          alias: atom(),
+          doc: String.t(),
+          spec: Macro.t()
+        ]
+  @type arg_opts() :: [{atom, term}]
+
+  @type global_nif_opts() :: [cleanup: boolean, leak_check: boolean]
 
   @nif_opts ~w[cleanup leak_check ignore]a
 

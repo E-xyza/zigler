@@ -22,7 +22,10 @@ defmodule Zig.Compiler do
     # erlang.
 
     code_dir = Path.dirname(file)
-    opts = Module.get_attribute(module, :zigler_opts)
+
+    opts = module
+    |> Module.get_attribute(:zigler_opts)
+    |> adjust_elixir_options
 
     module
     |> Module.get_attribute(:zig_code_parts)
@@ -30,6 +33,22 @@ defmodule Zig.Compiler do
     |> IO.iodata_to_binary()
     |> compile(code_dir, opts)
     |> Zig.Macro.inspect(opts)
+  end
+
+  defp adjust_elixir_options(opts) do
+    Map.update!(opts, :nifs, &replace_nif_dots/1)
+  end
+  
+  # if the elixir `nif` option contains `...` then this should be converted 
+  # into `{:auto, <other_options>}`.  This function will reverse the list, but
+  # since order doesn't matter for this option, it is okay.
+  defp replace_nif_dots(opts) do
+    Enum.reduce(opts, [], fn 
+      {:..., _, _}, {:auto, list} -> {:auto, list}
+      {:..., _, _}, list -> {:auto, list}
+      other, {:auto, list} -> {:auto, [other | list]}
+      other, list -> [other | list]
+    end)
   end
 
   # note that this function is made public so that it can be both accessed
@@ -45,7 +64,6 @@ defmodule Zig.Compiler do
     |> Sema.run_sema!()
     |> apply_parser(base_code)
     |> Sema.analyze_file!()
-    |> then(fn _ -> raise "foo" end)
     |> precompile
     |> Command.compile!()
     |> case do
@@ -103,42 +121,11 @@ defmodule Zig.Compiler do
     %{module | parsed: Parser.parse(base_code)}
   end
 
-  defp precompile(opts) do
-    # render_fn = Keyword.fetch!(opts, :render)
-    #
-    # nif_functions =
-    #  opts
-    #  |> Keyword.fetch!(:nifs)
-    #  |> Enum.map(fn {name, nif_opts} ->
-    #    doc =
-    #      opts
-    #      |> Keyword.fetch!(:parsed)
-    #      |> Map.fetch!(:code)
-    #      |> Enum.find_value(fn
-    #        %{name: ^name, doc_comment: doc_comment} -> doc_comment
-    #        _ -> nil
-    #      end)
-    #
-    #    Nif.new(name, Keyword.put(nif_opts, :doc, doc))
-    #  end)
-    #
-    # function_code = Enum.map(nif_functions, &apply(Nif, render_fn, [&1]))
-    #
-    # nif_src_path = Path.join(directory, "module.zig")
-    #
-    # resource_opts = Keyword.get(opts, :resources, [])
-    # callbacks = Keyword.get(opts, :callbacks)
-    #
-    # File.write!(
-    #  nif_src_path,
-    #  Zig.Module.render_zig(nif_functions, resource_opts, callbacks, module)
-    # )
-    #
-    # Command.fmt(nif_src_path)
-    #
-    # Logger.debug("wrote module.zig to #{nif_src_path}")
-    #
-    # function_code
+  defp precompile(%{nif_code_path: path} = module) do
+    File.write!(path, Zig.Module.render_zig(module))
+    Command.fmt(path)
+    Logger.debug("wrote module code to #{path}")
+    module
   end
 
   require EEx

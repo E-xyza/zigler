@@ -11,12 +11,9 @@ defmodule Zig.Nif do
   # files.
   @behaviour Access
 
-  @enforce_keys [:export, :concurrency, :type]
+  @enforce_keys ~w[name export concurrency type]a
 
-  @impl true
-  defdelegate fetch(function, key), to: Map
-
-  defstruct @enforce_keys ++ ~w[name raw args return leak_check alias doc spec]a
+  defstruct @enforce_keys ++ ~w[raw args return leak_check alias doc spec]a
 
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
@@ -40,6 +37,9 @@ defmodule Zig.Nif do
           doc: nil | String.t(),
           spec: Macro.t()
         }
+
+  @impl true
+  defdelegate fetch(function, key), to: Map
 
   defmodule Concurrency do
     @moduledoc """
@@ -78,20 +78,22 @@ defmodule Zig.Nif do
   @doc """
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
-  def new(name, opts) do
+  def new(name, module) do
     %__MODULE__{
       name: name,
-      export: Keyword.fetch!(opts, :export),
-      concurrency: Map.get(@concurrency_modules, Keyword.fetch!(opts, :concurrency)),
-      type: opts[:type],
-      raw: extract_raw(opts[:raw], opts[:type]),
-      args: opts[:args],
-      return: opts[:return],
-      leak_check: opts[:leak_check],
-      alias: opts[:alias],
-      doc: opts[:doc],
-      spec: Keyword.get(opts, :spec, :auto)
+      export: module.export,
+      concurrency: Map.get(@concurrency_modules, module.concurrency),
+      type: module.type
     }
+
+    #  raw: extract_raw(opts[:raw], opts[:type]),
+    #  args: opts[:args],
+    #  return: opts[:return],
+    #  leak_check: opts[:leak_check],
+    #  alias: opts[:alias],
+    #  doc: opts[:doc],
+    #  spec: Keyword.get(opts, :spec, :auto)
+    # }
   end
 
   defp extract_raw(raw_opt, %{return: return}) do

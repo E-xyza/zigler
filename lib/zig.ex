@@ -314,9 +314,6 @@ defmodule Zig do
   ```
 
   """
-
-  alias Zig.Compiler
-  alias Zig.Options
   # default release modes.
   # you can override these in your `use Zigler` statement.
   @spec __using__(keyword) :: Macro.t()
