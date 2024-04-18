@@ -23,6 +23,8 @@ defmodule Zig.Builder do
       File.mkdir_p!(staging_directory)
     end
 
+    # TODO: start using the module struct directly.
+
     assigns = %{
       module: module.module,
       # TODO: fix this version setting!
@@ -31,7 +33,8 @@ defmodule Zig.Builder do
       link_lib: module.link_lib,
       include_dir: module.include_dir,
       c_src: module.c_src,
-      packages: make_packages(module)
+      packages: make_packages(module),
+      base_code_path: module.base_code_path
     }
 
     assigns |> dbg

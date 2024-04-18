@@ -34,10 +34,10 @@ pub fn build(b: *std.Build) void {
         });
     <% end %>
 
-    <% module_list = Enum.map(@packages, fn {name, _, _} -> "#{name}" end) %>
+    <% module_list = Enum.map(@packages, fn {name, _, _} -> ".#{name}" end) %>
 
     const nif = b.createModule(.{
-        .source_file = .{.cwd_relative = "<%= @nif_path %>"},
+        .source_file = .{.cwd_relative = "<%= @base_code_path %>"},
         .dependencies = &[_]std.Build.ModuleDependency{.{
             .name = "erl_nif",
             .module = erl_nif
