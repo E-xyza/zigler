@@ -31,6 +31,7 @@ defmodule Zig.Module do
                 :manifest_module,
                 :sema,
                 :parsed,
+                :version,
                 language: Elixir,
                 nifs: [],
                 ignore: [],
@@ -59,6 +60,9 @@ defmodule Zig.Module do
           base_code_path: nil | Path.t(),
           manifest: nil | Manifest.t(),
           manifest_module: nil | module(),
+          sema: Sema.t(),
+          parsed: Parser.t(),
+          version: String.t(),
           language: Elixir | :erlang,
           nifs: nif_opts() | [Nif.t()],
           ignore: [atom()],
@@ -132,12 +136,33 @@ defmodule Zig.Module do
 
   defp normalize_options(opts) do
     opts
+    |> obtain_version
     # |> normalize_nifs
     # |> normalize_libs
     # |> normalize_build_opts
     # |> normalize_include_dirs
     # |> normalize_c_src
     # |> EasyC.normalize_aliasing()
+  end
+
+  defp obtain_version(opts) do
+    otp_app = Keyword.fetch!(opts, :otp_app)  
+    Keyword.put_new_lazy(opts, :version, fn ->
+      cond do
+        # try checking the mix project first (this is if the project is being compiled for the first time)
+        function_exported?(Mix.Project, :config, 0) ->
+          Mix.Project.config()
+          |> Keyword.fetch!(:version)
+          |> Version.parse!()
+        # try checking the application version (this is if we are hot-patching the so file)
+        tuple = Application.loaded_applications()[otp_app] ->
+          tuple
+          |> elem(2)
+          |> Version.parse!()
+        :else ->
+          Version.parse!("0.0.0")
+      end
+    end)
   end
 
   # defp normalize_nifs(opts) do

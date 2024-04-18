@@ -124,6 +124,7 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 ## 0.12.0
 - breakout `zig.get` into its own package to prevent dependency problems.
+- versioning of .so files should track the version.  This feature should be considered experimental.
 
 ## Upcoming
 - `precompiled` mode that will let you obtain packages with precompiled assets.

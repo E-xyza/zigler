@@ -27,8 +27,7 @@ defmodule Zig.Builder do
 
     assigns = %{
       module: module.module,
-      # TODO: fix this version setting!
-      version: Version.parse!("0.0.0"),
+      version: module.version,
       beam_dir: Path.join(:code.priv_dir(:zigler), "beam"),
       link_lib: module.link_lib,
       include_dir: module.include_dir,
