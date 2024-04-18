@@ -87,7 +87,6 @@ defmodule Zig.Compiler do
     path = module.module
     |> Builder.staging_directory
     |> Path.join("module.zig")
-    |> dbg
     
     File.write!(path, Zig.Module.render_zig(module))
     Command.fmt(path)

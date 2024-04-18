@@ -1,5 +1,3 @@
-<% assigns |> dbg %>
-
 fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
     beam.context = .{
         .env = env,

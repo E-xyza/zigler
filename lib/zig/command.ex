@@ -33,9 +33,7 @@ defmodule Zig.Command do
   def run_sema!(file, module) do
     # TODO: add availability of further options here.
     # TODO: make this an eex file.
-    
-    dbg()
-    
+        
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema.zig")
     beam_file = Path.join(priv_dir, "beam/beam.zig")

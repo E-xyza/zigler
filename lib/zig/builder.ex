@@ -34,6 +34,8 @@ defmodule Zig.Builder do
       packages: make_packages(module)
     }
 
+    assigns |> dbg
+
     build_file = build_zig(assigns)
 
     build_zig_path = Path.join(staging_directory, "build.zig")
