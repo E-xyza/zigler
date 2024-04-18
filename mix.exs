@@ -6,7 +6,7 @@ defmodule Zigler.MixProject do
 
     [
       app: :zigler,
-      version: "0.11.1-pre-3",
+      version: "0.11.1-pre-4",
       elixir: "~> 1.13",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
@@ -103,6 +103,8 @@ defmodule Zigler.MixProject do
       # zig parser is pinned to a version of zig parser because versions of zig parser
       # are pinned to zig versions
       {:zig_parser, "~> 0.3.0"},
+      # zig get
+      {:zig_get, "~> 0.11.0"},
       # documentation
       {:ex_doc, "~> 0.30.0", only: :dev, runtime: false},
       {:zig_doc, "~> 0.3.1", only: :dev, runtime: false}
