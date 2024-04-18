@@ -6,7 +6,7 @@ defmodule Zig.Command do
   `Zig.Builder` module.
   """
 
-  alias Zig.Assembler
+  alias Zig.Builder
   alias Zig.Target
 
   require Logger
@@ -14,11 +14,11 @@ defmodule Zig.Command do
   #############################################################################
   ## API
 
-  defp run_zig(command, opts) do
+  defp run_zig(command, module) do
     args = String.split(command)
 
-    base_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
-    zig_cmd = executable_path(opts)
+    base_opts = Keyword.take(module, [:cd, :stderr_to_stdout])
+    zig_cmd = executable_path(module)
     Logger.debug("running command: #{zig_cmd} #{command}")
 
     case System.cmd(zig_cmd, args, base_opts) do
@@ -30,15 +30,18 @@ defmodule Zig.Command do
     end
   end
 
-  def run_sema!(file, opts) do
+  def run_sema!(file, module) do
     # TODO: add availability of further options here.
-
+    # TODO: make this an eex file.
+    
+    dbg()
+    
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema.zig")
     beam_file = Path.join(priv_dir, "beam/beam.zig")
     erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
 
-    package_opts = opts.packages
+    package_opts = module.packages
 
     erl_nif_pkg = {:erl_nif, erl_nif_file}
 
@@ -87,7 +90,7 @@ defmodule Zig.Command do
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    sema_command = "run #{sema_file} #{deps} #{mods} -lc #{link_opts(opts)}"
+    sema_command = "run #{sema_file} #{deps} #{mods} -lc #{link_opts(module)}"
 
     run_zig(sema_command, stderr_to_stdout: true)
   end
@@ -110,25 +113,22 @@ defmodule Zig.Command do
     |> Enum.uniq()
   end
 
-  defp link_opts(opts) do
-    Enum.map_join(opts.include_dir, " ", &"-I #{&1}")
+  defp link_opts(module) do
+    Enum.map_join(module.include_dir, " ", &"-I #{&1}")
   end
 
   def fmt(file) do
     run_zig("fmt #{file}", [])
   end
 
-  def compile(module, opts) do
-    assembly_dir = Assembler.directory(module)
+  def compile!(module) do
+    staging_directory = Builder.staging_directory(module.module)
 
-    so_dir =
-      opts
-      |> Keyword.fetch!(:otp_app)
-      |> :code.priv_dir()
+    so_dir = :code.priv_dir(module.otp_app)
 
     lib_dir = Path.join(so_dir, "lib")
 
-    run_zig("build --prefix #{so_dir}", cd: assembly_dir)
+    run_zig("build --prefix #{so_dir}", cd: staging_directory)
 
     src_lib_name = Path.join(lib_dir, src_lib_name(module))
     dst_lib_name = Path.join(lib_dir, dst_lib_name(module))
@@ -145,7 +145,7 @@ defmodule Zig.Command do
     run_zig("targets", [])
   end
 
-  defp executable_path(opts) do
+  defp executable_path(module) do
     # executable_path resolves zig executable in the following fashion:
     #
     # 1. check for zig in `ZIG_ARCHIVE_PATH` env path

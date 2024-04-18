@@ -13,8 +13,8 @@ defmodule Zig.Nif.Synchronous do
   defdelegate render_zig(nif), to: Basic
 
   @impl true
-  def table_entries(%{type: type} = nif) do
-    [{Basic.entrypoint(nif), type.arity, type.name, :synchronous}]
+  def table_entries(%{signature: signature} = nif) do
+    [{Basic.entrypoint(nif), signature.arity, nif.name, :synchronous}]
   end
 
   @impl true

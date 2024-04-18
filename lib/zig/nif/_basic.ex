@@ -22,22 +22,22 @@ defmodule Zig.Nif.Basic do
   # marshalling setup
 
   defp needs_marshal?(nif) do
-    Enum.any?(nif.type.params, &Type.marshals_param?/1) or
-      Type.marshals_return?(nif.type.return) or
+    Enum.any?(nif.signature.params, &Type.marshals_param?/1) or
+      Type.marshals_return?(nif.signature.return) or
       error_prongs(nif) !== []
   end
 
   defp error_prongs(nif) do
-    nif.type.params
+    nif.signature.params
     |> Enum.map(&Type.error_prongs(&1, :argument))
-    |> List.insert_at(0, Type.error_prongs(nif.type.return, :return))
+    |> List.insert_at(0, Type.error_prongs(nif.signature.return, :return))
     |> List.flatten()
   end
 
   defp marshal_name(nif), do: :"marshalled-#{nif.type.name}"
 
   def entrypoint(nif) do
-    if needs_marshal?(nif), do: marshal_name(nif), else: nif.type.name
+    if needs_marshal?(nif), do: marshal_name(nif), else: nif.name
   end
 
   def render_elixir(%{type: type} = nif) do
@@ -206,12 +206,6 @@ defmodule Zig.Nif.Basic do
   raw_erl_nif = Path.join(__DIR__, "../templates/raw_erl_nif.zig.eex")
   EEx.function_from_file(:defp, :raw_erl_nif, raw_erl_nif, [:assigns])
 
-  def render_zig(%{raw: :beam} = nif), do: raw_beam(nif)
-
-  def render_zig(%{raw: :erl_nif} = nif), do: raw_erl_nif(nif)
-
-  # note a raw "c" function does not need to have any changes made.
-  def render_zig(%{raw: :c}), do: ""
   def render_zig(nif), do: basic(nif)
 
   def context(DirtyCpu), do: :dirty

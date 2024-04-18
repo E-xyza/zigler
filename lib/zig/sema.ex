@@ -3,10 +3,9 @@ defmodule Zig.Sema do
   require EEx
   alias Zig.Manifest
   alias Zig.Module
+  alias Zig.Nif
   alias Zig.Type
   alias Zig.Type.Function
-  alias Zig.Type.Manypointer
-  alias Zig.Type.Struct
 
   @enforce_keys [:functions, :types, :decls]
   defstruct @enforce_keys
@@ -24,7 +23,7 @@ defmodule Zig.Sema do
   # actually executing the zig command to obtain the semantic analysis of the
   # desired file.
   def run_sema!(module) do
-    module.nif_code_path
+    module.base_code_path
     |> Zig.Command.run_sema!(module)
     |> Jason.decode!()
     |> tap(&maybe_dump(&1, module))
@@ -89,58 +88,55 @@ defmodule Zig.Sema do
     #
     # it could also be just a list of functions with their specifications, in
     # which case those are the *only* functions that will be included.
+    nifs =
+      case module.nifs do
+        {:auto, specified_fns} ->
+          # make sure that all of the specified functions exist in sema.
+          Enum.each(specified_fns, fn {name, _} ->
+            unless Enum.any?(functions, &(&1.name == name)) do
+              raise CompileError,
+                description: "function #{name} not found in semantic analysis of functions.",
+                file: module.file
+            end
+          end)
 
-    nifs = case module.nifs do
-      {:auto, specified_fns} ->
-        Enum.map(functions, fn function ->
-          # TODO: apply options from specified functions, if it matches.
+          Enum.map(functions, fn function ->
+            # TODO: apply options from specified functions, if it matches.
 
-          function
-        end)
-      #    default_options = Keyword.fetch!(module, :default_options)
-      #
-      #    # make sure all of the specified functions are indeed found by sema.
-      #    Enum.each(specified_fns, fn
-      #      {specified_fn, _} ->
-      #        unless Enum.any?(functions, &(&1.name == specified_fn)) do
-      #          raise CompileError,
-      #            description:
-      #              "function #{specified_fn} not found in semantic analysis of functions."
-      #        end
-      #    end)
-      #
-      #    Enum.map(
-      #      functions,
-      #      fn function = %{name: name} ->
-      #        function_opts = Keyword.get(specified_fns, name, default_options)
-      #
-      #        adjusted_function = adjust_raw(function, function_opts)
-      #
-      #        {name, Keyword.put(function_opts, :type, adjusted_function)}
-      #      end
-      #    )
-      #
-      selected_fns when is_list(selected_fns) ->
-        Enum.map(selected_fns, fn {name, function_opts} ->
-          if function = Enum.find(functions, &(&1.name == name)) do
-            name
-            |> Nif.new(function_opts)
+            nif_opts = Keyword.get(specified_fns, function.name, module.default_nif_opts)
+
+            function.name
+            |> Nif.new(nif_opts)
             |> apply_from_sema(function)
-          else
-            raise CompileError,
-              description: "function #{name} not found in semantic analysis of functions.",
-              file: module.file
-          end
-        end)
+          end)
 
-        # TODO: warn when a function
-    end
+        selected_fns when is_list(selected_fns) ->
+          Enum.map(selected_fns, fn {name, function_opts} ->
+            if function = Enum.find(functions, &(&1.name == name)) do
+              name
+              |> Nif.new(function_opts)
+              |> apply_from_sema(function)
+            else
+              raise CompileError,
+                description: "function #{name} not found in semantic analysis of functions.",
+                file: module.file
+            end
+          end)
+
+          # TODO: warn when a function
+      end
 
     %{module | nifs: nifs}
   end
 
   defp apply_from_sema(nif, sema) do
-    nif
+    %{nif | signature: sema, params: params_from_sema(sema)}
+  end
+
+  defp params_from_sema(%{params: params}) do
+    params
+    |> Enum.with_index(fn param, index -> {index, param} end)
+    |> Map.new()
   end
 
   #  defp adjust_raw(function, opts) do
@@ -159,7 +155,6 @@ defmodule Zig.Sema do
   #  end
   #
   #
-  
 
   #
   #  defp validate_usable!(function, types, opts) do

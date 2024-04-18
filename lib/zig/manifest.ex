@@ -68,7 +68,7 @@ defmodule Zig.Manifest do
         quote do
           defmodule unquote(manifest_module) do
             require Zig.Manifest
-            Zig.Manifest.resolver(unquote(manifest), unquote(module.nif_code_path), :def)
+            Zig.Manifest.resolver(unquote(manifest), unquote(module.module_code_path), :def)
           end
         end
       )

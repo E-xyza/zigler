@@ -15,8 +15,8 @@ defmodule Zig.Builder do
   build_zig_template = Path.join(__DIR__, "templates/build.zig.eex")
   EEx.function_from_file(:defp, :build_zig, build_zig_template, [:assigns])
 
-  def build(%{module: module} = opts) do
-    staging_directory = staging_directory(module)
+  def stage(module) do
+    staging_directory = staging_directory(module.module)
 
     unless File.dir?(staging_directory) do
       Logger.debug("creating staging directory #{staging_directory}")
@@ -24,15 +24,14 @@ defmodule Zig.Builder do
     end
 
     assigns = %{
-      module: module,
-      # TODO: fix this!
+      module: module.module,
+      # TODO: fix this version setting!
       version: Version.parse!("0.0.0"),
-      nif_code_path: opts.nif_code_path,
       beam_dir: Path.join(:code.priv_dir(:zigler), "beam"),
-      link_lib: opts.link_lib,
-      include_dir: opts.include_dir,
-      c_src: opts.c_src,
-      packages: make_packages(opts)
+      link_lib: module.link_lib,
+      include_dir: module.include_dir,
+      c_src: module.c_src,
+      packages: make_packages(module)
     }
 
     build_file = build_zig(assigns)
@@ -43,6 +42,8 @@ defmodule Zig.Builder do
     Command.fmt(build_zig_path)
 
     Logger.debug("wrote build.zig to #{build_zig_path}")
+
+    %{module | module_code_path: Path.join(staging_directory, "module.zig")}
   end
 
   defp make_packages(opts) do

@@ -9,6 +9,12 @@ defmodule Zig.Module do
   alias Zig.Nif
   alias Zig.Resources
 
+  # for easy access in EEx files
+  @behaviour Access
+
+  @impl true
+  defdelegate fetch(function, key), to: Map
+
   @enforce_keys [:otp_app, :module, :file]
 
   defstruct @enforce_keys ++
@@ -19,7 +25,8 @@ defmodule Zig.Module do
                 :extern,
                 :build_zig,
                 :precompiled,
-                :nif_code_path,
+                :module_code_path,
+                :base_code_path,
                 :manifest,
                 :manifest_module,
                 :sema,
@@ -37,7 +44,7 @@ defmodule Zig.Module do
                 link_libcpp: false,
                 c_src: [],
                 callbacks: [],
-                nif_opts: []
+                default_nif_opts: []
               ]
 
   @type t :: %__MODULE__{
@@ -48,7 +55,8 @@ defmodule Zig.Module do
           upgrade: atom(),
           easy_c: nil | Path.t(),
           extern: nil | Path.t(),
-          nif_code_path: nil | Path.t(),
+          module_code_path: nil | Path.t(),
+          base_code_path: nil | Path.t(),
           manifest: nil | Manifest.t(),
           manifest_module: nil | module(),
           language: Elixir | :erlang,
@@ -66,7 +74,7 @@ defmodule Zig.Module do
           link_libcpp: false,
           c_src: [],
           callbacks: callback_opts(),
-          nif_opts: global_nif_opts()
+          default_nif_opts: default_nif_opts()
         }
 
   @type packagespec() :: {name :: atom(), {path :: Path.t(), deps :: [atom]}}
@@ -88,7 +96,7 @@ defmodule Zig.Module do
         ]
   @type arg_opts() :: [{atom, term}]
 
-  @type global_nif_opts() :: [cleanup: boolean, leak_check: boolean]
+  @type default_nif_opts() :: [cleanup: boolean, leak_check: boolean]
 
   @nif_opts ~w[cleanup leak_check ignore]a
 
@@ -114,7 +122,7 @@ defmodule Zig.Module do
     opts
     |> Keyword.drop(@nif_opts)
     |> Keyword.merge(
-      nif_opts: Keyword.take(opts, @nif_opts),
+      default_nif_opts: Keyword.take(opts, @nif_opts),
       module: caller.module,
       file: caller.file
     )
@@ -144,22 +152,6 @@ defmodule Zig.Module do
 
   import Zig.QuoteErl
 
-  require EEx
-
-  nif = Path.join(__DIR__, "templates/module.zig.eex")
-  EEx.function_from_file(:def, :module_file, nif, [:assigns])
-
-  def render_zig(nifs, resources, callbacks, module) do
-    resources = append_concurrency_resources(resources, nifs)
-    module_file(binding())
-  end
-
-  defp append_concurrency_resources(resources, nifs) do
-    nifs
-    |> Enum.flat_map(& &1.concurrency.resources(&1))
-    |> Kernel.++(resources)
-  end
-
   # internal helpers
   defp table_entries(nifs) when is_list(nifs) do
     nifs
@@ -178,6 +170,11 @@ defmodule Zig.Module do
   end
 
   # CODE RENDERING
+
+  require EEx
+
+  nif = Path.join(__DIR__, "templates/module.zig.eex")
+  EEx.function_from_file(:def, :render_zig, nif, [:assigns])
 
   def render_elixir(code, function_code, module, manifest, opts) do
     nif_name = "#{module}"
@@ -247,4 +244,11 @@ defmodule Zig.Module do
 
     Enum.flat_map(function_code, & &1) ++ init_function
   end
+
+  # Access behaviour guards
+  @impl true
+  def get_and_update(_, _, _), do: raise("you should not update a function")
+
+  @impl true
+  def pop(_, _), do: raise("you should not pop a function")
 end

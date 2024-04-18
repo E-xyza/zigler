@@ -7,8 +7,9 @@ defmodule Zig.CompileError do
 
   alias Zig.Manifest
 
-  def resolve(error, opts) do
-    "fix this"
+  def resolve(error, module) do
+    error
+
     # [location_info, error_msg | _] =
     #  error.error
     #  |> String.split("\nerror:")

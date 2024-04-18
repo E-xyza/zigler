@@ -1,12 +1,12 @@
 defmodule ZiglerTest.Spec do
   alias Zig.Nif
 
-  def for(function, opts \\ []) do
+  def for(signature, opts \\ []) do
     Nif.spec(%Nif{
+      name: :my_nif,
       export: true,
       concurrency: :synchronous,
-      type: function,
-      raw: opts[:raw],
+      signature: signature,
       return: opts[:return]
     })
   end
