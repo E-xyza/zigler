@@ -323,7 +323,7 @@ defmodule Zig do
 
     opts =
       opts
-      |> Keyword.put(:language, :elixir)
+      |> Keyword.put(:language, Elixir)
       |> Zig.Module.new(__CALLER__)
 
     Module.register_attribute(module, :zig_code_parts, accumulate: true)

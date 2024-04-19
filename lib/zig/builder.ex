@@ -33,7 +33,7 @@ defmodule Zig.Builder do
       include_dir: module.include_dir,
       c_src: module.c_src,
       packages: make_packages(module),
-      base_code_path: module.base_code_path
+      zig_code_path: module.zig_code_path
     }
 
     assigns |> dbg

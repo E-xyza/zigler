@@ -40,9 +40,9 @@ defmodule Zig.Nif.Basic do
     if needs_marshal?(nif), do: marshal_name(nif), else: nif.name
   end
 
-  def render_elixir(%{type: type} = nif) do
+  def render_elixir(%{signature: signature} = nif) do
     {empty_params, used_params} =
-      case type.arity do
+      case signature.arity do
         0 ->
           {[], []}
 
@@ -52,7 +52,7 @@ defmodule Zig.Nif.Basic do
           |> Enum.unzip()
       end
 
-    error_text = "nif for function #{type.name}/#{type.arity} not bound"
+    error_text = "nif for function #{signature.name}/#{signature.arity} not bound"
 
     def_or_defp = if nif.export, do: :def, else: :defp
 
@@ -60,7 +60,7 @@ defmodule Zig.Nif.Basic do
       render_elixir_marshalled(nif, def_or_defp, empty_params, used_params, error_text)
     else
       quote context: Elixir do
-        unquote(def_or_defp)(unquote(type.name)(unquote_splicing(empty_params))) do
+        unquote(def_or_defp)(unquote(signature.name)(unquote_splicing(empty_params))) do
           :erlang.nif_error(unquote(error_text))
         end
       end

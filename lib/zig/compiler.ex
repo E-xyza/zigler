@@ -53,41 +53,42 @@ defmodule Zig.Compiler do
   # note that this function is made public so that it can be both accessed
   # from the :zigler entrypoint for erlang parse transforms, as well as the
   # __before_compile__ entrypoint for Elixir
-  def compile(base_code, code_dir, opts) do
-    base_code_path = Path.join(code_dir, ".#{opts.module}.zig")
+  def compile(zig_code, code_dir, opts) do
+    zig_code_path = Path.join(code_dir, ".#{opts.module}.zig")
 
     opts
-    |> Map.replace!(:base_code_path, base_code_path)
-    |> tap(&write_code!(&1, base_code))
+    |> Map.replace!(:zig_code_path, zig_code_path)
+    |> tap(&write_code!(&1, zig_code))
     |> Builder.stage()
-    |> Manifest.create(base_code)
+    |> Manifest.create(zig_code)
     |> Sema.run_sema!()
-    |> apply_parser(base_code)
+    |> apply_parser(zig_code)
     |> Sema.analyze_file!()
     |> tap(&precompile/1)
     |> Command.compile!()
     |> case do
       %{language: Elixir} = opts ->
-        Zig.Module.render_elixir(opts)
+        Zig.Module.render_elixir(opts, zig_code)
 
       %{language: :erlang} = opts ->
-        Zig.Module.render_erlang(opts)
+        Zig.Module.render_erlang(opts, zig_code)
     end
   end
 
-  defp write_code!(module, base_code) do
-    File.write!(module.base_code_path, base_code)
+  defp write_code!(module, zig_code) do
+    File.write!(module.zig_code_path, zig_code)
   end
 
-  defp apply_parser(module, base_code) do
-    %{module | parsed: Parser.parse(base_code)}
+  defp apply_parser(module, zig_code) do
+    %{module | parsed: Parser.parse(zig_code)}
   end
 
   defp precompile(module) do
-    path = module.module
-    |> Builder.staging_directory
-    |> Path.join("module.zig")
-    
+    path =
+      module.module
+      |> Builder.staging_directory()
+      |> Path.join("module.zig")
+
     File.write!(path, Zig.Module.render_zig(module))
     Command.fmt(path)
 

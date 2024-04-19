@@ -26,7 +26,7 @@ defmodule Zig.Module do
                 :build_zig,
                 :precompiled,
                 :module_code_path,
-                :base_code_path,
+                :zig_code_path,
                 :manifest,
                 :manifest_module,
                 :sema,
@@ -57,7 +57,7 @@ defmodule Zig.Module do
           easy_c: nil | Path.t(),
           extern: nil | Path.t(),
           module_code_path: nil | Path.t(),
-          base_code_path: nil | Path.t(),
+          zig_code_path: nil | Path.t(),
           manifest: nil | Manifest.t(),
           manifest_module: nil | module(),
           sema: Sema.t(),
@@ -137,6 +137,7 @@ defmodule Zig.Module do
   defp normalize_options(opts) do
     opts
     |> obtain_version
+
     # |> normalize_nifs
     # |> normalize_libs
     # |> normalize_build_opts
@@ -146,7 +147,8 @@ defmodule Zig.Module do
   end
 
   defp obtain_version(opts) do
-    otp_app = Keyword.fetch!(opts, :otp_app)  
+    otp_app = Keyword.fetch!(opts, :otp_app)
+
     Keyword.put_new_lazy(opts, :version, fn ->
       cond do
         # try checking the mix project first (this is if the project is being compiled for the first time)
@@ -154,11 +156,13 @@ defmodule Zig.Module do
           Mix.Project.config()
           |> Keyword.fetch!(:version)
           |> Version.parse!()
+
         # try checking the application version (this is if we are hot-patching the so file)
         tuple = Application.loaded_applications()[otp_app] ->
           tuple
           |> elem(2)
           |> Version.parse!()
+
         :else ->
           Version.parse!("0.0.0")
       end
@@ -201,51 +205,40 @@ defmodule Zig.Module do
   nif = Path.join(__DIR__, "templates/module.zig.eex")
   EEx.function_from_file(:def, :render_zig, nif, [:assigns])
 
-  def render_elixir(code, function_code, module, manifest, opts) do
-    nif_name = "#{module}"
+  def render_elixir(module, zig_code) do
+    nif_name = "#{module.module}"
 
     load_nif_fn =
-      case function_code do
-        [] ->
-          logger_msg = "module #{inspect(module)} does not compile its nifs"
+      quote do
+        def __load_nifs__ do
+          # LOADS the nifs from :code.lib_dir() <> "ebin", which is
+          # a path that has files correctly moved in to release packages.
+          require Logger
 
-          quote do
-            def __load_nifs__ do
-              require Logger
-              Logger.info(unquote(logger_msg))
-            end
+          unquote(module.otp_app)
+          |> :code.priv_dir()
+          |> Path.join("lib")
+          |> Path.join(unquote(nif_name))
+          |> String.to_charlist()
+          |> :erlang.load_nif(0)
+          |> case do
+            :ok ->
+              Logger.debug("loaded module at #{unquote(nif_name)}")
+
+            error = {:error, any} ->
+              Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
           end
-
-        _ ->
-          quote do
-            def __load_nifs__ do
-              # LOADS the nifs from :code.lib_dir() <> "ebin", which is
-              # a path that has files correctly moved in to release packages.
-              require Logger
-
-              unquote(opts[:otp_app])
-              |> :code.priv_dir()
-              |> Path.join("lib")
-              |> Path.join(unquote(nif_name))
-              |> String.to_charlist()
-              |> :erlang.load_nif(0)
-              |> case do
-                :ok ->
-                  Logger.debug("loaded module at #{unquote(nif_name)}")
-
-                error = {:error, any} ->
-                  Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
-              end
-            end
-          end
+        end
       end
 
+    function_code = Enum.map(module.nifs, &Nif.render_elixir/1)
+
     quote do
-      @zig_code unquote(code)
+      @zig_code unquote(zig_code)
       unquote_splicing(function_code)
       unquote(load_nif_fn)
       require Zig.Manifest
-      Zig.Manifest.resolver(unquote(manifest))
+      Zig.Manifest.resolver(unquote(module.manifest), unquote(module.module_code_path), :defp)
 
       def _format_error(_, [{_, _, _, opts} | _rest] = _stacktrace) do
         if formatted = opts[:zigler_error], do: formatted, else: %{}
@@ -253,27 +246,28 @@ defmodule Zig.Module do
     end
   end
 
-  def render_erlang(_code, function_code, module, _manifest, opts) do
-    otp_app = Keyword.fetch!(opts, :otp_app)
-    module_name = Atom.to_charlist(module)
-
-    init_function =
-      quote_erl(
-        """
-        '__init__'() ->
-          erlang:load_nif(filename:join(code:priv_dir(unquote(otp_app)), unquote(module_id)), []).
-        """,
-        otp_app: otp_app,
-        module_id: ~C'lib/' ++ module_name
-      )
-
-    Enum.flat_map(function_code, & &1) ++ init_function
+  def render_erlang(module, zig_code) do
+    raise "unimplemented"
+    #  otp_app = Keyword.fetch!(opts, :otp_app)
+    #  module_name = Atom.to_charlist(module)
+    #
+    #  init_function =
+    #    quote_erl(
+    #      """
+    #      '__init__'() ->
+    #        erlang:load_nif(filename:join(code:priv_dir(unquote(otp_app)), unquote(module_id)), []).
+    #      """,
+    #      otp_app: otp_app,
+    #      module_id: ~C'lib/' ++ module_name
+    #    )
+    #
+    #  Enum.flat_map(function_code, & &1) ++ init_function
   end
 
   # Access behaviour guards
   @impl true
-  def get_and_update(_, _, _), do: raise("you should not update a function")
+  def get_and_update(_, _, _), do: raise("you should not update a module")
 
   @impl true
-  def pop(_, _), do: raise("you should not pop a function")
+  def pop(_, _), do: raise("you should not pop a module")
 end

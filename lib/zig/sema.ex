@@ -23,7 +23,7 @@ defmodule Zig.Sema do
   # actually executing the zig command to obtain the semantic analysis of the
   # desired file.
   def run_sema!(module) do
-    module.base_code_path
+    module.zig_code_path
     |> Zig.Command.run_sema!(module)
     |> Jason.decode!()
     |> tap(&maybe_dump(&1, module))

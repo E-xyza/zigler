@@ -93,9 +93,10 @@ defmodule Zig.Nif do
           end
 
         _ ->
-          quote do
-            @spec unquote(Function.render_elixir_spec(nif.spec, nif.name))
-          end
+          quote do end
+          #quote do
+          #  @spec unquote(Function.render_elixir_spec(nif.spec, nif.name))
+          #end
       end
 
     functions = concurrency.render_elixir(nif)

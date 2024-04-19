@@ -33,7 +33,7 @@ defmodule Zig.Command do
   def run_sema!(file, module) do
     # TODO: add availability of further options here.
     # TODO: make this an eex file.
-        
+
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema.zig")
     beam_file = Path.join(priv_dir, "beam/beam.zig")
@@ -128,8 +128,8 @@ defmodule Zig.Command do
 
     run_zig("build --prefix #{so_dir}", cd: staging_directory)
 
-    src_lib_name = Path.join(lib_dir, src_lib_name(module))
-    dst_lib_name = Path.join(lib_dir, dst_lib_name(module))
+    src_lib_name = Path.join(lib_dir, src_lib_name(module.module))
+    dst_lib_name = Path.join(lib_dir, dst_lib_name(module.module))
 
     # on MacOS, we must delete the old library because otherwise library
     # integrity checker will kill the process
@@ -137,6 +137,8 @@ defmodule Zig.Command do
     File.cp!(src_lib_name, dst_lib_name)
 
     Logger.debug("built library at #{dst_lib_name}")
+
+    module
   end
 
   def targets do

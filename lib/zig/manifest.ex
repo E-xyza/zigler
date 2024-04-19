@@ -59,7 +59,7 @@ defmodule Zig.Manifest do
 
     manifest_module =
       case module do
-        %{language: :elixir} -> Module.concat(module.module, Manifest)
+        %{language: Elixir} -> Module.concat(module.module, Manifest)
         %{language: :erlang} -> String.to_atom("#{module.module}_manifest")
       end
 
