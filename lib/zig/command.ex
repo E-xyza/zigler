@@ -18,7 +18,7 @@ defmodule Zig.Command do
     args = String.split(command)
 
     base_opts = Keyword.take(module, [:cd, :stderr_to_stdout])
-    zig_cmd = executable_path(module)
+    zig_cmd = executable_path()
     Logger.debug("running command: #{zig_cmd} #{command}")
 
     case System.cmd(zig_cmd, args, base_opts) do
@@ -145,7 +145,7 @@ defmodule Zig.Command do
     run_zig("targets", [])
   end
 
-  defp executable_path(module) do
+  def executable_path do
     # executable_path resolves zig executable in the following fashion:
     #
     # 1. check for zig in `ZIG_ARCHIVE_PATH` env path
@@ -165,7 +165,7 @@ defmodule Zig.Command do
 
       true ->
         raise CompileError, description: "zig executable not found"
-    end
+    end 
   end
 
   defp find_from_env do
@@ -173,6 +173,8 @@ defmodule Zig.Command do
       versioned_path(path)
     end
   end
+
+  @default_version "0.12.0"
 
   defp find_in_basedir do
     :user_cache

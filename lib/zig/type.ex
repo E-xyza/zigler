@@ -245,9 +245,8 @@ defprotocol Zig.Type do
       def error_prongs(_, :argument), do: [:argument_error_prong]
       def error_prongs(_, :return), do: []
 
-      def get_result(type, opts) do
-        return_type = Keyword.fetch!(opts, :type)
-        "break :get_result beam.make(result, .{.output = .#{return_type}}).v;"
+      def get_result(type, _opts) do
+        "break :get_result beam.make(result, .{}).v;"
       end
 
       def needs_make?(_), do: true

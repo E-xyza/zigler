@@ -36,8 +36,6 @@ defmodule Zig.Builder do
       zig_code_path: module.zig_code_path
     }
 
-    assigns |> dbg
-
     build_file = build_zig(assigns)
 
     build_zig_path = Path.join(staging_directory, "build.zig")

@@ -51,7 +51,6 @@ defmodule :zigler do
   """
 
   alias Zig.Compiler
-  alias Zig.Options
 
   @doc """
   performs a parse transformation on the AST for an erlang module,
@@ -77,8 +76,8 @@ defmodule :zigler do
             mod_line: line,
             render: :render_erlang
           )
-          |> Options.erlang_normalize!()
-          |> Options.normalize!()
+          #|> Options.erlang_normalize!()
+          #|> Options.normalize!()
       end
 
     otp_app =
@@ -100,11 +99,11 @@ defmodule :zigler do
       |> Path.dirname()
       |> Path.absname()
 
-    module =
-      case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
-        nil -> raise "No module definition found"
-        {:attribute, _, :module, module} -> module
-      end
+    #module =
+    #  case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
+    #    nil -> raise "No module definition found"
+    #    {:attribute, _, :module, module} -> module
+    #  end
 
     code =
       ast
@@ -129,7 +128,11 @@ defmodule :zigler do
           module_dir
       end
 
-    rendered_erlang = Compiler.compile(code, module, code_dir, opts)
+    module = opts
+
+    raise "^^ above line is bad"
+
+    rendered_erlang = Compiler.compile(code, code_dir, module)
 
     ast =
       ast

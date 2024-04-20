@@ -8,7 +8,7 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
 
     return get_result: {
         const payload_opts = .{
-            <%= for {index, _} <- @params do %>
+            <%= for {_, _} <- @params do %>
             .{}
             <% end %>
         };

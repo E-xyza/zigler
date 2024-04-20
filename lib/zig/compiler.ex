@@ -41,6 +41,7 @@ defmodule Zig.Compiler do
   # if the elixir `nif` option contains `...` then this should be converted 
   # into `{:auto, <other_options>}`.  This function will reverse the list, but
   # since order doesn't matter for this option, it is okay.
+  defp replace_nif_dots({:auto, _} = auto), do: auto
   defp replace_nif_dots(opts) do
     Enum.reduce(opts, [], fn
       {:..., _, _}, {:auto, list} -> {:auto, list}
@@ -67,12 +68,13 @@ defmodule Zig.Compiler do
     |> tap(&precompile/1)
     |> Command.compile!()
     |> case do
-      %{language: Elixir} = opts ->
-        Zig.Module.render_elixir(opts, zig_code)
+      %{language: Elixir} = module ->
+        Zig.Module.render_elixir(module, zig_code)
 
-      %{language: :erlang} = opts ->
-        Zig.Module.render_erlang(opts, zig_code)
+      %{language: :erlang} = module ->
+        Zig.Module.render_erlang(module, zig_code)
     end
+    |> Zig.Macro.inspect(opts)
   end
 
   defp write_code!(module, zig_code) do

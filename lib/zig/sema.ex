@@ -1,7 +1,6 @@
 defmodule Zig.Sema do
   @moduledoc false
   require EEx
-  alias Zig.Manifest
   alias Zig.Module
   alias Zig.Nif
   alias Zig.Type
@@ -78,7 +77,7 @@ defmodule Zig.Sema do
   # updates the per-function options to include the semantically understood type
   # information.  Also strips "auto" from the nif information to provide a finalized
   # keyword list of functions with their options.
-  def analyze_file!(%{sema: %{functions: functions, types: types}} = module) do
+  def analyze_file!(%{sema: %{functions: functions, types: _types}} = module) do
     # Enum.each(functions, &validate_usable!(&1, types, module))
 
     # `nifs` option could either be {:auto, keyword} which means that the full
@@ -89,7 +88,7 @@ defmodule Zig.Sema do
     # it could also be just a list of functions with their specifications, in
     # which case those are the *only* functions that will be included.
     nifs =
-      case module.nifs do
+      case module.nifs |> dbg do
         {:auto, specified_fns} ->
           # make sure that all of the specified functions exist in sema.
           Enum.each(specified_fns, fn {name, _} ->

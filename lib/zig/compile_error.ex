@@ -5,9 +5,8 @@ defmodule Zig.CompileError do
     "zig command failed: #{error.command} failed with error #{error.code}: #{error.error}"
   end
 
-  alias Zig.Manifest
-
   def resolve(error, module) do
+    _ = module
     error
 
     # [location_info, error_msg | _] =

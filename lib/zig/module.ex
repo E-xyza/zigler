@@ -33,7 +33,7 @@ defmodule Zig.Module do
                 :parsed,
                 :version,
                 language: Elixir,
-                nifs: [],
+                nifs: {:auto, []},
                 ignore: [],
                 packages: [],
                 resources: [],
@@ -179,8 +179,6 @@ defmodule Zig.Module do
   #  end)
   # end
 
-  import Zig.QuoteErl
-
   # internal helpers
   defp table_entries(nifs) when is_list(nifs) do
     nifs
@@ -247,6 +245,8 @@ defmodule Zig.Module do
   end
 
   def render_erlang(module, zig_code) do
+    _ = module
+    _ = zig_code
     raise "unimplemented"
     #  otp_app = Keyword.fetch!(opts, :otp_app)
     #  module_name = Atom.to_charlist(module)

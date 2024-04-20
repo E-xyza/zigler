@@ -20,7 +20,6 @@ defmodule Zig.Nif do
   alias Zig.Nif.Synchronous
   alias Zig.Nif.Threaded
   alias Zig.Nif.Yielding
-  alias Zig.Type
   alias Zig.Type.Error
   alias Zig.Type.Function
 
@@ -69,14 +68,14 @@ defmodule Zig.Nif do
     # }
   end
 
-  defp extract_raw(raw_opt, %{return: return}) do
-    case {raw_opt, return} do
-      {nil, _} -> nil
-      {{:c, arity}, _} when is_integer(arity) -> :c
-      {arity, :term} when is_integer(arity) -> :beam
-      {arity, :erl_nif_term} when is_integer(arity) -> :erl_nif
-    end
-  end
+  #defp extract_raw(raw_opt, %{return: return}) do
+  #  case {raw_opt, return} do
+  #    {nil, _} -> nil
+  #    {{:c, arity}, _} when is_integer(arity) -> :c
+  #    {arity, :term} when is_integer(arity) -> :beam
+  #    {arity, :erl_nif_term} when is_integer(arity) -> :erl_nif
+  #  end
+  #end
 
   def render_elixir(%{concurrency: concurrency} = nif) do
     doc =
@@ -158,6 +157,8 @@ defmodule Zig.Nif do
   #      line: line
   #  end
   # end
+
+  def indexed_parameters(_), do: raise("unimplemented")
 
   # Access behaviour guards
   @impl true
