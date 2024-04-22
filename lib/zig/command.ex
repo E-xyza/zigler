@@ -30,6 +30,10 @@ defmodule Zig.Command do
     end
   end
 
+  require EEx
+  sema_command = Path.join(__DIR__, "templates/sema_command.eex")
+  EEx.function_from_file(:defp, :sema_command, sema_command, [:assigns])
+
   def run_sema!(file, module) do
     # TODO: add availability of further options here.
     # TODO: make this an eex file.
@@ -88,9 +92,20 @@ defmodule Zig.Command do
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    sema_command = "run #{sema_file} #{deps} #{mods} -lc #{link_opts(module)}"
+    sema_command = "run #{sema_file} #{deps} #{mods} -lc #{link_opts(module)}" |> dbg
 
-    run_zig(sema_command, stderr_to_stdout: true)
+    s = sema_command(
+      sema: sema_file,
+      mods: [
+        erl_nif: %{path: erl_nif_file},
+        beam: %{deps: [:erl_nif], path: beam_file},
+        analyte: %{deps: [:beam, :erl_nif], path: file}
+      ])
+      |> IO.iodata_to_binary
+      |> String.split
+      |> Enum.join(" ")
+
+    run_zig(s, stderr_to_stdout: true)
   end
 
   defp package_deps(packages) do

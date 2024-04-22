@@ -416,5 +416,5 @@ defmodule Zig do
   >
   > this API may change in the future.
   """
-  def version, do: "0.11.0"
+  def version, do: "0.12.0"
 end

@@ -1,0 +1,12 @@
+run
+-lc
+--dep erl_nif
+--dep beam
+--dep analyte
+-Mmain=<%= @sema %>
+<%= for {modname, mod_opts} <- @mods do %>
+  <%= for depname <- List.wrap(mod_opts[:deps]) do %>
+    --dep <%= depname %>
+  <% end %>
+  -M<%= modname %>=<%= mod_opts.path %>
+<% end %>
