@@ -221,7 +221,6 @@ defmodule Mix.Tasks.Zig.Get do
   end
 
   defp http_get!(url) do
-    url |> dbg
     {:ok, {{_, 200, _}, _headers, body}} =
       :httpc.request(
         :get,
