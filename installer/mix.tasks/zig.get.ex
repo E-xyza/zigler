@@ -96,7 +96,7 @@ defmodule Mix.Tasks.Zig.Get do
   defp default_version do
     :application.info()
     |> Keyword.fetch!(:loaded)
-    |> List.keyfind(:zig_get, 0, "0.11.0")
+    |> List.keyfind(:zig_get, 0, {:zig_get, nil, "0.11.0"})
     |> elem(2)
     |> case do
       # note: the 0.11.1 version of zig doesn't seem to exist!
