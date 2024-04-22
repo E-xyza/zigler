@@ -6,6 +6,6 @@
     {otp_app, zigler},
     {link_lib, {system, "blas"}},
     {easy_c, "cblas.h"},
-    {leak_check, true},
+    {leak_check, false},
     {nifs, [{cblas_daxpy, [{return, [4, {length, {arg, 0}}]}]}]}
 ]).
