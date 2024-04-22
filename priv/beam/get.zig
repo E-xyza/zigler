@@ -157,8 +157,8 @@ inline fn lowerInt(comptime T: type, src: beam.term, result: anytype, opts: anyt
 pub fn get_enum(comptime T: type, src: beam.term, opts: anytype) !T {
     const enum_info = @typeInfo(T).Enum;
     const IntType = enum_info.tag_type;
+    const only_one = enum_info.fields.len == 1;
     comptime var int_values: [enum_info.fields.len]IntType = undefined;
-    comptime var only_one = enum_info.fields.len == 1;
     comptime for (&int_values, 0..) |*value, index| {
         value.* = enum_info.fields[index].value;
     };
@@ -345,7 +345,7 @@ pub fn get_pointer(comptime T: type, src: beam.term, opts: anytype) !T {
     switch (pointer_info.size) {
         .One => {
             const alloc = options.allocator(opts);
-            var result = try alloc.create(Child);
+            const result = try alloc.create(Child);
             errdefer alloc.destroy(result);
             try fill(Child, result, src, opts);
             return result;
@@ -615,7 +615,7 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
             var registry: StructRegistry(T) = .{};
 
             while (e.enif_get_list_cell(options.env(opts), list, &head, &tail) == 1) : (list = tail) {
-                var item: beam.term = .{ .v = head };
+                const item: beam.term = .{ .v = head };
                 try get_tuple_to_buf(item, &tuple_buf, opts);
                 const key = tuple_buf[0];
                 const value = tuple_buf[1];

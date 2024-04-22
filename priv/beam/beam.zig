@@ -1193,7 +1193,7 @@ pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: 
         @compileError("elixir exceptions must be structs");
     }
 
-    var env_ = options.env(opts);
+    const env_ = options.env(opts);
 
     const name = comptime name: {
         break :name "Elixir." ++ module;

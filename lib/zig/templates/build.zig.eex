@@ -6,14 +6,18 @@ pub fn build(b: *std.Build) void {
 
     const erl_nif = b.createModule(
         .{
-            .source_file = .{.cwd_relative = "<%= Path.join(@beam_dir, "erl_nif.zig")%>"},
-            .dependencies = &[_]std.Build.ModuleDependency{},
+            .root_source_file = .{.cwd_relative = "<%= Path.join(@beam_dir, "erl_nif.zig")%>"},
+            .imports = &[_]std.Build.Module.Import{},
         });
+
+    erl_nif.addSystemIncludePath(
+        .{.cwd_relative = "<%= :code.root_dir() %>/erts-<%= :erlang.system_info(:version) %>/include"}
+    );
 
     const beam = b.createModule(
         .{
-            .source_file = .{.cwd_relative = "<%= Path.join(@beam_dir, "beam.zig")%>"},
-            .dependencies = &[_]std.Build.ModuleDependency{.{
+            .root_source_file = .{.cwd_relative = "<%= Path.join(@beam_dir, "beam.zig")%>"},
+            .imports = &[_]std.Build.Module.Import{.{
                 .name = "erl_nif",
                 .module = erl_nif
             }}
@@ -22,8 +26,8 @@ pub fn build(b: *std.Build) void {
     <%= for {name, path, deps} <- @packages do %>
     const <%= name %> = b.createModule(
         .{
-            .source_file = .{.cwd_relative = "<%= path %>"},
-            .dependencies = &[_]std.Build.ModuleDependency{
+            .root_source_file = .{.cwd_relative = "<%= path %>"},
+            .imports = &[_]std.Build.Module.Import{
             <%= for dep <- deps do %>
                 .{
                     .name = "<%= dep %>",
@@ -37,8 +41,8 @@ pub fn build(b: *std.Build) void {
     <% module_list = Enum.map(@packages, fn {name, _, _} -> ".#{name}" end) %>
 
     const nif = b.createModule(.{
-        .source_file = .{.cwd_relative = "<%= @zig_code_path %>"},
-        .dependencies = &[_]std.Build.ModuleDependency{.{
+        .root_source_file = .{.cwd_relative = "<%= @zig_code_path %>"},
+        .imports = &[_]std.Build.Module.Import{.{
             .name = "erl_nif",
             .module = erl_nif
         }, .{
@@ -64,15 +68,11 @@ pub fn build(b: *std.Build) void {
         .optimize = optimize,
     });
 
-    const beam_system_dir = "<%= :code.root_dir() %>/erts-<%= :erlang.system_info(:version) %>/include";
-
-    lib.addSystemIncludePath(.{.cwd_relative = beam_system_dir});
-
     lib.linkLibC();
 
-    lib.addModule("erl_nif", erl_nif);
-    lib.addModule("beam", beam);
-    lib.addModule("nif", nif);
+    lib.root_module.addImport("erl_nif", erl_nif);
+    lib.root_module.addImport("beam", beam);
+    lib.root_module.addImport("nif", nif);
 
     <%= for lib <- @link_lib do %>
       <%= case lib do %>
