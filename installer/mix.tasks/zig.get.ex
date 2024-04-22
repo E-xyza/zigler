@@ -96,11 +96,11 @@ defmodule Mix.Tasks.Zig.Get do
   defp default_version do
     :application.info()
     |> Keyword.fetch!(:loaded)
-    |> List.keyfind(:zig_get, 0, {:zig_get, nil, "0.11.0"})
+    |> List.keyfind(:zig_get, 0, {:zig_get, nil, ~c'0.11.0'})
     |> elem(2)
     |> case do
       # note: the 0.11.1 version of zig doesn't seem to exist!
-      "0.11.1" -> "0.11.0"
+      ~c'0.11.1' -> ~c'0.11.0'
       other -> other
     end
     |> to_string()
@@ -152,7 +152,7 @@ defmodule Mix.Tasks.Zig.Get do
     %{
       opts
       | url:
-          ~c"https://ziglang.org/builds/zig-#{opts.os}-#{opts.arch}-#{opts.version}.#{extension(opts)}"
+          ~c"https://ziglang.org/download/#{opts.version}/zig-#{opts.os}-#{opts.arch}-#{opts.version}.#{extension(opts)}"
     }
   end
 
@@ -221,6 +221,7 @@ defmodule Mix.Tasks.Zig.Get do
   end
 
   defp http_get!(url) do
+    url |> dbg
     {:ok, {{_, 200, _}, _headers, body}} =
       :httpc.request(
         :get,
