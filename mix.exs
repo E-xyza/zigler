@@ -104,7 +104,7 @@ defmodule Zigler.MixProject do
       # are pinned to zig versions
       {:zig_parser, "~> 0.3.0"},
       # zig get
-      {:zig_get, "~> 0.11.0"},
+      {:zig_get, "~> 0.11.1"},
       # documentation
       {:ex_doc, "~> 0.30.0", only: :dev, runtime: false},
       {:zig_doc, "~> 0.3.1", only: :dev, runtime: false}
