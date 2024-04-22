@@ -89,11 +89,11 @@ pub fn Thread(comptime function: anytype) type {
 
         pub fn launch(comptime ThreadResource: type, argc: c_int, args: [*c]const e.ErlNifTerm, payload_opts: anytype) !beam.term {
             // assign the context, as the self() function needs this to be correct.
-            // note that opts MUST contain `payload_opts` field, which is a 
+            // note that opts MUST contain `payload_opts` field, which is a
             switch (beam.context.mode) {
                 // allow these modes for future expansion.
                 .synchronous, .dirty => {},
-                else => @panic("threaded functions must be launched from synchronous, dirty_io, or dirty_cpu contexts.")
+                else => @panic("threaded functions must be launched from synchronous, dirty_io, or dirty_cpu contexts."),
             }
 
             // thread struct necessities
@@ -343,4 +343,3 @@ pub fn yield() !void {
         return error.processterminated;
     }
 }
-

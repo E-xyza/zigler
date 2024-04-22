@@ -567,7 +567,7 @@ fn fill_array(comptime T: type, result: *T, src: beam.term, opts: anytype) GetEr
                 return GetError.argument_error;
             }
 
-            std.mem.copy(u8, u8_result_ptr[0..str_res.size], str_res.data[0..str_res.size]);
+            @memcpy(u8_result_ptr[0..str_res.size], str_res.data[0..str_res.size]);
         },
         else => return GetError.argument_error,
     }
@@ -652,7 +652,7 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
         },
         .bitstring => {
             switch (struct_info.layout) {
-                .Packed, .Extern => {
+                .@"packed", .@"extern" => {
                     const B = [@sizeOf(T)]u8;
                     const bits = @as(*align(@alignOf(T)) B, @ptrCast(result));
                     try fill_array(B, bits, src, opts);
@@ -678,7 +678,7 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
 
     const decls = [0]std.builtin.Type.Declaration{};
     const constructed_struct = std.builtin.Type.Struct{
-        .layout = .Auto,
+        .layout = .auto,
         .fields = fields[0..],
         .decls = decls[0..],
         .is_tuple = false,
@@ -782,7 +782,7 @@ fn typespec_for(comptime T: type) []const u8 {
         // resources require references
         if (resource.MaybeUnwrap(s)) |_| "reference" else
         // everything else is "reported as a generic map or keyword, binary if packed"
-        "map | keyword" ++ if (s.layout == .Packed) " | binary" else "",
+        "map | keyword" ++ if (s.layout == .@"packed") " | binary" else "",
         .Bool => "boolean",
         .Array => |a| maybe_array_term(a, @sizeOf(T)),
         .Pointer => |p| switch (p.size) {

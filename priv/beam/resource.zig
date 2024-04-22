@@ -141,7 +141,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                     const bytes: []const u8 = encoder(self.__payload);
                     return .{ .v = e.enif_make_resource_binary(options.env(make_opts), @ptrCast(self.__payload), bytes.ptr, bytes.len) };
                 },
-                else => @panic("resources only support default and binary output types")
+                else => @panic("resources only support default and binary output types"),
             }
         }
 

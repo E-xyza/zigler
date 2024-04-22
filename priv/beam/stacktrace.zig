@@ -7,7 +7,6 @@ const DebugInfo = std.debug.DebugInfo;
 
 var self_debug_info: ?DebugInfo = null;
 
-
 fn getSelfDebugInfo(opts: anytype) !*DebugInfo {
     if (self_debug_info) |*info| {
         return info;
@@ -38,10 +37,7 @@ fn make_trace_item(debug_info: *DebugInfo, address: usize, opts: anytype) beam.t
     }, opts);
 }
 
-pub fn to_term(
-    stacktrace: *std.builtin.StackTrace,
-    opts: anytype
-) beam.term {
+pub fn to_term(stacktrace: *std.builtin.StackTrace, opts: anytype) beam.term {
     if (builtin.strip_debug_info) return beam.make(.nil, opts);
     const debug_info = getSelfDebugInfo(opts) catch return beam.make(.nil, opts);
 

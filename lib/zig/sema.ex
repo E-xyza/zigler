@@ -88,7 +88,7 @@ defmodule Zig.Sema do
     # it could also be just a list of functions with their specifications, in
     # which case those are the *only* functions that will be included.
     nifs =
-      case module.nifs |> dbg do
+      case module.nifs do
         {:auto, specified_fns} ->
           # make sure that all of the specified functions exist in sema.
           Enum.each(specified_fns, fn {name, _} ->

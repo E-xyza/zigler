@@ -27,7 +27,7 @@ pub fn Payload(comptime function: anytype) type {
     }
 
     const result_type_info: std.builtin.Type = .{ .Struct = .{
-        .layout = .Auto,
+        .layout = .auto,
         .fields = fields,
         .decls = &decls,
         .is_tuple = true,

@@ -52,15 +52,15 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S
     try stream.objectField("name");
     try stream.write(name);
     switch (s.layout) {
-        .Packed => {
+        .@"packed" => {
             try stream.objectField("packed_size");
             try stream.write(@bitSizeOf(S));
         },
-        .Extern => {
+        .@"extern" => {
             try stream.objectField("extern");
             try stream.write(true);
         },
-        .Auto => {},
+        .auto => {},
     }
     try stream.objectField("fields");
     try stream.beginArray();
@@ -233,7 +233,7 @@ pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
         }
 
         if (!is_stubbed and .Fn == decl_info) {
-           try streamFun(stream, decl.name, decl_info.Fn);
+            try streamFun(stream, decl.name, decl_info.Fn);
         }
     }
 

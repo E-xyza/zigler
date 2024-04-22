@@ -92,7 +92,7 @@ defmodule Zig.Command do
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    sema_command = "run #{sema_file} #{deps} #{mods} -lc #{link_opts(module)}" |> dbg
+    sema_command = "run #{sema_file} #{deps} #{mods} -lc #{link_opts(module)}" 
 
     s = sema_command(
       sema: sema_file,
