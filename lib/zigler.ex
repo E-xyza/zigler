@@ -76,8 +76,9 @@ defmodule :zigler do
             mod_line: line,
             render: :render_erlang
           )
-          #|> Options.erlang_normalize!()
-          #|> Options.normalize!()
+
+          # |> Options.erlang_normalize!()
+          # |> Options.normalize!()
       end
 
     otp_app =
@@ -99,7 +100,7 @@ defmodule :zigler do
       |> Path.dirname()
       |> Path.absname()
 
-    #module =
+    # module =
     #  case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
     #    nil -> raise "No module definition found"
     #    {:attribute, _, :module, module} -> module

@@ -34,7 +34,7 @@ defmodule Zig.Nif.Basic do
     |> List.flatten()
   end
 
-  defp marshal_name(nif), do: :"marshalled-#{nif.type.name}"
+  defp marshal_name(nif), do: :"marshalled-#{nif.name}"
 
   def entrypoint(nif) do
     if needs_marshal?(nif), do: marshal_name(nif), else: nif.name
@@ -68,7 +68,7 @@ defmodule Zig.Nif.Basic do
   end
 
   defp render_elixir_marshalled(
-         %{type: type} = nif,
+         %{signature: signature} = nif,
          def_or_defp,
          empty_params,
          used_params,
@@ -82,7 +82,7 @@ defmodule Zig.Nif.Basic do
       |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir, []]))
 
     marshal_params =
-      type.params
+      signature.params
       |> Enum.zip(used_params)
       |> Enum.with_index()
       |> Enum.flat_map(fn {{param_type, param}, index} ->
@@ -99,14 +99,14 @@ defmodule Zig.Nif.Basic do
       end
 
     marshal_return =
-      if Type.marshals_return?(type.return) do
-        Type.marshal_return(type.return, return, :elixir)
+      if Type.marshals_return?(signature.return) do
+        Type.marshal_return(signature.return, return, :elixir)
       else
         return
       end
 
     quote do
-      unquote(def_or_defp)(unquote(type.name)(unquote_splicing(used_params))) do
+      unquote(def_or_defp)(unquote(nif.name)(unquote_splicing(used_params))) do
         unquote_splicing(marshal_params)
         return = unquote(marshal_name)(unquote_splicing(used_params))
         unquote(marshal_return)

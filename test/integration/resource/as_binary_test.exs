@@ -23,7 +23,7 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
 
   pub fn output_auto(src_string: []u8) StringResource {
       const new_string = beam.allocator.alloc(u8, src_string.len) catch unreachable;
-      std.mem.copy(u8, new_string, src_string);
+      @memcpy(new_string, src_string);
       return StringResource.create(new_string, .{}) catch unreachable;
   }
 
@@ -31,7 +31,7 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
 
   pub fn output_manual(src_string: []u8, mode: OutputModes) beam.term {
       const new_string = beam.allocator.alloc(u8, src_string.len) catch unreachable;
-      std.mem.copy(u8, new_string, src_string);
+      @memcpy(new_string, src_string);
       const resource = StringResource.create(new_string, .{}) catch unreachable;
       return switch (mode) {
         .binary => beam.make(resource, .{.output = .binary}),
@@ -43,7 +43,7 @@ defmodule ZiglerTest.Resource.AsBinaryTest do
   pub fn output_as_binary(src_string: []u8) StringResource {
     const new_string = beam.allocator.alloc(u8, src_string.len) catch unreachable;
 
-    std.mem.copy(u8, new_string, src_string);
+    @memcpy(new_string, src_string);
 
     return StringResource.create(new_string, .{}) catch unreachable;
   }

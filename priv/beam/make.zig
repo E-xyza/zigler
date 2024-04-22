@@ -110,7 +110,7 @@ fn make_int(value: anytype, opts: anytype) beam.term {
                 var buf = e.enif_make_new_binary(options.env(opts), buf_size, &result);
 
                 // transfer content.
-                std.mem.copy(u8, buf[0..buf_size], @as([*]u8, @ptrCast(&intermediate))[0..buf_size]);
+                @memcpy(buf[0..buf_size], @as([*]u8, @ptrCast(&intermediate))[0..buf_size]);
 
                 return .{ .v = result };
             },
@@ -373,7 +373,7 @@ fn make_binary(content: anytype, opts: anytype) beam.term {
 fn make_binary_from_u8_slice(slice: []const u8, opts: anytype) beam.term {
     var result: beam.term = undefined;
     var buf = e.enif_make_new_binary(options.env(opts), slice.len, &result.v);
-    std.mem.copy(u8, buf[0..slice.len], slice);
+    @memcpy(buf[0..slice.len], slice);
     return result;
 }
 

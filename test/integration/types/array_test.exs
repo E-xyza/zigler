@@ -164,7 +164,7 @@ defmodule ZiglerTest.Types.ArrayTest do
   pub fn fastlane_beam_term_test(passed: [3]beam.term) [3]beam.term {
     var result: [3]beam.term = undefined;
     for (&result, 0..) |*item, index| {
-      var value: f64 = beam.get(f64, passed[index], .{}) catch unreachable;
+      const value: f64 = beam.get(f64, passed[index], .{}) catch unreachable;
       item.* = beam.make(value + 1.0, .{});
     }
     return result;
@@ -173,7 +173,7 @@ defmodule ZiglerTest.Types.ArrayTest do
   pub fn fastlane_erl_nif_term_test(passed: [3]e.ErlNifTerm) [3]e.ErlNifTerm {
     var result: [3]e.ErlNifTerm = undefined;
     for (&result, 0..) |*item, index| {
-      var value: f64 = beam.get(f64, .{.v = passed[index]}, .{}) catch unreachable;
+      const value: f64 = beam.get(f64, .{.v = passed[index]}, .{}) catch unreachable;
       item.* = beam.make(value + 1.0, .{}).v;
     }
     return result;
@@ -181,7 +181,7 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   pub fn fastlane_beam_term_ptr_test(passed: *[3]beam.term) *[3]beam.term {
     for (passed) |*item| {
-      var value: f64 = beam.get(f64, item.*, .{}) catch unreachable;
+      const value: f64 = beam.get(f64, item.*, .{}) catch unreachable;
       item.* = beam.make(value + 1.0, .{});
     }
     return passed;
@@ -189,7 +189,7 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   pub fn fastlane_erl_nif_term_ptr_test(passed: *[3]e.ErlNifTerm) *[3]e.ErlNifTerm {
     for (passed) |*item| {
-      var value: f64 = beam.get(f64, .{.v = item.*}, .{}) catch unreachable;
+      const value: f64 = beam.get(f64, .{.v = item.*}, .{}) catch unreachable;
       item.* = beam.make(value + 1.0, .{}).v;
     }
     return passed;

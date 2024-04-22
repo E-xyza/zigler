@@ -68,14 +68,14 @@ defmodule Zig.Nif do
     # }
   end
 
-  #defp extract_raw(raw_opt, %{return: return}) do
+  # defp extract_raw(raw_opt, %{return: return}) do
   #  case {raw_opt, return} do
   #    {nil, _} -> nil
   #    {{:c, arity}, _} when is_integer(arity) -> :c
   #    {arity, :term} when is_integer(arity) -> :beam
   #    {arity, :erl_nif_term} when is_integer(arity) -> :erl_nif
   #  end
-  #end
+  # end
 
   def render_elixir(%{concurrency: concurrency} = nif) do
     doc =
@@ -92,10 +92,12 @@ defmodule Zig.Nif do
           end
 
         _ ->
-          quote do end
-          #quote do
+          quote do
+          end
+
+          # quote do
           #  @spec unquote(Function.render_elixir_spec(nif.spec, nif.name))
-          #end
+          # end
       end
 
     functions = concurrency.render_elixir(nif)

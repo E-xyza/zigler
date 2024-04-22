@@ -42,6 +42,7 @@ defmodule Zig.Compiler do
   # into `{:auto, <other_options>}`.  This function will reverse the list, but
   # since order doesn't matter for this option, it is okay.
   defp replace_nif_dots({:auto, _} = auto), do: auto
+
   defp replace_nif_dots(opts) do
     Enum.reduce(opts, [], fn
       {:..., _, _}, {:auto, list} -> {:auto, list}

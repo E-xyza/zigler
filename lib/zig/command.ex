@@ -92,17 +92,19 @@ defmodule Zig.Command do
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    sema_command = "run #{sema_file} #{deps} #{mods} -lc #{link_opts(module)}" 
+    sema_command = "run #{sema_file} #{deps} #{mods} -lc #{link_opts(module)}"
 
-    s = sema_command(
-      sema: sema_file,
-      mods: [
-        erl_nif: %{path: erl_nif_file},
-        beam: %{deps: [:erl_nif], path: beam_file},
-        analyte: %{deps: [:beam, :erl_nif], path: file}
-      ])
-      |> IO.iodata_to_binary
-      |> String.split
+    s =
+      sema_command(
+        sema: sema_file,
+        mods: [
+          erl_nif: %{path: erl_nif_file},
+          beam: %{deps: [:erl_nif], path: beam_file},
+          analyte: %{deps: [:beam, :erl_nif], path: file}
+        ]
+      )
+      |> IO.iodata_to_binary()
+      |> String.split()
       |> Enum.join(" ")
 
     run_zig(s, stderr_to_stdout: true)
@@ -180,7 +182,7 @@ defmodule Zig.Command do
 
       true ->
         raise CompileError, description: "zig executable not found"
-    end 
+    end
   end
 
   defp find_from_env do

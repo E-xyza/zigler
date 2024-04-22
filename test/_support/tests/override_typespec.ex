@@ -1,4 +1,4 @@
-#defmodule ZiglerTest.OverrideTypespec do
+# defmodule ZiglerTest.OverrideTypespec do
 #  @moduledoc false
 #  use Zig, otp_app: :zigler, nifs: [do_something: [spec: (integer -> integer)]]
 #
@@ -9,5 +9,5 @@
 #      return beam.make(value + 47, .{});
 #  }
 #  """
-#end
+# end
 #

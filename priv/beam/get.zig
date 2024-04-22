@@ -78,7 +78,7 @@ pub fn get_int(comptime T: type, src: beam.term, opts: anytype) GetError!T {
 
                 var buf: Bigger = 0;
                 const buf_ptr: [*]u8 = @ptrCast(&buf);
-                std.mem.copy(u8, buf_ptr[0..bytes], result.data[0..bytes]);
+                @memcpy(buf_ptr[0..bytes], result.data[0..bytes]);
                 // check to make sure that the top bits are all zeros.
                 const top_bit_count = (bytes * 8 - int.bits);
                 if (@clz(buf) < top_bit_count) return GetError.argument_error;
@@ -110,7 +110,7 @@ pub fn get_int(comptime T: type, src: beam.term, opts: anytype) GetError!T {
                 if (e.enif_inspect_binary(options.env(opts), src.v, &result) == 0) return GetError.unreachable_error;
 
                 var buf: Bigger = 0;
-                std.mem.copy(u8, @as([*]u8, @ptrCast(&buf))[0..bytes], result.data[0..bytes]);
+                @memcpy(@as([*]u8, @ptrCast(&buf))[0..bytes], result.data[0..bytes]);
                 // check to make sure that the top bits are all zeros.
                 const top_bit_count = (bytes * 8 - int.bits);
                 if (@clz(buf) < top_bit_count) return GetError.argument_error;
@@ -411,7 +411,7 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
             return err;
         };
 
-        std.mem.copy(Child, result, result_ptr[0..item_count]);
+        @memcpy(result, result_ptr[0..item_count]);
 
         if (slice_info.sentinel) |sentinel| {
             result[item_count] = @as(*const Child, @ptrCast(@alignCast(sentinel))).*;

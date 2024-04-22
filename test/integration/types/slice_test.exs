@@ -41,7 +41,7 @@ defmodule ZiglerTest.Types.SliceTest do
     const Child = @typeInfo(@TypeOf(passed)).Pointer.child;
 
     // catch unreachable because this is just a basic test
-    var returned = beam.allocator.alloc(Child, passed.len) catch unreachable;
+    const returned = beam.allocator.alloc(Child, passed.len) catch unreachable;
     for (passed, 0..) |value, index| {
       returned[index] = value + 1;
     }
@@ -104,7 +104,7 @@ defmodule ZiglerTest.Types.SliceTest do
 
   pub fn fastlane_beam_term_test(passed: []beam.term) []beam.term {
     for (passed) |*item| {
-      var value: f64 = beam.get(f64, item.*, .{}) catch unreachable;
+      const value: f64 = beam.get(f64, item.*, .{}) catch unreachable;
       item.* = beam.make(value + 1.0, .{});
     }
     return passed;
@@ -112,7 +112,7 @@ defmodule ZiglerTest.Types.SliceTest do
 
   pub fn fastlane_erl_nif_term_test(passed: []e.ErlNifTerm) []e.ErlNifTerm {
     for (passed) |*item| {
-      var value: f64 = beam.get(f64, .{.v = item.*}, .{}) catch unreachable;
+      const value: f64 = beam.get(f64, .{.v = item.*}, .{}) catch unreachable;
       item.* = beam.make(value + 1.0, .{}).v;
     }
     return passed;
