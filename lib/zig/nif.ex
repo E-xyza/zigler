@@ -29,8 +29,9 @@ defmodule Zig.Nif do
           concurrency: Synchronous | Threaded | Yielding | DirtyCpu | DirtyIo,
           signature: Function.t(),
           # TODO: make `term` more specific.
+          # while signature contains the raw parameter typing, this field contains
+          # detailed options information, per parameter.
           params: %{optional(integer) => term},
-          return: keyword,
           leak_check: boolean(),
           alias: nil | atom,
           doc: nil | String.t(),

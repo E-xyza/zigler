@@ -1,3 +1,5 @@
+use Protoss
+
 defprotocol Zig.Type do
   alias Zig.Type.Array
   alias Zig.Type.Bool
@@ -28,36 +30,22 @@ defprotocol Zig.Type do
   @spec marshal_return(t, Macro.t(), Elixir | :erlang) :: Macro.t()
   def marshal_return(type, variable, platform)
 
-  @spec render_payload_entry(t, non_neg_integer, boolean) :: iodata
-  def render_payload_entry(type, index, error_info?)
-
-  @doc "catch prongs to correctly perform error handling, atom is a reference to function in `Zig.ErrorProng`"
-  @spec error_prongs(t, :argument | :return) :: [{atom, [atom]}]
-  def error_prongs(type, context)
-
-  @doc "generates make clauses in zig"
-  @spec get_result(t, keyword) :: String.t()
-  def get_result(type, opts)
-
-  @spec needs_make?(t) :: boolean
-  def needs_make?(type)
-
-  @spec missing_size?(t) :: boolean
-  def missing_size?(type)
-
-  @spec to_call(t) :: String.t()
-  def to_call(type)
+  # validations:
 
   @spec return_allowed?(t) :: boolean
   def return_allowed?(type)
 
+  # rendered zig code:
+  @spec render_payload_entry(t, non_neg_integer, boolean) :: iodata
+  def render_payload_entry(type, index, error_info?)
+
+  @spec render_return(t) :: iodata
+  def render_return(type)
+
   @typep spec_context :: :param | :return
   @spec spec(t, spec_context, keyword) :: Macro.t()
   def spec(type, context, opts)
-
-  import Protocol, only: []
-  import Kernel
-
+after
   defmacro sigil_t({:<<>>, _, [string]}, _) do
     string
     |> parse
@@ -224,6 +212,10 @@ defprotocol Zig.Type do
     end
   end
 
+  def needs_make?(:erl_nif_term), do: false
+  def needs_make?(:term), do: false
+  def needs_make?(_), do: true
+
   # convenienece function
   def spec(atom) when is_atom(atom) do
     quote context: Elixir do
@@ -231,69 +223,10 @@ defprotocol Zig.Type do
     end
   end
 
-  defmacro __using__(opts) do
-    module = __CALLER__.module
+  # defaults
 
-    inspect? = Keyword.get(opts, :inspect?, false)
-
-    quote bind_quoted: [inspect?: inspect?, module: module] do
-      import Kernel, except: [to_string: 1]
-
-      def marshals_param?(_), do: false
-      def marshals_return?(_), do: false
-
-      def marshal_param(_, _, _, _), do: raise("unreachable")
-      def marshal_return(_, _, _), do: raise("unreachable")
-
-      def error_prongs(_, :argument), do: [:argument_error_prong]
-      def error_prongs(_, :return), do: []
-
-      def get_result(type, _opts) do
-        "break :get_result beam.make(result, .{}).v;"
-      end
-
-      def needs_make?(_), do: true
-      def missing_size?(_), do: false
-
-      defoverridable get_result: 2,
-                     marshals_param?: 1,
-                     marshal_param: 4,
-                     marshals_return?: 1,
-                     marshal_return: 3,
-                     error_prongs: 2,
-                     needs_make?: 1,
-                     missing_size?: 1
-
-      defimpl String.Chars do
-        defdelegate to_string(type), to: module
-      end
-
-      if inspect? do
-        defimpl Inspect do
-          defdelegate inspect(type, opts), to: module
-        end
-      else
-        defimpl Inspect do
-          defdelegate inspect(type, opts), to: Inspect.Any
-        end
-      end
-
-      defimpl Zig.Type do
-        defdelegate marshals_param?(type), to: module
-        defdelegate marshal_param(type, variable, index, platform), to: module
-        defdelegate marshals_return?(type), to: module
-        defdelegate marshal_return(type, variable, platform), to: module
-        defdelegate error_prongs(type, context), to: module
-
-        defdelegate to_call(type), to: module
-        defdelegate return_allowed?(type), to: module
-        defdelegate get_result(type, opts), to: module
-        defdelegate needs_make?(type), to: module
-        defdelegate missing_size?(type), to: module
-        defdelegate spec(type, context, opts), to: module
-      end
-    end
-  end
+  def _default_payload_entry, do: ".{.error_info = &error_info},"
+  def _default_return, do: "break :result_block beam.make(result, .{}).v;"
 end
 
 defimpl Zig.Type, for: Atom do
@@ -303,51 +236,9 @@ defimpl Zig.Type, for: Atom do
   def marshal_param(_, _, _, _), do: raise("unreachable")
   def marshal_return(_, _, _), do: raise("unreachable")
 
-  def error_prongs(type, :argument),
-    do: List.wrap(if type in ~w(pid port)a, do: :argument_error_prong)
-
-  def error_prongs(_, _), do: []
-
-  def to_call(:erl_nif_term), do: "e.ErlNifTerm"
-  def to_call(:term), do: "beam.term"
-  def to_call(:pid), do: "beam.pid"
-  def to_call(:port), do: "beam.port"
-  def to_call(:void), do: "void"
-  def to_call(type), do: to_string(type)
-
   def return_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
 
-  def get_result(:erl_nif_term, _), do: "break :get_result result;"
-  def get_result(:pid, _), do: "break :get_result beam.make(result, .{}).v;"
-  def get_result(:term, _), do: "break :get_result result.v;"
-
-  def get_result(:void, opts) do
-    # TODO: move this out of void, and make it general?
-    return_type = Keyword.get(opts, :type, :default)
-
-    case {opts[:arg], opts[:length]} do
-      {nil, _} ->
-        "break :get_result beam.make(result, .{}).v;"
-
-      {arg, nil} ->
-        """
-        _ = result;
-        break :get_result beam.make(payload[#{arg}], .{.output = .#{return_type}}).v;
-        """
-
-      {arg, {:arg, length_arg}} ->
-        """
-        _ = result;
-        break :get_result beam.make(payload[#{arg}][0..@intCast(payload[#{length_arg}])], .{.output = .#{return_type}}).v;
-        """
-
-      {arg, length} when is_integer(length) ->
-        """
-        _ = result;
-        break :get_result beam.make(payload[#{arg}][0..#{length})], .{.output = .#{return_type}}).v;
-        """
-    end
-  end
+  def render_return(:void), do: ""
 
   def spec(:void, :return, _), do: :ok
 
@@ -355,6 +246,5 @@ defimpl Zig.Type, for: Atom do
 
   def spec(term, _, _) when term in ~w(term erl_nif_term)a, do: Zig.Type.spec(:term)
 
-  def needs_make?(_), do: false
   def missing_size?(_), do: false
 end

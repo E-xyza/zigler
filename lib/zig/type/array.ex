@@ -26,13 +26,8 @@ defmodule Zig.Type.Array do
     }
   end
 
-  def to_string(%{mutable: true} = array), do: "*" <> to_string(%{array | mutable: false})
-  def to_string(%{has_sentinel?: true, repr: repr}), do: repr
-  def to_string(array), do: "[#{array.len}]#{Kernel.to_string(array.child)}"
-
-  def to_call(%{mutable: true} = array), do: "*" <> to_call(%{array | mutable: false})
-  def to_call(%{has_sentinel?: true, repr: repr}), do: repr
-  def to_call(array), do: "[#{array.len}]#{Type.to_call(array.child)}"
+  def marshals_param?(_), do: false
+  def marshals_return?(_), do: false
 
   def return_allowed?(array), do: Type.return_allowed?(array.child)
 
@@ -118,4 +113,8 @@ defmodule Zig.Type.Array do
   def of(type, len, opts \\ []) do
     struct(__MODULE__, opts ++ [child: type, len: len])
   end
+
+  def render_payload_entry(type, index, _), do: Type._default_payload_entry()
+
+  def render_return(type), do: Type._default_return()
 end

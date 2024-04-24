@@ -1,5 +1,7 @@
 defmodule Zig.Type.Integer do
-  use Zig.Type, inspect?: true
+  alias Zig.Type
+
+  use Type
 
   defstruct [:signedness, :bits]
 
@@ -35,13 +37,6 @@ defmodule Zig.Type.Integer do
 
       _ ->
         raise Zig.Type.ParseError, source: full_type
-    end
-  end
-
-  def to_string(integer) do
-    case integer.signedness do
-      :unsigned -> "u#{integer.bits}"
-      :signed -> "i#{integer.bits}"
     end
   end
 
@@ -222,4 +217,6 @@ defmodule Zig.Type.Integer do
   defp typemax(%{signedness: :signed, bits: bits}), do: Bitwise.<<<(1, bits - 1) - 1
 
   def return_allowed?(_), do: true
+
+  def render_return(type), do: Type._default_return()
 end

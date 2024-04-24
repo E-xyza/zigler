@@ -23,15 +23,7 @@ defmodule Zig.Nif.Basic do
 
   defp needs_marshal?(nif) do
     Enum.any?(nif.signature.params, &Type.marshals_param?/1) or
-      Type.marshals_return?(nif.signature.return) or
-      error_prongs(nif) !== []
-  end
-
-  defp error_prongs(nif) do
-    nif.signature.params
-    |> Enum.map(&Type.error_prongs(&1, :argument))
-    |> List.insert_at(0, Type.error_prongs(nif.signature.return, :return))
-    |> List.flatten()
+      Type.marshals_return?(nif.signature.return)
   end
 
   defp marshal_name(nif), do: :"marshalled-#{nif.name}"
@@ -76,11 +68,6 @@ defmodule Zig.Nif.Basic do
        ) do
     marshal_name = marshal_name(nif)
 
-    error_prongs =
-      nif
-      |> error_prongs()
-      |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir, []]))
-
     marshal_params =
       signature.params
       |> Enum.zip(used_params)
@@ -110,8 +97,6 @@ defmodule Zig.Nif.Basic do
         unquote_splicing(marshal_params)
         return = unquote(marshal_name)(unquote_splicing(used_params))
         unquote(marshal_return)
-      catch
-        unquote(error_prongs)
       end
 
       defp unquote(marshal_name)(unquote_splicing(empty_params)) do
@@ -135,11 +120,6 @@ defmodule Zig.Nif.Basic do
     error_text = ~c'nif for function #{type.name}/#{type.arity} not bound'
 
     if needs_marshal?(nif) do
-      error_prongs =
-        nif
-        |> error_prongs()
-        |> Enum.flat_map(&apply(ErrorProng, &1, [:erlang, []]))
-
       {marshalled_vars, marshal_code} =
         type.params
         |> Enum.zip(used_vars)
@@ -179,8 +159,7 @@ defmodule Zig.Nif.Basic do
         unused_vars: unused_vars,
         marshalled_vars: marshalled_vars,
         marshal_name: marshal_name(nif),
-        error_text: error_text,
-        error_prongs: error_prongs
+        error_text: error_text
       )
     else
       quote_erl(

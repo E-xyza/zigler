@@ -23,12 +23,6 @@ defmodule Zig.Type.Slice do
     }
   end
 
-  def to_string(%{has_sentinel?: true, repr: repr}), do: repr
-  def to_string(slice), do: "[]#{Kernel.to_string(slice.child)}"
-
-  def to_call(%{has_sentinel?: true, repr: repr}), do: repr
-  def to_call(slice), do: "[]#{Type.to_call(slice.child)}"
-
   # TYPE SPEC STUFF
 
   def spec(%{child: ~t(u8)}, :return, opts) do

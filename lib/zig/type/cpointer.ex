@@ -13,10 +13,6 @@ defmodule Zig.Type.Cpointer do
     %__MODULE__{child: Type.from_json(child, module)}
   end
 
-  def to_string(slice), do: "[*c]#{Kernel.to_string(slice.child)}"
-
-  def to_call(slice), do: "[*c]#{Type.to_call(slice.child)}"
-
   def return_allowed?(pointer) do
     case pointer.child do
       ~t(u8) -> true

@@ -14,10 +14,6 @@ defmodule Zig.Type.Resource do
     %__MODULE__{}
   end
 
-  def to_string(resource), do: resource.name
-
-  def to_call(resource), do: resource.name
-
   def spec(_resource, context, opts) do
     case {context, Keyword.get(opts, :type)} do
       {:return, :binary} ->

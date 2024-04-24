@@ -11,10 +11,6 @@ defmodule Zig.Type.Enum do
     }
   end
 
-  def to_string(enum), do: enum.name
-
-  def to_call(enum), do: "nif." <> enum.name
-
   def inspect(enum, opts) do
     ~s(%Zig.Type.Enum{name: "#{enum.name}", tags: #{Kernel.inspect(enum.tags, opts)}})
   end

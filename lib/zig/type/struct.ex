@@ -46,10 +46,6 @@ defmodule Zig.Type.Struct do
 
   def marshal_param(_, _), do: nil
 
-  def to_string(struct), do: "#{mut(struct)}#{struct.name}"
-
-  def to_call(struct), do: "#{mut(struct)}nif.#{struct.name}"
-
   def spec(struct, :param, opts) do
     optional = to_fields(struct.optional, :optional, :param, opts)
     keyword = to_fields(struct.optional, :untagged, :param, opts)

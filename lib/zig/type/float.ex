@@ -1,6 +1,6 @@
 defmodule Zig.Type.Float do
   alias Zig.Type
-  use Type, inspect?: true
+  use Type
 
   defstruct [:bits]
 
@@ -12,7 +12,6 @@ defmodule Zig.Type.Float do
 
   def from_json(%{"bits" => bits}), do: %__MODULE__{bits: bits}
 
-  def to_string(float), do: "f#{float.bits}"
   def to_call(float), do: "f#{float.bits}"
 
   def inspect(type, _opts) do
