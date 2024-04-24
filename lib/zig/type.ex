@@ -25,8 +25,11 @@ defprotocol Zig.Type do
   @doc "beam-side type conversions that might be necessary to get a zig return into an elixir return"
   def marshals_return?(type)
 
-  @spec marshal_return(t, Macro.t(), :elixir | :erlang) :: Macro.t()
+  @spec marshal_return(t, Macro.t(), Elixir | :erlang) :: Macro.t()
   def marshal_return(type, variable, platform)
+
+  @spec render_payload_entry(t, non_neg_integer, boolean) :: iodata
+  def render_payload_entry(type, index, error_info?)
 
   @doc "catch prongs to correctly perform error handling, atom is a reference to function in `Zig.ErrorProng`"
   @spec error_prongs(t, :argument | :return) :: [{atom, [atom]}]

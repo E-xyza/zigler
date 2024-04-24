@@ -160,8 +160,6 @@ defmodule Zig.Nif do
   #  end
   # end
 
-  def indexed_parameters(_), do: raise("unimplemented")
-
   # Access behaviour guards
   @impl true
   def get_and_update(_, _, _), do: raise("you should not update a function")

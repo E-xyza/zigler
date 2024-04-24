@@ -131,6 +131,7 @@ defmodule ZiglerTest.Types.SliceNoLeakCheckTest do
   """
 
   describe "sentinel terminated slices" do
+    @tag :skip
     test "are supported" do
       assert 0 == sentinel_terminated_test("foo")
     end

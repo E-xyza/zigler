@@ -1,3 +1,5 @@
+<% needs_make? = @params |> Map.values |> Enum.any?(&Type.needs_make?/1) %>
+
 fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
     beam.context = .{
         .env = env,
@@ -6,10 +8,14 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
         .allocator = beam.allocator
     };
 
+    <%= if needs_make? do %>
+    var error_info = beam.make_empty_list(env); 
+    <% end %>
+
     return get_result: {
         const payload_opts = .{
-            <%= for {_, _} <- @params do %>
-            .{}
+            <%= for {index, param} <- @params do %>
+            <%= Type.render_payload_entry(param, index, needs_make?) %>
             <% end %>
         };
 
