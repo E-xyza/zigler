@@ -37,8 +37,9 @@ defmodule Mix.Tasks.Zig.Get do
   defstruct ~w(version path arch os url file verify public_key signature)a
 
   def run(app_opts) do
-    :ssl.cipher_suites(:all, :"tlsv1.2")
     :application.ensure_all_started(:inets)
+    :application.ensure_all_started(:ssl)
+    :ssl.cipher_suites(:all, :"tlsv1.2")
 
     opts =
       app_opts
