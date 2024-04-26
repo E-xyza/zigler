@@ -100,8 +100,8 @@ defmodule Mix.Tasks.Zig.Get do
     |> List.keyfind(:zig_get, 0, {:zig_get, nil, ~c'0.11.0'})
     |> elem(2)
     |> case do
-      # note: the 0.11.1 version of zig doesn't seem to exist!
-      ~c'0.11.1' -> ~c'0.11.0'
+      # note: the 0.11.x version of zig doesn't seem to exist!
+      ~c'0.11.' ++ _ -> ~c'0.11.0'
       other -> other
     end
     |> to_string()
@@ -170,12 +170,18 @@ defmodule Mix.Tasks.Zig.Get do
     # this might be fragile.
     public_key =
       http_get!("https://ziglang.org/download/")
-      |> Floki.parse_document!()
-      |> Floki.find("[role=\"main\"] .container pre code")
-      |> Floki.text()
+      |> String.split
+      |> Enum.find_value(&signing_key/1)
       |> String.trim()
 
     %{opts | public_key: public_key}
+  end
+
+  defp signing_key(content) do
+    case Regex.scan(~r/<pre><code>(.*?)<\/code><\/pre>/, content, capture: :all_but_first) do
+      [[key | _]] -> String.trim(key)
+      _ -> nil
+    end
   end
 
   defp request!(%{file: file} = opts) when not is_nil(file) do
