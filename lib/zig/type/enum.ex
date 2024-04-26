@@ -1,5 +1,6 @@
 defmodule Zig.Type.Enum do
-  use Zig.Type
+  alias Zig.Type
+  use Type
 
   defstruct [:tags, :name]
   @type t :: %__MODULE__{tags: %{optional(atom) => String.t()}, name: String.t()}
@@ -16,6 +17,12 @@ defmodule Zig.Type.Enum do
   end
 
   def return_allowed?(_), do: true
+
+  def marshals_param?(_), do: false
+  def marshals_return?(_), do: false
+
+  def render_payload_options(type, index, _), do: Type._default_payload_options()
+  def render_return(type), do: Type._default_return()
 
   def spec(%{tags: tags}, _, _opts) do
     tags

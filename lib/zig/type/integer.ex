@@ -20,6 +20,10 @@ defmodule Zig.Type.Integer do
 
   def parse(other), do: raise(Zig.Type.ParseError, source: other)
 
+  def render_zig(%{bits: :big}), do: raise("not supported yet")
+  def render_zig(%{signedness: :unsigned, bits: bits}), do: "u#{bits}"
+  def render_zig(%{signedness: :signed, bits: bits}), do: "i#{bits}"
+
   @signs %{"signed" => :signed, "unsigned" => :unsigned}
   def from_json(%{"signedness" => s, "bits" => b}) do
     %__MODULE__{signedness: Map.fetch!(@signs, s), bits: b}
@@ -65,7 +69,7 @@ defmodule Zig.Type.Integer do
     guards =
       quote bind_quoted: [
               variable: variable,
-              name: to_string(type),
+              name: Type.render_zig(type),
               index: index,
               max: max,
               min: min
@@ -218,5 +222,11 @@ defmodule Zig.Type.Integer do
 
   def return_allowed?(_), do: true
 
+  def render_return(type), do: Type._default_return()
+
+  def marshals_param?(%{bits: bits}), do: bits > 64
+  def marshals_return?(%{bits: bits}), do: bits > 64
+
+  def render_payload_options(type, index, _), do: Type._default_payload_options()
   def render_return(type), do: Type._default_return()
 end

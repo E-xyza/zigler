@@ -26,10 +26,11 @@ defmodule Zig.Type.Array do
     }
   end
 
+  def return_allowed?(array), do: Type.return_allowed?(array.child)
   def marshals_param?(_), do: false
   def marshals_return?(_), do: false
-
-  def return_allowed?(array), do: Type.return_allowed?(array.child)
+  def render_payload_options(type, index, _), do: Type._default_payload_options()
+  def render_return(type), do: Type._default_return()
 
   def spec(%{child: ~t(u8)} = type, :return, opts) do
     # u8 defaults to binary
@@ -113,8 +114,4 @@ defmodule Zig.Type.Array do
   def of(type, len, opts \\ []) do
     struct(__MODULE__, opts ++ [child: type, len: len])
   end
-
-  def render_payload_entry(type, index, _), do: Type._default_payload_entry()
-
-  def render_return(type), do: Type._default_return()
 end

@@ -36,11 +36,14 @@ defprotocol Zig.Type do
   def return_allowed?(type)
 
   # rendered zig code:
-  @spec render_payload_entry(t, non_neg_integer, boolean) :: iodata
-  def render_payload_entry(type, index, error_info?)
+  @spec render_payload_options(t, non_neg_integer, boolean) :: iodata
+  def render_payload_options(type, index, error_info?)
 
   @spec render_return(t) :: iodata
   def render_return(type)
+
+  @spec render_zig(t) :: String.T
+  def render_zig(type)
 
   @typep spec_context :: :param | :return
   @spec spec(t, spec_context, keyword) :: Macro.t()
@@ -225,11 +228,13 @@ after
 
   # defaults
 
-  def _default_payload_entry, do: ".{.error_info = &error_info},"
+  def _default_payload_options, do: ".{.error_info = &error_info},"
   def _default_return, do: "break :result_block beam.make(result, .{}).v;"
 end
 
 defimpl Zig.Type, for: Atom do
+  alias Zig.Type
+
   def marshals_param?(_), do: false
   def marshals_return?(_), do: false
 
@@ -238,7 +243,17 @@ defimpl Zig.Type, for: Atom do
 
   def return_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
 
-  def render_return(:void), do: ""
+  def render_return(:void), do: "_ = result; break :result_block beam.make(.ok, .{}).v;"
+  def render_return(_), do: Type._default_return()
+
+  def render_payload_options(:erl_nif_term, _, _), do: ".{}"
+  def render_payload_options(:term, _, _), do: ".{}"
+
+  def render_payload_options(type, _, _)
+      when type in ~w[env stacktrace erl_nif_binary erl_nif_event erl_nif_binary_pointer]a,
+      do: raise("unreachable")
+
+  def render_payload_options(_, _, _), do: Type._default_payload_options()
 
   def spec(:void, :return, _), do: :ok
 

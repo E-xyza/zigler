@@ -118,4 +118,9 @@ defmodule Zig.Type.Struct do
     |> Enum.map(&Type.return_allowed?/1)
     |> Enum.all?()
   end
+
+  def marshals_param?(_), do: false
+  def marshals_return?(_), do: false
+  def render_payload_options(type, index, _), do: Type._default_payload_options()
+  def render_return(type), do: Type._default_return()
 end

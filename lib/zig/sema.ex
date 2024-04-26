@@ -52,8 +52,8 @@ defmodule Zig.Sema do
 
   defp integrate_sema(%{"functions" => functions, "types" => types, "decls" => decls}, module) do
     %__MODULE__{
-      functions: Enum.map(functions, &Function.from_json(&1, module)),
-      types: Enum.map(types, &type_from_json(&1, module)),
+      functions: Enum.map(functions, &Function.from_json(&1, module.module)),
+      types: Enum.map(types, &type_from_json(&1, module.module)),
       decls: Enum.map(decls, &const_from_json/1)
     }
   end
