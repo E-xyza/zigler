@@ -726,6 +726,7 @@ inline fn error_line(msg: anytype, opts: anytype) void {
                 };
                 @compileError(error_msg);
             }
+
             opts.error_info.v = e.enif_make_list_cell(options.env(opts), beam.make(msg, opts).v, opts.error_info.v);
         }
     }

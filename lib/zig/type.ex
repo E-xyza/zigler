@@ -14,18 +14,13 @@ defprotocol Zig.Type do
   alias Zig.Type.Resource
 
   @type t ::
-          Bool.t() | Enum.t() | Float.t() | Integer.t() | Struct.t() | :env | :pid | :port | :term
-
-  @spec marshals_param?(t) :: boolean
-  @doc "beam-side type conversions that might be necessary to get an elixir parameter into a zig parameter"
-  def marshals_param?(type)
+          Array.t() | Bool.t() | Cpointer.t() | Error.t() | Zig.Type.Enum.t() | Float.t() | 
+          Integer.t() | ManyPointer.t() | Optional.t() | Slice.t() | Struct.t() | :void | 
+          :anyopaque_pointer | :env | :pid | :port | :term | :erl_nif_term | :erl_nif_binary |
+          :erl_nif_event | :erl_nif_binary_pointer | :stacktrace
 
   @spec marshal_param(t, Macro.t(), non_neg_integer, :elixir | :erlang) :: Macro.t()
   def marshal_param(type, variable, index, platform)
-
-  @spec marshals_return?(t) :: boolean
-  @doc "beam-side type conversions that might be necessary to get a zig return into an elixir return"
-  def marshals_return?(type)
 
   @spec marshal_return(t, Macro.t(), Elixir | :erlang) :: Macro.t()
   def marshal_return(type, variable, platform)
@@ -230,16 +225,11 @@ after
 
   def _default_payload_options, do: ".{.error_info = &error_info},"
   def _default_return, do: "break :result_block beam.make(result, .{}).v;"
+  def _default_marshal, do: []
 end
 
 defimpl Zig.Type, for: Atom do
   alias Zig.Type
-
-  def marshals_param?(_), do: false
-  def marshals_return?(_), do: false
-
-  def marshal_param(_, _, _, _), do: raise("unreachable")
-  def marshal_return(_, _, _), do: raise("unreachable")
 
   def return_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
 

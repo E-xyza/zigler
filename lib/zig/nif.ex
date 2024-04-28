@@ -161,6 +161,18 @@ defmodule Zig.Nif do
   #  end
   # end
 
+  # COMMON TOOLS
+  # generates AST for parameters.  
+  @spec elixir_parameters(arity, used :: boolean) :: [Macro.t]
+  def elixir_parameters(0, _), do: []
+  def elixir_parameters(arity, true), do: Enum.map(1..arity, &{:"arg#{&1}", [], Elixir})
+  def elixir_parameters(arity, false), do: Enum.map(1..arity, &{:"_arg#{&1}", [], Elixir})
+
+  @spec erlang_parameters(arity, used :: boolean) :: [{:var, atom()}]
+  def erlang_parameters(0, _), do: []
+  def erlang_parameters(arity, true), do: Enum.map(1..arity, &{:var, :"X#{&1}"})
+  def erlang_parameters(arity, false), do: Enum.map(1..arity, &{:var, :"_X#{&1}"})
+
   # Access behaviour guards
   @impl true
   def get_and_update(_, _, _), do: raise("you should not update a function")

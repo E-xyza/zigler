@@ -4,7 +4,7 @@ defmodule Zig.ErrorProng do
 
   # default parameter errors handling.
 
-  def argument_error_prong(:elixir, _) do
+  def argument_error_prong(:elixir) do
     quote do
       :error, {:argument_error, index, error_lines} ->
         new_stacktrace =
@@ -61,7 +61,7 @@ defmodule Zig.ErrorProng do
     end
   end
 
-  def argument_error_prong(:erlang, _) do
+  def argument_error_prong(:erlang) do
     [
       "error:{error, badarg, _ExtraStacktrace}:Stacktrace -> erlang:raise(error, badarg, Stacktrace)"
     ]

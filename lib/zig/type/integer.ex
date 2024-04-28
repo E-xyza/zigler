@@ -51,9 +51,6 @@ defmodule Zig.Type.Integer do
     concat(["~t(", to_string(type), ")"])
   end
 
-  def marshals_param?(%{bits: bits}), do: bits > 64
-  def marshals_return?(%{bits: bits}), do: bits > 64
-
   def marshal_param(type, variable, index, :elixir) do
     marshal_param_elixir(type, variable, index)
   end
@@ -223,9 +220,6 @@ defmodule Zig.Type.Integer do
   def return_allowed?(_), do: true
 
   def render_return(type), do: Type._default_return()
-
-  def marshals_param?(%{bits: bits}), do: bits > 64
-  def marshals_return?(%{bits: bits}), do: bits > 64
 
   def render_payload_options(type, index, _), do: Type._default_payload_options()
   def render_return(type), do: Type._default_return()

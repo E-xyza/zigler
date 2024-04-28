@@ -37,7 +37,7 @@ defmodule ZiglerTest.Types.EnumTest do
 
     test "if you try to use an invalid number" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     note: not an integer value for EnumType (should be one of `[0, 1]`)\n     expected: 0 | 1 | :foo | :bar (for `EnumType`)\n     got: `42`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     note: not an integer value for EnumType (should be one of `[0, 1]`)\n     expected: integer (for `u1`)\n     got: `42`\n     note: out of bounds (0..1)\n     expected: 0 | 1 | :foo | :bar (for `EnumType`)\n     got: `42`\n",
                    fn -> untagged_swap(42) end
     end
   end

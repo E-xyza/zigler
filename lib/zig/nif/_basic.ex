@@ -16,14 +16,28 @@ defmodule Zig.Nif.Basic do
   alias Zig.Nif.DirtyIo
   alias Zig.Nif.Synchronous
   alias Zig.Type
+  alias Zig.Type.Integer
 
   import Zig.QuoteErl
 
   # marshalling setup
+  #
+  # for a basic function, a marshalling function is required unless the function ONLY
+  # has term or erl_nif_term parameters, because those parameters may emit `argumenterror`
+  # which needs to be trapped and converted.
+  #
+  # returning a value cannot error so they do not need to be marshalled, except for
+  # integers of size greater than 64 bits.
+
+  defp marshals_param?(:term), do: false
+  defp marshals_param?(:erl_nif_term), do: false
+  defp marshals_param?(_), do: true
+
+  defp marshals_return?(%Integer{bits: bits}), do: bits > 64
+  defp marshals_return?(_), do: false
 
   defp needs_marshal?(nif) do
-    Enum.any?(nif.signature.params, &Type.marshals_param?/1) or
-      Type.marshals_return?(nif.signature.return)
+    Enum.any?(nif.signature.params, &marshals_param?/1) or marshals_return?(nif.signature.return)
   end
 
   defp marshal_name(nif), do: :"marshalled-#{nif.name}"
@@ -33,26 +47,16 @@ defmodule Zig.Nif.Basic do
   end
 
   def render_elixir(%{signature: signature} = nif) do
-    {empty_params, used_params} =
-      case signature.arity do
-        0 ->
-          {[], []}
-
-        n ->
-          1..n
-          |> Enum.map(&{{:"_arg#{&1}", [], Elixir}, {:"arg#{&1}", [], Elixir}})
-          |> Enum.unzip()
-      end
-
     error_text = "nif for function #{signature.name}/#{signature.arity} not bound"
 
     def_or_defp = if nif.export, do: :def, else: :defp
 
     if needs_marshal?(nif) do
-      render_elixir_marshalled(nif, def_or_defp, empty_params, used_params, error_text)
+      render_elixir_marshalled(nif, def_or_defp, signature.arity, error_text)
     else
+      unused_params = Nif.elixir_parameters(signature.arity, false)
       quote context: Elixir do
-        unquote(def_or_defp)(unquote(signature.name)(unquote_splicing(empty_params))) do
+        unquote(def_or_defp)(unquote(signature.name)(unquote_splicing(unused_params))) do
           :erlang.nif_error(unquote(error_text))
         end
       end
@@ -62,10 +66,13 @@ defmodule Zig.Nif.Basic do
   defp render_elixir_marshalled(
          %{signature: signature} = nif,
          def_or_defp,
-         empty_params,
-         used_params,
+         arity,
          error_text
        ) do
+
+    used_params = Nif.elixir_parameters(signature.arity, true)
+    unused_params = Nif.elixir_parameters(signature.arity, false)
+
     marshal_name = marshal_name(nif)
 
     marshal_params =
@@ -74,7 +81,7 @@ defmodule Zig.Nif.Basic do
       |> Enum.with_index()
       |> Enum.flat_map(fn {{param_type, param}, index} ->
         List.wrap(
-          if Type.marshals_param?(param_type) do
+          if marshals_param?(param_type) do
             Type.marshal_param(param_type, param, index, :elixir)
           end
         )
@@ -86,20 +93,35 @@ defmodule Zig.Nif.Basic do
       end
 
     marshal_return =
-      if Type.marshals_return?(signature.return) do
+      if marshals_return?(signature.return) do
         Type.marshal_return(signature.return, return, :elixir)
       else
         return
       end
 
-    quote do
-      unquote(def_or_defp)(unquote(nif.name)(unquote_splicing(used_params))) do
-        unquote_splicing(marshal_params)
-        return = unquote(marshal_name)(unquote_splicing(used_params))
-        unquote(marshal_return)
-      end
+    function_code = [do: quote do
+      unquote_splicing(marshal_params)
+      return = unquote(marshal_name)(unquote_splicing(used_params))
+      unquote(marshal_return)
+    end]
 
-      defp unquote(marshal_name)(unquote_splicing(empty_params)) do
+    argument_error_prong = List.wrap(if true do
+      Zig.ErrorProng.argument_error_prong(:elixir)
+    end)
+
+    error_return_prong = []
+
+    error_prongs = case {argument_error_prong, error_return_prong} do
+      {[], []} -> []
+      _ -> [catch: argument_error_prong ++ error_return_prong]
+    end
+
+    function_block = function_code ++ error_prongs
+
+    quote do
+      unquote(def_or_defp)(unquote(nif.name)(unquote_splicing(used_params)), unquote(function_block))
+
+      defp unquote(marshal_name)(unquote_splicing(unused_params)) do
         :erlang.nif_error(unquote(error_text))
       end
     end
@@ -124,7 +146,7 @@ defmodule Zig.Nif.Basic do
         type.params
         |> Enum.zip(used_vars)
         |> Enum.map_reduce([], fn {param_type, {:var, var}}, so_far ->
-          if Type.marshals_param?(param_type) do
+          if marshals_param?(param_type) do
             {{:var, :"#{var}_m"}, [so_far, Type.marshal_param(param_type, var, nil, :erlang)]}
           else
             {{:var, var}, so_far}
@@ -132,7 +154,7 @@ defmodule Zig.Nif.Basic do
         end)
 
       result_code =
-        if Type.marshals_param?(type.return) do
+        if marshals_param?(type.return) do
           Type.marshal_return(type.return, :Result, :erlang)
         else
           "Result"
