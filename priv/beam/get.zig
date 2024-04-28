@@ -216,8 +216,8 @@ pub fn get_float(comptime T: type, src: beam.term, opts: anytype) !T {
         },
         .atom => {
             // erase the errors coming back from get_enum!
-            const special_form = get_enum(FloatAtoms, src, opts) catch {
-                error_line(.{ "note: not an atom value for", .{ .typename, @typeName(T) }, "(should be one of `[:infinity, :neg_infinity, :NaN]`" }, opts);
+            const special_form = get_enum(FloatAtoms, src, .{}) catch {
+                error_line(.{ "note: not an atom value for ", .{ .typename, @typeName(T) }, " (should be one of `[:infinity, :neg_infinity, :NaN]`" }, opts);
                 return GetError.argument_error;
             };
 

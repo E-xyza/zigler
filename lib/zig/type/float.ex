@@ -24,4 +24,6 @@ defmodule Zig.Type.Float do
   def return_allowed?(_), do: true
   def render_payload_options(type, index, _), do: Type._default_payload_options()
   def render_return(type), do: Type._default_return()
+  def marshal_param(_, _, _, _), do: Type._default_marshal()
+  def marshal_return(_, _, _), do: Type._default_marshal()
 end
