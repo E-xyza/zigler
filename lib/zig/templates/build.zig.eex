@@ -92,6 +92,9 @@ pub fn build(b: *std.Build) void {
     lib.addCSourceFile(.{.file = .{.cwd_relative = "<%= c_src %>"}, .flags = &[_][]const u8{<%= ccompileparams %>}});
     <% end %>
 
+    <%= if :os.type() == {:unix, :darwin} do %>
+        lib.linker_allow_shlib_undefined = true;
+    <% end %>
 
     b.installArtifact(lib);
 }

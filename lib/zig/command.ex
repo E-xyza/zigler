@@ -153,7 +153,8 @@ defmodule Zig.Command do
     cond do
       opts[:local_zig] -> System.find_executable("zig")
       path = opts[:zig_path] -> path
-      true -> Path.join(directory(), "zig")
+      # Jaeho: a default `zig` goes to the system available one.
+      true -> System.find_executable("zig")
     end
   end
 
