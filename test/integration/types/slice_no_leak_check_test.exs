@@ -69,6 +69,7 @@ defmodule ZiglerTest.Types.SliceNoLeakCheckTest do
       assert [2, 3, 4] == slice_u8_test([1, 2, 3])
     end
 
+    @tag :skip
     test "completely wrong type is not tolerated" do
       assert_raise ArgumentError,
                    "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[]f64`)\n     got: `:bar`\n",

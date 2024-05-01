@@ -55,6 +55,7 @@ defmodule Zig.Nif.Basic do
       render_elixir_marshalled(nif, def_or_defp, signature.arity, error_text)
     else
       unused_params = Nif.elixir_parameters(signature.arity, false)
+
       quote context: Elixir do
         unquote(def_or_defp)(unquote(signature.name)(unquote_splicing(unused_params))) do
           :erlang.nif_error(unquote(error_text))
@@ -69,7 +70,6 @@ defmodule Zig.Nif.Basic do
          arity,
          error_text
        ) do
-
     used_params = Nif.elixir_parameters(signature.arity, true)
     unused_params = Nif.elixir_parameters(signature.arity, false)
 
@@ -99,27 +99,37 @@ defmodule Zig.Nif.Basic do
         return
       end
 
-    function_code = [do: quote do
-      unquote_splicing(marshal_params)
-      return = unquote(marshal_name)(unquote_splicing(used_params))
-      unquote(marshal_return)
-    end]
+    function_code = [
+      do:
+        quote do
+          unquote_splicing(marshal_params)
+          return = unquote(marshal_name)(unquote_splicing(used_params))
+          unquote(marshal_return)
+        end
+    ]
 
-    argument_error_prong = List.wrap(if true do
-      Zig.ErrorProng.argument_error_prong(:elixir)
-    end)
+    argument_error_prong =
+      List.wrap(
+        if true do
+          Zig.ErrorProng.argument_error_prong(:elixir)
+        end
+      )
 
     error_return_prong = []
 
-    error_prongs = case {argument_error_prong, error_return_prong} do
-      {[], []} -> []
-      _ -> [catch: argument_error_prong ++ error_return_prong]
-    end
+    error_prongs =
+      case {argument_error_prong, error_return_prong} do
+        {[], []} -> []
+        _ -> [catch: argument_error_prong ++ error_return_prong]
+      end
 
     function_block = function_code ++ error_prongs
 
     quote do
-      unquote(def_or_defp)(unquote(nif.name)(unquote_splicing(used_params)), unquote(function_block))
+      unquote(def_or_defp)(
+        unquote(nif.name)(unquote_splicing(used_params)),
+        unquote(function_block)
+      )
 
       defp unquote(marshal_name)(unquote_splicing(unused_params)) do
         :erlang.nif_error(unquote(error_text))

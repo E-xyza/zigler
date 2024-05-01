@@ -3,8 +3,7 @@ defmodule ZiglerTest.Types.IntegerTest do
 
   @sizes [7, 8, 32, 48, 64]
 
-  use Zig,
-    otp_app: :zigler
+  use Zig, otp_app: :zigler, dump: true
 
   generated_addone_functions =
     Enum.map_join(
@@ -66,13 +65,13 @@ defmodule ZiglerTest.Types.IntegerTest do
 
     test "non-integer fails for size 0" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u0`)\n     got: `\"foo\"`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: zero (for `u0`)\n     got: `\"foo\"`\n",
                    fn -> zerobit("foo") end
     end
 
     test "out of bounds integer of size 0 fails" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: integer (for `u0`)\n     got: `1`\n     note: out of bounds (0..0)\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: zero (for `u0`)\n     got: `1`\n",
                    fn -> zerobit(1) end
     end
   end

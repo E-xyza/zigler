@@ -14,10 +14,28 @@ defprotocol Zig.Type do
   alias Zig.Type.Resource
 
   @type t ::
-          Array.t() | Bool.t() | Cpointer.t() | Error.t() | Zig.Type.Enum.t() | Float.t() | 
-          Integer.t() | ManyPointer.t() | Optional.t() | Slice.t() | Struct.t() | :void | 
-          :anyopaque_pointer | :env | :pid | :port | :term | :erl_nif_term | :erl_nif_binary |
-          :erl_nif_event | :erl_nif_binary_pointer | :stacktrace
+          Array.t()
+          | Bool.t()
+          | Cpointer.t()
+          | Error.t()
+          | Zig.Type.Enum.t()
+          | Float.t()
+          | Integer.t()
+          | ManyPointer.t()
+          | Optional.t()
+          | Slice.t()
+          | Struct.t()
+          | :void
+          | :anyopaque_pointer
+          | :env
+          | :pid
+          | :port
+          | :term
+          | :erl_nif_term
+          | :erl_nif_binary
+          | :erl_nif_event
+          | :erl_nif_binary_pointer
+          | :stacktrace
 
   @spec marshal_param(t, Macro.t(), non_neg_integer, :elixir | :erlang) :: Macro.t()
   def marshal_param(type, variable, index, platform)

@@ -22,7 +22,12 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
         var error_index: u8 = undefined;
 
         const payload = beam.payload.build(nif.<%= @name %>, argc, args, &error_index, payload_opts) catch |err| {
-            return e.enif_raise_exception(env, beam.make(.{err, error_index, error_info}, .{}).v);
+            <%= if @signature.arity == 0 do %>
+                _ = err;
+                unreachable;
+            <% else %>
+                return e.enif_raise_exception(env, beam.make(.{err, error_index, error_info}, .{}).v);
+            <% end %> 
         };
 
         // defer beam.payload.cleanup(payload, cleanup_opts);

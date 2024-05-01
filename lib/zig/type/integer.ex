@@ -59,6 +59,23 @@ defmodule Zig.Type.Integer do
     marshal_param_erlang(type, variable, index)
   end
 
+  defp marshal_param_elixir(%{bits: 0} = type, variable, index) do
+    quote bind_quoted: [
+            variable: variable,
+            name: Type.render_zig(type),
+            index: index
+          ] do
+      unless variable === 0 do
+        :erlang.error(
+          {:argument_error, index,
+           [{"expected: zero (for `#{name}`)"}, {"got: `#{inspect(variable)}`"}]}
+        )
+      end
+
+      variable
+    end
+  end
+
   defp marshal_param_elixir(type, variable, index) do
     max = typemax(type)
     min = typemin(type)
@@ -103,14 +120,17 @@ defmodule Zig.Type.Integer do
 
     size = _next_power_of_two_ceil(type.bits)
 
-    case type.signedness do
-      :unsigned ->
+    case type do
+      %{bits: bits} when bits <= 64 ->
+        variable
+
+      %{signedness: :unsigned} ->
         quote do
           unquote(guards)
           unquote(variable) = <<unquote(variable)::unsigned-integer-size(unquote(size))-native>>
         end
 
-      :signed ->
+      %{signedness: :signed} ->
         quote do
           unquote(guards)
           unquote(variable) = <<unquote(variable)::signed-integer-size(unquote(size))-native>>
@@ -148,14 +168,17 @@ defmodule Zig.Type.Integer do
   defp marshal_return_elixir(type, variable) do
     size = _next_power_of_two_ceil(type.bits)
 
-    case type.signedness do
-      :unsigned ->
+    case type do
+      %{bits: bits} when bits <= 64 ->
+        variable
+
+      %{signedness: :unsigned} ->
         quote do
           <<result::unsigned-integer-size(unquote(size))-native>> = unquote(variable)
           result
         end
 
-      :signed ->
+      %{signedness: :signed} ->
         quote do
           <<result::signed-integer-size(unquote(size))-native>> = unquote(variable)
           result
