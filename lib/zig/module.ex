@@ -208,6 +208,7 @@ defmodule Zig.Module do
 
     load_nif_fn =
       quote do
+        @zigler_module unquote(Macro.escape(module))
         def __load_nifs__ do
           # LOADS the nifs from :code.lib_dir() <> "ebin", which is
           # a path that has files correctly moved in to release packages.

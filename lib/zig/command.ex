@@ -36,100 +36,27 @@ defmodule Zig.Command do
 
   def run_sema!(file, module) do
     # TODO: add availability of further options here.
-    # TODO: make this an eex file.
-
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema.zig")
     beam_file = Path.join(priv_dir, "beam/beam.zig")
     erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
 
-    package_opts = module.packages
-
-    erl_nif_pkg = {:erl_nif, erl_nif_file}
-
-    package_files =
-      Enum.map(package_opts, fn {name, {path, _}} -> {name, path} end) ++
-        [beam: {beam_file, [erl_nif_pkg]}, erl_nif: erl_nif_file]
-
-    packages =
-      Enum.map(package_opts, fn
-        {name, path} when is_binary(path) ->
-          {name, path}
-
-        {name, {path, []}} ->
-          {name, path}
-
-        {name, {path, deps}} ->
-          deps_keyword = Enum.map(deps, &{&1, Keyword.fetch!(package_files, &1)})
-          {name, {path, deps_keyword}}
-      end)
-
-    beam_pkg = {:beam, {beam_file, [erl_nif_pkg]}}
-
-    packages =
-      [
-        erl_nif_pkg,
-        beam_pkg,
-        analyte:
-          {file,
-           [
-             beam_pkg,
-             erl_nif_pkg
-           ] ++ packages}
-      ]
-
-    deps =
-      packages
-      |> package_deps()
-      |> String.replace_prefix("", "--deps ")
-
-    mods =
-      packages
-      |> package_mods()
-      |> Enum.join(" ")
-
     # nerves will put in a `CC` command that we need to bypass because it misidentifies
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    sema_command = "run #{sema_file} #{deps} #{mods} -lc #{link_opts(module)}"
-
-    s =
-      sema_command(
-        sema: sema_file,
-        mods: [
-          erl_nif: %{path: erl_nif_file},
-          beam: %{deps: [:erl_nif], path: beam_file},
-          analyte: %{deps: [:beam, :erl_nif], path: file}
-        ]
-      )
-      |> IO.iodata_to_binary()
-      |> String.split()
-      |> Enum.join(" ")
-
-    run_zig(s, stderr_to_stdout: true)
-  end
-
-  defp package_deps(packages) do
-    packages
-    |> Keyword.keys()
-    |> Enum.map_join(",", &to_string/1)
-  end
-
-  defp package_mods(packages) do
-    packages
-    |> Enum.flat_map(fn
-      {name, {file, deps}} ->
-        ["--mod #{name}:#{package_deps(deps)}:#{file}"] ++ package_mods(deps)
-
-      {name, file} ->
-        ["--mod #{name}::#{file}"]
-    end)
-    |> Enum.uniq()
-  end
-
-  defp link_opts(module) do
-    Enum.map_join(module.include_dir, " ", &"-I #{&1}")
+    sema_command(
+      sema: sema_file,
+      mods: [
+        erl_nif: %{path: erl_nif_file},
+        beam: %{deps: [:erl_nif], path: beam_file},
+        analyte: %{deps: [:beam, :erl_nif], path: file}
+      ]
+    )
+    |> IO.iodata_to_binary()
+    |> String.split()
+    |> Enum.join(" ")
+    |> run_zig(stderr_to_stdout: true)
   end
 
   def fmt(file) do

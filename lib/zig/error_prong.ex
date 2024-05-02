@@ -1,6 +1,5 @@
 defmodule Zig.ErrorProng do
-  @moduledoc """
-  """
+  @moduledoc false
 
   # default parameter errors handling.
 
@@ -9,12 +8,21 @@ defmodule Zig.ErrorProng do
       :error, {:argument_error, index, error_lines} ->
         new_stacktrace =
           case __STACKTRACE__ do
-            [{_m, _f, a, _opts}, {m, f, _a, opts} | rest] ->
+            # this module is only created when the function is being marshalled.
+            [{_m, _f, a, _}, {m, f, _a, opts} | rest] ->
               indentation = &["\n     ", List.duplicate("| ", &1)]
+
+              line = 1
+              file = "foo"
+
+              # TODO: we want to provide line information on the function here.
+              line |> dbg
 
               new_opts =
                 Keyword.merge(opts,
                   error_info: %{module: __MODULE__, function: :_format_error},
+                  line: line,
+                  file: file,
                   zigler_error: %{
                     (index + 1) =>
                       error_lines

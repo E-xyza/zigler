@@ -23,6 +23,7 @@ defmodule Zig.Type.Cpointer do
       _ -> false
     end
   end
+
   def can_cleanup?(_), do: true
 
   def render_payload_options(type, index, _), do: Type._default_payload_options()

@@ -55,7 +55,7 @@ defprotocol Zig.Type do
   @spec render_payload_options(t, non_neg_integer, boolean) :: iodata
   def render_payload_options(type, index, error_info?)
 
-  @spec render_return(t, Return.t) :: iodata
+  @spec render_return(t, Return.t()) :: iodata
   def render_return(type, return)
 
   @spec render_zig(t) :: String.T
@@ -247,7 +247,10 @@ after
   def _default_payload_options, do: ".{.error_info = &error_info},"
 
   def _default_return(option \\ nil)
-  def _default_return(%{as: type}), do: "break :result_block beam.make(result, .{.as = .#{type}}).v;"
+
+  def _default_return(%{as: type}),
+    do: "break :result_block beam.make(result, .{.as = .#{type}}).v;"
+
   def _default_return(_), do: "break :result_block beam.make(result, .{}).v;"
 
   def _default_marshal, do: []

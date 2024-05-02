@@ -10,11 +10,9 @@ defmodule Zig.Manifest do
 
       unquote(def_or_defp)(__resolve(%{file_name: file, line: line}), do: __resolve(file, line))
 
-      unquote(def_or_defp)(__resolve(unquote(file), line),
-        do: __resolve(@__zig_manifest, [], line)
-      )
+      defp __resolve(unquote(file), line), do: __resolve(@__zig_manifest, [], line)
 
-      unquote(def_or_defp)(__resolve(file, line) when is_binary(file), do: {file, line})
+      defp __resolve(file, line) when is_binary(file), do: {file, line}
 
       defp __resolve([{anchor_line, _} = head | rest], stack, line) when anchor_line < line do
         __resolve(rest, [head | stack], line)

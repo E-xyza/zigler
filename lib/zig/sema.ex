@@ -4,6 +4,7 @@ defmodule Zig.Sema do
   alias Zig.Module
   alias Zig.Nif
   alias Zig.Parameter
+  alias Zig.Parser
   alias Zig.Return
   alias Zig.Type
   alias Zig.Type.Function
@@ -89,6 +90,7 @@ defmodule Zig.Sema do
     #
     # it could also be just a list of functions with their specifications, in
     # which case those are the *only* functions that will be included.
+
     nifs =
       case module.nifs do
         {:auto, specified_fns} ->
@@ -107,16 +109,18 @@ defmodule Zig.Sema do
             nif_opts = Keyword.get(specified_fns, function.name, module.default_nif_opts)
 
             function.name
-            |> Nif.new(nif_opts)
+            |> Nif.new(module.module_code_path, nif_opts)
             |> apply_from_sema(function, nif_opts)
+            |> set_file_line(module.manifest_module, module.parsed)
           end)
 
         selected_fns when is_list(selected_fns) ->
           Enum.map(selected_fns, fn {name, nif_opts} ->
             if function = Enum.find(functions, &(&1.name == name)) do
               name
-              |> Nif.new(nif_opts)
+              |> Nif.new(module.module_code_path, nif_opts)
               |> apply_from_sema(function, nif_opts)
+              |> set_file_line(module.manifest_module, module.parsed)
             else
               raise CompileError,
                 description: "function #{name} not found in semantic analysis of functions.",
@@ -129,7 +133,12 @@ defmodule Zig.Sema do
   end
 
   defp apply_from_sema(nif, sema, opts) do
-    %{nif | signature: sema, params: params_from_sema(sema, opts), return: return_from_sema(sema, opts)}
+    %{
+      nif
+      | signature: sema,
+        params: params_from_sema(sema, opts),
+        return: return_from_sema(sema, opts)
+    }
   end
 
   defp params_from_sema(%{params: params}, _opts) do
@@ -140,6 +149,17 @@ defmodule Zig.Sema do
 
   defp return_from_sema(%{return: return}, opts) do
     Return.new(return, List.wrap(opts[:return]))
+  end
+
+  @spec set_file_line(Nif.t, module, Parser.t) :: Nif.t
+  defp set_file_line(nif, manifest_module, parsed) do
+    raw_line = Enum.find_value(parsed.code, fn 
+      %{name: name, location: {line, _}} -> if name == nif.name, do: line
+    end)
+
+    {file, line} = manifest_module.__resolve(%{file_name: nif.file, line: raw_line})
+
+    %{nif | file: file, line: line}
   end
 
   #  defp adjust_raw(function, opts) do

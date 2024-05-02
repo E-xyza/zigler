@@ -11,9 +11,9 @@ defmodule Zig.Nif do
   # files.
   @behaviour Access
 
-  @enforce_keys ~w[name export concurrency]a
+  @enforce_keys ~w[name export concurrency file]a
 
-  defstruct @enforce_keys ++ ~w[signature params return leak_check alias doc spec]a
+  defstruct @enforce_keys ++ ~w[line signature params return leak_check alias doc spec]a
 
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
@@ -29,9 +29,11 @@ defmodule Zig.Nif do
           name: atom,
           export: boolean,
           concurrency: Synchronous | Threaded | Yielding | DirtyCpu | DirtyIo,
+          line: integer,
+          file: Path.t(),
           signature: Function.t(),
-          params: :raw | %{optional(integer) => Parameter.t},
-          return: Return.t,
+          params: :raw | %{optional(integer) => Parameter.t()},
+          return: Return.t(),
           leak_check: boolean(),
           alias: nil | atom,
           doc: nil | String.t(),
@@ -52,21 +54,13 @@ defmodule Zig.Nif do
   @doc """
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
-  def new(name, opts) do
+  def new(name, file, opts) do
     %__MODULE__{
       name: name,
+      file: file,
       export: Keyword.get(opts, :export, true),
       concurrency: Map.get(@concurrency_modules, opts[:concurrency], Synchronous)
     }
-
-    #  raw: extract_raw(opts[:raw], opts[:type]),
-    #  args: opts[:args],
-    #  return: opts[:return],
-    #  leak_check: opts[:leak_check],
-    #  alias: opts[:alias],
-    #  doc: opts[:doc],
-    #  spec: Keyword.get(opts, :spec, :auto)
-    # }
   end
 
   # defp extract_raw(raw_opt, %{return: return}) do

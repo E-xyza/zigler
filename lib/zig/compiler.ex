@@ -68,6 +68,7 @@ defmodule Zig.Compiler do
     |> Sema.analyze_file!()
     |> tap(&precompile/1)
     |> Command.compile!()
+    |> unload_manifest_module()
     |> case do
       %{language: Elixir} = module ->
         Zig.Module.render_elixir(module, zig_code)
@@ -117,5 +118,10 @@ defmodule Zig.Compiler do
     System.tmp_dir()
     |> String.replace("\\", "/")
     |> Path.join(".zigler_compiler/#{env}/#{module}")
+  end
+
+  def unload_manifest_module(module) do
+    :code.soft_purge(module.manifest_module) || raise "manifest purging error"
+    module
   end
 end

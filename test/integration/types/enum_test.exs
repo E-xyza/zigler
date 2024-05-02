@@ -1,8 +1,7 @@
 defmodule ZiglerTest.Types.EnumTest do
   use ZiglerTest.IntegrationCase, async: true
 
-  use Zig,
-    otp_app: :zigler
+  use Zig, otp_app: :zigler, dump: true
 
   ~Z"""
   pub const EnumType = enum{ foo, bar };

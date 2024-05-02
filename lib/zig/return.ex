@@ -1,14 +1,14 @@
-defmodule Zig.Return do 
+defmodule Zig.Return do
   @enforce_keys [:type]
   defstruct @enforce_keys ++ [:cleanup, as: :default]
 
   alias Zig.Type
 
   @type t :: %__MODULE__{
-    type: Type.t,
-    cleanup: boolean,
-    as: :binary | :list | :default
-  }
+          type: Type.t(),
+          cleanup: boolean,
+          as: :binary | :list | :default
+        }
 
   def new(type, options) do
     struct!(__MODULE__, [type: type] ++ normalize_options(type, options))
@@ -28,6 +28,6 @@ defmodule Zig.Return do
   end
 
   def render(return) do
-    Type.render_return(return.type, return) 
+    Type.render_return(return.type, return)
   end
 end

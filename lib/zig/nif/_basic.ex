@@ -222,5 +222,4 @@ defmodule Zig.Nif.Basic do
   def context(Synchronous), do: :synchronous
 
   def resources(_), do: []
-
 end
