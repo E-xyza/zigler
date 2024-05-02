@@ -23,9 +23,10 @@ defmodule Zig.Type.Cpointer do
       _ -> false
     end
   end
+  def can_cleanup?(_), do: true
 
   def render_payload_options(type, index, _), do: Type._default_payload_options()
-  def render_return(type), do: Type._default_return()
+  def render_return(type, _), do: Type._default_return()
 
   def spec(%{child: child}, :param, _opts) do
     has_solo? = match?(%Type.Struct{extern: true}, child)
@@ -125,8 +126,6 @@ defmodule Zig.Type.Cpointer do
   end
 
   defp binary_form(_), do: nil
-
-  def missing_size?(_), do: true
 
   def of(child), do: %__MODULE__{child: child}
 end

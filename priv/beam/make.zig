@@ -4,13 +4,13 @@ const std = @import("std");
 const resource = @import("resource.zig");
 const options = @import("options.zig");
 
-const OutputType = enum {
+const MakeType = enum {
     default,
     list,
     binary,
-    fn select(opts: anytype) OutputType {
-        if (@hasField(@TypeOf(opts), "output_type")) {
-            return opts.output;
+    fn select(opts: anytype) MakeType {
+        if (@hasField(@TypeOf(opts), "as")) {
+            return opts.as;
         } else {
             return .default;
         }
@@ -225,14 +225,14 @@ fn make_array_from_pointer(comptime T: type, array_ptr: anytype, opts: anytype) 
     // strings.
     const array_info = @typeInfo(T).Array;
     const Child = array_info.child;
-    const output_type = OutputType.select(opts);
+    const as = MakeType.select(opts);
 
-    if (Child == u8 and output_type != .list) {
+    if (Child == u8 and as != .list) {
         // u8 arrays are by default marshalled into binaries.
         return make_binary(array_ptr[0..], opts);
     }
 
-    if (output_type == .binary) {
+    if (as == .binary) {
         // u8 arrays are by default marshalled into binaries.
         return make_binary(array_ptr[0..], opts);
     }
@@ -296,16 +296,16 @@ fn make_cpointer(cpointer: anytype, opts: anytype) beam.term {
 }
 
 pub fn make_slice(slice: anytype, opts: anytype) beam.term {
-    const output_type = OutputType.select(opts);
+    const as = MakeType.select(opts);
     const SliceType = @TypeOf(slice);
     // u8 slices default to binary and must be opt-in to get charlists out.
-    if ((SliceType == []u8 or SliceType == []const u8) and output_type != .list) {
+    if ((SliceType == []u8 or SliceType == []const u8) and as != .list) {
         return make_binary(slice, opts);
     }
 
     // any other slices can be opt-in to get a binary out
     // TODO: check to make sure that these are either ints, floats, or packed structs.
-    if (output_type == .binary) {
+    if (as == .binary) {
         return make_binary(slice, opts);
     }
 

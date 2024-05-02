@@ -38,22 +38,25 @@ defprotocol Zig.Type do
           | :stacktrace
 
   @spec marshal_param(t, Macro.t(), non_neg_integer, :elixir | :erlang) :: Macro.t()
-  def marshal_param(type, variable, index, platform)
+  def marshal_param(type, variable_ast, index, platform)
 
   @spec marshal_return(t, Macro.t(), Elixir | :erlang) :: Macro.t()
-  def marshal_return(type, variable, platform)
+  def marshal_return(type, variable_ast, platform)
 
   # validations:
 
   @spec return_allowed?(t) :: boolean
   def return_allowed?(type)
 
+  @spec can_cleanup?(t) :: boolean
+  def can_cleanup?(type)
+
   # rendered zig code:
   @spec render_payload_options(t, non_neg_integer, boolean) :: iodata
   def render_payload_options(type, index, error_info?)
 
-  @spec render_return(t) :: iodata
-  def render_return(type)
+  @spec render_return(t, Return.t) :: iodata
+  def render_return(type, return)
 
   @spec render_zig(t) :: String.T
   def render_zig(type)
@@ -242,7 +245,11 @@ after
   # defaults
 
   def _default_payload_options, do: ".{.error_info = &error_info},"
-  def _default_return, do: "break :result_block beam.make(result, .{}).v;"
+
+  def _default_return(option \\ nil)
+  def _default_return(%{as: type}), do: "break :result_block beam.make(result, .{.as = .#{type}}).v;"
+  def _default_return(_), do: "break :result_block beam.make(result, .{}).v;"
+
   def _default_marshal, do: []
 end
 
@@ -250,9 +257,10 @@ defimpl Zig.Type, for: Atom do
   alias Zig.Type
 
   def return_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
+  def can_cleanup?(_), do: false
 
-  def render_return(:void), do: "_ = result; break :result_block beam.make(.ok, .{}).v;"
-  def render_return(_), do: Type._default_return()
+  def render_return(:void, _), do: "_ = result; break :result_block beam.make(.ok, .{}).v;"
+  def render_return(_, _), do: Type._default_return()
 
   def render_payload_options(:erl_nif_term, _, _), do: ".{}"
   def render_payload_options(:term, _, _), do: ".{}"
@@ -268,6 +276,4 @@ defimpl Zig.Type, for: Atom do
   def spec(:pid, _, _), do: Zig.Type.spec(:pid)
 
   def spec(term, _, _) when term in ~w(term erl_nif_term)a, do: Zig.Type.spec(:term)
-
-  def missing_size?(_), do: false
 end

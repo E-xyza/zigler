@@ -27,10 +27,12 @@ defmodule Zig.Type.Array do
   end
 
   def return_allowed?(array), do: Type.return_allowed?(array.child)
+  def can_cleanup?(_), do: false
+
   def render_payload_options(type, index, _), do: Type._default_payload_options()
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
-  def render_return(type), do: Type._default_return()
+  def render_return(_, opts), do: Type._default_return(opts)
 
   def spec(%{child: ~t(u8)} = type, :return, opts) do
     # u8 defaults to binary

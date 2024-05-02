@@ -128,10 +128,10 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
         }
 
         pub fn make(self: @This(), make_opts: anytype) beam.term {
-            const output_type = options.output(make_opts);
+            const as = options.output(make_opts);
             defer self.maybe_release();
 
-            switch (output_type) {
+            switch (as) {
                 .default => {
                     return .{ .v = e.enif_make_resource(options.env(make_opts), @ptrCast(self.__payload)) };
                 },

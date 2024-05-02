@@ -20,6 +20,8 @@ defmodule Zig.Nif do
   alias Zig.Nif.Synchronous
   alias Zig.Nif.Threaded
   alias Zig.Nif.Yielding
+  alias Zig.Parameter
+  alias Zig.Return
   alias Zig.Type.Error
   alias Zig.Type.Function
 
@@ -28,10 +30,8 @@ defmodule Zig.Nif do
           export: boolean,
           concurrency: Synchronous | Threaded | Yielding | DirtyCpu | DirtyIo,
           signature: Function.t(),
-          # TODO: make `term` more specific.
-          # while signature contains the raw parameter typing, this field contains
-          # detailed options information, per parameter.
-          params: %{optional(integer) => term},
+          params: :raw | %{optional(integer) => Parameter.t},
+          return: Return.t,
           leak_check: boolean(),
           alias: nil | atom,
           doc: nil | String.t(),

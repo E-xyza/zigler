@@ -15,7 +15,7 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
     return result_block: {
         const payload_opts = .{
             <%= for {index, param} <- @params do %>
-            <%= Type.render_payload_options(param, index, needs_make?) %>
+            <%= Type.render_payload_options(param.type, index, needs_make?) %>
             <% end %>
         };
 
@@ -34,6 +34,6 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
 
         const result = @call(.auto, nif.<%= @name %>, payload) <%= Nif.maybe_catch(@signature.return) %>;
 
-        <%= Type.render_return(@signature.return) %>
+        <%= Return.render(@return) %>
     };
 }

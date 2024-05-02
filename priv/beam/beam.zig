@@ -556,9 +556,9 @@ pub const get = get_.get;
 ///   to the above rule.
 /// - if the array's element is integers, floats, packed or extern structs,
 ///   or arrays that support binaries, then the array can be output as binary
-///   data, by setting `output_type` option to `.binary`
+///   data, by setting `as` option to `.binary`
 /// - if the array's element is u8 and you would prefer outputting as a list,
-///   setting `output_type` option to `.list` will do this.
+///   setting `as` option to `.list` will do this.
 ///
 /// #### Examples
 ///
@@ -616,7 +616,7 @@ pub const get = get_.get;
 ///
 /// - supports structs with fields of any term that can be encoded using [`make`](#make)
 /// - outputs as a `t:map/0` with atom keys and the encoded terms as values
-/// - for packed or extern structs, supports binary data by setting `output_type`
+/// - for packed or extern structs, supports binary data by setting `as`
 ///   option to `.binary`
 /// - encoding options are passed recursively, if something more complex is needed,
 ///   encoding should be performed manually.
@@ -660,7 +660,7 @@ pub const get = get_.get;
 /// - these are only supported because they are assumed to be pointers to
 ///   mutable data
 /// - content will be dereferenced and encoded as if it were the child type
-/// - `output_type` rules (see [arrays](#make-arrays)) apply.
+/// - `as` rules (see [arrays](#make-arrays)) apply.
 ///
 /// #### Examples
 ///
@@ -684,8 +684,8 @@ pub const get = get_.get;
 ///   to the above rule.
 /// - if the slice's element is integers, floats, packed or extern structs,
 ///   or arrays that support binaries, then the slice can be output as binary
-///   data, by setting `output_type` option to `.binary`
-/// - `output_type` rules (see [arrays](#make-arrays)) apply.
+///   data, by setting `as` option to `.binary`
+/// - `as` rules (see [arrays](#make-arrays)) apply.
 ///
 /// #### Examples
 ///
@@ -708,8 +708,8 @@ pub const get = get_.get;
 ///   to the above rule.
 /// - if the pointers's element is integers, floats, packed or extern structs,
 ///   or arrays that support binaries, then the slice can be output as binary
-///   data, by setting `output_type` option to `.binary`
-/// - `output_type` rules (see [arrays](#make-arrays)) apply.
+///   data, by setting `as` option to `.binary`
+/// - `as` rules (see [arrays](#make-arrays)) apply.
 ///
 /// #### Examples
 ///
@@ -733,7 +733,7 @@ pub const get = get_.get;
 /// - no other types are supported.
 /// - note that the content will be interpreted as the pointer type,
 ///   so rules on pointers (see [single-item-pointers](#make-single-item-pointer)))
-/// - `output_type` rules (see [arrays](#make-arrays)) apply.
+/// - `as` rules (see [arrays](#make-arrays)) apply.
 ///
 /// #### Examples
 ///

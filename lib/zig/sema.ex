@@ -3,6 +3,8 @@ defmodule Zig.Sema do
   require EEx
   alias Zig.Module
   alias Zig.Nif
+  alias Zig.Parameter
+  alias Zig.Return
   alias Zig.Type
   alias Zig.Type.Function
 
@@ -106,36 +108,38 @@ defmodule Zig.Sema do
 
             function.name
             |> Nif.new(nif_opts)
-            |> apply_from_sema(function)
+            |> apply_from_sema(function, nif_opts)
           end)
 
         selected_fns when is_list(selected_fns) ->
-          Enum.map(selected_fns, fn {name, function_opts} ->
+          Enum.map(selected_fns, fn {name, nif_opts} ->
             if function = Enum.find(functions, &(&1.name == name)) do
               name
-              |> Nif.new(function_opts)
-              |> apply_from_sema(function)
+              |> Nif.new(nif_opts)
+              |> apply_from_sema(function, nif_opts)
             else
               raise CompileError,
                 description: "function #{name} not found in semantic analysis of functions.",
                 file: module.file
             end
           end)
-
-          # TODO: warn when a function
       end
 
     %{module | nifs: nifs}
   end
 
-  defp apply_from_sema(nif, sema) do
-    %{nif | signature: sema, params: params_from_sema(sema)}
+  defp apply_from_sema(nif, sema, opts) do
+    %{nif | signature: sema, params: params_from_sema(sema, opts), return: return_from_sema(sema, opts)}
   end
 
-  defp params_from_sema(%{params: params}) do
+  defp params_from_sema(%{params: params}, _opts) do
     params
-    |> Enum.with_index(fn param, index -> {index, param} end)
+    |> Enum.with_index(fn param, index -> {index, Parameter.new(param, [])} end)
     |> Map.new()
+  end
+
+  defp return_from_sema(%{return: return}, opts) do
+    Return.new(return, List.wrap(opts[:return]))
   end
 
   #  defp adjust_raw(function, opts) do

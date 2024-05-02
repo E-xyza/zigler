@@ -10,13 +10,13 @@ defmodule Zig.Nif.Basic do
   To understand wrapping logic, see `Zig.Nif.Marshaller`
   """
 
-  alias Zig.ErrorProng
   alias Zig.Nif
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
   alias Zig.Nif.Synchronous
   alias Zig.Type
   alias Zig.Type.Integer
+  alias Zig.Return
 
   import Zig.QuoteErl
 
@@ -52,7 +52,7 @@ defmodule Zig.Nif.Basic do
     def_or_defp = if nif.export, do: :def, else: :defp
 
     if needs_marshal?(nif) do
-      render_elixir_marshalled(nif, def_or_defp, signature.arity, error_text)
+      render_elixir_marshalled(nif, def_or_defp, error_text)
     else
       unused_params = Nif.elixir_parameters(signature.arity, false)
 
@@ -67,22 +67,20 @@ defmodule Zig.Nif.Basic do
   defp render_elixir_marshalled(
          %{signature: signature} = nif,
          def_or_defp,
-         arity,
          error_text
        ) do
-    used_params = Nif.elixir_parameters(signature.arity, true)
-    unused_params = Nif.elixir_parameters(signature.arity, false)
+    used_params_ast = Nif.elixir_parameters(signature.arity, true)
+    unused_params_ast = Nif.elixir_parameters(signature.arity, false)
 
     marshal_name = marshal_name(nif)
 
     marshal_params =
-      signature.params
-      |> Enum.zip(used_params)
-      |> Enum.with_index()
-      |> Enum.flat_map(fn {{param_type, param}, index} ->
+      nif.params
+      |> Enum.zip(used_params_ast)
+      |> Enum.flat_map(fn {{index, param}, ast} ->
         List.wrap(
-          if marshals_param?(param_type) do
-            Type.marshal_param(param_type, param, index, :elixir)
+          if marshals_param?(param.type) do
+            Type.marshal_param(param.type, ast, index, :elixir)
           end
         )
       end)
@@ -103,7 +101,7 @@ defmodule Zig.Nif.Basic do
       do:
         quote do
           unquote_splicing(marshal_params)
-          return = unquote(marshal_name)(unquote_splicing(used_params))
+          return = unquote(marshal_name)(unquote_splicing(used_params_ast))
           unquote(marshal_return)
         end
     ]
@@ -127,11 +125,11 @@ defmodule Zig.Nif.Basic do
 
     quote do
       unquote(def_or_defp)(
-        unquote(nif.name)(unquote_splicing(used_params)),
+        unquote(nif.name)(unquote_splicing(used_params_ast)),
         unquote(function_block)
       )
 
-      defp unquote(marshal_name)(unquote_splicing(unused_params)) do
+      defp unquote(marshal_name)(unquote_splicing(unused_params_ast)) do
         :erlang.nif_error(unquote(error_text))
       end
     end
@@ -225,27 +223,4 @@ defmodule Zig.Nif.Basic do
 
   def resources(_), do: []
 
-  # TODO: move this to "nif"
-  def cleanup_for(nil, param_type, index) do
-    type_cleanup(param_type, index)
-  end
-
-  def cleanup_for(arg_opts, param_type, index) do
-    arg_opts
-    |> Enum.at(index)
-    |> Keyword.get(:cleanup, true)
-    |> if do
-      type_cleanup(param_type, index)
-    else
-      "null,"
-    end
-  end
-
-  def type_cleanup(param_type, index) do
-    if Type.missing_size?(param_type) do
-      ".{.size = size#{index}},"
-    else
-      ".{},"
-    end
-  end
 end

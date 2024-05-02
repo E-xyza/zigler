@@ -17,11 +17,12 @@ defmodule Zig.Type.Enum do
   end
 
   def return_allowed?(_), do: true
+  def can_cleanup?(_), do: false
 
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
   def render_payload_options(type, index, _), do: Type._default_payload_options()
-  def render_return(type), do: Type._default_return()
+  def render_return(type, _), do: Type._default_return()
 
   def spec(%{tags: tags}, _, _opts) do
     tags

@@ -81,8 +81,10 @@ defmodule Zig.Type.Slice do
   # ETC
 
   def return_allowed?(slice), do: Type.return_allowed?(slice.child)
-  def render_payload_options(type, index, _), do: Type._default_payload_options()
-  def render_return(type), do: Type._default_return()
+  def can_cleanup?(_), do: true
+
+  def render_payload_options(_, _, _), do: Type._default_payload_options()
+  def render_return(_, opts), do: Type._default_return(opts)
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
 
