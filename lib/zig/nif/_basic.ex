@@ -109,7 +109,7 @@ defmodule Zig.Nif.Basic do
     argument_error_prong =
       List.wrap(
         if true do
-          Zig.ErrorProng.argument_error_prong(:elixir)
+          Zig.ErrorProng.argument_error_prong(:elixir, nif.file, nif.line)
         end
       )
 

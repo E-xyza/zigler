@@ -1,5 +1,7 @@
 defmodule Zig.Type.Manypointer do
   alias Zig.Type
+  alias Zig.Type.Optional
+  
   use Type
 
   import Type, only: :macros
@@ -30,6 +32,17 @@ defmodule Zig.Type.Manypointer do
   def render_return(_, opts), do: Type._default_return(opts)
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
+
+  def render_zig(type) do
+    case type do
+      %{has_sentinel?: false} ->
+        "[*]#{Type.render_zig(type.child)}"
+      %{child: ~t(u8)} ->
+        "[*:0]u8"
+      %{child: %Optional{}} ->
+        "[*:null]#{Type.render_zig(type.child)}"
+    end
+  end
 
   # only manypointers of [*:0]u8 are allowed to be returned.
   def spec(%{child: ~t(u8), has_sentinel?: true}, :return, opts) do

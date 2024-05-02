@@ -3,7 +3,7 @@ defmodule Zig.ErrorProng do
 
   # default parameter errors handling.
 
-  def argument_error_prong(:elixir) do
+  def argument_error_prong(:elixir, file, line) do
     quote do
       :error, {:argument_error, index, error_lines} ->
         new_stacktrace =
@@ -12,17 +12,13 @@ defmodule Zig.ErrorProng do
             [{_m, _f, a, _}, {m, f, _a, opts} | rest] ->
               indentation = &["\n     ", List.duplicate("| ", &1)]
 
-              line = 1
-              file = "foo"
-
-              # TODO: we want to provide line information on the function here.
-              line |> dbg
+              # TODO: make sure line and file are assigned here.
 
               new_opts =
                 Keyword.merge(opts,
                   error_info: %{module: __MODULE__, function: :_format_error},
-                  line: line,
-                  file: file,
+                  line: unquote(line),
+                  file: unquote(file),
                   zigler_error: %{
                     (index + 1) =>
                       error_lines

@@ -70,7 +70,7 @@ defmodule Zig.Command do
 
     lib_dir = Path.join(so_dir, "lib")
 
-    run_zig("build --prefix #{so_dir}", cd: staging_directory)
+    run_zig("build --prefix #{so_dir}", cd: staging_directory, stderr_to_stdout: true)
 
     src_lib_name = Path.join(lib_dir, src_lib_name(module.module))
     dst_lib_name = Path.join(lib_dir, dst_lib_name(module.module))
@@ -83,6 +83,9 @@ defmodule Zig.Command do
     Logger.debug("built library at #{dst_lib_name}")
 
     module
+  rescue
+    e in Zig.CompileError ->
+      reraise Zig.CompileError.resolve(e, module), __STACKTRACE__
   end
 
   def targets do

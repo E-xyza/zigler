@@ -58,7 +58,7 @@ defprotocol Zig.Type do
   @spec render_return(t, Return.t()) :: iodata
   def render_return(type, return)
 
-  @spec render_zig(t) :: String.T
+  @spec render_zig(t) :: String.t()
   def render_zig(type)
 
   @typep spec_context :: :param | :return

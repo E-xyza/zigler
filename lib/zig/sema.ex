@@ -129,6 +129,8 @@ defmodule Zig.Sema do
           end)
       end
 
+    Enum.each(nifs, &validate_nif!(&1))
+
     %{module | nifs: nifs}
   end
 
@@ -151,15 +153,32 @@ defmodule Zig.Sema do
     Return.new(return, List.wrap(opts[:return]))
   end
 
-  @spec set_file_line(Nif.t, module, Parser.t) :: Nif.t
+  @spec set_file_line(Nif.t(), module, Parser.t()) :: Nif.t()
   defp set_file_line(nif, manifest_module, parsed) do
-    raw_line = Enum.find_value(parsed.code, fn 
-      %{name: name, location: {line, _}} -> if name == nif.name, do: line
-    end)
+    raw_line =
+      Enum.find_value(parsed.code, fn
+        %{name: name, location: {line, _}} -> if name == nif.name, do: line
+      end)
 
     {file, line} = manifest_module.__resolve(%{file_name: nif.file, line: raw_line})
 
     %{nif | file: file, line: line}
+  end
+
+  defp validate_nif!(nif) do
+    Enum.each(nif.params, &validate_param!/1)
+    validate_return!(nif)
+  end
+
+  defp validate_param!(param), do: :ok
+
+  defp validate_return!(nif) do
+    unless Type.return_allowed?(nif.return.type) do
+      raise CompileError,
+        description: "functions returning #{Type.render_zig(nif.return.type)} cannot be nifs",
+        file: nif.file,
+        line: nif.line
+    end
   end
 
   #  defp adjust_raw(function, opts) do

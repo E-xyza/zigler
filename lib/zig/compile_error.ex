@@ -5,22 +5,40 @@ defmodule Zig.CompileError do
     "zig command failed: #{error.command} failed with error #{error.code}: #{error.error}"
   end
 
-  def resolve(error, module) do
-    _ = module
-    error
+  def resolve(error, %{module_code_path: module_code_path, manifest_module: manifest_module}) do
+    {lines, file_line} =
+      error.error
+      |> String.split("\n")
+      |> Enum.reduce({[], nil}, fn
+        error_line, {so_far, nil} ->
+          revise_line(error_line, so_far, module_code_path, manifest_module)
 
-    # [location_info, error_msg | _] =
-    #  error.error
-    #  |> String.split("\nerror:")
-    #  |> List.first()
-    #  |> String.split(": error: ")
-    #
-    # manifest = Keyword.fetch!(opts, :manifest)
-    #
-    # [file, line, _column] = String.split(location_info, ":")
-    #
-    # {resolved_file, resolved_line} = Manifest.resolve(manifest, file, String.to_integer(line))
-    #
-    # %CompileError{description: error_msg, file: resolved_file, line: resolved_line}
+        error_line, {so_far, fileline} ->
+          {next, _} = revise_line(error_line, so_far, module_code_path, manifest_module)
+          {next, fileline}
+      end)
+
+    error =
+      lines
+      |> Enum.reverse()
+      |> Enum.join("\n")
+
+    case file_line do
+      nil ->
+        %CompileError{description: error}
+
+      {file, line} ->
+        %CompileError{description: error, file: file, line: line}
+    end
+  end
+
+  defp revise_line(error_line, acc, module_code_path, manifest_module) do
+    with ^module_code_path <> ":" <> rest <- error_line,
+         {line, err_rest} <- Integer.parse(rest) do
+      {updated_file, updated_line} = manifest_module.__resolve(module_code_path, line)
+      {["#{updated_file}:#{updated_line}#{err_rest}" | acc], {updated_file, updated_line}}
+    else
+      _ -> {[error_line | acc], nil}
+    end
   end
 end
