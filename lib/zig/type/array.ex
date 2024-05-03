@@ -26,10 +26,11 @@ defmodule Zig.Type.Array do
     }
   end
 
+  def param_allowed?(array), do: Type.param_allowed?(array.child)
   def return_allowed?(array), do: Type.return_allowed?(array.child)
   def can_cleanup?(_), do: false
 
-  def render_payload_options(type, index, _), do: Type._default_payload_options()
+  def render_payload_options(_, _, _), do: Type._default_payload_options()
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
   def render_return(_, opts), do: Type._default_return(opts)

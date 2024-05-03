@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Types.ManypointerForbiddenOutput do
+defmodule ZiglerTest.Types.Errors.ManypointerReturnFails do
   use Zig, otp_app: :zigler
 
   ~Z"""

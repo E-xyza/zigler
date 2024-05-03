@@ -80,6 +80,7 @@ defmodule Zig.Type.Slice do
 
   # ETC
 
+  def param_allowed?(slice), do: Type.param_allowed?(slice.child)
   def return_allowed?(slice), do: Type.return_allowed?(slice.child)
   def can_cleanup?(_), do: true
 

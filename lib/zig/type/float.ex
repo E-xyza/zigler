@@ -21,6 +21,7 @@ defmodule Zig.Type.Float do
 
   def spec(_, _, _), do: Type.spec(:float)
 
+  def param_allowed?(_), do: true
   def return_allowed?(_), do: true
   def can_cleanup?(_), do: false
 

@@ -1,4 +1,4 @@
-<% needs_make? = @params |> Map.values |> Enum.any?(&Type.needs_make?/1) %>
+<% needs_make? = @params |> Map.values |> Enum.any?(&Type.needs_make?(&1.type)) %>
 
 fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
     beam.context = .{
@@ -22,17 +22,17 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
         var error_index: u8 = undefined;
 
         const payload = beam.payload.build(nif.<%= @name %>, argc, args, &error_index, payload_opts) catch |err| {
-            <%= if @signature.arity == 0 do %>
+            <%= if needs_make? do %>
+                return e.enif_raise_exception(env, beam.make(.{err, error_index, error_info}, .{}).v);
+            <% else %>
                 _ = err;
                 unreachable;
-            <% else %>
-                return e.enif_raise_exception(env, beam.make(.{err, error_index, error_info}, .{}).v);
             <% end %> 
         };
 
         // defer beam.payload.cleanup(payload, cleanup_opts);
 
-        const result = @call(.auto, nif.<%= @name %>, payload) <%= Nif.maybe_catch(@signature.return) %>;
+        const result = @call(.auto, nif.<%= @name %>, payload) <%= Nif.maybe_catch(@return.type) %>;
 
         <%= Return.render(@return) %>
     };

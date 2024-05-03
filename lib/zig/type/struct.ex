@@ -109,6 +109,9 @@ defmodule Zig.Type.Struct do
     |> Enum.sort()
   end
 
+  # for now.  Later, we will need to do more sophisticated checks
+  def param_allowed?(_), do: true
+
   def return_allowed?(struct) do
     struct.required
     |> Map.values()
@@ -119,7 +122,7 @@ defmodule Zig.Type.Struct do
 
   def can_cleanup?(_), do: false
 
-  def render_payload_options(type, index, _), do: Type._default_payload_options()
+  def render_payload_options(_, _, _), do: Type._default_payload_options()
   def render_return(_, _), do: Type._default_return()
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()

@@ -45,6 +45,9 @@ defprotocol Zig.Type do
 
   # validations:
 
+  @spec param_allowed?(t) :: boolean
+  def param_allowed?(type)
+
   @spec return_allowed?(t) :: boolean
   def return_allowed?(type)
 
@@ -259,8 +262,15 @@ end
 defimpl Zig.Type, for: Atom do
   alias Zig.Type
 
+  def param_allowed?(type), do: type in ~w(term erl_nif_term pid)a
   def return_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
   def can_cleanup?(_), do: false
+
+  def render_zig(:term), do: "beam.term"
+  def render_zig(:erl_nif_term), do: "e.erl_nif_term"
+  def render_zig(:pid), do: "beam.pid"
+  def render_zig(:env), do: "beam.env"
+  def render_zig(atom), do: "#{atom}"
 
   def render_return(:void, _), do: "_ = result; break :result_block beam.make(.ok, .{}).v;"
   def render_return(_, _), do: Type._default_return()

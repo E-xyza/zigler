@@ -1,7 +1,7 @@
 defmodule Zig.Type.Manypointer do
   alias Zig.Type
   alias Zig.Type.Optional
-  
+
   use Type
 
   import Type, only: :macros
@@ -25,6 +25,7 @@ defmodule Zig.Type.Manypointer do
     }
   end
 
+  def param_allowed?(pointer), do: Type.return_allowed?(pointer.child)
   def return_allowed?(pointer), do: pointer.has_sentinel? and Type.return_allowed?(pointer.child)
   def can_cleanup?(_), do: true
 
@@ -37,8 +38,10 @@ defmodule Zig.Type.Manypointer do
     case type do
       %{has_sentinel?: false} ->
         "[*]#{Type.render_zig(type.child)}"
+
       %{child: ~t(u8)} ->
         "[*:0]u8"
+
       %{child: %Optional{}} ->
         "[*:null]#{Type.render_zig(type.child)}"
     end

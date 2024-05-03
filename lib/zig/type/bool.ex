@@ -8,6 +8,7 @@ defmodule Zig.Type.Bool do
 
   def from_json(_), do: %__MODULE__{}
 
+  def param_allowed?(_), do: true
   def return_allowed?(_), do: true
   def can_cleanup?(_), do: false
 

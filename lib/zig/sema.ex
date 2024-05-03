@@ -166,11 +166,18 @@ defmodule Zig.Sema do
   end
 
   defp validate_nif!(nif) do
-    Enum.each(nif.params, &validate_param!/1)
+    Enum.each(nif.params, &validate_param!(&1, nif))
     validate_return!(nif)
   end
 
-  defp validate_param!(param), do: :ok
+  defp validate_param!({_, param}, nif) do
+    unless Type.param_allowed?(param.type) do
+      raise CompileError,
+        description: "functions cannot have #{Type.render_zig(param.type)} as a parameter",
+        file: nif.file,
+        line: nif.line
+    end
+  end
 
   defp validate_return!(nif) do
     unless Type.return_allowed?(nif.return.type) do
