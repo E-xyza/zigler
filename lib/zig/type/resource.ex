@@ -31,4 +31,5 @@ defmodule Zig.Type.Resource do
   def can_cleanup?(_), do: true
 
   def return_allowed?(_resource), do: true
+  def param_allowed?(_), do: true
 end

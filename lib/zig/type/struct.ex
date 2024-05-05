@@ -67,11 +67,11 @@ defmodule Zig.Type.Struct do
   def render_elixir_spec(struct, :return, opts) do
     binary_form = binary_form(struct)
 
-    case Keyword.fetch!(opts, :type) do
+    case opts.as do
       :binary when not is_nil(binary_form) ->
         binary_form
 
-      t when t in ~w(charlist binary default)a ->
+      t when t in ~w(list binary default)a ->
         all_fields =
           struct.optional
           |> Map.merge(struct.required)

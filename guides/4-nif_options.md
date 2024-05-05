@@ -115,7 +115,7 @@ defmodule ReturnTypeTest do
     otp_app: :zigler,
     nifs: [
         returns_binary: [return: :binary],
-        returns_charlist: [return: :list]
+        returns_list: [return: :list]
     ]
 
   ~Z"""
@@ -123,7 +123,7 @@ defmodule ReturnTypeTest do
       return [3]u16{47, 48, 49};
   }
 
-  pub fn returns_charlist() []const u8 {
+  pub fn returns_list() []const u8 {
       return "Hello world!";
   }
   """
@@ -132,8 +132,8 @@ defmodule ReturnTypeTest do
     assert <<47, 0, 48, 0, 49, 0>> = returns_binary()
   end
 
-  test "returns charlist" do
-    assert ~C'Hello world!' = returns_charlist()
+  test "returns list" do
+    assert ~C'Hello world!' = returns_list()
   end
 end
 ```

@@ -147,7 +147,7 @@ defmodule ZiglerTest.Types.CPointerTest do
   #      assert "abc" == cpointer_u8_return_test()
   #    end
   #
-  #    test "a u8 can be marshalled into a charlist instead" do
+  #    test "a u8 can be marshalled into a list instead" do
   #      assert ~C'abc' == cpointer_u8_list_return_test()
   #    end
   #

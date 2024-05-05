@@ -53,18 +53,18 @@ defmodule Zig.Type.Cpointer do
 
   def render_elixir_spec(%{child: ~t(u8)}, :return, opts) do
     # assumed to be a null-terminated string
-    case {opts[:length], Keyword.fetch!(opts, :type)} do
-      {_, :list} ->
+    case opts do
+      %{as: :list} ->
         quote context: Elixir do
           [0..255]
         end
 
-      {length, type} when not is_nil(length) and type in ~w(default binary)a ->
+      %{length: length, as: type} when not is_integer(length) and type in ~w(default binary)a ->
         quote context: Elixir do
           <<_::unquote(length * 8)>>
         end
 
-      {_, type} when type in ~w(default binary)a ->
+      %{as: type} when type in ~w(default binary)a ->
         quote do
           binary()
         end
@@ -72,34 +72,34 @@ defmodule Zig.Type.Cpointer do
   end
 
   def render_elixir_spec(%{child: child}, :return, opts) do
-    case {Keyword.fetch(opts, :length), Keyword.fetch!(opts, :type)} do
-      {{:ok, _}, :default} ->
+    case opts do
+      %{as: :default} ->
         [Type.render_elixir_spec(child, :return, opts)]
 
-      {{:ok, {:arg, _}}, :binary} ->
+      %{as: :binary, length: {:arg, _}} ->
         # this is the case where the length is drawn from one of the arguments
         # to the function.
         quote do
           <<_::_*unquote(chunk_size(child))>>
         end
 
-      {{:ok, number}, :binary} ->
+      %{as: :binary, length: length} when is_integer(length) ->
         quote do
-          <<_::unquote(number * chunk_size(child))>>
+          <<_::unquote(length * chunk_size(child))>>
         end
 
-      {:error, _} when child.__struct__ == Type.Struct ->
+      _ when child.__struct__ == Type.Struct ->
         Type.render_elixir_spec(child, :return, opts)
 
-      {:error, _} when child == %__MODULE__{child: ~t(u8)} ->
+      _ when child == %__MODULE__{child: ~t(u8)} ->
         quote do
           [binary()]
         end
 
-      {:error, _} when child.__struct__ == __MODULE__ ->
+      _ when child.__struct__ == __MODULE__ ->
         [Type.render_elixir_spec(child.child, :return, opts)]
 
-      {:error, _} ->
+      _ ->
         raise "missing length not allowed"
     end
   end

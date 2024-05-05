@@ -16,5 +16,7 @@ defmodule Zig.Type.Error do
     Type.spec(child, context, opts)
   end
 
+  def render_return(_, _), do: Type._default_return()
+
   def of(child), do: %__MODULE__{child: child}
 end

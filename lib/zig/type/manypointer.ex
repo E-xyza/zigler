@@ -49,7 +49,7 @@ defmodule Zig.Type.Manypointer do
 
   # only manypointers of [*:0]u8 are allowed to be returned.
   def render_elixir_spec(%{child: ~t(u8), has_sentinel?: true}, :return, opts) do
-    case Keyword.fetch!(opts, :type) do
+    case opts.as do
       :list ->
         [Type.render_elixir_spec(~t(u8), :return, opts)]
 

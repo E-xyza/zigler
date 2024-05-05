@@ -96,7 +96,7 @@ end
 ```
 
 Conversely, for u8 array-like datatypes, selecting `.output = .list` will
-result in outputting a charlist.
+result in outputting a list.
 
 You can also automatically marshal as binary by using
 [nif options](4-nif_options.html#binary-output)

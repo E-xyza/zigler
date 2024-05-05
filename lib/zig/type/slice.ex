@@ -45,7 +45,7 @@ defmodule Zig.Type.Slice do
       {:return, %{as: :binary}} ->
         binary_form(child) || raise "unreachable"
 
-      {:return, type} when type in ~w(default charlist)a ->
+      {:return, %{as: type}} when type in ~w(default list)a ->
         [Type.render_elixir_spec(child, :return, [])]
 
       {:param, _} ->

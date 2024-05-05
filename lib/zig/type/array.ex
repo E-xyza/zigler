@@ -37,7 +37,7 @@ defmodule Zig.Type.Array do
 
   def render_elixir_spec(%{child: ~t(u8)} = type, :return, opts) do
     # u8 defaults to binary
-    case Keyword.fetch!(opts, :type) do
+    case opts.as do
       :list ->
         [Type.render_elixir_spec(~t(u8), :return, opts)]
 
@@ -50,7 +50,7 @@ defmodule Zig.Type.Array do
     # other types defaults to binary
     binary_form = binary_form(child, known_length(type))
 
-    case Keyword.fetch!(opts, :type) do
+    case opts.as do
       :binary when not is_nil(binary_form) ->
         binary_form
 

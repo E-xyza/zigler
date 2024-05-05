@@ -4,7 +4,7 @@ defmodule ZiglerTest.Concurrency.ThreadedManualTest do
   use ZiglerTest.IntegrationCase, async: true
 
   @moduletag :threaded
-  @moduletag :skip
+  test "restore"
 
   # use Zig, otp_app: :zigler, cleanup: false, resources: [:ThreadResource]
   #
