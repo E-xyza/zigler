@@ -90,7 +90,7 @@ defmodule Zig.Nif do
       end
 
     typespec =
-      case nif.spec |> dbg do
+      case nif.spec do
         false ->
           quote do
           end

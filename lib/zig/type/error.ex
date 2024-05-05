@@ -13,7 +13,7 @@ defmodule Zig.Type.Error do
   def can_cleanup?(_), do: false
 
   def render_elixir_spec(%{child: child}, context, opts) do
-    Type.spec(child, context, opts)
+    Type.render_elixir_spec(child, context, opts)
   end
 
   def render_return(_, _), do: Type._default_return()
