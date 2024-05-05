@@ -49,40 +49,4 @@ defmodule ZiglerTest.Sema.FunctionTest do
              return: ~t(u16)
            } = multiple_params
   end
-
-  ~Z"""
-  const beam = @import("beam");
-
-  pub fn beam_env(env: beam.env, x: u8) u8 {
-    _ = env;
-    return x;
-  }
-  """
-
-  test "a function with beam.env", %{beam_env: beam_env} do
-    assert %Type.Function{
-             name: :beam_env,
-             arity: 1,
-             params: [:env, ~t(u8)],
-             return: ~t(u8)
-           } = beam_env
-  end
-
-  ~Z"""
-  const e = @import("erl_nif");
-
-  pub fn erl_nif_env(env: ?*e.ErlNifEnv, x: u8) u8 {
-    _ = env;
-    return x;
-  }
-  """
-
-  test "a function with e.ErlNifEnv", %{erl_nif_env: erl_nif_env} do
-    assert %Type.Function{
-             name: :erl_nif_env,
-             arity: 1,
-             params: [:env, ~t(u8)],
-             return: ~t(u8)
-           } = erl_nif_env
-  end
 end

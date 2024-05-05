@@ -1,6 +1,5 @@
 defmodule Zig.EasyC do
-  @moduledoc """
-  """
+  @moduledoc false
 
   require EEx
 

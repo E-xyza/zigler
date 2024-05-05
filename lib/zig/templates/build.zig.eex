@@ -74,24 +74,25 @@ pub fn build(b: *std.Build) void {
     lib.root_module.addImport("beam", beam);
     lib.root_module.addImport("nif", nif);
 
-    <%= for lib <- @link_lib do %>
-      <%= case lib do %>
-        <% {:system, lib} -> %>
+    <%= if @c do %>
+        <%= for lib <- @c.link_lib do %>
+            <%= case lib do %>
+            <% {:system, lib} -> %>
     lib.linkSystemLibrary("<%= lib %>");
-        <% lib -> %>
+            <% lib -> %>
     lib.addObjectFile("<%= lib %>");
-      <% end %>
-    <% end %>
+          <% end %>
+        <% end %>
 
-    <%= for include <- @include_dir do %>
-    lib.addIncludePath(.{.cwd_relative = "<%= include %>"});
-    <% end %>
+        <%= for include_dir <- @c.include_dirs do %>
+    lib.addIncludePath(.{.cwd_relative = "<%= include_dir %>"});
+        <% end %>
 
-    <%= for {c_src, c_src_opts} <- @c_src do %>
-    <% ccompileparams = Enum.map_join(c_src_opts, ", ", &~s("#{&1}")) %>
-    lib.addCSourceFile(.{.file = .{.cwd_relative = "<%= c_src %>"}, .flags = &[_][]const u8{<%= ccompileparams %>}});
+        <%= for {src, src_opts} <- @c.src do %>
+        <% ccompileparams = Enum.map_join(src_opts, ", ", &~s("#{&1}")) %>
+    lib.addCSourceFile(.{.file = .{.cwd_relative = "<%= src %>"}, .flags = &[_][]const u8{<%= ccompileparams %>}});
+        <% end %>
     <% end %>
-
 
     b.installArtifact(lib);
 }

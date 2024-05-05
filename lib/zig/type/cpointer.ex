@@ -26,12 +26,12 @@ defmodule Zig.Type.Cpointer do
 
   def can_cleanup?(_), do: true
 
-  def render_payload_options(type, index, _), do: Type._default_payload_options()
-  def render_return(type, _), do: Type._default_return()
+  def render_payload_options(_, _, _), do: Type._default_payload_options()
+  def render_return(_, _), do: Type._default_return()
 
-  def spec(%{child: child}, :param, _opts) do
+  def render_elixir_spec(%{child: child}, :param, _opts) do
     has_solo? = match?(%Type.Struct{extern: true}, child)
-    child_form = Type.spec(child, :param, [])
+    child_form = Type.render_elixir_spec(child, :param, [])
 
     case {has_solo?, binary_form(child)} do
       {false, nil} ->
@@ -51,7 +51,7 @@ defmodule Zig.Type.Cpointer do
     end
   end
 
-  def spec(%{child: ~t(u8)}, :return, opts) do
+  def render_elixir_spec(%{child: ~t(u8)}, :return, opts) do
     # assumed to be a null-terminated string
     case {opts[:length], Keyword.fetch!(opts, :type)} do
       {_, :list} ->
@@ -65,14 +65,16 @@ defmodule Zig.Type.Cpointer do
         end
 
       {_, type} when type in ~w(default binary)a ->
-        Type.spec(:binary)
+        quote do
+          binary()
+        end
     end
   end
 
-  def spec(%{child: child}, :return, opts) do
+  def render_elixir_spec(%{child: child}, :return, opts) do
     case {Keyword.fetch(opts, :length), Keyword.fetch!(opts, :type)} do
       {{:ok, _}, :default} ->
-        [Type.spec(child, :return, opts)]
+        [Type.render_elixir_spec(child, :return, opts)]
 
       {{:ok, {:arg, _}}, :binary} ->
         # this is the case where the length is drawn from one of the arguments
@@ -87,7 +89,7 @@ defmodule Zig.Type.Cpointer do
         end
 
       {:error, _} when child.__struct__ == Type.Struct ->
-        Type.spec(child, :return, opts)
+        Type.render_elixir_spec(child, :return, opts)
 
       {:error, _} when child == %__MODULE__{child: ~t(u8)} ->
         quote do
@@ -95,15 +97,15 @@ defmodule Zig.Type.Cpointer do
         end
 
       {:error, _} when child.__struct__ == __MODULE__ ->
-        [Type.spec(child.child, :return, opts)]
+        [Type.render_elixir_spec(child.child, :return, opts)]
 
       {:error, _} ->
         raise "missing length not allowed"
     end
   end
 
-  def spec(%{child: child = %__MODULE__{}}, :return, opts) do
-    [Type.spec(child, :return, opts)]
+  def render_elixir_spec(%{child: child = %__MODULE__{}}, :return, opts) do
+    [Type.render_elixir_spec(child, :return, opts)]
   end
 
   defp chunk_size(%type{bits: bits}) when type in [Type.Integer, Type.Float] do
@@ -112,7 +114,11 @@ defmodule Zig.Type.Cpointer do
 
   defp chunk_size(_), do: raise("invalid type for binary *c output")
 
-  defp binary_form(~t(u8)), do: Type.spec(:binary)
+  defp binary_form(~t(u8)) do
+    quote do 
+      binary()
+    end
+  end
 
   defp binary_form(%Type.Integer{bits: bits}) do
     quote context: Elixir do

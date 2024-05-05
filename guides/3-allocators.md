@@ -21,7 +21,7 @@ to avoid cache misses in your execution thread.
 const beam = @import("beam");
 
 pub fn allocate_raw(count: usize) !beam.term {
-    var slice = try beam.allocator.alloc(u16, count);
+    const slice = try beam.allocator.alloc(u16, count);
     defer beam.allocator.free(slice);
 
     for (slice, 0..) |*entry, index| {

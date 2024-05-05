@@ -35,18 +35,18 @@ defmodule Zig.Type.Array do
   def marshal_return(_, _, _), do: Type._default_marshal()
   def render_return(_, opts), do: Type._default_return(opts)
 
-  def spec(%{child: ~t(u8)} = type, :return, opts) do
+  def render_elixir_spec(%{child: ~t(u8)} = type, :return, opts) do
     # u8 defaults to binary
     case Keyword.fetch!(opts, :type) do
       :list ->
-        [Type.spec(~t(u8), :return, opts)]
+        [Type.render_elixir_spec(~t(u8), :return, opts)]
 
       t when t in ~w(default binary)a ->
         binary_form(~t(u8), known_length(type))
     end
   end
 
-  def spec(%{child: child} = type, :return, opts) do
+  def render_elixir_spec(%{child: child} = type, :return, opts) do
     # other types defaults to binary
     binary_form = binary_form(child, known_length(type))
 
@@ -55,18 +55,18 @@ defmodule Zig.Type.Array do
         binary_form
 
       other when other in ~w(default binary list)a ->
-        [Type.spec(child, :return, opts)]
+        [Type.render_elixir_spec(child, :return, opts)]
     end
   end
 
-  def spec(%{child: child} = type, :param, opts) do
+  def render_elixir_spec(%{child: child} = type, :param, opts) do
     # u8 defaults to binary
     if binary_form = binary_form(child, known_length(type)) do
       quote context: Elixir do
-        unquote([Type.spec(child, :param, opts)]) | unquote(binary_form)
+        unquote([Type.render_elixir_spec(child, :param, opts)]) | unquote(binary_form)
       end
     else
-      [Type.spec(child, :param, opts)]
+      [Type.render_elixir_spec(child, :param, opts)]
     end
   end
 
@@ -74,7 +74,11 @@ defmodule Zig.Type.Array do
     unless sentinel?, do: length
   end
 
-  defp binary_form(~t(u8), nil), do: Type.spec(:binary)
+  defp binary_form(~t(u8), nil) do
+    quote do
+      binary()
+    end
+  end
 
   defp binary_form(%Type.Integer{bits: bits}, length) do
     if length do

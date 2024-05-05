@@ -14,15 +14,21 @@ defmodule Zig.Type.Resource do
     %__MODULE__{}
   end
 
-  def spec(_resource, context, opts) do
-    case {context, Keyword.get(opts, :type)} do
-      {:return, :binary} ->
-        Type.spec(:binary)
+  def render_elixir_spec(_resource, context, opts) do
+    case {context, opts} do
+      {:return, %{as: :binary}} ->
+        quote do
+          binary()
+        end
 
       {_, _} ->
-        Type.spec(:reference)
+        quote do
+          reference()
+        end
     end
   end
+
+  def can_cleanup?(_), do: true
 
   def return_allowed?(_resource), do: true
 end

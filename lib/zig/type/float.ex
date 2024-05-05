@@ -19,7 +19,11 @@ defmodule Zig.Type.Float do
     concat(["~t(", to_string(type), ")"])
   end
 
-  def spec(_, _, _), do: Type.spec(:float)
+  def render_elixir_spec(_, _, _) do
+    quote do
+      float()
+    end
+  end
 
   def param_allowed?(_), do: true
   def return_allowed?(_), do: true

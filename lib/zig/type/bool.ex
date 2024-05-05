@@ -17,5 +17,9 @@ defmodule Zig.Type.Bool do
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
 
-  def spec(_, _, _), do: Type.spec(:boolean)
+  def render_elixir_spec(_, _, _) do
+    quote do
+      boolean()
+    end
+  end
 end

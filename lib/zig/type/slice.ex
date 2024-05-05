@@ -25,38 +25,45 @@ defmodule Zig.Type.Slice do
 
   # TYPE SPEC STUFF
 
-  def spec(%{child: ~t(u8)}, :return, opts) do
-    if Keyword.fetch!(opts, :type) == :list,
-      do: [Type.spec(~t(u8), :return, opts)],
-      else: binary_form(~t(u8))
-  end
-
-  def spec(%{child: ~t(u8)}, :param, opts) do
-    quote context: Elixir do
-      [unquote(Type.spec(~t(u8), :param, opts))] | unquote(binary_form(~t(u8)))
+  def render_elixir_spec(%{child: ~t(u8)}, :return, opts) do
+    case opts do
+      %{as: :list} ->
+        [Type.render_elixir_spec(~t(u8), :return, opts)]
+      _ ->
+        binary_form(~t(u8))
     end
   end
 
-  def spec(%{child: child}, context, opts) do
-    case {context, Keyword.get(opts, :type)} do
-      {:return, :binary} ->
+  def render_elixir_spec(%{child: ~t(u8)}, :param, opts) do
+    quote context: Elixir do
+      [unquote(Type.render_elixir_spec(~t(u8), :param, opts))] | unquote(binary_form(~t(u8)))
+    end
+  end
+
+  def render_elixir_spec(%{child: child}, context, opts) do
+    case {context, opts} do
+      {:return, %{as: :binary}} ->
         binary_form(child) || raise "unreachable"
 
       {:return, type} when type in ~w(default charlist)a ->
-        [Type.spec(child, :return, [])]
+        [Type.render_elixir_spec(child, :return, [])]
 
       {:param, _} ->
         if binary_form(child) do
           quote context: Elixir do
-            unquote([Type.spec(child, :param, [])]) | unquote(binary_form(child))
+            unquote([Type.render_elixir_spec(child, :param, [])]) | unquote(binary_form(child))
           end
         else
-          [Type.spec(child, :param, [])]
+          [Type.render_elixir_spec(child, :param, [])]
         end
     end
   end
 
-  defp binary_form(~t(u8)), do: Type.spec(:binary)
+  defp binary_form(~t(u8)) do
+    quote do
+      binary()
+    end
+  end
 
   defp binary_form(%Type.Integer{bits: bits}) do
     quote context: Elixir do

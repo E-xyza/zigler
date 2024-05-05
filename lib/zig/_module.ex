@@ -4,10 +4,10 @@ defmodule Zig.Module do
   module
   """
 
-  # TODO: write out a struct that will hold the nif opts for the module.
-
+  alias Zig.C
   alias Zig.Nif
   alias Zig.Resources
+  alias Zig.Type.Error
 
   # for easy access in EEx files
   @behaviour Access
@@ -32,6 +32,7 @@ defmodule Zig.Module do
                 :sema,
                 :parsed,
                 :version,
+                :c,
                 language: Elixir,
                 nifs: {:auto, []},
                 ignore: [],
@@ -40,10 +41,6 @@ defmodule Zig.Module do
                 dump: false,
                 dump_sema: false,
                 dump_build_zig: false,
-                include_dir: [],
-                link_lib: [],
-                link_libcpp: false,
-                c_src: [],
                 callbacks: [],
                 default_nif_opts: []
               ]
@@ -63,8 +60,9 @@ defmodule Zig.Module do
           sema: Sema.t(),
           parsed: Parser.t(),
           version: String.t(),
+          c: C.opts() | C.t(),
           language: Elixir | :erlang,
-          nifs: nif_opts() | [Nif.t()],
+          nifs: Nif.opts() | [Nif.t()],
           ignore: [atom()],
           packages: [packagespec()],
           resources: [atom()],
@@ -73,36 +71,17 @@ defmodule Zig.Module do
           dump_build_zig: boolean | :stdout | :stderr | Path.t(),
           build_zig: nil | Path.t(),
           precompiled: nil | precompiledspec(),
-          include_dir: [],
-          link_lib: [],
-          link_libcpp: false,
-          c_src: [],
+          c: C.t(),
           callbacks: callback_opts(),
-          default_nif_opts: default_nif_opts()
+          default_nif_opts: [Nif.defaultable_opts()]
         }
 
   @type packagespec() :: {name :: atom(), {path :: Path.t(), deps :: [atom]}}
   # NB: this is going to become more complex for security reasons.
   @type precompiledspec() :: Path.t()
   @type callback_opts() :: [on_load: atom(), on_upgrade: atom(), on_unload: atom()]
-  @type nif_opts() :: [
-          cleanup: boolean,
-          leak_check: boolean,
-          ignore: boolean,
-          export: boolean,
-          concurrency: Zig.Nif.Concurrency.concurrency(),
-          raw: boolean(),
-          args: %{optional(integer) => arg_opts()},
-          return: :list | :binary,
-          alias: atom(),
-          doc: String.t(),
-          spec: Macro.t()
-        ]
-  @type arg_opts() :: [{atom, term}]
 
-  @type default_nif_opts() :: [cleanup: boolean, leak_check: boolean]
-
-  @nif_opts ~w[cleanup leak_check ignore]a
+  @defaultable_nif_opts ~w[cleanup leak_check]a
 
   def new(opts, caller) do
     # make sure that the caller has declared otp_app here.
@@ -124,9 +103,9 @@ defmodule Zig.Module do
     end
 
     opts
-    |> Keyword.drop(@nif_opts)
+    |> Keyword.drop(@defaultable_nif_opts)
     |> Keyword.merge(
-      default_nif_opts: Keyword.take(opts, @nif_opts),
+      default_nif_opts: Keyword.take(opts, @defaultable_nif_opts),
       module: caller.module,
       file: caller.file
     )
@@ -137,12 +116,15 @@ defmodule Zig.Module do
   defp normalize_options(opts) do
     opts
     |> obtain_version
+    |> Keyword.update(:c, nil, &C.new/1)
 
+    # |> normalize_include_dirs
+    # |> normalize_src
     # |> normalize_nifs
     # |> normalize_libs
     # |> normalize_build_opts
     # |> normalize_include_dirs
-    # |> normalize_c_src
+    # |> normalize_src
     # |> EasyC.normalize_aliasing()
   end
 
@@ -169,16 +151,6 @@ defmodule Zig.Module do
     end)
   end
 
-  # defp normalize_nifs(opts) do
-  #  Keyword.update!(opts, :nifs, fn
-  #    {:auto, opts} ->
-  #      {:auto, Enum.map(opts, &Nif.normalize_options!(&1, common_options))}
-
-  #    opts ->
-  #      Enum.map(opts, &Nif.normalize_options!(&1, common_options))
-  #  end)
-  # end
-
   # internal helpers
   defp table_entries(nifs) when is_list(nifs) do
     nifs
@@ -204,11 +176,10 @@ defmodule Zig.Module do
   EEx.function_from_file(:def, :render_zig, nif, [:assigns])
 
   def render_elixir(module, zig_code) do
-    nif_name = "#{module.module}"
+    module_name = "#{module.module}"
 
     load_nif_fn =
       quote do
-        @zigler_module unquote(Macro.escape(module))
         def __load_nifs__ do
           # LOADS the nifs from :code.lib_dir() <> "ebin", which is
           # a path that has files correctly moved in to release packages.
@@ -217,27 +188,38 @@ defmodule Zig.Module do
           unquote(module.otp_app)
           |> :code.priv_dir()
           |> Path.join("lib")
-          |> Path.join(unquote(nif_name))
+          |> Path.join(unquote(module_name))
           |> String.to_charlist()
           |> :erlang.load_nif(0)
           |> case do
             :ok ->
-              Logger.debug("loaded module at #{unquote(nif_name)}")
+              Logger.debug("loaded module at #{unquote(module_name)}")
 
             error = {:error, any} ->
-              Logger.error("loading module #{unquote(nif_name)} #{inspect(any)}")
+              Logger.error("loading module #{unquote(module_name)} #{inspect(any)}")
           end
         end
       end
 
     function_code = Enum.map(module.nifs, &Nif.render_elixir/1)
 
+    # TODO: there might be a smarter way of getting this.
+    manifest_code =
+      if Enum.any?(module.nifs, &match?(%Error{}, &1.return.type)) do
+        quote do
+          require Zig.Manifest
+          Zig.Manifest.resolver(unquote(module.manifest), unquote(module.module_code_path), :defp)
+        end
+      end
+
     quote do
+      # these two attribs can be persisted for code inspection.
+      @zigler_module unquote(Macro.escape(module))
       @zig_code unquote(zig_code)
+
       unquote_splicing(function_code)
       unquote(load_nif_fn)
-      require Zig.Manifest
-      Zig.Manifest.resolver(unquote(module.manifest), unquote(module.module_code_path), :defp)
+      unquote(manifest_code)
 
       def _format_error(_, [{_, _, _, opts} | _rest] = _stacktrace) do
         if formatted = opts[:zigler_error], do: formatted, else: %{}

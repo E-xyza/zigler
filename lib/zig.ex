@@ -246,7 +246,7 @@ defmodule Zig do
       otp_app: :my_app,
       link_libcpp: true,  # note: optional for c-only code
       include_dir: ["include"],
-      c_src: [
+      src: [
         "some_c_source.c",
         {"some_cpp_source.cpp", ["-std=c++17"]},
         {"directory_of_files/*", ["-std=c99"]},

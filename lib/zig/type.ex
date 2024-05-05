@@ -65,8 +65,8 @@ defprotocol Zig.Type do
   def render_zig(type)
 
   @typep spec_context :: :param | :return
-  @spec spec(t, spec_context, keyword) :: Macro.t()
-  def spec(type, context, opts)
+  @spec render_elixir_spec(t, spec_context, keyword) :: Macro.t()
+  def render_elixir_spec(type, context, opts)
 after
   defmacro sigil_t({:<<>>, _, [string]}, _) do
     string
@@ -238,13 +238,6 @@ after
   def needs_make?(:term), do: false
   def needs_make?(_), do: true
 
-  # convenienece function
-  def spec(atom) when is_atom(atom) do
-    quote context: Elixir do
-      unquote(atom)()
-    end
-  end
-
   # defaults
 
   def _default_payload_options, do: ".{.error_info = &error_info},"
@@ -284,9 +277,17 @@ defimpl Zig.Type, for: Atom do
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()
 
-  def spec(:void, :return, _), do: :ok
+  def render_elixir_spec(:void, :return, _), do: :ok
 
-  def spec(:pid, _, _), do: Zig.Type.spec(:pid)
+  def render_elixir_spec(:pid, _, _) do
+    quote do 
+      pid()
+    end
+  end
 
-  def spec(term, _, _) when term in ~w(term erl_nif_term)a, do: Zig.Type.spec(:term)
+  def render_elixir_spec(term, _, _) when term in ~w(term erl_nif_term)a do
+    quote do
+      term()
+    end
+  end
 end

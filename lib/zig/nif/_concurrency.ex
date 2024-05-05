@@ -5,12 +5,18 @@ defmodule Zig.Nif.Concurrency do
   """
 
   alias Zig.Nif
+  alias Zig.Nif.DirtyCpu
+  alias Zig.Nif.DirtyIo
+  alias Zig.Nif.Synchronous
+  alias Zig.Nif.Threaded
+  alias Zig.Nif.Yielding
 
   @callback render_elixir(Nif.t()) :: Macro.t()
   @callback render_erlang(Nif.t()) :: term
   @callback render_zig(Nif.t()) :: iodata
 
-  @type concurrency :: :synchronous | :dirty_cpu | :dirty_io
+  @type t :: DirtyCpu | DirtyIo | Synchronous | Threaded | Yielding
+  @type concurrency :: :dirty_cpu | :dirty_io | :synchronous
   @type table_entry ::
           {name :: atom, arity :: non_neg_integer, function_pointer :: atom,
            bootstrap :: concurrency}

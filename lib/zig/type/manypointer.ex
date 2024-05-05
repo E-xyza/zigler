@@ -48,28 +48,34 @@ defmodule Zig.Type.Manypointer do
   end
 
   # only manypointers of [*:0]u8 are allowed to be returned.
-  def spec(%{child: ~t(u8), has_sentinel?: true}, :return, opts) do
+  def render_elixir_spec(%{child: ~t(u8), has_sentinel?: true}, :return, opts) do
     case Keyword.fetch!(opts, :type) do
       :list ->
-        [Type.spec(~t(u8), :return, opts)]
+        [Type.render_elixir_spec(~t(u8), :return, opts)]
 
       type when type in ~w(default binary)a ->
-        Type.spec(:binary)
+        quote do
+          binary()
+        end
     end
   end
 
-  def spec(%{child: child, has_sentinel?: sentinel}, :param, opts)
+  def render_elixir_spec(%{child: child, has_sentinel?: sentinel}, :param, opts)
       when not sentinel or child == ~t(u8) do
     if binary_form = binary_form(child) do
       quote context: Elixir do
-        unquote([Type.spec(child, :param, opts)]) | unquote(binary_form)
+        unquote([Type.render_elixir_spec(child, :param, opts)]) | unquote(binary_form)
       end
     else
-      [Type.spec(child, :param, opts)]
+      [Type.render_elixir_spec(child, :param, opts)]
     end
   end
 
-  defp binary_form(~t(u8)), do: Type.spec(:binary)
+  defp binary_form(~t(u8)) do
+    quote do
+      binary()
+    end
+  end
 
   defp binary_form(%Type.Integer{bits: bits}) do
     quote context: Elixir do

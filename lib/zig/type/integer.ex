@@ -122,7 +122,7 @@ defmodule Zig.Type.Integer do
 
     case type do
       %{bits: bits} when bits <= 64 ->
-        variable
+        []
 
       %{signedness: :unsigned} ->
         quote do
@@ -214,15 +214,15 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  def spec(%{bits: 0}, _, _), do: 0
+  def render_elixir_spec(%{bits: 0}, _, _), do: 0
 
-  def spec(%{signedness: :unsigned} = type, _, _opts) do
+  def render_elixir_spec(%{signedness: :unsigned} = type, _, _opts) do
     quote context: Elixir do
       0..unquote(typemax(type))
     end
   end
 
-  def spec(%{signedness: :signed} = type, _, _opts) do
+  def render_elixir_spec(%{signedness: :signed} = type, _, _opts) do
     neg_typemin = -typemin(type)
 
     quote context: Elixir do

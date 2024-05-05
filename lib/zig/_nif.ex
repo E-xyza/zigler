@@ -15,6 +15,7 @@ defmodule Zig.Nif do
 
   defstruct @enforce_keys ++ ~w[line signature params return leak_check alias doc spec]a
 
+  alias Zig.Nif.Concurrencny
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
   alias Zig.Nif.Synchronous
@@ -22,13 +23,14 @@ defmodule Zig.Nif do
   alias Zig.Nif.Yielding
   alias Zig.Parameter
   alias Zig.Return
+  alias Zig.Type
   alias Zig.Type.Error
   alias Zig.Type.Function
 
   @type t :: %__MODULE__{
           name: atom,
           export: boolean,
-          concurrency: Synchronous | Threaded | Yielding | DirtyCpu | DirtyIo,
+          concurrency: Concurrency.t(),
           line: integer,
           file: Path.t(),
           signature: Function.t(),
@@ -39,6 +41,22 @@ defmodule Zig.Nif do
           doc: nil | String.t(),
           spec: Macro.t()
         }
+
+  @type defaultable_opts ::
+          {:cleanup, boolean}
+          | {:leak_check, boolean}
+
+  @type individual_opts ::
+          {:ignore, boolean}
+          | {:export, boolean}
+          | {:concurrency, Concurrency.t()}
+          | {:args, %{optional(integer) => Parameter.opts()}}
+          | {:return, Return.opts()}
+          | {:alias, atom()}
+          | {:doc, String.t()}
+          | {:spec, Macro.t()}
+
+  @type opts() :: [defaultable_opts | individual_opts]
 
   @impl true
   defdelegate fetch(function, key), to: Map
@@ -63,15 +81,6 @@ defmodule Zig.Nif do
     }
   end
 
-  # defp extract_raw(raw_opt, %{return: return}) do
-  #  case {raw_opt, return} do
-  #    {nil, _} -> nil
-  #    {{:c, arity}, _} when is_integer(arity) -> :c
-  #    {arity, :term} when is_integer(arity) -> :beam
-  #    {arity, :erl_nif_term} when is_integer(arity) -> :erl_nif
-  #  end
-  # end
-
   def render_elixir(%{concurrency: concurrency} = nif) do
     doc =
       if nif_doc = nif.doc do
@@ -81,18 +90,15 @@ defmodule Zig.Nif do
       end
 
     typespec =
-      case nif.spec do
+      case nif.spec |> dbg do
         false ->
           quote do
           end
 
         _ ->
           quote do
+            @spec unquote(render_elixir_spec(nif))
           end
-
-          # quote do
-          #  @spec unquote(Function.render_elixir_spec(nif.spec, nif.name))
-          # end
       end
 
     functions = concurrency.render_elixir(nif)
@@ -101,6 +107,19 @@ defmodule Zig.Nif do
       unquote(doc)
       unquote(typespec)
       unquote(functions)
+    end
+  end
+
+  def render_elixir_spec(nif) do
+    param_spec =
+      nif.params
+      |> Enum.sort()
+      |> Enum.map(fn {_, p} -> Type.render_elixir_spec(p.type, :param, p) end)
+
+    return_spec = Type.render_elixir_spec(nif.return.type, :return, nif.return)
+
+    quote context: Elixir do
+      unquote(nif.name)(unquote_splicing(param_spec)) :: unquote(return_spec)
     end
   end
 

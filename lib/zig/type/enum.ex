@@ -22,10 +22,10 @@ defmodule Zig.Type.Enum do
 
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
-  def render_payload_options(type, index, _), do: Type._default_payload_options()
-  def render_return(type, _), do: Type._default_return()
+  def render_payload_options(_, _, _), do: Type._default_payload_options()
+  def render_return(_, _), do: Type._default_return()
 
-  def spec(%{tags: tags}, _, _opts) do
+  def render_elixir_spec(%{tags: tags}, _, _opts) do
     tags
     |> Map.keys()
     |> Enum.sort()

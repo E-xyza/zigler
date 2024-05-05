@@ -46,7 +46,7 @@ defmodule Zig.Type.Struct do
 
   def marshal_param(_, _), do: nil
 
-  def spec(struct, :param, opts) do
+  def render_elixir_spec(struct, :param, opts) do
     optional = to_fields(struct.optional, :optional, :param, opts)
     keyword = to_fields(struct.optional, :untagged, :param, opts)
     required = to_fields(struct.required, :untagged, :param, opts)
@@ -64,7 +64,7 @@ defmodule Zig.Type.Struct do
     end
   end
 
-  def spec(struct, :return, opts) do
+  def render_elixir_spec(struct, :return, opts) do
     binary_form = binary_form(struct)
 
     case Keyword.fetch!(opts, :type) do
@@ -101,10 +101,10 @@ defmodule Zig.Type.Struct do
       {k, v} when mode == :optional ->
         {quote do
            optional(unquote(k))
-         end, Type.spec(v, context, opts)}
+         end, Type.render_elixir_spec(v, context, opts)}
 
       {k, v} ->
-        {k, Type.spec(v, context, opts)}
+        {k, Type.render_elixir_spec(v, context, opts)}
     end)
     |> Enum.sort()
   end

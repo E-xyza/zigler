@@ -29,9 +29,7 @@ defmodule Zig.Builder do
       module: module.module,
       version: module.version,
       beam_dir: Path.join(:code.priv_dir(:zigler), "beam"),
-      link_lib: module.link_lib,
-      include_dir: module.include_dir,
-      c_src: module.c_src,
+      c: module.c,
       packages: make_packages(module),
       zig_code_path: module.zig_code_path
     }

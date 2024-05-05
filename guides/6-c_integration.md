@@ -7,7 +7,7 @@ Zigler offers several tools to integrate your code with C and C++ code.
 If you want to compile C or C++ files using the C and C++ toolchain bundled
 with the zig programming language, you should include a path to your
 include directory and a source path or list of source paths to be compiled,
-via the `include_dir` and `c_src` module options.
+via the `include_dir` and `src` module options.
 
 > ### source paths {: .info }
 >
@@ -34,7 +34,7 @@ defmodule CompilingC do
   use Zig, 
     otp_app: :zigler,
     include_dir: "include", 
-    c_src: "src/*"
+    src: "src/*"
 
   ~Z"""
   const c = @cImport(@cInclude("included.h"));
@@ -92,7 +92,7 @@ if {:unix, :linux} == :os.type() do
 
 It's also possible to also automatically create nifs without writing zig 
 function shims.  This works either with linking an external library with 
-`link_lib` or building your own code with `c_src`.
+`link_lib` or building your own code with `src`.
 
 Because the C ABI exposes all functions publically in a global namespace, 
 we can't use zigler's automatic detection to decide which functions to
@@ -102,7 +102,7 @@ Here are the steps to using `easy_c`:
 
 - declare which header file you'd like to use with the `easy_c` module option
   - you may want to add `include_dir` if the header isn't a system C header.
-- add a `link_lib` or `c_src` option to make sure that the functions are built.
+- add a `link_lib` or `src` option to make sure that the functions are built.
 - declare which functions you'd like to hoist into the module.
 
 In this example we'll use the `cblas_daxpy` function, which takes a length,

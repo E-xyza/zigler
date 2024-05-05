@@ -18,9 +18,9 @@ defmodule Zig.Type.Optional do
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
 
-  def spec(%{child: child}, context, opts) do
+  def render_elixir_spec(%{child: child}, context, opts) do
     quote do
-      unquote(Type.spec(child, context, opts)) | nil
+      unquote(Type.render_elixir_spec(child, context, opts)) | nil
     end
   end
 
