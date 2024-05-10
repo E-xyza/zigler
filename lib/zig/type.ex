@@ -290,4 +290,7 @@ defimpl Zig.Type, for: Atom do
       term()
     end
   end
+
+  def marshal_param(_, _, _, _), do: Type._default_marshal()
+  def marshal_return(_, _, _), do: Type._default_marshal()
 end

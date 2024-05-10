@@ -35,22 +35,29 @@ defmodule Zig.Compiler do
   end
 
   defp adjust_elixir_options(opts) do
-    Map.update!(opts, :nifs, &replace_nif_dots/1)
+    Map.update!(opts, :nifs, &nif_substitution/1)
   end
 
   # if the elixir `nif` option contains `...` then this should be converted 
-  # into `{:auto, <other_options>}`.  This function will reverse the list, but
-  # since order doesn't matter for this option, it is okay.
-  defp replace_nif_dots({:auto, _} = auto), do: auto
+  # into `{:auto, <other_options>}`.  Also, if the nif entry is just an atom,
+  # converts that entry into `{nif, []}`
+  #
+  # This function will reverse the list, but since order doesn't matter for this 
+  # option, it is okay.
+  defp nif_substitution({:auto, _} = auto), do: auto
 
-  defp replace_nif_dots(opts) do
+  defp nif_substitution(opts) do
     Enum.reduce(opts, [], fn
-      {:..., _, _}, {:auto, list} -> {:auto, list}
+      {:..., _, _}, {:auto, list} = so_far -> so_far
       {:..., _, _}, list -> {:auto, list}
-      other, {:auto, list} -> {:auto, [other | list]}
-      other, list -> [other | list]
+      other, so_far -> prepend_nif(so_far, other)
     end)
   end
+
+  defp prepend_nif({:auto, so_far}, nif_name) when is_atom(nif_name), do: {:auto, [{nif_name, []} | so_far]}
+  defp prepend_nif(so_far, nif_name) when is_atom(nif_name), do: [{nif_name, []} | so_far]
+  defp prepend_nif({:auto, so_far}, nif_info), do: {:auto, [nif_info | so_far]}
+  defp prepend_nif(so_far, nif_info), do: [nif_info | so_far]
 
   # note that this function is made public so that it can be both accessed
   # from the :zigler entrypoint for erlang parse transforms, as well as the

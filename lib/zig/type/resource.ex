@@ -32,4 +32,9 @@ defmodule Zig.Type.Resource do
 
   def return_allowed?(_resource), do: true
   def param_allowed?(_), do: true
+
+  def render_payload_options(_, _, _), do: Type._default_payload_options()
+  def render_return(_, _), do: Type._default_return()
+  def marshal_param(_, _, _, _), do: Type._default_marshal()
+  def marshal_return(_, _, _), do: Type._default_marshal()
 end
