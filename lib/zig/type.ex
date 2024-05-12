@@ -268,8 +268,8 @@ defimpl Zig.Type, for: Atom do
   def render_return(:void, _), do: "_ = result; break :result_block beam.make(.ok, .{}).v;"
   def render_return(_, _), do: Type._default_return()
 
-  def render_payload_options(:erl_nif_term, _, _), do: ".{}"
-  def render_payload_options(:term, _, _), do: ".{}"
+  def render_payload_options(:erl_nif_term, _, _), do: ".{},"
+  def render_payload_options(:term, _, _), do: ".{},"
 
   def render_payload_options(type, _, _)
       when type in ~w[env stacktrace erl_nif_binary erl_nif_event erl_nif_binary_pointer]a,

@@ -15,7 +15,7 @@ defmodule Zig.Nif do
 
   defstruct @enforce_keys ++ ~w[line signature params return leak_check alias doc spec]a
 
-  alias Zig.Nif.Concurrencny
+  alias Zig.Nif.Concurrency
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
   alias Zig.Nif.Synchronous
