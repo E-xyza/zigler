@@ -1,5 +1,5 @@
 defmodule ZiglerTest.Resource.ReleaseTest do
- use ZiglerTest.IntegrationCase, async: true
+  use ZiglerTest.IntegrationCase, async: true
 
   use Zig, otp_app: :zigler, resources: [:PidResource]
 

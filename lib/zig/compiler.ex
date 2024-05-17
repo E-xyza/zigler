@@ -54,7 +54,9 @@ defmodule Zig.Compiler do
     end)
   end
 
-  defp prepend_nif({:auto, so_far}, nif_name) when is_atom(nif_name), do: {:auto, [{nif_name, []} | so_far]}
+  defp prepend_nif({:auto, so_far}, nif_name) when is_atom(nif_name),
+    do: {:auto, [{nif_name, []} | so_far]}
+
   defp prepend_nif(so_far, nif_name) when is_atom(nif_name), do: [{nif_name, []} | so_far]
   defp prepend_nif({:auto, so_far}, nif_info), do: {:auto, [nif_info | so_far]}
   defp prepend_nif(so_far, nif_info), do: [nif_info | so_far]

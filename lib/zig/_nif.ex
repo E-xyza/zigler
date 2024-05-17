@@ -13,7 +13,7 @@ defmodule Zig.Nif do
 
   @enforce_keys ~w[name export concurrency file]a
 
-  defstruct @enforce_keys ++ ~w[line signature params return leak_check alias doc spec]a
+  defstruct @enforce_keys ++ ~w[line signature params return leak_check alias doc spec raw]a
 
   alias Zig.Nif.Concurrency
   alias Zig.Nif.DirtyCpu
@@ -27,20 +27,39 @@ defmodule Zig.Nif do
   alias Zig.Type.Error
   alias Zig.Type.Function
 
-  @type t :: %__MODULE__{
+  @typep raw :: %__MODULE__{
           name: atom,
           export: boolean,
           concurrency: Concurrency.t(),
           line: integer,
           file: Path.t(),
           signature: Function.t(),
-          params: :raw | %{optional(integer) => Parameter.t()},
+          params: integer,
           return: Return.t(),
           leak_check: boolean(),
           alias: nil | atom,
           doc: nil | String.t(),
-          spec: Macro.t()
+          spec: Macro.t(),
+          raw: :term | :erl_nif_term
         }
+
+  @typep specified :: %__MODULE__{
+          name: atom,
+          export: boolean,
+          concurrency: Concurrency.t(),
+          line: integer,
+          file: Path.t(),
+          signature: Function.t(),
+          params: %{optional(integer) => Parameter.t()},
+          return: Return.t(),
+          leak_check: boolean(),
+          alias: nil | atom,
+          doc: nil | String.t(),
+          spec: Macro.t(),
+          raw: nil
+        }
+
+  @type t :: raw | specified
 
   @type defaultable_opts ::
           {:cleanup, boolean}
@@ -81,6 +100,9 @@ defmodule Zig.Nif do
     }
   end
 
+  def arity(%{raw: nil, signature: %{arity: arity}}), do: arity
+  def arity(%{raw: t, params: arity}) when not is_nil(t), do: arity
+
   def render_elixir(%{concurrency: concurrency} = nif) do
     doc =
       if nif_doc = nif.doc do
@@ -107,6 +129,19 @@ defmodule Zig.Nif do
       unquote(doc)
       unquote(typespec)
       unquote(functions)
+    end
+  end
+
+  def render_elixir_spec(%{raw: t, params: arity} = nif) when not is_nil(t) do
+    param_spec = case arity do
+      0 -> []
+      arity -> Enum.map(0..arity - 1, fn _ -> {:term, [], []} end)
+    end
+
+    return_spec = Type.render_elixir_spec(nif.return.type, :return, nif.return)
+
+    quote do
+      unquote(nif.name)(unquote_splicing(param_spec)) :: unquote(return_spec)
     end
   end
 
@@ -149,9 +184,9 @@ defmodule Zig.Nif do
   def table_entries(nif) do
     nif.concurrency.table_entries(nif)
     |> Enum.map(fn
-      {function, arity, fptr, concurrency} ->
+      {function, fptr, concurrency} ->
         flags = Map.fetch!(@flags, concurrency)
-        ~s(.{.name="#{function}", .arity=#{arity}, .fptr=#{fptr}, .flags=#{flags}})
+        ~s(.{.name="#{function}", .arity=#{arity(nif)}, .fptr=#{fptr}, .flags=#{flags}})
     end)
   end
 
@@ -164,15 +199,6 @@ defmodule Zig.Nif do
   end
 
   def maybe_catch(_), do: nil
-
-  # def validate_return!(function, file, line) do
-  #  unless Type.return_allowed?(function.return) do
-  #    raise CompileError,
-  #      description: "functions returning #{function.return} are not allowed",
-  #      file: Path.relative_to_cwd(file),
-  #      line: line
-  #  end
-  # end
 
   # COMMON TOOLS
   # generates AST for parameters.  

@@ -280,7 +280,7 @@ defimpl Zig.Type, for: Atom do
   def render_elixir_spec(:void, :return, _), do: :ok
 
   def render_elixir_spec(:pid, _, _) do
-    quote do 
+    quote do
       pid()
     end
   end

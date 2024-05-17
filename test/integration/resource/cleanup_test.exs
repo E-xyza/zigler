@@ -1,6 +1,6 @@
 defmodule ZiglerTest.Resource.CleanupTest do
   use ZiglerTest.IntegrationCase, async: true
-  
+
   use Zig,
     otp_app: :zigler,
     resources: [:PidResource],

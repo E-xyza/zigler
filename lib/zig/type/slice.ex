@@ -29,6 +29,7 @@ defmodule Zig.Type.Slice do
     case opts do
       %{as: :list} ->
         [Type.render_elixir_spec(~t(u8), :return, opts)]
+
       _ ->
         binary_form(~t(u8))
     end

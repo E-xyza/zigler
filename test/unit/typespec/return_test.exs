@@ -76,7 +76,8 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
     end
 
     test "an i64-returning function gives integer" do
-      assert make_spec(~t(i63)) == spec(return_test() :: -0x4000_0000_0000_0000..0x3FFF_FFFF_FFFF_FFFF)
+      assert make_spec(~t(i63)) ==
+               spec(return_test() :: -0x4000_0000_0000_0000..0x3FFF_FFFF_FFFF_FFFF)
     end
 
     # we're not going to test c_int, c_uint, c_long, usize, etc. because these are not
@@ -136,7 +137,8 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
     end
 
     test "a int-slice returning function is list of integer" do
-      assert make_spec(~t([]i64)) == spec(return_test() :: [-0x8000_0000_0000_0000..0x7FFF_FFFF_FFFF_FFFF])
+      assert make_spec(~t([]i64)) ==
+               spec(return_test() :: [-0x8000_0000_0000_0000..0x7FFF_FFFF_FFFF_FFFF])
     end
 
     test "int-slice can be forced to return binary" do
@@ -271,7 +273,8 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
 
   describe "when there's an in-out parameter for easy_c" do
     @tag :skip
-    test "it works when the length is specified" #do
+    # do
+    test "it works when the length is specified"
     #  assert Spec.for(
     #           %Function{
     #             name: :return_test,
@@ -281,10 +284,11 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
     #           },
     #           return: [:default, length: 2, arg: 0]
     #         ) == spec(return_test([0..255] | binary() | nil) :: <<_::16>>)
-    #end
+    # end
 
     @tag :skip
-    test "it works when the length is not specified"# do
+    # do
+    test "it works when the length is not specified"
     #  result =
     #    quote context: Elixir do
     #      return_test([0..255] | binary() | nil) :: binary()
@@ -299,6 +303,6 @@ defmodule ZiglerTest.Unit.Typespec.ReturnTest do
     #           },
     #           return: [:default, arg: 0]
     #         ) == result
-    #end
+    # end
   end
 end

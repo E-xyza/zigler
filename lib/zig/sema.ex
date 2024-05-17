@@ -8,6 +8,8 @@ defmodule Zig.Sema do
   alias Zig.Return
   alias Zig.Type
   alias Zig.Type.Function
+  alias Zig.Type.Integer
+  alias Zig.Type.Manypointer
 
   @enforce_keys [:functions, :types, :decls]
   defstruct @enforce_keys
@@ -104,8 +106,6 @@ defmodule Zig.Sema do
           end)
 
           Enum.map(functions, fn function ->
-            # TODO: apply options from specified functions, if it matches.
-
             nif_opts = Keyword.get(specified_fns, function.name, module.default_nif_opts)
 
             function.name
@@ -132,6 +132,22 @@ defmodule Zig.Sema do
     Enum.each(nifs, &validate_nif!(&1))
 
     %{module | nifs: nifs}
+  end
+
+  defp apply_from_sema(
+         nif,
+         %Function{
+           arity: 3,
+           params: [:env, %Integer{}, %Manypointer{child: t}],
+           return: t
+         } = sema,
+         opts
+       )
+       when t in ~w[term erl_nif_term]a do
+    case Keyword.fetch(opts, :arity) do
+      {:ok, arity} when arity in 0..63 ->
+        %{nif | signature: sema, raw: t, params: arity, return: Return.new(t)}
+    end
   end
 
   defp apply_from_sema(nif, sema, opts) do
@@ -165,10 +181,12 @@ defmodule Zig.Sema do
     %{nif | file: file, line: line}
   end
 
-  defp validate_nif!(nif) do
+  defp validate_nif!(%{raw: nil} = nif) do
     Enum.each(nif.params, &validate_param!(&1, nif))
     validate_return!(nif)
   end
+
+  defp validate_nif!(_raw_nif), do: :ok
 
   defp validate_param!({_, param}, nif) do
     unless Type.param_allowed?(param.type) do

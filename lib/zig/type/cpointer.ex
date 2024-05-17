@@ -115,7 +115,7 @@ defmodule Zig.Type.Cpointer do
   defp chunk_size(_), do: raise("invalid type for binary *c output")
 
   defp binary_form(~t(u8)) do
-    quote do 
+    quote do
       binary()
     end
   end

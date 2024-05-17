@@ -1,0 +1,3 @@
+export fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) e.ErlNifTerm {
+    return nif.<%= @name %>(env, argc, @ptrCast(args)).v;
+}

@@ -14,6 +14,8 @@ defmodule Zig.Return do
 
   @type opts :: [:noclean | :binary | :list | {:cleanup, boolean} | {:as, :binary | :list}]
 
+  def new(raw) when raw in ~w[term erl_nif_term]a, do: %__MODULE__{type: raw, cleanup: false}
+
   def new(type, options) do
     struct!(__MODULE__, [type: type] ++ normalize_options(type, options))
   end

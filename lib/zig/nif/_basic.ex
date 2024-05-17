@@ -36,6 +36,8 @@ defmodule Zig.Nif.Basic do
   defp marshals_return?(%Integer{bits: bits}), do: bits > 64
   defp marshals_return?(_), do: false
 
+  defp needs_marshal?(%{raw: raw}) when not is_nil(raw), do: false
+
   defp needs_marshal?(nif) do
     Enum.any?(nif.signature.params, &marshals_param?/1) or marshals_return?(nif.signature.return)
   end
@@ -46,31 +48,43 @@ defmodule Zig.Nif.Basic do
     if needs_marshal?(nif), do: marshal_name(nif), else: nif.name
   end
 
-  def render_elixir(%{signature: signature} = nif) do
-    error_text = "nif for function #{signature.name}/#{signature.arity} not bound"
+  defp style(nif) do
+    if nif.export, do: :def, else: :defp
+  end
 
-    def_or_defp = if nif.export, do: :def, else: :defp
+  defp error_text(nif, arity) do
+    "nif for function #{nif.name}/#{arity} not bound"
+  end
 
+  def render_elixir(%{raw: raw} = nif) when not is_nil(raw) do
+    unused_params = Nif.elixir_parameters(nif.params, false)
+
+    quote do
+      unquote(style(nif))(unquote(nif.name)(unquote_splicing(unused_params))) do
+        :erlang.nif_error(unquote(error_text(nif, nif.params)))
+      end
+    end
+  end
+
+  def render_elixir(%{signature: %{arity: arity}} = nif) do
     if needs_marshal?(nif) do
-      render_elixir_marshalled(nif, def_or_defp, error_text)
+      render_elixir_marshalled(nif)
     else
-      unused_params = Nif.elixir_parameters(signature.arity, false)
+      unused_params = Nif.elixir_parameters(arity, false)
 
       quote context: Elixir do
-        unquote(def_or_defp)(unquote(signature.name)(unquote_splicing(unused_params))) do
-          :erlang.nif_error(unquote(error_text))
+        unquote(style(nif))(unquote(nif.name)(unquote_splicing(unused_params))) do
+          :erlang.nif_error(unquote(error_text(nif, arity)))
         end
       end
     end
   end
 
   defp render_elixir_marshalled(
-         %{signature: signature} = nif,
-         def_or_defp,
-         error_text
+         %{signature: %{arity: arity, return: return}} = nif
        ) do
-    used_params_ast = Nif.elixir_parameters(signature.arity, true)
-    unused_params_ast = Nif.elixir_parameters(signature.arity, false)
+    used_params_ast = Nif.elixir_parameters(arity, true)
+    unused_params_ast = Nif.elixir_parameters(arity, false)
 
     marshal_name = marshal_name(nif)
 
@@ -91,8 +105,8 @@ defmodule Zig.Nif.Basic do
       end
 
     marshal_return =
-      if marshals_return?(signature.return) do
-        Type.marshal_return(signature.return, return, :elixir)
+      if marshals_return?(return) do
+        Type.marshal_return(return, return, :elixir)
       else
         return
       end
@@ -124,13 +138,13 @@ defmodule Zig.Nif.Basic do
     function_block = function_code ++ error_prongs
 
     quote do
-      unquote(def_or_defp)(
+      unquote(style(nif))(
         unquote(nif.name)(unquote_splicing(used_params_ast)),
         unquote(function_block)
       )
 
       defp unquote(marshal_name)(unquote_splicing(unused_params_ast)) do
-        :erlang.nif_error(unquote(error_text))
+        :erlang.nif_error(unquote(error_text(nif, arity)))
       end
     end
   end
@@ -209,12 +223,14 @@ defmodule Zig.Nif.Basic do
   basic = Path.join(__DIR__, "../templates/basic.zig.eex")
   EEx.function_from_file(:defp, :basic, basic, [:assigns])
 
-  raw_beam = Path.join(__DIR__, "../templates/raw_beam.zig.eex")
-  EEx.function_from_file(:defp, :raw_beam, raw_beam, [:assigns])
+  raw_beam_term = Path.join(__DIR__, "../templates/raw_beam_term.zig.eex")
+  EEx.function_from_file(:defp, :raw_beam_term, raw_beam_term, [:assigns])
 
-  raw_erl_nif = Path.join(__DIR__, "../templates/raw_erl_nif.zig.eex")
-  EEx.function_from_file(:defp, :raw_erl_nif, raw_erl_nif, [:assigns])
+  raw_erl_nif_term = Path.join(__DIR__, "../templates/raw_erl_nif_term.zig.eex")
+  EEx.function_from_file(:defp, :raw_erl_nif_term, raw_erl_nif_term, [:assigns])
 
+  def render_zig(%{raw: :term} = nif), do: raw_beam_term(nif)
+  def render_zig(%{raw: :erl_nif_term} = nif), do: raw_erl_nif_term(nif)
   def render_zig(nif), do: basic(nif)
 
   def context(DirtyCpu), do: :dirty

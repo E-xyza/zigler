@@ -18,15 +18,9 @@ defmodule Zig.Type.Function do
   def from_json(%{"params" => params, "return" => return, "name" => name}, module) do
     params = Enum.map(params, &Type.from_json(&1, module))
 
-    arity =
-      case params do
-        [:env | rest] -> length(rest)
-        _ -> length(params)
-      end
-
     %__MODULE__{
       name: String.to_atom(name),
-      arity: arity,
+      arity: length(params),
       params: params,
       return: Type.from_json(return, module)
     }
