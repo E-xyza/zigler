@@ -144,11 +144,17 @@ defmodule Zig.Sema do
          opts
        )
        when t in ~w[term erl_nif_term]a do
-    case Keyword.fetch(opts, :arity) do
-      {:ok, arity} when arity in 0..63 ->
-        %{nif | signature: sema, raw: t, params: arity, return: Return.new(t)}
+    arities = case Keyword.fetch(opts, :arity) do
+      {:ok, arity} when arity in 0..63 -> arities(arity)
+      {:ok, {:.., _, _} = range} -> arities(range)
+      {:ok, list} when is_list(list) -> Enum.flat_map(list, &arities/1)
     end
+
+    %{nif | signature: sema, raw: t, params: arities, return: Return.new(t)}
   end
+
+  defp arities(integer) when is_integer(integer), do: [integer]
+  defp arities({:.., _, [start, finish]}), do: Enum.to_list(start..finish)
 
   defp apply_from_sema(nif, sema, opts) do
     %{

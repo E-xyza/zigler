@@ -100,8 +100,8 @@ defmodule Zig.Nif do
     }
   end
 
-  def arity(%{raw: nil, signature: %{arity: arity}}), do: arity
-  def arity(%{raw: t, params: arity}) when not is_nil(t), do: arity
+  def arities(%{raw: nil, signature: %{arity: arity}}), do: [arity]
+  def arities(%{raw: t, params: arities}) when not is_nil(t), do: arities
 
   def render_elixir(%{concurrency: concurrency} = nif) do
     doc =
@@ -116,11 +116,19 @@ defmodule Zig.Nif do
         false ->
           quote do
           end
-
         _ ->
-          quote do
-            @spec unquote(render_elixir_spec(nif))
-          end
+          nif.spec
+          |> List.wrap
+          |> Enum.map(fn spec ->
+            
+          end)
+
+        {_, list} when is_list(list) ->
+          Enum.map(list, fn spec ->
+            quote do 
+              @spec unquote(spec)
+            end
+          end)
       end
 
     functions = concurrency.render_elixir(nif)
@@ -132,17 +140,19 @@ defmodule Zig.Nif do
     end
   end
 
-  def render_elixir_spec(%{raw: t, params: arity} = nif) when not is_nil(t) do
-    param_spec = case arity do
-      0 -> []
-      arity -> Enum.map(0..arity - 1, fn _ -> {:term, [], []} end)
-    end
-
-    return_spec = Type.render_elixir_spec(nif.return.type, :return, nif.return)
-
-    quote do
-      unquote(nif.name)(unquote_splicing(param_spec)) :: unquote(return_spec)
-    end
+  def render_elixir_spec(%{raw: t, params: arities} = nif) when not is_nil(t) do
+    Enum.map(arities, fn arity ->
+      param_spec = case arity do
+        0 -> []
+        arity -> Enum.map(0..arity - 1, fn _ -> {:term, [], []} end)
+      end
+      
+      return_spec = Type.render_elixir_spec(nif.return.type, :return, nif.return)
+      
+      quote do
+        unquote(nif.name)(unquote_splicing(param_spec)) :: unquote(return_spec)
+      end
+    end)
   end
 
   def render_elixir_spec(nif) do
@@ -183,10 +193,10 @@ defmodule Zig.Nif do
 
   def table_entries(nif) do
     nif.concurrency.table_entries(nif)
-    |> Enum.map(fn
+    |> Enum.flat_map(fn
       {function, fptr, concurrency} ->
         flags = Map.fetch!(@flags, concurrency)
-        ~s(.{.name="#{function}", .arity=#{arity(nif)}, .fptr=#{fptr}, .flags=#{flags}})
+        Enum.map(arities(nif), &~s(.{.name="#{function}", .arity=#{&1}, .fptr=#{fptr}, .flags=#{flags}}))
     end)
   end
 
