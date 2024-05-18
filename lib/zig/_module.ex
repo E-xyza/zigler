@@ -175,8 +175,20 @@ defmodule Zig.Module do
   nif = Path.join(__DIR__, "templates/module.zig.eex")
   EEx.function_from_file(:def, :render_zig, nif, [:assigns])
 
+  on_load = Path.join(__DIR__, "templates/on_load.zig.eex")
+  EEx.function_from_file(:def, :render_on_load, on_load, [:assigns])
+
   def render_elixir(module, zig_code) do
     module_name = "#{module.module}"
+
+    on_load_code =
+      if {:__on_load__, 0} in Module.definitions_in(module.module) do
+        quote do
+          __on_load__()
+        end
+      else
+        0
+      end
 
     load_nif_fn =
       quote do
@@ -190,7 +202,7 @@ defmodule Zig.Module do
           |> Path.join("lib")
           |> Path.join(unquote(module_name))
           |> String.to_charlist()
-          |> :erlang.load_nif(0)
+          |> :erlang.load_nif(unquote(on_load_code))
           |> case do
             :ok ->
               Logger.debug("loaded module at #{unquote(module_name)}")

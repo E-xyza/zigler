@@ -40,7 +40,8 @@ defmodule ZiglerTest.Raw.MultiArityTest do
 
   test "raw call with list of arity mixtures" do
     for arity <- 3..4 do
-      assert List.duplicate(:foo, arity) == apply(__MODULE__, :list_arity, List.duplicate(:foo, arity))
+      assert List.duplicate(:foo, arity) ==
+               apply(__MODULE__, :list_arity, List.duplicate(:foo, arity))
     end
 
     assert_raise UndefinedFunctionError, fn ->

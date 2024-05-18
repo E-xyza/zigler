@@ -11,13 +11,14 @@ defmodule Zig.Sema do
   alias Zig.Type.Integer
   alias Zig.Type.Manypointer
 
-  @enforce_keys [:functions, :types, :decls]
+  @enforce_keys [:functions, :types, :decls, :callbacks]
   defstruct @enforce_keys
 
   @type t :: %__MODULE__{
           functions: [Function.t()],
           types: keyword(Type.t()),
-          decls: keyword(Type.t())
+          decls: keyword(Type.t()),
+          callbacks: [Function.t()]
         }
 
   # PHASE 1:  SEMA EXECUTION
@@ -31,8 +32,8 @@ defmodule Zig.Sema do
     |> Zig.Command.run_sema!(module)
     |> Jason.decode!()
     |> tap(&maybe_dump(&1, module))
-    |> validate_callbacks(module)
     |> reject_ignored(module)
+    |> assign_callbacks(module)
     |> integrate_sema(module)
     |> then(&Map.replace!(module, :sema, &1))
   rescue
@@ -40,14 +41,30 @@ defmodule Zig.Sema do
       reraise Zig.CompileError.resolve(e, module), __STACKTRACE__
   end
 
-  defp validate_callbacks(sema, _module) do
-    IO.warn("not implemented yet")
+  defp assign_callbacks(sema, module) do
     sema
+    |> Map.put("callbacks", [])
+    |> then(fn sema -> Enum.reduce(module.callbacks, sema, &move_callback/2) end)
+  end
+
+  defp move_callback({type, name}, %{"functions" => functions, "callbacks" => callbacks} = sema) do
+    {new_functions, new_callback} = find_remove(functions, [], "#{name}", type)
+    %{sema | "functions" => new_functions, "callbacks" => [{type, new_callback} | callbacks]}
+  end
+
+  defp find_remove([%{"name" => name} = callback | rest], so_far, name, _type),
+    do: {Enum.reverse(so_far, rest), callback}
+
+  defp find_remove([other | rest], so_far, name, type),
+    do: find_remove(rest, [other | so_far], name, type)
+
+  defp find_remove([], _, name, type) do
+    raise CompileError, description: "#{type} callback #{name} not found"
   end
 
   # removes "ignored" and "callback" functions from the semantic analysis.
   defp reject_ignored(json, module) do
-    ignored = Enum.map(module.ignore, &"#{&1}") ++ Enum.map(module.callbacks, &"#{elem(&1, 1)}")
+    ignored = Enum.map(module.ignore, &"#{&1}")
 
     Map.update!(json, "functions", fn
       functions ->
@@ -55,11 +72,22 @@ defmodule Zig.Sema do
     end)
   end
 
-  defp integrate_sema(%{"functions" => functions, "types" => types, "decls" => decls}, module) do
+  defp integrate_sema(
+         %{
+           "functions" => functions,
+           "types" => types,
+           "decls" => decls,
+           "callbacks" => callbacks
+         },
+         module
+       ) do
     %__MODULE__{
       functions: Enum.map(functions, &Function.from_json(&1, module.module)),
       types: Enum.map(types, &type_from_json(&1, module.module)),
-      decls: Enum.map(decls, &const_from_json/1)
+      decls: Enum.map(decls, &const_from_json/1),
+      callbacks: Enum.map(callbacks, fn 
+        {type, json} -> {type, Function.from_json(json, module.module)} 
+      end)
     }
   end
 
@@ -144,11 +172,12 @@ defmodule Zig.Sema do
          opts
        )
        when t in ~w[term erl_nif_term]a do
-    arities = case Keyword.fetch(opts, :arity) do
-      {:ok, arity} when arity in 0..63 -> arities(arity)
-      {:ok, {:.., _, _} = range} -> arities(range)
-      {:ok, list} when is_list(list) -> Enum.flat_map(list, &arities/1)
-    end
+    arities =
+      case Keyword.fetch(opts, :arity) do
+        {:ok, arity} when arity in 0..63 -> arities(arity)
+        {:ok, {:.., _, _} = range} -> arities(range)
+        {:ok, list} when is_list(list) -> Enum.flat_map(list, &arities/1)
+      end
 
     %{nif | signature: sema, raw: t, params: arities, return: Return.new(t)}
   end
@@ -211,100 +240,4 @@ defmodule Zig.Sema do
         line: nif.line
     end
   end
-
-  #  defp adjust_raw(function, opts) do
-  #    case {function, opts[:raw]} do
-  #      {_, nil} ->
-  #        function
-  #
-  #      # use this to identify that the function is a raw call.  `child` could be
-  #      # either :term or :erl_nif_term.
-  #      {%{params: [:env, _, %Manypointer{child: child}]}, integer} when is_integer(integer) ->
-  #        %{function | params: List.duplicate(child, integer), arity: integer}
-  #
-  #      {_, {:c, integer}} when is_integer(integer) ->
-  #        %{function | params: List.duplicate(:erl_nif_term, integer), arity: integer}
-  #    end
-  #  end
-  #
-  #
-
-  #
-  #  defp validate_usable!(function, types, opts) do
-  #    with :ok <- validate_args(function, types),
-  #         :ok <- validate_return(function.return),
-  #         :ok <- validate_struct_pub(function.return, types, "return", function.name) do
-  #      :ok
-  #    else
-  #      {:error, msg} ->
-  #        file_path =
-  #          opts
-  #          |> Keyword.fetch!(:mod_file)
-  #          |> Path.relative_to_cwd()
-  #
-  #        %{location: {raw_line, _}} =
-  #          opts
-  #          |> Keyword.fetch!(:parsed)
-  #          |> find_function(function.name)
-  #
-  #        {file, line} =
-  #          opts
-  #          |> Keyword.fetch!(:manifest)
-  #          |> Manifest.resolve(file_path, raw_line)
-  #
-  #        raise CompileError,
-  #          description: msg,
-  #          file: file,
-  #          line: line
-  #    end
-  #  end
-  #
-  #  defp find_function(%{code: code}, function) do
-  #    Enum.find(code, fn
-  #      %Zig.Parser.Function{name: ^function} -> true
-  #      %Zig.Parser.Const{name: ^function} -> true
-  #      _ -> false
-  #    end)
-  #  end
-  #
-  #  defp validate_args(function, types) do
-  #    function.params
-  #    |> Enum.with_index(1)
-  #    |> Enum.reduce_while(:ok, fn
-  #      {type, index}, :ok ->
-  #        case validate_struct_pub(type, types, "argument #{index}", function.name) do
-  #          :ok ->
-  #            {:cont, :ok}
-  #
-  #          error = {:error, _msg} ->
-  #            {:halt, error}
-  #        end
-  #    end)
-  #  end
-  #
-  #  # explicitly, all return values that are permitted
-  #  defp validate_return(type) do
-  #    if Type.return_allowed?(type) do
-  #      :ok
-  #    else
-  #      {:error, "functions returning #{type} cannot be nifs"}
-  #    end
-  #  end
-  #
-  #  defp validate_struct_pub(%Struct{name: name}, types, location, function) do
-  #    Enum.reduce_while(
-  #      types,
-  #      {:error, "struct `#{name}` (#{location} of function `#{function}`) is not a `pub` struct"},
-  #      fn
-  #        %{name: type_name}, error = {:error, _} ->
-  #          if Atom.to_string(type_name) == name do
-  #            {:halt, :ok}
-  #          else
-  #            {:cont, error}
-  #          end
-  #      end
-  #    )
-  #  end
-  #
-  #  defp validate_struct_pub(_, _, _, _), do: :ok
 end

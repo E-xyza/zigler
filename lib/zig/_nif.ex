@@ -28,36 +28,36 @@ defmodule Zig.Nif do
   alias Zig.Type.Function
 
   @typep raw :: %__MODULE__{
-          name: atom,
-          export: boolean,
-          concurrency: Concurrency.t(),
-          line: integer,
-          file: Path.t(),
-          signature: Function.t(),
-          params: integer,
-          return: Return.t(),
-          leak_check: boolean(),
-          alias: nil | atom,
-          doc: nil | String.t(),
-          spec: Macro.t(),
-          raw: :term | :erl_nif_term
-        }
+           name: atom,
+           export: boolean,
+           concurrency: Concurrency.t(),
+           line: integer,
+           file: Path.t(),
+           signature: Function.t(),
+           params: integer,
+           return: Return.t(),
+           leak_check: boolean(),
+           alias: nil | atom,
+           doc: nil | String.t(),
+           spec: Macro.t(),
+           raw: :term | :erl_nif_term
+         }
 
   @typep specified :: %__MODULE__{
-          name: atom,
-          export: boolean,
-          concurrency: Concurrency.t(),
-          line: integer,
-          file: Path.t(),
-          signature: Function.t(),
-          params: %{optional(integer) => Parameter.t()},
-          return: Return.t(),
-          leak_check: boolean(),
-          alias: nil | atom,
-          doc: nil | String.t(),
-          spec: Macro.t(),
-          raw: nil
-        }
+           name: atom,
+           export: boolean,
+           concurrency: Concurrency.t(),
+           line: integer,
+           file: Path.t(),
+           signature: Function.t(),
+           params: %{optional(integer) => Parameter.t()},
+           return: Return.t(),
+           leak_check: boolean(),
+           alias: nil | atom,
+           doc: nil | String.t(),
+           spec: Macro.t(),
+           raw: nil
+         }
 
   @type t :: raw | specified
 
@@ -116,16 +116,17 @@ defmodule Zig.Nif do
         false ->
           quote do
           end
+
         _ ->
           nif.spec
-          |> List.wrap
+          |> List.wrap()
           |> Enum.map(fn spec ->
-            
+            nil
           end)
 
         {_, list} when is_list(list) ->
           Enum.map(list, fn spec ->
-            quote do 
+            quote do
               @spec unquote(spec)
             end
           end)
@@ -142,13 +143,14 @@ defmodule Zig.Nif do
 
   def render_elixir_spec(%{raw: t, params: arities} = nif) when not is_nil(t) do
     Enum.map(arities, fn arity ->
-      param_spec = case arity do
-        0 -> []
-        arity -> Enum.map(0..arity - 1, fn _ -> {:term, [], []} end)
-      end
-      
+      param_spec =
+        case arity do
+          0 -> []
+          arity -> Enum.map(0..(arity - 1), fn _ -> {:term, [], []} end)
+        end
+
       return_spec = Type.render_elixir_spec(nif.return.type, :return, nif.return)
-      
+
       quote do
         unquote(nif.name)(unquote_splicing(param_spec)) :: unquote(return_spec)
       end
@@ -196,7 +198,11 @@ defmodule Zig.Nif do
     |> Enum.flat_map(fn
       {function, fptr, concurrency} ->
         flags = Map.fetch!(@flags, concurrency)
-        Enum.map(arities(nif), &~s(.{.name="#{function}", .arity=#{&1}, .fptr=#{fptr}, .flags=#{flags}}))
+
+        Enum.map(
+          arities(nif),
+          &~s(.{.name="#{function}", .arity=#{&1}, .fptr=#{fptr}, .flags=#{flags}})
+        )
     end)
   end
 

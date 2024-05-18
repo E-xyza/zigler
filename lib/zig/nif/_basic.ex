@@ -59,6 +59,7 @@ defmodule Zig.Nif.Basic do
   def render_elixir(%{raw: raw} = nif) when not is_nil(raw) do
     Enum.map(nif.params, fn arity ->
       unused_params = Nif.elixir_parameters(arity, false)
+
       quote do
         unquote(style(nif))(unquote(nif.name)(unquote_splicing(unused_params))) do
           :erlang.nif_error(unquote(error_text(nif, nif.params)))
@@ -81,9 +82,7 @@ defmodule Zig.Nif.Basic do
     end
   end
 
-  defp render_elixir_marshalled(
-         %{signature: %{arity: arity, return: return}} = nif
-       ) do
+  defp render_elixir_marshalled(%{signature: %{arity: arity, return: return}} = nif) do
     used_params_ast = Nif.elixir_parameters(arity, true)
     unused_params_ast = Nif.elixir_parameters(arity, false)
 
