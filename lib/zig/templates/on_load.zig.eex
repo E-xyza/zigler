@@ -10,6 +10,12 @@
     beam.context.mode = .callback;
     beam.context.allocator = beam.allocator;
     return @intFromEnum(nif.<%= on_load_fn.name %>(priv_data, .{.v = load_info})); 
+  <% %{arity: 2, return: :void} -> %>
+    beam.context.env = env;
+    beam.context.mode = .callback;
+    beam.context.allocator = beam.allocator;
+    @intFromEnum(nif.<%= on_load_fn.name %>(priv_data, .{.v = load_info})); 
+    return 0;
   <% %{arity: 3} -> %>
     return nif.<%= on_load_fn.name %>(env, priv_data, load_info);
 <% end %>

@@ -19,6 +19,8 @@ defmodule Zig.Type.Float do
     concat(["~t(", to_string(type), ")"])
   end
 
+  def render_zig(%{bits: bits}), do: "f#{bits}"
+
   def render_elixir_spec(_, _, _) do
     quote do
       float()

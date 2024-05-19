@@ -7,9 +7,11 @@ defmodule Zig.Sema do
   alias Zig.Parser
   alias Zig.Return
   alias Zig.Type
+  alias Zig.Type.Cpointer
   alias Zig.Type.Function
   alias Zig.Type.Integer
   alias Zig.Type.Manypointer
+  alias Zig.Type.Optional
 
   @enforce_keys [:functions, :types, :decls, :callbacks]
   defstruct @enforce_keys
@@ -47,7 +49,11 @@ defmodule Zig.Sema do
     |> then(fn sema -> Enum.reduce(module.callbacks, sema, &move_callback(&1, &2, module)) end)
   end
 
-  defp move_callback({type, name}, %{"functions" => functions, "callbacks" => callbacks} = sema, module) do
+  defp move_callback(
+         {type, name},
+         %{"functions" => functions, "callbacks" => callbacks} = sema,
+         module
+       ) do
     {new_functions, new_callback} = find_remove(functions, [], "#{name}", type, module)
     %{sema | "functions" => new_functions, "callbacks" => [{type, new_callback} | callbacks]}
   end
@@ -83,9 +89,10 @@ defmodule Zig.Sema do
       functions: Enum.map(functions, &Function.from_json(&1, module.module)),
       types: Enum.map(types, &type_from_json(&1, module.module)),
       decls: Enum.map(decls, &const_from_json/1),
-      callbacks: Enum.map(callbacks, fn 
-        {type, json} -> {type, json && Function.from_json(json, module.module)} 
-      end)
+      callbacks:
+        Enum.map(callbacks, fn
+          {type, json} -> {type, json && Function.from_json(json, module.module)}
+        end)
     }
   end
 
@@ -241,21 +248,64 @@ defmodule Zig.Sema do
   end
 
   defp check_invalid_callbacks!(module) do
-    for {type, nil} <- module.sema.callbacks do
-      name = module.callbacks[type]
+    Enum.each(module.sema.callbacks, fn
+      {type, nil} ->
+        seek_and_raise!(
+          type,
+          module,
+          &"#{type} callback #{&1} must be declared `pub`",
+          &"#{type} callback #{&1} not found"
+        )
 
-      # search to see if the name exists in the parsed code.
-      for %{name: ^name, pub: false, location: {line, _col}} <- module.parsed.code do
+      {:on_load, %{arity: arity}} when arity not in [2, 3] ->
+        seek_and_raise!(:on_load, module, &"on_load callback #{&1} must have arity 2 or 3")
 
-        {file, line} = module.manifest_module.__resolve(%{file_name: module.zig_code_path, line: line})
+      {:on_load, %{arity: 2} = function} ->
+        case function.params do
+          [%Cpointer{child: %Optional{child: :anyopaque_pointer}}, :term] ->
+            :ok
 
-        raise CompileError, 
-          description: "#{type} callback #{name} must be declared `pub`",
-          file: file,
-          line: line
-      end
+          [first, second] ->
+            seek_and_raise!(
+              :on_load,
+              module,
+              &"on_load callback #{&1} with arity 2 must have `[*c]?*anyopaque` and `beam.term` as parameters. \n\n    got: `#{Type.render_zig(first)}`\n\n    and: `#{Type.render_zig(second)}`"
+            )
+        end
 
-      raise CompileError, description: "#{type} callback #{name} not found", file: module.file, line: module.line
+        case function.return do
+          :void -> :ok
+          %Integer{} -> :ok
+          %Zig.Type.Enum{} -> :ok
+          bad ->
+            seek_and_raise!(
+              :on_load,
+              module,
+              &"on_load callback #{&1} with arity 2 must have an integer, enum, or `void` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+            )
+        end
+
+      _ ->
+        :ok
+    end)
+  end
+
+  defp seek_and_raise!(type, module, error1, error2 \\ nil) do
+    name = module.callbacks[type]
+
+    for %{name: ^name, location: {line, _col}} <- module.parsed.code do
+      {file, line} =
+        module.manifest_module.__resolve(%{file_name: module.zig_code_path, line: line})
+
+      raise CompileError,
+        description: error1.(name),
+        file: file,
+        line: line
     end
+
+    raise CompileError,
+      description: if(error2, do: error2.(name), else: error1.(name)),
+      file: module.file,
+      line: module.line
   end
 end

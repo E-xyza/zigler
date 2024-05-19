@@ -50,6 +50,7 @@ defmodule Zig.Manifest do
           case String.split(rest, ":") do
             ["nofile", ""] ->
               [{anchor, {"nofile", 0}}]
+
             [file, line] ->
               [{anchor, {Path.absname(file), String.to_integer(line)}}]
           end
