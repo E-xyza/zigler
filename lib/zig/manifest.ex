@@ -47,9 +47,12 @@ defmodule Zig.Manifest do
       |> Enum.with_index(1)
       |> Enum.flat_map(fn
         {"// ref " <> rest, anchor} ->
-          [file, line] = String.split(rest, ":")
-
-          [{anchor, {Path.absname(file), String.to_integer(line)}}]
+          case String.split(rest, ":") do
+            ["nofile", ""] ->
+              [{anchor, {"nofile", 0}}]
+            [file, line] ->
+              [{anchor, {Path.absname(file), String.to_integer(line)}}]
+          end
 
         _ ->
           []
@@ -66,7 +69,7 @@ defmodule Zig.Manifest do
         quote do
           defmodule unquote(manifest_module) do
             require Zig.Manifest
-            Zig.Manifest.resolver(unquote(manifest), unquote(module.module_code_path), :def)
+            Zig.Manifest.resolver(unquote(manifest), unquote(module.zig_code_path), :def)
           end
         end
       )

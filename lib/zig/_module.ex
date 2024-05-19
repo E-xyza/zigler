@@ -15,7 +15,7 @@ defmodule Zig.Module do
   @impl true
   defdelegate fetch(function, key), to: Map
 
-  @enforce_keys [:otp_app, :module, :file]
+  @enforce_keys [:otp_app, :module, :file, :line]
 
   defstruct @enforce_keys ++
               [
@@ -49,6 +49,7 @@ defmodule Zig.Module do
           otp_app: atom(),
           module: atom(),
           file: Path.t(),
+          line: non_neg_integer(),
           on_load: atom(),
           upgrade: atom(),
           easy_c: nil | Path.t(),
@@ -107,7 +108,8 @@ defmodule Zig.Module do
     |> Keyword.merge(
       default_nif_opts: Keyword.take(opts, @defaultable_nif_opts),
       module: caller.module,
-      file: caller.file
+      file: caller.file,
+      line: caller.line
     )
     |> normalize_options()
     |> then(&struct!(__MODULE__, &1))
@@ -117,15 +119,6 @@ defmodule Zig.Module do
     opts
     |> obtain_version
     |> Keyword.update(:c, nil, &C.new/1)
-
-    # |> normalize_include_dirs
-    # |> normalize_src
-    # |> normalize_nifs
-    # |> normalize_libs
-    # |> normalize_build_opts
-    # |> normalize_include_dirs
-    # |> normalize_src
-    # |> EasyC.normalize_aliasing()
   end
 
   defp obtain_version(opts) do

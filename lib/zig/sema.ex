@@ -44,23 +44,21 @@ defmodule Zig.Sema do
   defp assign_callbacks(sema, module) do
     sema
     |> Map.put("callbacks", [])
-    |> then(fn sema -> Enum.reduce(module.callbacks, sema, &move_callback/2) end)
+    |> then(fn sema -> Enum.reduce(module.callbacks, sema, &move_callback(&1, &2, module)) end)
   end
 
-  defp move_callback({type, name}, %{"functions" => functions, "callbacks" => callbacks} = sema) do
-    {new_functions, new_callback} = find_remove(functions, [], "#{name}", type)
+  defp move_callback({type, name}, %{"functions" => functions, "callbacks" => callbacks} = sema, module) do
+    {new_functions, new_callback} = find_remove(functions, [], "#{name}", type, module)
     %{sema | "functions" => new_functions, "callbacks" => [{type, new_callback} | callbacks]}
   end
 
-  defp find_remove([%{"name" => name} = callback | rest], so_far, name, _type),
+  defp find_remove([%{"name" => name} = callback | rest], so_far, name, _type, _module),
     do: {Enum.reverse(so_far, rest), callback}
 
-  defp find_remove([other | rest], so_far, name, type),
-    do: find_remove(rest, [other | so_far], name, type)
+  defp find_remove([other | rest], so_far, name, type, module),
+    do: find_remove(rest, [other | so_far], name, type, module)
 
-  defp find_remove([], _, name, type) do
-    raise CompileError, description: "#{type} callback #{name} not found"
-  end
+  defp find_remove([], so_far, _name, _type, _module), do: {so_far, nil}
 
   # removes "ignored" and "callback" functions from the semantic analysis.
   defp reject_ignored(json, module) do
@@ -86,7 +84,7 @@ defmodule Zig.Sema do
       types: Enum.map(types, &type_from_json(&1, module.module)),
       decls: Enum.map(decls, &const_from_json/1),
       callbacks: Enum.map(callbacks, fn 
-        {type, json} -> {type, Function.from_json(json, module.module)} 
+        {type, json} -> {type, json && Function.from_json(json, module.module)} 
       end)
     }
   end
@@ -111,8 +109,6 @@ defmodule Zig.Sema do
   # information.  Also strips "auto" from the nif information to provide a finalized
   # keyword list of functions with their options.
   def analyze_file!(%{sema: %{functions: functions, types: _types}} = module) do
-    # Enum.each(functions, &validate_usable!(&1, types, module))
-
     # `nifs` option could either be {:auto, keyword} which means that the full
     # list of functions should be derived from the semantic analysis, determining
     # which functions have `pub` declaration, with certain functions optionally
@@ -120,6 +116,9 @@ defmodule Zig.Sema do
     #
     # it could also be just a list of functions with their specifications, in
     # which case those are the *only* functions that will be included.
+
+    # check for invalid callbacks
+    check_invalid_callbacks!(module)
 
     nifs =
       case module.nifs do
@@ -238,6 +237,25 @@ defmodule Zig.Sema do
         description: "functions returning #{Type.render_zig(nif.return.type)} cannot be nifs",
         file: nif.file,
         line: nif.line
+    end
+  end
+
+  defp check_invalid_callbacks!(module) do
+    for {type, nil} <- module.sema.callbacks do
+      name = module.callbacks[type]
+
+      # search to see if the name exists in the parsed code.
+      for %{name: ^name, pub: false, location: {line, _col}} <- module.parsed.code do
+
+        {file, line} = module.manifest_module.__resolve(%{file_name: module.zig_code_path, line: line})
+
+        raise CompileError, 
+          description: "#{type} callback #{name} must be declared `pub`",
+          file: file,
+          line: line
+      end
+
+      raise CompileError, description: "#{type} callback #{name} not found", file: module.file, line: module.line
     end
   end
 end
