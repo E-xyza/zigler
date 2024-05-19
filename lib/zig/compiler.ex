@@ -79,6 +79,7 @@ defmodule Zig.Compiler do
     |> tap(&precompile/1)
     |> Command.compile!()
     |> unload_manifest_module()
+    |> tap(&Module.put_attribute(opts.module, :zigler_opts, &1))
     |> case do
       %{language: Elixir} = module ->
         Zig.Module.render_elixir(module, zig_code)
