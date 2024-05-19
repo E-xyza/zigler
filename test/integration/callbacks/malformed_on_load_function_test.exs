@@ -10,7 +10,10 @@ defmodule ZiglerTest.Callbacks.MalformedOnLoadFunction do
                    Code.compile_quoted(
                      quote do
                        defmodule ZiglerTest.BadOnloadArity do
-                         use Zig, otp_app: :zigler, callbacks: [on_load: :foo], dir: unquote(__DIR__)
+                         use Zig,
+                           otp_app: :zigler,
+                           callbacks: [on_load: :foo],
+                           dir: unquote(__DIR__)
 
                          ~Z"""
                          const beam = @import("beam");
@@ -31,7 +34,10 @@ defmodule ZiglerTest.Callbacks.MalformedOnLoadFunction do
                      Code.compile_quoted(
                        quote do
                          defmodule ZiglerTest.BadOnload2Parameters do
-                           use Zig, otp_app: :zigler, callbacks: [on_load: :foo], dir: unquote(__DIR__)
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [on_load: :foo],
+                             dir: unquote(__DIR__)
 
                            ~Z"""
                            const beam = @import("beam");
@@ -51,7 +57,10 @@ defmodule ZiglerTest.Callbacks.MalformedOnLoadFunction do
                      Code.compile_quoted(
                        quote do
                          defmodule ZiglerTest.BadOnload2Return do
-                           use Zig, otp_app: :zigler, callbacks: [on_load: :foo], dir: unquote(__DIR__)
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [on_load: :foo],
+                             dir: unquote(__DIR__)
 
                            ~Z"""
                            const beam = @import("beam");
@@ -73,7 +82,10 @@ defmodule ZiglerTest.Callbacks.MalformedOnLoadFunction do
                      Code.compile_quoted(
                        quote do
                          defmodule ZiglerTest.BadOnload3Parameters do
-                           use Zig, otp_app: :zigler, callbacks: [on_load: :foo], dir: unquote(__DIR__)
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [on_load: :foo],
+                             dir: unquote(__DIR__)
 
                            ~Z"""
                            const beam = @import("beam");
@@ -93,7 +105,10 @@ defmodule ZiglerTest.Callbacks.MalformedOnLoadFunction do
                      Code.compile_quoted(
                        quote do
                          defmodule ZiglerTest.BadOnload3Return do
-                           use Zig, otp_app: :zigler, callbacks: [on_load: :foo], dir: unquote(__DIR__)
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [on_load: :foo],
+                             dir: unquote(__DIR__)
 
                            ~Z"""
                            const beam = @import("beam");

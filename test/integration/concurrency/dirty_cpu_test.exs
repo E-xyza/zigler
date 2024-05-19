@@ -15,6 +15,7 @@ defmodule ZiglerTest.Concurrency.DirtyCpuTest do
   test "the module file has the correct invocation" do
     [opts] = __MODULE__.__info__(:attributes)[:zigler_opts]
 
-    assert File.read!(opts.module_code_path) =~ ".{ .name = \"dirty_cpu\", .arity = 0, .fptr = dirty_cpu, .flags = 0 }" 
+    assert File.read!(opts.module_code_path) =~
+             ".{ .name = \"dirty_cpu\", .arity = 0, .fptr = dirty_cpu, .flags = 0 }"
   end
 end
