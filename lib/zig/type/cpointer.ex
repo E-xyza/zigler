@@ -29,6 +29,8 @@ defmodule Zig.Type.Cpointer do
   def render_payload_options(_, _, _), do: Type._default_payload_options()
   def render_return(_, _), do: Type._default_return()
 
+  def render_zig(%{child: child}), do: "[*c]#{Type.render_zig(child)}"
+
   def render_elixir_spec(%{child: child}, :param, _opts) do
     has_solo? = match?(%Type.Struct{extern: true}, child)
     child_form = Type.render_elixir_spec(child, :param, [])

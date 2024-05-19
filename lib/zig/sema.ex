@@ -8,6 +8,7 @@ defmodule Zig.Sema do
   alias Zig.Return
   alias Zig.Type
   alias Zig.Type.Cpointer
+  alias Zig.Type.Error
   alias Zig.Type.Function
   alias Zig.Type.Integer
   alias Zig.Type.Manypointer
@@ -274,14 +275,48 @@ defmodule Zig.Sema do
         end
 
         case function.return do
-          :void -> :ok
-          %Integer{} -> :ok
-          %Zig.Type.Enum{} -> :ok
+          :void ->
+            :ok
+
+          %Integer{} ->
+            :ok
+
+          %Zig.Type.Enum{} ->
+            :ok
+
+          %Error{child: :void} ->
+            :ok
+
           bad ->
             seek_and_raise!(
               :on_load,
               module,
-              &"on_load callback #{&1} with arity 2 must have an integer, enum, or `void` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+              &"on_load callback #{&1} with arity 2 must have an integer, enum, `void`, or `!void` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+            )
+        end
+
+      {:on_load, %{arity: 3} = function} ->
+        case function.params do
+          [:env, %Cpointer{child: %Optional{child: :anyopaque_pointer}}, :erl_nif_term] ->
+            :ok
+
+          [first, second, third] ->
+            seek_and_raise!(
+              :on_load,
+              module,
+              &"on_load callback #{&1} with arity 3 must have `beam.env`, `[*c]?*anyopaque` and `e.ErlNifTerm` as parameters. \n\n    got: `#{Type.render_zig(first)}`\n\n    and: `#{Type.render_zig(second)}`\n\n    and: `#{Type.render_zig(third)}`"
+            )
+        end
+
+        case function.return do
+          %Integer{signedness: :signed, bits: 32} ->
+            :ok
+
+          bad ->
+            seek_and_raise!(
+              :on_load,
+              module,
+              &"on_load callback #{&1} with arity 3 must have an `c_int` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
             )
         end
 

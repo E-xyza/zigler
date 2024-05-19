@@ -13,6 +13,8 @@ defmodule Zig.Type.Optional do
   def return_allowed?(optional), do: Type.return_allowed?(optional.child)
   def can_cleanup?(optional), do: Type.can_cleanup?(optional.child)
 
+  def render_zig(%{child: child}), do: "?#{Type.render_zig(child)}"
+
   def render_payload_options(_, _, _), do: Type._default_payload_options()
   def render_return(_, _), do: Type._default_return()
   def marshal_param(_, _, _, _), do: Type._default_marshal()

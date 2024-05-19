@@ -19,13 +19,14 @@ defmodule Zig.Compiler do
     # all functionality in this macro must be replicated when running compilation from
     # erlang.
 
-    code_dir = Path.dirname(file)
-
+    
     opts =
       module
       |> Module.get_attribute(:zigler_opts)
       |> adjust_elixir_options
-
+    
+    code_dir = opts.dir || Path.dirname(file)
+    
     module
     |> Module.get_attribute(:zig_code_parts)
     |> Enum.reverse()

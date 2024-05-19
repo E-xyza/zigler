@@ -1,7 +1,7 @@
-defmodule ZiglerTest.Callbacks.OnLoadAutomaticIntTest do
+defmodule ZiglerTest.Callbacks.OnLoadAutomaticVoidTest do
   # this is a test of the "automatic" on_load function.  This means that the
   # beam.context.env variable is set, and the term value is set to beam.term.
-  # the return value is also allowed to be an arbitrary value.
+  # the return value is also allowed to be an enum value
   #
   # the magic __on_load__ function is also tested here.
 
@@ -15,10 +15,9 @@ defmodule ZiglerTest.Callbacks.OnLoadAutomaticIntTest do
   var stored_mode: beam.ContextMode = undefined;
   var stored_number: u32 = undefined;
 
-  pub fn automatic(_: [*c]?*anyopaque, term: beam.term) u32 {
+  pub fn automatic(_: [*c]?*anyopaque, term: beam.term) void {
       stored_mode = beam.context.mode;
       stored_number = beam.get(u32, term, .{}) catch unreachable;
-      return 0;
   }
 
   pub fn success() beam.term {

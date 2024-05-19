@@ -8,7 +8,7 @@ defmodule ZiglerTest.Callbacks.MissingOnLoadCallbackTest do
       Code.compile_quoted(
         quote do
           defmodule ZiglerTest.MissingOnloadCallback do
-            use Zig, otp_app: :zigler, callbacks: [on_load: :foo]
+            use Zig, otp_app: :zigler, callbacks: [on_load: :foo], dir: unquote(__DIR__)
 
             ~Z"""
             pub fn bar() u8 { return 47; }
@@ -24,7 +24,7 @@ defmodule ZiglerTest.Callbacks.MissingOnLoadCallbackTest do
       Code.compile_quoted(
         quote do
           defmodule ZiglerTest.NotPubOnloadCallback do
-            use Zig, otp_app: :zigler, callbacks: [on_load: :foo]
+            use Zig, otp_app: :zigler, callbacks: [on_load: :foo], dir: unquote(__DIR__)
 
             ~Z"""
             const beam = @import("beam");

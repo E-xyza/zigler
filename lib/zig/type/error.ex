@@ -12,6 +12,8 @@ defmodule Zig.Type.Error do
   def return_allowed?(optional), do: Type.return_allowed?(optional.child)
   def can_cleanup?(_), do: false
 
+  def render_zig(%{child: child}), do: "!#{child}"
+
   def render_elixir_spec(%{child: child}, context, opts) do
     Type.render_elixir_spec(child, context, opts)
   end

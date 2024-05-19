@@ -1,20 +1,17 @@
 <% on_load_fn = @sema.callbacks[:on_load]%>
+beam.context.env = env;
+beam.context.mode = .callback;
+beam.context.allocator = beam.allocator;
 <%= case on_load_fn do %>
   <% %{arity: 2, return: %Zig.Type.Integer{}} -> %>
-    beam.context.env = env;
-    beam.context.mode = .callback;
-    beam.context.allocator = beam.allocator;
     return @intCast(nif.<%= on_load_fn.name %>(priv_data, .{.v = load_info})); 
   <% %{arity: 2, return: %Zig.Type.Enum{}} -> %>
-    beam.context.env = env;
-    beam.context.mode = .callback;
-    beam.context.allocator = beam.allocator;
     return @intFromEnum(nif.<%= on_load_fn.name %>(priv_data, .{.v = load_info})); 
   <% %{arity: 2, return: :void} -> %>
-    beam.context.env = env;
-    beam.context.mode = .callback;
-    beam.context.allocator = beam.allocator;
-    @intFromEnum(nif.<%= on_load_fn.name %>(priv_data, .{.v = load_info})); 
+    nif.<%= on_load_fn.name %>(priv_data, .{.v = load_info}); 
+    return 0;
+  <% %{arity: 2, return: %Zig.Type.Error{child: :void}} -> %>
+    nif.<%= on_load_fn.name %>(priv_data, .{.v = load_info}) catch return -1;
     return 0;
   <% %{arity: 3} -> %>
     return nif.<%= on_load_fn.name %>(env, priv_data, load_info);
