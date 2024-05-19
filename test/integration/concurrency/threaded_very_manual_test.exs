@@ -23,9 +23,7 @@ defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
     _ = e.enif_thread_join(res.tid, &rres_ptr);
   }
 
-  pub fn on_load(env: beam.env, _: [*c]?*anyopaque, term: beam.term) c_int {
-    _ = term;
-
+  pub fn on_load(env: beam.env, _: [*c]?*anyopaque, _: e.ErlNifTerm) c_int {
     const init_struct = e.ErlNifResourceTypeInit{ .dtor = dtor, .stop = null, .down = null, .dyncall = null, .members = 1 };
     resource_type = e.enif_init_resource_type(env, "threadedmanualresource", &init_struct, e.ERL_NIF_RT_CREATE, null).?;
     return 0;
