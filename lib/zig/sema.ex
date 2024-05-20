@@ -391,6 +391,62 @@ defmodule Zig.Sema do
             )
         end
 
+        {:on_unload, %{arity: arity}} when arity not in [1, 2] ->
+          seek_and_raise!(:on_unload, module, &"on_unload callback #{&1} must have arity 1 or 2")
+
+        {:on_unload, %{arity: 1} = function} ->
+          case function.params do
+            [
+              %Optional{child: :anyopaque_pointer}
+            ] ->
+              :ok
+  
+            [first] ->
+              seek_and_raise!(
+                :on_unload,
+                module,
+                &"on_unload callback #{&1} with arity 1 must have `?*anyopaque` as a parameter. \n\n    got: `#{Type.render_zig(first)}`"
+              )
+          end
+  
+          case function.return do
+            :void -> :ok
+  
+            bad ->
+              seek_and_raise!(
+                :on_unload,
+                module,
+                &"on_unload callback #{&1} with arity 1 must have `void` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+              )
+          end
+
+          {:on_unload, %{arity: 2} = function} ->
+            case function.params do
+              [
+                :env,
+                %Optional{child: :anyopaque_pointer}
+              ] ->
+                :ok
+    
+              [first, second] ->
+                seek_and_raise!(
+                  :on_unload,
+                  module,
+                  &"on_unload callback #{&1} with arity 2 must have `beam.env` and `?*anyopaque` as parameters. \n\n    got: `#{Type.render_zig(first)}`\n\n    and: `#{Type.render_zig(second)}`"
+                )
+            end
+    
+            case function.return do
+              :void -> :ok
+    
+              bad ->
+                seek_and_raise!(
+                  :on_unload,
+                  module,
+                  &"on_unload callback #{&1} with arity 2 must have `void` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+                )
+            end
+
       _ ->
         :ok
     end)

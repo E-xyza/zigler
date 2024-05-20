@@ -5,7 +5,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMissingTest do
     assert_raise CompileError, "nofile: on_upgrade callback foo not found", fn ->
       Code.compile_quoted(
         quote do
-          defmodule ZiglerTest.OnLoadMissing do
+          defmodule ZiglerTest.OnUpgradeMissing do
             use Zig, otp_app: :zigler, callbacks: [on_upgrade: :foo], dir: unquote(__DIR__)
 
             ~Z"""
@@ -21,7 +21,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMissingTest do
     assert_raise CompileError, "nofile:2: on_upgrade callback foo must be declared `pub`", fn ->
       Code.compile_quoted(
         quote do
-          defmodule ZiglerTest.OnLoadNotPub do
+          defmodule ZiglerTest.OnUpgradeNotPub do
             use Zig, otp_app: :zigler, callbacks: [on_upgrade: :foo], dir: unquote(__DIR__)
 
             ~Z"""

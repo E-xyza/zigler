@@ -1,23 +1,23 @@
-defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
-  # this is a test of the "automatic" on_upgrade function.
+defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
+  # this is a test of the "automatic" on_unload function.
 
   use ZiglerTest.IntegrationCase, async: true
 
-  test "compiler error when on_upgrade function has the wrong arity" do
+  test "compiler error when on_unload function has the wrong arity" do
     assert_raise CompileError,
-                 "nofile:2: on_upgrade callback foo must have arity 3 or 4",
+                 "nofile:2: on_unload callback foo must have arity 1 or 2",
                  fn ->
                    Code.compile_quoted(
                      quote do
-                       defmodule ZiglerTest.BadOnupgradeArity do
+                       defmodule ZiglerTest.BadUnloadArity do
                          use Zig,
                            otp_app: :zigler,
-                           callbacks: [on_upgrade: :foo],
+                           callbacks: [on_unload: :foo],
                            dir: unquote(__DIR__)
 
                          ~Z"""
                          const beam = @import("beam");
-                         pub fn foo(_: beam.env) void {}
+                         pub fn foo() void {}
                          pub fn bar() u8 { return 47; }
                          """
                        end
@@ -26,22 +26,22 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                  end
   end
 
-  describe "compiler error when on_upgrade arity 3" do
+  describe "compiler error when on_unload arity 1" do
     test "has the wrong parameters" do
       assert_raise CompileError,
-                   "nofile:2: on_upgrade callback foo with arity 3 must have `[*c]?*anyopaque`, `[*c]?*anyopaque` and `beam.term` as parameters. \n\n    got: `beam.env`\n\n    and: `f32`\n\n    and: `f32`",
+                   "nofile:2: on_unload callback foo with arity 1 must have `?*anyopaque` as a parameter. \n\n    got: `beam.env`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnupgrade3Parameters do
+                         defmodule ZiglerTest.BadOnunload1Parameters do
                            use Zig,
                              otp_app: :zigler,
-                             callbacks: [on_upgrade: :foo],
+                             callbacks: [on_unload: :foo],
                              dir: unquote(__DIR__)
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn foo(_: beam.env, _: f32, _: f32) void {}
+                           pub fn foo(_: beam.env) void {}
                            pub fn bar() u8 { return 47; }
                            """
                          end
@@ -52,19 +52,19 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
 
     test "has the wrong return" do
       assert_raise CompileError,
-                   "nofile:2: on_upgrade callback foo with arity 3 must have an integer, enum, `void`, or `!void` as a return. \n\n    got: `f32`",
+                   "nofile:2: on_unload callback foo with arity 1 must have `void` as a return. \n\n    got: `f32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnupgrade3Return do
+                         defmodule ZiglerTest.BadOnunload1Return do
                            use Zig,
                              otp_app: :zigler,
-                             callbacks: [on_upgrade: :foo],
+                             callbacks: [on_unload: :foo],
                              dir: unquote(__DIR__)
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn foo(_: [*c]?*anyopaque, _: [*c]?*anyopaque, _: beam.term) f32 { return 0.0; }
+                           pub fn foo(_: ?*anyopaque) f32 { return 0.0; }
                            pub fn bar() u8 { return 47; }
                            """
                          end
@@ -74,22 +74,22 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
     end
   end
 
-  describe "compiler error when on_upgrade arity 4" do
+  describe "compiler error when on_unload arity 2" do
     test "has the wrong parameters" do
       assert_raise CompileError,
-                   "nofile:2: on_upgrade callback foo with arity 4 must have `beam.env`, `[*c]?*anyopaque`, `[*c]?*anyopaque` and `e.ErlNifTerm` as parameters. \n\n    got: `beam.env`\n\n    and: `[*c]?*anyopaque`\n\n    and: `[*c]?*anyopaque`\n\n    and: `f32`",
+                   "nofile:2: on_unload callback foo with arity 2 must have `beam.env` and `?*anyopaque` as parameters. \n\n    got: `?*anyopaque`\n\n    and: `?*anyopaque`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnupgrade4Parameters do
+                         defmodule ZiglerTest.BadOnload2Parameters do
                            use Zig,
                              otp_app: :zigler,
-                             callbacks: [on_upgrade: :foo],
+                             callbacks: [on_unload: :foo],
                              dir: unquote(__DIR__)
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn foo(_: beam.env, _: [*c]?*anyopaque, _: [*c]?*anyopaque, _: f32) c_int { return 0.0; }
+                           pub fn foo(_: ?*anyopaque, _: ?*anyopaque) void { return 0.0; }
                            pub fn bar() u8 { return 47; }
                            """
                          end
@@ -100,20 +100,20 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
 
     test "has the wrong return" do
       assert_raise CompileError,
-                   "nofile:3: on_upgrade callback foo with arity 4 must have an `c_int` as a return. \n\n    got: `f32`",
+                   "nofile:3: on_unload callback foo with arity 2 must have `void` as a return. \n\n    got: `f32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnupgrade4Return do
+                         defmodule ZiglerTest.BadOnload2Return do
                            use Zig,
                              otp_app: :zigler,
-                             callbacks: [on_upgrade: :foo],
+                             callbacks: [on_unload: :foo],
                              dir: unquote(__DIR__)
 
                            ~Z"""
                            const beam = @import("beam");
                            const e = @import("erl_nif");
-                           pub fn foo(_: beam.env, _: [*c]?*anyopaque, _: [*c]?*anyopaque, _: e.ErlNifTerm) f32 { return 0.0; }
+                           pub fn foo(_: beam.env, _: ?*anyopaque) f32 { return 0.0; }
                            pub fn bar() u8 { return 47; }
                            """
                          end
