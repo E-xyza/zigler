@@ -5,5 +5,15 @@ fn upgrade(env: beam.env, priv_data: [*c]?*anyopaque, old_priv_data: [*c]?*anyop
 <%= case @on_upgrade do %>
   <% %{name: name, arity: 3, return: %Zig.Type.Enum{}} -> %>
     return @intFromEnum(nif.<%= name %>(priv_data, old_priv_data, .{.v = term}));
+  <% %{name: name, arity: 3, return: %Zig.Type.Integer{}} -> %>
+    return nif.<%= name %>(priv_data, old_priv_data, .{.v = term});
+  <% %{name: name, arity: 3, return: %Zig.Type.Error{child: :void}} -> %>
+    nif.<%= name %>(priv_data, old_priv_data, .{.v = term}) catch return -1;
+    return 0;
+  <% %{name: name, arity: 3, return: :void} -> %>
+    nif.<%= name %>(priv_data, old_priv_data, .{.v = term});
+    return 0;
+  <% %{name: name, arity: 4} -> %>
+    return nif.<%= name %>(env, priv_data, old_priv_data, term);
 <% end %>
 }
