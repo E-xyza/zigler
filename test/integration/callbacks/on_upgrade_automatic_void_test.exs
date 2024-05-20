@@ -6,7 +6,6 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticVoidTest do
   use ZiglerTest.IntegrationCase, async: true
 
   import ExUnit.CaptureIO
-  import ExUnit.CaptureLog
 
   def build_module(opts) do
     Code.compile_quoted(
@@ -17,7 +16,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticVoidTest do
           defp __on_load__, do: unquote(opts)
 
           ~z"""
-          const beam = @import("beam");\
+          const beam = @import("beam");
           const S = struct{ pid: beam.pid, value: i32};
 
           pub fn on_upgrade(_: [*c]?*anyopaque, _: [*c]?*anyopaque, term: beam.term) void {
@@ -43,5 +42,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticVoidTest do
         build_module(pid: self(), value: 42)
         assert_receive {:result, 42}
       end)
+
+    assert redefine_warn =~ "redefining module ZiglerTest.OnUpgradeAutomaticVoid"
   end
 end

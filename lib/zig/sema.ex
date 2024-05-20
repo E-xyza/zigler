@@ -320,6 +320,77 @@ defmodule Zig.Sema do
             )
         end
 
+      {:on_upgrade, %{arity: arity}} when arity not in [3, 4] ->
+        seek_and_raise!(:on_upgrade, module, &"on_upgrade callback #{&1} must have arity 3 or 4")
+
+      {:on_upgrade, %{arity: 3} = function} ->
+        case function.params do
+          [
+            %Cpointer{child: %Optional{child: :anyopaque_pointer}},
+            %Cpointer{child: %Optional{child: :anyopaque_pointer}},
+            :term
+          ] ->
+            :ok
+
+          [first, second, third] ->
+            seek_and_raise!(
+              :on_upgrade,
+              module,
+              &"on_upgrade callback #{&1} with arity 3 must have `[*c]?*anyopaque`, `[*c]?*anyopaque` and `beam.term` as parameters. \n\n    got: `#{Type.render_zig(first)}`\n\n    and: `#{Type.render_zig(second)}`\n\n    and: `#{Type.render_zig(third)}`"
+            )
+        end
+
+        case function.return do
+          :void ->
+            :ok
+
+          %Integer{} ->
+            :ok
+
+          %Zig.Type.Enum{} ->
+            :ok
+
+          %Error{child: :void} ->
+            :ok
+
+          bad ->
+            seek_and_raise!(
+              :on_upgrade,
+              module,
+              &"on_upgrade callback #{&1} with arity 3 must have an integer, enum, `void`, or `!void` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+            )
+        end
+
+      {:on_upgrade, %{arity: 4} = function} ->
+        case function.params do
+          [
+            :env,
+            %Cpointer{child: %Optional{child: :anyopaque_pointer}},
+            %Cpointer{child: %Optional{child: :anyopaque_pointer}},
+            :erl_nif_term
+          ] ->
+            :ok
+
+          [first, second, third, fourth] ->
+            seek_and_raise!(
+              :on_upgrade,
+              module,
+              &"on_upgrade callback #{&1} with arity 4 must have `beam.env`, `[*c]?*anyopaque`, `[*c]?*anyopaque` and `e.ErlNifTerm` as parameters. \n\n    got: `#{Type.render_zig(first)}`\n\n    and: `#{Type.render_zig(second)}`\n\n    and: `#{Type.render_zig(third)}`\n\n    and: `#{Type.render_zig(fourth)}`"
+            )
+        end
+
+        case function.return do
+          %Integer{signedness: :signed, bits: 32} ->
+            :ok
+
+          bad ->
+            seek_and_raise!(
+              :on_upgrade,
+              module,
+              &"on_upgrade callback #{&1} with arity 4 must have an `c_int` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+            )
+        end
+
       _ ->
         :ok
     end)

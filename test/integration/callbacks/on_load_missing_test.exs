@@ -1,6 +1,4 @@
 defmodule ZiglerTest.Callbacks.OnLoadMissingTest do
-  # this is a test of the "automatic" on_load function.
-
   use ZiglerTest.IntegrationCase, async: true
 
   test "compiler error when on_load function is missing" do

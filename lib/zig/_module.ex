@@ -176,6 +176,9 @@ defmodule Zig.Module do
   on_upgrade = Path.join(__DIR__, "templates/on_upgrade.zig.eex")
   EEx.function_from_file(:def, :render_on_upgrade, on_upgrade, [:assigns])
 
+  on_unload = Path.join(__DIR__, "templates/on_unload.zig.eex")
+  EEx.function_from_file(:def, :render_on_unload, on_unload, [:assigns])
+
   def render_elixir(module, zig_code) do
     module_name = "#{module.module}"
 
