@@ -29,15 +29,11 @@ pub fn send(dest: beam.pid, content: anytype, opts: anytype) PidError!beam.term 
 
     const term = beam.make(content, opts);
 
-    // enif_send is not const-correct so we have to assign a variable to the static
-    // pid variable
-
     var pid = dest;
-    // disable this in sema because pid pointers are not supported
 
     switch (beam.context.mode) {
         .synchronous, .callback, .dirty => {
-            if (e.enif_send(options.env(opts), &pid, null, term.v) == 0) return error.NotDelivered;
+            if (e.enif_send(options.env(opts), @constCast(&pid), null, term.v) == 0) return error.NotDelivered;
         },
         .threaded, .yielding, .dirty_yield => {
             defer {
@@ -46,7 +42,7 @@ pub fn send(dest: beam.pid, content: anytype, opts: anytype) PidError!beam.term 
                 }
             }
 
-            if (e.enif_send(null, &pid, options.env(opts), term.v) == 0) return error.NotDelivered;
+            if (e.enif_send(null, @constCast(&pid), options.env(opts), term.v) == 0) return error.NotDelivered;
         },
     }
     return term;

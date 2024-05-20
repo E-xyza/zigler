@@ -26,6 +26,8 @@ fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) call
 
 var exported_nifs = [_]e.ErlNifFunc{<%= table_entries(@nifs) %>};
 
+<%= if @callbacks[:on_upgrade], do: render_on_upgrade(@sema.callbacks) %>
+
 const entry = e.ErlNifEntry{
     .major = <%= nif_version(:major) %>,
     .minor = <%= nif_version(:minor) %>,
@@ -34,7 +36,7 @@ const entry = e.ErlNifEntry{
     .funcs = &exported_nifs,
     .load = load,
     .reload = null,   // never supported as of OTP 20
-    .upgrade = beam.loader.blank_upgrade, 
+    .upgrade = <%= if @callbacks[:on_upgrade] do %> upgrade <% else %> beam.loader.blank_upgrade <% end %>, 
     .unload = beam.loader.blank_unload,  
     .vm_variant = "beam.vanilla",
     .options = 1,

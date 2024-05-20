@@ -1,0 +1,9 @@
+fn upgrade(env: beam.env, priv_data: [*c]?*anyopaque, old_priv_data: [*c]?*anyopaque, term: e.ErlNifTerm) callconv(.C) c_int {
+    beam.context.env = env;
+    beam.context.mode = .callback;
+    beam.context.allocator = beam.allocator;
+<%= case @on_upgrade do %>
+  <% %{name: name, arity: 3, return: %Zig.Type.Enum{}} -> %>
+    return @intFromEnum(nif.<%= name %>(priv_data, old_priv_data, .{.v = term}));
+<% end %>
+}
