@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Callbacks.MissingOnLoadCallbackTest do
+defmodule ZiglerTest.Callbacks.OnLoadMissingTest do
   # this is a test of the "automatic" on_load function.
 
   use ZiglerTest.IntegrationCase, async: true
@@ -7,7 +7,7 @@ defmodule ZiglerTest.Callbacks.MissingOnLoadCallbackTest do
     assert_raise CompileError, "nofile: on_load callback foo not found", fn ->
       Code.compile_quoted(
         quote do
-          defmodule ZiglerTest.MissingOnloadCallback do
+          defmodule ZiglerTest.OnLoadMissing do
             use Zig, otp_app: :zigler, callbacks: [on_load: :foo], dir: unquote(__DIR__)
 
             ~Z"""
@@ -23,7 +23,7 @@ defmodule ZiglerTest.Callbacks.MissingOnLoadCallbackTest do
     assert_raise CompileError, "nofile:2: on_load callback foo must be declared `pub`", fn ->
       Code.compile_quoted(
         quote do
-          defmodule ZiglerTest.NotPubOnloadCallback do
+          defmodule ZiglerTest.OnLoadNotPub do
             use Zig, otp_app: :zigler, callbacks: [on_load: :foo], dir: unquote(__DIR__)
 
             ~Z"""

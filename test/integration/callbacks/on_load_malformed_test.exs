@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Callbacks.MalformedOnLoadFunction do
+defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
   # this is a test of the "automatic" on_load function.
 
   use ZiglerTest.IntegrationCase, async: true
