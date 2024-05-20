@@ -1,0 +1,11 @@
+fn unload(env: beam.env, priv_data: ?*anyopaque) callconv(.C) void {
+    beam.context.env = env;
+    beam.context.mode = .callback;
+    beam.context.allocator = beam.allocator;
+<%= case @on_unload do %>
+  <% %{name: name, arity: 1} -> %>
+    nif.<%= name %>(priv_data);
+  <% %{name: name, arity: 2} -> %>
+    nif.<%= name %>(env, priv_data);
+<% end %>
+}
