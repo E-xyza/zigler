@@ -10,9 +10,9 @@ defmodule Zig.Compiler do
   alias Zig.Builder
   alias Zig.Command
   alias Zig.Manifest
+  alias Zig.Nif
   alias Zig.Parser
   alias Zig.Sema
-  alias Zig.Manifest
 
   defmacro __before_compile__(%{module: module, file: file}) do
     # NOTE: this is going to be called only from Elixir.  Erlang will not call this.
@@ -75,6 +75,7 @@ defmodule Zig.Compiler do
     |> Sema.run_sema!()
     |> apply_parser(zig_code)
     |> Sema.analyze_file!()
+    |> add_nif_resources()
     |> tap(&precompile/1)
     |> Command.compile!()
     |> unload_manifest_module()
@@ -133,5 +134,13 @@ defmodule Zig.Compiler do
   def unload_manifest_module(module) do
     :code.soft_purge(module.manifest_module) || raise "manifest purging error"
     module
+  end
+
+  defp add_nif_resources(module) do
+    # some nifs (threaded, yielding) must use their own resources to work correctly.
+    # this adds those resources to the list.
+    nif_resources = Enum.flat_map(module.nifs, &Nif.resources/1)
+
+    %{module | resources: module.resources ++ nif_resources}
   end
 end

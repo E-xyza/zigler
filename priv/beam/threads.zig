@@ -17,15 +17,15 @@ pub const ThreadState = enum {
     failed, // something bad and unrecoverable has happened.
 
     pub fn set(self: *This, state: ThreadState) void {
-        @atomicStore(This, self, state, .Monotonic);
+        @atomicStore(This, self, state, .monotonic);
     }
 
     pub fn get(self: *This) ThreadState {
-        return @atomicLoad(This, self, .Monotonic);
+        return @atomicLoad(This, self, .monotonic);
     }
 
     pub fn exchange(self: *This, old: ThreadState, new: ThreadState) ?ThreadState {
-        return @cmpxchgStrong(This, self, old, new, .Monotonic, .Monotonic);
+        return @cmpxchgStrong(This, self, old, new, .monotonic, .monotonic);
     }
 
     pub fn wait_while(self: *This, state: ThreadState) void {
@@ -249,7 +249,7 @@ pub fn Thread(comptime function: anytype) type {
             // true if the thread has gated through the join function.  false
             // if it is not, with the side effect of flipping marking it as
             // having gated.
-            return @cmpxchgStrong(bool, &self.join_started, false, true, .Monotonic, .Monotonic) != null;
+            return @cmpxchgStrong(bool, &self.join_started, false, true, .monotonic, .monotonic) != null;
         }
 
         fn join_result(self: *This) !Result {
@@ -339,7 +339,7 @@ pub fn Callbacks(comptime ThreadType: type) type {
 
 pub fn yield() !void {
     // to be called only from the yield module.
-    if (@atomicLoad(bool, local_join_started, .Monotonic)) {
+    if (@atomicLoad(bool, local_join_started, .monotonic)) {
         return error.processterminated;
     }
 }

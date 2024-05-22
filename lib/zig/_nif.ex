@@ -87,17 +87,26 @@ defmodule Zig.Nif do
     :dirty_cpu => DirtyCpu,
     :dirty_io => DirtyIo
   }
+  @concurrency_opts Map.keys(@concurrency_modules)
 
   @doc """
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
-  def new(name, file, opts) do
+  def new(name, file, opts!) do
+    opts! = adjust(opts!) 
     %__MODULE__{
       name: name,
       file: file,
-      export: Keyword.get(opts, :export, true),
-      concurrency: Map.get(@concurrency_modules, opts[:concurrency], Synchronous)
-    }
+      export: Keyword.get(opts!, :export, true),
+      concurrency: Map.get(@concurrency_modules, opts![:concurrency], Synchronous)
+    } 
+  end
+
+  def adjust(opts) do
+    Enum.map(opts, fn 
+      concurrency when concurrency in @concurrency_opts -> {:concurrency, concurrency}
+      {atom, _} = kv when is_atom(atom) -> atom
+    end)
   end
 
   def arities(%{raw: nil, signature: %{arity: arity}}), do: [arity]
@@ -195,14 +204,10 @@ defmodule Zig.Nif do
 
   def table_entries(nif) do
     nif.concurrency.table_entries(nif)
-    |> Enum.flat_map(fn
-      {function, fptr, concurrency} ->
+    |> Enum.map(fn
+      {function, arity, fptr, concurrency} ->
         flags = Map.fetch!(@flags, concurrency)
-
-        Enum.map(
-          arities(nif),
-          &~s(.{.name="#{function}", .arity=#{&1}, .fptr=#{fptr}, .flags=#{flags}})
-        )
+        ~s(.{.name="#{function}", .arity=#{arity}, .fptr=#{fptr}, .flags=#{flags}})
     end)
   end
 
@@ -216,6 +221,8 @@ defmodule Zig.Nif do
 
   def maybe_catch(_), do: nil
 
+  def resources(nif),do: nif.concurrency.resources(nif)
+
   # COMMON TOOLS
   # generates AST for parameters.  
   @spec elixir_parameters(arity, used :: boolean) :: [Macro.t()]
@@ -227,6 +234,14 @@ defmodule Zig.Nif do
   def erlang_parameters(0, _), do: []
   def erlang_parameters(arity, true), do: Enum.map(1..arity, &{:var, :"X#{&1}"})
   def erlang_parameters(arity, false), do: Enum.map(1..arity, &{:var, :"_X#{&1}"})
+
+  def style(nif) do
+    if nif.export, do: :def, else: :defp
+  end
+
+  def binding_error(name, arity) do
+    "nif for function #{name}/#{arity} not bound"
+  end  
 
   # Access behaviour guards
   @impl true

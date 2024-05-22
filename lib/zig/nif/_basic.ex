@@ -48,21 +48,13 @@ defmodule Zig.Nif.Basic do
     if needs_marshal?(nif), do: marshal_name(nif), else: nif.name
   end
 
-  defp style(nif) do
-    if nif.export, do: :def, else: :defp
-  end
-
-  defp error_text(nif, arity) do
-    "nif for function #{nif.name}/#{arity} not bound"
-  end
-
   def render_elixir(%{raw: raw} = nif) when not is_nil(raw) do
     Enum.map(nif.params, fn arity ->
       unused_params = Nif.elixir_parameters(arity, false)
 
       quote do
-        unquote(style(nif))(unquote(nif.name)(unquote_splicing(unused_params))) do
-          :erlang.nif_error(unquote(error_text(nif, nif.params)))
+        unquote(Nif.style(nif))(unquote(nif.name)(unquote_splicing(unused_params))) do
+          :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
         end
       end
     end)
@@ -75,14 +67,14 @@ defmodule Zig.Nif.Basic do
       unused_params = Nif.elixir_parameters(arity, false)
 
       quote context: Elixir do
-        unquote(style(nif))(unquote(nif.name)(unquote_splicing(unused_params))) do
-          :erlang.nif_error(unquote(error_text(nif, arity)))
+        unquote(Nif.style(nif))(unquote(nif.name)(unquote_splicing(unused_params))) do
+          :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
         end
       end
     end
   end
 
-  defp render_elixir_marshalled(%{signature: %{arity: arity, return: return}} = nif) do
+  defp render_elixir_marshalled(%{signature: %{arity: arity}} = nif) do
     used_params_ast = Nif.elixir_parameters(arity, true)
     unused_params_ast = Nif.elixir_parameters(arity, false)
 
@@ -99,16 +91,16 @@ defmodule Zig.Nif.Basic do
         )
       end)
 
-    return =
+    return_ast =
       quote do
         return
       end
 
     marshal_return =
-      if marshals_return?(return) do
-        Type.marshal_return(return, return, :elixir)
+      if marshals_return?(nif.return) do
+        Type.marshal_return(return_ast, return_ast, :elixir)
       else
-        return
+        return_ast
       end
 
     function_code = [
@@ -138,13 +130,13 @@ defmodule Zig.Nif.Basic do
     function_block = function_code ++ error_prongs
 
     quote do
-      unquote(style(nif))(
+      unquote(Nif.style(nif))(
         unquote(nif.name)(unquote_splicing(used_params_ast)),
         unquote(function_block)
       )
 
       defp unquote(marshal_name)(unquote_splicing(unused_params_ast)) do
-        :erlang.nif_error(unquote(error_text(nif, arity)))
+        :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
       end
     end
   end

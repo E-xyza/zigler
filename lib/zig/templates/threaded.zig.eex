@@ -1,11 +1,11 @@
-const Thread_<%= @type.name %> = beam.Thread(nif.<%= @type.name %>);
-pub const ThreadResource_<%= @type.name %> = beam.Resource(*Thread_<%= @type.name %>, @This(), .{
-  .Callbacks = beam.ThreadedCallbacks(Thread_<%= @type.name %>)
+const @"Thread-<%= @name %>" = beam.Thread(nif.<%= @name %>);
+pub const @"ThreadResource-<%= @name %>" = beam.Resource(*@"Thread-<%= @name %>", @This(), .{
+  .Callbacks = beam.ThreadedCallbacks(@"Thread-<%= @name %>")
 });
 
-<% needs_make? = Enum.any?(@type.params, &Type.needs_make?/1) %>
+<% needs_make? = @params |> Map.values |> Enum.any?(&Type.needs_make?(&1.type)) %>
 
-fn @"<%= @type.name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
+fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
 
     // set context due to reentry
     beam.context = .{
@@ -16,32 +16,28 @@ fn @"<%= @type.name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.Er
         .allocator = beam.allocator
     };
 
-    <%= for {param_type, index} <- Nif.indexed_parameters(@type.params), Type.missing_size?(param_type) do %>
-    var size<%= index %>:usize = undefined;
-    <% end %>
-
     <%= if needs_make? do %>
     var error_info = beam.make_empty_list(.{}); 
     <% end %>
 
     const payload_opts = .{
-        <%= for {param_type, index} <- Nif.indexed_parameters(@type.params) do %>
+        <%= for {index, param} <- @params do %>
         .{
-            <%= if needs_make? do %>.error_info = &error_info,<% end %>
-            <%= if Type.missing_size?(param_type) do%>.size = &size<%= index %>,<% end %>
-            <%= if match?(%Zig.Type.Resource{}, param_type) do%>.root = @This() <% end %>
+            <%= for {index, param} <- @params do %>
+            <%= Type.render_payload_options(param.type, index, needs_make?) %>
+            <% end %>
         },
         <% end %>
     };
 
-    const result = Thread_<%= @type.name %>.launch(ThreadResource_<%= @type.name %>, argc, args, payload_opts) catch {
+    const result = @"Thread-<%= @name %>".launch(@"ThreadResource-<%= @name %>", argc, args, payload_opts) catch {
         @panic("error launching thread");
     };
 
     return result.v;
 }
 
-fn @"<%= @type.name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
+fn @"<%= @name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
     // argc must be 1.
     _ = argc;
 
@@ -53,17 +49,17 @@ fn @"<%= @type.name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlN
         .allocator = beam.allocator
     };
 
-    const thread_rsrc = beam.get(ThreadResource_<%= @type.name %>, .{.v = args[0]}, .{}) catch {
+    const thread_rsrc = beam.get(@"ThreadResource-<%= @name %>", .{.v = args[0]}, .{}) catch {
         @panic("error getting thread resource");
     };
-    const thread = ThreadResource_<%= @type.name %>.unpack(thread_rsrc);
+    const thread = @"ThreadResource-<%= @name %>".unpack(thread_rsrc);
     
     const result = thread.join() catch {
         // TODO: fix this
         @panic("error joining thread");
     };
 
-    if (comptime Thread_<%= @type.name %>.makes_error_result()) {
+    if (comptime @"Thread-<%= @name %>".makes_error_result()) {
         const result_term = switch(result) {
             .ok => |ok_result| beam.make(ok_result, .{}),
             .error_return_trace => |error_result| beam.raise_exception(beam.copy(env, error_result), .{}),

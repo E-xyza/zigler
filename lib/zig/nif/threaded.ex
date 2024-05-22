@@ -10,48 +10,43 @@ defmodule Zig.Nif.Threaded do
   import Zig.QuoteErl
 
   @impl true
-  def render_elixir(%{type: %{name: name, arity: arity}} = nif) do
-    def_or_defp = if nif.export, do: :def, else: :defp
+  #def render_elixir(%{raw: raw} = nif) when not is_nil(raw) do
+  #  entrypoints = Enum.map(nif.params, fn arity ->
+  #    unused_params = Nif.elixir_parameters(arity, false)
+#
+  #    quote do
+  #      unquote(Nif.style(nif))(unquote(nif.name)(unquote_splicing(unused_params))) do
+  #        :erlang.nif_error(unquote(error_text(nif, arity)))
+  #      end
+  #    end
+  #  end)
+  #end
 
-    {empty_params, used_params} =
-      case arity do
-        0 ->
-          {[], []}
+  def render_elixir(%{signature: %{arity: arity}} = nif) do
+    used_params_ast = Nif.elixir_parameters(arity, true)
+    unused_params_ast = Nif.elixir_parameters(arity, false)
 
-        n ->
-          1..n
-          |> Enum.map(&{{:"_arg#{&1}", [], Elixir}, {:"arg#{&1}", [], Elixir}})
-          |> Enum.unzip()
-      end
-
-    ignore = [nif.name, :"#{nif.name}-join"]
-
-    error_prongs =
-      nif
-      |> error_prongs()
-      |> Enum.flat_map(&apply(ErrorProng, &1, [:elixir, ignore]))
+    # TODO: marshal parameters (that need to be marshalled) here.
 
     quote context: Elixir do
-      unquote(def_or_defp)(unquote(name)(unquote_splicing(used_params))) do
-        ref = unquote(entrypoint(nif, :launch))(unquote_splicing(used_params))
-
+      unquote(Nif.style(nif))(unquote(nif.name)(unquote_splicing(used_params_ast))) do
+        ref = unquote(entrypoint(nif, :launch))(unquote_splicing(used_params_ast))
+        
         receive do
           {:done, ^ref} ->
             unquote(entrypoint(nif, :join))(ref)
-
+        
           {:error, ^ref} ->
-            raise unquote("thread for function #{name} failed during launch")
+            raise unquote("thread for function #{nif.name} failed during launch")
         end
-      catch
-        unquote(error_prongs)
       end
 
-      defp unquote(entrypoint(nif, :launch))(unquote_splicing(empty_params)) do
-        :erlang.nif_error(unquote("nif for function #{name}/#{arity} not bound"))
+      defp unquote(entrypoint(nif, :launch))(unquote_splicing(unused_params_ast)) do
+        :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
       end
 
       defp unquote(entrypoint(nif, :join))(_ref) do
-        :erlang.nif_error(unquote("nif for function #{name}/#{arity} not bound"))
+        :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
       end
     end
   end
@@ -105,23 +100,24 @@ defmodule Zig.Nif.Threaded do
     launch = entrypoint(nif, :launch)
     join = entrypoint(nif, :join)
 
-    [
-      {launch, nif.type.arity, :"@\"#{launch}\"", :synchronous},
-      {join, 1, :"@\"#{join}\"", :synchronous}
-    ]
+    launch_entries = nif
+    |> Nif.arities()
+    |> Enum.flat_map(&[{launch, &1, :"@\"#{launch}\"", :synchronous}])
+
+    [{join, 1, :"@\"#{join}\"", :synchronous} | launch_entries]
   end
 
-  defp entrypoint(nif, mode) do
-    :"#{nif.type.name}-#{mode}"
+  defp entrypoint(nif, action) do
+    :"#{nif.name}-#{action}"
   end
 
   @impl true
-  def resources(nif), do: [{:root, :"ThreadResource_#{nif.type.name}"}]
+  def resources(nif), do: [{:root, :"@\"ThreadResource-#{nif.name}\""}]
 
-  defp error_prongs(nif) do
-    nif.type.params
-    |> Enum.map(&Type.error_prongs(&1, :argument))
-    |> List.insert_at(0, Type.error_prongs(nif.type.return, :return))
-    |> List.flatten()
-  end
+  #defp error_prongs(nif) do
+  #  nif.signature.params
+  #  |> Enum.map(&Type.error_prongs(&1, :argument))
+  #  |> List.insert_at(0, Type.error_prongs(nif.signature.return, :return))
+  #  |> List.flatten()
+  #end
 end
