@@ -11,7 +11,7 @@ defmodule Zig.Nif do
   # files.
   @behaviour Access
 
-  @enforce_keys ~w[name export concurrency file]a
+  @enforce_keys ~w[name export concurrency file module_code_path zig_code_path]a
 
   defstruct @enforce_keys ++ ~w[line signature params return leak_check alias doc spec raw]a
 
@@ -33,6 +33,8 @@ defmodule Zig.Nif do
            concurrency: Concurrency.t(),
            line: integer,
            file: Path.t(),
+           module_code_path: Path.t(),
+           zig_code_path: Path.t(),
            signature: Function.t(),
            params: integer,
            return: Return.t(),
@@ -49,6 +51,8 @@ defmodule Zig.Nif do
            concurrency: Concurrency.t(),
            line: integer,
            file: Path.t(),
+           module_code_path: Path.t(),
+           zig_code_path: Path.t(),
            signature: Function.t(),
            params: %{optional(integer) => Parameter.t()},
            return: Return.t(),
@@ -92,12 +96,14 @@ defmodule Zig.Nif do
   @doc """
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
-  def new(name, file, opts!) do
+  def new(name, module, opts!) do
     opts! = adjust(opts!)
 
     %__MODULE__{
       name: name,
-      file: file,
+      file: module.file,
+      module_code_path: module.module_code_path,
+      zig_code_path: module.zig_code_path,
       export: Keyword.get(opts!, :export, true),
       concurrency: Map.get(@concurrency_modules, opts![:concurrency], Synchronous)
     }
@@ -204,7 +210,8 @@ defmodule Zig.Nif do
   }
 
   def table_entries(nif) do
-    nif.concurrency.table_entries(nif)
+    nif
+    |> nif.concurrency.table_entries()
     |> Enum.map(fn
       {function, arity, fptr, concurrency} ->
         flags = Map.fetch!(@flags, concurrency)
@@ -223,6 +230,18 @@ defmodule Zig.Nif do
   def maybe_catch(_), do: nil
 
   def resources(nif), do: nif.concurrency.resources(nif)
+
+  @spec set_file_line(t(), module, Parser.t()) :: t()
+  def set_file_line(nif, manifest_module, parsed) do
+    raw_line =
+      Enum.find_value(parsed.code, fn
+        %{name: name, location: {line, _}} -> if name == nif.name, do: line
+      end)
+
+    {file, line} = manifest_module.__resolve(%{file_name: nif.zig_code_path, line: raw_line})
+
+    %{nif | file: file, line: line}
+  end
 
   # COMMON TOOLS
   # generates AST for parameters.  

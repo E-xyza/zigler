@@ -144,18 +144,18 @@ defmodule Zig.Sema do
             nif_opts = Keyword.get(specified_fns, function.name, module.default_nif_opts)
 
             function.name
-            |> Nif.new(module.module_code_path, nif_opts)
+            |> Nif.new(module, nif_opts)
+            |> Nif.set_file_line(module.manifest_module, module.parsed)
             |> apply_from_sema(function, nif_opts)
-            |> set_file_line(module.manifest_module, module.parsed)
           end)
 
         selected_fns when is_list(selected_fns) ->
           Enum.map(selected_fns, fn {name, nif_opts} ->
             if function = Enum.find(functions, &(&1.name == name)) do
               name
-              |> Nif.new(module.module_code_path, nif_opts)
+              |> Nif.new(module, nif_opts)
+              |> Nif.set_file_line(module.manifest_module, module.parsed)
               |> apply_from_sema(function, nif_opts)
-              |> set_file_line(module.manifest_module, module.parsed)
             else
               raise CompileError,
                 description: "function #{name} not found in semantic analysis of functions.",
@@ -189,9 +189,6 @@ defmodule Zig.Sema do
     %{nif | signature: sema, raw: t, params: arities, return: Return.new(t)}
   end
 
-  defp arities(integer) when is_integer(integer), do: [integer]
-  defp arities({:.., _, [start, finish]}), do: Enum.to_list(start..finish)
-
   defp apply_from_sema(nif, sema, opts) do
     %{
       nif
@@ -201,6 +198,9 @@ defmodule Zig.Sema do
     }
   end
 
+  defp arities(integer) when is_integer(integer), do: [integer]
+  defp arities({:.., _, [start, finish]}), do: Enum.to_list(start..finish)
+
   defp params_from_sema(%{params: params}, _opts) do
     params
     |> Enum.with_index(fn param, index -> {index, Parameter.new(param, [])} end)
@@ -209,18 +209,6 @@ defmodule Zig.Sema do
 
   defp return_from_sema(%{return: return}, opts) do
     Return.new(return, List.wrap(opts[:return]))
-  end
-
-  @spec set_file_line(Nif.t(), module, Parser.t()) :: Nif.t()
-  defp set_file_line(nif, manifest_module, parsed) do
-    raw_line =
-      Enum.find_value(parsed.code, fn
-        %{name: name, location: {line, _}} -> if name == nif.name, do: line
-      end)
-
-    {file, line} = manifest_module.__resolve(%{file_name: nif.file, line: raw_line})
-
-    %{nif | file: file, line: line}
   end
 
   defp validate_nif!(%{raw: nil} = nif) do
@@ -233,7 +221,7 @@ defmodule Zig.Sema do
   defp validate_param!({_, param}, nif) do
     unless Type.param_allowed?(param.type) do
       raise CompileError,
-        description: "functions cannot have #{Type.render_zig(param.type)} as a parameter",
+        description: "nif function `#{nif.name}` cannot have a value of type #{Type.render_zig(param.type)} as a parameter",
         file: nif.file,
         line: nif.line
     end
@@ -242,7 +230,7 @@ defmodule Zig.Sema do
   defp validate_return!(nif) do
     unless Type.return_allowed?(nif.return.type) do
       raise CompileError,
-        description: "functions returning #{Type.render_zig(nif.return.type)} cannot be nifs",
+        description: "nif function `#{nif.name}` cannot return a value of type #{Type.render_zig(nif.return.type)}",
         file: nif.file,
         line: nif.line
     end

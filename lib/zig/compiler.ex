@@ -78,7 +78,7 @@ defmodule Zig.Compiler do
     |> add_nif_resources()
     |> tap(&precompile/1)
     |> Command.compile!()
-    |> unload_manifest_module()
+    |> Manifest.unload()
     |> tap(&Module.put_attribute(opts.module, :zigler_opts, &1))
     |> case do
       %{language: Elixir} = module ->
@@ -129,11 +129,6 @@ defmodule Zig.Compiler do
     System.tmp_dir()
     |> String.replace("\\", "/")
     |> Path.join(".zigler_compiler/#{env}/#{module}")
-  end
-
-  def unload_manifest_module(module) do
-    :code.soft_purge(module.manifest_module) || raise "manifest purging error"
-    module
   end
 
   defp add_nif_resources(module) do

@@ -16,6 +16,6 @@ defmodule ZiglerTest.Concurrency.DirtyIoTest do
     [opts] = __MODULE__.__info__(:attributes)[:zigler_opts]
 
     assert File.read!(opts.module_code_path) =~
-             ".{ .name = \"dirty_io\", .arity = 0, .fptr = dirty_io, .flags = 0 }"
+             ".{ .name = \"dirty_io\", .arity = 0, .fptr = dirty_io, .flags = e.ERL_NIF_DIRTY_JOB_IO_BOUND }"
   end
 end

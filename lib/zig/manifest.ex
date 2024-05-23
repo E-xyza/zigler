@@ -77,4 +77,9 @@ defmodule Zig.Manifest do
 
     %{module | manifest: manifest, manifest_module: manifest_module}
   end
+
+  def unload(module) do
+    :code.soft_purge(module.manifest_module) || raise "manifest purging error"
+    module
+  end
 end
