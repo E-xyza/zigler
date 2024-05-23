@@ -8,8 +8,8 @@ defmodule ZiglerTest.CompilerError.FunctionNotFoundTest do
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule FunctionNotFound do
-                           use Zig, otp_app: :zig, nifs: [not_found: []]
+                         defmodule NoOtpApp do
+                           use Zig, nifs: [not_found: []]
 
                            ~Z"""
                            pub fn foo() void {}

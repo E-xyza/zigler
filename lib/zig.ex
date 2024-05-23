@@ -319,7 +319,14 @@ defmodule Zig do
   @spec __using__(keyword) :: Macro.t()
   defmacro __using__(opts) do
     module = __CALLER__.module
-    if module in :erlang.loaded(), do: :code.purge(module)
+    if module in :erlang.loaded() do
+      :code.delete(module)
+      :code.purge(module)
+    end
+
+    unless Keyword.has_key?(opts, :otp_app) do
+      raise CompileError, file: __CALLER__.file, description: "(module #{inspect module}) you must supply an `otp_app` option to `use Zig`"
+    end
 
     opts =
       opts

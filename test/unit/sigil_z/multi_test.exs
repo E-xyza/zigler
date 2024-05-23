@@ -20,16 +20,16 @@ defmodule ZiglerTest.SigilZ.MultiTest do
 
   test "first function is branded with the correct file and line number", %{code: code} do
     file = Path.relative_to_cwd(__ENV__.file)
-    assert code =~ "#{file}:5\nfn first()"
+    assert code =~ "#{file}:5\npub fn first()"
   end
 
   test "next function is branded with the correct file and line number", %{code: code} do
     file = Path.relative_to_cwd(__ENV__.file)
-    assert code =~ "#{file}:9\nfn next()"
+    assert code =~ "#{file}:9\npub fn next()"
   end
 
   test "last function is branded with the correct file and line number", %{code: code} do
     file = Path.relative_to_cwd(__ENV__.file)
-    assert code =~ "#{file}:13\nfn last()"
+    assert code =~ "#{file}:13\npub fn last()"
   end
 end
