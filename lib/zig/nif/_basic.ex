@@ -113,7 +113,7 @@ defmodule Zig.Nif.Basic do
         end
     ]
 
-    argument_error_prong = [ErrorProng.argument_error_prong(:elixir, nif.file, nif.line)]
+    argument_error_prong = ErrorProng.argument_error_prong(:elixir, nif.file, nif.line)
 
     error_return_prong =
       List.wrap(
@@ -130,7 +130,7 @@ defmodule Zig.Nif.Basic do
 
     function_block = function_code ++ error_prongs
 
-    quote do
+    quote context: Elixir do
       unquote(Nif.style(nif))(
         unquote(nif.name)(unquote_splicing(used_params_ast)),
         unquote(function_block)

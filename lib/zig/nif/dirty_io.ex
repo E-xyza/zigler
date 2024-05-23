@@ -17,8 +17,8 @@ defmodule Zig.Nif.DirtyIo do
   defdelegate render_zig(nif), to: Basic
 
   @impl true
-  def table_entries(%{type: type} = nif) do
-    [{Basic.entrypoint(nif), type.arity, type.name, :dirty_io}]
+  def table_entries(nif) do
+    [{Basic.entrypoint(nif), nif.signature.arity, nif.name, :dirty_io}]
   end
 
   @impl true
