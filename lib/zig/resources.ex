@@ -7,11 +7,15 @@ defmodule Zig.Resources do
   EEx.function_from_file(:def, :render, resources, [:assigns])
 
   defp beam_type(resource) do
-    inner_name = case Atom.to_string(resource) do
-      "@" <> rest ->
-        String.trim(rest, "\"")
-      normal -> normal
-    end
+    inner_name =
+      case Atom.to_string(resource) do
+        "@" <> rest ->
+          String.trim(rest, "\"")
+
+        normal ->
+          normal
+      end
+
     ~s(@"beam-type-#{inner_name}")
   end
 

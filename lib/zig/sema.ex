@@ -144,7 +144,7 @@ defmodule Zig.Sema do
             nif_opts = Keyword.get(specified_fns, function.name, module.default_nif_opts)
 
             function.name
-            |> Nif.new(module.module_code_path, nif_opts |> dbg)
+            |> Nif.new(module.module_code_path, nif_opts)
             |> apply_from_sema(function, nif_opts)
             |> set_file_line(module.manifest_module, module.parsed)
           end)
@@ -153,7 +153,7 @@ defmodule Zig.Sema do
           Enum.map(selected_fns, fn {name, nif_opts} ->
             if function = Enum.find(functions, &(&1.name == name)) do
               name
-              |> Nif.new(module.module_code_path, nif_opts |> dbg)
+              |> Nif.new(module.module_code_path, nif_opts)
               |> apply_from_sema(function, nif_opts)
               |> set_file_line(module.manifest_module, module.parsed)
             else

@@ -221,7 +221,7 @@ defmodule Zig.Module do
       if Enum.any?(module.nifs, &match?(%Error{}, &1.return.type)) do
         quote do
           require Zig.Manifest
-          Zig.Manifest.resolver(unquote(module.manifest), unquote(module.module_code_path), :defp)
+          Zig.Manifest.resolver(unquote(module.manifest), unquote(module.zig_code_path), :defp)
         end
       end
 

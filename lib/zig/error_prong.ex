@@ -71,7 +71,7 @@ defmodule Zig.ErrorProng do
     ]
   end
 
-  def error_return_prong(:elixir, ignored) do
+  def return_error_prong(:elixir, ignored) do
     stacktrace_prep =
       case ignored do
         [] ->
@@ -111,7 +111,7 @@ defmodule Zig.ErrorProng do
     end
   end
 
-  def error_return_prong(:erlang, _) do
+  def return_error_prong(:erlang, _) do
     ["error:{error, Type, _ExtraStacktrace}:Stacktrace -> erlang:raise(error, Type, Stacktrace)"]
   end
 end

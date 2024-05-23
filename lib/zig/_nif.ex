@@ -93,17 +93,18 @@ defmodule Zig.Nif do
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
   def new(name, file, opts!) do
-    opts! = adjust(opts!) 
+    opts! = adjust(opts!)
+
     %__MODULE__{
       name: name,
       file: file,
       export: Keyword.get(opts!, :export, true),
       concurrency: Map.get(@concurrency_modules, opts![:concurrency], Synchronous)
-    } 
+    }
   end
 
   def adjust(opts) do
-    Enum.map(opts, fn 
+    Enum.map(opts, fn
       concurrency when concurrency in @concurrency_opts -> {:concurrency, concurrency}
       {atom, _} = kv when is_atom(atom) -> atom
     end)
@@ -221,7 +222,7 @@ defmodule Zig.Nif do
 
   def maybe_catch(_), do: nil
 
-  def resources(nif),do: nif.concurrency.resources(nif)
+  def resources(nif), do: nif.concurrency.resources(nif)
 
   # COMMON TOOLS
   # generates AST for parameters.  
@@ -241,7 +242,7 @@ defmodule Zig.Nif do
 
   def binding_error(name, arity) do
     "nif for function #{name}/#{arity} not bound"
-  end  
+  end
 
   # Access behaviour guards
   @impl true

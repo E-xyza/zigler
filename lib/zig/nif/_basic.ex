@@ -10,6 +10,7 @@ defmodule Zig.Nif.Basic do
   To understand wrapping logic, see `Zig.Nif.Marshaller`
   """
 
+  alias Zig.ErrorProng
   alias Zig.Nif
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
@@ -112,14 +113,14 @@ defmodule Zig.Nif.Basic do
         end
     ]
 
-    argument_error_prong =
+    argument_error_prong = [ErrorProng.argument_error_prong(:elixir, nif.file, nif.line)]
+
+    error_return_prong =
       List.wrap(
-        if true do
-          Zig.ErrorProng.argument_error_prong(:elixir, nif.file, nif.line)
+        if match?(%Zig.Type.Error{}, nif.signature.return) do
+          ErrorProng.return_error_prong(:elixir, [marshal_name])
         end
       )
-
-    error_return_prong = []
 
     error_prongs =
       case {argument_error_prong, error_return_prong} do

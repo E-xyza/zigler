@@ -16,7 +16,7 @@ defmodule Zig.Nif.Synchronous do
   @impl true
   def table_entries(nif) do
     nif
-    |> Nif.arities
+    |> Nif.arities()
     |> Enum.map(&{Basic.entrypoint(nif), &1, nif.name, :synchronous})
   end
 
