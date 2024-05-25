@@ -221,7 +221,8 @@ defmodule Zig.Sema do
   defp validate_param!({_, param}, nif) do
     unless Type.param_allowed?(param.type) do
       raise CompileError,
-        description: "nif function `#{nif.name}` cannot have a value of type #{Type.render_zig(param.type)} as a parameter",
+        description:
+          "nif function `#{nif.name}` cannot have a value of type #{Type.render_zig(param.type)} as a parameter",
         file: nif.file,
         line: nif.line
     end
@@ -230,7 +231,8 @@ defmodule Zig.Sema do
   defp validate_return!(nif) do
     unless Type.return_allowed?(nif.return.type) do
       raise CompileError,
-        description: "nif function `#{nif.name}` cannot return a value of type #{Type.render_zig(nif.return.type)}",
+        description:
+          "nif function `#{nif.name}` cannot return a value of type #{Type.render_zig(nif.return.type)}",
         file: nif.file,
         line: nif.line
     end

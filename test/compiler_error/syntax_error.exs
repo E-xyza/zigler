@@ -1,5 +1,5 @@
 defmodule ZiglerTest.CompilerError.SyntaxError do
-  use Zig, otp_app: :zigler, compile: false
+  use Zig, otp_app: :zigler
 
   # these comments add space to make sure the line numbers are correct.
 

@@ -5,16 +5,18 @@ defmodule Zig.CompileError do
     "zig command failed: #{error.command} failed with error #{error.code}: #{error.error}"
   end
 
-  def resolve(error, %{module_code_path: module_code_path, manifest_module: manifest_module}) do
+  def resolve(error, %{zig_code_path: zig_code_path, manifest_module: manifest_module}) do
     {lines, file_line} =
       error.error
       |> String.split("\n")
       |> Enum.reduce({[], nil}, fn
         error_line, {so_far, nil} ->
-          revise_line(error_line, so_far, module_code_path, manifest_module)
+          {maybe_line, fileline} = revise_line(error_line, so_far, zig_code_path, manifest_module)
+          [_, _ | rest] = List.flatten(maybe_line)
+          {[IO.iodata_to_binary(rest)], fileline}
 
         error_line, {so_far, fileline} ->
-          {next, _} = revise_line(error_line, so_far, module_code_path, manifest_module)
+          {next, _} = revise_line(error_line, so_far, zig_code_path, manifest_module)
           {next, fileline}
       end)
 
@@ -32,13 +34,96 @@ defmodule Zig.CompileError do
     end
   end
 
-  defp revise_line(error_line, acc, module_code_path, manifest_module) do
-    with ^module_code_path <> ":" <> rest <- error_line,
-         {line, err_rest} <- Integer.parse(rest) do
-      {updated_file, updated_line} = manifest_module.__resolve(module_code_path, line)
-      {["#{updated_file}:#{updated_line}#{err_rest}" | acc], {updated_file, updated_line}}
+  defp revise_line(error_line, acc, absolute_path, manifest_module) do
+    relative_path = Path.relative_to_cwd(absolute_path)
+
+    {replaced_line, fileline} =
+      parse_line(error_line, absolute_path, relative_path, manifest_module)
+
+    {[replaced_line | acc], fileline}
+  end
+
+  defp parse_line(error_line, absolute_path, relative_path, manifest_module) do
+    case error_line do
+      # if it's the first part of the error message, we must memoize the new file/line
+      ^absolute_path <> ":" <> linerest ->
+        {new_file, new_line, rest} = do_resolution(linerest, absolute_path, manifest_module)
+
+        {[
+           new_file,
+           colonline(new_line),
+           rest
+           |> just_replace(absolute_path, relative_path, manifest_module)
+           |> remove_column()
+         ], {new_file, new_line}}
+
+      ^relative_path <> ":" <> linerest ->
+        {new_file, new_line, rest} = do_resolution(linerest, absolute_path, manifest_module)
+
+        {[
+           new_file,
+           colonline(new_line),
+           rest
+           |> just_replace(absolute_path, relative_path, manifest_module)
+           |> remove_column()
+         ], {new_file, new_line}}
+
+      other ->
+        {just_replace(error_line, absolute_path, relative_path, manifest_module), nil}
+    end
+  end
+
+  defp remove_column(charlist_line) do
+    with ~c':' ++ rest <- charlist_line,
+         {_, rest} <- Integer.parse("#{rest}"),
+         ": " <> rest <- rest do
+      rest
     else
-      _ -> {[error_line | acc], nil}
+      _ -> charlist_line
+    end
+  end
+
+  defp colonline(line) do
+    if line, do: ":#{line}", else: []
+  end
+
+  defp do_resolution(linerest, absolute_path, manifest_module) do
+    with {lineno, rest} <- Integer.parse(linerest),
+         {file, line} <-
+           manifest_module.__resolve(%{file_name: absolute_path, line: lineno}) do
+      {file, line, rest}
+    else
+      _ ->
+        {file, _} = manifest_module.__resolve(%{file_name: absolute_path, line: 1})
+        {file, nil, linerest}
+    end
+  end
+
+  defp just_replace("", _, _, _), do: []
+
+  defp just_replace(error_rest, absolute_path, relative_path, manifest_module) do
+    case error_rest do
+      # if it's the first part of the error message, we must memoize the new file/line
+      ^absolute_path <> ":" <> linerest ->
+        {new_file, new_line, rest} = do_resolution(linerest, absolute_path, manifest_module)
+
+        [
+          new_file,
+          colonline(new_line),
+          just_replace(rest, absolute_path, relative_path, manifest_module)
+        ]
+
+      ^relative_path <> ":" <> linerest ->
+        {new_file, new_line, rest} = do_resolution(linerest, absolute_path, manifest_module)
+
+        [
+          new_file,
+          colonline(new_line),
+          just_replace(rest, absolute_path, relative_path, manifest_module)
+        ]
+
+      <<one_char, rest::binary>> ->
+        [one_char | just_replace(rest, absolute_path, relative_path, manifest_module)]
     end
   end
 end
