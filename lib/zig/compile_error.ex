@@ -12,8 +12,14 @@ defmodule Zig.CompileError do
       |> Enum.reduce({[], nil}, fn
         error_line, {so_far, nil} ->
           {maybe_line, fileline} = revise_line(error_line, so_far, zig_code_path, manifest_module)
-          [_, _ | rest] = List.flatten(maybe_line)
-          {[IO.iodata_to_binary(rest)], fileline}
+
+          case List.flatten(maybe_line) do
+            [str1, str2 | rest] when is_binary(str1) and is_binary(str2) ->
+              {[IO.iodata_to_binary(rest)], fileline}
+
+            _ ->
+              {maybe_line, fileline}
+          end
 
         error_line, {so_far, fileline} ->
           {next, _} = revise_line(error_line, so_far, zig_code_path, manifest_module)

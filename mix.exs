@@ -26,7 +26,11 @@ defmodule Zigler.MixProject do
       preferred_cli_env: [dialyzer: :dev],
       source_url: "https://github.com/E-xyza/zigler/",
       docs: docs(),
-      aliases: [docs: "zig_doc"]
+      aliases: [docs: "zig_doc"],
+      test_elixirc_options: [
+        debug_info: true,
+        docs: true
+      ]
     ]
   end
 

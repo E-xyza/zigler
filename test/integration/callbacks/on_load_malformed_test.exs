@@ -72,6 +72,10 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
                      )
                    end
     end
+
+    test "uses a non-pub struct"
+
+    test "uses a type that isn't approved by beam.get"
   end
 
   describe "compiler error when on_load arity 3" do

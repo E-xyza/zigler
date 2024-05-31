@@ -1,6 +1,9 @@
-defmodule ZiglerTest.OverrideTypespec do
-  @moduledoc false
-  use Zig, otp_app: :zigler, nifs: [do_something: [spec: (integer -> integer)]]
+defmodule ZiglerTest.TypespecOverride do
+  @compile :debug_info
+
+  use Zig, otp_app: :zigler, nifs: [do_something: [specs: false]]
+
+  @spec do_something(integer) :: integer
 
   ~Z"""
   const beam = @import("beam");

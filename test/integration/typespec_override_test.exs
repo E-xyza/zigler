@@ -1,7 +1,13 @@
 defmodule ZiglerTest.Integration.Typespec.OverrideTest do
   use ExUnit.Case, async: true
 
-  # NB: the code for this function is test/_support/tests
+  @moduletag :typespec
+
+  require ZiglerTest.Compiler
+
+  setup_all do
+    ZiglerTest.Compiler.compile("_typespec_override.ex")
+  end
 
   test "it is possible to override the typespec" do
     assert {:ok,
@@ -14,6 +20,6 @@ defmodule ZiglerTest.Integration.Typespec.OverrideTest do
                     {:type, _, :integer, _}
                   ]}
                ]}
-            ]} = Code.Typespec.fetch_specs(ZiglerTest.OverrideTypespec)
+            ]} = Code.Typespec.fetch_specs(ZiglerTest.TypespecOverride)
   end
 end

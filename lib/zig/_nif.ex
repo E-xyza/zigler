@@ -13,7 +13,7 @@ defmodule Zig.Nif do
 
   @enforce_keys ~w[name export concurrency file module_code_path zig_code_path]a
 
-  defstruct @enforce_keys ++ ~w[line signature params return leak_check alias doc spec raw]a
+  defstruct @enforce_keys ++ ~w[line signature params return leak_check alias doc raw]a
 
   alias Zig.Nif.Concurrency
   alias Zig.Nif.DirtyCpu
@@ -41,7 +41,6 @@ defmodule Zig.Nif do
            leak_check: boolean(),
            alias: nil | atom,
            doc: nil | String.t(),
-           spec: Macro.t(),
            raw: :term | :erl_nif_term
          }
 
@@ -59,7 +58,6 @@ defmodule Zig.Nif do
            leak_check: boolean(),
            alias: nil | atom,
            doc: nil | String.t(),
-           spec: Macro.t(),
            raw: nil
          }
 
@@ -77,7 +75,6 @@ defmodule Zig.Nif do
           | {:return, Return.opts()}
           | {:alias, atom()}
           | {:doc, String.t()}
-          | {:spec, Macro.t()}
 
   @type opts() :: [defaultable_opts | individual_opts]
 
@@ -127,32 +124,10 @@ defmodule Zig.Nif do
         end
       end
 
-    typespec =
-      case nif.spec do
-        false ->
-          quote do
-          end
-
-        _ ->
-          nif.spec
-          |> List.wrap()
-          |> Enum.map(fn spec ->
-            nil
-          end)
-
-        {_, list} when is_list(list) ->
-          Enum.map(list, fn spec ->
-            quote do
-              @spec unquote(spec)
-            end
-          end)
-      end
-
     functions = concurrency.render_elixir(nif)
 
     quote context: Elixir do
       unquote(doc)
-      unquote(typespec)
       unquote(functions)
     end
   end

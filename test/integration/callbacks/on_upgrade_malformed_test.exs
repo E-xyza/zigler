@@ -72,6 +72,10 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                      )
                    end
     end
+
+    test "uses a an non-pub struct"
+
+    test "uses an unapproved type"
   end
 
   describe "compiler error when on_upgrade arity 4" do

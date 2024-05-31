@@ -4,7 +4,7 @@ defmodule ZiglerTest.Types.OtherTest do
   describe "beam.env" do
     test "cannot generally be used as a parameter" do
       assert_raise CompileError,
-                   "test/integration/types/errors/beam_env_fails.exs:6: functions cannot have beam.env as a parameter",
+                   "test/integration/types/errors/beam_env_fails.exs:6: nif function `forbidden` cannot have a value of type beam.env as a parameter",
                    fn ->
                      Code.compile_file("errors/beam_env_fails.exs", __DIR__)
                    end

@@ -49,3 +49,5 @@ zigler-*.tar
 .test_*.zig
 # other compiled files
 *.a
+
+/test/code
