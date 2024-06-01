@@ -109,6 +109,8 @@ defmodule Zig.Type.Struct do
     |> Enum.sort()
   end
 
+  def render_zig(%{name: name}), do: "nif.#{name}"
+
   # for now.  Later, we will need to do more sophisticated checks
   def get_allowed?(_), do: true
 

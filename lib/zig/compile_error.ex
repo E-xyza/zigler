@@ -46,7 +46,7 @@ defmodule Zig.CompileError do
     {replaced_line, fileline} =
       parse_line(error_line, absolute_path, relative_path, manifest_module)
 
-    {[replaced_line | acc], fileline}
+    {[replaced_line, "\n" | acc], fileline}
   end
 
   defp parse_line(error_line, absolute_path, relative_path, manifest_module) do

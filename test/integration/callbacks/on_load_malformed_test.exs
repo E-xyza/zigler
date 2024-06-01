@@ -73,6 +73,30 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
                    end
     end
 
+    test "has a non-pub struct for term 2" do
+      # unfortunately, the resulting string is too complex, but it must contain 'NonPub' is not marked 'pub'
+      assert_raise CompileError,
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.BadOnloadAutoSecondParameter do
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [on_load: :foo],
+                             dir: unquote(__DIR__)
+
+                           ~Z"""
+                           const beam = @import("beam");
+                           const NonPub = struct { value: u32 };
+                           pub fn foo(_: ?*?*u32, _: NonPub) void {}
+                           pub fn bar() u8 { return 47; }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+
     test "has the wrong return" do
       assert_raise CompileError,
                    "nofile:2: on_load (automatic-style) callback foo must have a return of type integer, enum, `void`, or `!void`.\n\n    got: `f32`",
@@ -95,8 +119,6 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
                      )
                    end
     end
-
-    test "uses a non-pub struct"
   end
 
   describe "compiler error when on_load arity 3" do
