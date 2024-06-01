@@ -27,13 +27,13 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
   end
 
   describe "compiler error when on_load arity 2" do
-    test "has the wrong parameters" do
+    test "has the wrong first parameter" do
       assert_raise CompileError,
-                   "nofile:2: on_load callback foo with arity 2 must have `[*c]?*anyopaque` and `beam.term` as parameters. \n\n    got: `beam.env`\n\n    and: `f32`",
+                   "nofile:2: on_load (automatic-style) callback foo must have a first paramater of a `?*?*` type.\n\n    got: `i32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnload2Parameters do
+                         defmodule ZiglerTest.BadOnloadAutoFirstParameter do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [on_load: :foo],
@@ -41,7 +41,30 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn foo(_: beam.env, _: f32) void {}
+                           pub fn foo(_: i32, _: i32) void {}
+                           pub fn bar() u8 { return 47; }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+
+    test "has the wrong second parameter" do
+      assert_raise CompileError,
+                   "nofile:2: on_load (automatic-style) callback foo must have a second parameter of a type compatible with `beam.get`.\n\n    got: `beam.env`",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.BadOnloadAutoSecondParameter do
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [on_load: :foo],
+                             dir: unquote(__DIR__)
+
+                           ~Z"""
+                           const beam = @import("beam");
+                           pub fn foo(_: ?*?*u32, _: beam.env) void {}
                            pub fn bar() u8 { return 47; }
                            """
                          end
@@ -52,11 +75,11 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
 
     test "has the wrong return" do
       assert_raise CompileError,
-                   "nofile:2: on_load callback foo with arity 2 must have an integer, enum, `void`, or `!void` as a return. \n\n    got: `f32`",
+                   "nofile:2: on_load (automatic-style) callback foo must have a return of type integer, enum, `void`, or `!void`.\n\n    got: `f32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnload2Return do
+                         defmodule ZiglerTest.BadOnloadAutoReturn do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [on_load: :foo],
@@ -64,7 +87,7 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn foo(_: [*c]?*anyopaque, _: beam.term) f32 { return 0.0; }
+                           pub fn foo(_: ?*?*u32, _: beam.term) f32 { return 0.0; }
                            pub fn bar() u8 { return 47; }
                            """
                          end
@@ -74,18 +97,16 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
     end
 
     test "uses a non-pub struct"
-
-    test "uses a type that isn't approved by beam.get"
   end
 
   describe "compiler error when on_load arity 3" do
-    test "has the wrong parameters" do
+    test "has the wrong first parameter" do
       assert_raise CompileError,
-                   "nofile:2: on_load callback foo with arity 3 must have `beam.env`, `[*c]?*anyopaque` and `e.ErlNifTerm` as parameters. \n\n    got: `beam.env`\n\n    and: `[*c]?*anyopaque`\n\n    and: `f32`",
+                   "nofile:2: on_load (raw-style) callback foo must have a first parameter of type `beam.env`.\n\n    got: `u32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnload3Parameters do
+                         defmodule ZiglerTest.BadOnloadRawFirstParameter do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [on_load: :foo],
@@ -93,7 +114,55 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn foo(_: beam.env, _: [*c]?*anyopaque, _: f32) c_int { return 0.0; }
+                           pub fn foo(_: u32, _: ?*?*u32, _: f32) c_int { return 0.0; }
+                           pub fn bar() u8 { return 47; }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+
+    test "has the wrong second parameter" do
+      assert_raise CompileError,
+                   "nofile:3: on_load (raw-style) callback foo must have a second parameter of type `?*?*`.\n\n    got: `u32`",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.BadOnloadRawSecondParameter do
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [on_load: :foo],
+                             dir: unquote(__DIR__)
+
+                           ~Z"""
+                           const beam = @import("beam");
+                           const e = @import("erl_nif");
+                           pub fn foo(_: beam.env, _: u32, _: e.ErlNifTerm) c_int { return 0.0; }
+                           pub fn bar() u8 { return 47; }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+
+    test "has the wrong third parameter" do
+      assert_raise CompileError,
+                   "nofile:3: on_load (raw-style) callback foo must have a third parameter of type `e.ErlNifTerm`.\n\n    got: `u32`",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.BadOnloadRawThirdParameter do
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [on_load: :foo],
+                             dir: unquote(__DIR__)
+
+                           ~Z"""
+                           const beam = @import("beam");
+                           const e = @import("erl_nif");
+                           pub fn foo(_: beam.env, _: ?*?*u32, _: u32) c_int { return 0.0; }
                            pub fn bar() u8 { return 47; }
                            """
                          end
@@ -104,11 +173,11 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
 
     test "has the wrong return" do
       assert_raise CompileError,
-                   "nofile:3: on_load callback foo with arity 3 must have an `c_int` as a return. \n\n    got: `f32`",
+                   "nofile:3: on_load (raw-style) callback foo must have return type `c_int`. \n\n    got: `f32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnload3Return do
+                         defmodule ZiglerTest.BadOnloadRawReturn do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [on_load: :foo],
@@ -117,7 +186,7 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            const e = @import("erl_nif");
-                           pub fn foo(_: beam.env, _: [*c]?*anyopaque, _: e.ErlNifTerm) f32 { return 0.0; }
+                           pub fn foo(_: beam.env, _: ?*?*u32, _: e.ErlNifTerm) f32 { return 0.0; }
                            pub fn bar() u8 { return 47; }
                            """
                          end

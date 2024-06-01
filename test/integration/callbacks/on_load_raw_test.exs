@@ -14,7 +14,7 @@ defmodule ZiglerTest.Callbacks.OnLoadRawTest do
 
   var stored_number: u32 = undefined;
 
-  pub fn automatic(env: beam.env, _: [*c]?*anyopaque, term: e.ErlNifTerm) c_int {
+  pub fn automatic(env: beam.env, _: ?*?*u32, term: e.ErlNifTerm) c_int {
       stored_number = beam.get(u32, .{.v = term}, .{.env = env}) catch unreachable;
       return 0;
   }

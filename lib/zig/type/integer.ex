@@ -240,8 +240,8 @@ defmodule Zig.Type.Integer do
   defp typemax(%{signedness: :signed, bits: 1}), do: 0
   defp typemax(%{signedness: :signed, bits: bits}), do: Bitwise.<<<(1, bits - 1) - 1
 
-  def param_allowed?(_), do: true
-  def return_allowed?(_), do: true
+  def get_allowed?(_), do: true
+  def make_allowed?(_), do: true
   def can_cleanup?(_), do: false
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()

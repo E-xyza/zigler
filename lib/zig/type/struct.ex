@@ -110,13 +110,13 @@ defmodule Zig.Type.Struct do
   end
 
   # for now.  Later, we will need to do more sophisticated checks
-  def param_allowed?(_), do: true
+  def get_allowed?(_), do: true
 
-  def return_allowed?(struct) do
+  def make_allowed?(struct) do
     struct.required
     |> Map.values()
     |> Kernel.++(Map.values(struct.optional))
-    |> Enum.map(&Type.return_allowed?/1)
+    |> Enum.map(&Type.make_allowed?/1)
     |> Enum.all?()
   end
 

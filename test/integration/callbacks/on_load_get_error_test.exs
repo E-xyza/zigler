@@ -16,7 +16,7 @@ defmodule ZiglerTest.Callbacks.OnLoadGetErrorTest do
 
               ~Z"""
               const beam = @import("beam");
-              pub fn foo(_: [*c]?*anyopaque, _: i32) void {
+              pub fn foo(_: ?*?*u32, _: i32) void {
               }
               """
             end
@@ -25,6 +25,6 @@ defmodule ZiglerTest.Callbacks.OnLoadGetErrorTest do
       end)
 
     assert log =~ "[error] loading module Elixir.ZiglerTest.OnLoadGetError"
-    assert log =~ "(42)"
+    assert log =~ "(-1)"
   end
 end

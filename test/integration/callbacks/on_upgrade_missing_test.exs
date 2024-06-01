@@ -26,7 +26,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMissingTest do
 
             ~Z"""
             const beam = @import("beam");
-            fn foo(_: [*c]?*anyopaque, _: [*c]?*anyopaque, _: beam.term) c_int { return 0; }
+            fn foo(_: [*c]?*anyopaque, _: ?*?*u32, _: beam.term) c_int { return 0; }
             pub fn bar() u8 { return 47; }
             """
           end

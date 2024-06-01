@@ -88,8 +88,8 @@ defmodule Zig.Type.Slice do
 
   # ETC
 
-  def param_allowed?(slice), do: Type.param_allowed?(slice.child)
-  def return_allowed?(slice), do: Type.return_allowed?(slice.child)
+  def get_allowed?(slice), do: Type.get_allowed?(slice.child)
+  def make_allowed?(slice), do: Type.make_allowed?(slice.child)
   def can_cleanup?(_), do: true
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()

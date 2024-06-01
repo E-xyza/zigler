@@ -9,7 +9,7 @@ defmodule Zig.Type.Error do
   def from_json(%{"child" => child}, module),
     do: %__MODULE__{child: Type.from_json(child, module)}
 
-  def return_allowed?(optional), do: Type.return_allowed?(optional.child)
+  def make_allowed?(optional), do: Type.make_allowed?(optional.child)
   def can_cleanup?(_), do: false
 
   def render_zig(%{child: child}), do: "!#{child}"

@@ -25,8 +25,8 @@ defmodule Zig.Type.Manypointer do
     }
   end
 
-  def param_allowed?(pointer), do: Type.return_allowed?(pointer.child)
-  def return_allowed?(pointer), do: pointer.has_sentinel? and Type.return_allowed?(pointer.child)
+  def get_allowed?(pointer), do: Type.make_allowed?(pointer.child)
+  def make_allowed?(pointer), do: pointer.has_sentinel? and Type.make_allowed?(pointer.child)
   def can_cleanup?(_), do: true
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()

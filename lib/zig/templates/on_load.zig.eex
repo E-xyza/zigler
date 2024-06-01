@@ -2,17 +2,21 @@
 beam.context.env = env;
 beam.context.mode = .callback;
 beam.context.allocator = beam.allocator;
-<%= case on_load_fn do %>
-  <% %{arity: 2, return: %Zig.Type.Integer{}} -> %>
-    return @intCast(nif.<%= on_load_fn.name %>(priv_data, .{.v = load_info})); 
-  <% %{arity: 2, return: %Zig.Type.Enum{}} -> %>
-    return @intFromEnum(nif.<%= on_load_fn.name %>(priv_data, .{.v = load_info})); 
-  <% %{arity: 2, return: :void} -> %>
-    nif.<%= on_load_fn.name %>(priv_data, .{.v = load_info}); 
-    return 0;
-  <% %{arity: 2, return: %Zig.Type.Error{child: :void}} -> %>
-    nif.<%= on_load_fn.name %>(priv_data, .{.v = load_info}) catch return -1;
-    return 0;
-  <% %{arity: 3} -> %>
-    return nif.<%= on_load_fn.name %>(env, priv_data, load_info);
+<%= if on_load_fn.arity == 2 do %>
+  <% payload_type = Enum.at(on_load_fn.params, 1) %>
+  const payload = beam.get(<%= Zig.Type.render_zig(payload_type)%>, .{.v = load_info}, .{}) catch return -1;
+  <%= case on_load_fn.return do %>
+    <% %Zig.Type.Integer{} -> %>
+      return @intCast(nif.<%= on_load_fn.name %>(@ptrCast(priv_data), payload)); 
+    <% %Zig.Type.Enum{} -> %>
+      return @intFromEnum(nif.<%= on_load_fn.name %>(@ptrCast(priv_data), payload)); 
+    <% :void -> %>
+      nif.<%= on_load_fn.name %>(@ptrCast(priv_data), payload); 
+      return 0;
+    <% %Zig.Type.Error{child: :void} -> %>
+      nif.<%= on_load_fn.name %>(@ptrCast(priv_data), payload) catch |err| return @intFromError(err);
+      return 0;
+  <% end %>
+<% else %>
+  return nif.<%= on_load_fn.name %>(env, @ptrCast(priv_data), load_info);
 <% end %>

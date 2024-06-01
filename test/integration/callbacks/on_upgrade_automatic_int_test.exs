@@ -21,7 +21,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticIntTest do
           const E = enum(c_int){ ok = 0, err = 42 };
           const S = struct{ pid: beam.pid, value: i32};
 
-          pub fn on_upgrade(_: [*c]?*anyopaque, _: [*c]?*anyopaque, term: beam.term) i32 {
+          pub fn on_upgrade(_: ?*?*u32, _: ?*?*u32, term: beam.term) i32 {
             const t = beam.get(S, term, .{}) catch unreachable;
             _ = beam.send(t.pid, .{.result, t.value}, .{}) catch unreachable;
             return t.value;

@@ -109,7 +109,7 @@ defmodule Zig.Nif do
   def adjust(opts) do
     Enum.map(opts, fn
       concurrency when concurrency in @concurrency_opts -> {:concurrency, concurrency}
-      {atom, _} = kv when is_atom(atom) -> atom
+      {atom, _} = kv when is_atom(atom) -> kv
     end)
   end
 

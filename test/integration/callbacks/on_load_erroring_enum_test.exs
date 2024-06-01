@@ -15,7 +15,7 @@ defmodule ZiglerTest.Callbacks.OnLoadErroringEnumTest do
               ~Z"""
               const beam = @import("beam");
               const E = enum(c_int){ ok = 0, err = 42 };
-              pub fn foo(_: [*c]?*anyopaque, _: beam.term) E {
+              pub fn foo(_: ?*?*u32, _: beam.term) E {
                 return .err;
               }
               pub fn bar() u8 { return 47; }

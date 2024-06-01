@@ -26,8 +26,8 @@ defmodule Zig.Type.Array do
     }
   end
 
-  def param_allowed?(array), do: Type.param_allowed?(array.child)
-  def return_allowed?(array), do: Type.return_allowed?(array.child)
+  def get_allowed?(array), do: Type.get_allowed?(array.child)
+  def make_allowed?(array), do: Type.make_allowed?(array.child)
   def can_cleanup?(_), do: false
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()

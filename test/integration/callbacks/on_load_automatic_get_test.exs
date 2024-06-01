@@ -15,7 +15,7 @@ defmodule ZiglerTest.Callbacks.OnLoadAutomaticGetTest do
   var stored_mode: beam.ContextMode = undefined;
   var stored_number: u32 = undefined;
 
-  pub fn automatic(_: [*c]?*anyopaque, number: u32) void {
+  pub fn automatic(_: ?*?*u32, number: u32) void {
       stored_mode = beam.context.mode;
       stored_number = number;
   }

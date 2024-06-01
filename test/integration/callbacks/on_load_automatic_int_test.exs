@@ -15,7 +15,7 @@ defmodule ZiglerTest.Callbacks.OnLoadAutomaticIntTest do
   var stored_mode: beam.ContextMode = undefined;
   var stored_number: u32 = undefined;
 
-  pub fn automatic(_: [*c]?*anyopaque, term: beam.term) u32 {
+  pub fn automatic(_: ?*?*u32, term: beam.term) u32 {
       stored_mode = beam.context.mode;
       stored_number = beam.get(u32, term, .{}) catch unreachable;
       return 0;

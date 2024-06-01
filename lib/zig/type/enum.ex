@@ -16,8 +16,8 @@ defmodule Zig.Type.Enum do
     ~s(%Zig.Type.Enum{name: "#{enum.name}", tags: #{Kernel.inspect(enum.tags, opts)}})
   end
 
-  def param_allowed?(_), do: true
-  def return_allowed?(_), do: true
+  def get_allowed?(_), do: true
+  def make_allowed?(_), do: true
   def can_cleanup?(_), do: false
 
   def marshal_param(_, _, _, _), do: Type._default_marshal()

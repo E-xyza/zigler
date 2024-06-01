@@ -13,13 +13,13 @@ defmodule Zig.Type.Cpointer do
     %__MODULE__{child: Type.from_json(child, module)}
   end
 
-  def return_allowed?(pointer) do
+  def make_allowed?(pointer) do
     case pointer.child do
       ~t(u8) -> true
       # null-terminated list of pointers.
-      %__MODULE__{child: child} -> Type.return_allowed?(child)
+      %__MODULE__{child: child} -> Type.make_allowed?(child)
       # NB: we assume these are single pointer returns.
-      struct = %Struct{} -> Type.return_allowed?(struct)
+      struct = %Struct{} -> Type.make_allowed?(struct)
       _ -> false
     end
   end

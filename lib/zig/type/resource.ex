@@ -30,8 +30,8 @@ defmodule Zig.Type.Resource do
 
   def can_cleanup?(_), do: true
 
-  def return_allowed?(_resource), do: true
-  def param_allowed?(_), do: true
+  def make_allowed?(_resource), do: true
+  def get_allowed?(_), do: true
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()
   def render_return(_, _), do: Type._default_return()

@@ -21,7 +21,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticVoidErrorTest do
           const E = error{ unacceptable };
           const S = struct{ pid: beam.pid, value: i32};
 
-          pub fn on_upgrade(_: [*c]?*anyopaque, _: [*c]?*anyopaque, term: beam.term) !void {
+          pub fn on_upgrade(_: ?*?*u32, _: ?*?*u32, term: beam.term) !void {
             const t = beam.get(S, term, .{}) catch unreachable;
             _ = beam.send(t.pid, .{.result, t.value}, .{}) catch unreachable;
             if (t.value == 42) return error.unacceptable;

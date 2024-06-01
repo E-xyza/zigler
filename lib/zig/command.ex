@@ -34,7 +34,7 @@ defmodule Zig.Command do
   sema_command = Path.join(__DIR__, "templates/sema_command.eex")
   EEx.function_from_file(:defp, :sema_command, sema_command, [:assigns])
 
-  def run_sema!(file, module) do
+  def run_sema!(file) do
     # TODO: add availability of further options here.
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema.zig")

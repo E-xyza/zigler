@@ -29,7 +29,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
   describe "compiler error when on_upgrade arity 3" do
     test "has the wrong parameters" do
       assert_raise CompileError,
-                   "nofile:2: on_upgrade callback foo with arity 3 must have `[*c]?*anyopaque`, `[*c]?*anyopaque` and `beam.term` as parameters. \n\n    got: `beam.env`\n\n    and: `f32`\n\n    and: `f32`",
+                   "nofile:2: on_upgrade callback foo with arity 3 must have `?*?*u32`, `?*?*u32` and `beam.term` as parameters. \n\n    got: `beam.env`\n\n    and: `f32`\n\n    and: `f32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
@@ -64,7 +64,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn foo(_: [*c]?*anyopaque, _: [*c]?*anyopaque, _: beam.term) f32 { return 0.0; }
+                           pub fn foo(_: ?*?*u32, _: ?*?*u32, _: beam.term) f32 { return 0.0; }
                            pub fn bar() u8 { return 47; }
                            """
                          end
@@ -81,7 +81,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
   describe "compiler error when on_upgrade arity 4" do
     test "has the wrong parameters" do
       assert_raise CompileError,
-                   "nofile:2: on_upgrade callback foo with arity 4 must have `beam.env`, `[*c]?*anyopaque`, `[*c]?*anyopaque` and `e.ErlNifTerm` as parameters. \n\n    got: `beam.env`\n\n    and: `[*c]?*anyopaque`\n\n    and: `[*c]?*anyopaque`\n\n    and: `f32`",
+                   "nofile:2: on_upgrade callback foo with arity 4 must have `beam.env`, `?*?*u32`, `?*?*u32` and `e.ErlNifTerm` as parameters. \n\n    got: `beam.env`\n\n    and: `[*c]?*anyopaque`\n\n    and: `[*c]?*anyopaque`\n\n    and: `f32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
@@ -93,7 +93,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn foo(_: beam.env, _: [*c]?*anyopaque, _: [*c]?*anyopaque, _: f32) c_int { return 0.0; }
+                           pub fn foo(_: beam.env, _: ?*?*u32, _: ?*?*u32, _: f32) c_int { return 0.0; }
                            pub fn bar() u8 { return 47; }
                            """
                          end
@@ -117,7 +117,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            const e = @import("erl_nif");
-                           pub fn foo(_: beam.env, _: [*c]?*anyopaque, _: [*c]?*anyopaque, _: e.ErlNifTerm) f32 { return 0.0; }
+                           pub fn foo(_: beam.env, _: ?*?*u32, _: ?*?*u32, _: e.ErlNifTerm) f32 { return 0.0; }
                            pub fn bar() u8 { return 47; }
                            """
                          end

@@ -15,7 +15,7 @@ defmodule ZiglerTest.Callbacks.OnLoadAutomaticVoidErrorTest do
   var stored_mode: beam.ContextMode = undefined;
   var stored_number: u32 = undefined;
 
-  pub fn automatic(_: [*c]?*anyopaque, term: beam.term) !void {
+  pub fn automatic(_: ?*?*u32, term: beam.term) !void {
       stored_mode = beam.context.mode;
       stored_number = try beam.get(u32, term, .{});
   }

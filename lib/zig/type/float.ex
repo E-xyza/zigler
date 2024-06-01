@@ -27,8 +27,8 @@ defmodule Zig.Type.Float do
     end
   end
 
-  def param_allowed?(_), do: true
-  def return_allowed?(_), do: true
+  def get_allowed?(_), do: true
+  def make_allowed?(_), do: true
   def can_cleanup?(_), do: false
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()

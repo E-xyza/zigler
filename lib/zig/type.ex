@@ -9,6 +9,7 @@ defprotocol Zig.Type do
   alias Zig.Type.Integer
   alias Zig.Type.Manypointer
   alias Zig.Type.Optional
+  alias Zig.Type.Pointer
   alias Zig.Type.Slice
   alias Zig.Type.Struct
   alias Zig.Type.Resource
@@ -23,10 +24,11 @@ defprotocol Zig.Type do
           | Integer.t()
           | ManyPointer.t()
           | Optional.t()
+          | Pointer.t()
           | Slice.t()
           | Struct.t()
           | :void
-          | :anyopaque_pointer
+          | :anyopaque
           | :env
           | :pid
           | :port
@@ -37,6 +39,8 @@ defprotocol Zig.Type do
           | :erl_nif_binary_pointer
           | :stacktrace
 
+  @type json :: number | String.t() | boolean | nil | [json] | %{optional(String.t()) => json}
+
   @spec marshal_param(t, Macro.t(), non_neg_integer, :elixir | :erlang) :: Macro.t()
   def marshal_param(type, variable_ast, index, platform)
 
@@ -45,11 +49,11 @@ defprotocol Zig.Type do
 
   # validations:
 
-  @spec param_allowed?(t) :: boolean
-  def param_allowed?(type)
+  @spec get_allowed?(t) :: boolean
+  def get_allowed?(type)
 
-  @spec return_allowed?(t) :: boolean
-  def return_allowed?(type)
+  @spec make_allowed?(t) :: boolean
+  def make_allowed?(type)
 
   @spec can_cleanup?(t) :: boolean
   def can_cleanup?(type)
@@ -134,6 +138,10 @@ after
 
   @pointer_types ~w(array struct)
 
+  # following two lines cause infinite loop
+  # @callback from_json(json, term) :: t
+  # @optional_callbacks [from_json: 2]
+
   def from_json(json, module) do
     case json do
       nil ->
@@ -187,8 +195,11 @@ after
         |> __MODULE__.from_json(module)
         |> Map.replace!(:mutable, true)
 
-      %{"type" => "pointer", "child" => %{"type" => "unusable:anyopaque"}} ->
-        :anyopaque_pointer
+      %{"type" => "pointer"} = type ->
+        Pointer.from_json(type, module)
+
+      %{"type" => "optional", "child" => %{"type" => "pointer"}} = type ->
+        Pointer.from_json(type, module)
 
       %{"type" => "manypointer"} ->
         Manypointer.from_json(json, module)
@@ -255,8 +266,8 @@ end
 defimpl Zig.Type, for: Atom do
   alias Zig.Type
 
-  def param_allowed?(type), do: type in ~w(term erl_nif_term pid)a
-  def return_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
+  def get_allowed?(type), do: type in ~w(term erl_nif_term pid)a
+  def make_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
   def can_cleanup?(_), do: false
 
   def render_zig(:term), do: "beam.term"

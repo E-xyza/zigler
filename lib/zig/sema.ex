@@ -4,7 +4,6 @@ defmodule Zig.Sema do
   alias Zig.Module
   alias Zig.Nif
   alias Zig.Parameter
-  alias Zig.Parser
   alias Zig.Return
   alias Zig.Type
   alias Zig.Type.Cpointer
@@ -13,6 +12,7 @@ defmodule Zig.Sema do
   alias Zig.Type.Integer
   alias Zig.Type.Manypointer
   alias Zig.Type.Optional
+  alias Zig.Type.Pointer
 
   @enforce_keys [:functions, :types, :decls, :callbacks]
   defstruct @enforce_keys
@@ -32,7 +32,7 @@ defmodule Zig.Sema do
   # desired file.
   def run_sema!(module) do
     module.zig_code_path
-    |> Zig.Command.run_sema!(module)
+    |> Zig.Command.run_sema!()
     |> Jason.decode!()
     |> tap(&maybe_dump(&1, module))
     |> reject_ignored(module)
@@ -219,7 +219,7 @@ defmodule Zig.Sema do
   defp validate_nif!(_raw_nif), do: :ok
 
   defp validate_param!({_, param}, nif) do
-    unless Type.param_allowed?(param.type) do
+    unless Type.get_allowed?(param.type) do
       raise CompileError,
         description:
           "nif function `#{nif.name}` cannot have a value of type #{Type.render_zig(param.type)} as a parameter",
@@ -229,7 +229,7 @@ defmodule Zig.Sema do
   end
 
   defp validate_return!(nif) do
-    unless Type.return_allowed?(nif.return.type) do
+    unless Type.make_allowed?(nif.return.type) do
       raise CompileError,
         description:
           "nif function `#{nif.name}` cannot return a value of type #{Type.render_zig(nif.return.type)}",
@@ -253,14 +253,22 @@ defmodule Zig.Sema do
 
       {:on_load, %{arity: 2} = function} ->
         case function.params do
-          [%Cpointer{child: %Optional{child: :anyopaque_pointer}}, :term] ->
-            :ok
+          [%Pointer{optional: true, child: %Pointer{optional: true}}, second] ->
+            if Type.get_allowed?(second) do
+              :ok
+            else
+              seek_and_raise!(
+                :on_load,
+                module,
+                &"on_load (automatic-style) callback #{&1} must have a second parameter of a type compatible with `beam.get`.\n\n    got: `#{Type.render_zig(second)}`"
+              )
+            end
 
-          [first, second] ->
+          [first, _] ->
             seek_and_raise!(
               :on_load,
               module,
-              &"on_load callback #{&1} with arity 2 must have `[*c]?*anyopaque` and `beam.term` as parameters. \n\n    got: `#{Type.render_zig(first)}`\n\n    and: `#{Type.render_zig(second)}`"
+              &"on_load (automatic-style) callback #{&1} must have a first paramater of a `?*?*` type.\n\n    got: `#{Type.render_zig(first)}`"
             )
         end
 
@@ -281,20 +289,34 @@ defmodule Zig.Sema do
             seek_and_raise!(
               :on_load,
               module,
-              &"on_load callback #{&1} with arity 2 must have an integer, enum, `void`, or `!void` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+              &"on_load (automatic-style) callback #{&1} must have a return of type integer, enum, `void`, or `!void`.\n\n    got: `#{Type.render_zig(bad)}`"
             )
         end
 
       {:on_load, %{arity: 3} = function} ->
         case function.params do
-          [:env, %Cpointer{child: %Optional{child: :anyopaque_pointer}}, :erl_nif_term] ->
+          [:env, %Pointer{optional: true, child: %Pointer{optional: true}}, :erl_nif_term] ->
             :ok
 
-          [first, second, third] ->
+          [first, _, _] when first != :env ->
             seek_and_raise!(
               :on_load,
               module,
-              &"on_load callback #{&1} with arity 3 must have `beam.env`, `[*c]?*anyopaque` and `e.ErlNifTerm` as parameters. \n\n    got: `#{Type.render_zig(first)}`\n\n    and: `#{Type.render_zig(second)}`\n\n    and: `#{Type.render_zig(third)}`"
+              &"on_load (raw-style) callback #{&1} must have a first parameter of type `beam.env`.\n\n    got: `#{Type.render_zig(first)}`"
+            )
+
+          [_, _, third] when third != :erl_nif_term ->
+            seek_and_raise!(
+              :on_load,
+              module,
+              &"on_load (raw-style) callback #{&1} must have a third parameter of type `e.ErlNifTerm`.\n\n    got: `#{Type.render_zig(third)}`"
+            )
+
+          [_, second, _] ->
+            seek_and_raise!(
+              :on_load,
+              module,
+              &"on_load (raw-style) callback #{&1} must have a second parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(second)}`"
             )
         end
 
@@ -306,7 +328,7 @@ defmodule Zig.Sema do
             seek_and_raise!(
               :on_load,
               module,
-              &"on_load callback #{&1} with arity 3 must have an `c_int` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+              &"on_load (raw-style) callback #{&1} must have return type `c_int`. \n\n    got: `#{Type.render_zig(bad)}`"
             )
         end
 

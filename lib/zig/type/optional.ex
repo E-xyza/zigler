@@ -9,8 +9,8 @@ defmodule Zig.Type.Optional do
   def from_json(%{"child" => child}, module),
     do: %__MODULE__{child: Type.from_json(child, module)}
 
-  def param_allowed?(optional), do: Type.param_allowed?(optional.child)
-  def return_allowed?(optional), do: Type.return_allowed?(optional.child)
+  def get_allowed?(optional), do: Type.get_allowed?(optional.child)
+  def make_allowed?(optional), do: Type.make_allowed?(optional.child)
   def can_cleanup?(optional), do: Type.can_cleanup?(optional.child)
 
   def render_zig(%{child: child}), do: "?#{Type.render_zig(child)}"
