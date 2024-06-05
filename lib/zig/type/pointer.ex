@@ -31,6 +31,10 @@ defmodule Zig.Type.Pointer do
     |> then(&%Optional{child: &1})
   end
 
+  def from_json(%{"type" => "optional", "child" => %{"child" => %{"type" => "unusable:anyopaque"}}}, _module) do
+    %Optional{child: :anyopaque_pointer}
+  end
+
   def from_json(%{"type" => "optional", "child" => %{"child" => child}}, module) do
     %__MODULE__{optional: true, child: Type.from_json(child, module)}
   end
