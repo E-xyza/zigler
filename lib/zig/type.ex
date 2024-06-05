@@ -136,8 +136,6 @@ after
     end
   end
 
-  @pointer_types ~w(array struct)
-
   # following two lines cause infinite loop
   # @callback from_json(json, term) :: t
   # @optional_callbacks [from_json: 2]
@@ -189,11 +187,6 @@ after
 
       %{"type" => "slice"} ->
         Slice.from_json(json, module)
-
-      %{"type" => "pointer", "child" => child = %{"type" => type}} when type in @pointer_types ->
-        child
-        |> __MODULE__.from_json(module)
-        |> Map.replace!(:mutable, true)
 
       %{"type" => "pointer"} = type ->
         Pointer.from_json(type, module)

@@ -17,7 +17,7 @@ defmodule ZiglerTest.Callbacks.OnLoadAutomaticEnumTest do
   var stored_mode: beam.ContextMode = undefined;
   var stored_number: u32 = undefined;
 
-  pub fn automatic(_: ??*?*u32, term: beam.term) RetVal {
+  pub fn automatic(_: ?*?*u32, term: beam.term) RetVal {
       stored_mode = beam.context.mode;
       stored_number = beam.get(u32, term, .{}) catch unreachable;
       return .ok;

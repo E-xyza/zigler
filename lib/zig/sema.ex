@@ -218,7 +218,7 @@ defmodule Zig.Sema do
 
   defp validate_nif!(_raw_nif), do: :ok
 
-  defp validate_param!({_, param}, nif) do
+  defp validate_param!({_, param}, nif) dodbg
     unless Type.get_allowed?(param.type) do
       raise CompileError,
         description:

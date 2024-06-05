@@ -6,8 +6,9 @@ defmodule Zig.Type.Optional do
 
   @type t :: %__MODULE__{child: Type.t()}
 
-  def from_json(%{"child" => child}, module),
-    do: %__MODULE__{child: Type.from_json(child, module)}
+  def from_json(%{"child" => child}, module) do 
+    %__MODULE__{child: Type.from_json(child, module)}
+  end
 
   def get_allowed?(optional), do: Type.get_allowed?(optional.child)
   def make_allowed?(optional), do: Type.make_allowed?(optional.child)

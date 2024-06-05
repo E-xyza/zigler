@@ -30,6 +30,12 @@ defmodule Zig.Type.Array do
   def make_allowed?(array), do: Type.make_allowed?(array.child)
   def can_cleanup?(_), do: false
 
+  def render_zig(%{mutable: true} = array) do
+    "*" <> render_zig(%{array | mutable: false})
+  end
+
+  def render_zig(array), do: array.repr
+
   def render_payload_options(_, _, _), do: Type._default_payload_options()
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
