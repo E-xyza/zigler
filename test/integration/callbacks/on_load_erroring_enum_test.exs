@@ -2,6 +2,7 @@ defmodule ZiglerTest.Callbacks.OnLoadErroringEnumTest do
   # this is a test of the "automatic" on_load function.
 
   use ZiglerTest.IntegrationCase, async: true
+
   import ExUnit.CaptureLog
 
   test "error when on_load function errors out" do

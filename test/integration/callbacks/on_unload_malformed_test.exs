@@ -27,9 +27,9 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
   end
 
   describe "compiler error when on_unload arity 1" do
-    test "has the wrong parameters" do
+    test "has the wrong parameter" do
       assert_raise CompileError,
-                   "nofile:2: on_unload callback foo with arity 1 must have `?*anyopaque` as a parameter. \n\n    got: `beam.env`",
+                   "nofile:2: on_unload (automatic-style) callback foo must have a parameter of type `?*`.\n\n    got: `beam.env`",
                    fn ->
                      Code.compile_quoted(
                        quote do
@@ -52,19 +52,19 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
 
     test "has the wrong return" do
       assert_raise CompileError,
-                   "nofile:2: on_unload callback foo with arity 1 must have `void` as a return. \n\n    got: `f32`",
+                   "nofile:2: on_unload (automatic-style) callback must have `void` as a return.\n\n    got: `f32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
                          defmodule ZiglerTest.BadOnunload1Return do
                            use Zig,
                              otp_app: :zigler,
-                             callbacks: [on_unload: :foo],
+                             callbacks: [:on_unload],
                              dir: unquote(__DIR__)
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn foo(_: ?*anyopaque) f32 { return 0.0; }
+                           pub fn on_unload(_: ?*anyopaque) f32 { return 0.0; }
                            pub fn bar() u8 { return 47; }
                            """
                          end
@@ -75,13 +75,13 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
   end
 
   describe "compiler error when on_unload arity 2" do
-    test "has the wrong parameters" do
+    test "has the wrong first parameter" do
       assert_raise CompileError,
-                   "nofile:2: on_unload callback foo with arity 2 must have `beam.env` and `?*anyopaque` as parameters. \n\n    got: `?*anyopaque`\n\n    and: `?*anyopaque`",
+                   "nofile:2: on_unload (raw-style) callback foo must have a first parameter of type `beam.env`.\n\n    got: `?*anyopaque`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnload2Parameters do
+                         defmodule ZiglerTest.BadOnloadRawFirstParameter do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [on_unload: :foo],
@@ -98,13 +98,36 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
                    end
     end
 
-    test "has the wrong return" do
+    test "has the wrong second parameter" do
       assert_raise CompileError,
-                   "nofile:3: on_unload callback foo with arity 2 must have `void` as a return. \n\n    got: `f32`",
+                   "nofile:2: on_unload (raw-style) callback must have a second parameter of type `?*`.\n\n    got: `f32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnload2Return do
+                         defmodule ZiglerTest.BadOnloadRawSecondParameter do
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [:on_unload],
+                             dir: unquote(__DIR__)
+
+                           ~Z"""
+                           const beam = @import("beam");
+                           pub fn on_unload(_: beam.env, _: f32) void { return 0.0; }
+                           pub fn bar() u8 { return 47; }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+
+    test "has the wrong return" do
+      assert_raise CompileError,
+                   "nofile:3: on_unload (raw-style) callback foo must have `void` as a return.\n\n    got: `f32`",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.BadOnloadRawReturn do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [on_unload: :foo],

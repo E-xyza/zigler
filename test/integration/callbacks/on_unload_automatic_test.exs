@@ -24,7 +24,7 @@ defmodule ZiglerTest.Callbacks.OnUnloadAutomaticTest do
               pid = beam.get(beam.pid, term, .{}) catch unreachable;
           }
 
-          pub fn on_unload(_: ?*anyopaque) void {
+          pub fn on_unload(_: ?*u32) void {
               _ = beam.send(pid, .unloaded, .{}) catch unreachable;
           }
 

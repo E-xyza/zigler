@@ -30,7 +30,7 @@ defmodule Zig.CompileError do
       lines
       |> Enum.reverse()
       |> Enum.join("\n")
-      |> String.trim
+      |> String.trim()
 
     case file_line do
       nil ->

@@ -8,7 +8,7 @@ defmodule ZiglerTest.Types.OptionalTest do
   //pub fn nullable_integer_test(value: ?u64) ?u64 {
   //  return if (value) |v| v + 1 else null;
   //}
-//
+  //
   //pub fn nullable_array_test(value: ?[3]u64) ?[3]u64 {
   //  if (value) |v| {
   //    var result: [3]u64 = undefined;
@@ -30,15 +30,15 @@ defmodule ZiglerTest.Types.OptionalTest do
   """
 
   describe "nullable values" do
-    #test "are passable wrapping integer" do
+    # test "are passable wrapping integer" do
     #  assert nil == nullable_integer_test(nil)
     #  assert 48 == nullable_integer_test(47)
-    #end
-#
-    #test "are passable wrapping array" do
+    # end
+    #
+    # test "are passable wrapping array" do
     #  assert nil == nullable_array_test(nil)
     #  assert [2, 3, 4] == nullable_array_test([1, 2, 3])
-    #end
+    # end
 
     test "are passable wrapping mutable array" do
       assert nil == nullable_mutable_array_test(nil)

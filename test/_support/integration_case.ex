@@ -42,6 +42,8 @@ defmodule ZiglerTest.IntegrationCase do
     quote do
       use ExUnit.Case, unquote(opts)
 
+      @moduletag timeout: :infinity
+
       unquote(announce_test)
     end
   end

@@ -244,12 +244,12 @@ defmodule Zig.Sema do
         seek_and_raise!(
           type,
           module,
-          &"#{type} callback #{&1} must be declared `pub`",
-          &"#{type} callback #{&1} not found"
+          &"#{type} callback #{&1}must be declared `pub`",
+          &"#{type} callback #{&1}not found"
         )
 
       {:on_load, %{arity: arity}} when arity not in [2, 3] ->
-        seek_and_raise!(:on_load, module, &"on_load callback #{&1} must have arity 2 or 3")
+        seek_and_raise!(:on_load, module, &"on_load callback #{&1}must have arity 2 or 3")
 
       {:on_load, %{arity: 2} = function} ->
         case function.params do
@@ -260,7 +260,7 @@ defmodule Zig.Sema do
               seek_and_raise!(
                 :on_load,
                 module,
-                &"on_load (automatic-style) callback #{&1} must have a second parameter of a type compatible with `beam.get`.\n\n    got: `#{Type.render_zig(second)}`"
+                &"on_load (automatic-style) callback #{&1}must have a second parameter of a type compatible with `beam.get`.\n\n    got: `#{Type.render_zig(second)}`"
               )
             end
 
@@ -268,7 +268,7 @@ defmodule Zig.Sema do
             seek_and_raise!(
               :on_load,
               module,
-              &"on_load (automatic-style) callback #{&1} must have a first paramater of a `?*?*` type.\n\n    got: `#{Type.render_zig(first)}`"
+              &"on_load (automatic-style) callback #{&1}must have a first paramater of a `?*?*` type.\n\n    got: `#{Type.render_zig(first)}`"
             )
         end
 
@@ -289,7 +289,7 @@ defmodule Zig.Sema do
             seek_and_raise!(
               :on_load,
               module,
-              &"on_load (automatic-style) callback #{&1} must have a return of type integer, enum, `void`, or `!void`.\n\n    got: `#{Type.render_zig(bad)}`"
+              &"on_load (automatic-style) callback #{&1}must have a return of type integer, enum, `void`, or `!void`.\n\n    got: `#{Type.render_zig(bad)}`"
             )
         end
 
@@ -302,21 +302,21 @@ defmodule Zig.Sema do
             seek_and_raise!(
               :on_load,
               module,
-              &"on_load (raw-style) callback #{&1} must have a first parameter of type `beam.env`.\n\n    got: `#{Type.render_zig(first)}`"
+              &"on_load (raw-style) callback #{&1}must have a first parameter of type `beam.env`.\n\n    got: `#{Type.render_zig(first)}`"
             )
 
           [_, _, third] when third != :erl_nif_term ->
             seek_and_raise!(
               :on_load,
               module,
-              &"on_load (raw-style) callback #{&1} must have a third parameter of type `e.ErlNifTerm`.\n\n    got: `#{Type.render_zig(third)}`"
+              &"on_load (raw-style) callback #{&1}must have a third parameter of type `e.ErlNifTerm`.\n\n    got: `#{Type.render_zig(third)}`"
             )
 
           [_, second, _] ->
             seek_and_raise!(
               :on_load,
               module,
-              &"on_load (raw-style) callback #{&1} must have a second parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(second)}`"
+              &"on_load (raw-style) callback #{&1}must have a second parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(second)}`"
             )
         end
 
@@ -328,27 +328,42 @@ defmodule Zig.Sema do
             seek_and_raise!(
               :on_load,
               module,
-              &"on_load (raw-style) callback #{&1} must have return type `c_int`. \n\n    got: `#{Type.render_zig(bad)}`"
+              &"on_load (raw-style) callback #{&1}must have return type `c_int`.\n\n    got: `#{Type.render_zig(bad)}`"
             )
         end
 
       {:on_upgrade, %{arity: arity}} when arity not in [3, 4] ->
-        seek_and_raise!(:on_upgrade, module, &"on_upgrade callback #{&1} must have arity 3 or 4")
+        seek_and_raise!(:on_upgrade, module, &"on_upgrade callback #{&1}must have arity 3 or 4")
 
       {:on_upgrade, %{arity: 3} = function} ->
         case function.params do
           [
-            %Cpointer{child: %Optional{child: :anyopaque_pointer}},
-            %Cpointer{child: %Optional{child: :anyopaque_pointer}},
-            :term
+            %Pointer{optional: true, child: %Pointer{optional: true}},
+            %Pointer{optional: true, child: %Pointer{optional: true}},
+            third
           ] ->
-            :ok
+            if Type.get_allowed?(third) do
+              :ok
+            else
+              seek_and_raise!(
+                :on_upgrade,
+                module,
+                &"on_upgrade (automatic-style) callback #{&1}must have a third parameter of a type compatible with `beam.get`.\n\n    got: `#{Type.render_zig(third)}`"
+              )
+            end
 
-          [first, second, third] ->
+          [%Pointer{optional: true, child: %Pointer{optional: true}}, second, _] ->
             seek_and_raise!(
               :on_upgrade,
               module,
-              &"on_upgrade callback #{&1} with arity 3 must have `[*c]?*anyopaque`, `[*c]?*anyopaque` and `beam.term` as parameters. \n\n    got: `#{Type.render_zig(first)}`\n\n    and: `#{Type.render_zig(second)}`\n\n    and: `#{Type.render_zig(third)}`"
+              &"on_upgrade (automatic-style) callback #{&1}must have a second parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(second)}`"
+            )
+
+          [first, _, _] ->
+            seek_and_raise!(
+              :on_upgrade,
+              module,
+              &"on_upgrade (automatic-style) callback #{&1}must have a first parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(first)}`"
             )
         end
 
@@ -369,7 +384,7 @@ defmodule Zig.Sema do
             seek_and_raise!(
               :on_upgrade,
               module,
-              &"on_upgrade callback #{&1} with arity 3 must have an integer, enum, `void`, or `!void` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+              &"on_upgrade (automatic-style) callback #{&1}must have an integer, enum, `void`, or `!void` as a return.\n\n    got: `#{Type.render_zig(bad)}`"
             )
         end
 
@@ -377,17 +392,53 @@ defmodule Zig.Sema do
         case function.params do
           [
             :env,
-            %Cpointer{child: %Optional{child: :anyopaque_pointer}},
-            %Cpointer{child: %Optional{child: :anyopaque_pointer}},
+            %Pointer{optional: true, child: %Pointer{optional: true}},
+            %Pointer{optional: true, child: %Pointer{optional: true}},
             :erl_nif_term
           ] ->
             :ok
 
-          [first, second, third, fourth] ->
+          [
+            :env,
+            %Pointer{optional: true, child: %Pointer{optional: true}},
+            %Pointer{optional: true, child: %Pointer{optional: true}},
+            fourth
+          ] ->
             seek_and_raise!(
               :on_upgrade,
               module,
-              &"on_upgrade callback #{&1} with arity 4 must have `beam.env`, `[*c]?*anyopaque`, `[*c]?*anyopaque` and `e.ErlNifTerm` as parameters. \n\n    got: `#{Type.render_zig(first)}`\n\n    and: `#{Type.render_zig(second)}`\n\n    and: `#{Type.render_zig(third)}`\n\n    and: `#{Type.render_zig(fourth)}`"
+              &"on_upgrade (raw-style) callback #{&1}must have a fourth parameter of type `e.ErlNifTerm`.\n\n    got: `#{Type.render_zig(fourth)}`"
+            )
+
+          [
+            :env,
+            %Pointer{optional: true, child: %Pointer{optional: true}},
+            third,
+            _
+          ] ->
+            seek_and_raise!(
+              :on_upgrade,
+              module,
+              &"on_upgrade (raw-style) callback #{&1}must have a third parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(third)}`"
+            )
+
+          [
+            :env,
+            second,
+            _,
+            _
+          ] ->
+            seek_and_raise!(
+              :on_upgrade,
+              module,
+              &"on_upgrade (raw-style) callback #{&1}must have a second parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(second)}`"
+            )
+
+          [first, _, _, _] ->
+            seek_and_raise!(
+              :on_upgrade,
+              module,
+              &"on_upgrade (raw-style) callback #{&1}must have a first parameter of type `beam.env`.\n\n    got: `#{Type.render_zig(first)}`"
             )
         end
 
@@ -399,25 +450,23 @@ defmodule Zig.Sema do
             seek_and_raise!(
               :on_upgrade,
               module,
-              &"on_upgrade callback #{&1} with arity 4 must have an `c_int` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+              &"on_upgrade (raw-style) callback #{&1}must have an `c_int` as a return.\n\n    got: `#{Type.render_zig(bad)}`"
             )
         end
 
       {:on_unload, %{arity: arity}} when arity not in [1, 2] ->
-        seek_and_raise!(:on_unload, module, &"on_unload callback #{&1} must have arity 1 or 2")
+        seek_and_raise!(:on_unload, module, &"on_unload callback #{&1}must have arity 1 or 2")
 
       {:on_unload, %{arity: 1} = function} ->
         case function.params do
-          [
-            %Optional{child: :anyopaque_pointer}
-          ] ->
+          [%Pointer{optional: true}] ->
             :ok
 
           [first] ->
             seek_and_raise!(
               :on_unload,
               module,
-              &"on_unload callback #{&1} with arity 1 must have `?*anyopaque` as a parameter. \n\n    got: `#{Type.render_zig(first)}`"
+              &"on_unload (automatic-style) callback #{&1}must have a parameter of type `?*`.\n\n    got: `#{Type.render_zig(first)}`"
             )
         end
 
@@ -429,23 +478,27 @@ defmodule Zig.Sema do
             seek_and_raise!(
               :on_unload,
               module,
-              &"on_unload callback #{&1} with arity 1 must have `void` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+              &"on_unload (automatic-style) callback #{&1}must have `void` as a return.\n\n    got: `#{Type.render_zig(bad)}`"
             )
         end
 
       {:on_unload, %{arity: 2} = function} ->
         case function.params do
-          [
-            :env,
-            %Optional{child: :anyopaque_pointer}
-          ] ->
+          [:env, %Pointer{optional: true}] ->
             :ok
 
-          [first, second] ->
+          [first, %Pointer{optional: true}] ->
             seek_and_raise!(
               :on_unload,
               module,
-              &"on_unload callback #{&1} with arity 2 must have `beam.env` and `?*anyopaque` as parameters. \n\n    got: `#{Type.render_zig(first)}`\n\n    and: `#{Type.render_zig(second)}`"
+              &"on_unload (raw-style) callback #{&1}must have a first parameter of type `beam.env`.\n\n    got: `#{Type.render_zig(first)}`"
+            )
+
+          [_, second] ->
+            seek_and_raise!(
+              :on_unload,
+              module,
+              &"on_unload (raw-style) callback #{&1}must have a second parameter of type `?*`.\n\n    got: `#{Type.render_zig(second)}`"
             )
         end
 
@@ -457,7 +510,7 @@ defmodule Zig.Sema do
             seek_and_raise!(
               :on_unload,
               module,
-              &"on_unload callback #{&1} with arity 2 must have `void` as a return. \n\n    got: `#{Type.render_zig(bad)}`"
+              &"on_unload (raw-style) callback #{&1}must have `void` as a return.\n\n    got: `#{Type.render_zig(bad)}`"
             )
         end
 
@@ -468,19 +521,20 @@ defmodule Zig.Sema do
 
   defp seek_and_raise!(type, module, error1, error2 \\ nil) do
     name = module.callbacks[type]
+    print_name = unless type == name, do: "#{name} "
 
     for %{name: ^name, location: {line, _col}} <- module.parsed.code do
       {file, line} =
         module.manifest_module.__resolve(%{file_name: module.zig_code_path, line: line})
 
       raise CompileError,
-        description: error1.(name),
+        description: error1.(print_name),
         file: file,
         line: line
     end
 
     raise CompileError,
-      description: if(error2, do: error2.(name), else: error1.(name)),
+      description: if(error2, do: error2.(print_name), else: error1.(print_name)),
       file: module.file,
       line: module.line
   end

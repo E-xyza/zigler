@@ -121,6 +121,7 @@ defmodule Zig.Module do
     opts
     |> obtain_version
     |> Keyword.update(:c, nil, &C.new/1)
+    |> Keyword.update(:callbacks, [], &normalize_callbacks(&1, opts))
   end
 
   defp obtain_version(opts) do
@@ -143,6 +144,24 @@ defmodule Zig.Module do
         :else ->
           Version.parse!("0.0.0")
       end
+    end)
+  end
+
+  @callbacks ~w[on_load on_upgrade on_unload]a
+
+  defp normalize_callbacks(callbacks, opts) do
+    Enum.map(callbacks, fn
+      callback when callback in @callbacks ->
+        {callback, callback}
+
+      {callback, _} = option when callback in @callbacks ->
+        option
+
+      other ->
+        raise CompileError,
+          description: "invalid option for callbacks: #{inspect(other)}",
+          file: opts[:file],
+          line: opts[:line]
     end)
   end
 

@@ -1,7 +1,7 @@
 defmodule Zig.Type.Pointer do
   alias Zig.Type
   alias Zig.Type.Optional
-  
+
   use Type
 
   @behaviour Type
@@ -13,30 +13,39 @@ defmodule Zig.Type.Pointer do
           child: Type.t()
         }
 
-  
   @mutable_types ~w(array struct)
 
   # special case: pointer represents that the data are mutable.
-  def from_json(%{"type" => "pointer", "child" => %{"type" => mutable} = child}, module) when mutable in @mutable_types do
+  def from_json(%{"type" => "pointer", "child" => %{"type" => mutable} = child}, module)
+      when mutable in @mutable_types do
     child
     |> Type.from_json(module)
     |> Map.replace!(:mutable, true)
   end
 
   # special case: pointer represents that the data are mutable AND optional.
-  def from_json(%{"type" => "optional", "child" => %{"type" => "pointer", "child" => %{"type" => mutable} = child}}, module) when mutable in @mutable_types do
+  def from_json(
+        %{
+          "type" => "optional",
+          "child" => %{"type" => "pointer", "child" => %{"type" => mutable} = child}
+        },
+        module
+      )
+      when mutable in @mutable_types do
     child
     |> Type.from_json(module)
     |> Map.replace!(:mutable, true)
     |> then(&%Optional{child: &1})
   end
 
-  def from_json(%{"type" => "optional", "child" => %{"child" => %{"type" => "unusable:anyopaque"}}}, _module) do
-    %Optional{child: :anyopaque_pointer}
+  def from_json(%{"type" => "optional", "child" => pointer}, module) do
+    pointer
+    |> from_json(module)
+    |> Map.replace!(:optional, true)
   end
 
-  def from_json(%{"type" => "optional", "child" => %{"child" => child}}, module) do
-    %__MODULE__{optional: true, child: Type.from_json(child, module)}
+  def from_json(%{"type" => "pointer", "child" => %{"type" => "unusable:anyopaque"}}, _module) do
+    %__MODULE__{child: :anyopaque}
   end
 
   def from_json(%{"child" => child}, module) do
@@ -59,7 +68,7 @@ defmodule Zig.Type.Pointer do
 
   @impl true
   def can_cleanup?(_), do: false
-  
+
   @impl true
   def render_payload_options(_, _, _), do: raise("unreachable")
 

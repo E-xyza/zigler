@@ -267,7 +267,7 @@ defimpl Zig.Type, for: Atom do
   def render_zig(:erl_nif_term), do: "e.erl_nif_term"
   def render_zig(:pid), do: "beam.pid"
   def render_zig(:env), do: "beam.env"
-  def render_zig(:anyopaque_pointer), do: "*anyopaque"
+  def render_zig(:anyopaque), do: "anyopaque"
   def render_zig(atom), do: "#{atom}"
 
   def render_return(:void, _), do: "_ = result; break :result_block beam.make(.ok, .{}).v;"

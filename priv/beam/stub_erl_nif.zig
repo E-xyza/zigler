@@ -4,10 +4,10 @@
 pub const is_sema = true;
 
 // size zero types
-pub const ERL_NIF_TERM = extern struct { v: c_int = 0 };
+pub const ERL_NIF_TERM = extern struct { __x__: c_int = 0 };
 pub const ERL_NIF_MODULE = extern struct {};
 pub const ErlNifTerm = ERL_NIF_TERM;
-pub const ErlNifEnv = extern struct { v: c_int = 0 };
+pub const ErlNifEnv = extern struct { __z__: c_int = 0 };
 pub const ErlNifBinary = extern struct { data: [*c]u8, size: usize };
 pub const ErlNifResourceType = extern struct {};
 pub const ErlNifBinaryToTerm = c_int;

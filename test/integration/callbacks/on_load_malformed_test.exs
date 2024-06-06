@@ -99,19 +99,19 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
 
     test "has the wrong return" do
       assert_raise CompileError,
-                   "nofile:2: on_load (automatic-style) callback foo must have a return of type integer, enum, `void`, or `!void`.\n\n    got: `f32`",
+                   "nofile:2: on_load (automatic-style) callback must have a return of type integer, enum, `void`, or `!void`.\n\n    got: `f32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
                          defmodule ZiglerTest.BadOnloadAutoReturn do
                            use Zig,
                              otp_app: :zigler,
-                             callbacks: [on_load: :foo],
+                             callbacks: [:on_load],
                              dir: unquote(__DIR__)
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn foo(_: ?*?*u32, _: beam.term) f32 { return 0.0; }
+                           pub fn on_load(_: ?*?*anyopaque, _: beam.term) f32 { return 0.0; }
                            pub fn bar() u8 { return 47; }
                            """
                          end
@@ -195,7 +195,7 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
 
     test "has the wrong return" do
       assert_raise CompileError,
-                   "nofile:3: on_load (raw-style) callback foo must have return type `c_int`. \n\n    got: `f32`",
+                   "nofile:3: on_load (raw-style) callback foo must have return type `c_int`.\n\n    got: `f32`",
                    fn ->
                      Code.compile_quoted(
                        quote do

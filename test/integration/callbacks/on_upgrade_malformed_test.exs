@@ -27,13 +27,13 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
   end
 
   describe "compiler error when on_upgrade arity 3" do
-    test "has the wrong parameters" do
+    test "has an unusable first parameter" do
       assert_raise CompileError,
-                   "nofile:2: on_upgrade callback foo with arity 3 must have `?*?*u32`, `?*?*u32` and `beam.term` as parameters. \n\n    got: `beam.env`\n\n    and: `f32`\n\n    and: `f32`",
+                   "nofile:2: on_upgrade (automatic-style) callback foo must have a first parameter of type `?*?*`.\n\n    got: `beam.env`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnupgrade3Parameters do
+                         defmodule ZiglerTest.BadOnupgradeAutomaticFirstParameter do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [on_upgrade: :foo],
@@ -50,13 +50,13 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                    end
     end
 
-    test "has the wrong return" do
+    test "has an unusable second parameter" do
       assert_raise CompileError,
-                   "nofile:2: on_upgrade callback foo with arity 3 must have an integer, enum, `void`, or `!void` as a return. \n\n    got: `f32`",
+                   "nofile:2: on_upgrade (automatic-style) callback foo must have a second parameter of type `?*?*`.\n\n    got: `f32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnupgrade3Return do
+                         defmodule ZiglerTest.BadOnupgradeAutomaticSecondParameter do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [on_upgrade: :foo],
@@ -64,7 +64,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn foo(_: ?*?*u32, _: ?*?*u32, _: beam.term) f32 { return 0.0; }
+                           pub fn foo(_: ?*?*f32, _: f32, _: f32) void {}
                            pub fn bar() u8 { return 47; }
                            """
                          end
@@ -73,42 +73,85 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                    end
     end
 
-    test "uses a an non-pub struct"
+    test "has an unusable third parameter" do
+      assert_raise CompileError,
+                   "nofile:2: on_upgrade (automatic-style) callback foo must have a third parameter of a type compatible with `beam.get`.\n\n    got: `?*?*f32`",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.BadOnupgradeAutomaticThirdParameter do
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [on_upgrade: :foo],
+                             dir: unquote(__DIR__)
 
-    test "uses an unapproved type"
+                           ~Z"""
+                           const beam = @import("beam");
+                           pub fn foo(_: ?*?*anyopaque, _: ?*?*anyopaque, _: ?*?*f32) void {}
+                           pub fn bar() u8 { return 47; }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+
+    test "has the wrong return" do
+      assert_raise CompileError,
+                   "nofile:2: on_upgrade (automatic-style) callback must have an integer, enum, `void`, or `!void` as a return.\n\n    got: `f32`",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.BadOnupgradeAutomaticReturn do
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [:on_upgrade],
+                             dir: unquote(__DIR__)
+
+                           ~Z"""
+                           const beam = @import("beam");
+                           pub fn on_upgrade(_: ?*?*u32, _: ?*?*u32, _: beam.term) f32 { return 0.0; }
+                           pub fn bar() u8 { return 47; }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+
+    test "uses a an non-pub struct" do
+      assert_raise CompileError,
+                   "blah",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.BadOnupgradeNonPubStruct do
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [:on_upgrade],
+                             dir: unquote(__DIR__)
+
+                           ~Z"""
+                           const beam = @import("beam");
+                           const FooType = struct { __e__: u32 };
+                           pub fn on_upgrade(_: ?*?*u32, _: ?*?*u32, _: FooType) void { return 0.0; }
+                           pub fn bar() u8 { return 47; }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
   end
 
   describe "compiler error when on_upgrade arity 4" do
-    test "has the wrong parameters" do
+    test "has the wrong first parameter" do
       assert_raise CompileError,
-                   "nofile:2: on_upgrade callback foo with arity 4 must have `beam.env`, `?*?*u32`, `?*?*u32` and `e.ErlNifTerm` as parameters. \n\n    got: `beam.env`\n\n    and: `[*c]?*anyopaque`\n\n    and: `[*c]?*anyopaque`\n\n    and: `f32`",
+                   "nofile:3: on_upgrade (raw-style) callback foo must have a first parameter of type `beam.env`.\n\n    got: `f32`",
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnupgrade4Parameters do
-                           use Zig,
-                             otp_app: :zigler,
-                             callbacks: [on_upgrade: :foo],
-                             dir: unquote(__DIR__)
-
-                           ~Z"""
-                           const beam = @import("beam");
-                           pub fn foo(_: beam.env, _: ?*?*u32, _: ?*?*u32, _: f32) c_int { return 0.0; }
-                           pub fn bar() u8 { return 47; }
-                           """
-                         end
-                       end
-                     )
-                   end
-    end
-
-    test "has the wrong return" do
-      assert_raise CompileError,
-                   "nofile:3: on_upgrade callback foo with arity 4 must have an `c_int` as a return. \n\n    got: `f32`",
-                   fn ->
-                     Code.compile_quoted(
-                       quote do
-                         defmodule ZiglerTest.BadOnupgrade4Return do
+                         defmodule ZiglerTest.BadOnupgradeRawFirstParameter do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [on_upgrade: :foo],
@@ -117,7 +160,103 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            const e = @import("erl_nif");
-                           pub fn foo(_: beam.env, _: ?*?*u32, _: ?*?*u32, _: e.ErlNifTerm) f32 { return 0.0; }
+                           pub fn foo(_: f32, _: ?*?*u32, _: ?*?*u32, _: e.ErlNifTerm) c_int { return 0.0; }
+                           pub fn bar() u8 { return 47; }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+
+    test "has the wrong second parameter" do
+      assert_raise CompileError,
+                   "nofile:3: on_upgrade (raw-style) callback foo must have a second parameter of type `?*?*`.\n\n    got: `f32`",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.BadOnupgradeRawSecondParameter do
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [on_upgrade: :foo],
+                             dir: unquote(__DIR__)
+
+                           ~Z"""
+                           const beam = @import("beam");
+                           const e = @import("erl_nif");
+                           pub fn foo(_: beam.env, _: f32, _: ?*?*u32, _: e.ErlNifTerm) c_int { return 0.0; }
+                           pub fn bar() u8 { return 47; }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+
+    test "has the wrong third parameter" do
+      assert_raise CompileError,
+                   "nofile:3: on_upgrade (raw-style) callback foo must have a third parameter of type `?*?*`.\n\n    got: `f32`",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.BadOnupgradeRawThirdParameter do
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [on_upgrade: :foo],
+                             dir: unquote(__DIR__)
+
+                           ~Z"""
+                           const beam = @import("beam");
+                           const e = @import("erl_nif");
+                           pub fn foo(_: beam.env, _: ?*?*f32, _: f32, _: e.ErlNifTerm) c_int { return 0.0; }
+                           pub fn bar() u8 { return 47; }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+
+    test "has the wrong fourth parameter" do
+      assert_raise CompileError,
+                   "nofile:3: on_upgrade (raw-style) callback foo must have a fourth parameter of type `e.ErlNifTerm`.\n\n    got: `f32`",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.BadOnupgradeRawFourthParameter do
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [on_upgrade: :foo],
+                             dir: unquote(__DIR__)
+
+                           ~Z"""
+                           const beam = @import("beam");
+                           const e = @import("erl_nif");
+                           pub fn foo(_: beam.env, _: ?*?*f32, _: ?*?*u32, _: f32) c_int { return 0.0; }
+                           pub fn bar() u8 { return 47; }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+
+    test "has the wrong return" do
+      assert_raise CompileError,
+                   "nofile:3: on_upgrade (raw-style) callback must have an `c_int` as a return.\n\n    got: `f32`",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.BadOnupgradeRawReturn do
+                           use Zig,
+                             otp_app: :zigler,
+                             callbacks: [:on_upgrade],
+                             dir: unquote(__DIR__)
+
+                           ~Z"""
+                           const beam = @import("beam");
+                           const e = @import("erl_nif");
+                           pub fn on_upgrade(_: beam.env, _: ?*?*u32, _: ?*?*u32, _: e.ErlNifTerm) f32 { return 0.0; }
                            pub fn bar() u8 { return 47; }
                            """
                          end

@@ -1,19 +1,24 @@
-fn upgrade(env: beam.env, priv_data: [*c]?*anyopaque, old_priv_data: [*c]?*anyopaque, term: e.ErlNifTerm) callconv(.C) c_int {
+fn upgrade(env: beam.env, priv_data: [*c]?*anyopaque, old_priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.C) c_int {
     beam.context.env = env;
     beam.context.mode = .callback;
     beam.context.allocator = beam.allocator;
-<%= case @on_upgrade do %>
-  <% %{name: name, arity: 3, return: %Zig.Type.Enum{}} -> %>
-    return @intFromEnum(nif.<%= name %>(priv_data, old_priv_data, .{.v = term}));
-  <% %{name: name, arity: 3, return: %Zig.Type.Integer{}} -> %>
-    return nif.<%= name %>(priv_data, old_priv_data, .{.v = term});
-  <% %{name: name, arity: 3, return: %Zig.Type.Error{child: :void}} -> %>
-    nif.<%= name %>(priv_data, old_priv_data, .{.v = term}) catch return -1;
+<% name = @on_upgrade.name %>
+<%= if @on_upgrade.arity == 3 do %>
+  <% payload_type = Enum.at(@on_upgrade.params, 2) %>
+  const payload = beam.get(<%= Zig.Type.render_zig(payload_type)%>, .{.v = load_info}, .{}) catch return -1;
+<%= case @on_upgrade.return do %>
+  <% %Zig.Type.Enum{} -> %>
+    return @intFromEnum(nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload));
+  <% %Zig.Type.Integer{} -> %>
+    return @intCast(nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload));
+  <% %Zig.Type.Error{child: :void} -> %>
+    nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload) catch return -1;
     return 0;
-  <% %{name: name, arity: 3, return: :void} -> %>
-    nif.<%= name %>(priv_data, old_priv_data, .{.v = term});
+  <% :void -> %>
+    nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload);
     return 0;
-  <% %{name: name, arity: 4} -> %>
-    return nif.<%= name %>(env, priv_data, old_priv_data, term);
+<% end %>
+<% else %>
+    return nif.<%= name %>(env, @ptrCast(priv_data), @ptrCast(old_priv_data), load_info);
 <% end %>
 }

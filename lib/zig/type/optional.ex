@@ -6,7 +6,7 @@ defmodule Zig.Type.Optional do
 
   @type t :: %__MODULE__{child: Type.t()}
 
-  def from_json(%{"child" => child}, module) do 
+  def from_json(%{"child" => child}, module) do
     %__MODULE__{child: Type.from_json(child, module)}
   end
 
