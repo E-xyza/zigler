@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Integration.Raw.Typespec do
+defmodule ZiglerTest.Raw.Typespec do
   @compile :debug_info
   use Zig, otp_app: :zigler, nifs: [raw: [arity: 1]]
 

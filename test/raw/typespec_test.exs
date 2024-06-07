@@ -21,6 +21,6 @@ defmodule ZiglerTest.Unit.Typespec.RawTest do
                     {:type, _, :term, _}
                   ]}
                ]}
-            ]} = Code.Typespec.fetch_specs(ZiglerTest.Integration.Raw.Typespec)
+            ]} = Code.Typespec.fetch_specs(ZiglerTest.Raw.Typespec)
   end
 end

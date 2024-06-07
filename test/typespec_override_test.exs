@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Integration.Typespec.OverrideTest do
+defmodule ZiglerTest.Typespec.OverrideTest do
   use ExUnit.Case, async: true
 
   @moduletag :typespec

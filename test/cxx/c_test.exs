@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Integration.CXX.CTest do
+defmodule ZiglerTest.CXX.CTest do
   use ZiglerTest.IntegrationCase, async: true
 
   @moduletag :skip

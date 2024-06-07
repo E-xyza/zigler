@@ -1,4 +1,4 @@
-defmodule ZiglerTest.Integration.GenericFacts do
+defmodule ZiglerTest.GenericFacts do
   Module.register_attribute(__MODULE__, :zigler_module, persist: true)
 
   use ExUnit.Case, async: true

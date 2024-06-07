@@ -17,7 +17,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticGetTest do
 
           ~z"""
           const beam = @import("beam");
-          const S = struct{ pid: beam.pid, value: i32};
+          pub const S = struct{ pid: beam.pid, value: i32};
 
           pub fn on_upgrade(_: ?*?*u32, _: ?*?*u32, config: S) void {
             _ = beam.send(config.pid, .{.result, config.value}, .{}) catch unreachable;
