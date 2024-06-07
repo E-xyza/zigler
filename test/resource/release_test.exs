@@ -12,7 +12,7 @@ defmodule ZiglerTest.Resource.ReleaseTest do
 
   pub const PidResourceCallbacks = struct {
       pub fn dtor(pid: *beam.pid) void {
-          _ = beam.send(pid.*, .cleaned, .{.clear = false}) catch unreachable;
+          beam.send(pid.*, .cleaned, .{.clear = false}) catch unreachable;
       }
   };
 

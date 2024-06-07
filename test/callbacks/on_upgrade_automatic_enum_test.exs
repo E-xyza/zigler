@@ -23,7 +23,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticEnumTest do
 
           pub fn on_upgrade(_: ?*?*u32, _: ?*?*u32, term: beam.term) E {
             const t = beam.get(S, term, .{}) catch unreachable;
-            _ = beam.send(t.pid, .{.result, t.value}, .{}) catch unreachable;
+            beam.send(t.pid, .{.result, t.value}, .{}) catch unreachable;
             return if (t.value == 42) .err else .ok;
           }
           pub fn bar() u8 { return #{unquote(opts[:value])}; }

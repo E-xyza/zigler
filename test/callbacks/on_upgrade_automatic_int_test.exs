@@ -23,7 +23,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticIntTest do
 
           pub fn on_upgrade(_: ?*?*u32, _: ?*?*u32, term: beam.term) i32 {
             const t = beam.get(S, term, .{}) catch unreachable;
-            _ = beam.send(t.pid, .{.result, t.value}, .{}) catch unreachable;
+            beam.send(t.pid, .{.result, t.value}, .{}) catch unreachable;
             return t.value;
           }
           pub fn bar() u8 { return #{unquote(opts[:value])}; }

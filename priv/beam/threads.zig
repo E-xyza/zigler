@@ -179,7 +179,7 @@ pub fn Thread(comptime function: anytype) type {
                 } else .done;
 
                 if (beam.binary_to_term(bin, .{})) |term| {
-                    _ = beam.send(thread.pid, .{ to_send, term }, .{}) catch {};
+                    beam.send(thread.pid, .{ to_send, term }, .{}) catch {};
                 } else |_| {}
             }
 

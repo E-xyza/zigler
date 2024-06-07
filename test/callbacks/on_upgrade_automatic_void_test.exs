@@ -26,7 +26,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticVoidTest do
 
           pub fn on_upgrade(_: ?*?*u32, _: ?*?*u32, term: beam.term) void {
             const t = beam.get(S, term, .{}) catch unreachable;
-            _ = beam.send(t.pid, .{.result, t.value}, .{}) catch unreachable;
+            beam.send(t.pid, .{.result, t.value}, .{}) catch unreachable;
           }
           pub fn bar() u8 { return #{unquote(value)}; }
           """
@@ -38,7 +38,6 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticVoidTest do
   alias ZiglerTest.OnUpgradeAutomaticVoid
 
   test "on_upgrade generally works" do
-    this = self()
     build_module(0)
     assert 0 = apply(OnUpgradeAutomaticVoid, :bar, [])
 

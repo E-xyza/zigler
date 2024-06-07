@@ -18,7 +18,7 @@ defmodule ZiglerTest.Resource.CleanupTest do
 
   pub const PidResourceCallbacks = struct {
       pub fn dtor(pid: *beam.pid) void {
-          _ = beam.send(pid.*, .cleaned, .{.clean = false}) catch unreachable;
+          beam.send(pid.*, .cleaned, .{.clean = false}) catch unreachable;
       }
   };
 

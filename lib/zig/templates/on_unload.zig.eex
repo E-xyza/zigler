@@ -1,3 +1,5 @@
+// TODO: deprecate this content being an elixir template and provide it entirely
+// using Zig comptime logic.
 fn unload(env: beam.env, priv_data: ?*anyopaque) callconv(.C) void {
     beam.context.env = env;
     beam.context.mode = .callback;

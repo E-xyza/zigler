@@ -33,7 +33,7 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnunload1Parameters do
+                         defmodule ZiglerTest.BadOnunloadAutoParameter do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [on_unload: :foo],
@@ -56,7 +56,7 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnunload1Return do
+                         defmodule ZiglerTest.BadOnunloadAutoReturn do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [:on_unload],

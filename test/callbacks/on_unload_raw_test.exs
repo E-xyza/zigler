@@ -22,7 +22,7 @@ defmodule ZiglerTest.Callbacks.OnUnloadRawTest do
           }
 
           pub fn on_unload(env: beam.env, _: ?*anyopaque) void {
-              _ = beam.send(pid, .unloaded, .{.env = env}) catch unreachable;
+              beam.send(pid, .unloaded, .{.env = env}) catch unreachable;
           }
 
           pub fn bar() void {}

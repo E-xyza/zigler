@@ -40,4 +40,48 @@ defmodule ZiglerTest.Types.EnumTest do
                    fn -> untagged_swap(42) end
     end
   end
+
+  describe "if you try to make" do
+    test "zero item enum, it's a compiler error" do
+      assert_raise CompileError,
+                   "zigler encountered the unusable type .Elixir.ZiglerTest.Types.ZeroItemEnum.E",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.Types.ZeroItemEnum do
+                           use Zig, otp_app: :zigler
+
+                           ~Z"""
+                           const E = enum{ };
+                           pub fn foo(e: E) E {
+                             return e;
+                           }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+
+    test "one item enum, it's a compiler error" do
+      assert_raise CompileError,
+                   "zigler encountered the unusable type .Elixir.ZiglerTest.Types.OneItemEnum.E",
+                   fn ->
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.Types.OneItemEnum do
+                           use Zig, otp_app: :zigler
+
+                           ~Z"""
+                           const E = enum{ ok };
+                           pub fn foo(e: E) E {
+                             return e;
+                           }
+                           """
+                         end
+                       end
+                     )
+                   end
+    end
+  end
 end

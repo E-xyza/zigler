@@ -22,7 +22,7 @@ defmodule ZiglerTest.Concurrency.ThreadedManualYieldingTest do
 
   fn thread(pid: beam.pid) void {
     defer {
-      _ = beam.send(pid, .done, .{}) catch {};
+      beam.send(pid, .done, .{}) catch {};
     }
 
     while (true) {

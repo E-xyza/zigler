@@ -20,7 +20,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticGetTest do
           pub const S = struct{ pid: beam.pid, value: i32};
 
           pub fn on_upgrade(_: ?*?*u32, _: ?*?*u32, config: S) void {
-            _ = beam.send(config.pid, .{.result, config.value}, .{}) catch unreachable;
+            beam.send(config.pid, .{.result, config.value}, .{}) catch unreachable;
           }
           pub fn bar() u8 { return #{unquote(opts[:value])}; }
           """

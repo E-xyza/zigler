@@ -118,30 +118,6 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                      )
                    end
     end
-
-    test "uses a an non-pub struct" do
-      assert_raise CompileError,
-                   "blah",
-                   fn ->
-                     Code.compile_quoted(
-                       quote do
-                         defmodule ZiglerTest.BadOnupgradeNonPubStruct do
-                           use Zig,
-                             otp_app: :zigler,
-                             callbacks: [:on_upgrade],
-                             dir: unquote(__DIR__)
-
-                           ~Z"""
-                           const beam = @import("beam");
-                           const FooType = struct { __e__: u32 };
-                           pub fn on_upgrade(_: ?*?*u32, _: ?*?*u32, _: FooType) void { return 0.0; }
-                           pub fn bar() u8 { return 47; }
-                           """
-                         end
-                       end
-                     )
-                   end
-    end
   end
 
   describe "compiler error when on_upgrade arity 4" do

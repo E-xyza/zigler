@@ -15,9 +15,11 @@ defmodule ZiglerTest.Callbacks.OnLoadAutomaticGetTest do
   var stored_mode: beam.ContextMode = undefined;
   var stored_number: u32 = undefined;
 
-  pub fn automatic(_: ?*?*u32, number: u32) void {
+  const S = struct {number: u32};
+
+  pub fn automatic(_: ?*?*u32, data: S) void {
       stored_mode = beam.context.mode;
-      stored_number = number;
+      stored_number = data.number;
   }
 
   pub fn success() beam.term {
@@ -25,7 +27,7 @@ defmodule ZiglerTest.Callbacks.OnLoadAutomaticGetTest do
   }
   """
 
-  defp __on_load__, do: 47
+  defp __on_load__, do: %{number: 47}
 
   test "on_load can use automatic mode" do
     assert {:callback, :synchronous, 47} = success()

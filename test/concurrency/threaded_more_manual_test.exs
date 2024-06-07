@@ -43,7 +43,7 @@ defmodule ZiglerTest.Concurrency.ThreadedMoreManualTest do
       .allocator = beam.allocator,
     };
 
-    _ = beam.send(thr.pid, .done, .{}) catch unreachable;
+    beam.send(thr.pid, .done, .{}) catch unreachable;
     return null;
   }
 

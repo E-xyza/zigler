@@ -133,7 +133,8 @@ defmodule Zig.Sema do
           Enum.each(specified_fns, fn {name, _} ->
             unless Enum.any?(functions, &(&1.name == name)) do
               raise CompileError,
-                description: "nif function named `#{name}` not found in semantic analysis of module.",
+                description:
+                  "nif function named `#{name}` not found in semantic analysis of module.",
                 file: module.file,
                 line: module.line
             end
@@ -157,7 +158,8 @@ defmodule Zig.Sema do
               |> apply_from_sema(function, nif_opts)
             else
               raise CompileError,
-                description: "nif function named `#{name}` not found in semantic analysis of module.",
+                description:
+                  "nif function named `#{name}` not found in semantic analysis of module.",
                 file: module.file,
                 line: module.line
             end

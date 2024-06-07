@@ -43,7 +43,7 @@ defmodule DirtyCpu do
       // following code triggered when process is killed.
       defer {
         const msg = beam.make(.killed, .{});
-        _ = beam.send(pid, msg, .{}) catch unreachable;
+        beam.send(pid, msg, .{}) catch unreachable;
       }
 
       while(true) {
@@ -118,7 +118,7 @@ defmodule Threaded do
       // following code triggered when process is killed.
 
       defer {
-        _ = beam.send(pid, .killed, .{}) catch {};
+        beam.send(pid, .killed, .{}) catch {};
       }
 
       while(true) {

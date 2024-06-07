@@ -23,7 +23,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeRawTest do
           const S = struct{ pid: beam.pid, value: i32};
           pub fn on_upgrade(env: beam.env, _: ?*?*u32, _: ?*?*u32, term: e.ErlNifTerm) i32 {
             const t = beam.get(S, .{.v = term}, .{.env = env}) catch unreachable;
-            _ = beam.send(t.pid, .{.result, t.value}, .{.env = env}) catch unreachable;
+            beam.send(t.pid, .{.result, t.value}, .{.env = env}) catch unreachable;
             return t.value;
           }
           pub fn bar() u8 { return #{unquote(opts[:value])}; }

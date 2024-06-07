@@ -25,7 +25,7 @@ defmodule ZiglerTest.Callbacks.OnUnloadAutomaticTest do
           }
 
           pub fn on_unload(_: ?*u32) void {
-              _ = beam.send(pid, .unloaded, .{}) catch unreachable;
+              beam.send(pid, .unloaded, .{}) catch unreachable;
           }
 
           pub fn bar() void {}

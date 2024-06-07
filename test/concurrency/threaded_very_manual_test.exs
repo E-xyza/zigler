@@ -36,7 +36,7 @@ defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
       .env = res.env,
       .allocator = beam.allocator,
     };
-    _ = beam.send(res.pid, beam.make(.done, .{}), .{}) catch unreachable;
+    beam.send(res.pid, beam.make(.done, .{}), .{}) catch unreachable;
     return null;
   }
 

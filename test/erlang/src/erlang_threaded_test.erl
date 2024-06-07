@@ -13,7 +13,7 @@
       }
 
       _ = beam.yield() catch {
-        _ = beam.send(resp, .killed, .{}) catch unreachable;
+        beam.send(resp, .killed, .{}) catch unreachable;
         break;
       };
     }

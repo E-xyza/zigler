@@ -1,11 +1,14 @@
+// TODO: deprecate this content being an elixir template and provide it entirely
+// using Zig comptime logic.
 fn upgrade(env: beam.env, priv_data: [*c]?*anyopaque, old_priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.C) c_int {
     beam.context.env = env;
     beam.context.mode = .callback;
     beam.context.allocator = beam.allocator;
 <% name = @on_upgrade.name %>
 <%= if @on_upgrade.arity == 3 do %>
-  <% payload_type = Enum.at(@on_upgrade.params, 2) %>
-  const payload = beam.get(<%= Zig.Type.render_zig(payload_type)%>, .{.v = load_info}, .{}) catch return -1;
+  // following type is guaranteed to exist as per semantic analysis.
+  const Payload = @typeInfo(@TypeOf(nif.<%= @on_upgrade.name%>)).Fn.params[2].type.?;
+  const payload = beam.get(Payload, .{.v = load_info}, .{}) catch return -1;
 <%= case @on_upgrade.return do %>
   <% %Zig.Type.Enum{} -> %>
     return @intFromEnum(nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload));
