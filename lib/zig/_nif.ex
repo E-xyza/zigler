@@ -13,7 +13,7 @@ defmodule Zig.Nif do
 
   @enforce_keys ~w[name export concurrency file module_code_path zig_code_path spec]a
 
-  defstruct @enforce_keys ++ ~w[line signature params return leak_check alias doc raw]a
+  defstruct @enforce_keys ++ ~w[line signature params return leak_check alias doc raw impl]a
 
   alias Zig.Nif.Concurrency
   alias Zig.Nif.DirtyCpu
@@ -42,7 +42,8 @@ defmodule Zig.Nif do
            leak_check: boolean(),
            alias: nil | atom,
            doc: nil | String.t(),
-           raw: :term | :erl_nif_term
+           raw: :term | :erl_nif_term,
+           impl: boolean | module
          }
 
   @typep specified :: %__MODULE__{
@@ -60,7 +61,8 @@ defmodule Zig.Nif do
            leak_check: boolean(),
            alias: nil | atom,
            doc: nil | String.t(),
-           raw: nil
+           raw: nil,
+           impl: boolean | module
          }
 
   @type t :: raw | specified
@@ -105,7 +107,8 @@ defmodule Zig.Nif do
       zig_code_path: module.zig_code_path,
       export: Keyword.get(opts!, :export, true),
       concurrency: Map.get(@concurrency_modules, opts![:concurrency], Synchronous),
-      spec: Keyword.get(opts!, :spec, true)
+      spec: Keyword.get(opts!, :spec, true),
+      impl: opts![:impl]
     }
   end
 
@@ -130,9 +133,16 @@ defmodule Zig.Nif do
     functions = concurrency.render_elixir(nif)
     specs = if nif.spec, do: render_elixir_spec(nif)
 
+    impl = nif.impl
+    |> List.wrap
+    |> Enum.map(&quote do 
+      @impl unquote(&1)
+    end)
+
     quote context: Elixir do
       unquote(specs)
       unquote(doc)
+      unquote(impl)
       unquote(functions)
     end
   end
