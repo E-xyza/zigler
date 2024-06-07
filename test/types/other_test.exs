@@ -4,9 +4,22 @@ defmodule ZiglerTest.Types.OtherTest do
   describe "beam.env" do
     test "cannot generally be used as a parameter" do
       assert_raise CompileError,
-                   "test/types/errors/beam_env_fails.exs:6: nif function `forbidden` cannot have a value of type beam.env as a parameter",
+                   "nofile:2: nif function `forbidden` cannot have a value of type beam.env as a parameter",
                    fn ->
-                     Code.compile_file("errors/beam_env_fails.exs", __DIR__)
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.Types.BeamEnvFails do
+                           use Zig, otp_app: :zigler, dir: unquote(__DIR__)
+
+                           ~Z"""
+                           const beam = @import("beam");
+                           pub fn forbidden(env: beam.env) void {
+                             _ = env;
+                           }
+                           """
+                         end
+                       end
+                     )
                    end
     end
   end

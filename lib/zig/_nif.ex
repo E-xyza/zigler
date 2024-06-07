@@ -133,11 +133,14 @@ defmodule Zig.Nif do
     functions = concurrency.render_elixir(nif)
     specs = if nif.spec, do: render_elixir_spec(nif)
 
-    impl = nif.impl
-    |> List.wrap
-    |> Enum.map(&quote do 
-      @impl unquote(&1)
-    end)
+    impl =
+      nif.impl
+      |> List.wrap()
+      |> Enum.map(
+        &quote do
+          @impl unquote(&1)
+        end
+      )
 
     quote context: Elixir do
       unquote(specs)

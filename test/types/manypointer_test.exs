@@ -68,9 +68,21 @@ defmodule ZiglerTest.Types.ManypointerTest do
   describe "for normal manypointers" do
     test "having a return value is prohibited" do
       assert_raise CompileError,
-                   "test/types/errors/manypointer_return_fails.exs:5: nif function `forbidden` cannot return a value of type [*]u8",
+                   "nofile:1: nif function `forbidden` cannot return a value of type [*]u8",
                    fn ->
-                     Code.compile_file("errors/manypointer_return_fails.exs", __DIR__)
+                     Code.compile_quoted(
+                       quote do
+                         defmodule ZiglerTest.Types.Errors.ManypointerReturnFails do
+                           use Zig, otp_app: :zigler, dir: unquote(__DIR__)
+
+                           ~Z"""
+                           pub fn forbidden() [*]u8 {
+                             return @ptrFromInt(1);
+                           }
+                           """
+                         end
+                       end
+                     )
                    end
     end
   end
