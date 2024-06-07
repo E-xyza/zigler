@@ -6,12 +6,10 @@ defmodule Zig.Sema do
   alias Zig.Parameter
   alias Zig.Return
   alias Zig.Type
-  alias Zig.Type.Cpointer
   alias Zig.Type.Error
   alias Zig.Type.Function
   alias Zig.Type.Integer
   alias Zig.Type.Manypointer
-  alias Zig.Type.Optional
   alias Zig.Type.Pointer
 
   @enforce_keys [:functions, :types, :decls, :callbacks]

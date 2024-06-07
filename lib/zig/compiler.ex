@@ -48,7 +48,7 @@ defmodule Zig.Compiler do
 
   defp nif_substitution(opts) do
     Enum.reduce(opts, [], fn
-      {:..., _, _}, {:auto, list} = so_far -> so_far
+      {:..., _, _}, {:auto, _} = so_far -> so_far
       {:..., _, _}, list -> {:auto, list}
       other, so_far -> prepend_nif(so_far, other)
     end)

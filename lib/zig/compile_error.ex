@@ -75,7 +75,8 @@ defmodule Zig.CompileError do
            |> remove_column()
          ], {new_file, new_line}}
 
-      other ->
+      
+      _other ->
         {just_replace(error_line, absolute_path, relative_path, manifest_module), nil}
     end
   end

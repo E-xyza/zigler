@@ -838,28 +838,43 @@ pub const self = processes.self;
 /// [`e.enif_send`](https://www.erlang.org/doc/man/erl_nif.html#enif_send).
 /// that also serializes the message term using [`make`](#make)
 ///
+/// Note that `send` is designed so that you can switch concurrency modes
+/// without having to change your code.
+///
 /// ### Options
 ///
 /// - `clear` (boolean): whether the environment should be cleared after
 ///   sending the message.  Defaults to `true`.  See information befow.
+/// - `persist` (tuple of `beam.term`).  Persists the terms into the new
+///   environment (see [`clear_env`](#clear_env)).  It is not an error to
+///   pass `persist` in a process-bound context, though that will no-op.
 ///
-/// > ### send from raw nifs or out of bounds callbacks {: .warning }
+/// ### Return value
+///
+/// If there are no persisted values, `send` returns `void`.  Otherwise
+/// it returns a tuple that corresponds to the tuple of persisted values,
+/// with new `beam.term` values.
+///
+/// > ### send from raw nifs or non-process-bound threads {: .warning }
 /// >
 /// > This function has undefined behaviour when called from `raw` nifs or
-/// > callbacks that are `out of bounds` (e.g. if a new thread is started
+/// > calls that are not process-bound (e.g. if a new thread is started
 /// > from a posix call that is not managed by zigler)
 /// >
-/// > in these cases, use `e.enif_send` directly instead.  Note you may
-/// > have to create the `beam.term` from an environment *first*.
+/// > in the case of raw nifs, use `e.enif_send` directly instead.
+/// >
+/// > in the case of non-process-bound threads, if you use `init_env`
+/// > to initialize the environment, you can use `send` as normal.
 ///
 /// > ### clearing your environment {: .info }
 /// >
 /// > normally when calling `e.enif_send` you would need to call `e.enif_clear_env`
 /// > to recycle the environment after sending.  You do not need to do this
-/// > for this function; it gets called automatically.  If you are certain that
-/// > the send operation is the last operation in your function call, you may
-/// > call the function as `send(data, .{.clear = false})` and the clear_env
-/// > function will not be called.
+/// > for this function; it gets called automatically.
+/// >
+/// > If you are certain that the send operation is the last operation in your
+/// > function call, you may call the function as `send(data, .{.clear = false})`
+/// > and the clear_env function will not be called.
 pub const send = processes.send;
 
 // interfacing with functions
@@ -1010,13 +1025,6 @@ pub const alloc_env = e.enif_alloc_env;
 pub const free_env = e.enif_free_env;
 
 /// <!-- topic: Env -->
-/// Synonym for [`e.enif_clear_env`](https://www.erlang.org/doc/man/erl_nif.html#enif_clear_env)
-///
-/// Note: unlike for [`e.enif_send`] you do not need to call this function after calling
-/// [`send`]
-pub const clear_env = e.enif_clear_env;
-
-/// <!-- topic: Env -->
 /// copies a term from one env to to another
 pub fn copy(env_: env, term_: term) term {
     return .{ .v = e.enif_make_copy(env_, term_.v) };
@@ -1041,13 +1049,15 @@ pub fn copy(env_: env, term_: term) term {
 ///   a resource destruction callback
 /// - `.dirty_yield`: the execution context of a dirty nif whose parent process
 ///   has been terminated but the nif is still running.
+/// - `.independent`: the execution context of functions that are not associated
+///   with nifs.  see [`init_env`](#init_env) for how to set this as the context.
 ///
 /// See [`context`](#context) for the threadlocal variable that stores this.
 ///
 /// > #### raw beam functions {: .warning }
 /// >
 /// > nifs called in `raw` mode are not assigned an execution context.
-pub const ContextMode = enum { synchronous, threaded, dirty, yielding, callback, dirty_yield };
+pub const ContextMode = enum { synchronous, dirty, callback, threaded, yielding, dirty_yield, independent };
 
 /// <!-- topic: Context -->
 ///
@@ -1085,6 +1095,58 @@ pub threadlocal var context: Context = undefined;
 /// convenience function to get the context's execution environment
 pub fn get_env() env {
     return context.env;
+}
+
+/// <!-- topic: Context -->
+/// creates an new `independent` environment and attaches it to the existing
+/// context.  You may specify the `allocator` option to set the default
+/// allocator for the context.  Defaults to `beam.allocator`.
+const InitEnvOpts = struct { allocator: ?std.mem.Allocator = null };
+
+pub fn init_env(opts: InitEnvOpts) void {
+    context.env = e.enif_alloc_env();
+    context.allocator = opts.allocator orelse allocator;
+    context.mode = .independent;
+}
+
+// compile time check on the persistlist and substitutes `void` for the the return if the
+// tuple is empty.
+pub fn ClearEnvReturn(comptime T: type) type {
+    const info = @typeInfo(T);
+    if (T != .Struct) @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
+    const fields = info.Struct.fields;
+
+    if (fields.len == 0) return void;
+    inline for (fields) |field| {
+        if (field.type != term) @compileError("unsupported type for CleanEnvReturn, must be a tuple of `beam.term`");
+    }
+
+    return T;
+}
+
+/// <!-- topic: Context -->
+/// Performs [`e.enif_clear_env`](https://www.erlang.org/doc/man/erl_nif.html#enif_clear_env)
+/// on the existing env in the context.  This function is generally used as a part of
+/// `beam.send`.  The function is also passed a tuple which is a list of terms that should be
+/// persisted into the new environment.
+///
+/// This function will panic if the context's environment is not one known to be created
+/// by `alloc_env`.
+///
+/// returns `void` if the persist list is empty; otherwise returns a tuple of the same size
+/// as the persist list, contaning the terms that are persisted, in the same order.
+pub fn clear_env(persist: anytype) ClearEnvReturn(@TypeOf(persist)) {
+    switch (context.mode) {
+        .threaded, .yielding, .dirty_yield, .independent => {},
+        else => @panic("clear_env is called from an unsupported environment"),
+    }
+
+    var result: ClearEnvReturn(@TypeOf(persist)) = undefined;
+    e.enif_clear_env(context.env);
+    inline for (persist, 0..) |p, index| {
+        result[index] = .{ .v = e.enif_make_copy(context.env, p.v) };
+    }
+    return result;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
