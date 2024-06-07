@@ -150,5 +150,6 @@ defmodule Zig.Compiler do
     Map.replace!(nif, :doc, Enum.find_value(code, &doc_if_name(&1, name)))
   end
 
-  defp doc_if_name(code, name), do: (if code.name == name, do: String.trim(code.doc_comment))
+  defp doc_if_name(%{name: name, doc_comment: comment}, name), do: (if comment, do: String.trim(comment))
+  defp doc_if_name(_, _), do: nil
 end

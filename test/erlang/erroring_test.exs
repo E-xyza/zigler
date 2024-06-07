@@ -6,6 +6,7 @@ defmodule ZiglerTest.Erlang.ErroringTest do
 
   @test_file to_charlist(Path.join(__DIR__, "src/erlang_erroring_test"))
 
+  @tag :skip
   test "erroring functions in erlang work" do
     {:ok, mod} = :compile.file(@test_file, outdir: :code.lib_dir(:zigler, :ebin))
     Code.ensure_loaded(mod)

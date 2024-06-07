@@ -68,7 +68,7 @@ defmodule ZiglerTest.Types.ManypointerTest do
   describe "for normal manypointers" do
     test "having a return value is prohibited" do
       assert_raise CompileError,
-                   "test/integration/types/errors/manypointer_return_fails.exs:5: nif function `forbidden` cannot return a value of type [*]u8",
+                   "test/types/errors/manypointer_return_fails.exs:5: nif function `forbidden` cannot return a value of type [*]u8",
                    fn ->
                      Code.compile_file("errors/manypointer_return_fails.exs", __DIR__)
                    end

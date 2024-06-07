@@ -81,7 +81,7 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnloadRawFirstParameter do
+                         defmodule ZiglerTest.BadOnunloadRawFirstParameter do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [on_unload: :foo],
@@ -104,7 +104,7 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnloadRawSecondParameter do
+                         defmodule ZiglerTest.BadOnunloadRawSecondParameter do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [:on_unload],
@@ -127,7 +127,7 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
                    fn ->
                      Code.compile_quoted(
                        quote do
-                         defmodule ZiglerTest.BadOnloadRawReturn do
+                         defmodule ZiglerTest.BadOnunloadRawReturn do
                            use Zig,
                              otp_app: :zigler,
                              callbacks: [on_unload: :foo],

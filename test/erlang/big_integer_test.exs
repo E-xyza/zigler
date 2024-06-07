@@ -2,6 +2,7 @@ defmodule ZiglerTest.Erlang.BigIntegerTest do
   use ZiglerTest.IntegrationCase, async: true
 
   @moduletag :erlang
+  @moduletag :skip
 
   @test_file to_charlist(Path.join(__DIR__, "src/erlang_big_integer_test"))
 

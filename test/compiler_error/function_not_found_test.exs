@@ -1,22 +1,12 @@
 defmodule ZiglerTest.CompilerError.FunctionNotFoundTest do
   use ExUnit.Case, async: true
 
-  describe "when a use Zig doesn't have otp_app" do
+  describe "when a use Zig doesn't have a specified function" do
     test "it raises a compiler error" do
       assert_raise CompileError,
-                   "nofile: (module NoOtpApp) you must supply an `otp_app` option to `use Zig`",
+                   "test/compiler_error/_function_not_found.exs:2: nif function named `not_found_function` not found in semantic analysis of module.",
                    fn ->
-                     Code.compile_quoted(
-                       quote do
-                         defmodule NoOtpApp do
-                           use Zig, nifs: [not_found: []]
-
-                           ~Z"""
-                           pub fn foo() void {}
-                           """
-                         end
-                       end
-                     )
+                     Code.compile_file("_function_not_found.exs", __DIR__)
                    end
     end
   end

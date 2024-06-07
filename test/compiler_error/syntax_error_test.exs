@@ -4,9 +4,9 @@ defmodule ZiglerTest.CompilerError.SyntaxErrorTest do
   describe "sema causes an error" do
     test "when the zig syntax is wrong" do
       assert_raise CompileError,
-                   "test/compiler_error/syntax_error.exs:8: error: expected ';' after statement",
+                   "test/compiler_error/_syntax_error.exs:8: error: expected ';' after statement",
                    fn ->
-                     Code.compile_file("syntax_error.exs", __DIR__)
+                     Code.compile_file("_syntax_error.exs", __DIR__)
                    end
     end
   end
