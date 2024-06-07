@@ -1,4 +1,5 @@
 defmodule ZiglerTest.TypespecOverride do
+  @moduledoc false
   @compile :debug_info
 
   use Zig, otp_app: :zigler, nifs: [do_something: [specs: false]]

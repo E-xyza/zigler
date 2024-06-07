@@ -76,6 +76,7 @@ defmodule Zig.Compiler do
     |> apply_parser(zig_code)
     |> Sema.analyze_file!()
     |> add_nif_resources()
+    |> bind_documentation()
     |> tap(&precompile/1)
     |> Command.compile!()
     |> Manifest.unload()
@@ -138,4 +139,16 @@ defmodule Zig.Compiler do
 
     %{module | resources: module.resources ++ nif_resources}
   end
+
+  defp bind_documentation(module) do
+    Map.update!(module, :nifs, fn nifs ->
+      Enum.map(nifs, &bind_nif_documentation(&1, module.parsed.code))
+    end)
+  end
+
+  defp bind_nif_documentation(%{name: name} = nif, code) do
+    Map.replace!(nif, :doc, Enum.find_value(code, &doc_if_name(&1, name)))
+  end
+
+  defp doc_if_name(code, name), do: (if code.name == name, do: String.trim(code.doc_comment))
 end
