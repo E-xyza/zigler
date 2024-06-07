@@ -40,7 +40,7 @@ defmodule Zig.Nif.Basic do
   defp needs_marshal?(%{raw: raw}) when not is_nil(raw), do: false
 
   defp needs_marshal?(nif) do
-    Enum.any?(nif.signature.params, &marshals_param?/1) or marshals_return?(nif.signature.return)
+    Enum.any?(nif.signature.params, &marshals_param?/1) or marshals_return?(nif.signature.return.type)
   end
 
   defp marshal_name(nif), do: :"marshalled-#{nif.name}"
@@ -98,8 +98,8 @@ defmodule Zig.Nif.Basic do
       end
 
     marshal_return =
-      if marshals_return?(nif.return) do
-        Type.marshal_return(return_ast, return_ast, :elixir)
+      if marshals_return?(nif.return.type) do
+        Type.marshal_return(nif.return.type, return_ast, :elixir)
       else
         return_ast
       end
