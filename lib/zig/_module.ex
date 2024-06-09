@@ -65,7 +65,7 @@ defmodule Zig.Module do
           c: C.opts() | C.t(),
           dir: Path.t(),
           language: Elixir | :erlang,
-          nifs: Nif.opts() | [Nif.t()],
+          nifs: {:auto, Nif.opts()} | Nif.opts() | [Nif.t()],
           ignore: [atom()],
           packages: [packagespec()],
           resources: [atom()],

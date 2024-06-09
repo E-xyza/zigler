@@ -75,6 +75,7 @@ defmodule Zig.Compiler do
     |> Sema.run_sema!()
     |> apply_parser(zig_code)
     |> Sema.analyze_file!()
+    |> verify_nifs_exist()
     |> add_nif_resources()
     |> bind_documentation()
     |> tap(&precompile/1)
@@ -130,6 +131,14 @@ defmodule Zig.Compiler do
     System.tmp_dir()
     |> String.replace("\\", "/")
     |> Path.join(".zigler_compiler/#{env}/#{module}")
+  end
+
+  defp verify_nifs_exist(module) do
+    if module.nifs == [] do
+      raise CompileError, description: "no nifs found in module.", file: module.file
+    end
+
+    module
   end
 
   defp add_nif_resources(module) do
