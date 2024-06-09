@@ -321,7 +321,6 @@ defmodule Zig do
     module = __CALLER__.module
 
     if module in :erlang.loaded() do
-      :code.delete(module)
       :code.purge(module)
     end
 
