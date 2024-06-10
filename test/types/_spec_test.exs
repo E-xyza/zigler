@@ -16,8 +16,14 @@ defmodule ZiglerTest.Types.SpecTest do
     assert spec((boolean -> boolean)) = Map.fetch!(specs, {:bool_fn, 1})
   end
 
-  test "enum", specs do
-    assert spec((:error | :ok -> :error | :ok)) = Map.fetch!(specs, {:enum_fn, 1})
+  describe "for enum specs" do
+    test "atom return", specs do
+      assert spec((:ok | :error | 0..1 -> :ok | :error)) = Map.fetch!(specs, {:enum_fn, 1})
+    end
+
+    test "integer return", specs do
+      assert spec((:ok | :error | 0..1 -> 0..1)) = Map.fetch!(specs, {:enum_fn_integer_return, 1})
+    end
   end
 
   test "float", specs do
@@ -39,8 +45,10 @@ defmodule ZiglerTest.Types.SpecTest do
     end
 
     test "u128", specs do
-      assert spec((0..340_282_366_920_938_463_463_374_607_431_768_211_455 ->
-                   0..340_282_366_920_938_463_463_374_607_431_768_211_455)) =
+      assert spec(
+               (0..340_282_366_920_938_463_463_374_607_431_768_211_455 ->
+                  0..340_282_366_920_938_463_463_374_607_431_768_211_455)
+             ) =
                Map.fetch!(specs, {:u128_fn, 1})
     end
   end
@@ -59,6 +67,42 @@ defmodule ZiglerTest.Types.SpecTest do
   end
 
   test "void", specs do
-    assert spec(( -> :ok)) = Map.fetch!(specs, {:void_fn, 0})
+    assert spec((-> :ok)) = Map.fetch!(specs, {:void_fn, 0})
+  end
+
+  describe "for arrays" do
+    test "of u32", specs do
+      assert spec(([0..4_294_967_295] | <<_::128>> -> [0..4_294_967_295])) =
+               Map.fetch!(specs, {:u32_array_fn, 1})
+    end
+
+    test "of u32, binary return", specs do
+      assert spec(([0..4_294_967_295] | <<_::128>> -> <<_::128>>)) =
+               Map.fetch!(specs, {:u32_array_fn_binary_return, 1})
+    end
+
+    test "of u8, default binary", specs do
+      assert spec(([byte] | <<_::32>> -> <<_::32>>)) =
+               Map.fetch!(specs, {:u8_array_fn, 1})
+    end
+
+    test "of u8, force list", specs do
+      assert spec(([byte] | <<_::32>> -> [byte])) =
+               Map.fetch!(specs, {:u8_array_fn_list_return, 1})
+    end
+
+    test "of array, inner list", specs do
+      assert spec(([[0..4_294_967_295] | <<_::128>>] | <<_::512>> -> [[0..4_294_967_295]])) =
+               Map.fetch!(specs, {:array_of_arrays_fn, 1})
+    end
+
+    test "of array, inner binary", specs do
+      assert spec(([[0..4_294_967_295] | <<_::128>>] | <<_::512>> -> [<<_::128>>])) =
+               Map.fetch!(specs, {:array_of_arrays_fn_list_of_binary_return, 1})
+    end
+
+    test "of array, outer binary", specs do
+      assert spec(([[0..4_294_967_295]] | [<<_::128>>] | <<_::512>> -> <<_::512>>)) = Map.fetch!(specs, {:array_of_arrays_fn_binary_return, 1})
+    end
   end
 end

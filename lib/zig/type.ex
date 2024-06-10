@@ -58,19 +58,18 @@ defprotocol Zig.Type do
   @spec can_cleanup?(t) :: boolean
   def can_cleanup?(type)
 
+  @spec binary_size(t) :: nil | non_neg_integer | {:var, non_neg_integer}
+  def binary_size(type)
+
   # rendered zig code:
   @spec render_payload_options(t, non_neg_integer, boolean) :: iodata
   def render_payload_options(type, index, error_info?)
 
-  @spec render_return(t, Return.t()) :: iodata
-  def render_return(type, return)
-
   @spec render_zig(t) :: String.t()
   def render_zig(type)
 
-  @typep spec_context :: :param | :return
-  @spec render_elixir_spec(t, spec_context, keyword) :: Macro.t()
-  def render_elixir_spec(type, context, opts)
+  @spec render_elixir_spec(t, Return.t() | Param.t() | Return.type()) :: Macro.t()
+  def render_elixir_spec(type, context)
 after
   defmacro sigil_t({:<<>>, _, [string]}, _) do
     string
@@ -246,12 +245,13 @@ after
 
   def _default_payload_options, do: ".{.error_info = &error_info},"
 
-  def _default_return(option \\ nil)
+  def render_return(%{type: :void}), do: "_ = result; break :result_block beam.make(.ok, .{}).v;"
 
-  def _default_return(%{as: type}),
-    do: "break :result_block beam.make(result, .{.as = .#{type}}).v;"
+  def render_return(%{as: type}),
+    do: "break :result_block beam.make(result, .{.as = #{render_return_as(type)}}).v;"
 
-  def _default_return(_), do: "break :result_block beam.make(result, .{}).v;"
+  defp render_return_as(atom) when is_atom(atom), do: ".#{atom}"
+  defp render_return_as({:list, return}), do: ".{.list = #{render_return_as(return)}}"
 
   def _default_marshal, do: []
 end
@@ -262,6 +262,7 @@ defimpl Zig.Type, for: Atom do
   def get_allowed?(type), do: type in ~w(term erl_nif_term pid)a
   def make_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
   def can_cleanup?(_), do: false
+  def binary_size(_), do: nil
 
   def render_zig(:term), do: "beam.term"
   def render_zig(:erl_nif_term), do: "e.erl_nif_term"
@@ -269,9 +270,6 @@ defimpl Zig.Type, for: Atom do
   def render_zig(:env), do: "beam.env"
   def render_zig(:anyopaque), do: "anyopaque"
   def render_zig(atom), do: "#{atom}"
-
-  def render_return(:void, _), do: "_ = result; break :result_block beam.make(.ok, .{}).v;"
-  def render_return(_, _), do: Type._default_return()
 
   def render_payload_options(:erl_nif_term, _, _), do: ".{},"
   def render_payload_options(:term, _, _), do: ".{},"
@@ -282,15 +280,15 @@ defimpl Zig.Type, for: Atom do
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()
 
-  def render_elixir_spec(:void, :return, _), do: :ok
+  def render_elixir_spec(:void, %Zig.Return{}), do: :ok
 
-  def render_elixir_spec(:pid, _, _) do
+  def render_elixir_spec(:pid, _) do
     quote do
       pid()
     end
   end
 
-  def render_elixir_spec(term, _, _) when term in ~w(term erl_nif_term)a do
+  def render_elixir_spec(term, _) when term in ~w(term erl_nif_term)a do
     quote do
       term()
     end

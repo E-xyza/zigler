@@ -19,9 +19,9 @@ defmodule Zig.Type.Float do
     concat(["~t(", to_string(type), ")"])
   end
 
-  def render_zig(%{bits: bits}), do: "f#{bits}"
+  def render_zig(float), do: "f#{float.bits}"
 
-  def render_elixir_spec(_, _, _) do
+  def render_elixir_spec(_, _) do
     quote do
       float()
     end
@@ -31,8 +31,9 @@ defmodule Zig.Type.Float do
   def make_allowed?(_), do: true
   def can_cleanup?(_), do: false
 
+  def binary_size(float), do: div(float.bits, 8)
+
   def render_payload_options(_, _, _), do: Type._default_payload_options()
-  def render_return(_, _), do: Type._default_return()
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
 end

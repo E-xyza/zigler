@@ -158,10 +158,8 @@ defmodule Zig.Nif do
           arity -> Enum.map(0..(arity - 1), fn _ -> {:term, [], []} end)
         end
 
-      return_spec = Type.render_elixir_spec(nif.return.type, :return, nif.return)
-
       quote do
-        @spec unquote(nif.name)(unquote_splicing(param_spec)) :: unquote(return_spec)
+        @spec unquote(nif.name)(unquote_splicing(param_spec)) :: term
       end
     end)
   end
@@ -170,9 +168,9 @@ defmodule Zig.Nif do
     param_spec =
       nif.params
       |> Enum.sort()
-      |> Enum.map(fn {_, p} -> Type.render_elixir_spec(p.type, :param, p) end)
+      |> Enum.map(fn {_, p} -> Type.render_elixir_spec(p.type, p) end)
 
-    return_spec = Type.render_elixir_spec(nif.return.type, :return, nif.return)
+    return_spec = Type.render_elixir_spec(nif.return.type, nif.return)
 
     quote context: Elixir do
       @spec unquote(nif.name)(unquote_splicing(param_spec)) :: unquote(return_spec)

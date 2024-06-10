@@ -46,41 +46,41 @@ defmodule Zig.Type.Struct do
 
   def marshal_param(_, _), do: nil
 
-  def render_elixir_spec(struct, :param, opts) do
-    optional = to_fields(struct.optional, :optional, :param, opts)
-    keyword = to_fields(struct.optional, :untagged, :param, opts)
-    required = to_fields(struct.required, :untagged, :param, opts)
-
-    if binary_form = binary_form(struct) do
-      quote do
-        unquote(map_spec(optional, required))
-        | unquote(keyword ++ required)
-        | unquote(binary_form)
-      end
-    else
-      quote do
-        unquote(map_spec(optional, required)) | unquote(keyword ++ required)
-      end
-    end
-  end
-
-  def render_elixir_spec(struct, :return, opts) do
-    binary_form = binary_form(struct)
-
-    case opts.as do
-      :binary when not is_nil(binary_form) ->
-        binary_form
-
-      t when t in ~w(list binary default)a ->
-        all_fields =
-          struct.optional
-          |> Map.merge(struct.required)
-          |> to_fields(:required, :return, opts)
-
-        map_spec([], all_fields)
-    end
-  end
-
+  #def render_elixir_spec(struct, :param, opts) do
+  #  optional = to_fields(struct.optional, :optional, :param, opts)
+  #  keyword = to_fields(struct.optional, :untagged, :param, opts)
+  #  required = to_fields(struct.required, :untagged, :param, opts)
+#
+  #  if binary_form = binary_form(struct) do
+  #    quote do
+  #      unquote(map_spec(optional, required))
+  #      | unquote(keyword ++ required)
+  #      | unquote(binary_form)
+  #    end
+  #  else
+  #    quote do
+  #      unquote(map_spec(optional, required)) | unquote(keyword ++ required)
+  #    end
+  #  end
+  #end
+#
+  #def render_elixir_spec(struct, :return, opts) do
+  #  binary_form = binary_form(struct)
+#
+  #  case opts.as do
+  #    :binary when not is_nil(binary_form) ->
+  #      binary_form
+#
+  #    t when t in ~w(list binary default)a ->
+  #      all_fields =
+  #        struct.optional
+  #        |> Map.merge(struct.required)
+  #        |> to_fields(:required, :return, opts)
+#
+  #      map_spec([], all_fields)
+  #  end
+  #end
+#
   defp map_spec(optional, required) do
     quote context: Elixir do
       %{unquote_splicing(optional ++ required)}
@@ -124,8 +124,11 @@ defmodule Zig.Type.Struct do
 
   def can_cleanup?(_), do: false
 
+  def binary_size(%{packed: packed}) when is_integer(packed), do: packed
+  def binary_size(%{extern: extern}) when is_integer(extern), do: extern
+  def binary_size(_), do: nil
+
   def render_payload_options(_, _, _), do: Type._default_payload_options()
-  def render_return(_, _), do: Type._default_return()
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
 end

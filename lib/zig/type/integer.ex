@@ -214,15 +214,21 @@ defmodule Zig.Type.Integer do
     end
   end
 
-  def render_elixir_spec(%{bits: 0}, _, _), do: 0
+  def render_elixir_spec(%{bits: 0}, _), do: 0
 
-  def render_elixir_spec(%{signedness: :unsigned} = type, _, _opts) do
+  def render_elixir_spec(%{signedness: :unsigned, bits: 8}, _opts) do
+    quote do
+      byte
+    end
+  end
+
+  def render_elixir_spec(%{signedness: :unsigned} = type, _opts) do
     quote context: Elixir do
       0..unquote(typemax(type))
     end
   end
 
-  def render_elixir_spec(%{signedness: :signed} = type, _, _opts) do
+  def render_elixir_spec(%{signedness: :signed} = type, _opts) do
     neg_typemin = -typemin(type)
 
     quote context: Elixir do
@@ -243,7 +249,7 @@ defmodule Zig.Type.Integer do
   def get_allowed?(_), do: true
   def make_allowed?(_), do: true
   def can_cleanup?(_), do: false
+  def binary_size(integer), do: _next_power_of_two_ceil(integer.bits)
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()
-  def render_return(_, _), do: Type._default_return()
 end

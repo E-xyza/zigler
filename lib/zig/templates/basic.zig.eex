@@ -34,6 +34,6 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
 
         const result = @call(.auto, nif.<%= @name %>, payload) <%= Nif.maybe_catch(@return.type) %>;
 
-        <%= Return.render(@return) %>
+        <%= Type.render_return(@return) %>
     };
 }

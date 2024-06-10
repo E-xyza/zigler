@@ -70,10 +70,10 @@ defmodule Zig.Type.Pointer do
   def can_cleanup?(_), do: false
 
   @impl true
-  def render_payload_options(_, _, _), do: raise("unreachable")
+  def binary_size(_), do: nil
 
   @impl true
-  def render_return(_, _), do: raise("unreachable")
+  def render_payload_options(_, _, _), do: raise("unreachable")
 
   @impl true
   def render_zig(%{optional: true, child: child}), do: "?*#{Type.render_zig(child)}"
@@ -81,5 +81,5 @@ defmodule Zig.Type.Pointer do
   def render_zig(%{child: child}), do: "?#{Type.render_zig(child)}"
 
   @impl true
-  def render_elixir_spec(_, _, _), do: raise("unreachable")
+  def render_elixir_spec(_, _), do: raise("unreachable")
 end

@@ -15,9 +15,7 @@ defmodule ZiglerTest.SpecTemplate do
   end
 
   defp convert({:|, _, [a, b]}) do
-    quote do
-      {:type, _, :union, [unquote(convert(a)), unquote(convert(b))]}
-    end
+    unionize(convert(a), convert(b))
   end
 
   defp convert({:.., _, [a, b]}) do
@@ -32,6 +30,18 @@ defmodule ZiglerTest.SpecTemplate do
     end
   end
 
+  defp convert([item]) do
+    quote do
+      {:type, _, :list, [unquote(convert(item))]}
+    end
+  end
+
+  defp convert({:<<>>, _, [{:"::", _, [{:_, _, _}, length]}]}) do
+    quote do
+      {:type, _, :binary, [unquote(convert(length)), unquote(convert(0))]}
+    end
+  end
+
   defp convert(atom) when is_atom(atom) do
     quote do
       {:atom, _, unquote(atom)}
@@ -41,6 +51,36 @@ defmodule ZiglerTest.SpecTemplate do
   defp convert(integer) when is_integer(integer) do
     quote do
       {:integer, _, unquote(integer)}
+    end
+  end
+
+  defp unionize({:{}, _, [:type, _, :union, u1]}, {:{}, _, [:type, _, :union, u2]}) do
+    new_union = u1 ++ u2
+
+    quote do
+      {:type, _, :union, unquote(new_union)}
+    end
+  end
+
+  defp unionize({:{}, _, [:type, _, :union, u1]}, t2) do
+    new_union = u1 ++ [t2]
+
+    quote do
+      {:type, _, :union, unquote(new_union)}
+    end
+  end
+
+  defp unionize(t1, {:{}, _, [:type, _, :union, u2]}) do
+    new_union = [t1 | u2]
+
+    quote do
+      {:type, _, :union, unquote(new_union)}
+    end
+  end
+
+  defp unionize(t1, t2) do
+    quote do
+      {:type, _, :union, [unquote(t1), unquote(t2)]}
     end
   end
 end

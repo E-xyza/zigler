@@ -6,13 +6,15 @@ defmodule Zig.Return do
 
   alias Zig.Type
 
+  @type type :: :binary | :integer | :default | :list | {:list, type}
+
   @type t :: %__MODULE__{
           type: Type.t(),
           cleanup: boolean,
-          as: :binary | :list | :default
+          as: type
         }
 
-  @type opts :: [:noclean | :binary | :list | {:cleanup, boolean} | {:as, :binary | :list}]
+  @type opts :: [:noclean | :binary | :list | {:cleanup, boolean} | {:as, type}]
 
   def new(raw) when raw in ~w[term erl_nif_term]a, do: %__MODULE__{type: raw, cleanup: false}
 
@@ -20,21 +22,22 @@ defmodule Zig.Return do
     struct!(__MODULE__, [type: type] ++ normalize_options(type, options))
   end
 
-  @as ~w[binary list]a
+  @as ~w[binary list integer]a
   @options ~w[as cleanup]a
 
   defp normalize_options(type, options) do
     options
     |> List.wrap()
     |> Enum.map(fn
-      option when option in @as -> {:as, option}
-      :noclean -> {:cleanup, false}
-      {k, _} = kv when k in @options -> kv
+      option when option in @as ->
+        {:as, option}
+
+      :noclean ->
+        {:cleanup, false}
+
+      {k, _} = kv when k in @options ->
+        kv
     end)
     |> Keyword.put_new(:cleanup, Type.can_cleanup?(type))
-  end
-
-  def render(return) do
-    Type.render_return(return.type, return)
   end
 end

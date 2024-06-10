@@ -4,27 +4,25 @@ const std = @import("std");
 const resource = @import("resource.zig");
 const options = @import("options.zig");
 
-const MakeType = enum {
-    default,
-    list,
-    binary,
-    fn select(opts: anytype) MakeType {
-        if (@hasField(@TypeOf(opts), "as")) {
-            return opts.as;
-        } else {
-            return .default;
-        }
-    }
-};
-
 pub fn make(value: anytype, opts: anytype) beam.term {
     const T = @TypeOf(value);
 
     // passthrough on beam.term, no work needed.
-    if (T == beam.term) return value;
-    if (T == beam.pid) return make_pid(value, opts);
+    if (T == beam.term) {
+        options.assert_default(T, opts);
+        return value;
+    }
+
+    if (T == beam.pid) {
+        options.assert_default(T, opts);
+        return make_pid(value, opts);
+    }
+
     // special case on stacktrace
-    if (T == *std.builtin.StackTrace) return beam.make_stacktrace(value, opts);
+    if (T == *std.builtin.StackTrace) {
+        options.assert_default(T, opts);
+        return beam.make_stacktrace(value, opts);
+    }
 
     if (T == beam.port) @compileError("you cannot convert a port into a term");
 
@@ -50,7 +48,8 @@ pub fn make(value: anytype, opts: anytype) beam.term {
 }
 
 pub fn make_pid(pid: beam.pid, opts: anytype) beam.term {
-    _ = opts;
+    options.assert_default(beam.pid, opts);
+
     // for some reason, the macro for this is super shitty.  See:
     // https://github.com/erlang/otp/blob/a78b8e0769bba69ba1245cce850b226bdf6940fa/erts/emulator/beam/erl_nif_api_funcs.h#L649
     // so we have to use secret hidden implementation, which is
@@ -90,6 +89,8 @@ fn make_optional(value: anytype, opts: anytype) beam.term {
 }
 
 fn make_int(value: anytype, opts: anytype) beam.term {
+    options.assert_default(@TypeOf(value), opts);
+
     const int = @typeInfo(@TypeOf(value)).Int;
     switch (int.signedness) {
         .signed => switch (int.bits) {
@@ -120,6 +121,8 @@ fn make_int(value: anytype, opts: anytype) beam.term {
 }
 
 fn make_comptime_int(value: anytype, opts: anytype) beam.term {
+    options.assert_default(@TypeOf(value), opts);
+
     if (value < std.math.minInt(i64)) {
         @compileError("directly making a value less than min(i64) is not supported");
     }
@@ -139,6 +142,7 @@ fn make_comptime_int(value: anytype, opts: anytype) beam.term {
 }
 
 pub fn make_comptime_float(comptime float: comptime_float, opts: anytype) beam.term {
+    options.assert_default(comptime_float, opts);
     return beam.make(@as(f64, @floatCast(float)), opts);
 }
 
@@ -182,24 +186,34 @@ fn make_struct(value: anytype, opts: anytype) beam.term {
 }
 
 fn make_enum_literal(value: anytype, opts: anytype) beam.term {
+    options.assert_default(@TypeOf(value), opts);
     const tag_name = @tagName(value);
     if (tag_name.len > 255) {
-        @compileError("the length of this enum literal is too large for the erlang virtual machine");
+        @compileError("the name of this enum literal is too large for the erlang virtual machine");
     }
     return make_into_atom(tag_name, opts);
 }
 
 fn make_enum(value: anytype, opts: anytype) beam.term {
-    const tag_name = @tagName(value);
-    return make_into_atom(tag_name, opts);
+    const new_opts = .{.env = options.env(opts), .as = .default};
+    switch (options.output(opts)) {
+        .default => return make_into_atom(@tagName(value), new_opts),
+        .integer => return make_int(@intFromEnum(value), new_opts),
+        else => |output| {
+            const msg = std.fmt.comptimePrint("the 'as' field for an enum must be `.default` or `.integer`, got {}.", .{output});
+            @compileError(msg);
+        }
+    }
 }
 
 fn make_error(value: anytype, opts: anytype) beam.term {
+    options.assert_default(@TypeOf(value), opts);
     const tag_name = @errorName(value);
     return make_into_atom(tag_name, opts);
 }
 
 fn make_float(value: anytype, opts: anytype) beam.term {
+    options.assert_default(@TypeOf(value), opts);
     const floatval = @as(f64, @floatCast(value));
     if (std.math.isNan(value)) return make_enum(.NaN, opts);
     if (std.math.isPositiveInf(value)) return make_enum(.infinity, opts);
@@ -208,6 +222,7 @@ fn make_float(value: anytype, opts: anytype) beam.term {
 }
 
 fn make_bool(value: bool, opts: anytype) beam.term {
+    options.assert_default(bool, opts);
     return make_into_atom(if (value) "true" else "false", opts);
 }
 
@@ -221,40 +236,44 @@ fn make_mut(value_ptr: anytype, opts: anytype) beam.term {
 }
 
 fn make_array_from_pointer(comptime T: type, array_ptr: anytype, opts: anytype) beam.term {
-    // u8 arrays (sentinel terminated or otherwise) are treated as
-    // strings.
     const array_info = @typeInfo(T).Array;
     const Child = array_info.child;
-    const as = MakeType.select(opts);
 
-    if (Child == u8 and as != .list) {
+    // u8 arrays (sentinel terminated or otherwise) are treated as
+    // strings.
+    if (Child == u8 and options.output(opts) != .list) {
         // u8 arrays are by default marshalled into binaries.
         return make_binary(array_ptr[0..], opts);
     }
 
-    if (as == .binary) {
+    if (options.output(opts) == .binary) {
         // u8 arrays are by default marshalled into binaries.
         return make_binary(array_ptr[0..], opts);
     }
 
+    const env = options.env(opts);
     switch (array_info.child) {
         beam.term => {
             // since beam.term is guaranteed to be a packed struct of only
             // e.ErlNifTerm, this is always guaranteed to work.
             const ptr = @as([*]const e.ErlNifTerm, @ptrCast(array_ptr));
-            return .{ .v = e.enif_make_list_from_array(options.env(opts), ptr, array_info.len) };
+            return .{ .v = e.enif_make_list_from_array(env, ptr, array_info.len) };
         },
         e.ErlNifTerm => {
-            return .{ .v = e.enif_make_list_from_array(options.env(opts), array_ptr, array_info.len) };
+            return .{ .v = e.enif_make_list_from_array(env, array_ptr, array_info.len) };
         },
         // the general case is build the list backwards.
         else => {
-            var tail = e.enif_make_list_from_array(options.env(opts), null, 0);
+            var tail = e.enif_make_list_from_array(env, null, 0);
 
             if (array_info.len != 0) {
                 var index: usize = array_info.len;
+                const list_child = if (@hasField(@TypeOf(opts), "as")) options.list_child(opts.as) else .default;
                 while (index > 0) : (index -= 1) {
-                    tail = e.enif_make_list_cell(options.env(opts), make(array_ptr[index - 1], opts).v, tail);
+                    tail = e.enif_make_list_cell(env, make(array_ptr[index - 1], .{
+                        .env = env, 
+                        .as = list_child,
+                    }).v, tail);
                 }
             }
 
@@ -296,16 +315,9 @@ fn make_cpointer(cpointer: anytype, opts: anytype) beam.term {
 }
 
 pub fn make_slice(slice: anytype, opts: anytype) beam.term {
-    const as = MakeType.select(opts);
     const SliceType = @TypeOf(slice);
     // u8 slices default to binary and must be opt-in to get charlists out.
-    if ((SliceType == []u8 or SliceType == []const u8) and as != .list) {
-        return make_binary(slice, opts);
-    }
-
-    // any other slices can be opt-in to get a binary out
-    // TODO: check to make sure that these are either ints, floats, or packed structs.
-    if (as == .binary) {
+    if ((SliceType == []u8 or SliceType == []const u8) or options.output(opts) == .binary) {
         return make_binary(slice, opts);
     }
 

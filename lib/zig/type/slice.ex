@@ -1,4 +1,6 @@
 defmodule Zig.Type.Slice do
+  alias Zig.Parameter
+  alias Zig.Return
   alias Zig.Type
   use Type
 
@@ -25,39 +27,30 @@ defmodule Zig.Type.Slice do
 
   # TYPE SPEC STUFF
 
-  def render_elixir_spec(%{child: ~t(u8)}, :return, opts) do
-    case opts do
-      %{as: :list} ->
-        [Type.render_elixir_spec(~t(u8), :return, opts)]
-
-      _ ->
-        binary_form(~t(u8))
-    end
+  def render_elixir_spec(type, %Return{as: as}) do
+    render_elixir_spec(type, as)
   end
 
-  def render_elixir_spec(%{child: ~t(u8)}, :param, opts) do
+  def render_elixir_spec(%{child: child}, %Parameter{} = params) do
     quote context: Elixir do
-      [unquote(Type.render_elixir_spec(~t(u8), :param, opts))] | unquote(binary_form(~t(u8)))
+      [unquote(Type.render_elixir_spec(child, params))] | unquote(binary_form(child))
     end
   end
 
-  def render_elixir_spec(%{child: child}, context, opts) do
-    case {context, opts} do
-      {:return, %{as: :binary}} ->
-        binary_form(child) || raise "unreachable"
+  def render_elixir_spec(%{child: ~t(u8)}, :default) do
+    binary_form(~t(u8))
+  end
 
-      {:return, %{as: type}} when type in ~w(default list)a ->
-        [Type.render_elixir_spec(child, :return, [])]
+  def render_elixir_spec(%{child: child}, :binary) do
+    binary_form(child)
+  end
 
-      {:param, _} ->
-        if binary_form(child) do
-          quote context: Elixir do
-            unquote([Type.render_elixir_spec(child, :param, [])]) | unquote(binary_form(child))
-          end
-        else
-          [Type.render_elixir_spec(child, :param, [])]
-        end
-    end
+  def render_elixir_spec(%{child: child}, {:list, child_spec}) do
+    [Type.render_elixir_spec(child, child_spec)]
+  end
+
+  def render_elixir_spec(%{child: child}, _) do
+    [Type.render_elixir_spec(child, :default)]
   end
 
   defp binary_form(~t(u8)) do
@@ -92,8 +85,14 @@ defmodule Zig.Type.Slice do
   def make_allowed?(slice), do: Type.make_allowed?(slice.child)
   def can_cleanup?(_), do: true
 
+  def binary_size(slice) do
+    case Type.binary_size(slice.child) do
+      size when is_integer(size) -> {:var, size}
+      _ -> nil
+    end
+  end
+
   def render_payload_options(_, _, _), do: Type._default_payload_options()
-  def render_return(_, opts), do: Type._default_return(opts)
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
 
