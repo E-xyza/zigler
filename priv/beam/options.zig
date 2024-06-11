@@ -72,7 +72,6 @@ fn ListChildOf(T: type) type {
         .Struct => |S| {
             inline for (S.fields) |field| {
                 if (std.mem.eql(u8, field.name, "list")) return field.type;
-                if (std.mem.eql(u8, field.name, "map")) return field.type;
             }
             @compileError("list_child is only callable from a list declaration");
         },
@@ -85,6 +84,45 @@ pub fn list_child(list_as: anytype) ListChildOf(@TypeOf(list_as)) {
     switch (@typeInfo(T)) {
         .EnumLiteral => return .default,
         .Struct => return list_as.list,
+        else => unreachable,
+    }
+}
+
+fn MapChildOf(T: type, comptime name: []const u8) type {
+    switch (@typeInfo(T)) {
+        .EnumLiteral => {
+            return @TypeOf(.default);
+        },
+        .Struct => |S| {
+            inline for (S.fields) |field| {
+                if (std.mem.eql(u8, field.name, "map")) {
+                    const M = @TypeOf(field.map);
+                    switch (@typeInfo(M)) {
+                        .Struct => |MT| {
+                            inline for (MT.fields) |mfield| {
+                                if (std.mem.eql(u8, mfield.name, name)) return mfield.type;
+                            }
+                            @compileError("field not found in target struct");
+                        }
+                    }
+                    @compileError("map as definition needs to be a keyword list");
+                }
+            }
+            @compileError("list_child is only callable from a map declaration");
+        },
+        else => @compileError("the as field must be an enum literal or a tuple.")
+    }
+}
+
+pub fn map_child(map_as: anytype, comptime name: []const u8) MapChildOf(@TypeOf(map_as), name) {
+    const T = @TypeOf(map_as);
+    switch (@typeInfo(T)) {
+        .EnumLiteral => return .default,
+        .Struct => {
+            const M = @TypeOf(map_as.map);
+            if (@hasField(M, name)) return @field(M, name);
+            return .default;
+        },
         else => unreachable,
     }
 }

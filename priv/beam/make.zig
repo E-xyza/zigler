@@ -175,8 +175,8 @@ fn make_struct(value: anytype, opts: anytype) beam.term {
 
         inline for (fields, 0..) |field, index| {
             // this needs to be implemented.
-            // const map_child_as = if (@hasField(@TypeOf(opts), "as")) options.map_child(opts.as, field) else .default;
-            const child_opts = .{.env = env, .as = .default};
+            const map_child_as = if (@hasField(@TypeOf(opts), "as")) options.map_child(opts.as, field.name) else .default;
+            const child_opts = .{.env = env, .as = map_child_as};
 
             if (field.name.len > 255) {
                 @compileError("the length of the struct field name is too large for the erlang virtual machine");
