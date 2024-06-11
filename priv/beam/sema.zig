@@ -56,8 +56,8 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S
             try stream.write(@bitSizeOf(S));
         },
         .@"extern" => {
-            try stream.objectField("extern");
-            try stream.write(true);
+            try stream.objectField("extern_size");
+            try stream.write(@bitSizeOf(S));
         },
         .auto => {},
     }

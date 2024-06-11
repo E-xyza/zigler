@@ -150,6 +150,7 @@ const EMPTY_TUPLE_LIST = [_]beam.term{};
 
 fn make_struct(value: anytype, opts: anytype) beam.term {
     const struct_info = @typeInfo(@TypeOf(value)).Struct;
+    const env = options.env(opts);
     if (struct_info.is_tuple) {
         if (value.len > 16_777_215) {
             @compileError("The tuple size is too large for the erlang virtual machine");
@@ -163,7 +164,7 @@ fn make_struct(value: anytype, opts: anytype) beam.term {
                 tuple_item.* = make(tuple_term, opts).v;
             }
         }
-        return .{ .v = e.enif_make_tuple_from_array(options.env(opts), &tuple_list, value.len) };
+        return .{ .v = e.enif_make_tuple_from_array(env, &tuple_list, value.len) };
     } else if (resource.MaybeUnwrap(struct_info)) |_| {
         return value.make(opts);
     } else {
@@ -173,14 +174,18 @@ fn make_struct(value: anytype, opts: anytype) beam.term {
         var vals: [fields.len]e.ErlNifTerm = undefined;
 
         inline for (fields, 0..) |field, index| {
+            // this needs to be implemented.
+            // const map_child_as = if (@hasField(@TypeOf(opts), "as")) options.map_child(opts.as, field) else .default;
+            const child_opts = .{.env = env, .as = .default};
+
             if (field.name.len > 255) {
                 @compileError("the length of the struct field name is too large for the erlang virtual machine");
             }
-            keys[index] = e.enif_make_atom_len(options.env(opts), field.name.ptr, field.name.len);
-            vals[index] = make(@field(value, field.name), opts).v;
+            keys[index] = e.enif_make_atom_len(env, field.name.ptr, field.name.len);
+            vals[index] = make(@field(value, field.name), child_opts).v;
         }
 
-        _ = e.enif_make_map_from_arrays(options.env(opts), &keys, &vals, fields.len, &result);
+        _ = e.enif_make_map_from_arrays(env, &keys, &vals, fields.len, &result);
         return .{ .v = result };
     }
 }

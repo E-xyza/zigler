@@ -4,7 +4,7 @@ defmodule Zig.Type.Struct do
   alias Zig.Type
   use Type
 
-  defstruct [:name, :packed, :required, :optional, extern: false, mutable: false]
+  defstruct [:name, :packed, :required, :optional, :extern, mutable: false]
 
   @type t :: %{
           name: String.t(),
@@ -17,12 +17,13 @@ defmodule Zig.Type.Struct do
 
   def from_json(%{"name" => name, "fields" => fields} = json, module) do
     {required, optional} = Enum.split_with(fields, & &1["required"])
+
     to_field = fn desc -> {String.to_atom(desc["name"]), Type.from_json(desc["type"], module)} end
 
     %__MODULE__{
       name: String.trim_leading(name, ".#{module}."),
       packed: Map.get(json, "packed_size"),
-      extern: Map.get(json, "extern", false),
+      extern: Map.get(json, "extern_size"),
       required: Map.new(required, to_field),
       optional: Map.new(optional, to_field)
     }
@@ -74,10 +75,6 @@ defmodule Zig.Type.Struct do
     binary_form(struct)
   end
 
-  def render_elixir_spec(%{extern: extern} = struct, :default) when is_integer(extern) do
-    binary_form(struct)
-  end
-
   def render_elixir_spec(struct, :binary), do: binary_form(struct)
 
   # default map form.  Note all fields are 
@@ -96,15 +93,15 @@ defmodule Zig.Type.Struct do
     end
   end
 
-  defp binary_form(%{packed: int}) when is_integer(int) do
+  defp binary_form(%{packed: bytes}) when is_integer(bytes) do
     quote context: Elixir do
-      <<_::unquote(int * 8)>>
+      <<_::unquote(bytes)>>
     end
   end
 
-  defp binary_form(%{extern: int}) when is_integer(int) do
+  defp binary_form(%{extern: bytes}) when is_integer(bytes) do
     quote context: Elixir do
-      <<_::unquote(int * 8)>>
+      <<_::unquote(bytes)>>
     end
   end
 

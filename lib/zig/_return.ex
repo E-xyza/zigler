@@ -22,7 +22,7 @@ defmodule Zig.Return do
     struct!(__MODULE__, [type: type] ++ normalize_options(type, options))
   end
 
-  @as ~w[binary list integer]a
+  @as ~w[binary list integer map]a
   @options ~w[as cleanup]a
 
   defp normalize_options(type, options) do

@@ -48,6 +48,18 @@ defmodule ZiglerTest.SpecTemplate do
     end
   end
 
+  defp convert({:%{}, _, kv}) do
+    quote do
+      {:type, _, :map, unquote(Enum.map(kv, &convert_map/1))}
+    end
+  end
+
+  defp convert({left, right}) do
+    quote do
+      {:type, _, :tuple, [unquote(convert(left)), unquote(convert(right))]}
+    end
+  end
+
   defp convert(atom) when is_atom(atom) do
     quote do
       {:atom, _, unquote(atom)}
@@ -57,6 +69,18 @@ defmodule ZiglerTest.SpecTemplate do
   defp convert(integer) when is_integer(integer) do
     quote do
       {:integer, _, unquote(integer)}
+    end
+  end
+
+  defp convert_map({{:optional, _, [atom]}, type}) when is_atom(atom) do
+    quote do
+      {:type, _, :map_field_assoc, [{:atom, _, unquote(atom)}, unquote(convert(type))]}
+    end
+  end
+
+  defp convert_map({atom, type}) when is_atom(atom) do
+    quote do
+      {:type, _, :map_field_exact, [{:atom, _, unquote(atom)}, unquote(convert(type))]}
     end
   end
 

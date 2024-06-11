@@ -14,6 +14,8 @@ defmodule ZiglerTest.Types.Spec do
       manypointer_list_return_fn: [return: :list],
       slice_f64_fn_binary_return: [return: :binary],
       slice_u8_fn_list_return: [return: :list],
+      packed_struct_fn_map_return: [return: :map],
+      extern_struct_fn_binary_return: [return: :binary],
     ]
 
   ~Z"""
@@ -77,5 +79,25 @@ defmodule ZiglerTest.Types.Spec do
   pub fn slice_u8_fn(data: []u8) []u8 { return data; }
 
   pub fn slice_u8_fn_list_return(data: []u8) []u8 { return data; }
+
+  const RequiredStruct = struct { value: u32 };
+
+  pub fn required_struct_fn(data: RequiredStruct) RequiredStruct { return data; }
+  
+  const OptionalStruct = struct { value: u32 = 47 };
+
+  pub fn optional_struct_fn(data: OptionalStruct) OptionalStruct { return data; }
+
+  const PackedStruct = packed struct { value: u32 };
+
+  pub fn packed_struct_fn(data: PackedStruct) PackedStruct { return data; }
+
+  pub fn packed_struct_fn_map_return(data: PackedStruct) PackedStruct { return data; }
+
+  const ExternStruct = extern struct { value: u32 };
+
+  pub fn extern_struct_fn(data: ExternStruct) ExternStruct { return data; }
+
+  pub fn extern_struct_fn_binary_return(data: ExternStruct) ExternStruct { return data; }
   """
 end

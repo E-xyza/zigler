@@ -156,5 +156,28 @@ defmodule ZiglerTest.Types.SpecTest do
   end
 
   describe "for structs" do
+    test "input can be keyword or map with required", specs do
+      assert spec((%{value: 0..4_294_967_295} | [value: 0..4_294_967_295]-> %{value: 0..4_294_967_295})) = Map.fetch!(specs, {:required_struct_fn, 1})
+    end
+
+    test "input can be keyword or map with optional, but the output is required", specs do
+      assert spec((%{optional(:value) => 0..4_294_967_295} | [value: 0..4_294_967_295] -> %{value: 0..4_294_967_295})) = Map.fetch!(specs, {:optional_struct_fn, 1})
+    end
+
+    test "input can be binary for packed struct", specs do
+      assert spec((%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> -> <<_::32>>)) = Map.fetch!(specs, {:packed_struct_fn, 1})
+    end
+
+    test "output can be forced to map for packed struct", specs do
+      assert spec((%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> -> %{value: 0..4_294_967_295})) = Map.fetch!(specs, {:packed_struct_fn_map_return, 1})
+    end
+
+    test "input can be binary for extern struct", specs do
+      assert spec((%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> -> %{value: 0..4_294_967_295})) = Map.fetch!(specs, {:extern_struct_fn, 1})
+    end
+
+    test "output can be forced to map for extern struct", specs do
+      assert spec((%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> -> <<_::32>>)) = Map.fetch!(specs, {:extern_struct_fn_binary_return, 1})
+    end
   end
 end
