@@ -36,6 +36,12 @@ defmodule ZiglerTest.SpecTemplate do
     end
   end
 
+  defp convert({:<<>>, _, [{:"::", _, [{:_, _, _}, {:*, _, [{:_, _, _}, unit]}]}]}) do
+    quote do
+      {:type, _, :binary, [unquote(convert(0)), unquote(convert(unit))]}
+    end
+  end
+
   defp convert({:<<>>, _, [{:"::", _, [{:_, _, _}, length]}]}) do
     quote do
       {:type, _, :binary, [unquote(convert(length)), unquote(convert(0))]}

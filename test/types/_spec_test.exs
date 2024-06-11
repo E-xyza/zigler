@@ -102,7 +102,59 @@ defmodule ZiglerTest.Types.SpecTest do
     end
 
     test "of array, outer binary", specs do
-      assert spec(([[0..4_294_967_295]] | [<<_::128>>] | <<_::512>> -> <<_::512>>)) = Map.fetch!(specs, {:array_of_arrays_fn_binary_return, 1})
+      assert spec(([[0..4_294_967_295] | <<_::128>>] | <<_::512>> -> <<_::512>>)) =
+               Map.fetch!(specs, {:array_of_arrays_fn_binary_return, 1})
     end
+  end
+
+  describe "for sentinel-terminated arrays" do
+    test "the spec has variable sized binaries", specs do
+      assert spec(([byte] | binary -> binary)) =
+               Map.fetch!(specs, {:sentinel_terminated_array_fn, 1})
+    end
+  end
+
+  describe "for c pointers" do 
+    @tag :skip
+    test "cpointer"
+  end
+
+  describe "for manypointers" do
+    test "gives the correct spec for u8", specs do
+      assert spec(([byte] | binary -> byte)) = Map.fetch!(specs, {:manypointer_u8_fn, 1})
+    end
+
+    test "gives the correct spec for u32", specs do
+      assert spec(([0..4_294_967_295] | <<_::_*32>> -> 0..4_294_967_295)) = Map.fetch!(specs, {:manypointer_u32_fn, 1})
+    end
+
+    test "gives a result for sentinel-terminated u8", specs do
+      assert spec(( -> binary)) = Map.fetch!(specs, {:manypointer_return_fn, 0})
+    end
+
+    test "gives a result for sentinel-terminated u8 to be list", specs do
+      assert spec(( -> [byte])) = Map.fetch!(specs, {:manypointer_list_return_fn, 0})
+    end
+  end
+
+  describe "for slices" do
+    test "for f64 can be either list or binary, but returns list", specs do
+      assert spec(([float] | <<_::_*64>> -> [float])) = Map.fetch!(specs, {:slice_f64_fn, 1})
+    end
+
+    test "for f64 can be either list or binary, but can be forced to return binary", specs do
+      assert spec(([float] | <<_::_*64>> -> <<_::_*64>>)) = Map.fetch!(specs, {:slice_f64_fn_binary_return, 1})
+    end
+
+    test "for u8 can be either list or binary, but returns binary", specs do
+      assert spec(([byte] | binary -> binary)) = Map.fetch!(specs, {:slice_u8_fn, 1})
+    end
+
+    test "for u8 can be either list or binary, but can be forced to return list of bytes", specs do
+      assert spec(([byte] | binary -> [byte])) = Map.fetch!(specs, {:slice_u8_fn_list_return, 1})
+    end
+  end
+
+  describe "for structs" do
   end
 end

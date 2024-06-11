@@ -95,9 +95,15 @@ defmodule Zig.Type.Array do
     end
   end
 
+  defp binary_form(%{child: ~t(u8), has_sentinel?: true}) do
+    quote do
+      binary
+    end
+  end
+
   defp binary_form(type) do
     case Type.binary_size(type.child) do
-      child_size when is_integer(child_size) and type.sentinel ->
+      child_size when is_integer(child_size) and type.has_sentinel? ->
         quote do
           <<_::_*unquote(child_size)>>
         end

@@ -242,7 +242,6 @@ fn make_array_from_pointer(comptime T: type, array_ptr: anytype, opts: anytype) 
     // u8 arrays (sentinel terminated or otherwise) are treated as
     // strings.
     if (Child == u8 and options.output(opts) != .list) {
-        // u8 arrays are by default marshalled into binaries.
         return make_binary(array_ptr[0..], opts);
     }
 
@@ -264,16 +263,15 @@ fn make_array_from_pointer(comptime T: type, array_ptr: anytype, opts: anytype) 
         },
         // the general case is build the list backwards.
         else => {
+            const list_child_as = if (@hasField(@TypeOf(opts), "as")) options.list_child(opts.as) else .default;
+            const child_opts = .{.env = env, .as = list_child_as};
             var tail = e.enif_make_list_from_array(env, null, 0);
+
 
             if (array_info.len != 0) {
                 var index: usize = array_info.len;
-                const list_child = if (@hasField(@TypeOf(opts), "as")) options.list_child(opts.as) else .default;
                 while (index > 0) : (index -= 1) {
-                    tail = e.enif_make_list_cell(env, make(array_ptr[index - 1], .{
-                        .env = env, 
-                        .as = list_child,
-                    }).v, tail);
+                    tail = e.enif_make_list_cell(env, make(array_ptr[index - 1], child_opts).v, tail);
                 }
             }
 
@@ -315,29 +313,39 @@ fn make_cpointer(cpointer: anytype, opts: anytype) beam.term {
 }
 
 pub fn make_slice(slice: anytype, opts: anytype) beam.term {
-    const SliceType = @TypeOf(slice);
+    const T = @TypeOf(slice);
+    const slice_info = @typeInfo(T).Pointer;
+    const Child = slice_info.child;
+
     // u8 slices default to binary and must be opt-in to get charlists out.
-    if ((SliceType == []u8 or SliceType == []const u8) or options.output(opts) == .binary) {
+    if (Child == u8 and options.output(opts) != .list) {
         return make_binary(slice, opts);
     }
 
-    switch (@TypeOf(slice)) {
+    if (options.output(opts) == .binary) {
+        return make_binary(slice, opts);
+    }
+
+    const env = options.env(opts);
+    switch (T) {
         []beam.term => {
             // since beam.term is guaranteed to be a packed struct of only
             // e.ErlNifTerm, this is always guaranteed to work.
             const ptr = @as([*]const e.ErlNifTerm, @ptrCast(slice.ptr));
-            return .{ .v = e.enif_make_list_from_array(options.env(opts), ptr, @as(c_uint, @intCast(slice.len))) };
+            return .{ .v = e.enif_make_list_from_array(env, ptr, @as(c_uint, @intCast(slice.len))) };
         },
         []e.ErlNifTerm => {
-            return .{ .v = e.enif_make_list_from_array(options.env(opts), slice.ptr, @as(c_uint, @intCast(slice.len))) };
+            return .{ .v = e.enif_make_list_from_array(env, slice.ptr, @as(c_uint, @intCast(slice.len))) };
         },
         else => {
-            var tail = e.enif_make_list_from_array(options.env(opts), null, 0);
+            const list_child_as = if (@hasField(@TypeOf(opts), "as")) options.list_child(opts.as) else .default;
+            const child_opts = .{.env = env, .as = list_child_as};
+            var tail = e.enif_make_list_from_array(env, null, 0);
 
             if (slice.len != 0) {
                 var index = slice.len;
                 while (index > 0) : (index -= 1) {
-                    tail = e.enif_make_list_cell(options.env(opts), make(slice[index - 1], opts).v, tail);
+                    tail = e.enif_make_list_cell(env, make(slice[index - 1], child_opts).v, tail);
                 }
             }
 

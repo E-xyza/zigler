@@ -72,7 +72,7 @@ defmodule Zig.Type.Manypointer do
       when not sentinel or child == ~t(u8) do
     if binary_form = binary_form(child) do
       quote context: Elixir do
-        unquote([Type.render_elixir_spec(context)]) | unquote(binary_form)
+        unquote([Type.render_elixir_spec(child, context)]) | unquote(binary_form)
       end
     else
       [Type.render_elixir_spec(child, context)]

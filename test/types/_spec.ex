@@ -10,7 +10,10 @@ defmodule ZiglerTest.Types.Spec do
       u32_array_fn_binary_return: [return: :binary],
       u8_array_fn_list_return: [return: :list],
       array_of_arrays_fn_list_of_binary_return: [return: [as: {:list, :binary}]],
-      array_of_arrays_fn_binary_return: [return: :binary]
+      array_of_arrays_fn_binary_return: [return: :binary],
+      manypointer_list_return_fn: [return: :list],
+      slice_f64_fn_binary_return: [return: :binary],
+      slice_u8_fn_list_return: [return: :list],
     ]
 
   ~Z"""
@@ -54,5 +57,25 @@ defmodule ZiglerTest.Types.Spec do
   pub fn array_of_arrays_fn_list_of_binary_return(data: [4][4]u32) [4][4]u32 { return data;}
 
   pub fn array_of_arrays_fn_binary_return(data: [4][4]u32) [4][4]u32 { return data;}
+
+  pub fn sentinel_terminated_array_fn(data: [4:0]u8) [4:0]u8 { return data;}
+
+  // pub fn cpointer_fn(data: [*c:0]u8) [*c:0]
+
+  pub fn manypointer_u8_fn(data: [*]u8) u8 { return data[0]; }
+
+  pub fn manypointer_u32_fn(data: [*]u32) u32 { return data[0]; }
+
+  pub fn manypointer_return_fn() [*:0]const u8 { return @ptrCast(&"hello"); }
+
+  pub fn manypointer_list_return_fn() [*:0]const u8 { return @ptrCast(&"hello"); }
+
+  pub fn slice_f64_fn(data: []f64) []f64 { return data; }
+
+  pub fn slice_f64_fn_binary_return(data: []f64) []f64 { return data; }
+
+  pub fn slice_u8_fn(data: []u8) []u8 { return data; }
+
+  pub fn slice_u8_fn_list_return(data: []u8) []u8 { return data; }
   """
 end

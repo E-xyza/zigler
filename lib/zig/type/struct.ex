@@ -1,4 +1,6 @@
 defmodule Zig.Type.Struct do
+  alias Zig.Parameter
+  alias Zig.Return
   alias Zig.Type
   use Type
 
@@ -46,41 +48,48 @@ defmodule Zig.Type.Struct do
 
   def marshal_param(_, _), do: nil
 
-  #def render_elixir_spec(struct, :param, opts) do
-  #  optional = to_fields(struct.optional, :optional, :param, opts)
-  #  keyword = to_fields(struct.optional, :untagged, :param, opts)
-  #  required = to_fields(struct.required, :untagged, :param, opts)
-#
-  #  if binary_form = binary_form(struct) do
-  #    quote do
-  #      unquote(map_spec(optional, required))
-  #      | unquote(keyword ++ required)
-  #      | unquote(binary_form)
-  #    end
-  #  else
-  #    quote do
-  #      unquote(map_spec(optional, required)) | unquote(keyword ++ required)
-  #    end
-  #  end
-  #end
-#
-  #def render_elixir_spec(struct, :return, opts) do
-  #  binary_form = binary_form(struct)
-#
-  #  case opts.as do
-  #    :binary when not is_nil(binary_form) ->
-  #      binary_form
-#
-  #    t when t in ~w(list binary default)a ->
-  #      all_fields =
-  #        struct.optional
-  #        |> Map.merge(struct.required)
-  #        |> to_fields(:required, :return, opts)
-#
-  #      map_spec([], all_fields)
-  #  end
-  #end
-#
+  def render_elixir_spec(struct, %Return{as: as}) do
+    render_elixir_spec(struct, as)
+  end
+
+  def render_elixir_spec(struct, %Parameter{} = params) do
+    optional = to_fields(struct.optional, :optional, params)
+    keyword = to_fields(struct.optional, :untagged, params)
+    required = to_fields(struct.required, :untagged, params)
+
+    if binary_form = binary_form(struct) do
+      quote do
+        unquote(map_spec(optional, required))
+        | unquote(keyword ++ required)
+        | unquote(binary_form)
+      end
+    else
+      quote do
+        unquote(map_spec(optional, required)) | unquote(keyword ++ required)
+      end
+    end
+  end
+
+  def render_elixir_spec(%{packed: packed} = struct, :default) when is_integer(packed) do
+    binary_form(struct)
+  end
+
+  def render_elixir_spec(%{extern: extern} = struct, :default) when is_integer(extern) do
+    binary_form(struct)
+  end
+
+  def render_elixir_spec(struct, :binary), do: binary_form(struct)
+
+  # default map form.  Note all fields are 
+  def render_elixir_spec(struct, context) do
+    all_fields =
+      struct.optional
+      |> Map.merge(struct.required)
+      |> to_fields(:required, context)
+
+    map_spec([], all_fields)
+  end
+
   defp map_spec(optional, required) do
     quote context: Elixir do
       %{unquote_splicing(optional ++ required)}
@@ -93,18 +102,24 @@ defmodule Zig.Type.Struct do
     end
   end
 
+  defp binary_form(%{extern: int}) when is_integer(int) do
+    quote context: Elixir do
+      <<_::unquote(int * 8)>>
+    end
+  end
+
   defp binary_form(_struct), do: nil
 
-  defp to_fields(portion, mode, context, opts) do
+  defp to_fields(portion, mode, opts) do
     portion
     |> Enum.map(fn
       {k, v} when mode == :optional ->
         {quote do
            optional(unquote(k))
-         end, Type.render_elixir_spec(v, context, opts)}
+         end, Type.render_elixir_spec(v, :default)}
 
       {k, v} ->
-        {k, Type.render_elixir_spec(v, context, opts)}
+        {k, Type.render_elixir_spec(v, :default)}
     end)
     |> Enum.sort()
   end
