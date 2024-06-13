@@ -97,7 +97,14 @@ defmodule Zig.Compiler do
   end
 
   defp apply_parser(module, zig_code) do
-    %{module | parsed: Parser.parse(zig_code)}
+    parsed = Parser.parse(zig_code)
+
+    external_resources =
+      parsed
+      |> recursive_resource_search(module.file, MapSet.new())
+      |> Enum.to_list()
+
+    %{module | parsed: parsed, external_resources: external_resources}
   end
 
   defp precompile(module) do
@@ -112,17 +119,23 @@ defmodule Zig.Compiler do
     Logger.debug("wrote module code to #{path}")
   end
 
-  # require EEx
-  # zig_alias_template = Path.join(__DIR__, "templates/alias.zig.eex")
-  # EEx.function_from_file(:defp, :create_aliases, zig_alias_template, [:assigns])
+  defp recursive_resource_search(parsed, path, so_far) do
+    Enum.reduce(parsed.dependencies, so_far, fn dep, so_far ->
+      dep_path =
+        dep
+        |> Path.expand(Path.dirname(path))
+        |> Path.relative_to_cwd()
 
-  # defp dependencies_for(assemblies) do
-  #  Enum.map(assemblies, fn assembly ->
-  #    quote do
-  #      @external_resource unquote(assembly.source)
-  #    end
-  #  end)
-  # end
+      if dep_path in so_far do
+        so_far
+      else
+        dep_path
+        |> File.read!()
+        |> Parser.parse()
+        |> recursive_resource_search(dep_path, MapSet.put(so_far, dep_path))
+      end
+    end)
+  end
 
   #############################################################################
   ## STEPS

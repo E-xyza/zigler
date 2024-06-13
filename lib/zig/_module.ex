@@ -43,7 +43,8 @@ defmodule Zig.Module do
                 dump_sema: false,
                 dump_build_zig: false,
                 callbacks: [],
-                default_nif_opts: []
+                default_nif_opts: [],
+                external_resources: []
               ]
 
   @type t :: %__MODULE__{
@@ -210,8 +211,17 @@ defmodule Zig.Module do
         0
       end
 
+    external_resources =
+      Enum.map(module.external_resources, fn file ->
+        quote do
+          @external_resource unquote(file)
+        end
+      end)
+
     load_nif_fn =
       quote do
+        unquote_splicing(external_resources)
+
         def __load_nifs__ do
           # LOADS the nifs from :code.lib_dir() <> "ebin", which is
           # a path that has files correctly moved in to release packages.

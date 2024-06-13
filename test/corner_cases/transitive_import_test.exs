@@ -18,7 +18,9 @@ defmodule ZiglerTest.CornerCases.TransitiveImportTest do
     end
 
     test "files are labeled as external resources" do
-      assert "test/corner_cases/single.zig" in __MODULE__.__info__(:attributes)[:external_resource]
+      assert {:external_resource, ["test/corner_cases/single.zig"]} in __MODULE__.__info__(
+               :attributes
+             )
     end
   end
 
@@ -28,7 +30,9 @@ defmodule ZiglerTest.CornerCases.TransitiveImportTest do
     end
 
     test "files are labeled as external resources" do
-      assert "test/corner_cases/double.zig" in __MODULE__.__info__(:attributes)[:external_resource]
+      assert {:external_resource, ["test/corner_cases/double.zig"]} in __MODULE__.__info__(
+               :attributes
+             )
     end
   end
 
