@@ -253,6 +253,15 @@ after
   defp render_return_as(atom) when is_atom(atom), do: ".#{atom}"
   defp render_return_as({:list, return}), do: ".{.list = #{render_return_as(return)}}"
 
+  defp render_return_as({:map, map_kv_list}),
+    do: ".{.map = .{#{render_map_kv_list(map_kv_list)}}}"
+
+  defp render_map_kv_list(map_kv_list) do
+    Enum.map_join(map_kv_list, ", ", fn {key, value} ->
+      ".#{key} = #{render_return_as(value)}"
+    end)
+  end
+
   def _default_marshal, do: []
 end
 

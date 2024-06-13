@@ -168,26 +168,51 @@ fn make_struct(value: anytype, opts: anytype) beam.term {
     } else if (resource.MaybeUnwrap(struct_info)) |_| {
         return value.make(opts);
     } else {
-        const fields = struct_info.fields;
-        var result: e.ErlNifTerm = undefined;
-        var keys: [fields.len]e.ErlNifTerm = undefined;
-        var vals: [fields.len]e.ErlNifTerm = undefined;
-
-        inline for (fields, 0..) |field, index| {
-            // this needs to be implemented.
-            const map_child_as = if (@hasField(@TypeOf(opts), "as")) options.map_child(opts.as, field.name) else .default;
-            const child_opts = .{.env = env, .as = map_child_as};
-
-            if (field.name.len > 255) {
-                @compileError("the length of the struct field name is too large for the erlang virtual machine");
-            }
-            keys[index] = e.enif_make_atom_len(env, field.name.ptr, field.name.len);
-            vals[index] = make(@field(value, field.name), child_opts).v;
-        }
-
-        _ = e.enif_make_map_from_arrays(env, &keys, &vals, fields.len, &result);
-        return .{ .v = result };
+        return switch (options.output(opts)) {
+            .map => make_struct_map(value, opts),
+            .binary => make_struct_binary(value, opts),
+            .default => if (struct_info.layout == .@"packed") make_struct_binary(value, opts) else make_struct_map(value, opts),
+            else => @compileError("structs must be output as `binary`, `map` or `default` only")
+        };
     }
+}
+
+fn make_struct_map(value: anytype, opts: anytype) beam.term {
+    const struct_info = @typeInfo(@TypeOf(value)).Struct;
+    const env = options.env(opts);
+    const fields = struct_info.fields;
+    var result: e.ErlNifTerm = undefined;
+    var keys: [fields.len]e.ErlNifTerm = undefined;
+    var vals: [fields.len]e.ErlNifTerm = undefined;
+
+    inline for (fields, 0..) |field, index| {
+        // this needs to be implemented.
+        const map_child_as = if (@hasField(@TypeOf(opts), "as")) options.map_child(opts.as, field.name) else .default;
+        const child_opts = .{ .env = env, .as = map_child_as };
+
+        if (field.name.len > 255) {
+            @compileError("the length of the struct field name is too large for the erlang virtual machine");
+        }
+        keys[index] = e.enif_make_atom_len(env, field.name.ptr, field.name.len);
+        vals[index] = make(@field(value, field.name), child_opts).v;
+    }
+
+    _ = e.enif_make_map_from_arrays(env, &keys, &vals, fields.len, &result);
+    return .{ .v = result };
+}
+
+fn make_struct_binary(value: anytype, opts: anytype) beam.term {
+    const T = @TypeOf(value);
+    const struct_info = @typeInfo(T).Struct;
+    switch (struct_info.layout) {
+        .@"packed", .@"extern" => {},
+        else =>  @compileError("only packed and extern structs can be output as binary")
+    }
+    const byte_size = @sizeOf(T);
+    var result: beam.term = undefined;
+    const buf: *T = @ptrCast(@alignCast(e.enif_make_new_binary(options.env(opts), byte_size, &result.v)));
+    buf.* = value;
+    return result;
 }
 
 fn make_enum_literal(value: anytype, opts: anytype) beam.term {
@@ -200,14 +225,14 @@ fn make_enum_literal(value: anytype, opts: anytype) beam.term {
 }
 
 fn make_enum(value: anytype, opts: anytype) beam.term {
-    const new_opts = .{.env = options.env(opts), .as = .default};
+    const new_opts = .{ .env = options.env(opts), .as = .default };
     switch (options.output(opts)) {
         .default => return make_into_atom(@tagName(value), new_opts),
         .integer => return make_int(@intFromEnum(value), new_opts),
         else => |output| {
             const msg = std.fmt.comptimePrint("the 'as' field for an enum must be `.default` or `.integer`, got {}.", .{output});
             @compileError(msg);
-        }
+        },
     }
 }
 
@@ -269,9 +294,8 @@ fn make_array_from_pointer(comptime T: type, array_ptr: anytype, opts: anytype) 
         // the general case is build the list backwards.
         else => {
             const list_child_as = if (@hasField(@TypeOf(opts), "as")) options.list_child(opts.as) else .default;
-            const child_opts = .{.env = env, .as = list_child_as};
+            const child_opts = .{ .env = env, .as = list_child_as };
             var tail = e.enif_make_list_from_array(env, null, 0);
-
 
             if (array_info.len != 0) {
                 var index: usize = array_info.len;
@@ -344,7 +368,7 @@ pub fn make_slice(slice: anytype, opts: anytype) beam.term {
         },
         else => {
             const list_child_as = if (@hasField(@TypeOf(opts), "as")) options.list_child(opts.as) else .default;
-            const child_opts = .{.env = env, .as = list_child_as};
+            const child_opts = .{ .env = env, .as = list_child_as };
             var tail = e.enif_make_list_from_array(env, null, 0);
 
             if (slice.len != 0) {

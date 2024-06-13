@@ -16,6 +16,7 @@ defmodule ZiglerTest.Types.Spec do
       slice_u8_fn_list_return: [return: :list],
       packed_struct_fn_map_return: [return: :map],
       extern_struct_fn_binary_return: [return: :binary],
+      extern_struct_fn_internal_binary_return: [return: {:map, value: :binary}]
     ]
 
   ~Z"""
@@ -83,7 +84,7 @@ defmodule ZiglerTest.Types.Spec do
   const RequiredStruct = struct { value: u32 };
 
   pub fn required_struct_fn(data: RequiredStruct) RequiredStruct { return data; }
-  
+
   const OptionalStruct = struct { value: u32 = 47 };
 
   pub fn optional_struct_fn(data: OptionalStruct) OptionalStruct { return data; }
@@ -99,5 +100,9 @@ defmodule ZiglerTest.Types.Spec do
   pub fn extern_struct_fn(data: ExternStruct) ExternStruct { return data; }
 
   pub fn extern_struct_fn_binary_return(data: ExternStruct) ExternStruct { return data; }
+
+  const Extern2Struct = struct { value: [2]u32 };
+
+  pub fn extern_struct_fn_internal_binary_return(data: Extern2Struct) Extern2Struct { return data; }
   """
 end

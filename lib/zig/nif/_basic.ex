@@ -17,7 +17,6 @@ defmodule Zig.Nif.Basic do
   alias Zig.Nif.Synchronous
   alias Zig.Type
   alias Zig.Type.Integer
-  alias Zig.Return
 
   import Zig.QuoteErl
 

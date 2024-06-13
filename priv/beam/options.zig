@@ -96,14 +96,15 @@ fn MapChildOf(T: type, comptime name: []const u8) type {
         .Struct => |S| {
             inline for (S.fields) |field| {
                 if (std.mem.eql(u8, field.name, "map")) {
-                    const M = @TypeOf(field.map);
+                    const M = field.type;
                     switch (@typeInfo(M)) {
                         .Struct => |MT| {
                             inline for (MT.fields) |mfield| {
                                 if (std.mem.eql(u8, mfield.name, name)) return mfield.type;
                             }
                             @compileError("field not found in target struct");
-                        }
+                        },
+                        else => @compileError("map as definition needs to be a struct")
                     }
                     @compileError("map as definition needs to be a keyword list");
                 }
@@ -120,7 +121,7 @@ pub fn map_child(map_as: anytype, comptime name: []const u8) MapChildOf(@TypeOf(
         .EnumLiteral => return .default,
         .Struct => {
             const M = @TypeOf(map_as.map);
-            if (@hasField(M, name)) return @field(M, name);
+            if (@hasField(M, name)) return @field(map_as.map, name);
             return .default;
         },
         else => unreachable,

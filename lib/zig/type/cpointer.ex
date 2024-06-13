@@ -1,8 +1,8 @@
 defmodule Zig.Type.Cpointer do
   alias Zig.Parameter
-  alias Zig.Return
   alias Zig.Type
   alias Zig.Type.Struct
+
   use Type
 
   import Type, only: :macros
@@ -34,9 +34,9 @@ defmodule Zig.Type.Cpointer do
 
   def render_zig(%{child: child}), do: "[*c]#{Type.render_zig(child)}"
 
-  def render_elixir_spec(%{child: child}, %Parameter{}) do
+  def render_elixir_spec(%{child: child}, %Parameter{} = parameter) do
     has_solo? = match?(%Type.Struct{extern: true}, child)
-    child_form = Type.render_elixir_spec(child, :param, [])
+    child_form = Type.render_elixir_spec(child, parameter)
 
     case {has_solo?, binary_form(child)} do
       {false, nil} ->
@@ -56,9 +56,9 @@ defmodule Zig.Type.Cpointer do
     end
   end
 
-  def render_elixir_spec(%{child: ~t(u8)}, :return, opts) do
+  def render_elixir_spec(%{child: ~t(u8)}, context) do
     # assumed to be a null-terminated string
-    case opts do
+    case context do
       %{as: :list} ->
         quote context: Elixir do
           [0..255]
@@ -76,10 +76,22 @@ defmodule Zig.Type.Cpointer do
     end
   end
 
-  def render_elixir_spec(%{child: child}, :return, opts) do
-    case opts do
+  def render_elixir_spec(%{child: %__MODULE__{child: ~t(u8)}}, _) do
+    # assumed to be null-terminated list of strings
+    quote do
+      [binary()]
+    end
+  end
+
+  def render_elixir_spec(%{child: child = %__MODULE__{}}, context) do
+    # assumed to be a null-terminated list of cpointers
+    [Type.render_elixir_spec(child, child_context(context))]
+  end
+
+  def render_elixir_spec(%{child: child}, context) do
+    case context do
       %{as: :default} ->
-        [Type.render_elixir_spec(child, :return, opts)]
+        [Type.render_elixir_spec(child, context)]
 
       %{as: :binary, length: {:arg, _}} ->
         # this is the case where the length is drawn from one of the arguments
@@ -94,24 +106,15 @@ defmodule Zig.Type.Cpointer do
         end
 
       _ when child.__struct__ == Type.Struct ->
-        Type.render_elixir_spec(child, :return, opts)
-
-      _ when child == %__MODULE__{child: ~t(u8)} ->
-        quote do
-          [binary()]
-        end
-
-      _ when child.__struct__ == __MODULE__ ->
-        [Type.render_elixir_spec(child.child, :return, opts)]
+        Type.render_elixir_spec(child, child_context(context))
 
       _ ->
         raise "missing length not allowed"
     end
   end
 
-  def render_elixir_spec(%{child: child = %__MODULE__{}}, :return, opts) do
-    [Type.render_elixir_spec(child, :return, opts)]
-  end
+  defp child_context(%{as: {:list, list_child_as}} = context), do: %{context | as: list_child_as}
+  defp child_context(_), do: :default
 
   defp chunk_size(%type{bits: bits}) when type in [Type.Integer, Type.Float] do
     bits

@@ -111,15 +111,26 @@ defmodule Zig.Type.Struct do
     portion
     |> Enum.map(fn
       {k, v} when mode == :optional ->
+        key_opts = key_opts(opts, k)
+
         {quote do
            optional(unquote(k))
-         end, Type.render_elixir_spec(v, :default)}
+         end, Type.render_elixir_spec(v, key_opts)}
 
       {k, v} ->
-        {k, Type.render_elixir_spec(v, :default)}
+        key_opts = key_opts(opts, k)
+        {k, Type.render_elixir_spec(v, key_opts)}
     end)
     |> Enum.sort()
   end
+
+  defp key_opts({:map, keyword}, key) do
+    Keyword.get(keyword, key, :default)
+  end
+
+  defp key_opts(%Parameter{} = parameter, _), do: parameter
+
+  defp key_opts(_, _), do: :default
 
   def render_zig(%{name: name}), do: "nif.#{name}"
 

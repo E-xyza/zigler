@@ -114,7 +114,7 @@ defmodule ZiglerTest.Types.SpecTest do
     end
   end
 
-  describe "for c pointers" do 
+  describe "for c pointers" do
     @tag :skip
     test "cpointer"
   end
@@ -125,15 +125,16 @@ defmodule ZiglerTest.Types.SpecTest do
     end
 
     test "gives the correct spec for u32", specs do
-      assert spec(([0..4_294_967_295] | <<_::_*32>> -> 0..4_294_967_295)) = Map.fetch!(specs, {:manypointer_u32_fn, 1})
+      assert spec(([0..4_294_967_295] | <<_::_*32>> -> 0..4_294_967_295)) =
+               Map.fetch!(specs, {:manypointer_u32_fn, 1})
     end
 
     test "gives a result for sentinel-terminated u8", specs do
-      assert spec(( -> binary)) = Map.fetch!(specs, {:manypointer_return_fn, 0})
+      assert spec((-> binary)) = Map.fetch!(specs, {:manypointer_return_fn, 0})
     end
 
     test "gives a result for sentinel-terminated u8 to be list", specs do
-      assert spec(( -> [byte])) = Map.fetch!(specs, {:manypointer_list_return_fn, 0})
+      assert spec((-> [byte])) = Map.fetch!(specs, {:manypointer_list_return_fn, 0})
     end
   end
 
@@ -143,41 +144,67 @@ defmodule ZiglerTest.Types.SpecTest do
     end
 
     test "for f64 can be either list or binary, but can be forced to return binary", specs do
-      assert spec(([float] | <<_::_*64>> -> <<_::_*64>>)) = Map.fetch!(specs, {:slice_f64_fn_binary_return, 1})
+      assert spec(([float] | <<_::_*64>> -> <<_::_*64>>)) =
+               Map.fetch!(specs, {:slice_f64_fn_binary_return, 1})
     end
 
     test "for u8 can be either list or binary, but returns binary", specs do
       assert spec(([byte] | binary -> binary)) = Map.fetch!(specs, {:slice_u8_fn, 1})
     end
 
-    test "for u8 can be either list or binary, but can be forced to return list of bytes", specs do
+    test "for u8 can be either list or binary, but can be forced to return list of bytes",
+         specs do
       assert spec(([byte] | binary -> [byte])) = Map.fetch!(specs, {:slice_u8_fn_list_return, 1})
     end
   end
 
-  describe "for structs" do
+  describe "for normal structs" do
     test "input can be keyword or map with required", specs do
-      assert spec((%{value: 0..4_294_967_295} | [value: 0..4_294_967_295]-> %{value: 0..4_294_967_295})) = Map.fetch!(specs, {:required_struct_fn, 1})
+      assert spec(
+               (%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] ->
+                  %{value: 0..4_294_967_295})
+             ) = Map.fetch!(specs, {:required_struct_fn, 1})
     end
 
     test "input can be keyword or map with optional, but the output is required", specs do
-      assert spec((%{optional(:value) => 0..4_294_967_295} | [value: 0..4_294_967_295] -> %{value: 0..4_294_967_295})) = Map.fetch!(specs, {:optional_struct_fn, 1})
+      assert spec(
+               (%{optional(:value) => 0..4_294_967_295} | [value: 0..4_294_967_295] ->
+                  %{value: 0..4_294_967_295})
+             ) = Map.fetch!(specs, {:optional_struct_fn, 1})
     end
 
     test "input can be binary for packed struct", specs do
-      assert spec((%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> -> <<_::32>>)) = Map.fetch!(specs, {:packed_struct_fn, 1})
+      assert spec(
+               (%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> -> <<_::32>>)
+             ) = Map.fetch!(specs, {:packed_struct_fn, 1})
     end
 
     test "output can be forced to map for packed struct", specs do
-      assert spec((%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> -> %{value: 0..4_294_967_295})) = Map.fetch!(specs, {:packed_struct_fn_map_return, 1})
+      assert spec(
+               (%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> ->
+                  %{value: 0..4_294_967_295})
+             ) = Map.fetch!(specs, {:packed_struct_fn_map_return, 1})
     end
 
     test "input can be binary for extern struct", specs do
-      assert spec((%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> -> %{value: 0..4_294_967_295})) = Map.fetch!(specs, {:extern_struct_fn, 1})
+      assert spec(
+               (%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> ->
+                  %{value: 0..4_294_967_295})
+             ) = Map.fetch!(specs, {:extern_struct_fn, 1})
     end
 
     test "output can be forced to map for extern struct", specs do
-      assert spec((%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> -> <<_::32>>)) = Map.fetch!(specs, {:extern_struct_fn_binary_return, 1})
+      assert spec(
+               (%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> -> <<_::32>>)
+             ) = Map.fetch!(specs, {:extern_struct_fn_binary_return, 1})
+    end
+
+    test "you can declare internal map output", specs do
+      assert spec(
+               (%{value: [0..4_294_967_295] | <<_::64>>}
+                | [value: [0..4_294_967_295] | <<_::64>>] ->
+                  %{value: <<_::64>>})
+             ) = Map.fetch!(specs, {:extern_struct_fn_internal_binary_return, 1})
     end
   end
 end

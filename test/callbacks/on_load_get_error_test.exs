@@ -19,6 +19,7 @@ defmodule ZiglerTest.Callbacks.OnLoadGetErrorTest do
               const beam = @import("beam");
               pub fn foo(_: ?*?*u32, _: i32) void {
               }
+              pub fn bar() void {}
               """
             end
           end

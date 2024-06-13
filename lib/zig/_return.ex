@@ -35,6 +35,12 @@ defmodule Zig.Return do
       :noclean ->
         {:cleanup, false}
 
+      {:list, _} = v ->
+        {:as, {:list, v}}
+
+      {:map, _} = v ->
+        {:as, v}
+
       {k, _} = kv when k in @options ->
         kv
     end)

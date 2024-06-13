@@ -28,7 +28,7 @@ defmodule Zig.Type.Enum do
   def marshal_return(_, _, _), do: Type._default_marshal()
   def render_payload_options(_, _, _), do: Type._default_payload_options()
 
-  def render_elixir_spec(%{tags: tags} = type, %Parameter{}) do
+  def render_elixir_spec(%{tags: tags}, %Parameter{}) do
     tags
     |> integers()
     |> Kernel.++(atoms(tags))
