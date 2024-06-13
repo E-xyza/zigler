@@ -1,6 +1,7 @@
 defmodule Zig.Sema do
   @moduledoc false
   require EEx
+  alias Zig.Attributes
   alias Zig.Module
   alias Zig.Nif
   alias Zig.Parameter
@@ -30,7 +31,7 @@ defmodule Zig.Sema do
   # desired file.
   def run_sema!(module) do
     module.zig_code_path
-    |> Zig.Command.run_sema!()
+    |> Zig.Command.run_sema!(Attributes.code_path(module))
     |> Jason.decode!()
     |> tap(&maybe_dump(&1, module))
     |> reject_ignored(module)

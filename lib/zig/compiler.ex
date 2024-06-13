@@ -3,10 +3,9 @@ defmodule Zig.Compiler do
   handles instrumenting elixir code with hooks for zig NIFs.
   """
 
-  # TODO: refactor to use a struct
-
   require Logger
 
+  alias Zig.Attributes
   alias Zig.Builder
   alias Zig.Command
   alias Zig.Manifest
@@ -22,6 +21,7 @@ defmodule Zig.Compiler do
     opts =
       module
       |> Module.get_attribute(:zigler_opts)
+      |> Map.replace!(:attributes, Attributes.from_module(module))
       |> adjust_elixir_options
 
     code_dir = opts.dir || Path.dirname(file)

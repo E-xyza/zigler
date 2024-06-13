@@ -4,6 +4,7 @@ defmodule Zig.Module do
   module
   """
 
+  alias Zig.Attributes
   alias Zig.C
   alias Zig.Nif
   alias Zig.Resources
@@ -44,7 +45,8 @@ defmodule Zig.Module do
                 dump_build_zig: false,
                 callbacks: [],
                 default_nif_opts: [],
-                external_resources: []
+                external_resources: [],
+                attributes: []
               ]
 
   @type t :: %__MODULE__{
@@ -77,7 +79,8 @@ defmodule Zig.Module do
           precompiled: nil | precompiledspec(),
           c: C.t(),
           callbacks: callback_opts(),
-          default_nif_opts: [Nif.defaultable_opts()]
+          default_nif_opts: [Nif.defaultable_opts()],
+          attributes: keyword
         }
 
   @type packagespec() :: {name :: atom(), {path :: Path.t(), deps :: [atom]}}

@@ -23,18 +23,23 @@ pub fn build(b: *std.Build) void {
             }}
         });
 
+    const attributes = b.createModule(
+        .{
+            .root_source_file = .{.cwd_relative = "attributes.zig"},
+            .imports = &[_]std.Build.Module.Import{}
+        });
+
     <%= for {name, path, deps} <- @packages do %>
     const <%= name %> = b.createModule(
         .{
             .root_source_file = .{.cwd_relative = "<%= path %>"},
             .imports = &[_]std.Build.Module.Import{
             <%= for dep <- deps do %>
-                .{
-                    .name = "<%= dep %>",
-                    .module = <%= dep %>
-                }
+            .{
+                .name = "<%= dep %>",
+                .module = <%= dep %>
+            },
             <% end %>
-            }
         });
     <% end %>
 
@@ -48,6 +53,9 @@ pub fn build(b: *std.Build) void {
         }, .{
             .name = "beam",
             .module = beam
+        }, .{
+            .name = "attributes",
+            .module = attributes
         }
         <%= for module <- module_list do %>
         , .{
