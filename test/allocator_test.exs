@@ -14,6 +14,12 @@ defmodule ZiglerTest.AllocatorTest do
   pub fn basic_free(addr: usize) void {
       beam.allocator.free(@as([*]u8, @ptrFromInt(addr))[0..10_000]);
   }
+
+  pub fn alloc_aligned() !usize {
+      const slice = try beam.allocator.alignedAlloc(u8, 16, 10);
+      defer beam.allocator.free(slice);
+      return @intFromPtr(slice.ptr);
+  }
   """
 
   describe "for the basic beam allocator" do
@@ -24,6 +30,11 @@ defmodule ZiglerTest.AllocatorTest do
     test "free works" do
       addr = basic_allocate()
       basic_free(addr)
+    end
+
+    test "alloc_aligned works" do
+      addr = alloc_aligned()
+      assert rem(addr, 16) === 0
     end
   end
 

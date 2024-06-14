@@ -1,4 +1,4 @@
-defmodule ZiglerTest.IgnoreTest do
+defmodule ZiglerTest.CornerCases.IgnoreTest do
   use ZiglerTest.IntegrationCase, async: true
 
   use Zig,

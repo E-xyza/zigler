@@ -4,7 +4,6 @@ defmodule Zig.Module do
   module
   """
 
-  alias Zig.Attributes
   alias Zig.C
   alias Zig.Nif
   alias Zig.Resources
