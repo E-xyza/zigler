@@ -51,3 +51,4 @@ zigler-*.tar
 *.a
 
 /test/code
+/test/corner_cases/staging
