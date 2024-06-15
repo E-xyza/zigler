@@ -30,7 +30,7 @@ defmodule Zig.Options do
       :auto ->
         []
 
-      {:..., _, nil} ->
+      {:..., _, _} ->
         []
 
       function when is_atom(function) ->
@@ -65,7 +65,7 @@ defmodule Zig.Options do
       |> List.wrap()
       |> Enum.any?(fn
         :auto -> true
-        {:..., _, nil} -> true
+        {:..., _, _} -> true
         _ -> false
       end)
 
