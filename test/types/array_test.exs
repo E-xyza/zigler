@@ -56,7 +56,6 @@ defmodule ZiglerTest.Types.ArrayTest do
                array_float_test(<<1.0::float-native, 2.0::float-native, 3.0::float-native>>)
     end
 
-    @tag :skip
     test "you can get back a binary" do
       assert <<2.0::float-native, 3.0::float-native, 4.0::float-native>> ==
                array_float_binary_test([1.0, 2.0, 3.0])

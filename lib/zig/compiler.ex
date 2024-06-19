@@ -13,7 +13,7 @@ defmodule Zig.Compiler do
   alias Zig.Parser
   alias Zig.Sema
 
-  defmacro __before_compile__(%{module: module, file: file}) do
+  defmacro __before_compile__(%{module: module, file: file} = env) do
     # NOTE: this is going to be called only from Elixir.  Erlang will not call this.
     # all functionality in this macro must be replicated when running compilation from
     # erlang.
@@ -26,10 +26,22 @@ defmodule Zig.Compiler do
 
     code_dir = opts.dir || Path.dirname(file)
 
-    module
-    |> Module.get_attribute(:zig_code_parts)
-    |> Enum.reverse()
-    |> IO.iodata_to_binary()
+    code =
+      if path = opts.zig_code_path do
+        # check for existence of :zig_code_parts
+
+        env.file
+        |> Path.dirname
+        |> Path.join(path)
+        |> File.read!()
+      else
+        module
+        |> Module.get_attribute(:zig_code_parts)
+        |> Enum.reverse()
+        |> IO.iodata_to_binary()
+      end
+
+    code
     |> compile(code_dir, opts)
     |> Zig.Macro.inspect(opts)
   end
