@@ -29,6 +29,9 @@ defmodule Zig.Compiler do
     code =
       if path = opts.zig_code_path do
         # check for existence of :zig_code_parts
+        unless [] == Module.get_attribute(module, :zig_code_parts) do
+          raise CompileError, file: file, line: env.line, description: "(module #{inspect module}) you may not use ~Z when `:zig_code_path` is specified"
+        end
 
         env.file
         |> Path.dirname
