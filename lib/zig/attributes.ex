@@ -17,7 +17,7 @@ defmodule Zig.Attributes do
 
   def code_path(module) do
     module.module_code_path
-    |> Path.dirname
+    |> Path.dirname()
     |> Path.join("attributes.zig")
   end
 
@@ -39,7 +39,8 @@ defmodule Zig.Attributes do
     "pub const #{name} = #{render_zig_from_term(value)};\n"
   end
 
-  defp render_zig_from_term(value) when is_integer(value) or is_float(value) or is_boolean(value) do
+  defp render_zig_from_term(value)
+       when is_integer(value) or is_float(value) or is_boolean(value) do
     "#{value}"
   end
 
@@ -54,9 +55,10 @@ defmodule Zig.Attributes do
   end
 
   defp render_zig_from_term(value) when is_tuple(value) do
-    tuple_items = value
-    |> Tuple.to_list()
-    |> Enum.map_join(", ", &render_zig_from_term/1)
+    tuple_items =
+      value
+      |> Tuple.to_list()
+      |> Enum.map_join(", ", &render_zig_from_term/1)
 
     ".{#{tuple_items}}"
   end

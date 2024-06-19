@@ -157,7 +157,6 @@ inline fn lowerInt(comptime T: type, src: beam.term, result: anytype, opts: anyt
 pub fn get_enum(comptime T: type, src: beam.term, opts: anytype) !T {
     const enum_info = @typeInfo(T).Enum;
     const IntType = enum_info.tag_type;
-    const only_one = enum_info.fields.len == 1;
     comptime var int_values: [enum_info.fields.len]IntType = undefined;
     comptime for (&int_values, 0..) |*value, index| {
         value.* = enum_info.fields[index].value;
@@ -170,17 +169,11 @@ pub fn get_enum(comptime T: type, src: beam.term, opts: anytype) !T {
     // prefer the integer form, fallback to string searches.
     switch (src.term_type(options.env(opts))) {
         .integer => {
-            if (only_one) {
-                errdefer error_line(.{ .{ .typename, @typeName(T) }, " (only has one value and does not map to integer, it may only be `", .{ .inspect, int_values[0] }, "`)" }, opts);
-
-                return error.argument_error;
-            } else {
                 errdefer error_line(.{ "note: not an integer value for ", .{ .typename, @typeName(T) }, " (should be one of `", .{ .inspect, int_values }, "`)" }, opts);
 
                 // put erasure on get_int setting the error_line
                 const result = try get_int(IntType, src, opts);
                 return try std.meta.intToEnum(T, result);
-            }
         },
         .atom => {
             errdefer error_line(.{ "note: not an atom value for ", .{ .typename, @typeName(T) }, " (should be one of `", .{ .inspect, enum_values }, "`)" }, opts);
@@ -368,7 +361,7 @@ pub fn get_optional(comptime T: type, src: beam.term, opts: anytype) !T {
 
     const Child = @typeInfo(T).Optional.child;
     switch (src.term_type(options.env(opts))) {
-        .atom => return try null_or_error(T, src, opts),
+        .atom => return try null_or_atom(T, src, opts),
         else => return try get(Child, src, opts),
     }
 }
@@ -475,7 +468,7 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
     const Child = @typeInfo(T).Pointer.child;
     // scan on the type of the source.
     switch (src.term_type(options.env(opts))) {
-        .atom => return try null_or_error(T, src, opts),
+        .atom => return try null_or_atom(T, src, opts),
         .map => if (@typeInfo(Child) != .Struct) {
             return GetError.argument_error;
         } else {
@@ -697,12 +690,18 @@ fn IntFor(comptime bits: comptime_int) type {
     return @Type(.{ .Int = .{ .signedness = .unsigned, .bits = bits } });
 }
 
-fn null_or_error(comptime T: type, src: beam.term, opts: anytype) !T {
+fn null_or_atom(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_line(.{ "note: ", .{ .typename, @typeName(T) }, " can take the atom `nil` but no other atom" }, opts);
 
     var buf: [256]u8 = undefined;
     const atom = try get_atom(src, &buf, opts);
-    return if (std.mem.eql(u8, "nil", atom)) null else GetError.argument_error;
+    const Child = @typeInfo(T).Optional.child;
+
+    return if (std.mem.eql(u8, "nil", atom)) null else switch (@typeInfo(Child)) {
+        .Enum => try get_enum(Child, src, opts),
+        .Bool => try get_bool(Child, src, opts),
+        else => return GetError.argument_error
+    };
 }
 
 inline fn error_line(msg: anytype, opts: anytype) void {

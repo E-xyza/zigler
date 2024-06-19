@@ -19,6 +19,12 @@ defmodule ZiglerTest.Types.OptionalTest do
   //  } else return null;
   //}
 
+  const E = enum{ foo, bar };
+
+  pub fn nullable_enum_test(value: ?E) ?E {
+    return value;
+  }
+
   pub fn nullable_mutable_array_test(value: ?*[3]u64) ?*[3]u64 {
     if (value) |v| {
       for (v) | *item | {
@@ -30,15 +36,26 @@ defmodule ZiglerTest.Types.OptionalTest do
   """
 
   describe "nullable values" do
-    # test "are passable wrapping integer" do
+    @tag :skip
+    test "are passable wrapping integer" # do
     #  assert nil == nullable_integer_test(nil)
     #  assert 48 == nullable_integer_test(47)
-    # end
-    #
-    # test "are passable wrapping array" do
+    #end
+
+    @tag :skip
+    test "are passable wrapping bool"
+
+    @tag :skip
+    # do
+    test "are passable wrapping array"
     #  assert nil == nullable_array_test(nil)
     #  assert [2, 3, 4] == nullable_array_test([1, 2, 3])
     # end
+
+    test "are passable wrapping enum" do
+      assert nil == nullable_enum_test(nil)
+      assert :foo == nullable_enum_test(:foo)
+    end
 
     test "are passable wrapping mutable array" do
       assert nil == nullable_mutable_array_test(nil)
