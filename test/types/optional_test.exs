@@ -5,19 +5,23 @@ defmodule ZiglerTest.Types.OptionalTest do
     otp_app: :zigler
 
   ~Z"""
-  //pub fn nullable_integer_test(value: ?u64) ?u64 {
-  //  return if (value) |v| v + 1 else null;
-  //}
-  //
-  //pub fn nullable_array_test(value: ?[3]u64) ?[3]u64 {
-  //  if (value) |v| {
-  //    var result: [3]u64 = undefined;
-  //    for (v, 0..) |item, index| {
-  //      result[index] = item + 1;
-  //    }
-  //    return result;
-  //  } else return null;
-  //}
+  pub fn nullable_integer_test(value: ?u64) ?u64 {
+    return if (value) |v| v + 1 else null;
+  }
+
+  pub fn nullable_bool_test(value: ?bool) ?bool {
+    return if (value) |v| !v else null;
+  }
+
+  pub fn nullable_array_test(value: ?[3]u64) ?[3]u64 {
+    if (value) |v| {
+      var result: [3]u64 = undefined;
+      for (v, 0..) |item, index| {
+        result[index] = item + 1;
+      }
+      return result;
+    } else return null;
+  }
 
   const E = enum{ foo, bar };
 
@@ -36,21 +40,20 @@ defmodule ZiglerTest.Types.OptionalTest do
   """
 
   describe "nullable values" do
-    @tag :skip
-    test "are passable wrapping integer" # do
-    #  assert nil == nullable_integer_test(nil)
-    #  assert 48 == nullable_integer_test(47)
-    #end
+    test "are passable wrapping integer" do
+      assert nil == nullable_integer_test(nil)
+      assert 48 == nullable_integer_test(47)
+    end
 
-    @tag :skip
-    test "are passable wrapping bool"
+    test "are passable wrapping bool" do
+      assert false == nullable_bool_test(true)
+      assert nil == nullable_bool_test(nil)
+    end
 
-    @tag :skip
-    # do
-    test "are passable wrapping array"
-    #  assert nil == nullable_array_test(nil)
-    #  assert [2, 3, 4] == nullable_array_test([1, 2, 3])
-    # end
+    test "are passable wrapping array" do
+      assert nil == nullable_array_test(nil)
+      assert [2, 3, 4] == nullable_array_test([1, 2, 3])
+    end
 
     test "are passable wrapping enum" do
       assert nil == nullable_enum_test(nil)
