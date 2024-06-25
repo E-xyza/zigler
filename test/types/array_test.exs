@@ -10,6 +10,9 @@ defmodule ZiglerTest.Types.ArrayTest do
     nifs: [
       {:array_float_binary_test, return: :binary},
       {:array_u8_test, return: :list},
+      {:array_of_u8_array_as_list, return: {:list, :list}},
+      {:array_of_u32_array_as_binary, return: :binary},
+      {:array_of_u32_array_as_list_binary, return: {:list, :binary}},
       {:mut_array_u8_test, return: :list},
       {:fastlane_beam_term_ptr_test, return: :noclean},
       {:fastlane_erl_nif_term_ptr_test, return: :noclean},
@@ -39,6 +42,18 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   pub fn array_u8_test(passed: [3]u8) [3]u8 {
     return common_array_fun(passed);
+  }
+
+  pub fn array_of_u8_array_as_list(passed: [3][3]u8) [3][3]u8 {
+    return passed;
+  }
+
+  pub fn array_of_u32_array_as_binary(passed: [3][3]u32) [3][3]u32 {
+    return passed;
+  }
+
+  pub fn array_of_u32_array_as_list_binary(passed: [3][3]u32) [3][3]u32 {
+    return passed;
   }
 
   pub fn array_string_test(passed: [3]u8) [3]u8 {
@@ -103,6 +118,28 @@ defmodule ZiglerTest.Types.ArrayTest do
       assert_raise ArgumentError,
                    "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: binary | list(integer) (for `[3]u8`)\n     got: `\"fo\"`\n     note: binary size 3 expected but got size 2\n",
                    fn -> array_string_test("fo") end
+    end
+  end
+
+  describe "for nested arrays" do
+    test "you can set u8 to be internally list" do
+      assert [[1, 2, 3], [4, 5, 6], [7, 8, 9]] =
+               array_of_u8_array_as_list(<<1, 2, 3, 4, 5, 6, 7, 8, 9>>)
+    end
+
+    test "you can set u32 to be generally binary" do
+      assert <<1::32-native, 2::32-native, 3::32-native,
+               4::32-native, 5::32-native, 6::32-native,
+               7::32-native, 8::32-native, 9::32-native>> =
+                array_of_u32_array_as_binary([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+    end
+
+    test "you can set internal u32 to be binary" do
+      assert [
+               <<1::32-native, 2::32-native, 3::32-native>>,
+               <<4::32-native, 5::32-native, 6::32-native>>,
+               <<7::32-native, 8::32-native, 9::32-native>>
+             ] = array_of_u32_array_as_list_binary([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
     end
   end
 

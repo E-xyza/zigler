@@ -36,7 +36,7 @@ defmodule Zig.Return do
         {:cleanup, false}
 
       {:list, _} = v ->
-        {:as, {:list, v}}
+        {:as, v}
 
       {:map, _} = v ->
         {:as, v}

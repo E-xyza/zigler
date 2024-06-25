@@ -10,6 +10,7 @@ defmodule ZiglerTest.CompilerError.ZigCodePathWithSigilZTest do
                        quote do
                          defmodule ZigCodePathWithSigilZ do
                            use Zig, otp_app: :zigler, zig_code_path: "path/to/foo"
+
                            ~Z"""
                            """
                          end
