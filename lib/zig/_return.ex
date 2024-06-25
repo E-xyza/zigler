@@ -2,7 +2,7 @@ defmodule Zig.Return do
   @moduledoc false
 
   @enforce_keys ~w[type cleanup]a
-  defstruct @enforce_keys ++ [as: :default]
+  defstruct @enforce_keys ++ [spec: nil, as: :default]
 
   alias Zig.Type
 
@@ -11,7 +11,8 @@ defmodule Zig.Return do
   @type t :: %__MODULE__{
           type: Type.t(),
           cleanup: boolean,
-          as: type
+          as: type,
+          spec: Macro.t()
         }
 
   @type opts :: [:noclean | :binary | :list | {:cleanup, boolean} | {:as, type}]
@@ -23,7 +24,7 @@ defmodule Zig.Return do
   end
 
   @as ~w[binary list integer map]a
-  @options ~w[as cleanup]a
+  @options ~w[as cleanup spec]a
 
   defp normalize_options(type, options) do
     options
