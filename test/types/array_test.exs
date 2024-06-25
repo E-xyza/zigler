@@ -103,6 +103,12 @@ defmodule ZiglerTest.Types.ArrayTest do
                    "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::binary-size(24)>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `[\"foo\", :bar, :baz]`\n     at index 0:\n     | expected: float | :infinity | :neg_infinity | :NaN (for `f64`)\n     | got: `\"foo\"`\n",
                    fn -> array_float_test(["foo", :bar, :baz]) end
     end
+
+    test "incorrect binary size is not tolerated" do
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::binary-size(24)>> | list(float | :infinity | :neg_infinity | :NaN) (for `[3]f64`)\n     got: `<<0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64>>`\n     note: binary size 24 expected but got size 16\n",
+                   fn -> array_float_test(<<1.0::float-native, 2.0::float-native>>) end
+    end
   end
 
   describe "for u8s strings are" do
