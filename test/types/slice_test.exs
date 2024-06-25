@@ -9,10 +9,6 @@ defmodule ZiglerTest.Types.SliceTest do
       ...
     ]
 
-  ## BASIC SLICES
-  # note that slices don't implicitly free, if you want to free,
-  # you must specify that it frees.
-
   ~Z"""
   const beam = @import("beam");
 
@@ -36,34 +32,15 @@ defmodule ZiglerTest.Types.SliceTest do
   pub fn const_slice_test(passed: []const u8) usize {
     return passed.len;
   }
-
-  fn common_slice_copy_fun(passed: anytype) @TypeOf(passed) {
-    const Child = @typeInfo(@TypeOf(passed)).Pointer.child;
-
-    // catch unreachable because this is just a basic test
-    const returned = beam.allocator.alloc(Child, passed.len) catch unreachable;
-    for (passed, 0..) |value, index| {
-      returned[index] = value + 1;
-    }
-    return returned;
-  }
-
-  pub fn freed_slice_float_test(passed: []f64) []f64 {
-    return common_slice_copy_fun(passed);
-  }
-
-  pub fn freed_slice_u8_test(passed: []u8) []u8 {
-    return common_slice_copy_fun(passed);
-  }
-
-  pub fn freed_slice_string_test(passed: []u8) []u8 {
-    return common_slice_copy_fun(passed);
-  }
   """
 
   describe "for a generic slice" do
     test "you can pass a list" do
       assert [2.0, 3.0, 4.0] == slice_float_test([1.0, 2.0, 3.0])
+    end
+
+    test "you can pass a binary" do
+      assert [3.0, 4.0, 5.0] == slice_float_test(<<2.0::float-native, 3.0::float-native, 4.0::float-native>>)
     end
 
     test "you can work with u8s" do
@@ -80,6 +57,12 @@ defmodule ZiglerTest.Types.SliceTest do
       assert_raise ArgumentError,
                    "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[]f64`)\n     got: `[\"foo\", :bar, :baz]`\n     at index 0:\n     | expected: float | :infinity | :neg_infinity | :NaN (for `f64`)\n     | got: `\"foo\"`\n",
                    fn -> slice_float_test(["foo", :bar, :baz]) end
+    end
+
+    test "incorrect binary size is not tolerated" do
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[]f64`)\n     got: `<<0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64, 0>>`\n     note: binary size must be a multiple of 8\n     got: 17\n",
+                   fn -> slice_float_test(<<1.0::float-native, 2.0::float-native, 0>>) end
     end
   end
 

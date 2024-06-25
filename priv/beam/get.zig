@@ -391,6 +391,13 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
 
     var str_res: e.ErlNifBinary = undefined;
     if (e.enif_inspect_binary(options.env(opts), src.v, &str_res) == 0) return GetError.unreachable_error;
+
+    if (str_res.size % bytes != 0) {
+        error_line(.{ "got: ", .{.inspect, str_res.size}}, opts);
+        error_line(.{ "note: binary size must be a multiple of ", .{.inspect, bytes}}, opts);
+        return GetError.argument_error;
+    }
+
     const item_count = str_res.size / bytes;
     const result_ptr = @as([*]Child, @ptrCast(@alignCast(str_res.data)));
 
