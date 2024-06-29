@@ -35,15 +35,21 @@ defmodule Zig.Type.Array do
   def binary_size(%{sentinel: true} = array) do
     case Type.binary_size(array.child) do
       size when is_integer(size) -> size * array.len
+      {:indirect, size} -> size * array.len
       _ -> nil
     end
   end
 
   def binary_size(array) do
     case Type.binary_size(array.child) do
-      size when is_integer(size) -> size * array.len
+      size when is_integer(size) -> array_binary_size(array, size)
+      {:indirect, size} -> array_binary_size(array, size)
       _ -> nil
     end
+  end
+
+  defp array_binary_size(array, size) do
+    if array.has_sentinel?, do: {:var, size}, else: size * array.len
   end
 
   def render_zig(%{mutable: true} = array) do
@@ -58,9 +64,9 @@ defmodule Zig.Type.Array do
 
   def render_elixir_spec(type, %Parameter{} = param) do
     # u8 defaults to binary
-    if binary_form = binary_form(type) do
+    if binary_typespec = Type.binary_typespec(type) do
       quote context: Elixir do
-        unquote([Type.render_elixir_spec(type.child, param)]) | unquote(binary_form)
+        unquote([Type.render_elixir_spec(type.child, param)]) | unquote(binary_typespec)
       end
     else
       [Type.render_elixir_spec(type.child, param)]
@@ -73,48 +79,18 @@ defmodule Zig.Type.Array do
     [Type.render_elixir_spec(type.child, subspec)]
   end
 
-  def render_elixir_spec(%{child: ~t(u8)} = type, as) do
-    # u8 defaults to binary
-    case as do
-      :list ->
-        [Type.render_elixir_spec(~t(u8), :default)]
-
-      t when t in ~w(default binary)a ->
-        binary_form(type)
-    end
+  def render_elixir_spec(type, :list) do
+    [Type.render_elixir_spec(type.child, :default)]
   end
 
-  def render_elixir_spec(type, as) do
-    # other types default to list
-    case as do
-      :binary ->
-        binary_form(type)
-
-      other when other in ~w(default list)a ->
-        [Type.render_elixir_spec(type.child, :default)]
-    end
+  def render_elixir_spec(type, :binary) do
+    Type.binary_typespec(type) || raise "Binary form not possible for type #{inspect type}"
   end
 
-  defp binary_form(%{child: ~t(u8), has_sentinel?: true}) do
-    quote do
-      binary
-    end
-  end
-
-  defp binary_form(type) do
-    case Type.binary_size(type.child) do
-      child_size when is_integer(child_size) and type.has_sentinel? ->
-        quote do
-          <<_::_*unquote(child_size)>>
-        end
-
-      child_size when is_integer(child_size) ->
-        quote do
-          <<_::unquote(child_size * type.len)>>
-        end
-
-      _ ->
-        nil
+  def render_elixir_spec(type, :default) do
+    case type.child do
+      ~t(u8) -> Type.binary_typespec(type)
+      _ -> [Type.render_elixir_spec(type.child, :default)]
     end
   end
 

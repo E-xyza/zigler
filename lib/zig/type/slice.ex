@@ -4,9 +4,9 @@ defmodule Zig.Type.Slice do
   alias Zig.Type
   use Type
 
-  import Type, only: :macros
-
   defstruct [:child, :repr, has_sentinel?: false]
+
+  import Type, only: :macros
 
   @type t :: %__MODULE__{
           child: Type.t(),
@@ -31,53 +31,39 @@ defmodule Zig.Type.Slice do
     render_elixir_spec(type, as)
   end
 
-  def render_elixir_spec(%{child: child}, %Parameter{} = params) do
-    quote context: Elixir do
-      [unquote(Type.render_elixir_spec(child, params))] | unquote(binary_form(child))
+  def render_elixir_spec(type, %Parameter{} = params) do
+    if typespec = Type.binary_typespec(type) do
+      quote context: Elixir do
+        [unquote(Type.render_elixir_spec(type.child, params))] | unquote(typespec)
+      end
+    else
+      quote context: Elixir do
+        [unquote(Type.render_elixir_spec(type.child, params))]
+      end
     end
-  end
-
-  def render_elixir_spec(%{child: ~t(u8)}, :default) do
-    binary_form(~t(u8))
-  end
-
-  def render_elixir_spec(%{child: child}, :binary) do
-    binary_form(child)
   end
 
   def render_elixir_spec(%{child: child}, {:list, child_spec}) do
     [Type.render_elixir_spec(child, child_spec)]
   end
 
-  def render_elixir_spec(%{child: child}, _) do
+  def render_elixir_spec(%{child: child}, :list) do
     [Type.render_elixir_spec(child, :default)]
   end
 
-  defp binary_form(~t(u8)) do
+  def render_elixir_spec(spec, :binary) do
+    Type.binary_typespec(spec)
+  end
+
+  def render_elixir_spec(%{child: ~t(u8)}, :default) do
     quote do
       binary()
     end
   end
 
-  defp binary_form(%Type.Integer{bits: bits}) do
-    quote context: Elixir do
-      <<_::_*unquote(Type.Integer._next_power_of_two_ceil(bits))>>
-    end
+  def render_elixir_spec(%{child: child}, :default) do
+    [Type.render_elixir_spec(child, :default)]
   end
-
-  defp binary_form(%Type.Float{bits: bits}) do
-    quote context: Elixir do
-      <<_::_*unquote(bits)>>
-    end
-  end
-
-  defp binary_form(%Type.Struct{packed: size}) when is_integer(size) do
-    quote context: Elixir do
-      <<_::_*unquote(size * 8)>>
-    end
-  end
-
-  defp binary_form(_), do: nil
 
   # ETC
 
@@ -88,6 +74,7 @@ defmodule Zig.Type.Slice do
   def binary_size(slice) do
     case Type.binary_size(slice.child) do
       size when is_integer(size) -> {:var, size}
+      {:indirect, size} when is_integer(size) -> {:var, size}
       _ -> nil
     end
   end

@@ -31,7 +31,7 @@ defmodule Zig.Type.Float do
   def make_allowed?(_), do: true
   def can_cleanup?(_), do: false
 
-  def binary_size(float), do: div(float.bits, 8)
+  def binary_size(float), do: {:indirect, div(float.bits, 8)}
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()
   def marshal_param(_, _, _, _), do: Type._default_marshal()

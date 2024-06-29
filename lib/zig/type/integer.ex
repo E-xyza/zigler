@@ -249,7 +249,16 @@ defmodule Zig.Type.Integer do
   def get_allowed?(_), do: true
   def make_allowed?(_), do: true
   def can_cleanup?(_), do: false
-  def binary_size(integer), do: _next_power_of_two_ceil(integer.bits)
+
+  def binary_size(integer) do
+    bytes =
+      case rem(integer.bits, 8) do
+        0 -> div(integer.bits, 8)
+        _ -> div(integer.bits, 8) + 1
+      end
+
+    {:indirect, bytes}
+  end
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()
 end

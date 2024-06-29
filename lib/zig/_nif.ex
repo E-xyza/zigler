@@ -170,18 +170,19 @@ defmodule Zig.Nif do
       |> Enum.sort()
       |> Enum.map(fn {_, p} -> Type.render_elixir_spec(p.type, p) end)
 
-    return_spec = case nif.return do
-      %{spec: nil} ->
-        Type.render_elixir_spec(nif.return.type, nif.return)
+    return_spec =
+      case nif.return do
+        %{spec: nil} ->
+          Type.render_elixir_spec(nif.return.type, nif.return)
 
-      %{type: term, spec: spec} when term in ~w[term erl_nif_term]a ->
-        spec
+        %{type: term, spec: spec} when term in ~w[term erl_nif_term]a ->
+          spec
 
-      _ ->
-        raise CompileError,
-          description:
-            "you may only specify return spec when the return type is `term` or `e.ErlNifTerm`"
-    end
+        _ ->
+          raise CompileError,
+            description:
+              "you may only specify return spec when the return type is `term` or `e.ErlNifTerm`"
+      end
 
     quote context: Elixir do
       @spec unquote(nif.name)(unquote_splicing(param_spec)) :: unquote(return_spec)

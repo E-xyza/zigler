@@ -16,6 +16,8 @@ defmodule ZiglerTest.Types.SpecTest do
     assert spec((boolean -> boolean)) = Map.fetch!(specs, {:bool_fn, 1})
   end
 
+  @u38_range 0..4_294_967_295
+
   describe "for enum specs" do
     test "atom return", specs do
       assert spec((:ok | :error | 0..1 -> :ok | :error)) = Map.fetch!(specs, {:enum_fn, 1})
@@ -36,7 +38,7 @@ defmodule ZiglerTest.Types.SpecTest do
     end
 
     test "u32", specs do
-      assert spec((0..4_294_967_295 -> 0..4_294_967_295)) = Map.fetch!(specs, {:u32_fn, 1})
+      assert spec((@u38_range -> @u38_range)) = Map.fetch!(specs, {:u32_fn, 1})
     end
 
     test "i32", specs do
@@ -54,7 +56,7 @@ defmodule ZiglerTest.Types.SpecTest do
   end
 
   test "optional", specs do
-    assert spec((0..4_294_967_295 | nil -> 0..4_294_967_295 | nil)) =
+    assert spec((@u38_range | nil -> @u38_range | nil)) =
              Map.fetch!(specs, {:optional_fn, 1})
   end
 
@@ -72,12 +74,12 @@ defmodule ZiglerTest.Types.SpecTest do
 
   describe "for arrays" do
     test "of u32", specs do
-      assert spec(([0..4_294_967_295] | <<_::128>> -> [0..4_294_967_295])) =
+      assert spec(([@u38_range] | <<_::128>> -> [@u38_range])) =
                Map.fetch!(specs, {:u32_array_fn, 1})
     end
 
     test "of u32, binary return", specs do
-      assert spec(([0..4_294_967_295] | <<_::128>> -> <<_::128>>)) =
+      assert spec(([@u38_range] | <<_::128>> -> <<_::128>>)) =
                Map.fetch!(specs, {:u32_array_fn_binary_return, 1})
     end
 
@@ -92,17 +94,17 @@ defmodule ZiglerTest.Types.SpecTest do
     end
 
     test "of array, inner list", specs do
-      assert spec(([[0..4_294_967_295] | <<_::128>>] | <<_::512>> -> [[0..4_294_967_295]])) =
+      assert spec(([[@u38_range] | <<_::128>>] | <<_::512>> -> [[@u38_range]])) =
                Map.fetch!(specs, {:array_of_arrays_fn, 1})
     end
 
     test "of array, inner binary", specs do
-      assert spec(([[0..4_294_967_295] | <<_::128>>] | <<_::512>> -> [<<_::128>>])) =
+      assert spec(([[@u38_range] | <<_::128>>] | <<_::512>> -> [<<_::128>>])) =
                Map.fetch!(specs, {:array_of_arrays_fn_list_of_binary_return, 1})
     end
 
     test "of array, outer binary", specs do
-      assert spec(([[0..4_294_967_295] | <<_::128>>] | <<_::512>> -> <<_::512>>)) =
+      assert spec(([[@u38_range] | <<_::128>>] | <<_::512>> -> <<_::512>>)) =
                Map.fetch!(specs, {:array_of_arrays_fn_binary_return, 1})
     end
   end
@@ -125,7 +127,7 @@ defmodule ZiglerTest.Types.SpecTest do
     end
 
     test "gives the correct spec for u32", specs do
-      assert spec(([0..4_294_967_295] | <<_::_*32>> -> 0..4_294_967_295)) =
+      assert spec(([@u38_range] | <<_::_*32>> -> @u38_range)) =
                Map.fetch!(specs, {:manypointer_u32_fn, 1})
     end
 
@@ -156,53 +158,56 @@ defmodule ZiglerTest.Types.SpecTest do
          specs do
       assert spec(([byte] | binary -> [byte])) = Map.fetch!(specs, {:slice_u8_fn_list_return, 1})
     end
+
+    test "for array of u8 can either be list or binary, but returns list", specs do
+      assert spec(([[@u38_range] | <<_::96>>] | <<_::_*96>> -> [[@u38_range]])) =
+               Map.fetch!(specs, {:slice_array_u32_fn, 1})
+    end
   end
 
   describe "for normal structs" do
     test "input can be keyword or map with required", specs do
       assert spec(
-               (%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] ->
-                  %{value: 0..4_294_967_295})
+               (%{value: @u38_range} | [value: @u38_range] ->
+                  %{value: @u38_range})
              ) = Map.fetch!(specs, {:required_struct_fn, 1})
     end
 
     test "input can be keyword or map with optional, but the output is required", specs do
       assert spec(
-               (%{optional(:value) => 0..4_294_967_295} | [value: 0..4_294_967_295] ->
-                  %{value: 0..4_294_967_295})
+               (%{optional(:value) => @u38_range} | [value: @u38_range] ->
+                  %{value: @u38_range})
              ) = Map.fetch!(specs, {:optional_struct_fn, 1})
     end
 
     test "input can be binary for packed struct", specs do
-      assert spec(
-               (%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> -> <<_::32>>)
-             ) = Map.fetch!(specs, {:packed_struct_fn, 1})
+      assert spec((%{value: @u38_range} | [value: @u38_range] | <<_::32>> -> <<_::32>>)) =
+               Map.fetch!(specs, {:packed_struct_fn, 1})
     end
 
     test "output can be forced to map for packed struct", specs do
       assert spec(
-               (%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> ->
-                  %{value: 0..4_294_967_295})
+               (%{value: @u38_range} | [value: @u38_range] | <<_::32>> ->
+                  %{value: @u38_range})
              ) = Map.fetch!(specs, {:packed_struct_fn_map_return, 1})
     end
 
     test "input can be binary for extern struct", specs do
       assert spec(
-               (%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> ->
-                  %{value: 0..4_294_967_295})
+               (%{value: @u38_range} | [value: @u38_range] | <<_::32>> ->
+                  %{value: @u38_range})
              ) = Map.fetch!(specs, {:extern_struct_fn, 1})
     end
 
     test "output can be forced to map for extern struct", specs do
-      assert spec(
-               (%{value: 0..4_294_967_295} | [value: 0..4_294_967_295] | <<_::32>> -> <<_::32>>)
-             ) = Map.fetch!(specs, {:extern_struct_fn_binary_return, 1})
+      assert spec((%{value: @u38_range} | [value: @u38_range] | <<_::32>> -> <<_::32>>)) =
+               Map.fetch!(specs, {:extern_struct_fn_binary_return, 1})
     end
 
     test "you can declare internal map output", specs do
       assert spec(
-               (%{value: [0..4_294_967_295] | <<_::64>>}
-                | [value: [0..4_294_967_295] | <<_::64>>] ->
+               (%{value: [@u38_range] | <<_::64>>}
+                | [value: [@u38_range] | <<_::64>>] ->
                   %{value: <<_::64>>})
              ) = Map.fetch!(specs, {:extern_struct_fn_internal_binary_return, 1})
     end

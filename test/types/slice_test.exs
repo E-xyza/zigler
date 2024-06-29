@@ -6,6 +6,8 @@ defmodule ZiglerTest.Types.SliceTest do
     leak_check: false,
     nifs: [
       {:slice_u8_test, return: :list},
+      {:slice_of_array_u32_list_of_binary, return: {:list, :binary}},
+      {:slice_of_array_u32_binary, return: :binary},
       ...
     ]
 
@@ -40,7 +42,8 @@ defmodule ZiglerTest.Types.SliceTest do
     end
 
     test "you can pass a binary" do
-      assert [3.0, 4.0, 5.0] == slice_float_test(<<2.0::float-native, 3.0::float-native, 4.0::float-native>>)
+      assert [3.0, 4.0, 5.0] ==
+               slice_float_test(<<2.0::float-native, 3.0::float-native, 4.0::float-native>>)
     end
 
     test "you can work with u8s" do
@@ -65,6 +68,55 @@ defmodule ZiglerTest.Types.SliceTest do
                    fn -> slice_float_test(<<1.0::float-native, 2.0::float-native, 0>>) end
     end
   end
+
+  describe "slices of arrays" do
+    ~Z"""
+    pub fn slice_of_array_u32(slice: [][3]u32) [][3]u32 {
+        return slice;
+    }
+
+    pub fn slice_of_array_u32_list_of_binary(slice: [][3]u32) [][3]u32 {
+        return slice;
+    }
+
+    pub fn slice_of_array_u32_binary(slice: [][3]u32) [][3]u32 {
+        return slice;
+    }
+    """
+
+    test "can accept binary" do
+      assert [] =
+               slice_of_array_u32(
+                 <<1::32-native, 2::32-native, 3::32-native, 4::32-native, 5::32-native,
+                   6::32-native>>
+               )
+    end
+
+    test "can accept list of binary" do
+      assert [[1, 2, 3], [4, 5, 6]] =
+               slice_of_array_u32([
+                 <<1::32-native, 2::32-native, 3::32-native>>,
+                 <<4::32-native, 5::32-native, 6::32-native>>
+               ])
+    end
+
+    test "can output as list of binary" do
+      assert [
+               <<1::32-native, 2::32-native, 3::32-native>>,
+               <<4::32-native, 5::32-native, 6::32-native>>
+             ] = slice_of_array_u32_list_of_binary([[1, 2, 3], [4, 5, 6]])
+    end
+
+    test "can output as binary" do
+      assert <<1::32-native, 2::32-native, 3::32-native, 4::32-native, 5::32-native,
+               6::32-native>> = slice_of_array_u32_list_of_binary([[1, 2, 3], [4, 5, 6]])
+    end
+  end
+
+  test "slices of slices"
+  test "slices of structs"
+  test "slices of packed structs"
+  test "slices of extern structs"
 
   describe "for u8s strings are" do
     test "available for used as input" do

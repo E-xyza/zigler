@@ -135,6 +135,32 @@ after
     end
   end
 
+  # derivative functions
+  def binary_typespec(type) do
+    case binary_size(type) do
+      nil ->
+        nil
+
+      {:indirect, _} ->
+        nil
+
+      {:var, 1} ->
+        quote context: Elixir do
+          binary()
+        end
+
+      {:var, size} ->
+        quote context: Elixir do
+          <<_::_*unquote(size * 8)>>
+        end
+
+      size ->
+        quote context: Elixir do
+          <<_::unquote(size * 8)>>
+        end
+    end
+  end
+
   # following two lines cause infinite loop
   # @callback from_json(json, term) :: t
   # @optional_callbacks [from_json: 2]

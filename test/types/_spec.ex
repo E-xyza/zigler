@@ -81,6 +81,8 @@ defmodule ZiglerTest.Types.Spec do
 
   pub fn slice_u8_fn_list_return(data: []u8) []u8 { return data; }
 
+  pub fn slice_array_u32_fn(data: [][3]u32) [][3]u32 { return data;}
+
   const RequiredStruct = struct { value: u32 };
 
   pub fn required_struct_fn(data: RequiredStruct) RequiredStruct { return data; }

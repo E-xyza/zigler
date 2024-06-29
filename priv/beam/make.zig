@@ -172,7 +172,7 @@ fn make_struct(value: anytype, opts: anytype) beam.term {
             .map => make_struct_map(value, opts),
             .binary => make_struct_binary(value, opts),
             .default => if (struct_info.layout == .@"packed") make_struct_binary(value, opts) else make_struct_map(value, opts),
-            else => @compileError("structs must be output as `binary`, `map` or `default` only")
+            else => @compileError("structs must be output as `binary`, `map` or `default` only"),
         };
     }
 }
@@ -206,11 +206,11 @@ fn make_struct_binary(value: anytype, opts: anytype) beam.term {
     const struct_info = @typeInfo(T).Struct;
     switch (struct_info.layout) {
         .@"packed", .@"extern" => {},
-        else =>  @compileError("only packed and extern structs can be output as binary")
+        else => @compileError("only packed and extern structs can be output as binary"),
     }
-    const byte_size = @sizeOf(T);
+    const binary_size = @sizeOf(T);
     var result: beam.term = undefined;
-    const buf: *T = @ptrCast(@alignCast(e.enif_make_new_binary(options.env(opts), byte_size, &result.v)));
+    const buf: *T = @ptrCast(@alignCast(e.enif_make_new_binary(options.env(opts), binary_size, &result.v)));
     buf.* = value;
     return result;
 }
@@ -394,26 +394,26 @@ fn make_binary(content: anytype, opts: anytype) beam.term {
             const Child = P.child;
             switch (P.size) {
                 .Slice => {
-                    const byte_size = @sizeOf(Child) * content.len;
+                    const binary_size = @sizeOf(Child) * content.len;
                     const u8buf = @as([*]const u8, @ptrCast(content.ptr));
-                    return make_binary_from_u8_slice(u8buf[0..byte_size], opts);
+                    return make_binary_from_u8_slice(u8buf[0..binary_size], opts);
                 },
                 // it is possible that this is a const pointer to an array in memory.
                 .One => {
                     if (@typeInfo(Child) != .Array) {
                         @compileError("make_binary is only supported for array and slice pointers");
                     }
-                    const byte_size = @sizeOf(@typeInfo(Child).Array.child) * content.len;
+                    const binary_size = @sizeOf(@typeInfo(Child).Array.child) * content.len;
                     const u8buf = @as([*]const u8, @ptrCast(content));
-                    return make_binary_from_u8_slice(u8buf[0..byte_size], opts);
+                    return make_binary_from_u8_slice(u8buf[0..binary_size], opts);
                 },
                 else => @compileError("make_binary is only supported for array and slice pointers"),
             }
         },
         .Array => |A| {
-            const byte_size = @sizeOf(A.child) * content.len;
+            const binary_size = @sizeOf(A.child) * content.len;
             const u8buf = @as([*]const u8, @ptrCast(&content));
-            return make_binary_from_u8_slice(u8buf[0..byte_size], opts);
+            return make_binary_from_u8_slice(u8buf[0..binary_size], opts);
         },
         else => @compileError("make_binary is only supported for slices and arrays"),
     }
