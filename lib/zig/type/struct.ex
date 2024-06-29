@@ -58,26 +58,27 @@ defmodule Zig.Type.Struct do
     keyword = to_fields(struct.optional, :untagged, params)
     required = to_fields(struct.required, :untagged, params)
 
-    if binary_form = binary_form(struct) do
-      quote do
-        unquote(map_spec(optional, required))
-        | unquote(keyword ++ required)
-        | unquote(binary_form)
+    map_typespec = map_spec(optional, required)
+    keyword_typespec = keyword ++ required
+
+    if binary_typespec = Type.binary_typespec(struct) do
+      quote context: Elixir do
+        unquote(map_typespec) | unquote(keyword_typespec) | unquote(binary_typespec)
       end
     else
       quote do
-        unquote(map_spec(optional, required)) | unquote(keyword ++ required)
+        unquote(map_typespec) | unquote(keyword_typespec)
       end
     end
   end
 
+  def render_elixir_spec(struct, :binary), do: Type.binary_typespec(struct)
+
   def render_elixir_spec(%{packed: packed} = struct, :default) when is_integer(packed) do
-    binary_form(struct)
+    Type.binary_typespec(struct)
   end
 
-  def render_elixir_spec(struct, :binary), do: binary_form(struct)
-
-  # default map form.  Note all fields are 
+  # default map form.  Handles `:default`, `:map`, and `{:map, ...}` specs 
   def render_elixir_spec(struct, context) do
     all_fields =
       struct.optional
@@ -92,20 +93,6 @@ defmodule Zig.Type.Struct do
       %{unquote_splicing(optional ++ required)}
     end
   end
-
-  defp binary_form(%{packed: bytes}) when is_integer(bytes) do
-    quote context: Elixir do
-      <<_::unquote(bytes)>>
-    end
-  end
-
-  defp binary_form(%{extern: bytes}) when is_integer(bytes) do
-    quote context: Elixir do
-      <<_::unquote(bytes)>>
-    end
-  end
-
-  defp binary_form(_struct), do: nil
 
   defp to_fields(portion, mode, opts) do
     portion
@@ -147,8 +134,8 @@ defmodule Zig.Type.Struct do
 
   def can_cleanup?(_), do: false
 
-  def binary_size(%{packed: packed}) when is_integer(packed), do: packed
-  def binary_size(%{extern: extern}) when is_integer(extern), do: extern
+  def binary_size(%{packed: packed}) when is_integer(packed), do: div(packed, 8)
+  def binary_size(%{extern: extern}) when is_integer(extern), do: div(extern, 8)
   def binary_size(_), do: nil
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()

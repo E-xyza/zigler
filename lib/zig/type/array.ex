@@ -84,7 +84,7 @@ defmodule Zig.Type.Array do
   end
 
   def render_elixir_spec(type, :binary) do
-    Type.binary_typespec(type) || raise "Binary form not possible for type #{inspect type}"
+    Type.binary_typespec(type) || raise "Binary form not possible for type #{inspect(type)}"
   end
 
   def render_elixir_spec(type, :default) do
