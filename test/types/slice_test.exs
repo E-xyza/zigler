@@ -1,6 +1,9 @@
 defmodule ZiglerTest.Types.SliceTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @tag :skip
+  test "remove leak check below"
+
   use Zig,
     otp_app: :zigler,
     leak_check: false,
@@ -85,7 +88,7 @@ defmodule ZiglerTest.Types.SliceTest do
     """
 
     test "can accept binary" do
-      assert [] =
+      assert [[1, 2, 3], [4, 5, 6]] =
                slice_of_array_u32(
                  <<1::32-native, 2::32-native, 3::32-native, 4::32-native, 5::32-native,
                    6::32-native>>
@@ -98,6 +101,23 @@ defmodule ZiglerTest.Types.SliceTest do
                  <<1::32-native, 2::32-native, 3::32-native>>,
                  <<4::32-native, 5::32-native, 6::32-native>>
                ])
+    end
+
+    test "gives correct argumenterror if an internal binary is incorrect" do
+      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(list(integer) | <<_::96>>) | <<_::_*96>> (for `[][3]u32`)\n     got: `[<<1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0>>, <<4, 0, 0, 0, 5, 0, 0, 0>>]`\n     at index 1:\n     | expected: list(integer) | <<_::96>> (for `[3]u32`)\n     | got: `<<4, 0, 0, 0, 5, 0, 0, 0>>`\n     | note: binary size 12 expected but got size 8\n", fn ->
+        slice_of_array_u32([
+          <<1::32-native, 2::32-native, 3::32-native>>,
+          <<4::32-native, 5::32-native>>
+        ])
+      end
+    end
+
+    test "gives correct argumenterror if the full binary is incorrect" do
+      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(list(integer) | <<_::96>>) | <<_::_*96>> (for `[][3]u32`)\n     got: `<<1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0>>`\n     note: binary size must be a multiple of 12\n     got: 20\n", fn ->
+        slice_of_array_u32(
+          <<1::32-native, 2::32-native, 3::32-native, 4::32-native, 5::32-native>>
+        )
+      end
     end
 
     test "can output as list of binary" do
@@ -227,7 +247,7 @@ defmodule ZiglerTest.Types.SliceTest do
 
     test "argumenterror on incorrect binary size" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(map | keyword | <<binary-size(4)>>) | <<_::_*32>> (for `[]P`)\n     got: `<<0, 0, 0>>`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(map | keyword | <<_::32>>) | <<_::_*32>> (for `[]P`)\n     got: `<<0, 0, 0>>`\n     note: binary size must be a multiple of 4\n     got: 3\n",
                    fn ->
                      slice_of_packed_structs(<<0, 0, 0>>)
                    end
@@ -267,9 +287,9 @@ defmodule ZiglerTest.Types.SliceTest do
 
     test "raises argumenterror on incorrect size" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(map | keyword | <<binary-size(4)>>) | <<_::_*32>> (for `[]P`)\n     got: `<<0, 0, 0>>`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(map | keyword | <<_::32>>) | <<_::_*32>> (for `[]E`)\n     got: `<<0, 0, 0>>`\n     note: binary size must be a multiple of 4\n     got: 3\n",
                    fn ->
-                     slice_of_packed_structs(<<0, 0, 0>>)
+                     slice_of_extern_structs(<<0, 0, 0>>)
                    end
     end
   end

@@ -380,25 +380,20 @@ pub fn get_slice(comptime T: type, src: beam.term, opts: anytype) !T {
 pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
     const slice_info = @typeInfo(T).Pointer;
     const Child = slice_info.child;
-    const child_info = @typeInfo(Child);
-    // slices can be instantiated from binaries, for certain types of data.
-    const bytes = switch (child_info) {
-        // TODO: check that the argument errors here are correct.
-        .Int => |i| if (i.bits % 8 != 0) return GetError.argument_error else i.bits / 8,
-        .Float => |f| f.bits / 8,
-        else => return GetError.argument_error,
-    };
+
+    const byte_size_condition = get_byte_size(T) orelse return GetError.argument_error;
+    const expected_size_multiple = byte_size_condition.variable;
 
     var str_res: e.ErlNifBinary = undefined;
     if (e.enif_inspect_binary(options.env(opts), src.v, &str_res) == 0) return GetError.unreachable_error;
 
-    if (str_res.size % bytes != 0) {
+    if (str_res.size % expected_size_multiple != 0) {
         error_line(.{ "got: ", .{ .inspect, str_res.size } }, opts);
-        error_line(.{ "note: binary size must be a multiple of ", .{ .inspect, bytes } }, opts);
+        error_line(.{ "note: binary size must be a multiple of ", .{ .inspect, expected_size_multiple } }, opts);
         return GetError.argument_error;
     }
 
-    const item_count = str_res.size / bytes;
+    const item_count = str_res.size / expected_size_multiple;
     const result_ptr = @as([*]Child, @ptrCast(@alignCast(str_res.data)));
 
     if (slice_info.is_const) {
