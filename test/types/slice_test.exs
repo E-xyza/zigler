@@ -9,6 +9,11 @@ defmodule ZiglerTest.Types.SliceTest do
       {:slice_of_array_u32_list_of_binary, return: {:list, :binary}},
       {:slice_of_array_u32_binary, return: :binary},
       {:slice_of_slice_u32_list_of_binary, return: {:list, :binary}},
+      {:slice_of_structs_list, return: {:list, {:map, val: :list}}},
+      {:slice_of_packed_structs_maps, return: {:list, :map}},
+      {:slice_of_packed_structs_binary, return: :binary},
+      {:slice_of_extern_structs_list_of_binary, return: {:list, :binary}},
+      {:slice_of_extern_structs_binary, return: :binary},
       ...
     ]
 
@@ -104,7 +109,7 @@ defmodule ZiglerTest.Types.SliceTest do
 
     test "can output as binary" do
       assert <<1::32-native, 2::32-native, 3::32-native, 4::32-native, 5::32-native,
-               6::32-native>> = slice_of_array_u32_list_of_binary([[1, 2, 3], [4, 5, 6]])
+               6::32-native>> = slice_of_array_u32_binary([[1, 2, 3], [4, 5, 6]])
     end
   end
 
@@ -139,14 +144,28 @@ defmodule ZiglerTest.Types.SliceTest do
     end
 
     test "list of binary input works" do
-      assert [[1, 2, 3], [4, 5, 6]] == slice_of_slice_u32([<<1::32-native, 2::32-native, 3::32-native>>, <<4::32-native, 5::32-native, 6::32-native>>])
-      assert [[1, 2], [3, 4, 5]] == slice_of_slice_u32([<<1::32-native, 2::32-native>>, <<3::32-native, 4::32-native, 5::32-native>>])
+      assert [[1, 2, 3], [4, 5, 6]] ==
+               slice_of_slice_u32([
+                 <<1::32-native, 2::32-native, 3::32-native>>,
+                 <<4::32-native, 5::32-native, 6::32-native>>
+               ])
+
+      assert [[1, 2], [3, 4, 5]] ==
+               slice_of_slice_u32([
+                 <<1::32-native, 2::32-native>>,
+                 <<3::32-native, 4::32-native, 5::32-native>>
+               ])
     end
 
     test "binary input only doesn't work" do
-      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(<<_::_ * 32>> | list(integer)) (for `[][]u32`)\n     got: `<<1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0>>`\n", fn ->
-        slice_of_slice_u32(<<1::32-native, 2::32-native, 3::32-native, 4::32-native, 5::32-native, 6::32-native>>)
-      end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(<<_::_ * 32>> | list(integer)) (for `[][]u32`)\n     got: `<<1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0>>`\n",
+                   fn ->
+                     slice_of_slice_u32(
+                       <<1::32-native, 2::32-native, 3::32-native, 4::32-native, 5::32-native,
+                         6::32-native>>
+                     )
+                   end
     end
 
     test "list of binary output works" do
@@ -157,9 +176,99 @@ defmodule ZiglerTest.Types.SliceTest do
     end
   end
 
-  test "slices of structs"
-  test "slices of packed structs"
-  test "slices of extern structs"
+  describe "slices of structs" do
+    ~Z"""
+    const S = struct { val: []u8 };
+    pub fn slice_of_structs(slice: []S) []S { return slice; }
+    pub const slice_of_structs_list = slice_of_structs;
+    """
+
+    test "works" do
+      assert [%{val: "foo"}, %{val: "bar"}] == slice_of_structs([%{val: "foo"}, %{val: "bar"}])
+    end
+
+    test "can have do lists internally" do
+      assert [%{val: ~C'foo'}, %{val: ~C'bar'}] ==
+               slice_of_structs_list([%{val: "foo"}, %{val: "bar"}])
+    end
+  end
+
+  describe "slices of packed structs" do
+    ~Z"""
+    const P = packed struct { val: u32 };
+    pub fn slice_of_packed_structs(slice: []P) []P { return slice; }
+    pub const slice_of_packed_structs_maps = slice_of_packed_structs;
+    pub const slice_of_packed_structs_binary = slice_of_packed_structs;
+    """
+
+    test "defaults to list of binary" do
+      assert [<<47::32-native>>, <<47::32-native>>] ==
+               slice_of_packed_structs([%{val: 47}, %{val: 47}])
+    end
+
+    test "can accept list of binary" do
+      assert [<<47::32-native>>, <<47::32-native>>] ==
+               slice_of_packed_structs([<<47::32-native>>, <<47::32-native>>])
+    end
+
+    test "can accept binary" do
+      assert [<<47::32-native>>, <<47::32-native>>] ==
+               slice_of_packed_structs(<<47::32-native, 47::32-native>>)
+    end
+
+    test "can be forced to output maps" do
+      assert [%{val: 47}, %{val: 47}] == slice_of_packed_structs_maps([%{val: 47}, %{val: 47}])
+    end
+
+    test "can be forced to output full binary" do
+      assert <<47::32-native, 47::32-native>> ==
+               slice_of_packed_structs_binary([%{val: 47}, %{val: 47}])
+    end
+
+    test "argumenterror on incorrect binary size" do
+      assert_raise ArgumentError, "", fn ->
+        slice_of_packed_structs(<<0, 0, 0>>)
+      end
+    end
+  end
+
+  describe "slices of extern structs" do
+    ~Z"""
+    const E = extern struct { val: u32 };
+    pub fn slice_of_extern_structs(slice: []E) []E { return slice; }
+    pub const slice_of_extern_structs_list_of_binary = slice_of_extern_structs;
+    pub const slice_of_extern_structs_binary = slice_of_extern_structs;
+    """
+
+    test "defaults to map" do
+      assert [%{val: 47}, %{val: 47}] == slice_of_extern_structs([%{val: 47}, %{val: 47}])
+    end
+
+    test "can accept list of binary" do
+      assert [%{val: 47}, %{val: 47}] ==
+               slice_of_extern_structs([<<47::32-native>>, <<47::32-native>>])
+    end
+
+    test "can accept binary" do
+      assert [%{val: 47}, %{val: 47}] == slice_of_extern_structs(<<47::32-native, 47::32-native>>)
+    end
+
+    test "can be forced to output binaries" do
+      assert [<<47::32-native>>, <<47::32-native>>] ==
+               slice_of_extern_structs_list_of_binary([%{val: 47}, %{val: 47}])
+    end
+
+    test "can be forced to output full binary" do
+      assert <<47::32-native, 47::32-native>> ==
+               slice_of_extern_structs_binary([%{val: 47}, %{val: 47}])
+    end
+
+    test "raises argumenterror on incorrect size" do
+      assert_raise ArgumentError, "", fn ->
+        slice_of_packed_structs(<<0, 0, 0>>)
+      end
+    end
+  end
 
   ~Z"""
   const e = @import("erl_nif");

@@ -169,11 +169,11 @@ pub fn get_enum(comptime T: type, src: beam.term, opts: anytype) !T {
     // prefer the integer form, fallback to string searches.
     switch (src.term_type(options.env(opts))) {
         .integer => {
-                errdefer error_line(.{ "note: not an integer value for ", .{ .typename, @typeName(T) }, " (should be one of `", .{ .inspect, int_values }, "`)" }, opts);
+            errdefer error_line(.{ "note: not an integer value for ", .{ .typename, @typeName(T) }, " (should be one of `", .{ .inspect, int_values }, "`)" }, opts);
 
-                // put erasure on get_int setting the error_line
-                const result = try get_int(IntType, src, opts);
-                return try std.meta.intToEnum(T, result);
+            // put erasure on get_int setting the error_line
+            const result = try get_int(IntType, src, opts);
+            return try std.meta.intToEnum(T, result);
         },
         .atom => {
             errdefer error_line(.{ "note: not an atom value for ", .{ .typename, @typeName(T) }, " (should be one of `", .{ .inspect, enum_values }, "`)" }, opts);
@@ -393,8 +393,8 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
     if (e.enif_inspect_binary(options.env(opts), src.v, &str_res) == 0) return GetError.unreachable_error;
 
     if (str_res.size % bytes != 0) {
-        error_line(.{ "got: ", .{.inspect, str_res.size}}, opts);
-        error_line(.{ "note: binary size must be a multiple of ", .{.inspect, bytes}}, opts);
+        error_line(.{ "got: ", .{ .inspect, str_res.size } }, opts);
+        error_line(.{ "note: binary size must be a multiple of ", .{ .inspect, bytes } }, opts);
         return GetError.argument_error;
     }
 
@@ -707,7 +707,7 @@ fn null_or_atom(comptime T: type, src: beam.term, opts: anytype) !T {
     return if (std.mem.eql(u8, "nil", atom)) null else switch (@typeInfo(Child)) {
         .Enum => try get_enum(Child, src, opts),
         .Bool => try get_bool(Child, src, opts),
-        else => return GetError.argument_error
+        else => return GetError.argument_error,
     };
 }
 
@@ -846,4 +846,56 @@ fn maybe_binary_term(comptime term_info: anytype) []const u8 {
         else => child_term_type,
     };
     return r;
+}
+
+const BinarySize = union {
+    fixed: usize,
+    variable: usize,
+};
+
+fn get_byte_size(comptime T: type) ?BinarySize {
+    // function is null if the type can't be a binary, otherwise it returns a variable or
+    // fixed byte size specification
+    const info = @typeInfo(T);
+    switch (info) {
+        .Array => |a| {
+            // arrays can only be binary if the associated child size is integer, float, or fixed, and the
+            // size is fixed.
+            switch (@typeInfo(a.child)) {
+                .Int, .Float => return .{ .fixed = @SizeOf(T) * a.len },
+            }
+            if (get_byte_size(a.child)) |bsc| {
+                if (bsc == .fixed) {
+                    return .{ .fixed = bsc.fixed * a.len };
+                }
+            }
+            return null;
+        },
+        .Pointer => |p| {
+            switch (p.size) {
+                .Slice, .Many, .C => {
+                    // pointers can only be binary if the associated child size is integer, float, or fixed, but
+                    // the result is variable.
+                    switch (@typeInfo(p.child)) {
+                        .Int, Float => return .{ .variable = @SizeOf(T) },
+                    }
+                    if (get_byte_size(p.child)) |bsc| {
+                        if (bsc == .fixed) {
+                            return .{ .variable = bsc.fixed };
+                        }
+                    }
+                    return null;
+                },
+                .One => return null,
+            }
+        },
+        .Struct => |s| {
+            // structs can be binary, if the struct is either packed or extern.
+            switch (s.layout) {
+                .@"packed" => return .{ .fixed = @sizeOf(s.backing_integer) },
+                .@"extern" => return .{ .fixed = @sizeOf(T) },
+            }
+        },
+        else => return null,
+    }
 }
