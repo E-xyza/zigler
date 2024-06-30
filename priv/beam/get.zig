@@ -555,7 +555,8 @@ fn fill_array(comptime T: type, result: *T, src: beam.term, opts: anytype) GetEr
         .bitstring => {
             beam.ignore_when_sema();
 
-            const expected_size = array_info.len * @sizeOf(Child);
+            const byte_size_condition = get_byte_size(T) orelse return GetError.argument_error;
+            const expected_size = byte_size_condition.fixed;
 
             var str_res: e.ErlNifBinary = undefined;
             var u8_result_ptr = @as([*]u8, @ptrCast(result));
@@ -785,22 +786,16 @@ fn typespec_for(comptime T: type) []const u8 {
             }
         },
         .Float => "float | :infinity | :neg_infinity | :NaN",
-        .Struct => |s|
-        // resources require references
-        if (resource.MaybeUnwrap(s)) |_| "reference" else
-        // everything else is "reported as a generic map or keyword, binary if packed"
-        "map | keyword" ++ if (s.layout == .@"packed") " | binary" else "",
+        // a struct might be a reosurce.  If it's not, then it could be map/keyword, or maybe a binary (if packed or extern).
+        .Struct => |s| if (resource.MaybeUnwrap(s)) |_| "reference" else "map | keyword" ++ binary_spec(T),
         .Bool => "boolean",
-        .Array => |a| maybe_array_term(a, @sizeOf(T)),
+        .Array => |a| "list(" ++ typespec_for(a.child) ++ ")" ++ binary_spec(T),
         .Pointer => |p| switch (p.size) {
             // pointer to one can only be a map or keyword.
             .One => "map | keyword",
-            .Slice => maybe_binary_term(p),
-            .Many => maybe_binary_term(p),
-            .C => comptime make_cpointer: {
-                const or_single = if (@typeInfo(p.child) == .Struct) "map | " else "";
-                break :make_cpointer or_single ++ maybe_binary_term(p);
-            },
+            .Slice => "list(" ++ typespec_for(p.child) ++ ")" ++ binary_spec(T),
+            .Many => "list(" ++ typespec_for(p.child) ++ ")" ++ binary_spec(T),
+            .C => (if (@typeInfo(p.child) == .Struct) "map" else "") ++ binary_spec(T),
         },
         .Optional => |o| comptime make_optional: {
             break :make_optional "nil | " ++ typespec_for(o.child);
@@ -825,33 +820,21 @@ fn refname_for(comptime T: type) []const u8 {
     unreachable;
 }
 
-fn maybe_array_term(comptime term_info: anytype, comptime array_bytes: usize) []const u8 {
-    const Child = term_info.child;
-    const child_term_type = comptime btbrk: {
-        break :btbrk "list(" ++ typespec_for(Child) ++ ")";
-    };
-    if (Child == u8) return "binary | " ++ child_term_type;
-    return std.fmt.comptimePrint("<<_::binary-size({})>> | ", .{array_bytes}) ++ child_term_type;
-}
-
-fn maybe_binary_term(comptime term_info: anytype) []const u8 {
-    const Child = term_info.child;
-    const child_term_type = comptime btbrk: {
-        break :btbrk "list(" ++ typespec_for(Child) ++ ")";
-    };
-    if (Child == u8) return "binary | " ++ child_term_type;
-    const r = switch (@typeInfo(Child)) {
-        .Int => |i| std.fmt.comptimePrint("<<_::_ * {}>> | ", .{i.bits}) ++ child_term_type,
-        .Float => |f| std.fmt.comptimePrint("<<_::_ * {}>> | ", .{f.bits}) ++ child_term_type,
-        else => child_term_type,
-    };
-    return r;
-}
-
-const BinarySize = union {
+const BinarySizeTag = enum { fixed, variable };
+const BinarySize = union (BinarySizeTag) {
     fixed: usize,
     variable: usize,
 };
+
+fn binary_spec(comptime T: type) []const u8 {
+    if (get_byte_size(T)) |size| {
+        return switch (size) {
+            .fixed => |s| std.fmt.comptimePrint(" | <<_::{}>>", .{s * 8}),
+            .variable => |s| std.fmt.comptimePrint(" | <<_::_*{}>>", .{s * 8}),
+        };
+    }
+    return "";
+}
 
 fn get_byte_size(comptime T: type) ?BinarySize {
     // function is null if the type can't be a binary, otherwise it returns a variable or
@@ -862,7 +845,8 @@ fn get_byte_size(comptime T: type) ?BinarySize {
             // arrays can only be binary if the associated child size is integer, float, or fixed, and the
             // size is fixed.
             switch (@typeInfo(a.child)) {
-                .Int, .Float => return .{ .fixed = @SizeOf(T) * a.len },
+                .Int, .Float => return .{ .fixed = @sizeOf(a.child) * a.len },
+                else => {}
             }
             if (get_byte_size(a.child)) |bsc| {
                 if (bsc == .fixed) {
@@ -877,7 +861,8 @@ fn get_byte_size(comptime T: type) ?BinarySize {
                     // pointers can only be binary if the associated child size is integer, float, or fixed, but
                     // the result is variable.
                     switch (@typeInfo(p.child)) {
-                        .Int, Float => return .{ .variable = @SizeOf(T) },
+                        .Int, .Float => return .{ .variable = @sizeOf(p.child) },
+                        else => {}
                     }
                     if (get_byte_size(p.child)) |bsc| {
                         if (bsc == .fixed) {
@@ -892,8 +877,9 @@ fn get_byte_size(comptime T: type) ?BinarySize {
         .Struct => |s| {
             // structs can be binary, if the struct is either packed or extern.
             switch (s.layout) {
-                .@"packed" => return .{ .fixed = @sizeOf(s.backing_integer) },
+                .@"packed" => return .{ .fixed = @sizeOf(s.backing_integer.?) },
                 .@"extern" => return .{ .fixed = @sizeOf(T) },
+                .auto => return null
             }
         },
         else => return null,

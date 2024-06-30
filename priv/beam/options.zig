@@ -75,7 +75,7 @@ fn ListChildOf(T: type) type {
             }
             @compileError("list_child is only callable from a list declaration");
         },
-        else => @compileError("the as field must be an enum literal or a tuple.")
+        else => @compileError("the as field must be an enum literal or a tuple."),
     }
 }
 
@@ -104,14 +104,14 @@ fn MapChildOf(T: type, comptime name: []const u8) type {
                             }
                             @compileError("field not found in target struct");
                         },
-                        else => @compileError("map as definition needs to be a struct")
+                        else => @compileError("map as definition needs to be a struct"),
                     }
                     @compileError("map as definition needs to be a keyword list");
                 }
             }
             @compileError("list_child is only callable from a map declaration");
         },
-        else => @compileError("the as field must be an enum literal or a tuple.")
+        else => @compileError("the as field must be an enum literal or a tuple."),
     }
 }
 

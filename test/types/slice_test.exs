@@ -58,19 +58,19 @@ defmodule ZiglerTest.Types.SliceTest do
 
     test "completely wrong type is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[]f64`)\n     got: `:bar`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(float | :infinity | :neg_infinity | :NaN) | <<_::_*64>> (for `[]f64`)\n     got: `:bar`\n",
                    fn -> slice_float_test(:bar) end
     end
 
     test "incorrect value types is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[]f64`)\n     got: `[\"foo\", :bar, :baz]`\n     at index 0:\n     | expected: float | :infinity | :neg_infinity | :NaN (for `f64`)\n     | got: `\"foo\"`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(float | :infinity | :neg_infinity | :NaN) | <<_::_*64>> (for `[]f64`)\n     got: `[\"foo\", :bar, :baz]`\n     at index 0:\n     | expected: float | :infinity | :neg_infinity | :NaN (for `f64`)\n     | got: `\"foo\"`\n",
                    fn -> slice_float_test(["foo", :bar, :baz]) end
     end
 
     test "incorrect binary size is not tolerated" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: <<_::_ * 64>> | list(float | :infinity | :neg_infinity | :NaN) (for `[]f64`)\n     got: `<<0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64, 0>>`\n     note: binary size must be a multiple of 8\n     got: 17\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(float | :infinity | :neg_infinity | :NaN) | <<_::_*64>> (for `[]f64`)\n     got: `<<0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64, 0>>`\n     note: binary size must be a multiple of 8\n     got: 17\n",
                    fn -> slice_float_test(<<1.0::float-native, 2.0::float-native, 0>>) end
     end
   end
@@ -159,7 +159,7 @@ defmodule ZiglerTest.Types.SliceTest do
 
     test "binary input only doesn't work" do
       assert_raise ArgumentError,
-                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(<<_::_ * 32>> | list(integer)) (for `[][]u32`)\n     got: `<<1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0>>`\n",
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(list(integer) | <<_::_*32>>) (for `[][]u32`)\n     got: `<<1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0>>`\n",
                    fn ->
                      slice_of_slice_u32(
                        <<1::32-native, 2::32-native, 3::32-native, 4::32-native, 5::32-native,
@@ -226,9 +226,11 @@ defmodule ZiglerTest.Types.SliceTest do
     end
 
     test "argumenterror on incorrect binary size" do
-      assert_raise ArgumentError, "", fn ->
-        slice_of_packed_structs(<<0, 0, 0>>)
-      end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(map | keyword | <<binary-size(4)>>) | <<_::_*32>> (for `[]P`)\n     got: `<<0, 0, 0>>`\n",
+                   fn ->
+                     slice_of_packed_structs(<<0, 0, 0>>)
+                   end
     end
   end
 
@@ -264,9 +266,11 @@ defmodule ZiglerTest.Types.SliceTest do
     end
 
     test "raises argumenterror on incorrect size" do
-      assert_raise ArgumentError, "", fn ->
-        slice_of_packed_structs(<<0, 0, 0>>)
-      end
+      assert_raise ArgumentError,
+                   "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(map | keyword | <<binary-size(4)>>) | <<_::_*32>> (for `[]P`)\n     got: `<<0, 0, 0>>`\n",
+                   fn ->
+                     slice_of_packed_structs(<<0, 0, 0>>)
+                   end
     end
   end
 
