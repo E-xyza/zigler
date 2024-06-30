@@ -7,7 +7,7 @@ defmodule ZiglerTest.CornerCases.ReturnspecOverrideTest do
   require ZiglerTest.Compiler
 
   setup_all do
-    ZiglerTest.Compiler.compile("_returnspec_override.ex")
+    ZiglerTest.Compiler.compile("returnspec_override.ex")
     Code.Typespec.fetch_specs(ZiglerTest.ReturnspecOverride)
   end
 

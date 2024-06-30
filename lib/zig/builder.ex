@@ -10,7 +10,13 @@ defmodule Zig.Builder do
   alias Zig.Command
 
   def staging_directory(module) do
-    Path.join(System.tmp_dir(), to_string(module))
+    staging_root =
+      case System.get_env("ZIGLER_STAGING_ROOT", "") do
+        "" -> System.tmp_dir()
+        path -> path
+      end
+
+    Path.join(staging_root, to_string(module))
   end
 
   build_zig_template = Path.join(__DIR__, "templates/build.zig.eex")
@@ -21,6 +27,7 @@ defmodule Zig.Builder do
 
     unless File.dir?(staging_directory) do
       Logger.debug("creating staging directory #{staging_directory}")
+
       File.mkdir_p!(staging_directory)
     end
 
@@ -48,6 +55,10 @@ defmodule Zig.Builder do
     Logger.debug("wrote build.zig to #{build_zig_path}")
 
     %{module | module_code_path: Path.join(staging_directory, "module.zig")}
+  rescue
+    e in File.Error ->
+      new_action = "#{e.action}, consider setting ZIGLER_STAGING_ROOT environment variable\n"
+      reraise %{e | action: new_action}, __STACKTRACE__
   end
 
   defp make_packages(opts) do

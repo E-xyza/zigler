@@ -7,7 +7,7 @@ defmodule ZiglerTest.CornerCases.TypespecOverrideTest do
   require ZiglerTest.Compiler
 
   setup_all do
-    ZiglerTest.Compiler.compile("_typespec_override.ex")
+    ZiglerTest.Compiler.compile("typespec_override.ex")
     Code.Typespec.fetch_specs(ZiglerTest.TypespecOverride)
   end
 

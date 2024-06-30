@@ -1,7 +1,35 @@
 defmodule ZiglerTest.CornerCases.StagingDirTest do
-  use ExUnit.Case, async: true
-  # use Zig, otp_app: :zigler, staging_directory: "./staging"
+  # this test is not async because we can set the staging directory
+  # as an environment variable
+  use ExUnit.Case
 
-  @tag :skip
-  test "specified staging dir works"
+  @staging_dir Path.join(System.tmp_dir!(), "zigler_staging")
+
+  require ZiglerTest.Compiler
+
+  test "specifying staging dir works" do
+    System.put_env("ZIGLER_STAGING_ROOT", @staging_dir)
+
+    if File.dir?(@staging_dir) do
+      File.rm_rf!(@staging_dir)
+    end
+
+    ZiglerTest.Compiler.compile("staging_dir.ex")
+
+    assert @staging_dir
+           |> Path.join("#{ZiglerTest.StagingDir}")
+           |> File.dir?()
+
+    File.rm_rf!(@staging_dir)
+  end
+
+  test "an invalid staging dir yields a usable error" do
+    System.put_env("ZIGLER_STAGING_ROOT", "/this/is/not/a/usable/path")
+
+    assert_raise File.Error,
+                 "could not make directory (with -p), consider setting ZIGLER_STAGING_ROOT environment variable\n \"/this/is/not/a/usable/path/Elixir.ZiglerTest.StagingDir\": no such file or directory",
+                 fn ->
+                   ZiglerTest.Compiler.compile("staging_dir.ex")
+                 end
+  end
 end

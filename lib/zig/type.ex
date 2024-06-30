@@ -149,9 +149,14 @@ after
           binary()
         end
 
-      {:var, size} ->
+      {:var, size} when size <= 32 ->
         quote context: Elixir do
           <<_::_*unquote(size * 8)>>
+        end
+
+      {:var, size} ->
+        quote context: Elixir do
+          binary()
         end
 
       size ->
