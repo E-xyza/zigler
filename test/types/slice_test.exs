@@ -8,6 +8,7 @@ defmodule ZiglerTest.Types.SliceTest do
       {:slice_u8_test, return: :list},
       {:slice_of_array_u32_list_of_binary, return: {:list, :binary}},
       {:slice_of_array_u32_binary, return: :binary},
+      {:slice_of_slice_u32_list_of_binary, return: {:list, :binary}},
       ...
     ]
 
@@ -74,14 +75,8 @@ defmodule ZiglerTest.Types.SliceTest do
     pub fn slice_of_array_u32(slice: [][3]u32) [][3]u32 {
         return slice;
     }
-
-    pub fn slice_of_array_u32_list_of_binary(slice: [][3]u32) [][3]u32 {
-        return slice;
-    }
-
-    pub fn slice_of_array_u32_binary(slice: [][3]u32) [][3]u32 {
-        return slice;
-    }
+    pub const slice_of_array_u32_list_of_binary = slice_of_array_u32;
+    pub const slice_of_array_u32_binary = slice_of_array_u32;
     """
 
     test "can accept binary" do
@@ -113,11 +108,6 @@ defmodule ZiglerTest.Types.SliceTest do
     end
   end
 
-  test "slices of slices"
-  test "slices of structs"
-  test "slices of packed structs"
-  test "slices of extern structs"
-
   describe "for u8s strings are" do
     test "available for used as input" do
       assert ~C"bcd" == slice_u8_test("abc")
@@ -133,6 +123,43 @@ defmodule ZiglerTest.Types.SliceTest do
       assert 3 == const_slice_test("abc")
     end
   end
+
+  describe "for slice of slices" do
+    ~Z"""
+    pub fn slice_of_slice_u32(slice: [][]u32) [][]u32 {
+      return slice;
+    }
+
+    pub const slice_of_slice_u32_list_of_binary = slice_of_slice_u32;
+    """
+
+    test "list of list input works" do
+      assert [[1, 2, 3], [4, 5, 6]] == slice_of_slice_u32([[1, 2, 3], [4, 5, 6]])
+      assert [[1, 2], [3, 4, 5]] == slice_of_slice_u32([[1, 2], [3, 4, 5]])
+    end
+
+    test "list of binary input works" do
+      assert [[1, 2, 3], [4, 5, 6]] == slice_of_slice_u32([<<1::32-native, 2::32-native, 3::32-native>>, <<4::32-native, 5::32-native, 6::32-native>>])
+      assert [[1, 2], [3, 4, 5]] == slice_of_slice_u32([<<1::32-native, 2::32-native>>, <<3::32-native, 4::32-native, 5::32-native>>])
+    end
+
+    test "binary input only doesn't work" do
+      assert_raise ArgumentError, "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: list(<<_::_ * 32>> | list(integer)) (for `[][]u32`)\n     got: `<<1, 0, 0, 0, 2, 0, 0, 0, 3, 0, 0, 0, 4, 0, 0, 0, 5, 0, 0, 0, 6, 0, 0, 0>>`\n", fn ->
+        slice_of_slice_u32(<<1::32-native, 2::32-native, 3::32-native, 4::32-native, 5::32-native, 6::32-native>>)
+      end
+    end
+
+    test "list of binary output works" do
+      assert [
+               <<1::32-native, 2::32-native, 3::32-native>>,
+               <<4::32-native, 5::32-native, 6::32-native>>
+             ] = slice_of_slice_u32_list_of_binary([[1, 2, 3], [4, 5, 6]])
+    end
+  end
+
+  test "slices of structs"
+  test "slices of packed structs"
+  test "slices of extern structs"
 
   ~Z"""
   const e = @import("erl_nif");
