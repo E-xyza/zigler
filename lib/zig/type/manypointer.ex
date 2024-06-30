@@ -34,6 +34,7 @@ defmodule Zig.Type.Manypointer do
   def binary_size(pointer) do
     case Type.binary_size(pointer.child) do
       size when is_integer(size) -> {:var, size}
+      {:indirect, size} -> {:var, size}
       _ -> nil
     end
   end
@@ -68,42 +69,15 @@ defmodule Zig.Type.Manypointer do
     end
   end
 
-  def render_elixir_spec(%{child: child, has_sentinel?: sentinel}, %Parameter{} = context)
-      when not sentinel or child == ~t(u8) do
-    if binary_form = binary_form(child) do
+  def render_elixir_spec(type, %Parameter{} = context) do
+    if binary_form = Type.binary_typespec(type) do
       quote context: Elixir do
-        unquote([Type.render_elixir_spec(child, context)]) | unquote(binary_form)
+        unquote([Type.render_elixir_spec(type.child, context)]) | unquote(binary_form)
       end
     else
-      [Type.render_elixir_spec(child, context)]
+      [Type.render_elixir_spec(type.child, context)]
     end
   end
-
-  defp binary_form(~t(u8)) do
-    quote do
-      binary()
-    end
-  end
-
-  defp binary_form(%Type.Integer{bits: bits}) do
-    quote context: Elixir do
-      <<_::_*unquote(Type.Integer._next_power_of_two_ceil(bits))>>
-    end
-  end
-
-  defp binary_form(%Type.Float{bits: bits}) do
-    quote context: Elixir do
-      <<_::_*unquote(bits)>>
-    end
-  end
-
-  defp binary_form(%Type.Struct{packed: size}) when is_integer(size) do
-    quote context: Elixir do
-      <<_::_*unquote(size * 8)>>
-    end
-  end
-
-  defp binary_form(_), do: nil
 
   def of(type, opts \\ []) do
     struct(__MODULE__, opts ++ [child: type])

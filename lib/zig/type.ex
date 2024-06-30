@@ -154,7 +154,7 @@ after
           <<_::_*unquote(size * 8)>>
         end
 
-      {:var, size} ->
+      {:var, _} ->
         quote context: Elixir do
           binary()
         end

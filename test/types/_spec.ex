@@ -106,5 +106,13 @@ defmodule ZiglerTest.Types.Spec do
   const Extern2Struct = struct { value: [2]u32 };
 
   pub fn extern_struct_fn_internal_binary_return(data: Extern2Struct) Extern2Struct { return data; }
+
+  // note: 5 * 64 = 320 > 256
+  const BigArray = [5]u64;
+  pub fn really_big_array(value: []BigArray) []BigArray { return value; }
+
+  // note: 5 * 64 = 320 > 256
+  const BigStruct = extern struct {v1: u64, v2: u64, v3: u64, v4: u64, v5: u64};
+  pub fn really_big_struct(value: []BigStruct) []BigStruct { return value; }
   """
 end

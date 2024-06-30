@@ -212,4 +212,24 @@ defmodule ZiglerTest.Types.SpecTest do
              ) = Map.fetch!(specs, {:extern_struct_fn_internal_binary_return, 1})
     end
   end
+
+  @u64_range 0..18_446_744_073_709_551_615
+  @u64_map %{v1: @u64_range, v2: @u64_range, v3: @u64_range, v4: @u64_range, v5: @u64_range}
+  @u64_kw [v1: @u64_range, v2: @u64_range, v3: @u64_range, v4: @u64_range, v5: @u64_range]
+
+  test "really big arrays and really big structs which are binary report `binary` as their type",
+       specs do
+    assert spec(([[@u64_range] | <<_::320>>] | binary -> [[@u64_range]])) =
+             Map.fetch!(specs, {:really_big_array, 1})
+
+    assert spec(
+             ([
+                @u64_map
+                | @u64_kw
+                | <<_::320>>
+              ]
+              | binary ->
+                [@u64_map])
+           ) = Map.fetch!(specs, {:really_big_struct, 1})
+  end
 end
