@@ -1,4 +1,4 @@
-#defmodule ZiglerTest.Erlang.ErroringTest do
+# defmodule ZiglerTest.Erlang.ErroringTest do
 #  use ZiglerTest.IntegrationCase, async: true
 #
 #  @moduletag :erlang
@@ -15,4 +15,4 @@
 #      :erlang_erroring_test.errors()
 #    end
 #  end
-#end
+# end

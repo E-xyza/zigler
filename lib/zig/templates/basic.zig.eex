@@ -21,7 +21,7 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
 
         var error_index: u8 = undefined;
 
-        const payload = beam.payload.build(nif.<%= @name %>, argc, args, &error_index, payload_opts) catch |err| {
+        const payload = beam.payload.build(nif.<%= @alias || @name %>, argc, args, &error_index, payload_opts) catch |err| {
             <%= if needs_make? do %>
                 return e.enif_raise_exception(env, beam.make(.{err, error_index, error_info}, .{}).v);
             <% else %>
@@ -32,7 +32,7 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
 
         // defer beam.payload.cleanup(payload, cleanup_opts);
 
-        const result = @call(.auto, nif.<%= @name %>, payload) <%= Nif.maybe_catch(@return.type) %>;
+        const result = @call(.auto, nif.<%= @alias || @name %>, payload) <%= Nif.maybe_catch(@return.type) %>;
 
         <%= Type.render_return(@return) %>
     };

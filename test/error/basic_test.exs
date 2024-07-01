@@ -20,7 +20,7 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
     return nested_error();
   }
   """
- 
+
   test "when you get a basic error" do
     error =
       try do

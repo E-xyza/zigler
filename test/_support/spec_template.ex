@@ -46,7 +46,7 @@ defmodule ZiglerTest.SpecTemplate do
     end
   end
 
-  defp convert([{atom, _} |_] = kwl, context) when is_atom(atom) do
+  defp convert([{atom, _} | _] = kwl, context) when is_atom(atom) do
     quote do
       {:type, _, :list, [{:type, _, :union, unquote(Enum.map(kwl, &convert(&1, context)))}]}
     end

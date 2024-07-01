@@ -108,6 +108,7 @@ defmodule Zig.Nif do
       export: Keyword.get(opts!, :export, true),
       concurrency: Map.get(@concurrency_modules, opts![:concurrency], Synchronous),
       spec: Keyword.get(opts!, :spec, true),
+      alias: opts![:alias],
       impl: opts![:impl]
     }
   end
@@ -236,9 +237,11 @@ defmodule Zig.Nif do
 
   @spec set_file_line(t(), module, Parser.t()) :: t()
   def set_file_line(nif, manifest_module, parsed) do
+    expected_name = if name = nif.alias, do: name, else: nif.name
+
     raw_line =
       Enum.find_value(parsed.code, fn
-        %{name: name, location: {line, _}} -> if name == nif.name, do: line
+        %{name: name, location: {line, _}} -> if name == expected_name, do: line
       end)
 
     {file, line} = manifest_module.__resolve(%{file_name: nif.zig_code_path, line: raw_line})
