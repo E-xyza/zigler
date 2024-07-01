@@ -21,6 +21,8 @@ defmodule ZiglerTest.Compiler do
       beamfile = Path.join(unquote(@root_dir), "#{mod}.beam")
 
       File.write!(beamfile, bin)
+
+      mod
     end
   end
 end

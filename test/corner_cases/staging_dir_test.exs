@@ -14,10 +14,10 @@ defmodule ZiglerTest.CornerCases.StagingDirTest do
       File.rm_rf!(@staging_dir)
     end
 
-    ZiglerTest.Compiler.compile("staging_dir.ex")
+    modname = ZiglerTest.Compiler.compile("staging_dir.ex")
 
     assert @staging_dir
-           |> Path.join("#{ZiglerTest.StagingDir}")
+           |> Path.join("#{modname}")
            |> File.dir?()
 
     File.rm_rf!(@staging_dir)
@@ -27,7 +27,7 @@ defmodule ZiglerTest.CornerCases.StagingDirTest do
     System.put_env("ZIGLER_STAGING_ROOT", "/this/is/not/a/usable/path")
 
     assert_raise File.Error,
-                 "could not make directory (with -p), consider setting ZIGLER_STAGING_ROOT environment variable\n \"/this/is/not/a/usable/path/Elixir.ZiglerTest.StagingDir\": no such file or directory",
+                 "could not make directory (with -p), consider setting ZIGLER_STAGING_ROOT environment variable\n \"/this/is/not/a/usable/path/Elixir.Zigler.StagingDir.This.Is.Not.A.Usable.Path\": no such file or directory",
                  fn ->
                    ZiglerTest.Compiler.compile("staging_dir.ex")
                  end
