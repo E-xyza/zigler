@@ -1,4 +1,4 @@
-const @"Thread-<%= @name %>" = beam.Thread(nif.<%= @name %>);
+const @"Thread-<%= @name %>" = beam.Thread(nif.<%= @alias || @name %>);
 pub const @"ThreadResource-<%= @name %>" = beam.Resource(*@"Thread-<%= @name %>", @This(), .{
   .Callbacks = beam.ThreadedCallbacks(@"Thread-<%= @name %>")
 });
