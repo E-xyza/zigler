@@ -113,7 +113,6 @@ defmodule Zig.Compiler do
       %{language: :erlang} = module ->
         Zig.Module.render_erlang(module, zig_code)
     end
-    |> Zig.Macro.inspect(opts)
   end
 
   defp write_code!(module, zig_code) do

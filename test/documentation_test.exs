@@ -7,6 +7,7 @@ defmodule ZiglerTest.DocumentationTest do
 
   setup_all do
     ZiglerTest.Compiler.compile("_documentation.ex")
+    :ok
   end
 
   test "it is possible to write a doc comment" do

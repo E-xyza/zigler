@@ -33,6 +33,7 @@ defmodule Zig.Nif.Basic do
   defp marshals_param?(:erl_nif_term), do: false
   defp marshals_param?(_), do: true
 
+  defp marshals_return?(%Type.Error{}), do: true
   defp marshals_return?(%Integer{bits: bits}), do: bits > 64
   defp marshals_return?(_), do: false
 

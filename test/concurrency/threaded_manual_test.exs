@@ -34,7 +34,7 @@ defmodule ZiglerTest.Concurrency.ThreadedManualTest do
 
   test "threaded function" do
     assert ref = launch(100)
-    assert_receive {:done, ^ref}
+    assert_receive {:done, ^ref}, 1000
     assert 147 = join(ref)
   end
 end

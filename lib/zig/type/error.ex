@@ -13,6 +13,10 @@ defmodule Zig.Type.Error do
   def make_allowed?(error), do: Type.make_allowed?(error.child)
   def can_cleanup?(_), do: false
 
+  def marshal_return(error, variable, lang) do
+    Type.marshal_return(error.child, variable, lang)
+  end
+
   def binary_size(type), do: Type.binary_size(type.child)
 
   def render_zig(error), do: "!#{error.child}"
