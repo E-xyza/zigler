@@ -131,12 +131,15 @@ defmodule Zig.Sema do
       case module.nifs do
         {:auto, specified_fns} ->
           # make sure that all of the specified functions exist in sema.
-          Enum.each(specified_fns, fn {name, opts} ->
-            expected_name = Keyword.get(opts, :alias, name)
+          Enum.each(specified_fns, fn {name, nif_opts} ->
+            expected_name = Keyword.get(nif_opts, :alias, name)
+
             unless Enum.any?(functions, &(&1.name == expected_name)) do
+              needed_msg = if nif_opts[:alias], do: " (needed by nif #{name})"
+
               raise CompileError,
                 description:
-                  "public function named `#{expected_name}` not found in semantic analysis of module.",
+                  "public function named `#{expected_name}`#{needed_msg} not found in semantic analysis of module.",
                 file: module.file,
                 line: module.line
             end
@@ -149,31 +152,37 @@ defmodule Zig.Sema do
             |> Nif.new(module, nif_opts)
             |> Nif.set_file_line(module.manifest_module, module.parsed)
             |> apply_from_sema(function, nif_opts)
-          end) ++ Enum.flat_map(specified_fns, fn {name, nif_opts} -> 
-            List.wrap(if expected_name = Keyword.get(nif_opts, :alias) do
-              function = Enum.find(functions, &(&1.name == expected_name))
+          end) ++
+            Enum.flat_map(specified_fns, fn {name, nif_opts} ->
+              List.wrap(
+                if expected_name = Keyword.get(nif_opts, :alias) do
+                  function = Enum.find(functions, &(&1.name == expected_name))
 
-              # TODO: abstract this with below
-              name
-              |> Nif.new(module, nif_opts)
-              |> Nif.set_file_line(module.manifest_module, module.parsed)
-              |> apply_from_sema(function, nif_opts)
+                  # TODO: abstract this with below
+                  name
+                  |> Nif.new(module, nif_opts)
+                  |> Nif.set_file_line(module.manifest_module, module.parsed)
+                  |> apply_from_sema(function, nif_opts)
+                end
+              )
             end)
-          end)
 
         selected_fns when is_list(selected_fns) ->
           Enum.map(selected_fns, fn {name, nif_opts} ->
-            if function = Enum.find(functions, &(&1.name == name)) do
+            expected_name = Keyword.get(nif_opts, :alias, name)
 
+            if function = Enum.find(functions, &(&1.name == expected_name)) do
               # TODO: abstract this with above
               name
               |> Nif.new(module, nif_opts)
               |> Nif.set_file_line(module.manifest_module, module.parsed)
               |> apply_from_sema(function, nif_opts)
             else
+              needed_msg = if nif_opts[:alias], do: " (needed by nif #{name})"
+
               raise CompileError,
                 description:
-                  "nif function named `#{name}` not found in semantic analysis of module.",
+                  "public function named `#{expected_name}`#{needed_msg} not found in semantic analysis of module.",
                 file: module.file,
                 line: module.line
             end

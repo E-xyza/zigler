@@ -108,9 +108,9 @@ defmodule Zigler.MixProject do
       # are pinned to zig versions
       {:zig_parser, "~> 0.4.0"},
       # utility to help manage type protocols
-      {:protoss, "~> 0.1.1"},
+      {:protoss, "~> 0.2"},
       # documentation
-      {:ex_doc, "~> 0.30.0", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.30", only: :dev, runtime: false}
       # {:zig_doc, "~> 0.3.1", only: :dev, runtime: false}
     ]
   end

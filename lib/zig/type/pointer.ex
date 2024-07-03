@@ -4,8 +4,6 @@ defmodule Zig.Type.Pointer do
 
   use Type
 
-  @behaviour Type
-
   defstruct [:child, optional: false]
 
   @type t :: %__MODULE__{

@@ -93,6 +93,11 @@ defmodule Zig.Nif do
     :dirty_io => DirtyIo
   }
   @concurrency_opts Map.keys(@concurrency_modules)
+  @defaults %{
+    :cleanup => true,
+    :leak_check => false
+  }
+  @defaultable_opts Map.keys(@defaults)
 
   @doc """
   based on nif options for this function keyword at (opts :: nifs :: function_name)
@@ -108,6 +113,7 @@ defmodule Zig.Nif do
       export: Keyword.get(opts!, :export, true),
       concurrency: Map.get(@concurrency_modules, opts![:concurrency], Synchronous),
       spec: Keyword.get(opts!, :spec, true),
+      leak_check: Keyword.get(opts!, :leak_check, @defaults[:leak_check]),
       alias: opts![:alias],
       impl: opts![:impl]
     }
@@ -115,6 +121,8 @@ defmodule Zig.Nif do
 
   def adjust(opts) do
     Enum.map(opts, fn
+      defaultable when defaultable in @defaultable_opts -> {defaultable, true}
+      :nocleanup -> {:cleanup, false}
       concurrency when concurrency in @concurrency_opts -> {:concurrency, concurrency}
       {atom, _} = kv when is_atom(atom) -> kv
     end)

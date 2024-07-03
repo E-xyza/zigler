@@ -1,11 +1,17 @@
 <% needs_make? = @params |> Map.values |> Enum.any?(&Type.needs_make?(&1.type)) %>
 
 fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
+    <%= if @leak_check do %>
+    var gpa = beam.make_general_purpose_allocator_instance();
+    const allocator = gpa.allocator(); 
+    <% else %>
+    const allocator = beam.allocator;
+    <% end %>
+
     beam.context = .{
         .env = env,
         .mode = .<%= context(@concurrency) %>,
-        // TODO: make this be configurable
-        .allocator = beam.allocator
+        .allocator = allocator
     };
 
     <%= if needs_make? do %>
@@ -20,8 +26,9 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
         };
 
         var error_index: u8 = undefined;
-
         const payload = beam.payload.build(nif.<%= @alias || @name %>, argc, args, &error_index, payload_opts) catch |err| {
+            if (err == error.OutOfMemory) return e.enif_raise_exception(env, beam.make(.{err, error_index}, .{}).v);
+
             <%= if needs_make? do %>
                 return e.enif_raise_exception(env, beam.make(.{err, error_index, error_info}, .{}).v);
             <% else %>
@@ -29,10 +36,20 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
                 unreachable;
             <% end %> 
         };
-
-        // defer beam.payload.cleanup(payload, cleanup_opts);
-
+    
+        //defer beam.payload.cleanup(payload, cleanup_opts);
+    
         const result = @call(.auto, nif.<%= @alias || @name %>, payload) <%= Nif.maybe_catch(@return.type) %>;
+
+        <%= if @leak_check do %>
+        if (gpa.deinit() == .leak) {
+            return e.enif_raise_exception(env, beam.make(.{
+                .__struct__ = .@"Elixir.RuntimeError", 
+                .message = "memory leak detected in function `<%= @alias || @name %>/<%= map_size(@params) %>`", 
+                .__exception__ = true
+            }, .{}).v);
+        }
+        <% end %>
 
         <%= Type.render_return(@return) %>
     };

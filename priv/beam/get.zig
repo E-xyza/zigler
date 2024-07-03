@@ -816,7 +816,7 @@ fn refname_for(comptime T: type) []const u8 {
 }
 
 const BinarySizeTag = enum { fixed, variable };
-const BinarySize = union (BinarySizeTag) {
+const BinarySize = union(BinarySizeTag) {
     fixed: usize,
     variable: usize,
 };
@@ -841,7 +841,7 @@ fn get_byte_size(comptime T: type) ?BinarySize {
             // size is fixed.
             switch (@typeInfo(a.child)) {
                 .Int, .Float => return .{ .fixed = @sizeOf(a.child) * a.len },
-                else => {}
+                else => {},
             }
             if (get_byte_size(a.child)) |bsc| {
                 if (bsc == .fixed) {
@@ -857,7 +857,7 @@ fn get_byte_size(comptime T: type) ?BinarySize {
                     // the result is variable.
                     switch (@typeInfo(p.child)) {
                         .Int, .Float => return .{ .variable = @sizeOf(p.child) },
-                        else => {}
+                        else => {},
                     }
                     if (get_byte_size(p.child)) |bsc| {
                         if (bsc == .fixed) {
@@ -874,7 +874,7 @@ fn get_byte_size(comptime T: type) ?BinarySize {
             switch (s.layout) {
                 .@"packed" => return .{ .fixed = @sizeOf(s.backing_integer.?) },
                 .@"extern" => return .{ .fixed = @sizeOf(T) },
-                .auto => return null
+                .auto => return null,
             }
         },
         else => return null,

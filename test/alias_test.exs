@@ -5,7 +5,7 @@ defmodule ZiglerTest.AliasTest do
     otp_app: :zigler,
     nifs: [
       ...,
-      renamed: [alias: :ok], 
+      renamed: [alias: :ok],
       rethreaded: [:threaded, alias: :ok]
     ]
 
