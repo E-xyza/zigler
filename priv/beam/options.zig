@@ -22,6 +22,10 @@ pub inline fn should_clear(opts: anytype) bool {
     return if (@hasField(@TypeOf(opts), "clear")) opts.clear else false;
 }
 
+pub inline fn size(opts: anytype) ?usize {
+    return if (@hasField(@TypeOf(opts), "size")) opts.size else null;
+}
+
 pub const OutputType = enum { default, list, binary, integer, map };
 
 pub inline fn output(opts: anytype) OutputType {

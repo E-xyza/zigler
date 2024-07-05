@@ -15,6 +15,7 @@ defmodule Zig.Nif.Basic do
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
   alias Zig.Nif.Synchronous
+  alias Zig.Parameter
   alias Zig.Type
   alias Zig.Type.Integer
 

@@ -68,11 +68,8 @@ pub fn build(fun: anytype, argc: c_int, args: [*c]const e.ErlNifTerm, error_inde
     return result;
 }
 
-pub fn cleanup(payload: anytype, should_clean: anytype) void {
-    if (@TypeOf(should_clean) == @TypeOf(null)) return;
-
-    inline for (should_clean, 0..) |item_clean_opts, index| {
-        if (@TypeOf(item_clean_opts) == @TypeOf(null)) continue;
-        beam.cleanup(payload[index], item_clean_opts);
+pub fn cleanup(payload: anytype, opts_list: anytype) void {
+    inline for (opts_list, 0..) |opts, index| {
+        beam.cleanup(payload[index], opts);
     }
 }

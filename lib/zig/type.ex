@@ -276,10 +276,10 @@ after
 
   def _default_payload_options, do: ".{.error_info = &error_info},"
 
-  def render_return(%{type: :void}), do: "_ = result; break :result_block beam.make(.ok, .{}).v;"
+  def render_return(%{type: :void}), do: "_ = result; break :execution_block beam.make(.ok, .{}).v;"
 
   def render_return(%{as: type}),
-    do: "break :result_block beam.make(result, .{.as = #{render_return_as(type)}}).v;"
+    do: "break :execution_block beam.make(result, .{.as = #{render_return_as(type)}}).v;"
 
   defp render_return_as(atom) when is_atom(atom), do: ".#{atom}"
   defp render_return_as({:list, return}), do: ".{.list = #{render_return_as(return)}}"

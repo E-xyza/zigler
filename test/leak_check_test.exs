@@ -4,10 +4,10 @@ defmodule ZiglerTest.LeakCheckTest do
   use Zig,
     otp_app: :zigler,
     nifs: [
-      leaky_string: [:leak_check, args: [[cleanup: false]]],
-      unchecked_leak: [args: [[cleanup: false]], alias: :leaky_string],
+      leaky_string: [:leak_check, params: [[cleanup: false]]],
+      unchecked_leak: [params: [[cleanup: false]], alias: :leaky_string],
       with_cleanup: [:leak_check, alias: :leaky_string],
-      no_leaky_string: [:leak_check, args: [[cleanup: false]]]
+      no_leaky_string: [:leak_check, params: [[cleanup: false]]]
     ]
 
   ~Z"""
@@ -32,7 +32,7 @@ defmodule ZiglerTest.LeakCheckTest do
       ----------------------------------------------------
       """)
 
-      assert_raise RuntimeError, "memory leak detected in function `leaky_string/1`", fn ->
+      assert_raise RuntimeError, "memory leak detected in function `ZiglerTest.LeakCheckTest.leaky_string/1`", fn ->
         leaky_string("some string")
       end
 

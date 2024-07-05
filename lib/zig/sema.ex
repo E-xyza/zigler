@@ -214,21 +214,33 @@ defmodule Zig.Sema do
     %{nif | signature: sema, raw: t, params: arities, return: Return.new(t)}
   end
 
-  defp apply_from_sema(nif, sema, opts) do
+  defp apply_from_sema(%{params: nif_params} = nif, sema, opts) do
+    if nif_params do
+      # check that the length of the opts matches the arity
+      if length(nif_params) != sema.arity do
+        raise CompileError,
+          description:
+            "nif function `#{nif.name}` has an arity of #{sema.arity}, but #{length(nif_params)} options were provided",
+          file: nif.file,
+          line: nif.line
+      end
+    end
+
     %{
       nif
       | signature: sema,
-        params: params_from_sema(sema, opts),
-        return: return_from_sema(sema, opts)
+        params: params_from_sema(sema, nif.params),
+        return: return_from_sema(sema, nif.return)
     }
   end
 
   defp arities(integer) when is_integer(integer), do: [integer]
   defp arities({:.., _, [start, finish]}), do: Enum.to_list(start..finish)
 
-  defp params_from_sema(%{params: params}, _opts) do
+  defp params_from_sema(%{params: params} = sema, opts) do
     params
-    |> Enum.with_index(fn param, index -> {index, Parameter.new(param, [])} end)
+    |> Enum.zip(opts || List.duplicate([], sema.arity))
+    |> Enum.with_index(fn {param, param_opt}, index -> {index, Parameter.new(param, param_opt)} end)
     |> Map.new()
   end
 

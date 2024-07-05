@@ -1,34 +1,11 @@
 const std = @import("std");
 const beam = @import("beam.zig");
 const options = @import("options.zig");
-//const resource = @import("resource.zig");
+const resource = @import("resource.zig");
 
 const CPointerTags = enum { One, Many };
 pub fn CPointerCleanup(comptime T: type) type {
     return ?union(CPointerTags) { One: *T, Many: []T };
-}
-
-pub fn CleanupArtifact(comptime T: type) type {
-    return switch (@typeInfo(T)) {
-        .Pointer => PointerCleanupArtifact(T),
-        else => @compileError("this type doesn't need an artifact"),
-    };
-}
-
-fn PointerCleanupArtifact(comptime T: type) type {
-    const info = @typeInfo(T);
-    return switch (info.size) {
-        .C => CPointerCleanup(info.child),
-        else => @compileError("this type doesn't need an artifact"),
-    };
-}
-
-fn allocator(opts: anytype) std.mem.Allocator {
-    const T = @TypeOf(opts);
-    if (@hasField(T, "allocator")) {
-        return opts.allocator;
-    }
-    return beam.allocator;
 }
 
 pub fn cleanup(what: anytype, opts: anytype) void {
@@ -42,17 +19,17 @@ pub fn cleanup(what: anytype, opts: anytype) void {
                 cleanup(pointer, opts);
             }
         },
-        .Struct => |_| {
-            //if (resource.MaybeUnwrap(s)) |_| {
-            //    cleanup_resource(what, opts);
-            //}
+        .Struct => |s| {
+            if (resource.MaybeUnwrap(s)) |_| {
+                cleanup_resource(what, opts);
+            }
         },
         else => {},
     }
 }
 
 fn cleanup_pointer(ptr: anytype, opts: anytype) void {
-    const Opts = @TypeOf(opts);
+    if (!options.should_cleanup(opts)) return;
     const T = @TypeOf(ptr);
     const info = @typeInfo(T).Pointer;
     if (info.is_const) return;
@@ -60,13 +37,13 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
     switch (info.size) {
         .One => {
             // TODO: more detailed cleanup.
-            allocator(opts).destroy(ptr);
+            options.allocator(opts).destroy(ptr);
         },
         .Slice => {
             if (info.sentinel) |_| {
-                allocator(opts).free(@as([]u8, @ptrCast(ptr)));
+                options.allocator(opts).free(@as([]u8, @ptrCast(ptr)));
             } else {
-                allocator(opts).free(ptr);
+                options.allocator(opts).free(ptr);
             }
         },
         .Many, .C => {
@@ -75,19 +52,18 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
             // ignored by specifying a null cleanup function.  This function should take
             // pointer, plus the selfsame options tuple.  Specifying a size assumes that
             // the underlying memory was created using a slice operation.
-            if (@hasField(Opts, "size")) {
+            if (options.size(opts)) |size| {
                 if (info.is_allowzero) {
                     if (ptr) |_| {
-                        const underlying_slice = ptr[0..opts.size];
-                        allocator(opts).free(underlying_slice);
+                        const underlying_slice = ptr[0..size];
+                        options.allocator(opts).free(underlying_slice);
                     }
                 } else {
-                    const underlying_slice = ptr[0..opts.size];
-                    allocator(opts).free(underlying_slice);
+                    const underlying_slice = ptr[0..size];
+                    options.allocator(opts).free(underlying_slice);
                 }
-            } else if (@hasField(Opts, "cleanup")) {
-                maybe_cleanup_pointer_with_function(ptr, opts);
             } else {
+                // TODO: custom cleanup function goes here.
                 @compileError("C or Many pointer cleanup requires size, or a function.  If you would like to ignore cleanup, specify a null function.");
             }
         },
@@ -97,13 +73,5 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
 fn cleanup_resource(res: anytype, opts: anytype) void {
     if (options.should_cleanup(opts)) {
         res.release();
-    }
-}
-
-fn maybe_cleanup_pointer_with_function(ptr: anytype, opts: anytype) void {
-    const T = @TypeOf(opts.cleanup);
-    switch (@typeInfo(T)) {
-        .Null => return,
-        .Fn => options.cleanup(ptr, opts),
     }
 }

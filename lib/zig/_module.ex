@@ -50,7 +50,7 @@ defmodule Zig.Module do
 
   @type t :: %__MODULE__{
           otp_app: atom(),
-          module: atom(),
+          module: module(),
           file: Path.t(),
           line: non_neg_integer(),
           on_load: atom(),

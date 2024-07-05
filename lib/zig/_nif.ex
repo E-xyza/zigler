@@ -11,7 +11,7 @@ defmodule Zig.Nif do
   # files.
   @behaviour Access
 
-  @enforce_keys ~w[name export concurrency file module_code_path zig_code_path spec]a
+  @enforce_keys ~w[name export module concurrency file module_code_path zig_code_path spec]a
 
   defstruct @enforce_keys ++ ~w[line signature params return leak_check alias doc raw impl]a
 
@@ -30,6 +30,7 @@ defmodule Zig.Nif do
   @typep raw :: %__MODULE__{
            name: atom,
            export: boolean,
+           module: module,
            concurrency: Concurrency.t(),
            line: integer,
            file: Path.t(),
@@ -50,6 +51,7 @@ defmodule Zig.Nif do
            name: atom,
            export: boolean,
            concurrency: Concurrency.t(),
+           module: module,
            line: integer,
            file: Path.t(),
            module_code_path: Path.t(),
@@ -108,12 +110,15 @@ defmodule Zig.Nif do
     %__MODULE__{
       name: name,
       file: module.file,
+      module: module.module,
       module_code_path: module.module_code_path,
       zig_code_path: module.zig_code_path,
       export: Keyword.get(opts!, :export, true),
       concurrency: Map.get(@concurrency_modules, opts![:concurrency], Synchronous),
       spec: Keyword.get(opts!, :spec, true),
       leak_check: Keyword.get(opts!, :leak_check, @defaults[:leak_check]),
+      params: opts![:params],
+      return: opts![:return],
       alias: opts![:alias],
       impl: opts![:impl]
     }

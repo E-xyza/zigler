@@ -28,4 +28,10 @@ defmodule Zig.Parameter do
     end)
     |> Keyword.put_new(:cleanup, Type.can_cleanup?(type))
   end
+
+  def render_cleanup(parameter) do
+    cleanup_parameter = unless parameter.cleanup, do: ".cleanup = false,"
+
+    ".{#{cleanup_parameter}}"
+  end
 end
