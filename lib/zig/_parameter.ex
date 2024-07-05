@@ -19,7 +19,7 @@ defmodule Zig.Parameter do
 
   @options ~w[cleanup]a
 
-  defp normalize_options(type, options) do
+  def normalize_options(type, options) do
     options
     |> List.wrap()
     |> Enum.map(fn

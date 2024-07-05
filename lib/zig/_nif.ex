@@ -118,7 +118,6 @@ defmodule Zig.Nif do
       spec: Keyword.get(opts!, :spec, true),
       leak_check: Keyword.get(opts!, :leak_check, @defaults[:leak_check]),
       params: opts![:params],
-      return: opts![:return],
       alias: opts![:alias],
       impl: opts![:impl]
     }

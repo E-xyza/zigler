@@ -32,14 +32,13 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
             <%= if needs_make? do %>
                 return e.enif_raise_exception(env, beam.make(.{err, error_index, error_info}, .{}).v);
             <% else %>
-                _ = err;
                 unreachable;
             <% end %> 
         };
 
         defer beam.payload.cleanup(payload, .{
             <%= for {index, param} <- @params do %>
-            <%= Parameter.render_cleanup(param) %>
+            <%= Parameter.render_cleanup(param) %>,
             <% end %>
         });
     

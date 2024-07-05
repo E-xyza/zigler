@@ -230,7 +230,7 @@ defmodule Zig.Sema do
       nif
       | signature: sema,
         params: params_from_sema(sema, nif.params),
-        return: return_from_sema(sema, nif.return)
+        return: return_from_sema(sema, opts)
     }
   end
 
