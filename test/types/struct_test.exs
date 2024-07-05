@@ -27,9 +27,8 @@ defmodule ZiglerTest.Types.StructTest do
       assert %{value: 48} == struct_test(%{value: 47, foo: "bar"})
     end
 
-    @tag :skip
     test "extraneous values in a keyword list are ignored and tolerated" do
-      assert %{value: 48} == struct_test(%{value: 47, foo: "bar"})
+      assert %{value: 48} == struct_test(value: 47, foo: "bar")
     end
 
     test "missing required values in a map are not tolerated" do
