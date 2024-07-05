@@ -1,12 +1,9 @@
 defmodule ZiglerTest.Types.SliceTest do
   use ZiglerTest.IntegrationCase, async: true
 
-  @tag :skip
-  test "remove leak check below"
-
   use Zig,
     otp_app: :zigler,
-    leak_check: false,
+    leak_check: true,
     nifs: [
       {:slice_u8_test, return: :list},
       {:slice_of_array_u32_list_of_binary, return: {:list, :binary}},
