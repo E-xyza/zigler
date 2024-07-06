@@ -131,18 +131,10 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
             const as = options.output(make_opts);
             defer self.maybe_release();
 
-            switch (as) {
-                .default => {
-                    return .{ .v = e.enif_make_resource(options.env(make_opts), @ptrCast(self.__payload)) };
-                },
-                .binary => {
-                    const encoder = if (@hasField(@TypeOf(make_opts), "encoder")) make_opts.encoder else default_encoder;
-                    assert_type_matches(@TypeOf(encoder), fn (*const T) []const u8);
-                    const bytes: []const u8 = encoder(self.__payload);
-                    return .{ .v = e.enif_make_resource_binary(options.env(make_opts), @ptrCast(self.__payload), bytes.ptr, bytes.len) };
-                },
-                else => @panic("resources only support default and binary output types"),
-            }
+            return switch (as) {
+                .default => .{ .v = e.enif_make_resource(options.env(make_opts), @ptrCast(self.__payload)) },
+                else => @compileError("resource currently only supports default output"),
+            };
         }
 
         fn default_encoder(payload: *const T) []const u8 {
