@@ -33,7 +33,7 @@ defmodule Zig.Type.Resource do
   def get_allowed?(_), do: true
   def binary_size(_), do: nil
 
-  def render_zig(_), do: raise "unreachable"
+  def render_zig(_), do: raise("unreachable")
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()
   def marshal_param(_, _, _, _), do: Type._default_marshal()

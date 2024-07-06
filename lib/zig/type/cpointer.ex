@@ -16,7 +16,7 @@ defmodule Zig.Type.Cpointer do
   end
 
   # todo: resolve this!
-  def get_allowed?(_pointer), do: raise "unreachable"
+  def get_allowed?(_pointer), do: raise("unreachable")
 
   def make_allowed?(pointer) do
     case pointer.child do

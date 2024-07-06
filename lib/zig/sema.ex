@@ -240,7 +240,9 @@ defmodule Zig.Sema do
   defp params_from_sema(%{params: params} = sema, opts) do
     params
     |> Enum.zip(opts || List.duplicate([], sema.arity))
-    |> Enum.with_index(fn {param, param_opt}, index -> {index, Parameter.new(param, param_opt)} end)
+    |> Enum.with_index(fn {param, param_opt}, index ->
+      {index, Parameter.new(param, param_opt)}
+    end)
     |> Map.new()
   end
 

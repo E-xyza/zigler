@@ -8,8 +8,27 @@ pub fn CPointerCleanup(comptime T: type) type {
     return ?union(CPointerTags) { One: *T, Many: []T };
 }
 
+fn needs_cleanup(comptime T: type, opts: anytype) bool {
+    if (!options.should_cleanup(opts)) return false;
+    return switch (@typeInfo(T)) {
+        .Pointer => true,
+        .Optional => |optional| needs_cleanup(optional.child),
+        .Struct => struct_needs_cleanup(T, opts),
+        else => false
+    };
+}
+
+fn struct_needs_cleanup(comptime T: type, opts: anytype) bool {
+    inline for (@typeInfo(T).Struct.fields) |field| {
+        if (needs_cleanup(field.type, opts)) return true;
+    }
+    return false;
+}
+
 pub fn cleanup(what: anytype, opts: anytype) void {
     const T = @TypeOf(what);
+    if (!needs_cleanup(T, opts)) return;
+
     switch (@typeInfo(T)) {
         .Pointer => {
             cleanup_pointer(what, opts);
@@ -21,7 +40,7 @@ pub fn cleanup(what: anytype, opts: anytype) void {
         },
         .Struct => |s| {
             if (resource.MaybeUnwrap(s)) |_| {
-                cleanup_resource(what, opts);
+                resource.release(what);
             }
         },
         else => {},
@@ -29,7 +48,6 @@ pub fn cleanup(what: anytype, opts: anytype) void {
 }
 
 fn cleanup_pointer(ptr: anytype, opts: anytype) void {
-    if (!options.should_cleanup(opts)) return;
     const T = @TypeOf(ptr);
     const info = @typeInfo(T).Pointer;
     if (info.is_const) return;
@@ -40,6 +58,7 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
             options.allocator(opts).destroy(ptr);
         },
         .Slice => {
+            for (ptr) |item| { cleanup(item, opts); }
             if (info.sentinel) |_| {
                 options.allocator(opts).free(@as([]u8, @ptrCast(ptr)));
             } else {
@@ -67,11 +86,5 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
                 @compileError("C or Many pointer cleanup requires size, or a function.  If you would like to ignore cleanup, specify a null function.");
             }
         },
-    }
-}
-
-fn cleanup_resource(res: anytype, opts: anytype) void {
-    if (options.should_cleanup(opts)) {
-        res.release();
     }
 }

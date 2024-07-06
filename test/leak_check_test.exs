@@ -32,9 +32,11 @@ defmodule ZiglerTest.LeakCheckTest do
       ----------------------------------------------------
       """)
 
-      assert_raise RuntimeError, "memory leak detected in function `ZiglerTest.LeakCheckTest.leaky_string/1`", fn ->
-        leaky_string("some string")
-      end
+      assert_raise RuntimeError,
+                   "memory leak detected in function `ZiglerTest.LeakCheckTest.leaky_string/1`",
+                   fn ->
+                     leaky_string("some string")
+                   end
 
       IO.puts(:stderr, "====================================================")
     end
