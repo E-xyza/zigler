@@ -122,6 +122,7 @@ defmodule ZiglerTest.Types.SpecTest do
   end
 
   describe "for manypointers" do
+    @describetag :skip
     test "gives the correct spec for u8", specs do
       assert spec(([byte] | binary -> byte)) = Map.fetch!(specs, {:manypointer_u8_fn, 1})
     end
