@@ -40,7 +40,7 @@ pub fn cleanup(what: anytype, opts: anytype) void {
         },
         .Struct => |s| {
             if (resource.MaybeUnwrap(s)) |_| {
-                resource.release(what);
+                what.release();
             } else {
                 cleanup_struct(what, opts);
             }
