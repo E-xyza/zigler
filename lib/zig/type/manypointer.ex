@@ -52,7 +52,7 @@ defmodule Zig.Type.Manypointer do
 
   @impl true
   def render_cleanup(_type, index) do
-    ~s(.{.cleanup = true, .size = @"arg#{index}-size"})
+    ~s(.{.cleanup = true, .size = @"arg#{index}-size"},)
   end
 
   @impl true

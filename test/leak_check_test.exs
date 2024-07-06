@@ -1,5 +1,7 @@
 defmodule ZiglerTest.LeakCheckTest do
-  use ZiglerTest.IntegrationCase, async: true
+  use ZiglerTest.IntegrationCase
+
+  require Logger
 
   use Zig,
     otp_app: :zigler,
@@ -18,7 +20,7 @@ defmodule ZiglerTest.LeakCheckTest do
   }
 
   pub fn no_leaky_string(string: []u8) usize {
-    defer beam.allocator.free(string);
+    defer beam.context.allocator.free(string);
     return string.len;
   }
   """
@@ -26,11 +28,7 @@ defmodule ZiglerTest.LeakCheckTest do
   describe "a leak is detected" do
     @tag :erroring
     test "when you don't cleanup" do
-      IO.puts(:stderr, """
-      ====================================================
-      the following leak message is expected:
-      ----------------------------------------------------
-      """)
+      Logger.warning("====== the following leak message is expected: =========== START")
 
       assert_raise RuntimeError,
                    "memory leak detected in function `ZiglerTest.LeakCheckTest.leaky_string/1`",
@@ -38,18 +36,15 @@ defmodule ZiglerTest.LeakCheckTest do
                      leaky_string("some string")
                    end
 
-      IO.puts(:stderr, "====================================================")
+      Logger.warning("=========================================================== END")
     end
   end
 
   describe "tests might not report leaks" do
-    @tag :skip
-    # this is currently segfaulting
     test "when you actually free from inside" do
       assert 11 == no_leaky_string("some string")
     end
 
-    # @tag :fails_macos
     test "when you don't leak check" do
       assert 11 == unchecked_leak("some string")
     end

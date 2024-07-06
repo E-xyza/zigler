@@ -299,7 +299,7 @@ after
 
   def _default_accessory_variables, do: []
   def _default_marshal, do: []
-  def _default_cleanup, do: ".{}"
+  def _default_cleanup, do: ".{},"
 end
 
 defimpl Zig.Type, for: Atom do

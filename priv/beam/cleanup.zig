@@ -12,7 +12,7 @@ fn needs_cleanup(comptime T: type, opts: anytype) bool {
     if (!options.should_cleanup(opts)) return false;
     return switch (@typeInfo(T)) {
         .Pointer => true,
-        .Optional => |optional| needs_cleanup(optional.child),
+        .Optional => |optional| needs_cleanup(optional.child, opts),
         .Struct => struct_needs_cleanup(T, opts),
         else => false
     };
