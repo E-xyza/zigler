@@ -37,7 +37,7 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
         };
 
         defer beam.payload.cleanup(payload, .{
-            <%= for {index, param} <- @params do %>
+            <%= for {_index, param} <- @params do %>
             <%= Parameter.render_cleanup(param) %>,
             <% end %>
         });

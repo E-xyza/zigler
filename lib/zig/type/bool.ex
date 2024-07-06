@@ -13,6 +13,8 @@ defmodule Zig.Type.Bool do
   def can_cleanup?(_), do: false
   def binary_size(_), do: 1
 
+  def render_zig(_), do: "bool"
+
   def render_payload_options(_, _, _), do: Type._default_payload_options()
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()

@@ -65,6 +65,8 @@ defmodule Zig.Type.Slice do
     [Type.render_elixir_spec(child, :default)]
   end
 
+  def render_zig(slice), do: slice.repr
+
   # ETC
 
   def get_allowed?(slice), do: Type.get_allowed?(slice.child)

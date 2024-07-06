@@ -22,11 +22,13 @@ defmodule Zig.Type.Enum do
   def make_allowed?(_), do: true
   def can_cleanup?(_), do: false
 
-  def binary_size, do: nil
+  def binary_size(_), do: nil
 
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   def marshal_return(_, _, _), do: Type._default_marshal()
   def render_payload_options(_, _, _), do: Type._default_payload_options()
+
+  def render_zig(%{name: name}), do: name
 
   def render_elixir_spec(%{tags: tags}, %Parameter{}) do
     tags
