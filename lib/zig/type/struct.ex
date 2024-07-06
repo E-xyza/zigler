@@ -49,6 +49,7 @@ defmodule Zig.Type.Struct do
 
   def marshal_param(_, _), do: nil
 
+  @impl true
   def render_elixir_spec(struct, %Return{as: as}) do
     render_elixir_spec(struct, as)
   end
@@ -119,11 +120,14 @@ defmodule Zig.Type.Struct do
 
   defp key_opts(_, _), do: :default
 
+  @impl true
   def render_zig(%{name: name}), do: "nif.#{name}"
 
   # for now.  Later, we will need to do more sophisticated checks
+  @impl true
   def get_allowed?(_), do: true
 
+  @impl true
   def make_allowed?(struct) do
     struct.required
     |> Map.values()
@@ -132,13 +136,21 @@ defmodule Zig.Type.Struct do
     |> Enum.all?()
   end
 
-  def can_cleanup?(_), do: false
-
+  @impl true
   def binary_size(%{packed: packed}) when is_integer(packed), do: div(packed, 8)
   def binary_size(%{extern: extern}) when is_integer(extern), do: div(extern, 8)
   def binary_size(_), do: nil
 
+  @impl true
+  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
+
+  @impl true
+  def render_cleanup(_, _), do: Type._default_cleanup()
+
+  @impl true
   def render_payload_options(_, _, _), do: Type._default_payload_options()
+  @impl true
   def marshal_param(_, _, _, _), do: Type._default_marshal()
+  @impl true
   def marshal_return(_, _, _), do: Type._default_marshal()
 end

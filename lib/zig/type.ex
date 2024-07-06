@@ -55,15 +55,18 @@ defprotocol Zig.Type do
   @spec make_allowed?(t) :: boolean
   def make_allowed?(type)
 
-  @spec can_cleanup?(t) :: boolean
-  def can_cleanup?(type)
-
   @spec binary_size(t) :: nil | non_neg_integer | {:var, non_neg_integer}
   def binary_size(type)
 
   # rendered zig code:
+  @spec render_accessory_variables(t, term, iodata) :: iodata
+  def render_accessory_variables(type, opts, prefix)
+
   @spec render_payload_options(t, non_neg_integer, boolean) :: iodata
   def render_payload_options(type, index, error_info?)
+
+  @spec render_cleanup(t, non_neg_integer) :: iodata
+  def render_cleanup(type, index)
 
   @spec render_zig(t) :: String.t()
   def render_zig(type)
@@ -294,17 +297,24 @@ after
     end)
   end
 
+  def _default_accessory_variables, do: []
   def _default_marshal, do: []
+  def _default_cleanup, do: ".{}"
 end
 
 defimpl Zig.Type, for: Atom do
   alias Zig.Type
 
+  @impl true
   def get_allowed?(type), do: type in ~w(term erl_nif_term pid)a
+
+  @impl true
   def make_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
-  def can_cleanup?(_), do: false
+
+  @impl true
   def binary_size(_), do: nil
 
+  @impl true
   def render_zig(:term), do: "beam.term"
   def render_zig(:erl_nif_term), do: "e.erl_nif_term"
   def render_zig(:pid), do: "beam.pid"
@@ -312,6 +322,10 @@ defimpl Zig.Type, for: Atom do
   def render_zig(:anyopaque), do: "anyopaque"
   def render_zig(atom), do: "#{atom}"
 
+  @impl true
+  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
+
+  @impl true
   def render_payload_options(:erl_nif_term, _, _), do: ".{},"
   def render_payload_options(:term, _, _), do: ".{},"
 
@@ -321,6 +335,10 @@ defimpl Zig.Type, for: Atom do
 
   def render_payload_options(_, _, _), do: Type._default_payload_options()
 
+  @impl true
+  def render_cleanup(_, _), do: Type._default_cleanup()
+
+  @impl true
   def render_elixir_spec(:void, %Zig.Return{}), do: :ok
 
   def render_elixir_spec(:pid, _) do
@@ -329,12 +347,16 @@ defimpl Zig.Type, for: Atom do
     end
   end
 
+  @impl true
   def render_elixir_spec(term, _) when term in ~w(term erl_nif_term)a do
     quote do
       term()
     end
   end
 
+  @impl true
   def marshal_param(_, _, _, _), do: Type._default_marshal()
+
+  @impl true
   def marshal_return(_, _, _), do: Type._default_marshal()
 end

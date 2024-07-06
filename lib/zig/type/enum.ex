@@ -18,18 +18,30 @@ defmodule Zig.Type.Enum do
     ~s(%Zig.Type.Enum{name: "#{enum.name}", tags: #{Kernel.inspect(enum.tags, opts)}})
   end
 
+  @impl true
   def get_allowed?(_), do: true
+  @impl true
   def make_allowed?(_), do: true
-  def can_cleanup?(_), do: false
 
+  @impl true
   def binary_size(_), do: nil
 
+  @impl true
   def marshal_param(_, _, _, _), do: Type._default_marshal()
+  @impl true
   def marshal_return(_, _, _), do: Type._default_marshal()
-  def render_payload_options(_, _, _), do: Type._default_payload_options()
 
+  @impl true
+  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
+
+  @impl true
+  def render_payload_options(_, _, _), do: Type._default_payload_options()
+  @impl true
+  def render_cleanup(_, _), do: Type._default_cleanup()
+  @impl true
   def render_zig(%{name: name}), do: name
 
+  @impl true
   def render_elixir_spec(%{tags: tags}, %Parameter{}) do
     tags
     |> integers()

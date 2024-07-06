@@ -20,13 +20,13 @@ defmodule Zig.Return do
   def new(raw) when raw in ~w[term erl_nif_term]a, do: %__MODULE__{type: raw, cleanup: false}
 
   def new(type, options) do
-    struct!(__MODULE__, [type: type] ++ normalize_options(type, options))
+    struct!(__MODULE__, [type: type] ++ normalize_options(options))
   end
 
   @as ~w[binary list integer map]a
   @options ~w[as cleanup spec]a
 
-  defp normalize_options(type, options) do
+  defp normalize_options(options) do
     options
     |> List.wrap()
     |> Enum.map(fn
@@ -45,6 +45,6 @@ defmodule Zig.Return do
       {k, _} = kv when k in @options ->
         kv
     end)
-    |> Keyword.put_new(:cleanup, Type.can_cleanup?(type))
+    |> Keyword.put_new(:cleanup, true)
   end
 end

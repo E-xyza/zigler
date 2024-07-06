@@ -65,10 +65,10 @@ defmodule Zig.Type.Pointer do
   def make_allowed?(_), do: false
 
   @impl true
-  def can_cleanup?(_), do: false
+  def binary_size(_), do: nil
 
   @impl true
-  def binary_size(_), do: nil
+  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
 
   @impl true
   def render_payload_options(_, _, _), do: raise("unreachable")
@@ -77,6 +77,9 @@ defmodule Zig.Type.Pointer do
   def render_zig(%{optional: true, child: child}), do: "?*#{Type.render_zig(child)}"
 
   def render_zig(%{child: child}), do: "?#{Type.render_zig(child)}"
+
+  @impl true
+  def render_cleanup(_, _), do: Type._default_cleanup()
 
   @impl true
   def render_elixir_spec(_, _), do: raise("unreachable")

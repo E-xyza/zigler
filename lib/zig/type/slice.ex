@@ -27,6 +27,7 @@ defmodule Zig.Type.Slice do
 
   # TYPE SPEC STUFF
 
+  @impl true
   def render_elixir_spec(type, %Return{as: as}) do
     render_elixir_spec(type, as)
   end
@@ -65,14 +66,20 @@ defmodule Zig.Type.Slice do
     [Type.render_elixir_spec(child, :default)]
   end
 
+  @impl true
   def render_zig(slice), do: slice.repr
+
+  @impl true
+  def render_cleanup(_, _), do: Type._default_cleanup()
 
   # ETC
 
+  @impl true
   def get_allowed?(slice), do: Type.get_allowed?(slice.child)
+  @impl true
   def make_allowed?(slice), do: Type.make_allowed?(slice.child)
-  def can_cleanup?(_), do: true
 
+  @impl true
   def binary_size(slice) do
     case Type.binary_size(slice.child) do
       size when is_integer(size) -> {:var, size}
@@ -81,8 +88,13 @@ defmodule Zig.Type.Slice do
     end
   end
 
+  @impl true
+  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
+  @impl true
   def render_payload_options(_, _, _), do: Type._default_payload_options()
+  @impl true
   def marshal_param(_, _, _, _), do: Type._default_marshal()
+  @impl true
   def marshal_return(_, _, _), do: Type._default_marshal()
 
   def of(child, opts \\ []), do: struct(__MODULE__, [child: child] ++ opts)

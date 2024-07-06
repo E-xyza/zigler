@@ -14,24 +14,30 @@ defmodule Zig.Parameter do
   @type opts :: :noclean | [:noclean | {:cleanup, boolean}]
 
   def new(type, options) do
-    struct!(__MODULE__, [type: type] ++ normalize_options(type, options))
+    struct!(__MODULE__, [type: type] ++ normalize_options(options))
   end
 
   @options ~w[cleanup]a
 
-  def normalize_options(type, options) do
+  def normalize_options(options) do
     options
     |> List.wrap()
     |> Enum.map(fn
       :noclean -> {:cleanup, false}
       {k, _} = kv when k in @options -> kv
     end)
-    |> Keyword.put_new(:cleanup, Type.can_cleanup?(type))
+    |> Keyword.put_new(:cleanup, true)
   end
 
-  def render_cleanup(parameter) do
-    cleanup_parameter = unless parameter.cleanup, do: ".cleanup = false,"
+  def render_accessory_variables(parameter, index) do
+    Type.render_accessory_variables(parameter.type, parameter, "arg#{index}")
+  end
 
-    ".{#{cleanup_parameter}}"
+  def render_cleanup(parameter, index) do
+    if parameter.cleanup do
+      Type.render_cleanup(parameter.type, index)
+    else
+      ".{.cleanup = false},"
+    end
   end
 end

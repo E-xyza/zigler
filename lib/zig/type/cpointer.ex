@@ -16,8 +16,10 @@ defmodule Zig.Type.Cpointer do
   end
 
   # todo: resolve this!
+  @impl true
   def get_allowed?(_pointer), do: raise("unreachable")
 
+  @impl true
   def make_allowed?(pointer) do
     case pointer.child do
       ~t(u8) -> true
@@ -29,14 +31,24 @@ defmodule Zig.Type.Cpointer do
     end
   end
 
-  def can_cleanup?(_), do: true
-
+  @impl true
   def binary_size(_), do: nil
 
+  @impl true
+  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
+
+  @impl true
   def render_payload_options(_, _, _), do: Type._default_payload_options()
 
+  @impl true
+  def render_cleanup(_, _) do
+    raise "unimplemented"
+  end
+
+  @impl true
   def render_zig(%{child: child}), do: "[*c]#{Type.render_zig(child)}"
 
+  @impl true
   def render_elixir_spec(%{child: child}, %Parameter{} = parameter) do
     has_solo? = match?(%Type.Struct{extern: true}, child)
     child_form = Type.render_elixir_spec(child, parameter)
@@ -116,7 +128,9 @@ defmodule Zig.Type.Cpointer do
     end
   end
 
+  @impl true
   def marshal_param(_, _, _, _), do: Type._default_marshal()
+  @impl true
   def marshal_return(_, _, _), do: Type._default_marshal()
 
   defp child_context(%{as: {:list, list_child_as}} = context), do: %{context | as: list_child_as}

@@ -72,6 +72,11 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
             // ignored by specifying a null cleanup function.  This function should take
             // pointer, plus the selfsame options tuple.  Specifying a size assumes that
             // the underlying memory was created using a slice operation.
+
+            if (!@hasField(@TypeOf(opts), "size")) {
+                @compileError("C or Many pointer cleanup requires size, or a function.  If you would like to ignore cleanup, specify a null function.");
+            }
+
             if (options.size(opts)) |size| {
                 if (info.is_allowzero) {
                     if (ptr) |_| {
@@ -82,9 +87,6 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
                     const underlying_slice = ptr[0..size];
                     options.allocator(opts).free(underlying_slice);
                 }
-            } else {
-                // TODO: custom cleanup function goes here.
-                @compileError("C or Many pointer cleanup requires size, or a function.  If you would like to ignore cleanup, specify a null function.");
             }
         },
     }

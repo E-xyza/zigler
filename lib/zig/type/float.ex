@@ -19,21 +19,33 @@ defmodule Zig.Type.Float do
     concat(["~t(", to_string(type), ")"])
   end
 
+  @impl true
   def render_zig(float), do: "f#{float.bits}"
 
+  @impl true
+  def render_cleanup(_, _), do: Type._default_cleanup()
+
+  @impl true
   def render_elixir_spec(_, _) do
     quote do
       float()
     end
   end
 
+  @impl true
   def get_allowed?(_), do: true
+  @impl true
   def make_allowed?(_), do: true
-  def can_cleanup?(_), do: false
 
+  @impl true
   def binary_size(float), do: {:indirect, div(float.bits, 8)}
 
+  @impl true
+  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
+  @impl true
   def render_payload_options(_, _, _), do: Type._default_payload_options()
+  @impl true
   def marshal_param(_, _, _, _), do: Type._default_marshal()
+  @impl true
   def marshal_return(_, _, _), do: Type._default_marshal()
 end

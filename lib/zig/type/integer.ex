@@ -20,6 +20,7 @@ defmodule Zig.Type.Integer do
 
   def parse(other), do: raise(Zig.Type.ParseError, source: other)
 
+  @impl true
   def render_zig(%{bits: :big}), do: raise("not supported yet")
   def render_zig(%{signedness: :unsigned, bits: bits}), do: "u#{bits}"
   def render_zig(%{signedness: :signed, bits: bits}), do: "i#{bits}"
@@ -51,6 +52,7 @@ defmodule Zig.Type.Integer do
     concat(["~t(", to_string(type), ")"])
   end
 
+  @impl true
   def marshal_param(type, variable, index, :elixir) do
     marshal_param_elixir(type, variable, index)
   end
@@ -157,6 +159,7 @@ defmodule Zig.Type.Integer do
     """
   end
 
+  @impl true
   def marshal_return(type, variable, :elixir) do
     marshal_return_elixir(type, variable)
   end
@@ -214,6 +217,7 @@ defmodule Zig.Type.Integer do
     end
   end
 
+  @impl true
   def render_elixir_spec(%{bits: 0}, _), do: 0
 
   def render_elixir_spec(%{signedness: :unsigned, bits: 8}, _opts) do
@@ -246,10 +250,11 @@ defmodule Zig.Type.Integer do
   defp typemax(%{signedness: :signed, bits: 1}), do: 0
   defp typemax(%{signedness: :signed, bits: bits}), do: Bitwise.<<<(1, bits - 1) - 1
 
+  @impl true
   def get_allowed?(_), do: true
+  @impl true
   def make_allowed?(_), do: true
-  def can_cleanup?(_), do: false
-
+  @impl true
   def binary_size(integer) do
     bytes =
       case rem(integer.bits, 8) do
@@ -260,5 +265,12 @@ defmodule Zig.Type.Integer do
     {:indirect, bytes}
   end
 
+  @impl true
+  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
+
+  @impl true
+  def render_cleanup(_, _), do: Type._default_cleanup()
+
+  @impl true
   def render_payload_options(_, _, _), do: Type._default_payload_options()
 end

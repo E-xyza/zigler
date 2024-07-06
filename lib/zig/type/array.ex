@@ -28,10 +28,12 @@ defmodule Zig.Type.Array do
     }
   end
 
+  @impl true
   def get_allowed?(array), do: Type.get_allowed?(array.child)
+  @impl true
   def make_allowed?(array), do: Type.make_allowed?(array.child)
-  def can_cleanup?(_), do: false
 
+  @impl true
   def binary_size(%{sentinel: true} = array) do
     case Type.binary_size(array.child) do
       size when is_integer(size) -> size * array.len
@@ -40,6 +42,7 @@ defmodule Zig.Type.Array do
     end
   end
 
+  @impl true
   def binary_size(array) do
     case Type.binary_size(array.child) do
       size when is_integer(size) -> array_binary_size(array, size)
@@ -52,16 +55,26 @@ defmodule Zig.Type.Array do
     if array.has_sentinel?, do: {:var, size}, else: size * array.len
   end
 
+  @impl true
   def render_zig(%{mutable: true} = array) do
     "*" <> render_zig(%{array | mutable: false})
   end
 
   def render_zig(array), do: array.repr
 
+  @impl true
+  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
+
+  @impl true
+  def render_cleanup(_, _), do: Type._default_cleanup()
+  @impl true
   def render_payload_options(_, _, _), do: Type._default_payload_options()
+  @impl true
   def marshal_param(_, _, _, _), do: Type._default_marshal()
+  @impl true
   def marshal_return(_, _, _), do: Type._default_marshal()
 
+  @impl true
   def render_elixir_spec(type, %Parameter{} = param) do
     # u8 defaults to binary
     if binary_typespec = Type.binary_typespec(type) do

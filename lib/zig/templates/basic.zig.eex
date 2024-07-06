@@ -18,11 +18,11 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
     var error_info = beam.make_empty_list(.{}); 
     <% end %>
 
+    <%= for {index, param} <- @params, do: Parameter.render_accessory_variables(param, index) %>
+ 
     const return_value = execution_block: {
         const payload_opts = .{
-            <%= for {index, param} <- @params do %>
-            <%= Type.render_payload_options(param.type, index, needs_make?) %>
-            <% end %>
+            <%= for {index, param} <- @params, do: Type.render_payload_options(param.type, index, needs_make?) %>
         };
 
         var error_index: u8 = undefined;
@@ -37,9 +37,7 @@ fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callc
         };
 
         defer beam.payload.cleanup(payload, .{
-            <%= for {_index, param} <- @params do %>
-            <%= Parameter.render_cleanup(param) %>,
-            <% end %>
+            <%= for {index, param} <- @params, do: Parameter.render_cleanup(param, index) %>
         });
     
         const result = @call(.auto, nif.<%= @alias || @name %>, payload) <%= Nif.maybe_catch(@return.type) %>;

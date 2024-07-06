@@ -27,10 +27,12 @@ defmodule Zig.Type.Manypointer do
     }
   end
 
+  @impl true
   def get_allowed?(pointer), do: Type.make_allowed?(pointer.child)
+  @impl true
   def make_allowed?(pointer), do: pointer.has_sentinel? and Type.make_allowed?(pointer.child)
-  def can_cleanup?(_), do: true
 
+  @impl true
   def binary_size(pointer) do
     case Type.binary_size(pointer.child) do
       size when is_integer(size) -> {:var, size}
@@ -39,10 +41,26 @@ defmodule Zig.Type.Manypointer do
     end
   end
 
-  def render_payload_options(_, _, _), do: Type._default_payload_options()
+  @impl true
+  def render_accessory_variables(_, param, prefix) do
+    List.wrap(if param.cleanup, do: ~s(var @"#{prefix}-size": usize = undefined;))
+  end
+
+  @impl true
+  def render_payload_options(_, index, _),
+    do: ~s(.{.error_info = &error_info, .size = &@"arg#{index}-size"})
+
+  @impl true
+  def render_cleanup(_type, index) do
+    ~s(.{.cleanup = true, .size = @"arg#{index}-size"})
+  end
+
+  @impl true
   def marshal_param(_, _, _, _), do: Type._default_marshal()
+  @impl true
   def marshal_return(_, _, _), do: Type._default_marshal()
 
+  @impl true
   def render_zig(type) do
     case type do
       %{has_sentinel?: false} ->
@@ -57,6 +75,7 @@ defmodule Zig.Type.Manypointer do
   end
 
   # only manypointers of [*:0]u8 are allowed to be returned.
+  @impl true
   def render_elixir_spec(%{child: ~t(u8), has_sentinel?: true}, %Return{as: as} = context) do
     case as do
       :list ->
