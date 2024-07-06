@@ -41,6 +41,8 @@ pub fn cleanup(what: anytype, opts: anytype) void {
         .Struct => |s| {
             if (resource.MaybeUnwrap(s)) |_| {
                 resource.release(what);
+            } else {
+                cleanup_struct(what, opts);
             }
         },
         else => {},
@@ -48,8 +50,7 @@ pub fn cleanup(what: anytype, opts: anytype) void {
 }
 
 fn cleanup_pointer(ptr: anytype, opts: anytype) void {
-    const T = @TypeOf(ptr);
-    const info = @typeInfo(T).Pointer;
+    const info = @typeInfo(@TypeOf(ptr)).Pointer;
     if (info.is_const) return;
 
     switch (info.size) {
@@ -86,5 +87,13 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
                 @compileError("C or Many pointer cleanup requires size, or a function.  If you would like to ignore cleanup, specify a null function.");
             }
         },
+    }
+}
+
+fn cleanup_struct(s: anytype, opts: anytype) void {
+    const info = @typeInfo(@TypeOf(s)).Struct;
+
+    inline for (info.fields) |field| {
+        cleanup(@field(s, field.name), opts);
     }
 }
