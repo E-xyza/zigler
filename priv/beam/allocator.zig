@@ -83,20 +83,18 @@ fn alignedFree(ptr: [*]u8) void {
     e.enif_free(unaligned_ptr);
 }
 
-pub const large_allocator = large_beam_allocator;
-
-const large_beam_allocator = Allocator{
+pub const wide_alignment_allocator = Allocator{
     .ptr = undefined,
-    .vtable = &large_beam_allocator_vtable,
+    .vtable = &wide_alignment_allocator_vtable,
 };
 
-const large_beam_allocator_vtable = Allocator.VTable{
-    .alloc = large_beam_alloc,
-    .resize = large_beam_resize,
-    .free = large_beam_free,
+const wide_alignment_allocator_vtable = Allocator.VTable{
+    .alloc = wide_align_alloc,
+    .resize = wide_align_resize,
+    .free = wide_align_free,
 };
 
-fn large_beam_alloc(
+fn wide_align_alloc(
     _: *anyopaque,
     len: usize,
     log2_align: u8,
@@ -107,7 +105,7 @@ fn large_beam_alloc(
     return alignedAlloc(len, log2_align);
 }
 
-fn large_beam_resize(
+fn wide_align_resize(
     _: *anyopaque,
     buf: []u8,
     log2_buf_align: u8,
@@ -122,7 +120,7 @@ fn large_beam_resize(
     return false;
 }
 
-fn large_beam_free(
+fn wide_align_free(
     _: *anyopaque,
     buf: []u8,
     log2_buf_align: u8,
@@ -136,5 +134,5 @@ fn large_beam_free(
 const BeamGpa = std.heap.GeneralPurposeAllocator(.{ .thread_safe = false });
 
 pub fn make_general_purpose_allocator_instance() BeamGpa {
-    return BeamGpa{ .backing_allocator = large_allocator };
+    return BeamGpa{ .backing_allocator = wide_alignment_allocator };
 }

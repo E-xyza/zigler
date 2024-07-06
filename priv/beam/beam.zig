@@ -988,10 +988,10 @@ pub const make_general_purpose_allocator_instance = allocator_.make_general_purp
 /// use `beam.general_purpose_allocator`.
 ///
 /// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
-pub const large_allocator = allocator_.large_allocator;
+pub const wide_alignment_allocator = allocator_.wide_alignment_allocator;
 
 /// implements `std.mem.Allocator` using the `std.mem.GeneralPurposeAllocator`
-/// factory, backed by `beam.large_allocator`.
+/// factory, backed by `beam.wide_alignment_allocator`.
 pub const general_purpose_allocator = allocator_.general_purpose_allocator;
 
 /// wraps [`e.enif_alloc`](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc)

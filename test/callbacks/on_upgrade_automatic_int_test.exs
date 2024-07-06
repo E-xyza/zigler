@@ -5,9 +5,6 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticIntTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
-  @moduletag :skip
-  test "restore"
-
   import ExUnit.CaptureIO
   import ExUnit.CaptureLog
 

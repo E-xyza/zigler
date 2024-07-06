@@ -29,6 +29,7 @@ defmodule ZiglerTest.LeakCheckTest do
     @tag :erroring
     test "when you don't cleanup" do
       Logger.warning("====== the following leak message is expected: =========== START")
+      Process.sleep(200)
 
       assert_raise RuntimeError,
                    "memory leak detected in function `ZiglerTest.LeakCheckTest.leaky_string/1`",

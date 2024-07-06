@@ -8,9 +8,6 @@ defmodule ZiglerTest.Callbacks.OnUpgradeRawTest do
   import ExUnit.CaptureIO
   import ExUnit.CaptureLog
 
-  @moduletag :skip
-  test "restore this"
-
   def build_module(opts) do
     Code.compile_quoted(
       quote do

@@ -16,8 +16,8 @@ defmodule ZiglerTest.AllocatorTest do
   }
 
   pub fn alloc_aligned() !usize {
-      const slice = try beam.allocator.alignedAlloc(u8, 16, 10);
-      defer beam.allocator.free(slice);
+      const slice = try beam.wide_alignment_allocator.alignedAlloc(u8, 16, 10);
+      defer beam.wide_alignment_allocator.free(slice);
       return @intFromPtr(slice.ptr);
   }
   """
@@ -32,10 +32,7 @@ defmodule ZiglerTest.AllocatorTest do
       basic_free(addr)
     end
 
-    @tag :skip
     test "alloc_aligned works" do
-      # this doesn't work!!
-
       addr = alloc_aligned()
       assert rem(addr, 16) === 0
     end
@@ -43,17 +40,17 @@ defmodule ZiglerTest.AllocatorTest do
 
   ~Z"""
   pub fn large_allocate() usize {
-      const ptr = beam.large_allocator.alloc(u8, 10_000) catch unreachable;
+      const ptr = beam.wide_alignment_allocator.alloc(u8, 10_000) catch unreachable;
       return @intFromPtr(ptr.ptr);
   }
 
   pub fn large_allocate_aligned() usize {
-      const ptr = beam.large_allocator.allocWithOptions(u8, 10_000, 1024, null) catch unreachable;
+      const ptr = beam.wide_alignment_allocator.allocWithOptions(u8, 10_000, 1024, null) catch unreachable;
       return @intFromPtr(ptr.ptr);
   }
 
   pub fn large_free(addr: usize) void {
-      beam.large_allocator.free(@as([*]u8, @ptrFromInt(addr))[0..10_000]);
+      beam.wide_alignment_allocator.free(@as([*]u8, @ptrFromInt(addr))[0..10_000]);
   }
   """
 
