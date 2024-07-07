@@ -269,6 +269,16 @@ defmodule Zig.Sema do
 
   defp validate_nif!(_raw_nif), do: :ok
 
+  defp validate_param!({_, %{in_out: true} = param}, nif) do
+    unless Type.in_out_allowed?(param) do
+      raise CompileError,
+        description:
+          "nif function `#{nif.name}` cannot have a an in-out parameter of type #{Type.render_zig(param.type)}",
+        file: nif.file,
+        line: nif.line
+    end
+  end
+
   defp validate_param!({_, param}, nif) do
     unless Type.get_allowed?(param.type) do
       raise CompileError,

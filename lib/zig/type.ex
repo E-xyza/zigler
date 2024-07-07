@@ -55,6 +55,9 @@ defprotocol Zig.Type do
   @spec make_allowed?(t) :: boolean
   def make_allowed?(type)
 
+  @spec in_out_allowed?(t) :: boolean
+  def in_out_allowed?(type)
+
   @spec binary_size(t) :: nil | non_neg_integer | {:var, non_neg_integer}
   def binary_size(type)
 
@@ -310,6 +313,9 @@ defimpl Zig.Type, for: Atom do
 
   @impl true
   def make_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
+
+  @impl true
+  def in_out_allowed?(_), do: false
 
   @impl true
   def binary_size(_), do: nil

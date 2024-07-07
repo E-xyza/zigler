@@ -15,6 +15,9 @@ defmodule Zig.Type.Optional do
   @impl true
   def make_allowed?(optional), do: Type.make_allowed?(optional.child)
   @impl true
+  def in_out_allowed?(optional), do: Type.in_out_allowed?(optional.child)
+
+  @impl true
   def binary_size(optional), do: Type.binary_size(optional.child)
 
   @impl true

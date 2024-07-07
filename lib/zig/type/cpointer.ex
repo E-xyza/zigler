@@ -31,6 +31,11 @@ defmodule Zig.Type.Cpointer do
   end
 
   @impl true
+  def in_out_allowed?(pointer) do
+    Type.make_allowed?(pointer.child) and Type.get_allowed?(pointer.child)
+  end
+
+  @impl true
   def binary_size(_), do: nil
 
   @impl true

@@ -13,6 +13,9 @@ defmodule Zig.Type.Bool do
   @impl true
   def make_allowed?(_), do: true
   @impl true
+  def in_out_allowed?(_), do: false
+  
+  @impl true
   def binary_size(_), do: 1
 
   @impl true

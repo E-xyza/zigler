@@ -31,6 +31,10 @@ defmodule Zig.Type.Manypointer do
   def get_allowed?(pointer), do: Type.make_allowed?(pointer.child)
   @impl true
   def make_allowed?(pointer), do: pointer.has_sentinel? and Type.make_allowed?(pointer.child)
+  @impl true
+  def in_out_allowed?(pointer) do 
+    Type.make_allowed?(pointer.child) and Type.get_allowed?(pointer.child)
+  end
 
   @impl true
   def binary_size(pointer) do

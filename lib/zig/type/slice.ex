@@ -78,6 +78,8 @@ defmodule Zig.Type.Slice do
   def get_allowed?(slice), do: Type.get_allowed?(slice.child)
   @impl true
   def make_allowed?(slice), do: Type.make_allowed?(slice.child)
+  @impl true
+  def in_out_allowed?(slice), do: get_allowed?(slice) and make_allowed?(slice)
 
   @impl true
   def binary_size(slice) do

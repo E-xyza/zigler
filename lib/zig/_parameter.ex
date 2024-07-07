@@ -2,13 +2,14 @@ defmodule Zig.Parameter do
   @moduledoc false
 
   @enforce_keys ~w[type cleanup]a
-  defstruct @enforce_keys
+  defstruct @enforce_keys ++ [:in_out]
 
   alias Zig.Type
 
   @type t :: %__MODULE__{
           type: Type.t(),
-          cleanup: boolean
+          cleanup: boolean,
+          in_out: nil | boolean
         }
 
   @type opts :: :noclean | [:noclean | {:cleanup, boolean}]
@@ -24,6 +25,7 @@ defmodule Zig.Parameter do
     |> List.wrap()
     |> Enum.map(fn
       :noclean -> {:cleanup, false}
+      :in_out -> {:in_out, true}
       {k, _} = kv when k in @options -> kv
     end)
     |> Keyword.put_new(:cleanup, true)

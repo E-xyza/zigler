@@ -32,6 +32,8 @@ defmodule Zig.Type.Array do
   def get_allowed?(array), do: Type.get_allowed?(array.child)
   @impl true
   def make_allowed?(array), do: Type.make_allowed?(array.child)
+  @impl true
+  def in_out_allowed?(_), do: false
 
   @impl true
   def binary_size(%{sentinel: true} = array) do

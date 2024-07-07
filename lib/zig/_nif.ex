@@ -107,7 +107,7 @@ defmodule Zig.Nif do
   def new(name, module, opts!) do
     opts! = adjust(opts!)
 
-    %__MODULE__{
+    validate_in_out(%__MODULE__{
       name: name,
       file: module.file,
       module: module.module,
@@ -120,7 +120,7 @@ defmodule Zig.Nif do
       params: opts![:params],
       alias: opts![:alias],
       impl: opts![:impl]
-    }
+    }, opts![:return])
   end
 
   def adjust(opts) do
@@ -279,6 +279,40 @@ defmodule Zig.Nif do
 
   def binding_error(name, arity) do
     "nif for function #{name}/#{arity} not bound"
+  end
+
+  defp validate_in_out(nif, return_opts) do
+    if params = nif.params do
+      case Enum.count(params, &params_has_in_out/1) do
+        0 ->
+          # check to see if there's an error term in nif.return
+          if return_opts && Keyword.has_key?(return_opts, :error) do
+            raise CompileError,
+              description: "you can only specify an error function if there is an in_out parameter",
+              file: nif.file,
+              line: nif.line
+          end
+
+        1 ->
+          :ok
+
+        _ ->
+          raise CompileError,
+            description:
+              "only one parameter can be marked as in_out (#{inspect(nif.module)}/#{nif.name})",
+            file: nif.file,
+            line: nif.line
+      end
+    end
+    nif
+  end
+
+  defp params_has_in_out(param) do
+    Enum.any?(param, fn
+      :in_out -> true
+      {:in_out, bool} -> bool
+      _ -> false
+    end)
   end
 
   # Access behaviour guards

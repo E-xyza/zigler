@@ -33,6 +33,9 @@ defmodule Zig.Type.Resource do
   @impl true
   def get_allowed?(_), do: true
   @impl true
+  def in_out_allowed?(_), do: false
+
+  @impl true
   def binary_size(_), do: nil
 
   @impl true

@@ -134,6 +134,9 @@ defmodule Zig.Type.Struct do
     all_values(struct, &Type.make_allowed?/1)
   end
 
+  @impl true
+  def in_out_allowed?(_), do: false
+
   defp all_values(struct, fun) do
     struct.required
     |> Map.values()

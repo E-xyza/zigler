@@ -10,9 +10,11 @@ defmodule Zig.Type.Error do
     do: %__MODULE__{child: Type.from_json(child, module)}
 
   @impl true
-  def get_allowed?(error), do: Type.get_allowed?(error.child)
+  def get_allowed?(_), do: false
   @impl true
   def make_allowed?(error), do: Type.make_allowed?(error.child)
+  @impl true
+  def in_out_allowed?(_), do: false
 
   @impl true
   def marshal_param(_, _, _, _), do: raise("unreachable")

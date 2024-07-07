@@ -255,6 +255,9 @@ defmodule Zig.Type.Integer do
   @impl true
   def make_allowed?(_), do: true
   @impl true
+  def in_out_allowed?(_), do: false
+
+  @impl true
   def binary_size(integer) do
     bytes =
       case rem(integer.bits, 8) do

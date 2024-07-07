@@ -65,6 +65,9 @@ defmodule Zig.Type.Pointer do
   def make_allowed?(_), do: false
 
   @impl true
+  def in_out_allowed?(%{child: child}), do: Type.in_out_allowed?(child)
+
+  @impl true
   def binary_size(_), do: nil
 
   @impl true
