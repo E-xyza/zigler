@@ -34,7 +34,7 @@ defmodule Zig.Command do
   sema_command = Path.join(__DIR__, "templates/sema_command.eex")
   EEx.function_from_file(:defp, :sema_command, sema_command, [:assigns])
 
-  def run_sema!(file, attribs_file) do
+  def run_sema!(file, attribs_file, c) do
     # TODO: add availability of further options here.
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema.zig")
@@ -52,7 +52,8 @@ defmodule Zig.Command do
         attributes: %{path: attribs_file},
         beam: %{deps: [:erl_nif], path: beam_file},
         analyte: %{deps: [:beam, :erl_nif, :attributes], path: file}
-      ]
+      ],
+      c: c
     )
     |> IO.iodata_to_binary()
     |> String.split()

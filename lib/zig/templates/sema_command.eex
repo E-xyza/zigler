@@ -10,3 +10,6 @@ run
   <% end %>
   -M<%= modname %>=<%= mod_opts.path %>
 <% end %>
+<%= for dir <- @c.include_dirs do %>
+-I <%= dir %>
+<% end %>

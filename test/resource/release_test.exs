@@ -41,8 +41,6 @@ defmodule ZiglerTest.Resource.ReleaseTest do
     assert_receive :cleaned, 100
   end
 
-  # it's not entirely clear as to why this doesn't work: it should.
-  @tag :skip
   test "you can create then release an item" do
     this = self()
 

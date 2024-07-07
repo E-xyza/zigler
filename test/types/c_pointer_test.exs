@@ -44,7 +44,7 @@ defmodule ZiglerTest.Types.CPointerTest do
       assert_raise ArgumentError,
                    "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | list(map | keyword | <<_::32>>) | <<_::_*32>> (for `[*c]TestStruct`)\n     got: `:foo`\n     note: [*c]TestStruct can take the atom `nil` but no other atom\n",
                    fn ->
-                     cpointer_test(:foo) |> dbg
+                     cpointer_test(:foo)
                    end
     end
 

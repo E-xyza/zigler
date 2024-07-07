@@ -65,6 +65,24 @@ pub fn build(b: *std.Build) void {
         <% end %>
         }
     });
+    
+    <%= for lib <- @c.link_lib do %>
+        <%= case lib do %>
+        <% {:system, lib} -> %>
+    lib.linkSystemLibrary("<%= lib %>");
+        <% lib -> %>
+    lib.addObjectFile("<%= lib %>");
+      <% end %>
+    <% end %>
+
+    <%= for include_dir <- @c.include_dirs do %>
+    nif.addIncludePath(.{.cwd_relative = "<%= include_dir %>"});
+    <% end %>
+
+    <%= for {src, src_opts} <- @c.src do %>
+    <% ccompileparams = Enum.map_join(src_opts, ", ", &~s("#{&1}")) %>
+    nif.addCSourceFile(.{.file = .{.cwd_relative = "<%= src %>"}, .flags = &[_][]const u8{<%= ccompileparams %>}});
+    <% end %>
 
     const lib = b.addSharedLibrary(.{
         .name = "<%= @module %>",
@@ -81,26 +99,6 @@ pub fn build(b: *std.Build) void {
     lib.root_module.addImport("erl_nif", erl_nif);
     lib.root_module.addImport("beam", beam);
     lib.root_module.addImport("nif", nif);
-
-    <%= if @c do %>
-        <%= for lib <- @c.link_lib do %>
-            <%= case lib do %>
-            <% {:system, lib} -> %>
-    lib.linkSystemLibrary("<%= lib %>");
-            <% lib -> %>
-    lib.addObjectFile("<%= lib %>");
-          <% end %>
-        <% end %>
-
-        <%= for include_dir <- @c.include_dirs do %>
-    lib.addIncludePath(.{.cwd_relative = "<%= include_dir %>"});
-        <% end %>
-
-        <%= for {src, src_opts} <- @c.src do %>
-        <% ccompileparams = Enum.map_join(src_opts, ", ", &~s("#{&1}")) %>
-    lib.addCSourceFile(.{.file = .{.cwd_relative = "<%= src %>"}, .flags = &[_][]const u8{<%= ccompileparams %>}});
-        <% end %>
-    <% end %>
 
     b.installArtifact(lib);
 }

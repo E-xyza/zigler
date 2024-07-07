@@ -63,11 +63,11 @@ defmodule ZiglerTest.Types.Spec do
 
   pub fn sentinel_terminated_array_fn(data: [4:0]u8) [4:0]u8 { return data;}
 
-  // pub fn cpointer_fn(data: [*c:0]u8) [*c:0]
+  //pub fn cpointer_fn(data: [*c:0]u8) [*c:0]
 
-  // pub fn manypointer_u8_fn(data: [*]u8) u8 { return data[0]; }
+  pub fn manypointer_u8_fn(data: [*]u8) u8 { return data[0]; }
 
-  // pub fn manypointer_u32_fn(data: [*]u32) u32 { return data[0]; }
+  pub fn manypointer_u32_fn(data: [*]u32) u32 { return data[0]; }
 
   pub fn manypointer_return_fn() [*:0]const u8 { return @ptrCast(&"hello"); }
 
