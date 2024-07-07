@@ -6,7 +6,7 @@ defmodule ZiglerTest.Resource.CleanupTest do
     resources: [:PidResource],
     nifs: [
       :create_released,
-      maybe_release: [args: [[cleanup: false], []]]
+      maybe_release: [params: [[cleanup: false], []]]
     ]
 
   ~Z"""

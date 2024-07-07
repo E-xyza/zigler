@@ -694,17 +694,21 @@ fn IntFor(comptime bits: comptime_int) type {
 }
 
 fn null_or_atom(comptime T: type, src: beam.term, opts: anytype) !T {
-    errdefer error_line(.{ "note: ", .{ .typename, @typeName(T) }, " can take the atom `nil` but no other atom" }, opts);
-
     var buf: [256]u8 = undefined;
-    const atom = try get_atom(src, &buf, opts);
-    const Child = @typeInfo(T).Optional.child;
+    const atom = get_atom(src, &buf, opts) catch unreachable;
+    if (std.mem.eql(u8, "nil", atom)) return null;
 
-    return if (std.mem.eql(u8, "nil", atom)) null else switch (@typeInfo(Child)) {
-        .Enum => try get_enum(Child, src, opts),
-        .Bool => try get_bool(Child, src, opts),
-        else => return GetError.argument_error,
-    };
+    switch (@typeInfo(T)) {
+        .Optional => |o| switch (@typeInfo(o.child)) {
+            .Enum => return try get_enum(o.child, src, opts),
+            .Bool => return try get_bool(o.child, src, opts),
+            else => {},
+        },
+        else => {},
+    }
+
+    error_line(.{ "note: ", .{ .typename, @typeName(T) }, " can take the atom `nil` but no other atom" }, opts);
+    return GetError.argument_error;
 }
 
 inline fn error_line(msg: anytype, opts: anytype) void {
@@ -790,7 +794,7 @@ fn typespec_for(comptime T: type) []const u8 {
             .One => "map | keyword",
             .Slice => "list(" ++ typespec_for(p.child) ++ ")" ++ binary_spec(T),
             .Many => "list(" ++ typespec_for(p.child) ++ ")" ++ binary_spec(T),
-            .C => (if (@typeInfo(p.child) == .Struct) "map" else "") ++ binary_spec(T),
+            .C => (if (@typeInfo(p.child) == .Struct) "map | list(" ++ typespec_for(p.child) ++ ")" else "") ++ binary_spec(T),
         },
         .Optional => |o| comptime make_optional: {
             break :make_optional "nil | " ++ typespec_for(o.child);

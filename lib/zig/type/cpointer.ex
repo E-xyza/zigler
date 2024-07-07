@@ -15,9 +15,8 @@ defmodule Zig.Type.Cpointer do
     %__MODULE__{child: Type.from_json(child, module)}
   end
 
-  # todo: resolve this!
   @impl true
-  def get_allowed?(_pointer), do: raise("unreachable")
+  def get_allowed?(pointer), do: Type.get_allowed?(pointer.child)
 
   @impl true
   def make_allowed?(pointer) do
@@ -35,14 +34,18 @@ defmodule Zig.Type.Cpointer do
   def binary_size(_), do: nil
 
   @impl true
-  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
+  def render_accessory_variables(_, param, prefix) do
+    List.wrap(if param.cleanup, do: ~s(var @"#{prefix}-size": usize = undefined;))
+  end
 
   @impl true
-  def render_payload_options(_, _, _), do: Type._default_payload_options()
+  def render_payload_options(_, index, _) do
+    ~s(.{.error_info = &error_info, .size = &@"arg#{index}-size"})
+  end
 
   @impl true
-  def render_cleanup(_, _) do
-    raise "unimplemented"
+  def render_cleanup(_, index) do
+    ~s(.{.cleanup = true, .size = @"arg#{index}-size"},)
   end
 
   @impl true

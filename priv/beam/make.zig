@@ -337,7 +337,7 @@ fn make_cpointer(cpointer: anytype, opts: anytype) beam.term {
             else => @compileError("this is not supported"),
         }
     } else {
-        return make(.nil, opts);
+        return make(.nil, .{.env = options.env(opts)});
     }
 }
 
@@ -369,6 +369,7 @@ pub fn make_slice(slice: anytype, opts: anytype) beam.term {
         else => {
             const list_child_as = if (@hasField(@TypeOf(opts), "as")) options.list_child(opts.as) else .default;
             const child_opts = .{ .env = env, .as = list_child_as };
+
             var tail = e.enif_make_list_from_array(env, null, 0);
 
             if (slice.len != 0) {
