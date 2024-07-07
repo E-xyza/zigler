@@ -7,7 +7,7 @@ defmodule ZiglerTest.Raw.TypespecTest do
   require ZiglerTest.Compiler
 
   setup_all do
-    ZiglerTest.Compiler.compile("_typespec.ex")
+    ZiglerTest.Compiler.compile("typespec.ex")
 
     Code.Typespec.fetch_specs(ZiglerTest.Raw.Typespec)
   end

@@ -206,9 +206,21 @@ defmodule Zig.Sema do
        when t in ~w[term erl_nif_term]a do
     arities =
       case Keyword.fetch(opts, :arity) do
-        {:ok, arity} when arity in 0..63 -> arities(arity)
-        {:ok, {:.., _, _} = range} -> arities(range)
-        {:ok, list} when is_list(list) -> Enum.flat_map(list, &arities/1)
+        {:ok, arity} when arity in 0..63 ->
+          arities(arity)
+
+        {:ok, {:.., _, _} = range} ->
+          arities(range)
+
+        {:ok, list} when is_list(list) ->
+          Enum.flat_map(list, &arities/1)
+
+        :error ->
+          raise CompileError,
+            description:
+              "the raw function #{inspect(nif.module)}.#{nif.name}/? must have arities specified in zigler parameters",
+            file: nif.file,
+            line: nif.line
       end
 
     %{nif | signature: sema, raw: t, params: arities, return: Return.new(t)}
