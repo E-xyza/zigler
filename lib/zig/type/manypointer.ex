@@ -48,7 +48,7 @@ defmodule Zig.Type.Manypointer do
 
   @impl true
   def render_payload_options(_, index, _),
-    do: ~s(.{.error_info = &error_info, .size = &@"arg#{index}-size"})
+    do: ~s(.{.error_info = &error_info, .size = &@"arg#{index}-size"},)
 
   @impl true
   def render_cleanup(_type, index) do

@@ -37,14 +37,14 @@ defmodule Zig.C do
   defp normalize_filelist(opts, key, module_file) do
     opts
     |> Keyword.get(key)
-    |> List.wrap
+    |> List.wrap()
     |> Enum.map(&solve_relative(&1, module_file))
   end
 
   defp normalized_srclist(opts, module_file) do
     opts
     |> Keyword.get(:src)
-    |> List.wrap
+    |> List.wrap()
     |> Enum.flat_map(&normalize_src(&1, module_file))
   end
 
@@ -52,9 +52,9 @@ defmodule Zig.C do
 
   defp solve_relative(file, module_file) do
     module_file
-    |> Path.dirname
+    |> Path.dirname()
     |> Path.join(file)
-    |> Path.expand
+    |> Path.expand()
   end
 
   defp normalize_src(file, module_file) when is_binary(file) do
@@ -69,7 +69,7 @@ defmodule Zig.C do
     if String.ends_with?(file, "/*") do
       file
       |> solve_relative(module_file)
-      |> Path.dirname
+      |> Path.dirname()
       |> then(fn wildcard_dir ->
         wildcard_dir
         |> File.ls!()

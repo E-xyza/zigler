@@ -40,7 +40,7 @@ defmodule Zig.Type.Cpointer do
 
   @impl true
   def render_payload_options(_, index, _) do
-    ~s(.{.error_info = &error_info, .size = &@"arg#{index}-size"})
+    ~s(.{.error_info = &error_info, .size = &@"arg#{index}-size"},)
   end
 
   @impl true

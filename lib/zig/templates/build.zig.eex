@@ -63,15 +63,16 @@ pub fn build(b: *std.Build) void {
             .module = <%= module %>
         }
         <% end %>
-        }
+        },
+        .target = target
     });
     
     <%= for lib <- @c.link_lib do %>
         <%= case lib do %>
         <% {:system, lib} -> %>
-    lib.linkSystemLibrary("<%= lib %>");
+    nif.linkSystemLibrary("<%= lib %>", .{});
         <% lib -> %>
-    lib.addObjectFile("<%= lib %>");
+    nif.addObjectFile("<%= lib %>");
       <% end %>
     <% end %>
 
