@@ -178,6 +178,17 @@ defmodule Zig.Nif.Basic do
           "Result"
         end
 
+      argument_error_prong = ErrorProng.argument_error_prong(:erlang)
+
+      error_return_prong =
+        List.wrap(
+          if match?(%Zig.Type.Error{}, nif.signature.return) do
+            ErrorProng.return_error_prong(:erlang, [])
+          end
+        )
+
+      error_prongs = argument_error_prong ++ error_return_prong
+
       quote_erl(
         """
         unquote(function_name)(unquote(...used_vars)) ->
@@ -199,6 +210,7 @@ defmodule Zig.Nif.Basic do
         unused_vars: unused_vars,
         marshalled_vars: marshalled_vars,
         marshal_name: marshal_name(nif),
+        error_prongs: error_prongs,
         error_text: error_text
       )
     else

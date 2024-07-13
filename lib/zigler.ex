@@ -115,13 +115,14 @@ defmodule :zigler do
         _ ->
           module_dir
       end
-      
+
     rendered =
       try do
         module_struct = Compiler.before_compile_erlang(module, {file, line}, opts)
         Compiler.compile(code, code_dir, module_struct)
       rescue
         e ->
+          require Logger
           Logger.error("Error compiling Zigler: #{Exception.message(e)} (#{inspect __STACKTRACE__})")
       end
 
