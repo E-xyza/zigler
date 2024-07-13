@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Erlang.BasicTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @compile {:no_warn_undefined, :erlang_basic_test}
+
   @moduletag :erlang
   @test_file to_charlist(Path.join(__DIR__, "src/erlang_basic_test"))
 

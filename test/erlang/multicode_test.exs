@@ -1,8 +1,9 @@
 defmodule ZiglerTest.Erlang.MulticodeTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @compile {:no_warn_undefined, :erlang_erlang_multicode_test}
+
   @moduletag :erlang
-  @moduletag :skip
   @test_file to_charlist(Path.join(__DIR__, "src/erlang_multicode_test"))
 
   test "multicode segments work" do

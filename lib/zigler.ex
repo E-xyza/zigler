@@ -123,7 +123,10 @@ defmodule :zigler do
       rescue
         e ->
           require Logger
-          Logger.error("Error compiling Zigler: #{Exception.message(e)} (#{inspect __STACKTRACE__})")
+
+          Logger.error(
+            "Error compiling Zigler: #{Exception.message(e)} (#{inspect(__STACKTRACE__)})"
+          )
       end
 
     ast =

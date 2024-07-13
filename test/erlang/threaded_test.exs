@@ -1,10 +1,11 @@
 defmodule ZiglerTest.Erlang.ThreadedTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @compile {:no_warn_undefined, :erlang_threaded_test}
+
   @test_file to_charlist(Path.join(__DIR__, "src/erlang_threaded_test"))
 
   @moduletag :erlang
-  @moduletag :skip
   @moduletag :threaded
 
   test "threaded function" do
