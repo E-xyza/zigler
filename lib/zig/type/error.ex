@@ -31,7 +31,7 @@ defmodule Zig.Type.Error do
   def render_accessory_variables(_, _, _), do: raise("unreachable")
 
   @impl true
-  def render_payload_options(_, _, _), do: raise("unreachable")
+  def payload_options(_, _), do: raise("unreachable")
 
   @impl true
   def render_zig(error), do: "!#{error.child}"

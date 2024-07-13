@@ -13,7 +13,7 @@ defmodule Zig.Return do
           cleanup: boolean,
           as: type,
           spec: Macro.t(),
-          in_out: nil | non_neg_integer,
+          in_out: nil | String.t(),
           error: atom()
         }
 
@@ -23,7 +23,7 @@ defmodule Zig.Return do
           | :list
           | {:cleanup, boolean}
           | {:as, type}
-          | {:in_out, non_neg_integer}
+          | {:in_out, String.t()}
           | {:error, atom()}
         ]
 
@@ -56,5 +56,37 @@ defmodule Zig.Return do
         kv
     end)
     |> Keyword.put_new(:cleanup, true)
+  end
+
+  def render_return(%{in_out: in_out_var, error: nil}) when is_binary(in_out_var) do
+    "_ = result; break :execution_block beam.make(#{in_out_var}, .{}).v;"
+  end
+
+  def render_return(%{in_out: in_out_var, error: error_fn}) when is_binary(in_out_var) do
+    """
+    nif.#{error_fn}(result) catch |err| {
+        break :execution_block beam.raise_exception(err, .{}).v;
+    };
+
+    break :execution_block beam.make(#{in_out_var}, .{}).v;
+    """
+  end
+
+  def render_return(%{type: :void}),
+    do: "_ = result; break :execution_block beam.make(.ok, .{}).v;"
+
+  def render_return(%{as: type}),
+    do: "break :execution_block beam.make(result, .{.as = #{render_return_as(type)}}).v;"
+
+  defp render_return_as(atom) when is_atom(atom), do: ".#{atom}"
+  defp render_return_as({:list, return}), do: ".{.list = #{render_return_as(return)}}"
+
+  defp render_return_as({:map, map_kv_list}),
+    do: ".{.map = .{#{render_map_kv_list(map_kv_list)}}}"
+
+  defp render_map_kv_list(map_kv_list) do
+    Enum.map_join(map_kv_list, ", ", fn {key, value} ->
+      ".#{key} = #{render_return_as(value)}"
+    end)
   end
 end

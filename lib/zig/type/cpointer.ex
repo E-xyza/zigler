@@ -44,8 +44,8 @@ defmodule Zig.Type.Cpointer do
   end
 
   @impl true
-  def render_payload_options(_, index, _) do
-    ~s(.{.error_info = &error_info, .size = &@"arg#{index}-size"},)
+  def payload_options(_, prefix) do
+    [error_info: "&error_info", size: ~s(&@"#{prefix}-size")]
   end
 
   @impl true

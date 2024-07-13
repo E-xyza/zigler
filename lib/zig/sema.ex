@@ -35,6 +35,7 @@ defmodule Zig.Sema do
     |> Jason.decode!()
     |> tap(&maybe_dump(&1, module))
     |> reject_ignored(module)
+    |> reject_error_interpreters(module)
     |> assign_callbacks(module)
     |> integrate_sema(module)
     |> then(&Map.replace!(module, :sema, &1))
@@ -74,6 +75,39 @@ defmodule Zig.Sema do
       functions ->
         Enum.reject(functions, &(&1["name"] in ignored))
     end)
+  end
+
+  defp reject_error_interpreters(json, module) do
+    nifs =
+      case module.nifs do
+        {:auto, list} -> list
+        list -> list
+      end
+
+    # try to find a list of all functions that are opts >> return >> error
+    # but then also axe out any functions that are also explicitly specified in the nifs list
+    # then convert into a list of strings
+    error_functions =
+      nifs
+      |> Enum.flat_map(fn {_, opts} -> error_fun(opts) end)
+      |> Enum.reject(&Keyword.has_key?(nifs, &1))
+      |> Enum.map(&"#{&1}")
+
+    Map.update!(json, "functions", fn
+      functions ->
+        Enum.reject(functions, &(&1["name"] in error_functions))
+    end)
+  end
+
+  defp error_fun(opts) do
+    opts
+    |> Keyword.get(:return, [])
+    |> List.wrap()
+    |> Enum.find_value(fn
+      {:error, fun} -> fun
+      _ -> nil
+    end)
+    |> List.wrap()
   end
 
   defp integrate_sema(
@@ -259,7 +293,22 @@ defmodule Zig.Sema do
   end
 
   defp return_from_sema(%{return: return}, opts) do
-    Return.new(return, List.wrap(opts[:return]))
+    opts
+    |> Keyword.get(:return, [])
+    |> add_in_out_param(opts[:params])
+    |> then(&Return.new(return, &1))
+  end
+
+  defp add_in_out_param(return_opts, params) do
+    params
+    |> List.wrap()
+    |> Enum.find_index(fn param_opts ->
+      Enum.any?(param_opts, &(&1 in [:in_out, in_out: true]))
+    end)
+    |> case do
+      nil -> return_opts
+      int -> Keyword.put(return_opts, :in_out, "arg#{int}")
+    end
   end
 
   defp validate_nif!(%{raw: nil} = nif) do
@@ -270,7 +319,7 @@ defmodule Zig.Sema do
   defp validate_nif!(_raw_nif), do: :ok
 
   defp validate_param!({_, %{in_out: true} = param}, nif) do
-    unless Type.in_out_allowed?(param) do
+    unless Type.in_out_allowed?(param.type) do
       raise CompileError,
         description:
           "nif function `#{nif.name}` cannot have a an in-out parameter of type #{Type.render_zig(param.type)}",

@@ -275,5 +275,5 @@ defmodule Zig.Type.Integer do
   def render_cleanup(_, _), do: Type._default_cleanup()
 
   @impl true
-  def render_payload_options(_, _, _), do: Type._default_payload_options()
+  def payload_options(_, _), do: Type._default_payload_options()
 end

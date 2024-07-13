@@ -4,24 +4,13 @@ defmodule Zig.Nif.Threaded do
   alias Zig.ErrorProng
   alias Zig.Nif
   alias Zig.Type
+  alias Zig.Parameter
 
   require EEx
 
   import Zig.QuoteErl
 
   @impl true
-  # def render_elixir(%{raw: raw} = nif) when not is_nil(raw) do
-  #  entrypoints = Enum.map(nif.params, fn arity ->
-  #    unused_params = Nif.elixir_parameters(arity, false)
-  #
-  #    quote do
-  #      unquote(Nif.style(nif))(unquote(nif.name)(unquote_splicing(unused_params))) do
-  #        :erlang.nif_error(unquote(error_text(nif, arity)))
-  #      end
-  #    end
-  #  end)
-  # end
-
   def render_elixir(%{signature: %{arity: arity}} = nif) do
     used_params_ast = Nif.elixir_parameters(arity, true)
     unused_params_ast = Nif.elixir_parameters(arity, false)

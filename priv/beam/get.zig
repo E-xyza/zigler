@@ -334,14 +334,9 @@ pub fn get_array(comptime T: type, src: beam.term, opts: anytype) !T {
 
 pub fn get_pointer(comptime T: type, src: beam.term, opts: anytype) !T {
     const pointer_info = @typeInfo(T).Pointer;
-    const Child = pointer_info.child;
     switch (pointer_info.size) {
         .One => {
-            const alloc = options.allocator(opts);
-            const result = try alloc.create(Child);
-            errdefer alloc.destroy(result);
-            try fill(Child, result, src, opts);
-            return result;
+            return get_onepointer(T, src, opts);
         },
         .Slice => {
             return get_slice(T, src, opts);
@@ -363,6 +358,22 @@ pub fn get_optional(comptime T: type, src: beam.term, opts: anytype) !T {
     switch (src.term_type(options.env(opts))) {
         .atom => return try null_or_atom(T, src, opts),
         else => return try get(Child, src, opts),
+    }
+}
+
+pub fn get_onepointer(comptime T: type, src: beam.term, opts: anytype) !T {
+    const Child = @typeInfo(T).Pointer.child;
+    if (@hasField(@TypeOf(opts), "in_out")) {
+        // space was provided on the stack.
+        opts.in_out.* = try get(Child, src, opts);
+        return opts.in_out;
+    } else {
+        // we must allocate space.
+        const alloc = options.allocator(opts);
+        const result = try alloc.create(Child);
+        errdefer alloc.destroy(result);
+        try fill(Child, result, src, opts);
+        return result;
     }
 }
 

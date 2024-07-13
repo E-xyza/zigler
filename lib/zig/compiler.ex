@@ -62,6 +62,12 @@ defmodule Zig.Compiler do
     Map.update!(opts, :nifs, &nif_substitution/1)
   end
 
+  def before_compile_erlang(module, {file, line}, opts) do
+    opts
+    |> Keyword.merge(language: :erlang)
+    |> Zig.Module.new(%{module: module, file: file, line: line})
+  end
+
   # if the elixir `nif` option contains `...` then this should be converted 
   # into `{:auto, <other_options>}`.  Also, if the nif entry is just an atom,
   # converts that entry into `{nif, []}`
@@ -105,7 +111,7 @@ defmodule Zig.Compiler do
     |> tap(&precompile/1)
     |> Command.compile!()
     |> Manifest.unload()
-    |> tap(&Module.put_attribute(opts.module, :zigler_opts, &1))
+    |> elixir_save_zigler_opts()
     |> case do
       %{language: Elixir} = module ->
         Zig.Module.render_elixir(module, zig_code)
@@ -199,4 +205,11 @@ defmodule Zig.Compiler do
     do: if(comment, do: String.trim(comment))
 
   defp doc_if_name(_, _), do: nil
+
+  defp elixir_save_zigler_opts(%{language: Elixir} = opts) do
+    Module.put_attribute(opts.module, :zigler_opts, opts)
+    opts
+  end
+
+  defp elixir_save_zigler_opts(opts), do: opts
 end

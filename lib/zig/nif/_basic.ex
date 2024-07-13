@@ -16,7 +16,9 @@ defmodule Zig.Nif.Basic do
   alias Zig.Nif.DirtyIo
   alias Zig.Nif.Synchronous
   alias Zig.Parameter
+  alias Zig.Return
   alias Zig.Type
+  alias Zig.Type.Error
   alias Zig.Type.Integer
 
   import Zig.QuoteErl
@@ -34,7 +36,7 @@ defmodule Zig.Nif.Basic do
   defp marshals_param?(:erl_nif_term), do: false
   defp marshals_param?(_), do: true
 
-  defp marshals_return?(%Type.Error{}), do: true
+  defp marshals_return?(%Error{}), do: true
   defp marshals_return?(%Integer{bits: bits}), do: bits > 64
   defp marshals_return?(_), do: false
 
@@ -143,9 +145,9 @@ defmodule Zig.Nif.Basic do
     end
   end
 
-  def render_erlang(%{type: type} = nif) do
+  def render_erlang(%{signature: signature} = nif) do
     {unused_vars, used_vars} =
-      case type.arity do
+      case signature.arity do
         0 ->
           {[], []}
 
@@ -155,11 +157,11 @@ defmodule Zig.Nif.Basic do
           |> Enum.unzip()
       end
 
-    error_text = ~c'nif for function #{type.name}/#{type.arity} not bound'
+    error_text = ~c'nif for function #{nif.name}/#{signature.arity} not bound'
 
     if needs_marshal?(nif) do
       {marshalled_vars, marshal_code} =
-        type.params
+        signature.params
         |> Enum.zip(used_vars)
         |> Enum.map_reduce([], fn {param_type, {:var, var}}, so_far ->
           if marshals_param?(param_type) do
@@ -170,8 +172,8 @@ defmodule Zig.Nif.Basic do
         end)
 
       result_code =
-        if marshals_param?(type.return) do
-          Type.marshal_return(type.return, :Result, :erlang)
+        if marshals_param?(signature.return) do
+          Type.marshal_return(signature.return, :Result, :erlang)
         else
           "Result"
         end
@@ -192,7 +194,7 @@ defmodule Zig.Nif.Basic do
         unquote(marshal_name)(unquote(...unused_vars)) ->
           erlang:nif_error(unquote(error_text)).
         """,
-        function_name: type.name,
+        function_name: nif.name,
         used_vars: used_vars,
         unused_vars: unused_vars,
         marshalled_vars: marshalled_vars,
@@ -205,7 +207,7 @@ defmodule Zig.Nif.Basic do
         unquote(function_name)(unquote(...vars)) ->
           erlang:nif_error(unquote(error_text)).
         """,
-        function_name: type.name,
+        function_name: signature.name,
         vars: unused_vars,
         error_text: error_text
       )

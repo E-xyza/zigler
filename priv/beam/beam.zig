@@ -1266,7 +1266,7 @@ pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: 
     _ = e.enif_make_map_put(env_, initial.v, make_into_atom("__struct__", opts).v, make_into_atom(name, opts).v, &exception);
     _ = e.enif_make_map_put(env_, exception, make_into_atom("__exception__", opts).v, make(true, opts).v, &exception);
 
-    return raise_exception(term{ .v = exception }, opts);
+    return raise_exception(.{ .v = exception }, opts);
 }
 
 /// <!-- topic: Exceptions -->

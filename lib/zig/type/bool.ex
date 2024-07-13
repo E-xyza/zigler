@@ -14,7 +14,7 @@ defmodule Zig.Type.Bool do
   def make_allowed?(_), do: true
   @impl true
   def in_out_allowed?(_), do: false
-  
+
   @impl true
   def binary_size(_), do: 1
 
@@ -24,7 +24,7 @@ defmodule Zig.Type.Bool do
   @impl true
   def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
   @impl true
-  def render_payload_options(_, _, _), do: Type._default_payload_options()
+  def payload_options(_, _), do: Type._default_payload_options()
   @impl true
   def render_cleanup(_, _), do: Type._default_cleanup()
   @impl true

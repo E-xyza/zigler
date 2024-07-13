@@ -23,7 +23,7 @@ fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifT
     const payload_opts = .{
         <%= for {index, param} <- @params do %>
         .{
-            <%= Type.render_payload_options(param.type, index, needs_make?) %>
+            <%= Parameter.render_payload_options(param, index) %>
         },
         <% end %>
     };

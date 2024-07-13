@@ -32,7 +32,7 @@ defmodule Zig.Type.Manypointer do
   @impl true
   def make_allowed?(pointer), do: pointer.has_sentinel? and Type.make_allowed?(pointer.child)
   @impl true
-  def in_out_allowed?(pointer) do 
+  def in_out_allowed?(pointer) do
     Type.make_allowed?(pointer.child) and Type.get_allowed?(pointer.child)
   end
 
@@ -51,13 +51,12 @@ defmodule Zig.Type.Manypointer do
   end
 
   @impl true
-  def render_payload_options(_, index, _),
-    do: ~s(.{.error_info = &error_info, .size = &@"arg#{index}-size"},)
+  def payload_options(_, prefix) do
+    [error_info: "&error_info", size: ~s(&@"#{prefix}-size")]
+  end
 
   @impl true
-  def render_cleanup(_type, index) do
-    ~s(.{.cleanup = true, .size = @"arg#{index}-size"},)
-  end
+  def render_cleanup(_type, index), do: ~s(.{.cleanup = true, .size = @"arg#{index}-size"},)
 
   @impl true
   def marshal_param(_, _, _, _), do: Type._default_marshal()

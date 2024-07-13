@@ -4,6 +4,7 @@ defmodule ZiglerTest.CXX.InOutParamsTest do
   use Zig,
     otp_app: :zigler,
     nifs: [
+      ...,
       in_out: [params: [[:in_out]], return: [error: :make_error]]
     ]
 
@@ -26,8 +27,12 @@ defmodule ZiglerTest.CXX.InOutParamsTest do
   end
 
   test "fails in the error case" do
-    assert_raise ErlangError, "", fn ->
+    assert_raise ErlangError, "Erlang error: :badnumber", fn ->
       in_out(42)
     end
+  end
+
+  test "make_error is ignored" do
+    refute function_exported?(__MODULE__, :make_error, 1)
   end
 end

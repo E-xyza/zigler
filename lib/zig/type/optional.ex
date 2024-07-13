@@ -27,7 +27,7 @@ defmodule Zig.Type.Optional do
   def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
 
   @impl true
-  def render_payload_options(_, _, _), do: Type._default_payload_options()
+  def payload_options(_, _), do: Type._default_payload_options()
   @impl true
   def marshal_param(_, _, _, _), do: Type._default_marshal()
   @impl true

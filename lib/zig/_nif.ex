@@ -74,10 +74,9 @@ defmodule Zig.Nif do
           | {:leak_check, boolean}
 
   @type individual_opts ::
-          {:ignore, boolean}
-          | {:export, boolean}
+          {:export, boolean}
           | {:concurrency, Concurrency.t()}
-          | {:args, %{optional(integer) => Parameter.opts()}}
+          | {:params, %{optional(integer) => Parameter.opts()}}
           | {:return, Return.opts()}
           | {:alias, atom()}
           | {:doc, String.t()}
@@ -107,20 +106,23 @@ defmodule Zig.Nif do
   def new(name, module, opts!) do
     opts! = adjust(opts!)
 
-    validate_in_out(%__MODULE__{
-      name: name,
-      file: module.file,
-      module: module.module,
-      module_code_path: module.module_code_path,
-      zig_code_path: module.zig_code_path,
-      export: Keyword.get(opts!, :export, true),
-      concurrency: Map.get(@concurrency_modules, opts![:concurrency], Synchronous),
-      spec: Keyword.get(opts!, :spec, true),
-      leak_check: Keyword.get(opts!, :leak_check, @defaults[:leak_check]),
-      params: opts![:params],
-      alias: opts![:alias],
-      impl: opts![:impl]
-    }, opts![:return])
+    validate_in_out(
+      %__MODULE__{
+        name: name,
+        file: module.file,
+        module: module.module,
+        module_code_path: module.module_code_path,
+        zig_code_path: module.zig_code_path,
+        export: Keyword.get(opts!, :export, true),
+        concurrency: Map.get(@concurrency_modules, opts![:concurrency], Synchronous),
+        spec: Keyword.get(opts!, :spec, true),
+        leak_check: Keyword.get(opts!, :leak_check, @defaults[:leak_check]),
+        params: opts![:params],
+        alias: opts![:alias],
+        impl: opts![:impl]
+      },
+      opts![:return]
+    )
   end
 
   def adjust(opts) do
@@ -288,7 +290,8 @@ defmodule Zig.Nif do
           # check to see if there's an error term in nif.return
           if return_opts && Keyword.has_key?(return_opts, :error) do
             raise CompileError,
-              description: "you can only specify an error function if there is an in_out parameter",
+              description:
+                "you can only specify an error function if there is an in_out parameter",
               file: nif.file,
               line: nif.line
           end
@@ -304,6 +307,7 @@ defmodule Zig.Nif do
             line: nif.line
       end
     end
+
     nif
   end
 

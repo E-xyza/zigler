@@ -59,26 +59,13 @@ defmodule :zigler do
   def parse_transform(ast, _opts) do
     Application.ensure_all_started(:logger)
 
-    file =
-      Enum.find(ast, &match?({:attribute, _, :file, {_file, _}}, &1))
-      |> elem(3)
-      |> elem(0)
-
-    opts =
+    {line, opts} =
       case Enum.find(ast, &match?({:attribute, _, :zig_opts, _}, &1)) do
         nil ->
           raise "No zig opts found"
 
         {:attribute, {line, _}, :zig_opts, opts} ->
-          opts
-          |> Keyword.merge(
-            mod_file: file,
-            mod_line: line,
-            render: :render_erlang
-          )
-
-          # |> Options.erlang_normalize!()
-          # |> Options.normalize!()
+          {line, opts}
       end
 
     otp_app =
@@ -100,11 +87,11 @@ defmodule :zigler do
       |> Path.dirname()
       |> Path.absname()
 
-    # module =
-    #  case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
-    #    nil -> raise "No module definition found"
-    #    {:attribute, _, :module, module} -> module
-    #  end
+    module =
+      case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
+        nil -> raise "No module definition found"
+        {:attribute, _, :module, module} -> module
+      end
 
     code =
       ast
@@ -128,19 +115,22 @@ defmodule :zigler do
         _ ->
           module_dir
       end
-
-    module = opts
-
-    raise "^^ above line is bad"
-
-    rendered_erlang = Compiler.compile(code, code_dir, module)
+      
+    rendered =
+      try do
+        module_struct = Compiler.before_compile_erlang(module, {file, line}, opts)
+        Compiler.compile(code, code_dir, module_struct)
+      rescue
+        e ->
+          Logger.error("Error compiling Zigler: #{Exception.message(e)} (#{inspect __STACKTRACE__})")
+      end
 
     ast =
       ast
       |> Enum.reject(&match?({:attribute, _, :zig_code, _}, &1))
       |> append_attrib(:on_load, {:__init__, 0})
       |> append_attrib(:zig_code, code)
-      |> Kernel.++(rendered_erlang)
+      |> Kernel.++(rendered)
       |> Enum.sort(__MODULE__)
 
     if opts[:dump] do

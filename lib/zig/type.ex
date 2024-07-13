@@ -65,8 +65,8 @@ defprotocol Zig.Type do
   @spec render_accessory_variables(t, term, iodata) :: iodata
   def render_accessory_variables(type, opts, prefix)
 
-  @spec render_payload_options(t, non_neg_integer, boolean) :: iodata
-  def render_payload_options(type, index, error_info?)
+  @spec payload_options(t, String.t()) :: iodata
+  def payload_options(type, prefix)
 
   @spec render_cleanup(t, non_neg_integer) :: iodata
   def render_cleanup(type, index)
@@ -280,25 +280,7 @@ after
 
   # defaults
 
-  def _default_payload_options, do: ".{.error_info = &error_info},"
-
-  def render_return(%{type: :void}),
-    do: "_ = result; break :execution_block beam.make(.ok, .{}).v;"
-
-  def render_return(%{as: type}),
-    do: "break :execution_block beam.make(result, .{.as = #{render_return_as(type)}}).v;"
-
-  defp render_return_as(atom) when is_atom(atom), do: ".#{atom}"
-  defp render_return_as({:list, return}), do: ".{.list = #{render_return_as(return)}}"
-
-  defp render_return_as({:map, map_kv_list}),
-    do: ".{.map = .{#{render_map_kv_list(map_kv_list)}}}"
-
-  defp render_map_kv_list(map_kv_list) do
-    Enum.map_join(map_kv_list, ", ", fn {key, value} ->
-      ".#{key} = #{render_return_as(value)}"
-    end)
-  end
+  def _default_payload_options, do: [error_info: "&error_info"]
 
   def _default_accessory_variables, do: []
   def _default_marshal, do: []
@@ -332,14 +314,14 @@ defimpl Zig.Type, for: Atom do
   def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
 
   @impl true
-  def render_payload_options(:erl_nif_term, _, _), do: ".{},"
-  def render_payload_options(:term, _, _), do: ".{},"
+  def payload_options(:erl_nif_term, _), do: []
+  def payload_options(:term, _), do: []
 
-  def render_payload_options(type, _, _)
+  def payload_options(type, _)
       when type in ~w[env stacktrace erl_nif_binary erl_nif_event erl_nif_binary_pointer]a,
       do: raise("unreachable")
 
-  def render_payload_options(_, _, _), do: Type._default_payload_options()
+  def payload_options(_, _), do: Type._default_payload_options()
 
   @impl true
   def render_cleanup(_, _), do: Type._default_cleanup()

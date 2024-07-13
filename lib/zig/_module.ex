@@ -9,6 +9,9 @@ defmodule Zig.Module do
   alias Zig.Resources
   alias Zig.Type.Error
 
+  # you'll never see me ever import any other module.
+  import Zig.QuoteErl
+
   # for easy access in EEx files
   @behaviour Access
 
@@ -271,24 +274,23 @@ defmodule Zig.Module do
     end
   end
 
-  def render_erlang(module, zig_code) do
-    _ = module
-    _ = zig_code
-    raise "unimplemented"
-    #  otp_app = Keyword.fetch!(opts, :otp_app)
-    #  module_name = Atom.to_charlist(module)
-    #
-    #  init_function =
-    #    quote_erl(
-    #      """
-    #      '__init__'() ->
-    #        erlang:load_nif(filename:join(code:priv_dir(unquote(otp_app)), unquote(module_id)), []).
-    #      """,
-    #      otp_app: otp_app,
-    #      module_id: ~C'lib/' ++ module_name
-    #    )
-    #
-    #  Enum.flat_map(function_code, & &1) ++ init_function
+  def render_erlang(module, _zig_code) do
+    otp_app = module.otp_app
+    module_name = Atom.to_charlist(module.module)
+
+    init_function =
+      quote_erl(
+        """
+        '__init__'() ->
+          erlang:load_nif(filename:join(code:priv_dir(unquote(otp_app)), unquote(module_id)), []).
+        """,
+        otp_app: otp_app,
+        module_id: ~C'lib/' ++ module_name
+      )
+
+    function_code = Enum.map(module.nifs, &Nif.render_erlang/1)
+
+    Enum.flat_map(function_code, & &1) ++ init_function
   end
 
   # Access behaviour guards

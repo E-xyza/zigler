@@ -4,7 +4,6 @@ defmodule ZiglerTest.Erlang.BasicTest do
   @moduletag :erlang
   @test_file to_charlist(Path.join(__DIR__, "src/erlang_basic_test"))
 
-  @tag :skip
   test "doing it with erlang works" do
     {:ok, mod} = :compile.file(@test_file, outdir: :code.lib_dir(:zigler, :ebin))
     Code.ensure_loaded(mod)
