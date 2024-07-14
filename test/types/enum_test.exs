@@ -49,7 +49,7 @@ defmodule ZiglerTest.Types.EnumTest do
                      Code.compile_quoted(
                        quote do
                          defmodule ZiglerTest.Types.ZeroItemEnum do
-                           use Zig, otp_app: :zigler
+                           use Zig, otp_app: :zigler, dir: unquote(__DIR__)
 
                            ~Z"""
                            const E = enum{ };
@@ -70,7 +70,7 @@ defmodule ZiglerTest.Types.EnumTest do
                      Code.compile_quoted(
                        quote do
                          defmodule ZiglerTest.Types.OneItemEnum do
-                           use Zig, otp_app: :zigler
+                           use Zig, otp_app: :zigler, dir: unquote(__DIR__)
 
                            ~Z"""
                            const E = enum{ ok };
