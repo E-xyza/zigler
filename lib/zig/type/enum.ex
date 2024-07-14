@@ -29,9 +29,9 @@ defmodule Zig.Type.Enum do
   def binary_size(_), do: nil
 
   @impl true
-  def marshal_param(_, _, _, _), do: Type._default_marshal()
+  def marshal_param(_, _, _, _), do: Type._default_marshal_param()
   @impl true
-  def marshal_return(_, _, _), do: Type._default_marshal()
+  def marshal_return(_, _, platform), do: Type._default_marshal_return(platform)
 
   @impl true
   def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()

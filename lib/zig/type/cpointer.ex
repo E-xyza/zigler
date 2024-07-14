@@ -137,9 +137,9 @@ defmodule Zig.Type.Cpointer do
   end
 
   @impl true
-  def marshal_param(_, _, _, _), do: Type._default_marshal()
+  def marshal_param(_, _, _, _), do: Type._default_marshal_param()
   @impl true
-  def marshal_return(_, _, _), do: Type._default_marshal()
+  def marshal_return(_, _, platform), do: Type._default_marshal_return(platform)
 
   defp child_context(%{as: {:list, list_child_as}} = context), do: %{context | as: list_child_as}
   defp child_context(_), do: :default

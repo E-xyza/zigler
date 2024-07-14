@@ -53,7 +53,7 @@ defmodule Zig.Type.Integer do
   end
 
   @impl true
-  def marshal_param(type, variable, index, :elixir) do
+  def marshal_param(type, variable, index, Elixir) do
     marshal_param_elixir(type, variable, index)
   end
 
@@ -160,7 +160,7 @@ defmodule Zig.Type.Integer do
   end
 
   @impl true
-  def marshal_return(type, variable, :elixir) do
+  def marshal_return(type, variable, Elixir) do
     marshal_return_elixir(type, variable)
   end
 

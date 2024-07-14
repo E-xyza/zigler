@@ -95,9 +95,9 @@ defmodule Zig.Type.Slice do
   @impl true
   def payload_options(_, _), do: Type._default_payload_options()
   @impl true
-  def marshal_param(_, _, _, _), do: Type._default_marshal()
+  def marshal_param(_, _, _, _), do: Type._default_marshal_param()
   @impl true
-  def marshal_return(_, _, _), do: Type._default_marshal()
+  def marshal_return(_, _, platform), do: Type._default_marshal_return(platform)
 
   def of(child, opts \\ []), do: struct(__MODULE__, [child: child] ++ opts)
 end

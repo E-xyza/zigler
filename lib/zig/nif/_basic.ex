@@ -90,7 +90,7 @@ defmodule Zig.Nif.Basic do
       |> Enum.flat_map(fn {{index, param}, ast} ->
         List.wrap(
           if marshals_param?(param.type) do
-            Type.marshal_param(param.type, ast, index, :elixir)
+            Type.marshal_param(param.type, ast, index, Elixir)
           end
         )
       end)
@@ -102,7 +102,7 @@ defmodule Zig.Nif.Basic do
 
     marshal_return =
       if marshals_return?(nif.return.type) do
-        Type.marshal_return(nif.return.type, return_ast, :elixir)
+        Type.marshal_return(nif.return.type, return_ast, Elixir)
       else
         return_ast
       end
@@ -173,9 +173,9 @@ defmodule Zig.Nif.Basic do
 
       result_code =
         if marshals_param?(signature.return) do
-          Type.marshal_return(signature.return, :Result, :erlang)
+          Type.marshal_return(signature.return, :Return, :erlang) 
         else
-          "Result"
+          "Return"
         end
 
       argument_error_prong = ErrorProng.argument_error_prong(:erlang)
@@ -196,7 +196,7 @@ defmodule Zig.Nif.Basic do
           #{marshal_code}
 
           try unquote(marshal_name)(unquote(...marshalled_vars)) of
-            Result ->
+            Return ->
               #{result_code}
           catch
             splice_prongs(error_prongs)

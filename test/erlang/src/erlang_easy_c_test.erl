@@ -4,7 +4,7 @@
 
 -zig_opts([
     {otp_app, zigler},
-    {link_lib, {system, "blas"}},
+    {c, [{link_lib, {system, "blas"}}]},
     {easy_c, "cblas.h"},
     {leak_check, true},
     {nifs, [{cblas_daxpy, [{return, [4, {length, {arg, 0}}]}]}]}

@@ -125,7 +125,7 @@ defmodule :zigler do
           require Logger
 
           Logger.error(
-            "Error compiling Zigler: #{Exception.message(e)} (#{inspect(__STACKTRACE__)})"
+            "Error compiling Zigler: #{Exception.message(e)}\n\n#{Exception.format_stacktrace(__STACKTRACE__)}"
           )
       end
 

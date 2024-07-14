@@ -28,9 +28,9 @@ defmodule Zig.Type.Bool do
   @impl true
   def render_cleanup(_, _), do: Type._default_cleanup()
   @impl true
-  def marshal_param(_, _, _, _), do: Type._default_marshal()
+  def marshal_param(_, _, _, _), do: Type._default_marshal_param()
   @impl true
-  def marshal_return(_, _, _), do: Type._default_marshal()
+  def marshal_return(_, _, platform), do: Type._default_marshal_return(platform)
 
   @impl true
   def render_elixir_spec(_, _) do

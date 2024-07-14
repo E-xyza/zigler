@@ -41,7 +41,7 @@ defprotocol Zig.Type do
 
   @type json :: number | String.t() | boolean | nil | [json] | %{optional(String.t()) => json}
 
-  @spec marshal_param(t, Macro.t(), non_neg_integer, :elixir | :erlang) :: Macro.t()
+  @spec marshal_param(t, Macro.t(), non_neg_integer, Elixir | :erlang) :: Macro.t()
   def marshal_param(type, variable_ast, index, platform)
 
   @spec marshal_return(t, Macro.t(), Elixir | :erlang) :: Macro.t()
@@ -283,7 +283,11 @@ after
   def _default_payload_options, do: [error_info: "&error_info"]
 
   def _default_accessory_variables, do: []
-  def _default_marshal, do: []
+  def _default_marshal_param, do: []
+
+  def _default_marshal_return(Elixir), do: []
+  def _default_marshal_return(:erlang), do: "Return"
+
   def _default_cleanup, do: ".{},"
 end
 
@@ -343,8 +347,8 @@ defimpl Zig.Type, for: Atom do
   end
 
   @impl true
-  def marshal_param(_, _, _, _), do: Type._default_marshal()
+  def marshal_param(_, _, _, _), do: Type._default_marshal_param()
 
   @impl true
-  def marshal_return(_, _, _), do: Type._default_marshal()
+  def marshal_return(_, _, platform), do: Type._default_marshal_return(platform)
 end

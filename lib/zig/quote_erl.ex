@@ -30,6 +30,8 @@ defmodule Zig.QuoteErl do
     Enum.map(form_list, fn form ->
       case :erl_parse.parse_form(form) do
         {:ok, result} -> result
+        {:error, {_, :erl_parse, reason}} ->
+          raise CompileError, description: IO.iodata_to_binary(reason)
       end
     end)
   rescue

@@ -62,18 +62,14 @@ defmodule Zig.Compiler do
     Map.update!(opts, :nifs, &nif_substitution/1)
   end
 
-  def before_compile_erlang(module, {file, line}, opts) do
-    opts
-    |> Keyword.merge(language: :erlang)
-    |> Zig.Module.new(%{module: module, file: file, line: line})
-  end
-
   # if the elixir `nif` option contains `...` then this should be converted 
   # into `{:auto, <other_options>}`.  Also, if the nif entry is just an atom,
   # converts that entry into `{nif, []}`
   #
   # This function will reverse the list, but since order doesn't matter for this 
   # option, it is okay.
+  defp nif_substitution(:auto), do: {:auto, []}
+
   defp nif_substitution({:auto, _} = auto), do: auto
 
   defp nif_substitution(opts) do
@@ -90,6 +86,15 @@ defmodule Zig.Compiler do
   defp prepend_nif(so_far, nif_name) when is_atom(nif_name), do: [{nif_name, []} | so_far]
   defp prepend_nif({:auto, so_far}, nif_info), do: {:auto, [nif_info | so_far]}
   defp prepend_nif(so_far, nif_info), do: [nif_info | so_far]
+
+  # adjust nif parameters for erlang.
+
+  def before_compile_erlang(module, {file, line}, opts) do
+    opts
+    |> Keyword.merge(language: :erlang)
+    |> Keyword.update(:nifs, {:auto, []}, &nif_substitution/1)
+    |> Zig.Module.new(%{module: module, file: file, line: line})
+  end
 
   # note that this function is made public so that it can be both accessed
   # from the :zigler entrypoint for erlang parse transforms, as well as the

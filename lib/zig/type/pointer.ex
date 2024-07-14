@@ -51,7 +51,7 @@ defmodule Zig.Type.Pointer do
   end
 
   @impl true
-  def marshal_param(_, _, _, _), do: Type._default_marshal()
+  def marshal_param(_, _, _, _), do: Type._default_marshal_param()
 
   @impl true
   def marshal_return(_, _, _), do: raise("unreachable")
