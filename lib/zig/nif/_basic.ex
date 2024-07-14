@@ -173,7 +173,7 @@ defmodule Zig.Nif.Basic do
 
       result_code =
         if marshals_param?(signature.return) do
-          Type.marshal_return(signature.return, :Return, :erlang) 
+          Type.marshal_return(signature.return, :Return, :erlang)
         else
           "Return"
         end

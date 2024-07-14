@@ -4,9 +4,7 @@ const easy_c = @cImport({
 });
 
 <%= for {name, opts} <- @nifs do %>
-  <%= case opts[:alias] do %>
-    <% true -> %>
+  <%= unless opts[:alias] do %>
 pub const <%= name %> = easy_c.<%= name %>;
-    <% _ -> %>
   <% end %>
 <% end %>
