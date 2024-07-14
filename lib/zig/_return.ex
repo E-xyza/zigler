@@ -2,7 +2,7 @@ defmodule Zig.Return do
   @moduledoc false
 
   @enforce_keys ~w[type cleanup]a
-  defstruct @enforce_keys ++ [:in_out, :error, spec: nil, as: :default]
+  defstruct @enforce_keys ++ [:in_out, :error, :length, spec: nil, as: :default]
 
   alias Zig.Type
 
@@ -14,7 +14,8 @@ defmodule Zig.Return do
           as: type,
           spec: Macro.t(),
           in_out: nil | String.t(),
-          error: atom()
+          error: atom(),
+          length: non_neg_integer | {:arg, non_neg_integer()}
         }
 
   @type opts :: [
@@ -25,6 +26,7 @@ defmodule Zig.Return do
           | {:as, type}
           | {:in_out, String.t()}
           | {:error, atom()}
+          | {:length, non_neg_integer | {:arg, non_neg_integer()}
         ]
 
   def new(raw) when raw in ~w[term erl_nif_term]a, do: %__MODULE__{type: raw, cleanup: false}
@@ -34,7 +36,7 @@ defmodule Zig.Return do
   end
 
   @as ~w[binary list integer map]a
-  @options ~w[as cleanup spec in_out error]a
+  @options ~w[as cleanup spec in_out error length]a
 
   defp normalize_options(options) do
     options
