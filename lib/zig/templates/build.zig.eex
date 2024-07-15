@@ -34,16 +34,17 @@ pub fn build(b: *std.Build) void {
         .{
             .root_source_file = .{.cwd_relative = "<%= path %>"},
             .imports = &[_]std.Build.Module.Import{
-            <%= for dep <- deps do %>
-            .{
-                .name = "<%= dep %>",
-                .module = <%= dep %>
-            },
-            <% end %>
+                <%= for dep <- deps do %>
+                .{
+                    .name = "<%= dep %>",
+                    .module = <%= dep %>
+                },
+                <% end %>
+            }
         });
     <% end %>
 
-    <% module_list = Enum.map(@packages, fn {name, _, _} -> ".#{name}" end) %>
+    <% module_list = Enum.map(@packages, fn {name, _, _} -> "#{name}" end) %>
 
     const nif = b.createModule(.{
         .root_source_file = .{.cwd_relative = "<%= @zig_code_path %>"},

@@ -52,3 +52,4 @@ zigler-*.tar
 
 /test/code
 /test/corner_cases/staging
+/test/guides

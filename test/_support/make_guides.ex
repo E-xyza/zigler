@@ -2,6 +2,8 @@ defmodule ZiglerTest.MakeGuides do
   defstruct lines: [], on: false, needs_module: true, top: []
 
   def go do
+    File.mkdir_p!("test/guides")
+
     "guides"
     |> File.ls!()
     |> Enum.each(fn filename ->
