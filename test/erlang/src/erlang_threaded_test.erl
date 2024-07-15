@@ -5,7 +5,7 @@
 -zig_code("
   const std = @import(\"std\");
   const beam = @import(\"beam\");
-  pub fn threaded should_quit: bool, resp: beam.pid) void {
+  pub fn threaded(should_quit: bool, resp: beam.pid) void {
     var i: u32 = 0;
     while (true) : (i += 1) {
       if (i > 5000 and should_quit) {

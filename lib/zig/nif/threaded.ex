@@ -66,7 +66,7 @@ defmodule Zig.Nif.Threaded do
   end
 
   @impl true
-  def render_erlang(%{type: %{name: name, arity: arity}} = nif) do
+  def render_erlang(%{name: name, signature: %{arity: arity}} = nif) do
     {unused_vars, used_vars} =
       case arity do
         0 ->

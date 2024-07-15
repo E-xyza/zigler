@@ -96,7 +96,7 @@ defmodule :zigler do
 
     code =
       if opts[:easy_c] do
-        EasyC.build_from(opts) 
+        EasyC.build_from(opts)
       else
         ast
         |> Enum.flat_map(fn

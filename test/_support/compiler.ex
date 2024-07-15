@@ -25,4 +25,9 @@ defmodule ZiglerTest.Compiler do
       mod
     end
   end
+
+  def compile_erlang(file) do
+    {:ok, mod} = :compile.file(file, [:return_errors, outdir: :code.lib_dir(:zigler, :ebin)])
+    Code.ensure_loaded(mod)
+  end
 end

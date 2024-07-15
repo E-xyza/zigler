@@ -1,5 +1,6 @@
 defmodule ZiglerTest.Erlang.ThreadedTest do
   use ZiglerTest.IntegrationCase, async: true
+  alias ZiglerTest.Compiler
 
   @compile {:no_warn_undefined, :erlang_threaded_test}
 
@@ -9,8 +10,7 @@ defmodule ZiglerTest.Erlang.ThreadedTest do
   @moduletag :threaded
 
   test "threaded function" do
-    {:ok, mod} = :compile.file(@test_file, outdir: :code.lib_dir(:zigler, :ebin))
-    Code.ensure_loaded(mod)
+    Compiler.compile_erlang(@test_file)
 
     this = self()
     assert :ok = :erlang_threaded_test.threaded(true, this)

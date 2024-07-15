@@ -1,5 +1,6 @@
 defmodule ZiglerTest.Erlang.BasicTest do
   use ZiglerTest.IntegrationCase, async: true
+  alias ZiglerTest.Compiler
 
   @compile {:no_warn_undefined, :erlang_basic_test}
 
@@ -7,8 +8,7 @@ defmodule ZiglerTest.Erlang.BasicTest do
   @test_file to_charlist(Path.join(__DIR__, "src/erlang_basic_test"))
 
   test "doing it with erlang works" do
-    {:ok, mod} = :compile.file(@test_file, outdir: :code.lib_dir(:zigler, :ebin))
-    Code.ensure_loaded(mod)
+    Compiler.compile_erlang(@test_file)
 
     assert 47 == :erlang_basic_test.foo()
     assert 48 == :erlang_basic_test.foo(1)

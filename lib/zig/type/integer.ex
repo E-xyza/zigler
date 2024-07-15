@@ -154,8 +154,10 @@ defmodule Zig.Type.Integer do
           _ -> erlang:error(badarg)
         end,
         """
+
       %{bits: bits} when bits <= 64 ->
         "#{variable}_m = #{variable},"
+
       _ ->
         """
         #{variable}_m = case #{variable} of
