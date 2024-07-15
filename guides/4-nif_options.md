@@ -68,8 +68,9 @@ defmodule RawCallTest do
   use Zig, 
     otp_app: :zigler,
     nifs: [
-        raw_call_beam: [raw: 1],
-    #    raw_call_erl_nif: [raw: 1]
+        raw_call_beam: [arity: 1],
+        raw_call_erl_nif: [arity: 1],
+        raw_call_multi_arity: [arity: [0, 2..3]]
     ]
 
   ~Z"""
@@ -80,20 +81,30 @@ defmodule RawCallTest do
       return beam.make(.{.count = count, .item = list[0]}, .{.env = env});
   }
 
-  //pub fn raw_call_erl_nif(env: e.ErlNifEnv, count: c_int, list: [*]const e.ErlNifTerm) e.ErlNifTerm {
-  //    return beam.make(.{.count = count, .item = beam.term{.v = list[0]}}, .{.env = env}).v;
-  //}
+  pub fn raw_call_erl_nif(env: beam.env, count: c_int, list: [*]const e.ErlNifTerm) e.ErlNifTerm {
+      return beam.make(.{.count = count, .item = beam.term{.v = list[0]}}, .{.env = env}).v;
+  }
+
+  pub fn raw_call_multi_arity(env: beam.env, arity: c_int, _: [*]const beam.term) beam.term {
+      return beam.make(arity, .{.env = env});
+  }
   """
 
-  @tag :skip
-  test "raw call with beam package" do
+  test "raw call with beam format" do
     assert %{count: 1, item: {:foo, "bar"}} = raw_call_beam({:foo, "bar"})
   end
   
-  @tag :skip
-  test "raw call with erl_nif package" # do
-    #assert %{count: 1, item: {:foo, "bar"}} = raw_call_erl_nif({:foo, "bar"})
-  #end
+  test "raw call with erl_nif format" do
+    assert %{count: 1, item: {:foo, "bar"}} = raw_call_erl_nif({:foo, "bar"})
+  end
+
+  test "raw call with multiple arities" do
+    assert 0 = raw_call_multi_arity()
+    assert 2 = raw_call_multi_arity(:foo, :bar)
+    assert 3 = raw_call_multi_arity(:foo, :bar, :baz)
+
+    assert_raise Foo, fn -> __MODULE__.raw_call_multi_arity(:foo) end
+  end
 end
 ```
 
@@ -199,12 +210,9 @@ happened, it raises.
 defmodule LeakCheckTest do
   use ExUnit.Case, async: true
 
-  @tag :skip
-  test "restore leak check"
-
   use Zig,
     otp_app: :zigler,
-    nifs: [check_me: [leak_check: false]]
+    nifs: [check_me: [leak_check: true]]
 
   ~Z"""
   const beam = @import("beam");
@@ -213,7 +221,6 @@ defmodule LeakCheckTest do
   }
   """
 
-  @tag :skip
   test "leak check" do
     assert_raise RuntimeError, "memory leak detected in function `check_me/0`", fn ->
       check_me()
@@ -239,7 +246,6 @@ defmodule LeakCheckAllTest do
   }
   """
 
-  @tag :skip
   test "leak check" do
     assert_raise RuntimeError, "memory leak detected in function `check_me/0`", fn ->
       check_me()

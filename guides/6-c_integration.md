@@ -70,7 +70,7 @@ if {:unix, :linux} == :os.type() do
     use ExUnit.Case, async: true
     use Zig, 
       otp_app: :zigler,
-      link_lib: {:system, "blas"}
+      c: [link_lib: {:system, "blas"}]
 
     ~Z"""
     pub const dasum = @cImport(@cInclude("cblas.h")).cblas_dasum;
@@ -134,10 +134,10 @@ It then calculates the linear transformation `ax + y` using these vectors.
     use Zig, 
       otp_app: :zigler,
       easy_c: "cblas.h",
-      link_lib: {:system, "blas"},
+      c: [link_lib: {:system, "blas"}],
       nifs: [
-        cblas_daxpy: [return: [4, length: {:arg, 0}]],
-        cblas_daxpy_bin: [alias: :cblas_daxpy, return: [4, :binary, length: {:arg, 0}]]
+        cblas_daxpy: [params: %{4 => :in_out}, return: [length: {:arg, 0}]],
+        cblas_daxpy_bin: [alias: :cblas_daxpy, params: %{4 => :in_out}, return: [:binary, length: {:arg, 0}]]
       ]
 
     test "daxpy as a list" do

@@ -53,7 +53,6 @@ defmodule DirtyCpu do
   }
   """
 
-  @tag :skip
   test "dirty cpu can be cancelled" do
     this = self()
     dirty_cpu = spawn(fn -> long_running(this) end)

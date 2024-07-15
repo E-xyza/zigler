@@ -126,7 +126,7 @@ test "marshalling error" do
 
     * 1st argument: 
   
-       expected: <<_::_ * 32>> | list(float | :infinity | :neg_infinity | :NaN) (for `[]f32`)
+       expected: list(float | :infinity | :neg_infinity | :NaN) | <<_::_*32>> (for `[]f32`) 
        got: `:atom`
   """, fn ->
     sum(:atom)
