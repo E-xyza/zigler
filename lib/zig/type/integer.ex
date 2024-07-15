@@ -146,17 +146,29 @@ defmodule Zig.Type.Integer do
 
     size = _next_power_of_two_ceil(type.bits)
 
-    """
-    #{variable}_m = case #{variable} of
-      X when not is_integer(X) ->
-        erlang:error(badarg);
-      X when X < #{min} ->
-        erlang:error(badarg);
-      X when X > #{max} ->
-        erlang:error(badarg);
-      X -> <<X:#{size}/native-#{type.signedness}-integer-unit:1>>
-    end,
-    """
+    case type do
+      %{bits: 0} ->
+        """
+        #{variable} = case #{variable} of
+          0 -> 0;
+          _ -> erlang:error(badarg)
+        end,
+        """
+      %{bits: bits} when bits <= 64 ->
+        "#{variable}_m = #{variable},"
+      _ ->
+        """
+        #{variable}_m = case #{variable} of
+          X when not is_integer(X) ->
+            erlang:error(badarg);
+          X when X < #{min} ->
+            erlang:error(badarg);
+          X when X > #{max} ->
+            erlang:error(badarg);
+          X -> <<X:#{size}/native-#{type.signedness}-integer-unit:1>>
+        end,
+        """
+    end
   end
 
   @impl true

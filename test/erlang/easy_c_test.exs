@@ -10,7 +10,7 @@ if {:unix, :linux} == :os.type() do
     @test_file to_charlist(Path.join(__DIR__, "src/erlang_easy_c_test"))
 
     test "doing it with erlang works" do
-      {:ok, mod} = :compile.file(@test_file, outdir: :code.lib_dir(:zigler, :ebin))
+      {:ok, mod} = :compile.file(@test_file, [:return_errors, outdir: :code.lib_dir(:zigler, :ebin)])
       Code.ensure_loaded(mod)
 
       assert [7.0, 11.0, 15.0] ==

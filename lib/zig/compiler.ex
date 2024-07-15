@@ -109,14 +109,15 @@ defmodule Zig.Compiler do
   end
 
   defp decode_params([{:params, params_ast} | rest]) do
-    [{:params, from_ast(params_ast)} | rest]
+    [{:params, maybe_from_ast(params_ast)} | rest]
   end
 
   defp decode_params([other | rest]), do: [other | decode_params(rest)]
   defp decode_params([]), do: []
 
-  defp from_ast({:%{}, _, ast}), do: Enum.into(ast, %{})
-  # adjust nif parameters for erlang.
+  # adjust nif parameters if they came from elixir as an AST
+  defp maybe_from_ast({:%{}, _, ast}), do: Enum.into(ast, %{})
+  defp maybe_from_ast(other) when is_map(other), do: other
 
   def before_compile_erlang(module, {file, line}, opts) do
     opts

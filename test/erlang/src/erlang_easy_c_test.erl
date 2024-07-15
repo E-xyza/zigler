@@ -7,5 +7,10 @@
     {c, [{link_lib, {system, "blas"}}]},
     {easy_c, "cblas.h"},
     {leak_check, true},
-    {nifs, [{cblas_daxpy, [{return, [4, {length, {arg, 0}}]}]}]}
+    {nifs, [
+        {cblas_daxpy, [
+            {params, #{4 => in_out}},
+            {return, [{length, {arg, 0}}]}
+        ]}
+    ]}
 ]).

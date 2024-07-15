@@ -8,7 +8,7 @@ if {:unix, :linux} == :os.type() do
       otp_app: :zigler,
       easy_c: "cblas.h",
       c: [link_lib: {:system, "blas"}],
-      leak_check: false,
+      leak_check: true,
       nifs: [
         :cblas_dasum,
         cblas_daxpy: [params: %{4 => :in_out}, return: [length: {:arg, 0}]],

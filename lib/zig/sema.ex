@@ -262,6 +262,7 @@ defmodule Zig.Sema do
 
   defp apply_from_sema(%{params: nif_params!} = nif, sema, opts) do
     nif_params! = nif_params! || %{}
+
     Enum.each(nif_params!, fn
       {index, _} ->
         if index >= sema.arity do

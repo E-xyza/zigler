@@ -29,7 +29,7 @@ defmodule Zig.Type.Optional do
   @impl true
   def payload_options(_, _), do: Type._default_payload_options()
   @impl true
-  def marshal_param(_, _, _, _), do: Type._default_marshal_param()
+  def marshal_param(_, variable, _, platform), do: Type._default_marshal_param(platform, variable)
   @impl true
   def marshal_return(_, _, platform), do: Type._default_marshal_return(platform)
 

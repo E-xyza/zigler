@@ -51,6 +51,7 @@ defmodule :zigler do
   """
 
   alias Zig.Compiler
+  alias Zig.EasyC
 
   @doc """
   performs a parse transformation on the AST for an erlang module,
@@ -94,15 +95,19 @@ defmodule :zigler do
       end
 
     code =
-      ast
-      |> Enum.flat_map(fn
-        {:attribute, {line, _}, :zig_code, code} ->
-          ["// ref #{file}:#{line}", code]
+      if opts[:easy_c] do
+        EasyC.build_from(opts) 
+      else
+        ast
+        |> Enum.flat_map(fn
+          {:attribute, {line, _}, :zig_code, code} ->
+            ["// ref #{file}:#{line}", code]
 
-        _ ->
-          []
-      end)
-      |> IO.iodata_to_binary()
+          _ ->
+            []
+        end)
+        |> IO.iodata_to_binary()
+      end
 
     code_dir =
       case Keyword.fetch(opts, :code_dir) do
@@ -116,18 +121,8 @@ defmodule :zigler do
           module_dir
       end
 
-    rendered =
-      try do
-        module_struct = Compiler.before_compile_erlang(module, {file, line}, opts)
-        Compiler.compile(code, code_dir, module_struct)
-      rescue
-        e ->
-          require Logger
-
-          Logger.error(
-            "Error compiling Zigler: #{Exception.message(e)}\n\n#{Exception.format_stacktrace(__STACKTRACE__)}"
-          )
-      end
+    module_struct = Compiler.before_compile_erlang(module, {file, line}, opts)
+    rendered = Compiler.compile(code, code_dir, module_struct)
 
     ast =
       ast
@@ -142,6 +137,13 @@ defmodule :zigler do
     else
       ast
     end
+  rescue
+    e ->
+      require Logger
+
+      Logger.error(
+        "Error compiling Zigler: #{Exception.message(e)}\n\n#{Exception.format_stacktrace(__STACKTRACE__)}"
+      )
   end
 
   defp append_attrib(ast, key, value), do: ast ++ [{:attribute, {1, 1}, key, value}]

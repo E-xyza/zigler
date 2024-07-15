@@ -68,7 +68,7 @@ defmodule Zig.Type.Manypointer do
   def render_cleanup(_type, index), do: ~s(.{.cleanup = true, .size = @"arg#{index}-size"},)
 
   @impl true
-  def marshal_param(_, _, _, _), do: Type._default_marshal_param()
+  def marshal_param(_, variable, _, platform), do: Type._default_marshal_param(platform, variable)
   @impl true
   def marshal_return(_, _, platform), do: Type._default_marshal_return(platform)
 

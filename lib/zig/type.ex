@@ -283,7 +283,9 @@ after
   def _default_payload_options, do: [error_info: "&error_info"]
 
   def _default_accessory_variables, do: []
-  def _default_marshal_param, do: []
+
+  def _default_marshal_param(Elixir, _variable), do: []
+  def _default_marshal_param(:erlang, variable), do: "#{variable}_m = #{variable},"
 
   def _default_marshal_return(Elixir), do: []
   def _default_marshal_return(:erlang), do: "Return"
@@ -347,7 +349,7 @@ defimpl Zig.Type, for: Atom do
   end
 
   @impl true
-  def marshal_param(_, _, _, _), do: Type._default_marshal_param()
+  def marshal_param(_, variable, _, platform), do: Type._default_marshal_param(platform, variable)
 
   @impl true
   def marshal_return(_, _, platform), do: Type._default_marshal_return(platform)
