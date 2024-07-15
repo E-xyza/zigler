@@ -15,7 +15,6 @@ via the `include_dir` and `src` module options.
 > in that directory, (but not subdirectory)
 
 ### included.h
-
 ```c
 // forwarded function definition
 int plus_one(int);
@@ -28,13 +27,13 @@ int plus_one(int value) {
 }
 ```
 
+### Elixir code
 ```elixir
 defmodule CompilingC do
   use ExUnit.Case, async: true
   use Zig, 
     otp_app: :zigler,
-    include_dir: "include", 
-    src: "src/*"
+    c: [include_dirs: "include", src: "src/*"] 
 
   ~Z"""
   const c = @cImport(@cInclude("included.h"));

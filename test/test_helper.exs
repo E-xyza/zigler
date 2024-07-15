@@ -2,6 +2,6 @@ Logger.configure(level: :warning)
 
 ZiglerTest.Compiler.init()
 
-# ZiglerTest.MakeGuides.go()
+ZiglerTest.MakeGuides.go()
 
 ExUnit.start()

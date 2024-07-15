@@ -169,7 +169,7 @@ defmodule Zig do
   defmodule MyModule
     use Zig,
       otp_app: :my_app,
-      include_dir: "include"
+      c: [include_dirs: "include"]
 
     ~Z\"""
     const c = @cImport({
