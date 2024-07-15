@@ -6,10 +6,10 @@ defmodule ZiglerTest.LeakCheckTest do
   use Zig,
     otp_app: :zigler,
     nifs: [
-      leaky_string: [:leak_check, params: [[cleanup: false]]],
-      unchecked_leak: [params: [[cleanup: false]], alias: :leaky_string],
+      leaky_string: [:leak_check, params: %{0 => :noclean}],
+      unchecked_leak: [params: %{0 => :noclean}, alias: :leaky_string],
       with_cleanup: [:leak_check, alias: :leaky_string],
-      no_leaky_string: [:leak_check, params: [[cleanup: false]]]
+      no_leaky_string: [:leak_check, params: %{0 => [cleanup: false]}]
     ]
 
   ~Z"""

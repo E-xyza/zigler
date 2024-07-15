@@ -46,8 +46,17 @@ defmodule Zig.Type.Manypointer do
   end
 
   @impl true
-  def render_accessory_variables(_, param, prefix) do
-    List.wrap(if param.cleanup, do: ~s(var @"#{prefix}-size": usize = undefined;))
+  def render_accessory_variables(type, param, prefix) do
+    in_out =
+      List.wrap(
+        if param.in_out do
+          ~s(var #{prefix}: #{render_zig(type)} = undefined;)
+        end
+      )
+
+    cleanup = List.wrap(if param.cleanup, do: ~s(var @"#{prefix}-size": usize = undefined;))
+
+    in_out ++ cleanup
   end
 
   @impl true

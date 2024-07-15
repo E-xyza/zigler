@@ -8,44 +8,49 @@ pub fn CPointerCleanup(comptime T: type) type {
     return ?union(CPointerTags) { One: *T, Many: []T };
 }
 
-fn needs_cleanup(comptime T: type, opts: anytype) bool {
-    if (!options.should_cleanup(opts)) return false;
-    return switch (@typeInfo(T)) {
-        .Pointer => true,
-        .Optional => |optional| needs_cleanup(optional.child, opts),
-        .Struct => struct_needs_cleanup(T, opts),
-        else => false
-    };
+fn needs_cleanup(comptime T: type, comptime should: bool) bool {
+    return if (should) switch (@typeInfo(T)) {
+            .Pointer => true,
+            .Optional => |optional| needs_cleanup(optional.child, should),
+            .Struct => struct_needs_cleanup(T, should),
+            else => false
+        } else false;
 }
 
-fn struct_needs_cleanup(comptime T: type, opts: anytype) bool {
+fn struct_needs_cleanup(comptime T: type, comptime should: bool) bool {
     inline for (@typeInfo(T).Struct.fields) |field| {
-        if (needs_cleanup(field.type, opts)) return true;
+        if (needs_cleanup(field.type, should)) return true;
     }
     return false;
 }
 
 pub fn cleanup(what: anytype, opts: anytype) void {
     const T = @TypeOf(what);
-    if (!needs_cleanup(T, opts)) return;
-
-    switch (@typeInfo(T)) {
-        .Pointer => {
-            cleanup_pointer(what, opts);
-        },
-        .Optional => {
-            if (what) |pointer| {
-                cleanup(pointer, opts);
-            }
-        },
-        .Struct => |s| {
-            if (resource.MaybeUnwrap(s)) |_| {
-                what.release();
-            } else {
-                cleanup_struct(what, opts);
-            }
-        },
-        else => {},
+    // TODO: this should work  via options.should_cleanup but somehow the 
+    // comptime-ness of this extracted field is not identified.
+    const should = if (@hasField(@TypeOf(opts), "cleanup")) opts.cleanup else true;
+    // TODO: eliminate this following dead code that forces comptime-ness:
+    comptime var c = needs_cleanup(T, should);
+    c = c and true;
+    if (c) {
+        switch (@typeInfo(T)) {
+            .Pointer => {
+                cleanup_pointer(what, opts);
+            },
+            .Optional => {
+                if (what) |pointer| {
+                    cleanup(pointer, opts);
+                }
+            },
+            .Struct => |s| {
+                if (resource.MaybeUnwrap(s)) |_| {
+                    what.release();
+                } else {
+                    cleanup_struct(what, opts);
+                }
+            },
+            else => {},
+        }
     }
 }
 
@@ -74,7 +79,7 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
             // the underlying memory was created using a slice operation.
 
             if (!@hasField(@TypeOf(opts), "size")) {
-                @compileError("C or Many pointer cleanup requires size, or a function.  If you would like to ignore cleanup, specify a null function.");
+                @compileError("C or Many pointer cleanup requires size, or a function.");
             }
 
             if (options.size(opts)) |size| {

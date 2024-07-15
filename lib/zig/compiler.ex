@@ -84,14 +84,17 @@ defmodule Zig.Compiler do
   # option, it is okay.
   defp nif_substitution(:auto), do: {:auto, []}
 
-  defp nif_substitution({:auto, _} = auto), do: auto
+  defp nif_substitution({:auto, list}), do: {:auto, Enum.map(list, &decode_params/1)}
 
   defp nif_substitution(opts) do
-    Enum.reduce(opts, [], fn
-      {:..., _, _}, {:auto, _} = so_far -> so_far
-      {:..., _, _}, list -> {:auto, list}
-      other, so_far -> prepend_nif(so_far, other)
-    end)
+    case Enum.reduce(opts, [], fn
+           {:..., _, _}, {:auto, _} = so_far -> so_far
+           {:..., _, _}, list -> {:auto, list}
+           other, so_far -> prepend_nif(so_far, other)
+         end) do
+      {:auto, list} -> {:auto, Enum.map(list, &decode_params/1)}
+      list -> Enum.map(list, &decode_params/1)
+    end
   end
 
   defp prepend_nif({:auto, so_far}, nif_name) when is_atom(nif_name),
@@ -101,6 +104,18 @@ defmodule Zig.Compiler do
   defp prepend_nif({:auto, so_far}, nif_info), do: {:auto, [nif_info | so_far]}
   defp prepend_nif(so_far, nif_info), do: [nif_info | so_far]
 
+  defp decode_params({nif, opts}) do
+    {nif, decode_params(opts)}
+  end
+
+  defp decode_params([{:params, params_ast} | rest]) do
+    [{:params, from_ast(params_ast)} | rest]
+  end
+
+  defp decode_params([other | rest]), do: [other | decode_params(rest)]
+  defp decode_params([]), do: []
+
+  defp from_ast({:%{}, _, ast}), do: Enum.into(ast, %{})
   # adjust nif parameters for erlang.
 
   def before_compile_erlang(module, {file, line}, opts) do

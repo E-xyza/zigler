@@ -471,6 +471,9 @@ pub fn get_manypointer(comptime T: type, src: beam.term, opts: anytype) !T {
     if (@hasField(@TypeOf(opts), "size")) {
         opts.size.* = slice.len;
     }
+    if (@hasField(@TypeOf(opts), "in_out")) {
+        opts.in_out.* = result.ptr;
+    }
     return result;
 }
 
@@ -496,6 +499,10 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
                 opts.size.* = 1;
             }
 
+            if (@hasField(@TypeOf(opts), "in_out")) {
+                opts.in_out.* = result.ptr;
+            }
+
             return result.ptr;
         },
         .list => {
@@ -503,6 +510,11 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
             if (@hasField(@TypeOf(opts), "size")) {
                 opts.size.* = result_slice.len;
             }
+
+            if (@hasField(@TypeOf(opts), "in_out")) {
+                opts.in_out.* = result_slice.ptr;
+            }
+
             return result_slice.ptr;
         },
         .bitstring => {
@@ -510,6 +522,11 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
             if (@hasField(@TypeOf(opts), "size")) {
                 opts.size.* = result_slice.len;
             }
+
+            if (@hasField(@TypeOf(opts), "in_out")) {
+                opts.in_out.* = result_slice.ptr;
+            }
+
             return result_slice.ptr;
         },
         else => return GetError.argument_error,

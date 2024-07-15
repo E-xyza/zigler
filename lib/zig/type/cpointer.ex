@@ -39,8 +39,15 @@ defmodule Zig.Type.Cpointer do
   def binary_size(_), do: nil
 
   @impl true
-  def render_accessory_variables(_, param, prefix) do
-    List.wrap(if param.cleanup, do: ~s(var @"#{prefix}-size": usize = undefined;))
+  def render_accessory_variables(type, param, prefix) do
+    in_out =
+      List.wrap(
+        if param.in_out do
+          ~s(var #{prefix}: #{render_zig(type)} = undefined;)
+        end
+      )
+
+    in_out ++ [~s(var @"#{prefix}-size": usize = undefined;)]
   end
 
   @impl true
@@ -87,7 +94,7 @@ defmodule Zig.Type.Cpointer do
           [0..255]
         end
 
-      %{length: length, as: type} when not is_integer(length) and type in ~w(default binary)a ->
+      %{length: length, as: type} when is_integer(length) and type in ~w(default binary)a ->
         quote context: Elixir do
           <<_::unquote(length * 8)>>
         end

@@ -23,10 +23,10 @@ defmodule Zig.Parameter do
   def normalize_options(options) do
     options
     |> List.wrap()
-    |> Enum.map(fn
-      :noclean -> {:cleanup, false}
-      :in_out -> {:in_out, true}
-      {k, _} = kv when k in @options -> kv
+    |> Enum.flat_map(fn
+      :noclean -> [cleanup: false]
+      :in_out -> [in_out: true, cleanup: false]
+      {k, _} = kv when k in @options -> [kv]
     end)
     |> then(&Keyword.merge([cleanup: true, in_out: false], &1))
   end
@@ -51,9 +51,6 @@ defmodule Zig.Parameter do
 
   def render_cleanup(parameter, index) do
     cond do
-      parameter.in_out ->
-        ".{.cleanup = false},"
-
       parameter.cleanup ->
         Type.render_cleanup(parameter.type, index)
 

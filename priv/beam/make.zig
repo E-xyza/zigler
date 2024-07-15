@@ -323,21 +323,25 @@ fn make_cpointer(cpointer: anytype, opts: anytype) beam.term {
     const pointer = @typeInfo(@TypeOf(cpointer)).Pointer;
     const Child = pointer.child;
 
-    if (cpointer) |_| {
-        // the following two types have inferrable sentinels
-        if (Child == u8) {
-            return make(@as([*:0]u8, @ptrCast(cpointer)), opts);
-        }
-        if (@typeInfo(Child) == .Pointer) {
-            return make(@as([*:null]Child, @ptrCast(cpointer)), opts);
-        }
-
-        switch (@typeInfo(Child)) {
-            .Struct => return make(@as(*Child, @ptrCast(cpointer)), opts),
-            else => @compileError("this is not supported"),
-        }
+    if (@hasField(@TypeOf(opts), "length")) {
+        return make(cpointer[0..options.length(opts).?], opts);
     } else {
-        return make(.nil, .{.env = options.env(opts)});
+        if (cpointer) |_| {
+            // the following two types have inferrable sentinels
+            if (Child == u8) {
+                return make(@as([*:0]u8, @ptrCast(cpointer)), opts);
+            }
+            if (@typeInfo(Child) == .Pointer) {
+                return make(@as([*:null]Child, @ptrCast(cpointer)), opts);
+            }
+    
+            switch (@typeInfo(Child)) {
+                .Struct => return make(@as(*Child, @ptrCast(cpointer)), opts),
+                else => @compileError("this is not supported"),
+            }
+        } else {
+            return make(.nil, .{.env = options.env(opts)});
+        }
     }
 }
 

@@ -260,22 +260,23 @@ defmodule Zig.Sema do
     %{nif | signature: sema, raw: t, params: arities, return: Return.new(t)}
   end
 
-  defp apply_from_sema(%{params: nif_params} = nif, sema, opts) do
-    if nif_params do
-      # check that the length of the opts matches the arity
-      if length(nif_params) != sema.arity do
-        raise CompileError,
-          description:
-            "nif function `#{nif.name}` has an arity of #{sema.arity}, but #{length(nif_params)} options were provided",
-          file: nif.file,
-          line: nif.line
-      end
-    end
+  defp apply_from_sema(%{params: nif_params!} = nif, sema, opts) do
+    nif_params! = nif_params! || %{}
+    Enum.each(nif_params!, fn
+      {index, _} ->
+        if index >= sema.arity do
+          raise CompileError,
+            description:
+              "nif function `#{nif.name}` has an arity of #{sema.arity}, but parameter #{index} was specified",
+            file: nif.file,
+            line: nif.line
+        end
+    end)
 
     %{
       nif
       | signature: sema,
-        params: params_from_sema(sema, nif.params),
+        params: params_from_sema(sema, nif_params!),
         return: return_from_sema(sema, opts)
     }
   end
@@ -283,31 +284,40 @@ defmodule Zig.Sema do
   defp arities(integer) when is_integer(integer), do: [integer]
   defp arities({:.., _, [start, finish]}), do: Enum.to_list(start..finish)
 
-  defp params_from_sema(%{params: params} = sema, opts) do
+  defp params_from_sema(%{params: params}, opts) do
     params
-    |> Enum.zip(opts || List.duplicate([], sema.arity))
-    |> Enum.with_index(fn {param, param_opt}, index ->
-      {index, Parameter.new(param, param_opt)}
+    |> Enum.with_index()
+    |> Enum.reduce(%{}, fn {param, index}, so_far ->
+      Map.put(so_far, index, Parameter.new(param, List.wrap(opts[index])))
     end)
-    |> Map.new()
   end
 
   defp return_from_sema(%{return: return}, opts) do
     opts
     |> Keyword.get(:return, [])
-    |> add_in_out_param(opts[:params])
+    |> add_in_out_param(opts[:params] || %{})
     |> then(&Return.new(return, &1))
   end
 
+  @in_out_styles [:in_out, in_out: true]
   defp add_in_out_param(return_opts, params) do
     params
-    |> List.wrap()
-    |> Enum.find_index(fn param_opts ->
-      Enum.any?(param_opts, &(&1 in [:in_out, in_out: true]))
+    |> Enum.flat_map(fn {index, param_opts} ->
+      if Enum.any?(List.wrap(param_opts), &(&1 in @in_out_styles)) do
+        [index]
+      else
+        []
+      end
     end)
     |> case do
-      nil -> return_opts
-      int -> Keyword.put(return_opts, :in_out, "arg#{int}")
+      [] ->
+        return_opts
+
+      [int] ->
+        Keyword.put(return_opts, :in_out, "arg#{int}")
+
+      [_ | _] ->
+        raise CompileError, "can't have more than one in-out parameter"
     end
   end
 

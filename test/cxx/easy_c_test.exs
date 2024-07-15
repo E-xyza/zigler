@@ -11,10 +11,10 @@ if {:unix, :linux} == :os.type() do
       leak_check: false,
       nifs: [
         :cblas_dasum,
-        cblas_daxpy: [params: [[], [], [], [], [:in_out], []], return: [length: {:arg, 0}]],
+        cblas_daxpy: [params: %{4 => :in_out}, return: [length: {:arg, 0}]],
         daxpy_bin: [
           alias: :cblas_daxpy,
-          params: [[], [], [], [], [:in_out], []],
+          params: %{4 => :in_out},
           return: [:binary, length: {:arg, 0}]
         ]
       ]

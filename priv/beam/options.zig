@@ -26,6 +26,17 @@ pub inline fn size(opts: anytype) ?usize {
     return if (@hasField(@TypeOf(opts), "size")) opts.size else null;
 }
 
+pub inline fn length(opts: anytype) ?usize {
+    if (@hasField(@TypeOf(opts), "length")) {
+        switch (@typeInfo(@TypeOf(opts.length))) {
+            .ComptimeInt => return opts.length,
+            .Int => return opts.length,
+            else =>
+              @compileError("length must be a comptime_int or a usize")
+        } 
+    } else return null;
+}
+
 pub const OutputType = enum { default, list, binary, integer, map };
 
 pub inline fn output(opts: anytype) OutputType {
