@@ -44,7 +44,7 @@ pub fn send(dest: beam.pid, content: anytype, opts: anytype) PidError!SendReturn
         .synchronous, .callback, .dirty => {
             if (e.enif_send(options.env(opts), @constCast(&pid), null, term.v) == 0) return error.NotDelivered;
             if (@hasField(@TypeOf(opts), "persist")) {
-                if (beam.SendReturnType(opts) == void) return void;
+                if (beam.SendReturnType(opts) == void) return;
                 return opts.persist;
             }
         },

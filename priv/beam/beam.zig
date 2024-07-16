@@ -844,7 +844,7 @@ pub const self = processes.self;
 /// ### Options
 ///
 /// - `clear` (boolean): whether the environment should be cleared after
-///   sending the message.  Defaults to `true`.  See information befow.
+///   sending the message.  Defaults to `true`.  See information below.
 /// - `persist` (tuple of `beam.term`).  Persists the terms into the new
 ///   environment (see [`clear_env`](#clear_env)).  It is not an error to
 ///   pass `persist` in a process-bound context, though that will no-op.
