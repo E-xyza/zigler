@@ -37,17 +37,20 @@ defmodule DirtyCpu do
 
   ~Z"""
   const beam = @import("beam");
-  const e = @import("erl_nif");
   // this is a dirty_cpu nif.
   pub fn long_running(pid: beam.pid) !void {
-      // following code triggered when process is killed.
       defer {
-        const msg = beam.make(.killed, .{});
-        beam.send(pid, msg, .{}) catch unreachable;
+        // code in the defer block is triggered when process is killed.
+        // we need to create a new thread-independent context because
+        // the context from the running process is now invalid.
+        beam.independent_context(.{});
+        beam.send(pid, .killed, .{}) catch unreachable;
+        beam.free_env(beam.context.env);
       }
 
+      try beam.send(pid, .unblock, .{});
+
       while(true) {
-          _ = try beam.send(pid, .unblock, .{});
           try beam.yield();
       }
   }

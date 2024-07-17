@@ -863,7 +863,7 @@ pub const self = processes.self;
 /// >
 /// > in the case of raw nifs, use `e.enif_send` directly instead.
 /// >
-/// > in the case of non-process-bound threads, if you use `init_env`
+/// > in the case of non-process-bound threads, if you use `independent_context`
 /// > to initialize the environment, you can use `send` as normal.
 ///
 /// > ### clearing your environment {: .info }
@@ -1050,7 +1050,7 @@ pub fn copy(env_: env, term_: term) term {
 /// - `.dirty_yield`: the execution context of a dirty nif whose parent process
 ///   has been terminated but the nif is still running.
 /// - `.independent`: the execution context of functions that are not associated
-///   with nifs.  see [`init_env`](#init_env) for how to set this as the context.
+///   with nifs.  see [`independent_context`](#independent_context) for how to set this as the context.
 ///
 /// See [`context`](#context) for the threadlocal variable that stores this.
 ///
@@ -1103,7 +1103,7 @@ pub fn get_env() env {
 /// allocator for the context.  Defaults to `beam.allocator`.
 const InitEnvOpts = struct { allocator: ?std.mem.Allocator = null };
 
-pub fn init_env(opts: InitEnvOpts) void {
+pub fn independent_context(opts: InitEnvOpts) void {
     context.env = e.enif_alloc_env();
     context.allocator = opts.allocator orelse allocator;
     context.mode = .independent;
@@ -1237,6 +1237,19 @@ pub fn WrappedResult(comptime FunctionType: type) type {
 /// in erlang.
 pub fn raise_exception(reason: anytype, opts: anytype) term {
     return term{ .v = e.enif_raise_exception(options.env(opts), make(reason, opts).v) };
+}
+
+pub fn thread_not_running(err: anytype) bool {
+    if (has_processterminated(@TypeOf(err))) {
+        return (err == error.processterminated);
+    } else return false;
+}
+
+fn has_processterminated(comptime T: type) bool {
+    inline for (@typeInfo(T).ErrorSet.?) |err| {
+        if (std.mem.eql(u8, err.name, "processterminated")) return true;
+    }
+    return false;
 }
 
 /// <!-- topic: Exceptions -->

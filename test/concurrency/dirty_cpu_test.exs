@@ -12,7 +12,7 @@ defmodule ZiglerTest.Concurrency.DirtyCpuTest do
   pub fn long_running(pid: beam.pid) !void {
       // following code triggered when process is killed.
       defer {
-        beam.init_env(.{});
+        beam.independent_context(.{});
         beam.send(pid, .killed, .{}) catch unreachable;
         beam.free_env(beam.context.env);
       }
@@ -36,6 +36,7 @@ defmodule ZiglerTest.Concurrency.DirtyCpuTest do
              ".{ .name = \"dirty_cpu\", .arity = 0, .fptr = dirty_cpu, .flags = e.ERL_NIF_DIRTY_JOB_CPU_BOUND }"
   end
 
+  
   test "long-running function can yield" do
     this = self()
     pid = spawn(fn -> long_running(this) end)

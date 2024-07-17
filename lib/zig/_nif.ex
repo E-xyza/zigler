@@ -237,6 +237,7 @@ defmodule Zig.Nif do
   def maybe_catch(%Error{}) do
     """
     catch |err| {
+        if (beam.thread_not_running(err)) return 0;
         return beam.raise_with_error_return(err, @errorReturnTrace(), .{}).v;
     }
     """

@@ -103,7 +103,7 @@ defmodule RawCallTest do
     assert 2 = raw_call_multi_arity(:foo, :bar)
     assert 3 = raw_call_multi_arity(:foo, :bar, :baz)
 
-    assert_raise Foo, fn -> __MODULE__.raw_call_multi_arity(:foo) end
+    refute function_exported?(__MODULE__, :raw_call_multi_arity, 1)
   end
 end
 ```
