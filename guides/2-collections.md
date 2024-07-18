@@ -84,7 +84,7 @@ pub fn return_slice_binary(input: []f32) beam.term {
   for (input, 0..) |*item, index| {
     item.* = item.* + @as(f32, @floatFromInt(index));
   }
-  return beam.make(input, .{.output = .binary});
+  return beam.make(input, .{.as = .binary});
 }
 """
 
@@ -95,7 +95,7 @@ test "returning a slice as binary" do
 end
 ```
 
-Conversely, for u8 array-like datatypes, selecting `.output = .list` will
+Conversely, for u8 array-like datatypes, selecting `.as = .list` will
 result in outputting a list.
 
 You can also automatically marshal as binary by using

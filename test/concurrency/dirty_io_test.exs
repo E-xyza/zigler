@@ -36,11 +36,11 @@ defmodule ZiglerTest.Concurrency.DirtyIoTest do
              ".{ .name = \"dirty_io\", .arity = 0, .fptr = dirty_io, .flags = e.ERL_NIF_DIRTY_JOB_IO_BOUND }"
   end
 
-  #test "long-running function can yield" do
+  # test "long-running function can yield" do
   #  this = self()
   #  pid = spawn(fn -> long_running(this) end)
   #  assert_receive(:unblock)
   #  Process.exit(pid, :kill)
   #  assert_receive(:killed)
-  #end
+  # end
 end

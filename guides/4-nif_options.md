@@ -217,14 +217,19 @@ defmodule LeakCheckTest do
   ~Z"""
   const beam = @import("beam");
   pub fn check_me() !void {
-      _ = try beam.allocator.create(u8);
+      _ = try beam.context.allocator.create(u8);
   }
   """
 
   test "leak check" do
-    assert_raise RuntimeError, "memory leak detected in function `check_me/0`", fn ->
+    require Logger
+    Logger.warning("====== the following leak message is expected: =========== START")
+    Process.sleep(200)
+    assert_raise RuntimeError, "memory leak detected in function `LeakCheckTest.check_me/0`", fn ->
       check_me()
     end
+          Logger.warning("=========================================================== END")
+
   end
 end
 ```
@@ -247,17 +252,17 @@ defmodule LeakCheckAllTest do
   """
 
   test "leak check" do
+    require Logger
+    Logger.warning("====== the following leak message is expected: =========== START")
+    Process.sleep(200)
+
     assert_raise RuntimeError, "memory leak detected in function `check_me/0`", fn ->
       check_me()
     end
+    Logger.warning("=========================================================== END")
   end
 end
 ```
-
-> ### conditional leak checks {: .warning }
->
-> It's not currently possible to make conditional leak checks, but this will be
-> fixed in the future.
 
 ## Typespec override (Elixir-only)
 

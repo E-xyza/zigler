@@ -578,7 +578,7 @@ pub const get = get_.get;
 ///
 /// ```zig
 /// pub fn do_make() beam.term {
-///   return beam.make("foo", .{.output = .list});
+///   return beam.make("foo", .{.as = .list});
 /// }
 /// ```
 ///
@@ -604,7 +604,7 @@ pub const get = get_.get;
 /// ```zig
 /// pub fn do_make() beam.term {
 ///   const list = [_]u16{47, 48, 49}
-///   return beam.make(list, .{.output = .binary});
+///   return beam.make(list, .{.as = .binary});
 /// }
 /// ```
 ///

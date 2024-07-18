@@ -49,5 +49,5 @@ defmodule Zig.Type.Float do
   @impl true
   def marshal_param(_, variable, _, platform), do: Type._default_marshal_param(platform, variable)
   @impl true
-  def marshal_return(_, _, platform), do: Type._default_marshal_return(platform)
+  def marshal_return(_, variable, platform), do: Type._default_marshal_return(platform, variable)
 end

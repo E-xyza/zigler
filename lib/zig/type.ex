@@ -287,8 +287,8 @@ after
   def _default_marshal_param(Elixir, _variable), do: []
   def _default_marshal_param(:erlang, variable), do: "#{variable}_m = #{variable},"
 
-  def _default_marshal_return(Elixir), do: []
-  def _default_marshal_return(:erlang), do: "Return"
+  def _default_marshal_return(Elixir, variable), do: variable
+  def _default_marshal_return(:erlang, _variable), do: "Return"
 
   def _default_cleanup, do: ".{},"
 end
@@ -352,5 +352,5 @@ defimpl Zig.Type, for: Atom do
   def marshal_param(_, variable, _, platform), do: Type._default_marshal_param(platform, variable)
 
   @impl true
-  def marshal_return(_, _, platform), do: Type._default_marshal_return(platform)
+  def marshal_return(_, variable, platform), do: Type._default_marshal_return(platform, variable)
 end
