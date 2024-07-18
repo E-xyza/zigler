@@ -23,7 +23,6 @@ defmodule ZiglerTest.Concurrency.ThreadedManualTest do
   pub fn launch(x: beam.term) !beam.term {
     var args = [_]e.ErlNifTerm{x.v};
     const abc = try Thread.launch(ThreadResource, 1, &args, .{.{}});
-    @import("std").debug.print("abc: {}\n", .{abc.term_type(beam.context.env)});
     return abc;
   }
 
@@ -33,8 +32,6 @@ defmodule ZiglerTest.Concurrency.ThreadedManualTest do
   }
   """
 
-  # fails for unknown reason
-  @tag :skip
   test "threaded function" do
     assert ref = launch(100)
     assert_receive {:done, ^ref}, 1000

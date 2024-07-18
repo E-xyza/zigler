@@ -147,7 +147,12 @@ pub fn noleak() !bool {
 """
 
 test "leak checks with general purpose allocator" do
+  require Logger
+  Logger.warning("====== the following leak message is expected: =========== START")
+  Process.sleep(200)
   assert leaks()
+  Logger.warning("=========================================================== END")
+
   refute noleak()
 end
 ```
