@@ -1,21 +1,20 @@
 # Nif options
 
-Zigler gives you several ways to configure compilation options for nifs.  These
-options are part of the `use Zig` directive, in the keyword options under the 
-key `:nifs`.  This key itself points to a keyword list where the keys are the
-names of the nif functions and the values are a keyword list of options that
-apply to that function.
+Zigler gives you several ways to configure compilation options for nifs. These options are part of
+the `use Zig` directive, in the keyword options under the key `:nifs`. This key itself points to a
+keyword list where the keys are the names of the nif functions and the values are a keyword list of
+options that apply to that function.
 
-This guide shows you all of the nif options except for options related to 
+This guide shows you all of the nif options except for options related to
 [Resources](5-resources.html), [C integration](6-c_integration.html), or
 [Concurrency](7-concurrency.html).
 
 ## Automatic options (elixir)
 
-To declare that functions should have their options automatically determined,
-use `...` in the nifs parameter list.  Nifs which sholud have manually decided
-options should come after the `...` as a keyword list.  If all options are
-automatically determined, then omitting the `:nif` keyword completely is valid.
+To declare that functions should have their options automatically determined, use `...` in the nifs
+parameter list. Nifs which sholud have manually decided options should come after the `...` as a
+keyword list. If all options are automatically determined, then omitting the `:nif` keyword
+completely is valid.
 
 ```elixir
 defmodule AutomaticOptions do
@@ -31,8 +30,8 @@ end
 
 ## Automatic options (erlang)
 
-Erlang cannot interpret the `...` AST in elixir, so you must use `[auto]`
-atom in the nifs options instead.
+Erlang cannot interpret the `...` AST in elixir, so you must use `[auto]` atom in the nifs options
+instead.
 
 ```erlang
 -zig_opts([{nifs, [auto]}])
@@ -40,26 +39,26 @@ atom in the nifs options instead.
 
 ## Raw calls
 
-Raw calls can be signified with the `raw` option; this option takes the arity
-of the function as the value associated with the key.
+Raw calls can be signified with the `raw` option; this option takes the arity of the function as the
+value associated with the key.
 
-> ### multiple arities {: .info }
+> ### multiple arities {: .info}
 >
-> Currently, multiple arities are not supported, but multiple arities will be
-> supported in a future release.
+> Currently, multiple arities are not supported, but multiple arities will be supported in a future
+> release.
 
 The normal header for a BEAM nif is as follows:
 
 `static ERL_NIF_TERM hello(ErlNifEnv* env, int argc, const ERL_NIF_TERM argv[])`
 
-In order to support usage of BEAM nifs in the most flexible fashion, you may
-write your nifs as `raw` nifs, which looks as follows:
+In order to support usage of BEAM nifs in the most flexible fashion, you may write your nifs as
+`raw` nifs, which looks as follows:
 
-> ### beam.make and beam.get in raw nifs {: .warning }
+> ### beam.make and beam.get in raw nifs {: .warning}
 >
-> Note that you MUST supply `.{.env = env}` in the options to beam.make or beam.get 
-> calls in raw nifs, or functions called by raw nifs.  The threadlocal `beam.context`
-> variable which normally stores the environment is not set when you make a raw call.
+> Note that you MUST supply `.{.env = env}` in the options to beam.make or beam.get calls in raw nifs,
+> or functions called by raw nifs. The threadlocal `beam.context` variable which normally stores the
+> environment is not set when you make a raw call.
 
 ```elixir
 defmodule RawCallTest do
@@ -112,10 +111,9 @@ Note that either the `beam.term` or the `e.ErlNifTerm` forms can be used.
 
 ## Return type
 
-In [Collections](2-collections.html) we saw how certain collection types could 
-be manually marshalled into alternative representations using 
-[`beam.make`](beam.html#make).  This can be handled as a nif configuration as 
-follows.  The advantage to doing it this way is that the typespec for the
+In [Collections](2-collections.html) we saw how certain collection types could be manually
+marshalled into alternative representations using [`beam.make`](beam.html#make). This can be handled
+as a nif configuration as follows. The advantage to doing it this way is that the typespec for the
 function will correctly reflect the return type.
 
 ```elixir
@@ -151,8 +149,7 @@ end
 
 ## Alias
 
-It's possible to create a new function which is an alias of another function.
-This is how it's done:
+It's possible to create a new function which is an alias of another function. This is how it's done:
 
 ```elixir
 defmodule AliasTest do
@@ -184,25 +181,22 @@ Arguments can also take options, using `args: [...]`
 
 ## Noclean
 
-If you want to disable automatic allocator cleanup of datatypes, you can do so
-either in the `:return` or `:args` section by including the `:noclean` option.  
-This is most useful if your args or return data are going to be persisted 
-beyond the lifetime of the nif call, though doing this in many cases is not 
-recommended.
+If you want to disable automatic allocator cleanup of datatypes, you can do so either in the
+`:return` or `:args` section by including the `:noclean` option. This is most useful if your args or
+return data are going to be persisted beyond the lifetime of the nif call, though doing this in many
+cases is not recommended.
 
-This flag can be stacked with previous options, for example:  
-`return: [:noclean, :binary]`.
+This flag can be stacked with previous options, for example: `return: [:noclean, :binary]`.
 
 ## Leak Check
 
-It's possible to wrap each function call in its own instance of 
-[`beam.general_purpose_allocator`](beam.html#general_purpose_allocator)
-bound into the [`beam.allocator`](beam.html#allocator) threadlocal variable.
-If you tag your nif as `leak_check`, it will check that `beam.allocator` has
-cleared all of its contents at the end of the function call, and if that hasn't 
-happened, it raises.
+It's possible to wrap each function call in its own instance of
+[`beam.general_purpose_allocator`](beam.html#general_purpose_allocator) bound into the
+[`beam.allocator`](beam.html#allocator) threadlocal variable. If you tag your nif as `leak_check`,
+it will check that `beam.allocator` has cleared all of its contents at the end of the function call,
+and if that hasn't happened, it raises.
 
-> ## leak check warning {: .warning }
+> ## leak check warning {: .warning}
 >
 > leak check doesn't seem to be working in 0.11.0 and will return in 0.11.1
 
@@ -265,10 +259,9 @@ end
 
 ## Typespec override (Elixir-only)
 
-Typespecs can be overridden by using the `spec` option, this syntax should 
-match that of a normal typespec.  Note that overriding the autogenerated 
-typespec is the only way to specify the type of function which uses 
-[`beam.term`](beam.html#term) in its arguments or return.
+Typespecs can be overridden by using the `spec` option, this syntax should match that of a normal
+typespec. Note that overriding the autogenerated typespec is the only way to specify the type of
+function which uses [`beam.term`](beam.html#term) in its arguments or return.
 
 For example:
 
@@ -306,8 +299,8 @@ end
 
 ## Ignore
 
-Public functions can be ignored and *not* converted into nifs by filling out 
-the `:ignore` option in `use Zig` directive.
+Public functions can be ignored and *not* converted into nifs by filling out the `:ignore` option in
+`use Zig` directive.
 
 ```elixir
 defmodule IgnoreTest do

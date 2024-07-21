@@ -1,20 +1,19 @@
 # Allocation using zigler
 
-Zig the language has no offically supported allocator, and the standard library
-datastructures are all allocator-agnostic.  
+Zig the language has no offically supported allocator, and the standard library datastructures are
+all allocator-agnostic. 
 
-Zigler ships with three primary allocators, though you can certainly build
-allocator strategies *on top* of those allocators.
+Zigler ships with three primary allocators, though you can certainly build allocator strategies *on
+top* of those allocators.
 
 ## Basic Allocator
 
-The first allocator is `allocator`, which we will call `basic allocator`.  
-This allocator wraps the [nif allocator](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc) 
-provided by the BEAM in the zig allocator interface.  You should generally
-use this allocator over `malloc` because it often saves a syscall by using 
-existing preallocated memory pools, because it allows the VM to track how 
-much memory your NIF is using, and possibly gives better memory placement 
-to avoid cache misses in your execution thread.
+The first allocator is `allocator`, which we will call `basic allocator`. This allocator wraps the
+[nif allocator](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc) provided by the BEAM in the
+zig allocator interface. You should generally use this allocator over `malloc` because it often
+saves a syscall by using existing preallocated memory pools, because it allows the VM to track how
+much memory your NIF is using, and possibly gives better memory placement to avoid cache misses in
+your execution thread.
 
 ```elixir
 ~Z"""
@@ -36,24 +35,22 @@ test "raw allocator" do
 end
 ```
 
-> ### allocator limitations {: .warning }
+> ### allocator limitations {: .warning}
 >
-> because the basic allocator directly wraps the beam allocator, according to
-> the documentation:
+> because the basic allocator directly wraps the beam allocator, according to the documentation:
 >
-> The returned pointer is suitably aligned for any built-in type that 
-> fit (sic) in the allocated memory.
+> The returned pointer is suitably aligned for any built-in type that fit (sic) in the allocated
+> memory.
 >
-> attempting to allocate memory aligned to a larger size (e.g. page-aligned 
-> allocation) will fail using this allocator.
+> attempting to allocate memory aligned to a larger size (e.g. page-aligned allocation) will fail
+> using this allocator.
 
 ### Tracking memory.
 
-> ### information in hidden globals {: .warning }
+> ### information in hidden globals {: .warning}
 >
-> Generally storing information in hidden globals is not a good idea.  Here
-> it is done to illustrate the memory usage.  A better strategy would be to
-> use [resources](5-resources.html)
+> Generally storing information in hidden globals is not a good idea. Here it is done to illustrate
+> the memory usage. A better strategy would be to use [resources](5-resources.html)
 
 ```elixir
 ~Z"""
@@ -98,9 +95,9 @@ end
 
 ## Large Allocator
 
-Zigler provides a `large allocator` which allows you to allocate memory ranges
-that have a higher alignment than the maximum alignment for builtin types.
-Note that using this allocator comes with a memory penalty.
+Zigler provides a `large allocator` which allows you to allocate memory ranges that have a higher
+alignment than the maximum alignment for builtin types. Note that using this allocator comes with a
+memory penalty.
 
 ```elixir
 ~Z"""
@@ -119,13 +116,11 @@ end
 
 ## General Purpose Allocator
 
-Zigler provides a version of the zig standard library's 
-`GeneralPurposeAllocator` which is built on top of the large allocator.  Two 
-advantages of using the general purpose allocator include optimized memory 
-layouts for mixed allocation sizes and the ability to track memory leaks.
+Zigler provides a version of the zig standard library's `GeneralPurposeAllocator` which is built on
+top of the large allocator. Two advantages of using the general purpose allocator include optimized
+memory layouts for mixed allocation sizes and the ability to track memory leaks.
 
-The state of the general purpose allocator is accessible using
-`beam.allocator_.general_purpose_allocator_instance`
+The state of the general purpose allocator is accessible using `beam.allocator_.general_purpose_allocator_instance`
 
 ```elixir
 ~Z"""
@@ -159,9 +154,8 @@ end
 
 ## Custom allocators
 
-Because zigler's allocators conform to zig's allocator interface, you can use
-any composed allocator in the standard library or any composable allocator 
-from an imported zig package.
+Because zigler's allocators conform to zig's allocator interface, you can use any composed allocator
+in the standard library or any composable allocator from an imported zig package.
 
 ```elixir
 ~Z"""
@@ -191,9 +185,8 @@ end
 
 ### Custom allocators in `beam.get`
 
-If you choose to use a custom allocator, you may use it in the `beam.get`
-functions to instantiate data where it's the allocator's responsibility to
-free it at the end.
+If you choose to use a custom allocator, you may use it in the `beam.get` functions to instantiate
+data where it's the allocator's responsibility to free it at the end.
 
 ```elixir
 ~Z"""

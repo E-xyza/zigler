@@ -1,32 +1,31 @@
 # Nif concurrency strategies
 
-When execution flow enters a Nif, control is fully relinquished from the 
-managed environment of the BEAM VM to a context where the BEAM is more or
-less unaware of what is going on.
+When execution flow enters a Nif, control is fully relinquished from the managed environment of the
+BEAM VM to a context where the BEAM is more or less unaware of what is going on.
 
-In general the VM cannot tolerate native code running for [longer than
-approximately one millisecond](https://www.erlang.org/doc/man/erl_nif.html#lengthy_work).
+In general the VM cannot tolerate native code running for [longer than approximately one
+millisecond](https://www.erlang.org/doc/man/erl_nif.html#lengthy_work).
 
 There are several tools that the BEAM nif system provides for you to 
 
 ## Synchronous
 
-The default mode for Nifs to run is *synchronous*.  Only use this mode if
-you are confident that your code can run in under 1ms.
+The default mode for Nifs to run is *synchronous*. Only use this mode if you are confident that your
+code can run in under 1ms.
 
 ## Dirty CPU
 
-`dirty_cpu` mode is usable when your VM has created *Dirty CPU schedulers*.  By
-default, the VM creates one dirty CPU scheduler per CPU core available to it.
-Nifs tagged as `dirty_cpu` are allowed to run longer than 1 millisecond.
+`dirty_cpu` mode is usable when your VM has created *Dirty CPU schedulers*. By default, the VM
+creates one dirty CPU scheduler per CPU core available to it. Nifs tagged as `dirty_cpu` are allowed
+to run longer than 1 millisecond.
 
-In order to tag a function as `dirty_cpu`, use the `:dirty_cpu` flag in the
-options list for the function in the `:nif` call.
+In order to tag a function as `dirty_cpu`, use the `:dirty_cpu` flag in the options list for the
+function in the `:nif` call.
 
 ### beam.yield in Dirty CPU
 
-The [`beam.yield`](beam.html#yield) function in dirty CPU mode will detect
-if the parent process has died and will return `error.processterminated`.
+The [`beam.yield`](beam.html#yield) function in dirty CPU mode will detect if the parent process has
+died and will return `error.processterminated`.
 
 ```elixir
 defmodule DirtyCpu do
@@ -66,45 +65,41 @@ defmodule DirtyCpu do
 end
 ```
 
-> ### queue limitations {: .warning }
+> ### queue limitations {: .warning}
 >
-> if you consume all of your dirty cpu schedulers with nif calls, the next
-> `dirty_cpu` call will block until a scheduler frees up; this could cause
-> undesired latency characteristics.
+> if you consume all of your dirty cpu schedulers with nif calls, the next `dirty_cpu` call will block
+> until a scheduler frees up; this could cause undesired latency characteristics.
 
 ## Dirty IO
 
-It's not recommended to use `dirty_io` unless you're performing IO operations
-and blocking using nif events and blocking operations. 
+It's not recommended to use `dirty_io` unless you're performing IO operations and blocking using nif
+events and blocking operations. 
 
-In order to tag a function as `dirty_io`, use the `:dirty_io` flag in the
-options list for the function in the `:nif` call.
+In order to tag a function as `dirty_io`, use the `:dirty_io` flag in the options list for the
+function in the `:nif` call.
 
 ## Threaded
 
-`threaded` mode is usable when your OS supports spawning threads.  This is
-effectively all current platforms supporting the BEAM VM today.  Zigler
-will wrap your function code 
+`threaded` mode is usable when your OS supports spawning threads. This is effectively all current
+platforms supporting the BEAM VM today. Zigler will wrap your function code 
 
-In order to tag a function as `threaded`, use the `:threaded` flag in the
-options list for the function in the `:nif` call.  Generally, no other
-changes must be made to execute a function in threaded mode.
+In order to tag a function as `threaded`, use the `:threaded` flag in the options list for the
+function in the `:nif` call. Generally, no other changes must be made to execute a function in
+threaded mode.
 
-> ### env in Threaded mode {: .warning }
-> 
-> The `env` variable when you run in threaded mode is *not* a process-bound
-> environment.
+> ### env in Threaded mode {: .warning}
+>
+> The `env` variable when you run in threaded mode is *not* a process-bound environment.
 
 ### beam.yield in Threaded mode
 
-The [`beam.yield`](beam.html#yield) function in dirty CPU mode will detect
-if the parent process has died and will return `error.processterminated`.
+The [`beam.yield`](beam.html#yield) function in dirty CPU mode will detect if the parent process has
+died and will return `error.processterminated`.
 
-> ### return from yield quickly! {: .warning }
-> 
-> You must return from the yield quickly (within 750us).  If you are 
-> unable to return quickly, then zigler run will cause the thread 
-> metadata to leak.  This will be fixed in zigler 0.11.
+> ### return from yield quickly! {: .warning}
+>
+> You must return from the yield quickly (within 750us). If you are unable to return quickly, then
+> zigler run will cause the thread metadata to leak. This will be fixed in zigler 0.11.
 
 ```elixir
 defmodule Threaded do
@@ -145,7 +140,7 @@ end
 
 ## Yielding
 
-> ### yielding nifs {: .error }
+> ### yielding nifs {: .error}
 >
 > Yielding nifs are not available in this release of Zigler
 

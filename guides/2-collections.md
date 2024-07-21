@@ -2,10 +2,9 @@
 
 ## Returning array-like datatypes
 
-For array-like datatypes, we saw in [Using Nifs](1-nifs.html#example-array-like-datatypes) 
-how they can take both lists or binaries as inputs.  However, when returning
-statically-typed data from zig, a choice needs to be made as to whether to
-return lists or binaries.
+For array-like datatypes, we saw in [Using Nifs](1-nifs.html#example-array-like-datatypes) how they
+can take both lists or binaries as inputs. However, when returning statically-typed data from zig, a
+choice needs to be made as to whether to return lists or binaries.
 
 ### Arrays
 
@@ -31,8 +30,7 @@ end
 
 ### Slices
 
-Slices can also be returned.  Note that in many cases, returning
-a slice might need an [allocation strategy](3-allocators.html)
+Slices can also be returned. Note that in many cases, returning a slice might need an [allocation strategy](3-allocators.html)
 
 ```elixir
 ~Z"""
@@ -50,10 +48,9 @@ test "returning a slice" do
 end
 ```
 
-> ### u8 array-likes output as binary {: .info }
+> ### u8 array-likes output as binary {: .info}
 >
-> u8 array-like datatypes are marshalled into binary 
-> by default instead of list.
+> u8 array-like datatypes are marshalled into binary by default instead of list.
 
 ```elixir
 ~Z"""
@@ -70,10 +67,9 @@ end
 
 ### Selecting output type
 
-It's also possible to return these collections as binaries,
-however, in order to do so you will have to marshal manually.
-For datatypes that are more than 1 byte, be aware that the endianness
-of the resulting data is `native`.
+It's also possible to return these collections as binaries, however, in order to do so you will have
+to marshal manually. For datatypes that are more than 1 byte, be aware that the endianness of the
+resulting data is `native`.
 
 ```elixir
 ~Z"""
@@ -95,42 +91,36 @@ test "returning a slice as binary" do
 end
 ```
 
-Conversely, for u8 array-like datatypes, selecting `.as = .list` will
-result in outputting a list.
+Conversely, for u8 array-like datatypes, selecting `.as = .list` will result in outputting a list.
 
-You can also automatically marshal as binary by using
-[nif options](4-nif_options.html#binary-output)
+You can also automatically marshal as binary by using [nif options](4-nif_options.html#binary-output)
 
 ### Full list of qualified array-like return types
 
-The central challenge of exporting array-like data to the BEAM is that length
-information may not be known.  In the case of arrays and slices, length 
-is either comptime or runtime known.  For other data types, the scope of
-datatypes accepted must be limited:
+The central challenge of exporting array-like data to the BEAM is that length information may not be
+known. In the case of arrays and slices, length is either comptime or runtime known. For other data
+types, the scope of datatypes accepted must be limited:
 
 - array of any type (`[_]T`)
 - single pointers to an array (`*[_]T`)
 - slices (`[]T`)
 - sentinel-terminated forms of the above (`[_:0]T` or `[:0]T`)
 - sentinel-terminated many-item-pointer (`[*:0]T`)
-- cpointer to u8 (`[*c]u8`).  This will assume the cpointer is null-terminated,
-  if it can't be considered `[*:0]u8` the behaviour is undefined.
-- cpointer to a pointer (`[*c]?*T`).  This will assume cpointer is 
-  null-terminated, if it can't be considered `[*:null]?*T` then the
-  behaviour is undefined.
+- cpointer to u8 (`[*c]u8`). This will assume the cpointer is null-terminated, if it can't be
+  considered `[*:0]u8` the behaviour is undefined.
+- cpointer to a pointer (`[*c]?*T`). This will assume cpointer is null-terminated, if it can't be
+  considered `[*:null]?*T` then the behaviour is undefined.
 
 ## Passing and returning enums
 
-Enums are collections of integer values that are given special identifier
-status in the zig programming language.  At compile-time, it's possible
-to get reflection on the string representation of those identifiers.  
-Zigler thus is enabled to use enums as a representation of atoms coming 
-from or going to the BEAM.
+Enums are collections of integer values that are given special identifier status in the zig
+programming language. At compile-time, it's possible to get reflection on the string representation
+of those identifiers. Zigler thus is enabled to use enums as a representation of atoms coming from
+or going to the BEAM.
 
 ### Enums as atoms
 
-Enums can be created by referring to them by the atom that corresponds
-to their value:
+Enums can be created by referring to them by the atom that corresponds to their value:
 
 ```elixir
 ~Z"""
@@ -155,8 +145,8 @@ end
 
 ### Enums as integers
 
-Functions taking an integer type can also by passed the associated integer 
-value in the place of the atom.
+Functions taking an integer type can also by passed the associated integer value in the place of the
+atom.
 
 ```elixir
 test "enums passed as integer" do
@@ -182,16 +172,16 @@ end
 
 This is especially useful for emitting `:ok` or `:error` tuples.
 
-> ### error atom {: .info }
+> ### error atom {: .info}
 >
-> `error` is a reserved word in Zig, so to create error atom you must use
-> builtin syntax; the error enum literal is represented `.@"error"`.
+> `error` is a reserved word in Zig, so to create error atom you must use builtin syntax; the error
+> enum literal is represented `.@"error"`.
 
 ## Passing and returning structs
 
 ### Structs are atom-keyed maps
 
-Most structs are interpreted as atom-keyed maps.  Consider the following code:
+Most structs are interpreted as atom-keyed maps. Consider the following code:
 
 ```elixir
 ~Z"""
@@ -207,15 +197,14 @@ test "structs" do
 end
 ```
 
-> ### Structs in parameters and returns {: .info }
+> ### Structs in parameters and returns {: .info}
 >
-> for a struct type to be used in parameters and returns,
-> it must be exported as `pub` in the module interface
+> for a struct type to be used in parameters and returns, it must be exported as `pub` in the module
+> interface
 
 ### Anonymous structs can be returned
 
-It's possible to return anonymous structs as well, using 
-[`beam.make`](beam.html#make).
+It's possible to return anonymous structs as well, using [`beam.make`](beam.html#make).
 
 ```elixir
 ~Z"""
@@ -231,9 +220,8 @@ end
 
 ### Zig tuples are structs.
 
-Tuples in zig are structs (with hidden integer-valued keys).
-Zigler takes advantage of this and allows you to construct
-BEAM tuples using zig tuples, when passed to [`beam.make`](beam.html#make).
+Tuples in zig are structs (with hidden integer-valued keys). Zigler takes advantage of this and
+allows you to construct BEAM tuples using zig tuples, when passed to [`beam.make`](beam.html#make).
 
 ```elixir
 ~Z"""
@@ -277,15 +265,14 @@ test "packed and extern structs as binary" do
 end
 ```
 
-> ### Packed And Extern Endianness {: .warning }
+> ### Packed And Extern Endianness {: .warning}
 >
 > Be careful about the endianness of packed and extern structs!
 
 ### Pointers to structs.
 
-Pointers to structs can also be used to marshal data in and out.  This
-is enabled under the assumption that you might want to use the struct
-in a mutable fashion.
+Pointers to structs can also be used to marshal data in and out. This is enabled under the
+assumption that you might want to use the struct in a mutable fashion.
 
 ```elixir
 ~Z"""
@@ -305,8 +292,7 @@ end
 
 ## Nested collections
 
-The process of marshalling parameters and returns also works with 
-nested array-like and struct data.
+The process of marshalling parameters and returns also works with nested array-like and struct data.
 
 ### Arraylike of arraylike
 
@@ -356,10 +342,10 @@ test "structs of structs" do
 end
 ```
 
-> #### Deep Argument Errors {: .info }
+> #### Deep Argument Errors {: .info}
 >
-> Argument errors for deeply nested structs will help you understand
-> where your arguments failed to serialize:
+> Argument errors for deeply nested structs will help you understand where your arguments failed to
+> serialize:
 
 ```elixir
 # note: skipped because map key order is nondeterministic before 1.15
@@ -432,14 +418,14 @@ test "struct of array" do
 end
 ```
 
-> ## Interaction with allocators {: .warning }
+> ## Interaction with allocators {: .warning}
 >
-> if you directly return a datatype that was allocated, it won't be 
-> properly cleaned up.  However, it can be properly cleaned up by
-> manually deferring its cleanup after calling [`beam.make`](beam.html#make).
+> if you directly return a datatype that was allocated, it won't be properly cleaned up. However, it
+> can be properly cleaned up by manually deferring its cleanup after calling
+> [`beam.make`](beam.html#make).
 >
-> Cleanup routines in [nif options](4-nif_options.html) will be introduced
-> in a future release, which will enable protection from these sorts of leaks.
+> Cleanup routines in [nif options](4-nif_options.html) will be introduced in a future release, which
+> will enable protection from these sorts of leaks.
 >
 > For more on allocators, see [allocators](3-allocators.html)
 
