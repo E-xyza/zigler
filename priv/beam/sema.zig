@@ -1,6 +1,4 @@
 const std = @import("std");
-const beam = @import("beam");
-const e = @import("erl_nif");
 const analyte = @import("analyte");
 const json = std.json;
 
@@ -135,28 +133,38 @@ fn typeHeader(stream: anytype, comptime name: []const u8) WriteError!void {
     try stream.write(name);
 }
 
+fn typematches(comptime T: type, comptime name: []const u8) bool {
+    const typename = @typeName(T);
+    if (typename.len < name.len) return false;
+    for (name, 0..) |c, i| {
+        if (typename[i] != c) return false;
+    }
+    return true;
+}
+
+const typemapping = .{
+    .{ .match = "beam.term__struct_", .name = "term" },
+    .{ .match = "stub_erl_nif.ERL_NIF_TERM", .name = "erl_nif_term" },
+    .{ .match = "stub_erl_nif.ErlNifEvent", .name = "e.ErlNifEvent" },
+    .{ .match = "stub_erl_nif.ErlNifBinary", .name = "e.ErlNifBinary" },
+    .{ .match = "stub_erl_nif.ErlNifPid", .name = "pid" },
+    .{ .match = "?*stub_erl_nif.ErlNifEnv", .name = "env" },
+};
+
 fn streamType(stream: anytype, comptime T: type) WriteError!void {
     try stream.beginObject();
+
+    // catch any types that depend on either `beam` or `erl_nif`
+    inline for (typemapping) |m| {
+        if (typematches(T, m.match)) {
+            try typeHeader(stream, m.name);
+            try stream.endObject();
+            return;
+        }
+    }
+
     // catch special types pid, port and term
     switch (T) {
-        e.ErlNifPid => {
-            try typeHeader(stream, "pid");
-        },
-        beam.term => {
-            try typeHeader(stream, "term");
-        },
-        e.ErlNifTerm => {
-            try typeHeader(stream, "erl_nif_term");
-        },
-        e.ErlNifEvent => {
-            try typeHeader(stream, "e.ErlNifEvent");
-        },
-        e.ErlNifBinary => {
-            try typeHeader(stream, "e.ErlNifBinary");
-        },
-        beam.env => {
-            try typeHeader(stream, "env");
-        },
         std.builtin.StackTrace => {
             try typeHeader(stream, "builtin.StackTrace");
         },
