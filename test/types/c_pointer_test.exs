@@ -59,17 +59,21 @@ defmodule ZiglerTest.Types.CPointerTest do
 
   ~Z"""
   pub fn cpointer_list_test(list: [*c]u8) ?u32 {
-   var sum: u32 = 0;
-   if (list) |_| {
-     for (list[0..3]) |item| {sum += item;}
-     return sum;
-   } else return null;
+      var sum: u32 = 0;
+      if (list) |_| {
+          for (list[0..3]) |item| {
+              sum += item;
+          }
+          return sum;
+      } else return null;
   }
 
   pub fn cpointer_struct_list_test(list: [*c]TestStruct) ?i32 {
-   var sum: i32 = 0;
-   for (list[0..3]) |item| {sum += item.value;}
-   return sum;
+      var sum: i32 = 0;
+      for (list[0..3]) |item| {
+          sum += item.value;
+      }
+      return sum;
   }
   """
 
@@ -108,29 +112,29 @@ defmodule ZiglerTest.Types.CPointerTest do
   end
 
   ~Z"""
-  var u8_array_list = [_]u8{'a', 'b', 'c', 0};
+  var u8_array_list = [_]u8{ 'a', 'b', 'c', 0 };
   pub fn cpointer_u8_return_test() [*c]u8 {
-   return &u8_array_list;
+      return &u8_array_list;
   }
 
   pub fn cpointer_u8_list_return_test() [*c]u8 {
-    return &u8_array_list;
+      return &u8_array_list;
   }
 
-  var result_struct = TestStruct{.value = 47};
+  var result_struct = TestStruct{ .value = 47 };
 
   pub fn cpointer_struct_return_test() [*c]TestStruct {
-   return &result_struct;
+      return &result_struct;
   }
 
-  var struct_list: [2][*c]TestStruct = .{&result_struct, null};
+  var struct_list: [2][*c]TestStruct = .{ &result_struct, null };
 
   pub fn cpointer_struct_list_return_test() [*c][*c]TestStruct {
-   return &struct_list;
+      return &struct_list;
   }
 
   pub fn cpointer_null_return_test() [*c]TestStruct {
-   return null;
+      return null;
   }
   """
 

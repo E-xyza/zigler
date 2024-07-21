@@ -21,24 +21,26 @@ defmodule ZiglerTest.Types.SliceTest do
   const beam = @import("beam");
 
   fn common_slice_fun(passed: anytype) @TypeOf(passed) {
-    for (passed) |*value| {value.* += 1;}
-    return passed;
+      for (passed) |*value| {
+          value.* += 1;
+      }
+      return passed;
   }
 
   pub fn slice_float_test(passed: []f64) []f64 {
-    return common_slice_fun(passed);
+      return common_slice_fun(passed);
   }
 
   pub fn slice_u8_test(passed: []u8) []u8 {
-    return common_slice_fun(passed);
+      return common_slice_fun(passed);
   }
 
   pub fn slice_string_test(passed: []u8) []u8 {
-    return common_slice_fun(passed);
+      return common_slice_fun(passed);
   }
 
   pub fn const_slice_test(passed: []const u8) usize {
-    return passed.len;
+      return passed.len;
   }
   """
 
@@ -153,7 +155,7 @@ defmodule ZiglerTest.Types.SliceTest do
   describe "for slice of slices" do
     ~Z"""
     pub fn slice_of_slice_u32(slice: [][]u32) [][]u32 {
-      return slice;
+        return slice;
     }
 
     pub const slice_of_slice_u32_list_of_binary = slice_of_slice_u32;
@@ -200,7 +202,9 @@ defmodule ZiglerTest.Types.SliceTest do
   describe "slices of structs" do
     ~Z"""
     const S = struct { val: []u8 };
-    pub fn slice_of_structs(slice: []S) []S { return slice; }
+    pub fn slice_of_structs(slice: []S) []S {
+        return slice;
+    }
     pub const slice_of_structs_list = slice_of_structs;
     """
 
@@ -217,7 +221,9 @@ defmodule ZiglerTest.Types.SliceTest do
   describe "slices of packed structs" do
     ~Z"""
     const P = packed struct { val: u32 };
-    pub fn slice_of_packed_structs(slice: []P) []P { return slice; }
+    pub fn slice_of_packed_structs(slice: []P) []P {
+        return slice;
+    }
     pub const slice_of_packed_structs_maps = slice_of_packed_structs;
     pub const slice_of_packed_structs_binary = slice_of_packed_structs;
     """
@@ -258,7 +264,9 @@ defmodule ZiglerTest.Types.SliceTest do
   describe "slices of extern structs" do
     ~Z"""
     const E = extern struct { val: u32 };
-    pub fn slice_of_extern_structs(slice: []E) []E { return slice; }
+    pub fn slice_of_extern_structs(slice: []E) []E {
+        return slice;
+    }
     pub const slice_of_extern_structs_list_of_binary = slice_of_extern_structs;
     pub const slice_of_extern_structs_binary = slice_of_extern_structs;
     """
@@ -299,19 +307,19 @@ defmodule ZiglerTest.Types.SliceTest do
   const e = @import("erl_nif");
 
   pub fn fastlane_beam_term_test(passed: []beam.term) []beam.term {
-    for (passed) |*item| {
-      const value: f64 = beam.get(f64, item.*, .{}) catch unreachable;
-      item.* = beam.make(value + 1.0, .{});
-    }
-    return passed;
+      for (passed) |*item| {
+          const value: f64 = beam.get(f64, item.*, .{}) catch unreachable;
+          item.* = beam.make(value + 1.0, .{});
+      }
+      return passed;
   }
 
   pub fn fastlane_erl_nif_term_test(passed: []e.ErlNifTerm) []e.ErlNifTerm {
-    for (passed) |*item| {
-      const value: f64 = beam.get(f64, .{.v = item.*}, .{}) catch unreachable;
-      item.* = beam.make(value + 1.0, .{}).v;
-    }
-    return passed;
+      for (passed) |*item| {
+          const value: f64 = beam.get(f64, .{ .v = item.* }, .{}) catch unreachable;
+          item.* = beam.make(value + 1.0, .{}).v;
+      }
+      return passed;
   }
   """
 
@@ -327,7 +335,7 @@ defmodule ZiglerTest.Types.SliceTest do
 
   ~Z"""
   pub fn sentinel_terminated_test(passed: [:0]u8) u8 {
-    return passed[3];
+      return passed[3];
   }
   """
 

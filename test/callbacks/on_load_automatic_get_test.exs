@@ -15,7 +15,7 @@ defmodule ZiglerTest.Callbacks.OnLoadAutomaticGetTest do
   var stored_mode: beam.ContextMode = undefined;
   var stored_number: u32 = undefined;
 
-  const S = struct {number: u32};
+  const S = struct { number: u32 };
 
   pub fn automatic(_: ?*?*u32, data: S) void {
       stored_mode = beam.context.mode;
@@ -23,7 +23,7 @@ defmodule ZiglerTest.Callbacks.OnLoadAutomaticGetTest do
   }
 
   pub fn success() beam.term {
-    return beam.make(.{stored_mode, beam.context.mode, stored_number}, .{});
+      return beam.make(.{ stored_mode, beam.context.mode, stored_number }, .{});
   }
   """
 

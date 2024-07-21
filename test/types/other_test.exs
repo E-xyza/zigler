@@ -14,7 +14,7 @@ defmodule ZiglerTest.Types.OtherTest do
                            ~Z"""
                            const beam = @import("beam");
                            pub fn forbidden(env: beam.env) void {
-                             _ = env;
+                               _ = env;
                            }
                            """
                          end

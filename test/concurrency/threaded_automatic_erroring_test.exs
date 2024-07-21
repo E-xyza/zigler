@@ -11,8 +11,10 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
   const ThreadError = error{BadNumber};
 
   pub fn threaded(number: i32) !i32 {
-    if (number == 42) { return error.BadNumber; }
-    return number + 1;
+      if (number == 42) {
+          return error.BadNumber;
+      }
+      return number + 1;
   }
   """
 

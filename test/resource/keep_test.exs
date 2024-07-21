@@ -8,11 +8,11 @@ defmodule ZiglerTest.Resource.KeepTest do
   const std = @import("std");
   const Resource = beam.Resource;
 
-  pub const PidResource = Resource(beam.pid, @import("root"), .{.Callbacks = PidResourceCallbacks});
+  pub const PidResource = Resource(beam.pid, @import("root"), .{ .Callbacks = PidResourceCallbacks });
 
   pub const PidResourceCallbacks = struct {
       pub fn dtor(pid: *beam.pid) void {
-          beam.send(pid.*, .cleaned, .{.clear = false}) catch unreachable;
+          beam.send(pid.*, .cleaned, .{ .clear = false }) catch unreachable;
       }
   };
 
@@ -26,7 +26,7 @@ defmodule ZiglerTest.Resource.KeepTest do
   }
 
   pub fn manual_keep(term: beam.term, should_keep: bool) void {
-      const resource = beam.get(PidResource, term, .{.keep = false}) catch unreachable;
+      const resource = beam.get(PidResource, term, .{ .keep = false }) catch unreachable;
       if (should_keep) {
           resource.keep();
       }

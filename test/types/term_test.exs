@@ -6,7 +6,7 @@ defmodule ZiglerTest.Types.TermTest do
   ~Z"""
   const beam = @import("beam");
   pub fn term_test(term: beam.term) beam.term {
-    return term;
+      return term;
   }
   """
 

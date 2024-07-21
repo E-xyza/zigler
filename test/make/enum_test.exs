@@ -7,7 +7,7 @@ defmodule ZiglerTest.Make.EnumTest do
   const beam = @import("beam");
 
   pub fn make_anonymous_enum() beam.term {
-    return beam.make(.foo, .{});
+      return beam.make(.foo, .{});
   }
   """
 
@@ -19,7 +19,7 @@ defmodule ZiglerTest.Make.EnumTest do
   const e = enum { bar };
 
   pub fn make_enum() beam.term {
-    return beam.make(e.bar, .{});
+      return beam.make(e.bar, .{});
   }
   """
 
@@ -28,10 +28,10 @@ defmodule ZiglerTest.Make.EnumTest do
   end
 
   ~Z"""
-  const err = error { baz };
+  const err = error{baz};
 
   pub fn make_error() beam.term {
-    return beam.make(err.baz, .{});
+      return beam.make(err.baz, .{});
   }
   """
 

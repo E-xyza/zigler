@@ -16,23 +16,23 @@ defmodule ZiglerTest.Concurrency.ThreadedManualYieldingTest do
   const e = @import("erl_nif");
 
   const Thread = beam.Thread(thread);
-  pub const ThreadResource = beam.Resource(*Thread, @import("root"), .{
-    .Callbacks = beam.ThreadedCallbacks(Thread)
-  });
+  pub const ThreadResource = beam.Resource(*Thread, @import("root"), .{ .Callbacks = beam.ThreadedCallbacks(Thread) });
 
   fn thread(pid: beam.pid) void {
-    defer {
-      beam.send(pid, .done, .{}) catch {};
-    }
+      defer {
+          beam.send(pid, .done, .{}) catch {};
+      }
 
-    while (true) {
-      _ = beam.yield() catch { return; };
-    }
+      while (true) {
+          _ = beam.yield() catch {
+              return;
+          };
+      }
   }
 
   pub fn launch(pid_term: beam.term) !beam.term {
-    var args = [_]e.ErlNifTerm{pid_term.v};
-    return Thread.launch(ThreadResource, 1, &args, .{.{}});
+      var args = [_]e.ErlNifTerm{pid_term.v};
+      return Thread.launch(ThreadResource, 1, &args, .{.{}});
   }
   """
 

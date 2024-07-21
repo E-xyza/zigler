@@ -8,7 +8,7 @@ defmodule ZiglerTest.ReturnspecOverride do
   const beam = @import("beam");
   pub fn do_something(number: u32) beam.term {
       if (number == 42) return beam.make(.@"error", .{});
-      return beam.make(.{.ok, number}, .{});
+      return beam.make(.{ .ok, number }, .{});
   }
   """
 end

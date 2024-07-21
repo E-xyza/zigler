@@ -14,24 +14,28 @@ defmodule ZiglerTest.Types.ManypointerTest do
   # in this case we just assume it's 3
 
   ~Z"""
-  fn childType(comptime T: type) type { return @typeInfo(T).child; }
+  fn childType(comptime T: type) type {
+      return @typeInfo(T).child;
+  }
 
   fn common_array_sum(comptime T: type, passed: anytype) T {
-    var sum: T = 0;
-    for (passed[0..3]) |value| {sum += value;}
-    return sum;
+      var sum: T = 0;
+      for (passed[0..3]) |value| {
+          sum += value;
+      }
+      return sum;
   }
 
   pub fn manypointer_float_test(passed: [*]f64) f64 {
-    return common_array_sum(f64, passed);
+      return common_array_sum(f64, passed);
   }
 
   pub fn manypointer_u8_test(passed: [*]u8) u32 {
-    return common_array_sum(u32, passed);
+      return common_array_sum(u32, passed);
   }
 
   pub fn manypointer_string_test(passed: [*]u8) u32 {
-    return common_array_sum(u32, passed);
+      return common_array_sum(u32, passed);
   }
   """
 
@@ -75,7 +79,7 @@ defmodule ZiglerTest.Types.ManypointerTest do
 
                            ~Z"""
                            pub fn forbidden() [*]u8 {
-                             return @ptrFromInt(1);
+                               return @ptrFromInt(1);
                            }
                            """
                          end
@@ -87,17 +91,17 @@ defmodule ZiglerTest.Types.ManypointerTest do
 
   ~Z"""
   pub fn sentinel_terminated_test(passed: [*:0]u8) u8 {
-    return passed[3];
+      return passed[3];
   }
 
-  var stbr_result = [_]u8{'b', 'a', 'r', 0};
+  var stbr_result = [_]u8{ 'b', 'a', 'r', 0 };
 
   pub fn sentinel_terminated_binary_return_test() [*:0]u8 {
-    return @ptrCast(&stbr_result);
+      return @ptrCast(&stbr_result);
   }
 
   pub fn sentinel_terminated_u8_list_return_test() [*:0]u8 {
-    return @ptrCast(&stbr_result);
+      return @ptrCast(&stbr_result);
   }
   """
 

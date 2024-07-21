@@ -6,7 +6,7 @@ defmodule ZiglerTest.Raw.ErrorRawMustHaveCorrectParams do
   pub fn raw(env: beam.env, foo: u64, bar: usize) beam.term {
       _ = foo;
       _ = bar;
-      return beam.make(.ok, .{.env = env});
+      return beam.make(.ok, .{ .env = env });
   }
   """
 end

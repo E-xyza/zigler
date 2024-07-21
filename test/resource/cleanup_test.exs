@@ -14,11 +14,11 @@ defmodule ZiglerTest.Resource.CleanupTest do
   const std = @import("std");
   const Resource = beam.Resource;
 
-  pub const PidResource = Resource(beam.pid, @import("root"), .{.Callbacks = PidResourceCallbacks});
+  pub const PidResource = Resource(beam.pid, @import("root"), .{ .Callbacks = PidResourceCallbacks });
 
   pub const PidResourceCallbacks = struct {
       pub fn dtor(pid: *beam.pid) void {
-          beam.send(pid.*, .cleaned, .{.clean = false}) catch unreachable;
+          beam.send(pid.*, .cleaned, .{ .clean = false }) catch unreachable;
       }
   };
 
@@ -28,9 +28,9 @@ defmodule ZiglerTest.Resource.CleanupTest do
   }
 
   pub fn maybe_release(resource: PidResource, release: bool) void {
-    if (release) {
-      resource.release();
-    }
+      if (release) {
+          resource.release();
+      }
   }
   """
 

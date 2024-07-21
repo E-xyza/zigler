@@ -12,7 +12,7 @@ defmodule ZiglerTest.AliasTest do
   ~Z"""
   const beam = @import("beam");
 
-  pub fn ok() void { }
+  pub fn ok() void {}
   """
 
   test "aliased call" do

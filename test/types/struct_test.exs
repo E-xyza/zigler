@@ -5,12 +5,10 @@ defmodule ZiglerTest.Types.StructTest do
     otp_app: :zigler
 
   ~Z"""
-  pub const TestStruct = struct {
-   value: u64
-  };
+  pub const TestStruct = struct { value: u64 };
 
   pub fn struct_test(s: TestStruct) TestStruct {
-   return .{.value = s.value + 1};
+      return .{ .value = s.value + 1 };
   }
   """
 
@@ -57,12 +55,10 @@ defmodule ZiglerTest.Types.StructTest do
   end
 
   ~Z"""
-  pub const default_struct = struct {
-   value: u64 = 47
-  };
+  pub const default_struct = struct { value: u64 = 47 };
 
   pub fn default_struct_test(s: default_struct) default_struct {
-   return .{.value = s.value + 1};
+      return .{ .value = s.value + 1 };
   }
   """
 
@@ -106,8 +102,8 @@ defmodule ZiglerTest.Types.StructTest do
 
   ~Z"""
   pub fn mutable_struct_test(s: *TestStruct) *TestStruct {
-   s.value += 1;
-   return s;
+      s.value += 1;
+      return s;
   }
   """
 

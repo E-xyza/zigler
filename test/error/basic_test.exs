@@ -12,12 +12,12 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
   const MyError = error{my_error};
 
   fn nested_error() !void {
-    return error.my_error;
+      return error.my_error;
   }
 
   pub fn basic_error_return() !void {
-    // some extra space here
-    return nested_error();
+      // some extra space here
+      return nested_error();
   }
   """
 

@@ -5,7 +5,9 @@ defmodule ZiglerTest.GenericFacts do
   use Zig, otp_app: :zigler
 
   ~Z"""
-  pub fn foo() u32 { return 47; }
+  pub fn foo() u32 {
+      return 47;
+  }
   """
 
   test "foo contents" do

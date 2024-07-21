@@ -9,7 +9,9 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMissingTest do
             use Zig, otp_app: :zigler, callbacks: [on_upgrade: :foo], dir: unquote(__DIR__)
 
             ~Z"""
-            pub fn bar() u8 { return 47; }
+            pub fn bar() u8 {
+                return 47;
+            }
             """
           end
         end
@@ -26,8 +28,12 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMissingTest do
 
             ~Z"""
             const beam = @import("beam");
-            fn foo(_: [*c]?*anyopaque, _: ?*?*u32, _: beam.term) c_int { return 0; }
-            pub fn bar() u8 { return 47; }
+            fn foo(_: [*c]?*anyopaque, _: ?*?*u32, _: beam.term) c_int {
+                return 0;
+            }
+            pub fn bar() u8 {
+                return 47;
+            }
             """
           end
         end

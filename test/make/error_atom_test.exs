@@ -7,11 +7,11 @@ defmodule ZiglerTest.Make.ErrorAtomTest do
   const beam = @import("beam");
 
   pub fn test_error_atom() beam.term {
-    return beam.make_error_atom(.{});
+      return beam.make_error_atom(.{});
   }
 
   pub fn test_error_pair() beam.term {
-    return beam.make_error_pair(.some_error, .{});
+      return beam.make_error_pair(.some_error, .{});
   }
   """
 

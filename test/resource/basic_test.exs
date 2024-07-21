@@ -20,12 +20,12 @@ defmodule ZiglerTest.Resource.BasicTest do
   }
 
   pub fn unpack_scalar(resource: U64Resource) u64 {
-    return resource.unpack();
+      return resource.unpack();
   }
 
   pub fn increment_scalar(resource: U64Resource) void {
-    const to_increment = resource.unpack();
-    return resource.update(to_increment + 1);
+      const to_increment = resource.unpack();
+      return resource.update(to_increment + 1);
   }
 
   pub fn new_struct(s: Struct) StructResource {
@@ -33,12 +33,12 @@ defmodule ZiglerTest.Resource.BasicTest do
   }
 
   pub fn unpack_struct(resource: StructResource) Struct {
-    return resource.unpack();
+      return resource.unpack();
   }
 
   pub fn increment_struct(resource: StructResource) void {
-    const to_increment_struct = resource.unpack();
-    return resource.update(.{.payload = to_increment_struct.payload + 1});
+      const to_increment_struct = resource.unpack();
+      return resource.update(.{ .payload = to_increment_struct.payload + 1 });
   }
   """
 

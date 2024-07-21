@@ -18,7 +18,9 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
                          ~Z"""
                          const beam = @import("beam");
                          pub fn foo() void {}
-                         pub fn bar() u8 { return 47; }
+                         pub fn bar() u8 {
+                             return 47;
+                         }
                          """
                        end
                      end
@@ -42,7 +44,9 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            pub fn foo(_: beam.env) void {}
-                           pub fn bar() u8 { return 47; }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end
@@ -64,8 +68,12 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn on_unload(_: ?*anyopaque) f32 { return 0.0; }
-                           pub fn bar() u8 { return 47; }
+                           pub fn on_unload(_: ?*anyopaque) f32 {
+                               return 0.0;
+                           }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end
@@ -89,8 +97,12 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn foo(_: ?*anyopaque, _: ?*anyopaque) void { return 0.0; }
-                           pub fn bar() u8 { return 47; }
+                           pub fn foo(_: ?*anyopaque, _: ?*anyopaque) void {
+                               return 0.0;
+                           }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end
@@ -112,8 +124,12 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn on_unload(_: beam.env, _: f32) void { return 0.0; }
-                           pub fn bar() u8 { return 47; }
+                           pub fn on_unload(_: beam.env, _: f32) void {
+                               return 0.0;
+                           }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end
@@ -136,8 +152,12 @@ defmodule ZiglerTest.Callbacks.OnUnloadMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            const e = @import("erl_nif");
-                           pub fn foo(_: beam.env, _: ?*anyopaque) f32 { return 0.0; }
-                           pub fn bar() u8 { return 47; }
+                           pub fn foo(_: beam.env, _: ?*anyopaque) f32 {
+                               return 0.0;
+                           }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end

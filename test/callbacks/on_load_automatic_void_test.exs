@@ -21,7 +21,7 @@ defmodule ZiglerTest.Callbacks.OnLoadAutomaticVoidTest do
   }
 
   pub fn success() beam.term {
-    return beam.make(.{stored_mode, beam.context.mode, stored_number}, .{});
+      return beam.make(.{ stored_mode, beam.context.mode, stored_number }, .{});
   }
   """
 

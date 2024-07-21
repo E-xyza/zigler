@@ -6,7 +6,7 @@ defmodule ZiglerTest.Types.BoolTest do
 
   ~Z"""
   pub fn bool_test(b: bool) bool {
-    return !b;
+      return !b;
   }
   """
 

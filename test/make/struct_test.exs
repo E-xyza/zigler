@@ -7,7 +7,7 @@ defmodule ZiglerTest.Make.StructTest do
   const beam = @import("beam");
 
   pub fn make_map() beam.term {
-    return beam.make(.{.foo = 47, .bar = "test"}, .{});
+      return beam.make(.{ .foo = 47, .bar = "test" }, .{});
   }
   """
 

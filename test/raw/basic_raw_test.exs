@@ -15,11 +15,11 @@ defmodule ZiglerTest.Raw.BasicRawTest do
   const e = @import("erl_nif");
 
   pub fn raw_beam_term(env: beam.env, arity: c_int, params: [*]const beam.term) beam.term {
-    return beam.make(.{.arity = arity, .item = params[0]}, .{.env = env});
+      return beam.make(.{ .arity = arity, .item = params[0] }, .{ .env = env });
   }
 
   pub fn raw_erl_nif_term(env: beam.env, arity: c_int, params: [*]const e.ErlNifTerm) e.ErlNifTerm {
-    return beam.make(.{.arity = arity, .item = beam.term{.v = params[0]}}, .{.env = env}).v;
+      return beam.make(.{ .arity = arity, .item = beam.term{ .v = params[0] } }, .{ .env = env }).v;
   }
   """
 

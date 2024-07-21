@@ -6,36 +6,36 @@ defmodule ZiglerTest.Types.OptionalTest do
 
   ~Z"""
   pub fn nullable_integer_test(value: ?u64) ?u64 {
-    return if (value) |v| v + 1 else null;
+      return if (value) |v| v + 1 else null;
   }
 
   pub fn nullable_bool_test(value: ?bool) ?bool {
-    return if (value) |v| !v else null;
+      return if (value) |v| !v else null;
   }
 
   pub fn nullable_array_test(value: ?[3]u64) ?[3]u64 {
-    if (value) |v| {
-      var result: [3]u64 = undefined;
-      for (v, 0..) |item, index| {
-        result[index] = item + 1;
-      }
-      return result;
-    } else return null;
+      if (value) |v| {
+          var result: [3]u64 = undefined;
+          for (v, 0..) |item, index| {
+              result[index] = item + 1;
+          }
+          return result;
+      } else return null;
   }
 
-  const E = enum{ foo, bar };
+  const E = enum { foo, bar };
 
   pub fn nullable_enum_test(value: ?E) ?E {
-    return value;
+      return value;
   }
 
   pub fn nullable_mutable_array_test(value: ?*[3]u64) ?*[3]u64 {
-    if (value) |v| {
-      for (v) | *item | {
-        item.* += 1;
-      }
-      return v;
-    } else return null;
+      if (value) |v| {
+          for (v) |*item| {
+              item.* += 1;
+          }
+          return v;
+      } else return null;
   }
   """
 

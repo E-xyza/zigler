@@ -4,10 +4,10 @@ defmodule ZiglerTest.Types.EnumTest do
   use Zig, otp_app: :zigler
 
   ~Z"""
-  pub const EnumType = enum{ foo, bar };
+  pub const EnumType = enum { foo, bar };
 
   pub fn untagged_swap(value: EnumType) EnumType {
-    return if (value == .foo) .bar else .foo;
+      return if (value == .foo) .bar else .foo;
   }
   """
 
@@ -52,9 +52,9 @@ defmodule ZiglerTest.Types.EnumTest do
                            use Zig, otp_app: :zigler, dir: unquote(__DIR__)
 
                            ~Z"""
-                           const E = enum{ };
+                           const E = enum {};
                            pub fn foo(e: E) E {
-                             return e;
+                               return e;
                            }
                            """
                          end
@@ -73,9 +73,9 @@ defmodule ZiglerTest.Types.EnumTest do
                            use Zig, otp_app: :zigler, dir: unquote(__DIR__)
 
                            ~Z"""
-                           const E = enum{ ok };
+                           const E = enum { ok };
                            pub fn foo(e: E) E {
-                             return e;
+                               return e;
                            }
                            """
                          end

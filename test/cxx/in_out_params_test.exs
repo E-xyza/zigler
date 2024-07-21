@@ -12,13 +12,13 @@ defmodule ZiglerTest.CXX.InOutParamsTest do
   const c = @cImport(@cInclude("c.h"));
 
   pub fn in_out_int(value: *u32) c_int {
-    if (value.* == 42) return 1;
-    value.* = value.* + 1;
-    return 0;
+      if (value.* == 42) return 1;
+      value.* = value.* + 1;
+      return 0;
   }
 
   pub fn make_error(e: c_int) !void {
-    if (e == 1) return error.badnumber;
+      if (e == 1) return error.badnumber;
   }
   """
 

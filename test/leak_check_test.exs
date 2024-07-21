@@ -16,12 +16,12 @@ defmodule ZiglerTest.LeakCheckTest do
   const beam = @import("beam");
   const std = @import("std");
   pub fn leaky_string(string: []u8) usize {
-    return string.len;
+      return string.len;
   }
 
   pub fn no_leaky_string(string: []u8) usize {
-    defer beam.context.allocator.free(string);
-    return string.len;
+      defer beam.context.allocator.free(string);
+      return string.len;
   }
   """
 

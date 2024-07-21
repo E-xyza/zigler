@@ -3,7 +3,7 @@ defmodule ZiglerTest.CompilerError.FunctionNotFound do
 
   ~Z"""
   pub fn should_fail_param(foo: u32) u32 {
-    return foo;
+      return foo;
   }
   """
 end

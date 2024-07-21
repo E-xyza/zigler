@@ -10,17 +10,17 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticTest do
   const beam = @import("beam");
   const e = @import("erl_nif");
   pub fn threaded(should_quit: bool, resp: beam.pid) void {
-    var i: u32 = 0;
-    while (true) : (i += 1) {
-      if (i > 5000 and should_quit) {
-        break;
-      }
+      var i: u32 = 0;
+      while (true) : (i += 1) {
+          if (i > 5000 and should_quit) {
+              break;
+          }
 
-      _ = beam.yield() catch {
-        beam.send(resp, .killed, .{}) catch unreachable;
-        break;
-      };
-    }
+          _ = beam.yield() catch {
+              beam.send(resp, .killed, .{}) catch unreachable;
+              break;
+          };
+      }
   }
   """
 

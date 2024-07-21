@@ -11,7 +11,7 @@ defmodule ZiglerTest.PackagesTest do
   const extra = @import("extra");
 
   pub fn extra_value() u64 {
-    return extra.value;
+      return extra.value;
   }
   """
 

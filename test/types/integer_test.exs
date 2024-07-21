@@ -56,7 +56,9 @@ defmodule ZiglerTest.Types.IntegerTest do
 
   describe "for zero bit integers" do
     ~Z"""
-    pub fn zerobit(v: u0) u0 { return v; }
+    pub fn zerobit(v: u0) u0 {
+        return v;
+    }
     """
 
     test "it works, but is kind of useless" do
@@ -88,10 +90,16 @@ defmodule ZiglerTest.Types.IntegerTest do
 
   describe "for super large integers" do
     ~Z"""
-    pub fn test_u128(x: u128) u128 { return (x << 4) + x - 0x0101_0101_0101_0101_0101_0101_0101; }
+    pub fn test_u128(x: u128) u128 {
+        return (x << 4) + x - 0x0101_0101_0101_0101_0101_0101_0101;
+    }
     // because we can.
-    pub fn test_u129(x: u129) u129 { return (x << 4) + x - 0x0101_0101_0101_0101_0101_0101_0101; }
-    pub fn test_u256(x: u256) u256 { return (x << 4) + x - 0x0101_0101_0101_0101_0101_0101_0101; }
+    pub fn test_u129(x: u129) u129 {
+        return (x << 4) + x - 0x0101_0101_0101_0101_0101_0101_0101;
+    }
+    pub fn test_u256(x: u256) u256 {
+        return (x << 4) + x - 0x0101_0101_0101_0101_0101_0101_0101;
+    }
     """
 
     # NB these numbers and transformations were selected to debug endianness issues.
@@ -102,8 +110,12 @@ defmodule ZiglerTest.Types.IntegerTest do
     end
 
     ~Z"""
-    pub fn test_u65(x: u65) u65 { return x; }
-    pub fn test_i65(x: i65) i65 { return x; }
+    pub fn test_u65(x: u65) u65 {
+        return x;
+    }
+    pub fn test_i65(x: i65) i65 {
+        return x;
+    }
     """
 
     test "type checking on large integer" do

@@ -9,7 +9,9 @@ defmodule ZiglerTest.Callbacks.OnLoadMissingTest do
             use Zig, otp_app: :zigler, callbacks: [on_load: :foo], dir: unquote(__DIR__)
 
             ~Z"""
-            pub fn bar() u8 { return 47; }
+            pub fn bar() u8 {
+                return 47;
+            }
             """
           end
         end
@@ -25,7 +27,9 @@ defmodule ZiglerTest.Callbacks.OnLoadMissingTest do
             use Zig, otp_app: :zigler, callbacks: [:on_load], dir: unquote(__DIR__)
 
             ~Z"""
-            pub fn bar() u8 { return 47; }
+            pub fn bar() u8 {
+                return 47;
+            }
             """
           end
         end
@@ -42,8 +46,12 @@ defmodule ZiglerTest.Callbacks.OnLoadMissingTest do
 
             ~Z"""
             const beam = @import("beam");
-            fn foo(_: ?*?*u32, _: beam.term) c_int { return 0; }
-            pub fn bar() u8 { return 47; }
+            fn foo(_: ?*?*u32, _: beam.term) c_int {
+                return 0;
+            }
+            pub fn bar() u8 {
+                return 47;
+            }
             """
           end
         end

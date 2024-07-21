@@ -7,7 +7,7 @@ defmodule ZiglerTest.Make.TupleTest do
   const beam = @import("beam");
 
   pub fn make_ok_tuple() beam.term {
-    return beam.make(.{.ok, 47}, .{});
+      return beam.make(.{ .ok, 47 }, .{});
   }
   """
 

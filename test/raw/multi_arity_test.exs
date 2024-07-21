@@ -15,11 +15,11 @@ defmodule ZiglerTest.Raw.MultiArityTest do
   const e = @import("erl_nif");
 
   pub fn range_arity(env: beam.env, arity: c_int, params: [*]const beam.term) beam.term {
-    return beam.make(params[0..@intCast(arity)], .{.env = env});
+      return beam.make(params[0..@intCast(arity)], .{ .env = env });
   }
 
   pub fn list_arity(env: beam.env, arity: c_int, params: [*]const beam.term) beam.term {
-    return beam.make(params[0..@intCast(arity)], .{.env = env});
+      return beam.make(params[0..@intCast(arity)], .{ .env = env });
   }
   """
 

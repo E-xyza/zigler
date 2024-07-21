@@ -3,15 +3,21 @@ defmodule ZiglerTest.SigilZ.MultiTest do
   use Zig, otp_app: :zigler
 
   ~Z"""
-  pub fn first() u16 { return 47; }
+  pub fn first() u16 {
+      return 47;
+  }
   """
 
   ~Z"""
-  pub fn next() u16 { return 47; }
+  pub fn next() u16 {
+      return 47;
+  }
   """
 
   ~Z"""
-  pub fn last() u16 { return 47; }
+  pub fn last() u16 {
+      return 47;
+  }
   """
 
   setup do

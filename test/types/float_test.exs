@@ -5,11 +5,17 @@ defmodule ZiglerTest.Types.FloatTest do
     otp_app: :zigler
 
   ~Z"""
-  pub fn f64_div2(value: f64) f64 { return value / 2; }
+  pub fn f64_div2(value: f64) f64 {
+      return value / 2;
+  }
 
-  pub fn f32_div2(value: f32) f32 { return value / 2; }
+  pub fn f32_div2(value: f32) f32 {
+      return value / 2;
+  }
 
-  pub fn f16_div2(value: f16) f16 { return value / 2; }
+  pub fn f16_div2(value: f16) f16 {
+      return value / 2;
+  }
   """
 
   describe "given an fp function" do

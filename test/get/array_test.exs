@@ -9,10 +9,12 @@ defmodule ZiglerTest.Get.ArrayTest do
   const std = @import("std");
 
   pub fn array_beam_term_get_test(passed: beam.term) f64 {
-    const buf = beam.get([3]beam.term, passed, .{}) catch unreachable;
-    var sum: f64 = 0.0;
-    for (buf) |val| { sum += beam.get(f64, val, .{}) catch unreachable; }
-    return sum;
+      const buf = beam.get([3]beam.term, passed, .{}) catch unreachable;
+      var sum: f64 = 0.0;
+      for (buf) |val| {
+          sum += beam.get(f64, val, .{}) catch unreachable;
+      }
+      return sum;
   }
   """
 

@@ -12,7 +12,7 @@ defmodule mod do
 
   ~Z"""
   pub fn add_one(number: u32) u32 {
-    return number + 1;
+      return number + 1;
   }
   """
 end

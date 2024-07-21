@@ -11,12 +11,24 @@ defmodule ZiglerTest.AttributesTest do
 
   ~Z"""
   const attributes = @import("attributes");
-  pub fn null_attribute() ?u32 { return attributes.null_attribute; }
-  pub fn bool_attribute() bool { return attributes.bool_attribute; }
-  pub fn integer_attribute() u32 { return attributes.integer_attribute; }
-  pub fn float_attribute() f32 { return attributes.float_attribute; }
-  pub fn string_attribute() @TypeOf(attributes.string_attribute) { return attributes.string_attribute; }
-  pub fn tuple_attribute() u32 { return attributes.tuple_attribute[1]; }
+  pub fn null_attribute() ?u32 {
+      return attributes.null_attribute;
+  }
+  pub fn bool_attribute() bool {
+      return attributes.bool_attribute;
+  }
+  pub fn integer_attribute() u32 {
+      return attributes.integer_attribute;
+  }
+  pub fn float_attribute() f32 {
+      return attributes.float_attribute;
+  }
+  pub fn string_attribute() @TypeOf(attributes.string_attribute) {
+      return attributes.string_attribute;
+  }
+  pub fn tuple_attribute() u32 {
+      return attributes.tuple_attribute[1];
+  }
   """
 
   test "null attribute" do

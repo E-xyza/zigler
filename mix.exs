@@ -110,8 +110,8 @@ defmodule Zigler.MixProject do
       # utility to help manage type protocols
       {:protoss, "~> 0.2"},
       # documentation
-      {:ex_doc, "~> 0.30", only: :dev, runtime: false}
-      # {:zig_doc, "~> 0.3.1", only: :dev, runtime: false}
+      {:ex_doc, "~> 0.34", only: :dev, runtime: false}
+      # {:zig_doc, "~> 0.4.0", path: "../zig_doc", only: :dev, runtime: false}
     ]
   end
 end

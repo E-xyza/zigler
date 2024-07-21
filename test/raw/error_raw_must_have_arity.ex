@@ -6,7 +6,7 @@ defmodule ZiglerTest.Raw.ErrorRawMustHaveArity do
   pub fn raw(env: beam.env, count: c_int, args: [*]beam.term) beam.term {
       _ = count;
       _ = args;
-      return beam.make(.ok, .{.env = env});
+      return beam.make(.ok, .{ .env = env });
   }
   """
 end

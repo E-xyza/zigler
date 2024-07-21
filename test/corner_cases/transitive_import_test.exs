@@ -7,9 +7,15 @@ defmodule ZiglerTest.CornerCases.TransitiveImportTest do
   const S = single.S;
   const D = single.D;
   const C = single.C;
-  pub fn identity_single(value: S) S { return value; }
-  pub fn identity_double(value: D) D {return value;}
-  pub fn identity_circular(value: C) C {return value;}
+  pub fn identity_single(value: S) S {
+      return value;
+  }
+  pub fn identity_double(value: D) D {
+      return value;
+  }
+  pub fn identity_circular(value: C) C {
+      return value;
+  }
   """
 
   describe "singly transitive" do

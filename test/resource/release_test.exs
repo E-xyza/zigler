@@ -8,16 +8,16 @@ defmodule ZiglerTest.Resource.ReleaseTest do
   const std = @import("std");
   const Resource = beam.Resource;
 
-  pub const PidResource = Resource(beam.pid, @import("root"), .{.Callbacks = PidResourceCallbacks});
+  pub const PidResource = Resource(beam.pid, @import("root"), .{ .Callbacks = PidResourceCallbacks });
 
   pub const PidResourceCallbacks = struct {
       pub fn dtor(pid: *beam.pid) void {
-          beam.send(pid.*, .cleaned, .{.clear = false}) catch unreachable;
+          beam.send(pid.*, .cleaned, .{ .clear = false }) catch unreachable;
       }
   };
 
   pub fn create_no_release(pid: beam.pid) PidResource {
-      const resource = PidResource.create(pid, .{.released = false}) catch unreachable;
+      const resource = PidResource.create(pid, .{ .released = false }) catch unreachable;
       return resource;
   }
 

@@ -18,7 +18,9 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                          ~Z"""
                          const beam = @import("beam");
                          pub fn foo(_: beam.env) void {}
-                         pub fn bar() u8 { return 47; }
+                         pub fn bar() u8 {
+                             return 47;
+                         }
                          """
                        end
                      end
@@ -42,7 +44,9 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            pub fn foo(_: beam.env, _: f32, _: f32) void {}
-                           pub fn bar() u8 { return 47; }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end
@@ -65,7 +69,9 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            pub fn foo(_: ?*?*f32, _: f32, _: f32) void {}
-                           pub fn bar() u8 { return 47; }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end
@@ -88,7 +94,9 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            pub fn foo(_: ?*?*anyopaque, _: ?*?*anyopaque, _: ?*?*f32) void {}
-                           pub fn bar() u8 { return 47; }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end
@@ -110,8 +118,12 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
 
                            ~Z"""
                            const beam = @import("beam");
-                           pub fn on_upgrade(_: ?*?*u32, _: ?*?*u32, _: beam.term) f32 { return 0.0; }
-                           pub fn bar() u8 { return 47; }
+                           pub fn on_upgrade(_: ?*?*u32, _: ?*?*u32, _: beam.term) f32 {
+                               return 0.0;
+                           }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end
@@ -136,8 +148,12 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            const e = @import("erl_nif");
-                           pub fn foo(_: f32, _: ?*?*u32, _: ?*?*u32, _: e.ErlNifTerm) c_int { return 0.0; }
-                           pub fn bar() u8 { return 47; }
+                           pub fn foo(_: f32, _: ?*?*u32, _: ?*?*u32, _: e.ErlNifTerm) c_int {
+                               return 0.0;
+                           }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end
@@ -160,8 +176,12 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            const e = @import("erl_nif");
-                           pub fn foo(_: beam.env, _: f32, _: ?*?*u32, _: e.ErlNifTerm) c_int { return 0.0; }
-                           pub fn bar() u8 { return 47; }
+                           pub fn foo(_: beam.env, _: f32, _: ?*?*u32, _: e.ErlNifTerm) c_int {
+                               return 0.0;
+                           }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end
@@ -184,8 +204,12 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            const e = @import("erl_nif");
-                           pub fn foo(_: beam.env, _: ?*?*f32, _: f32, _: e.ErlNifTerm) c_int { return 0.0; }
-                           pub fn bar() u8 { return 47; }
+                           pub fn foo(_: beam.env, _: ?*?*f32, _: f32, _: e.ErlNifTerm) c_int {
+                               return 0.0;
+                           }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end
@@ -208,8 +232,12 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            const e = @import("erl_nif");
-                           pub fn foo(_: beam.env, _: ?*?*f32, _: ?*?*u32, _: f32) c_int { return 0.0; }
-                           pub fn bar() u8 { return 47; }
+                           pub fn foo(_: beam.env, _: ?*?*f32, _: ?*?*u32, _: f32) c_int {
+                               return 0.0;
+                           }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end
@@ -232,8 +260,12 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
                            ~Z"""
                            const beam = @import("beam");
                            const e = @import("erl_nif");
-                           pub fn on_upgrade(_: beam.env, _: ?*?*u32, _: ?*?*u32, _: e.ErlNifTerm) f32 { return 0.0; }
-                           pub fn bar() u8 { return 47; }
+                           pub fn on_upgrade(_: beam.env, _: ?*?*u32, _: ?*?*u32, _: e.ErlNifTerm) f32 {
+                               return 0.0;
+                           }
+                           pub fn bar() u8 {
+                               return 47;
+                           }
                            """
                          end
                        end

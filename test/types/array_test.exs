@@ -25,41 +25,41 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   ~Z"""
   fn common_array_fun(passed: anytype) @TypeOf(passed) {
-    var returned : @TypeOf(passed) = undefined;
+      var returned: @TypeOf(passed) = undefined;
 
-    for (passed, 0..) |value, index| {
-      returned[index] = value + 1;
-    }
+      for (passed, 0..) |value, index| {
+          returned[index] = value + 1;
+      }
 
-    return returned;
+      return returned;
   }
 
   pub fn array_float_test(passed: [3]f64) [3]f64 {
-    return common_array_fun(passed);
+      return common_array_fun(passed);
   }
 
   pub fn array_float_binary_test(passed: [3]f64) [3]f64 {
-    return common_array_fun(passed);
+      return common_array_fun(passed);
   }
 
   pub fn array_u8_test(passed: [3]u8) [3]u8 {
-    return common_array_fun(passed);
+      return common_array_fun(passed);
   }
 
   pub fn array_of_u8_array_as_list(passed: [3][3]u8) [3][3]u8 {
-    return passed;
+      return passed;
   }
 
   pub fn array_of_u32_array_as_binary(passed: [3][3]u32) [3][3]u32 {
-    return passed;
+      return passed;
   }
 
   pub fn array_of_u32_array_as_list_binary(passed: [3][3]u32) [3][3]u32 {
-    return passed;
+      return passed;
   }
 
   pub fn array_string_test(passed: [3]u8) [3]u8 {
-    return common_array_fun(passed);
+      return common_array_fun(passed);
   }
   """
 
@@ -154,17 +154,23 @@ defmodule ZiglerTest.Types.ArrayTest do
   describe "for an array of structs" do
     ~Z"""
     const S = struct { val: u32 };
-    pub fn array_of_structs(a: [3]S) [3]S { return a; }
+    pub fn array_of_structs(a: [3]S) [3]S {
+        return a;
+    }
 
-    const P = packed struct {val: u32};
-    const E = extern struct {val: u32};
+    const P = packed struct { val: u32 };
+    const E = extern struct { val: u32 };
 
-    pub fn array_of_packed_structs(a: [3]P) [3]P { return a; }
+    pub fn array_of_packed_structs(a: [3]P) [3]P {
+        return a;
+    }
 
     pub const array_of_packed_structs_list_of_map = array_of_packed_structs;
     pub const array_of_packed_structs_binary = array_of_packed_structs;
 
-    pub fn array_of_extern_structs(a: [3]E) [3]E { return a; }
+    pub fn array_of_extern_structs(a: [3]E) [3]E {
+        return a;
+    }
 
     pub const array_of_extern_structs_list_of_binary = array_of_extern_structs;
     pub const array_of_extern_structs_binary = array_of_extern_structs;
@@ -271,22 +277,24 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   ~Z"""
   fn common_array_mut(passed: anytype) void {
-    for (passed) |*value| { value.* += 1; }
+      for (passed) |*value| {
+          value.* += 1;
+      }
   }
 
   pub fn mut_array_float_test(passed: *[3]f64) *[3]f64 {
-    common_array_mut(passed);
-    return passed;
+      common_array_mut(passed);
+      return passed;
   }
 
   pub fn mut_array_u8_test(passed: *[3]u8) *[3]u8 {
-    common_array_mut(passed);
-    return passed;
+      common_array_mut(passed);
+      return passed;
   }
 
   pub fn mut_array_string_test(passed: *[3]u8) *[3]u8 {
-    common_array_mut(passed);
-    return passed;
+      common_array_mut(passed);
+      return passed;
   }
   """
 
@@ -307,7 +315,7 @@ defmodule ZiglerTest.Types.ArrayTest do
 
   ~Z"""
   pub fn sentinel_terminated_test(passed: [3:0]u8) u8 {
-    return passed[3];
+      return passed[3];
   }
   """
 
@@ -322,37 +330,37 @@ defmodule ZiglerTest.Types.ArrayTest do
   const e = @import("erl_nif");
 
   pub fn fastlane_beam_term_test(passed: [3]beam.term) [3]beam.term {
-    var result: [3]beam.term = undefined;
-    for (&result, 0..) |*item, index| {
-      const value: f64 = beam.get(f64, passed[index], .{}) catch unreachable;
-      item.* = beam.make(value + 1.0, .{});
-    }
-    return result;
+      var result: [3]beam.term = undefined;
+      for (&result, 0..) |*item, index| {
+          const value: f64 = beam.get(f64, passed[index], .{}) catch unreachable;
+          item.* = beam.make(value + 1.0, .{});
+      }
+      return result;
   }
 
   pub fn fastlane_erl_nif_term_test(passed: [3]e.ErlNifTerm) [3]e.ErlNifTerm {
-    var result: [3]e.ErlNifTerm = undefined;
-    for (&result, 0..) |*item, index| {
-      const value: f64 = beam.get(f64, .{.v = passed[index]}, .{}) catch unreachable;
-      item.* = beam.make(value + 1.0, .{}).v;
-    }
-    return result;
+      var result: [3]e.ErlNifTerm = undefined;
+      for (&result, 0..) |*item, index| {
+          const value: f64 = beam.get(f64, .{ .v = passed[index] }, .{}) catch unreachable;
+          item.* = beam.make(value + 1.0, .{}).v;
+      }
+      return result;
   }
 
   pub fn fastlane_beam_term_ptr_test(passed: *[3]beam.term) *[3]beam.term {
-    for (passed) |*item| {
-      const value: f64 = beam.get(f64, item.*, .{}) catch unreachable;
-      item.* = beam.make(value + 1.0, .{});
-    }
-    return passed;
+      for (passed) |*item| {
+          const value: f64 = beam.get(f64, item.*, .{}) catch unreachable;
+          item.* = beam.make(value + 1.0, .{});
+      }
+      return passed;
   }
 
   pub fn fastlane_erl_nif_term_ptr_test(passed: *[3]e.ErlNifTerm) *[3]e.ErlNifTerm {
-    for (passed) |*item| {
-      const value: f64 = beam.get(f64, .{.v = item.*}, .{}) catch unreachable;
-      item.* = beam.make(value + 1.0, .{}).v;
-    }
-    return passed;
+      for (passed) |*item| {
+          const value: f64 = beam.get(f64, .{ .v = item.* }, .{}) catch unreachable;
+          item.* = beam.make(value + 1.0, .{}).v;
+      }
+      return passed;
   }
   """
 

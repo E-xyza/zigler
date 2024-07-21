@@ -15,11 +15,13 @@ defmodule ZiglerTest.Callbacks.OnLoadErroringEnumTest do
 
               ~Z"""
               const beam = @import("beam");
-              const E = enum(c_int){ ok = 0, err = 42 };
+              const E = enum(c_int) { ok = 0, err = 42 };
               pub fn foo(_: ?*?*u32, _: beam.term) E {
-                return .err;
+                  return .err;
               }
-              pub fn bar() u8 { return 47; }
+              pub fn bar() u8 {
+                  return 47;
+              }
               """
             end
           end

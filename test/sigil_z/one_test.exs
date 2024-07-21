@@ -3,7 +3,9 @@ defmodule ZiglerTest.SigilZ.OneTest do
   use Zig, otp_app: :zigler
 
   ~Z"""
-  pub fn nif1() u16 { return 47; }
+  pub fn nif1() u16 {
+      return 47;
+  }
   """
 
   setup do
