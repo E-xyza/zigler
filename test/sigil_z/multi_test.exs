@@ -31,11 +31,11 @@ defmodule ZiglerTest.SigilZ.MultiTest do
 
   test "next function is branded with the correct file and line number", %{code: code} do
     file = Path.relative_to_cwd(__ENV__.file)
-    assert code =~ "#{file}:9\npub fn next()"
+    assert code =~ "#{file}:11\npub fn next()"
   end
 
   test "last function is branded with the correct file and line number", %{code: code} do
     file = Path.relative_to_cwd(__ENV__.file)
-    assert code =~ "#{file}:13\npub fn last()"
+    assert code =~ "#{file}:17\npub fn last()"
   end
 end

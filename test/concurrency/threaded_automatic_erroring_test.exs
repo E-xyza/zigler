@@ -35,7 +35,7 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
 
     expected_file = Path.absname(__ENV__.file)
 
-    assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 14]} = head
+    assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 15]} = head
 
     refute Enum.any?(stacktrace, fn {_, function, _, _} -> function == :"threaded-join" end)
   end
