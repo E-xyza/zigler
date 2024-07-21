@@ -1,7 +1,5 @@
 run
 -lc
---dep erl_nif
---dep beam
 --dep analyte
 -Mmain=<%= @sema %>
 <%= for {modname, mod_opts} <- @mods do %>
@@ -10,6 +8,8 @@ run
   <% end %>
   -M<%= modname %>=<%= mod_opts.path %>
 <% end %>
+<%= if @c do %>
 <%= for dir <- @c.include_dirs do %>
 -I <%= dir %>
+<% end %>
 <% end %>

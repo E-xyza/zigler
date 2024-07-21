@@ -34,25 +34,34 @@ defmodule Zig.Command do
   sema_command = Path.join(__DIR__, "templates/sema_command.eex")
   EEx.function_from_file(:defp, :sema_command, sema_command, [:assigns])
 
-  def run_sema!(file, attribs_file, c) do
+  def run_sema!(file, opts) do
     # TODO: add availability of further options here.
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema.zig")
     beam_file = Path.join(priv_dir, "beam/beam.zig")
     erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
+    attribs_file = opts[:attribs_file]
+    c = opts[:c]
+    no_beam = opts[:no_beam]
 
     # nerves will put in a `CC` command that we need to bypass because it misidentifies
     # libc locations for statically linking it.
     System.delete_env("CC")
 
+    analyte_deps =
+      [:erl_nif] ++
+        List.wrap(unless no_beam, do: [:beam]) ++
+        List.wrap(if attribs_file, do: [:attributes])
+
+    mods =
+      [erl_nif: %{path: erl_nif_file}] ++
+        List.wrap(unless no_beam, do: [beam: %{deps: [:erl_nif], path: beam_file}]) ++
+        List.wrap(if attribs_file, do: [attributes: %{path: attribs_file}]) ++
+        [analyte: %{deps: analyte_deps, path: file}]
+
     sema_command(
       sema: sema_file,
-      mods: [
-        erl_nif: %{path: erl_nif_file},
-        attributes: %{path: attribs_file},
-        beam: %{deps: [:erl_nif], path: beam_file},
-        analyte: %{deps: [:beam, :erl_nif, :attributes], path: file}
-      ],
+      mods: mods,
       c: c
     )
     |> IO.iodata_to_binary()

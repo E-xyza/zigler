@@ -31,7 +31,7 @@ defmodule Zig.Sema do
   # desired file.
   def run_sema!(module) do
     module.zig_code_path
-    |> Zig.Command.run_sema!(Attributes.code_path(module), module.c)
+    |> Zig.Command.run_sema!(attribs_file: Attributes.code_path(module), c: module.c)
     |> Jason.decode!()
     |> tap(&maybe_dump(&1, module))
     |> reject_ignored(module)
