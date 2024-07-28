@@ -2,7 +2,6 @@ const std = @import("std");
 const analyte = @import("analyte");
 const json = std.json;
 
-// possibly 200 is an over-conservative choice for function depth here.
 const WriteError = std.fs.File.WriteError;
 const FileWriter = std.io.Writer(std.fs.File, WriteError, std.fs.File.write);
 const JsonStreamPtr = *json.WriteStream(FileWriter, .{ .assumed_correct = {} });

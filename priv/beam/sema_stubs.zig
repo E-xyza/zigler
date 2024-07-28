@@ -34,6 +34,7 @@ const StubFunction = struct {
 };
 
 pub const functions = [_]StubFunction{
+    // skip make_general_purpose_allocator_instance because the type is too complicated
     .{ .name = "make_general_purpose_allocator_instance", .params = &[_]StubType{}, .return_type = .{ .v = "unusable:std.heap.GeneralPurposeAllocator(...)" } },
-    .{ .name = "get", .params = &[_]StubType{ .{ .v = "unusable:T" }, .{ .v = "unusable:beam.env" }, .{ .v = "unusable:beam.term" }, .{ .v = "unusable:anytype" } }, .return_type = .{ .v = "unusable:T" } },
+    .{ .name = "get", .params = &[_]StubType{ .{ .v = "unusable:T" }, .{ .v = "unusable:beam.term" }, .{ .v = "unusable:anytype" } }, .return_type = .{ .v = "unusable:T" } },
 };

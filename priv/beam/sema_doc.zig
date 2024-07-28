@@ -1,11 +1,9 @@
 const std = @import("std");
-const beam = @import("beam");
-const e = @import("erl_nif");
 const stubs = @import("sema_stubs.zig");
+const analyte = @import("analyte");
 
 const json = std.json;
 
-// possibly 200 is an over-conservative choice for function depth here.
 const WriteError = std.fs.File.WriteError;
 const FileWriter = std.io.Writer(std.fs.File, WriteError, std.fs.File.write);
 const JsonStreamPtr = *json.WriteStream(FileWriter, .{ .assumed_correct = {} });
@@ -136,28 +134,37 @@ fn typeHeader(stream: anytype, comptime name: []const u8) WriteError!void {
     try stream.write(name);
 }
 
+fn typematches(comptime T: type, comptime name: []const u8) bool {
+    const typename = @typeName(T);
+    if (typename.len < name.len) return false;
+    for (name, 0..) |c, i| {
+        if (typename[i] != c) return false;
+    }
+    return true;
+}
+
+const typemapping = .{
+    .{ .match = "beam.term__struct_", .name = "term" },
+    .{ .match = "stub_erl_nif.ERL_NIF_TERM", .name = "erl_nif_term" },
+    .{ .match = "stub_erl_nif.ErlNifEvent", .name = "e.ErlNifEvent" },
+    .{ .match = "stub_erl_nif.ErlNifBinary", .name = "e.ErlNifBinary" },
+    .{ .match = "stub_erl_nif.ErlNifPid", .name = "pid" },
+    .{ .match = "?*stub_erl_nif.ErlNifEnv", .name = "env" },
+};
+
 fn streamType(stream: anytype, comptime T: type) WriteError!void {
     try stream.beginObject();
-    // catch special types pid, port and term
+
+    // catch any types that depend on either `beam` or `erl_nif`
+    inline for (typemapping) |m| {
+        if (typematches(T, m.match)) {
+            try typeHeader(stream, m.name);
+            try stream.endObject();
+            return;
+        }
+    }
+
     switch (T) {
-        e.ErlNifPid => {
-            try typeHeader(stream, "pid");
-        },
-        beam.term => {
-            try typeHeader(stream, "term");
-        },
-        e.ErlNifTerm => {
-            try typeHeader(stream, "erl_nif_term");
-        },
-        e.ErlNifEvent => {
-            try typeHeader(stream, "e.ErlNifEvent");
-        },
-        e.ErlNifBinary => {
-            try typeHeader(stream, "e.ErlNifBinary");
-        },
-        beam.env => {
-            try typeHeader(stream, "env");
-        },
         std.builtin.StackTrace => {
             try typeHeader(stream, "builtin.StackTrace");
         },
@@ -226,6 +233,7 @@ pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
         comptime var is_stubbed: bool = false;
         inline for (stubs.functions) |stub| {
             comptime var found = std.mem.eql(u8, stub.name, decl.name);
+            found = found and true;
             if (found) {
                 try stub.stream(stream);
                 is_stubbed = true;
@@ -283,5 +291,5 @@ pub fn main() WriteError!void {
     const stdout = std.io.getStdOut().writer();
     var stream = json.writeStream(stdout, .{});
 
-    try streamModule(&stream, beam);
+    try streamModule(&stream, analyte);
 }

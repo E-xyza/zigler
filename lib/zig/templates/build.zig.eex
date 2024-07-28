@@ -67,7 +67,8 @@ pub fn build(b: *std.Build) void {
         },
         .target = target
     });
-    
+
+    <%= if @c do %>
     <%= for lib <- @c.link_lib do %>
         <%= case lib do %>
         <% {:system, lib} -> %>
@@ -75,6 +76,7 @@ pub fn build(b: *std.Build) void {
         <% lib -> %>
     nif.addObjectFile("<%= lib %>");
       <% end %>
+    <% end %>
     <% end %>
 
     <%= for include_dir <- @c.include_dirs do %>

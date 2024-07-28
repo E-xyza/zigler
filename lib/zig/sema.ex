@@ -44,6 +44,13 @@ defmodule Zig.Sema do
       reraise Zig.CompileError.resolve(e, module), __STACKTRACE__
   end
 
+  def run_sema_doc(file) do
+    file
+    |> Zig.Command.run_sema_doc!()
+    |> Jason.decode!()
+    |> integrate_sema(%{module: nil})
+  end
+
   defp assign_callbacks(sema, module) do
     sema
     |> Map.put("callbacks", [])
@@ -114,11 +121,12 @@ defmodule Zig.Sema do
          %{
            "functions" => functions,
            "types" => types,
-           "decls" => decls,
-           "callbacks" => callbacks
-         },
+           "decls" => decls
+         } = sema,
          module
        ) do
+    callbacks = List.wrap(sema["callbacks"])
+
     %__MODULE__{
       functions: Enum.map(functions, &Function.from_json(&1, module.module)),
       types: Enum.map(types, &type_from_json(&1, module.module)),

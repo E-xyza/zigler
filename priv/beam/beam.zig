@@ -112,7 +112,7 @@ const stacktrace = @import("stacktrace.zig");
 /// <!-- ignore -->
 pub const payload = @import("payload.zig");
 
-/// <!-- topic: Term Management; args: dest_type, _, source_term, options -->
+/// <!-- topic: Term Management; args: dest_type, source_term, options -->
 /// converts BEAM [`term`](#term) dynamic types into static zig types
 ///
 /// The arguments are as follows:
@@ -130,19 +130,32 @@ pub const payload = @import("payload.zig");
 /// - all integer sizes from 0..64 bits supported (including non-power-of-2
 ///   sizes)
 /// - for sizes bigger than 64, supported, but the passed term must be a
-///   native-endian binary.
+///   native-endian binary with size n*64 bits
 ///
 /// #### Example
 ///
-/// ```elixir
-/// do_get(47)
 /// ```
-///
-/// ```zig
-/// pub fn do_get(term: beam.term) void {
-///     const x: i32 = beam.get(i32, term, .{});  // -> x = 47
-///     ...
+/// ~Z"""
+/// pub fn get_integer(term: beam.term) i32 {
+///     const x: i32 = beam.get(i32, term, .{});
+///     return x + 1;
 /// }
+///
+/// // NOTE: the size of the integer in the following function
+/// pub fn get_big_integer(term: beam.term) u65 {
+///   const x: u65 = beam.get(u65, term, .{});
+///   return x + 1;
+/// }
+/// """
+///
+/// test "small integer" do
+///   assert 48 = get_integer(47)
+/// end
+///
+/// test "big integer" do
+///   # note we must pass as a binary, with width 128 bits.
+///   assert 0x1_0000_0000_0000_0000 = get_big_integer(<<0xffff_ffff_ffff_ffff :: native-unsigned-64, 0::64>>)
+/// end
 /// ```
 ///
 /// ### enum
@@ -152,7 +165,7 @@ pub const payload = @import("payload.zig");
 ///
 /// #### Example
 ///
-/// ```elixir
+/// ```
 /// do_get(:foo)
 /// ```
 ///
@@ -171,7 +184,7 @@ pub const payload = @import("payload.zig");
 ///
 /// #### Example
 ///
-/// ```elixir
+/// ```
 /// do_get(47.0)
 /// ```
 ///
@@ -193,7 +206,7 @@ pub const payload = @import("payload.zig");
 ///
 /// #### Example
 ///
-/// ```elixir
+/// ```
 /// do_get(%{foo: 47, bar: %{baz: :quux}})
 /// ```
 ///
@@ -220,7 +233,7 @@ pub const payload = @import("payload.zig");
 ///
 /// #### Example
 ///
-/// ```elixir
+/// ```
 /// do_get(true)
 /// ```
 ///
@@ -243,7 +256,7 @@ pub const payload = @import("payload.zig");
 ///
 /// #### Example
 ///
-/// ```elixir
+/// ```
 /// do_get([47, 48, 49])
 /// do_get(<<47 :: signed-int-size(32), 48 :: signed-int-size(32), 49 :: signed-int-size(32)>>)
 /// ```
@@ -263,7 +276,7 @@ pub const payload = @import("payload.zig");
 ///
 /// #### Example
 ///
-/// ```elixir
+/// ```
 /// do_get(%{foo: 47})
 /// ```
 ///
@@ -285,7 +298,7 @@ pub const payload = @import("payload.zig");
 ///
 /// #### Example
 ///
-/// ```elixir
+/// ```
 /// do_get([47, 48, 49])
 /// do_get(<<47 :: signed-int-size(32), 48 :: signed-int-size(32), 49 :: signed-int-size(32)>>)
 /// ```
@@ -313,7 +326,7 @@ pub const payload = @import("payload.zig");
 ///
 /// #### Example
 ///
-/// ```elixir
+/// ```
 /// do_get([47, 48, 49])
 /// do_get(<<47 :: signed-int-size(32), 48 :: signed-int-size(32), 49 :: signed-int-size(32)>>)
 /// ```
@@ -341,7 +354,7 @@ pub const payload = @import("payload.zig");
 ///
 /// #### Example
 ///
-/// ```elixir
+/// ```
 /// do_get([47, 48, 49])
 /// do_get(<<47 :: signed-int-size(32), 48 :: signed-int-size(32), 49 :: signed-int-size(32)>>)
 /// ```
@@ -360,7 +373,7 @@ pub const payload = @import("payload.zig");
 ///
 /// #### Example
 ///
-/// ```elixir
+/// ```
 /// do_get(nil)
 /// ```
 ///
@@ -384,10 +397,10 @@ pub const payload = @import("payload.zig");
 ///   if `true` (default) the refcount will be increased on the term as a result of
 ///   performing the `get` operation.
 /// - `size` (`* usize`, only applies to manypointer or `[*c]`):
-///   optional in-out parameter to retrieve the size of the slice
+/////   optional in-out parameter to retrieve the size of the slice
 pub const get = get_.get;
 
-/// <!-- topic: Term Management; args: _, value, options -->
+/// <!-- topic: Term Management; args: value, options -->
 /// converts static zig types into BEAM [`term`](#term) dynamic types
 ///
 /// The arguments are as follows:
@@ -433,7 +446,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> 47
 /// ```
 ///
@@ -452,7 +465,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> 47.0
 /// ```
 ///
@@ -468,7 +481,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> true
 /// ```
 ///
@@ -509,7 +522,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> :foo
 /// ```
 ///
@@ -543,7 +556,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> null
 /// ```
 ///
@@ -570,7 +583,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> "foo"
 /// ```
 ///
@@ -582,7 +595,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> ~C'foo'
 /// ```
 ///
@@ -595,7 +608,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> [47, 48, 49]
 /// ```
 ///
@@ -608,7 +621,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> <<47, 00, 48, 00, 49, 00>>
 /// ```
 ///
@@ -630,7 +643,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> %{foo: 123, bar: "bar", baz: :baz}
 /// ```
 ///
@@ -650,7 +663,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> {:ok, "foo", 47}
 /// ```
 ///
@@ -671,7 +684,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> [47, 48, 49]
 /// ```
 ///
@@ -696,7 +709,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> [47, 48, 49]
 /// ```
 ///
@@ -721,7 +734,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> [47, 48, 49]
 /// ```
 ///
@@ -745,7 +758,7 @@ pub const get = get_.get;
 /// }
 /// ```
 ///
-/// ```elixir
+/// ```
 /// do_make() # -> [47, 48, 49]
 /// ```
 pub const make = make_.make;
@@ -759,7 +772,7 @@ pub const make = make_.make;
 /// This is a thin wrapper over [`e.enif_make_pid`](https://www.erlang.org/doc/man/erl_nif.html#enif_make_pid).
 pub const make_pid = make_.make_pid;
 
-/// <!-- topic: Term Management; args: _, string -->
+/// <!-- topic: Term Management; args: string -->
 /// turns a `[]const u8` into a the corresponding `t:atom/0` term.
 ///
 /// returns a raised `ArgumentError` if the length of the string exceeds the
@@ -780,11 +793,11 @@ pub const make_empty_list = make_.make_empty_list;
 /// This is a thin wrapper over [`e.enif_make_list_cell`](https://www.erlang.org/doc/man/erl_nif.html#enif_make_list_cell).
 pub const make_list_cell = make_.make_list_cell;
 
-/// <!-- topic: Term Management; args: env -->
-/// shortcut for `make(env, .@"error", .{})`
+/// <!-- topic: Term Management -->
+/// shortcut for `make(.@"error", .{})`
 pub const make_error_atom = make_.make_error_atom;
 
-/// <!-- topic: Term Management; args: env, value, options -->
+/// <!-- topic: Term Management; args: value, options -->
 /// shortcut for `make(env, .{.@"error", value}, options)`
 pub const make_error_pair = make_.make_error_pair;
 
@@ -803,7 +816,7 @@ pub const make_ref = make_.make_ref;
 ///
 /// ### Example term:
 ///
-/// ```elixir
+/// ```
 /// [
 ///   %{
 ///     line_info: %{file_name: "/path/to/project/lib/my_app/.Elixir.MyApp.MyModule.zig", line: 15},
@@ -1097,12 +1110,13 @@ pub fn get_env() env {
     return context.env;
 }
 
-/// <!-- topic: Context -->
+/// <!-- ignore -->
+const InitEnvOpts = struct { allocator: ?std.mem.Allocator = null };
+
+/// <!-- topic: Env -->
 /// creates an new `independent` environment and attaches it to the existing
 /// context.  You may specify the `allocator` option to set the default
 /// allocator for the context.  Defaults to `beam.allocator`.
-const InitEnvOpts = struct { allocator: ?std.mem.Allocator = null };
-
 pub fn independent_context(opts: InitEnvOpts) void {
     context.env = e.enif_alloc_env();
     context.allocator = opts.allocator orelse allocator;
@@ -1113,40 +1127,73 @@ pub fn independent_context(opts: InitEnvOpts) void {
 // tuple is empty.
 pub fn ClearEnvReturn(comptime T: type) type {
     const info = @typeInfo(T);
-    if (T != .Struct) @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
+    if (info != .Struct) @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
+    if (!info.Struct.is_tuple) @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
     const fields = info.Struct.fields;
 
-    if (fields.len == 0) return void;
+    // type assertion that it's a struct.
     inline for (fields) |field| {
         if (field.type != term) @compileError("unsupported type for CleanEnvReturn, must be a tuple of `beam.term`");
     }
 
-    return T;
+    switch (fields.len) {
+        0 => return void,
+        1 => return term,
+        else => return T
+    }
 }
 
-/// <!-- topic: Context -->
+/// <!-- topic: Env -->
 /// Performs [`e.enif_clear_env`](https://www.erlang.org/doc/man/erl_nif.html#enif_clear_env)
-/// on the existing env in the context.  This function is generally used as a part of
-/// `beam.send`.  The function is also passed a tuple which is a list of terms that should be
-/// persisted into the new environment.
+/// on the existing env in the context.  This function is generally called by `beam.send`,
+/// but is provided if you need to manually trigger environment clearing.  The function is
+/// also passed a tuple which is a list of terms that should be persisted into the new
+/// environment.
 ///
 /// This function will panic if the context's environment is not one known to be created
 /// by `alloc_env`.
 ///
 /// returns `void` if the persist list is empty; otherwise returns a tuple of the same size
 /// as the persist list, contaning the terms that are persisted, in the same order.
-pub fn clear_env(persist: anytype) ClearEnvReturn(@TypeOf(persist)) {
-    switch (context.mode) {
-        .threaded, .yielding, .dirty_yield, .independent => {},
-        else => @panic("clear_env is called from an unsupported environment"),
+///
+/// ### Example
+/// ```elixir
+/// ~Z"""
+/// pub fn clear_env_example(pid: beam.pid, term: beam.term) !void {
+///    const env = beam.alloc_env();
+///    defer beam.free_env(env);
+///
+///    const inner_term = beam.copy(env, term);
+///    try beam.send(pid, .{.first, term}, .{.env = env, .clear = false});
+///
+///    // this function call is required since we did not clear our env
+///    // after sending the term in the previous call.
+/// 
+///    const new_term = beam.clear_env(env, .{inner_term});
+///    try beam.send(pid, .{.second, new_term}, .{.env = env, .clear = false});
+///
+///    return;
+/// }
+/// """
+///
+/// test "clear_env" do
+///   clear_env_example(self(), 47)
+///   assert_receive {:first, 47}
+///   assert_receive {:second, 47}
+/// end
+/// ```
+pub fn clear_env(env_: env, persist: anytype) ClearEnvReturn(@TypeOf(persist)) {
+    const T = @TypeOf(persist);
+    e.enif_clear_env(env_);
+    if (@typeInfo(T).Struct.fields.len == 1) {
+        return .{ .v = e.enif_make_copy(env_, persist[0].v) };
+    } else {
+        var result: ClearEnvReturn(T) = undefined;
+        inline for (persist, 0..) |p, index| {
+            result[index] = .{ .v = e.enif_make_copy(context.env, p.v) };
+        }
+        return result;
     }
-
-    var result: ClearEnvReturn(@TypeOf(persist)) = undefined;
-    e.enif_clear_env(context.env);
-    inline for (persist, 0..) |p, index| {
-        result[index] = .{ .v = e.enif_make_copy(context.env, p.v) };
-    }
-    return result;
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1186,11 +1233,13 @@ const yield_ = @import("yield.zig");
 /// <!-- topic: Concurrency -->
 /// periodic `check-in` function for long-running nifs.
 ///
-/// For threaded nifs:
-///
-/// - checks the status of the thread.
-/// - If the thread's parent process has been killed, returns
-///   `error.processterminated`
+/// always returns `error.processterminated` if the calling
+/// process has been terminated.
+/// 
+/// Note that the environment of the function may be invalid
+/// so if you must send information back to the BEAM on a 
+/// process termination event, you should have a beam environment
+/// allocated to communicate with the BEAM using `send/0`
 ///
 /// For yielding nifs (not implemented yet):
 ///
@@ -1201,15 +1250,36 @@ const yield_ = @import("yield.zig");
 ///   with no error.
 /// - creates an async suspend point.
 ///
-/// For synchronous or dirty nifs:
+/// #### Example
 ///
-/// - does nothing.
-/// - there may be a slight performance regression as the function
-///   identifies the concurrency mode of the nif.
+/// ```elixir
+/// ~Z"""
+/// pub fn yielding_example(pid: beam.pid) !void {
+///     // for this to work, we must have an independent
+///     // environment, as the process environment will have been
+///     // destroyed when the beam.yield error return occurs.
+///     const env = beam.alloc_env();
+///     defer beam.free_env(env);
+///
+///     while (true) {
+///        std.time.sleep(100000);
+///        beam.yield() catch {
+///           try beam.send(pid, .died, .{.env = env});
+///           return;
+///        };
+///     }
+/// }
+/// """
+///
+/// test "yield" do
+///   test_pid = self()
+///   spawn_pid = spawn(fn -> yielding_example(test_pid) end)
+///   Process.sleep(100)
+///   Process.exit(spawn_pid, :kill)
+///   assert_receive :died, 1000
+/// end
+/// ```
 pub const yield = yield_.yield;
-
-//pub const YieldingFrame = yield_.Frame;
-//pub const YieldingCallbacks = yield_.Callbacks;
 
 // wrappedresult: for yielding and threaded nifs we have to do something a bit
 // different to wrap a zig error across the beam boundary.  This common utility

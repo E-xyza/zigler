@@ -271,6 +271,9 @@ after
 
       %{"type" => "pointer", "child" => %{"type" => "builtin.StackTrace"}} ->
         :stacktrace
+
+      %{"type" => "builtin.StackTrace"} ->
+        :stacktrace
     end
   end
 

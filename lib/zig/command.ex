@@ -42,20 +42,17 @@ defmodule Zig.Command do
     erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
     attribs_file = opts[:attribs_file]
     c = opts[:c]
-    no_beam = opts[:no_beam]
 
     # nerves will put in a `CC` command that we need to bypass because it misidentifies
     # libc locations for statically linking it.
     System.delete_env("CC")
 
     analyte_deps =
-      [:erl_nif] ++
-        List.wrap(unless no_beam, do: [:beam]) ++
+      [:erl_nif, :beam] ++
         List.wrap(if attribs_file, do: [:attributes])
 
     mods =
-      [erl_nif: %{path: erl_nif_file}] ++
-        List.wrap(unless no_beam, do: [beam: %{deps: [:erl_nif], path: beam_file}]) ++
+      [erl_nif: %{path: erl_nif_file}, beam: %{deps: [:erl_nif], path: beam_file}] ++
         List.wrap(if attribs_file, do: [attributes: %{path: attribs_file}]) ++
         [analyte: %{deps: analyte_deps, path: file}]
 
@@ -63,6 +60,30 @@ defmodule Zig.Command do
       sema: sema_file,
       mods: mods,
       c: c
+    )
+    |> IO.iodata_to_binary()
+    |> String.split()
+    |> Enum.join(" ")
+    |> run_zig(stderr_to_stdout: true)
+  end
+
+  # documentation requires a separate pathway because otherwise compilation
+  # doesn't go that well.
+
+  # TODO: unify this with the normal sema function using options.
+  def run_sema_doc!(file) do
+    priv_dir = :code.priv_dir(:zigler)
+    sema_file = Path.join(priv_dir, "beam/sema_doc.zig")
+    erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
+
+    analyte_deps = [:erl_nif]
+
+    mods =
+      [erl_nif: %{path: erl_nif_file}, analyte: %{deps: analyte_deps, path: file}]
+
+    sema_command(
+      sema: sema_file,
+      mods: mods
     )
     |> IO.iodata_to_binary()
     |> String.split()
@@ -132,7 +153,7 @@ defmodule Zig.Command do
     end
   end
 
-  @default_version "0.12.0"
+  @default_version "0.12.1"
 
   defp find_in_basedir do
     :user_cache

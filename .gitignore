@@ -41,6 +41,7 @@ zigler-*.tar
 
 # test files for guides
 /test/guides/*.exs
+/test/beam_test.exs
 
 # module zig files
 .Elixir.*.zig

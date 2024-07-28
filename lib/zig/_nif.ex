@@ -1,14 +1,13 @@
 defmodule Zig.Nif do
-  @moduledoc """
-  module encapsulating all of the information required to correctly generate
-  a nif function.
+  @moduledoc false
 
-  Note that all information obtained from semantic analysis of the function is
-  stashed in the `Zig.Nif.Function` module.
-  """
+  # module encapsulating all of the information required to correctly generate
+  # a nif function.
+  #
+  # Note that all information obtained from semantic analysis of the function is
+  # stashed in the `Zig.Nif.Function` module.
 
-  # nif gets an access behaviour so that it can be easily used in EEx
-  # files.
+  # This module gets an access behaviour so that it can be easily used in EEx files.
   @behaviour Access
 
   @enforce_keys ~w[name export module concurrency file module_code_path zig_code_path spec]a
@@ -73,6 +72,7 @@ defmodule Zig.Nif do
           {:cleanup, boolean}
           | {:leak_check, boolean}
 
+  @typedoc false
   @type individual_opts ::
           {:export, boolean}
           | {:concurrency, Concurrency.t()}

@@ -10,6 +10,7 @@ const GetError = error{ argument_error, unreachable_error };
 
 pub fn get(comptime T: type, src: beam.term, opts: anytype) !T {
     // passthrough on beam.term and e.ErlNifTerm, no work needed.
+
     if (T == beam.term) return src;
     if (T == beam.pid) return get_pid(src, opts);
     if (T == e.ErlNifTerm) return src.v;

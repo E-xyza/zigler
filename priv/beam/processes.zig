@@ -53,7 +53,7 @@ pub fn send(dest: beam.pid, content: anytype, opts: anytype) PidError!SendReturn
 
             if (options.should_clear(opts)) {
                 if (@hasField(@TypeOf(opts), "persist")) {
-                    return beam.clear_env(.{ .persist = options.persist });
+                    return beam.clear_env(options.env(opts), .{ .persist = options.persist });
                 }
             }
         },
