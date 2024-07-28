@@ -42,9 +42,9 @@ defmodule DirtyCpu do
         // code in the defer block is triggered when process is killed.
         // we need to create a new thread-independent context because
         // the context from the running process is now invalid.
-        beam.independent_context(.{});
-        beam.send(pid, .killed, .{}) catch unreachable;
-        beam.free_env(beam.context.env);
+        const env = beam.alloc_env();
+        beam.send(pid, .killed, .{.env = env}) catch unreachable;
+        beam.free_env(env);
       }
 
       try beam.send(pid, .unblock, .{});

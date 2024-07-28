@@ -12,7 +12,7 @@ pub fn term_to_binary(term: beam.term, opts: anytype) !e.ErlNifBinary {
     return binary;
 }
 
-pub fn binary_to_term(binary: []u8, opts: anytype) !beam.term {
+pub fn binary_to_term(binary: []const u8, opts: anytype) !beam.term {
     var result: beam.term = undefined;
     if (e.enif_binary_to_term(options.env(opts), binary.ptr, binary.len, &result.v, 0) == 0) return error.OutOfMemory;
     return result;

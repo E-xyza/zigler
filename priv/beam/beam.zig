@@ -911,6 +911,33 @@ pub const Payload = payload.Payload;
 ///
 /// - `allocator`: which allocator should be used to clean up allocations.
 ///   optional, defaults to the threadlocal [`allocator`](#allocator) value
+/// - `size`: if the value does not have a defined size, for example a `Many`
+///   pointer, you must provide this value.
+///
+/// noops on terms that do not require cleanup.
+///
+/// #### Example
+///
+/// ```elixir
+/// ~Z"""
+/// const CleanupErrors = error{leaked};
+///
+/// pub fn cleanup_example(term: beam.term) !i32 {
+///     var gpa = beam.make_general_purpose_allocator_instance();
+///     const allocator = gpa.allocator();
+///     const slice = try beam.get([]i32, term, .{.allocator = allocator});
+///     const number = slice[0];
+///     beam.cleanup(slice, .{.allocator = allocator});
+///     if (gpa.detectLeaks()) return error.leaked;
+///     return number + 1;
+/// }
+/// """
+///
+/// test "cleanup" do
+///   assert 48 = cleanup_example([47])
+/// end
+/// ```
+///
 pub const cleanup = cleanup_.cleanup;
 
 // comparisons
@@ -922,7 +949,23 @@ pub const cleanup = cleanup_.cleanup;
 pub const Compared = enum { lt, eq, gt };
 
 /// <!-- topic: Term Management -->
-/// compares two terms.
+/// compares two terms, following Elixir's compare interface.
+/// 
+/// #### Example
+/// 
+/// ```elixir 
+/// ~Z"""
+/// pub fn compare_example(lhs: beam.term, rhs: beam.term) beam.Compared {
+///     return beam.compare(lhs, rhs);
+/// }
+/// """
+/// 
+/// test "beam.compare" do
+///   assert :gt == compare_example(:infinity, 47)
+///   assert :eq == compare_example(self(), self())
+///   assert :lt == compare_example(:atom, "string")
+/// end
+/// ```
 pub fn compare(lhs: term, rhs: term) Compared {
     const compared = e.enif_compare(lhs.v, rhs.v);
 
@@ -944,6 +987,24 @@ const binaries = @import("binaries.zig");
 ///
 /// Does not perform allocations or copies
 ///
+/// #### Example
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn binary_to_slice_example(term: beam.term) u8 {
+///   const e = @import("erl_nif");
+///   var binary: e.ErlNifBinary = undefined;
+///   _ = e.enif_inspect_binary(beam.context.env, term.v, &binary);
+///   const slice = beam.binary_to_slice(binary);
+///   return slice[2];
+/// }
+/// """
+///
+/// test "binary_to_slice" do
+///   assert ?o = binary_to_slice_example("foo")
+/// end
+/// ```
+///
 /// > #### binary data {: .warning }
 /// >
 /// > This points to the data location of the binary, which might either be
@@ -963,11 +1024,26 @@ pub const binary_to_slice = binaries.binary_to_slice;
 /// returns `error.OutOfMemory` if the allocation fails.
 pub const term_to_binary = binaries.term_to_binary;
 
-/// <!-- topic: Term Management; args: _, string -->
+/// <!-- topic: Term Management; args: encoded_term, options -->
 ///
 /// converts a `[]u8` to a `t:term/0`.  The binary must be encoded using erlang term format.
 ///
 /// This is a thin wrapper over [`e.enif_binary_to_term`](https://www.erlang.org/doc/man/erl_nif.html#enif_binary_to_term).
+///
+/// #### Example
+/// ```elixir
+/// ~Z"""
+/// pub fn binary_to_term_example(encoded_number: []const u8) !u32 {
+///   const term = try beam.binary_to_term(encoded_number, .{});
+///   const number = try beam.get(u32, term, .{});
+///   return number + 1;
+/// }
+/// """
+///
+/// test "binary_to_term" do
+///   assert 48 = binary_to_term_example(:erlang.term_to_binary(47))
+/// end
+/// ```
 pub const binary_to_term = binaries.binary_to_term;
 
 /// <!-- topic: Term Management -->
@@ -1031,10 +1107,45 @@ pub const monitor = e.ErlNifMonitor;
 
 /// <!-- topic: Env -->
 /// Synonym for [`e.enif_alloc_env`](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc_env)
+///
+/// generally, zigler takes care of environments for you, but there may be cases
+/// where you have to manually allocate an environment.  These are `process
+/// independent environments` which manage their own heaps.
+///
+/// use your own process independent environment, most `beam` functions can take a
+/// `.env` option which lets you specify the environment; these functions generally
+/// default to the context's environment (`beam.context.env`).
+///
+/// > #### pair with free_env {: .warning }
+/// >
+/// > all calls to `alloc_env/0` should be balanced with a call to `free_env/1`.
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn alloc_env_example(pid: beam.pid) !void {
+///     const env = beam.alloc_env();
+///     defer beam.free_env(env);
+///
+///     try beam.send(pid, .{.ok, 47}, .{.env = env});
+/// }
+/// """
+///
+/// test "alloc_env_example" do
+///   alloc_env_example(self())
+///   assert_receive {:ok, 47}
+/// end
+/// ```
 pub const alloc_env = e.enif_alloc_env;
 
 /// <!-- topic: Env -->
 /// Synonym for [`e.enif_free_env`](https://www.erlang.org/doc/man/erl_nif.html#enif_free_env)
+///
+/// See `alloc_env/0` for more information.
+///
+/// > #### context env warning {: .warning }
+/// > unless you have created an independent context using `independent_context/1`,
+/// > do not use this function to free the `beam.context.env`, as unexpected
+/// > results may occur.
 pub const free_env = e.enif_free_env;
 
 /// <!-- topic: Env -->
@@ -1117,6 +1228,24 @@ const InitEnvOpts = struct { allocator: ?std.mem.Allocator = null };
 /// creates an new `independent` environment and attaches it to the existing
 /// context.  You may specify the `allocator` option to set the default
 /// allocator for the context.  Defaults to `beam.allocator`.
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn independent_context_example(pid: beam.pid) !void {
+///    beam.independent_context(.{});
+///    try beam.send(pid, beam.context.mode, .{});
+/// }
+/// """
+///
+/// test "independent contexts" do
+///   independent_context_example(self())
+///   assert_receive :independent
+/// end
+/// ```
+///
+/// > ### free independent context envs {: .warning }
+/// > you must ALWAYS free `beam.context.env` if you have created an independent
+/// > context.
 pub fn independent_context(opts: InitEnvOpts) void {
     context.env = e.enif_alloc_env();
     context.allocator = opts.allocator orelse allocator;
@@ -1139,7 +1268,7 @@ pub fn ClearEnvReturn(comptime T: type) type {
     switch (fields.len) {
         0 => return void,
         1 => return term,
-        else => return T
+        else => return T,
     }
 }
 
@@ -1168,7 +1297,7 @@ pub fn ClearEnvReturn(comptime T: type) type {
 ///
 ///    // this function call is required since we did not clear our env
 ///    // after sending the term in the previous call.
-/// 
+///
 ///    const new_term = beam.clear_env(env, .{inner_term});
 ///    try beam.send(pid, .{.second, new_term}, .{.env = env, .clear = false});
 ///
@@ -1235,9 +1364,9 @@ const yield_ = @import("yield.zig");
 ///
 /// always returns `error.processterminated` if the calling
 /// process has been terminated.
-/// 
+///
 /// Note that the environment of the function may be invalid
-/// so if you must send information back to the BEAM on a 
+/// so if you must send information back to the BEAM on a
 /// process termination event, you should have a beam environment
 /// allocated to communicate with the BEAM using `send/0`
 ///

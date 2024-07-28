@@ -12,9 +12,9 @@ defmodule ZiglerTest.Concurrency.DirtyIoTest do
   pub fn long_running(pid: beam.pid) !void {
       // following code triggered when process is killed.
       defer {
-          beam.independent_context(.{});
-          beam.send(pid, .killed, .{}) catch unreachable;
-          beam.free_env(beam.context.env);
+          const env = beam.alloc_env();
+          beam.send(pid, .killed, .{.env = env}) catch unreachable;
+          beam.free_env(env);
       }
 
       try beam.send(pid, .unblock, .{});

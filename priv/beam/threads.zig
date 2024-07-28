@@ -178,7 +178,7 @@ pub fn Thread(comptime function: anytype) type {
                     .joined => @panic("should not have reached joined without executing thread"),
                 } else .done;
 
-                if (beam.binary_to_term(bin, .{})) |term| {
+                if (beam.encoded_slice_to_term(bin, .{})) |term| {
                     beam.send(thread.pid, .{ to_send, term }, .{}) catch {};
                 } else |_| {}
             }
