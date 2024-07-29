@@ -37,7 +37,7 @@ pub inline fn length(opts: anytype) ?usize {
     } else return null;
 }
 
-pub const OutputType = enum { default, list, binary, integer, map };
+pub const OutputType = enum { default, list, binary, integer, map, elixir_struct };
 
 pub inline fn output(opts: anytype) OutputType {
     comptime { // NB: it's not entirely obvious why this has to be forced into the comptime scope!
@@ -51,8 +51,7 @@ pub inline fn output(opts: anytype) OutputType {
                 if (std.mem.eql(u8, tag, "binary")) return .binary;
                 if (std.mem.eql(u8, tag, "integer")) return .integer;
                 if (std.mem.eql(u8, tag, "map")) return .map;
-                const msg = std.fmt.comptimePrint("invalid `as` EnumLiteral, must be `default`, `list`, `binary`, `integer` or `map`, got: {}.", .{opts.as});
-                @compileError(msg);
+                return .elixir_struct;  // maps are allowed to have struct module name as a tag
             },
             .Struct => |S| {
                 for (S.fields) |field| {

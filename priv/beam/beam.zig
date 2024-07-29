@@ -595,7 +595,20 @@ pub const get = get_.get;
 /// ```
 ///
 /// ### [`pid`](#pid)
-/// - convrted into a [`term`](#term) representing `t:pid/0`
+/// - converted into a [`term`](#term) representing `t:pid/0`
+/// 
+//// #### Example
+/// 
+/// ```elixir
+/// ~Z"""
+/// pub fn make_pid_example(pid: beam.pid) beam.term {
+///    return beam.make(pid, .{});
+/// }
+/// """
+/// test "make pid" do
+///   assert self() == make_pid_example(self())
+/// end
+/// ```
 ///
 /// ### `std.builtin.StackTrace`
 /// - special interface for returning stacktrace info to BEAM.
@@ -612,14 +625,32 @@ pub const get = get_.get;
 ///
 /// #### Example
 ///
-/// ```zig
-/// pub fn do_make() beam.term {
+/// ```elixir
+/// ~Z"""
+/// pub fn make_integer_example(integer: u32) beam.term {
+///   return beam.make(integer + 1, .{});
+/// }
+/// 
+/// pub fn make_big_integer_example(integer: u65) beam.term {
+///   return beam.make(integer + 1, .{});
+/// }
+/// 
+/// pub fn make_comptime_integer_example() beam.term {
 ///   return beam.make(47, .{});
 /// }
-/// ```
-///
-/// ```
-/// do_make() # -> 47
+/// """
+/// 
+/// test "make integer" do
+///   assert 48 = make_integer_example(47)
+/// end
+/// 
+/// test "make big integer" do
+///   assert <<0::64, 1::64-native>> = make_big_integer_example(0xFFFF_FFFF_FFFF_FFFF)
+/// end
+/// 
+/// test "make comptime integer" do
+///   assert 47 = make_comptime_integer_example()
+/// end
 /// ```
 ///
 /// ### floats
@@ -631,14 +662,27 @@ pub const get = get_.get;
 ///
 /// #### Example
 ///
-/// ```zig
-/// pub fn do_make() beam.term {
+/// ```elixir
+/// ~Z"""
+/// pub fn make_float_example(float: f32) beam.term {
+///   return beam.make(float + 1.0, .{});
+/// }
+/// 
+/// pub fn make_comptime_float_example() beam.term {
 ///   return beam.make(47.0, .{});
 /// }
-/// ```
-///
-/// ```
-/// do_make() # -> 47.0
+/// """
+/// 
+/// test "make float" do
+///   assert 48.0 = make_float_example(47.0)
+///   assert :infinity = make_float_example(:infinity)
+///   assert :neg_infinity = make_float_example(:neg_infinity)
+///   assert :NaN = make_float_example(:NaN)
+/// end
+/// 
+/// test "make comptime float" do
+///   assert 47.0 = make_comptime_float_example()
+/// end
 /// ```
 ///
 /// ### bool
@@ -647,14 +691,17 @@ pub const get = get_.get;
 ///
 /// #### Example
 ///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   return beam.make(true, .{});
+/// ```elixir
+/// ~Z"""
+/// pub fn make_bool_example(value: bool) beam.term {
+///   return beam.make(!value, .{});
 /// }
-/// ```
-///
-/// ```
-/// do_make() # -> true
+/// """
+/// 
+/// test "make bool" do
+///   assert make_bool_example(false)
+///   refute make_bool_example(true)
+/// end
 /// ```
 ///
 /// ### enum or error enum
@@ -665,37 +712,39 @@ pub const get = get_.get;
 ///
 /// #### Example
 ///
-/// with an enum:
-///
-/// ```zig
-/// const EnumType = enum {foo, bar};
-///
-/// pub fn do_make() beam.term {
-///   const e = EnumType.foo;
-///   return beam.make(e, .{});
+/// ```elixir
+/// ~Z"""
+/// const MakeEnums = enum {foo, bar};
+/// pub fn make_enum_example(value: MakeEnums) beam.term {
+///     return beam.make(value, .{});
 /// }
-/// ```
-///
-/// with an error enum:
-///
-/// ```zig
-/// const ErrorType = error {foo, bar};
-///
-/// pub fn do_make() beam.term {
-///   return beam.make(error.foo, .{});
+/// 
+/// pub fn make_enum_as_int_example(value: MakeEnums) beam.term {
+///     return beam.make(value, .{.as = .integer});
 /// }
-/// ```
-///
-/// with an enum literal:
-///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   return beam.make(.foo, .{});
+/// 
+/// const MakeErrorSet = error { MakeEnumError };
+/// pub fn make_error_example() beam.term {
+///     return beam.make(error.MakeEnumError, .{});
 /// }
-/// ```
-///
-/// ```
-/// do_make() # -> :foo
+/// 
+/// pub fn make_enum_literal_example() beam.term {
+///     return beam.make(.foobarbaz, .{});
+/// }
+/// """
+/// 
+/// test "make enum" do
+///   assert :foo = make_enum_example(:foo)
+///   assert 0 = make_enum_as_int_example(:foo)
+/// end
+/// 
+/// test "make error" do
+///   assert :MakeEnumError = make_error_example()
+/// end
+/// 
+/// test "make enum literal" do
+///   assert :foobarbaz = make_enum_literal_example()
+/// end
 /// ```
 ///
 /// > ### Enum literals {: .info }
@@ -703,7 +752,7 @@ pub const get = get_.get;
 /// > Enum literals are especially useful for returning atoms,
 /// > such as `:ok` or `:error`.  Note that `error` is a reserved
 /// > word in zig, so you will need to use `.@"error"` to generate
-/// > the corresponding atom.
+/// > the corresponding atom.  See also [`make_error_atom`](#make_error_atom)
 ///
 /// ### optionals or null
 /// - supports any child type supported by [`make`](#make)
@@ -711,25 +760,25 @@ pub const get = get_.get;
 ///
 /// #### Example
 ///
-/// with null literal:
-///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   return beam.make(null, .{});
+/// ```elixir
+/// ~Z"""
+/// pub fn make_null_example() beam.term {
+///     return beam.make(null, .{});
 /// }
-/// ```
-///
-/// with an optional type:
-///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   const value: ?i32 = null;
-///   return beam.make(value, .{});
+/// 
+/// pub fn make_optional_example(value: ?u32) beam.term {
+///     return beam.make(value, .{});
 /// }
-/// ```
-///
-/// ```
-/// do_make() # -> null
+/// """
+/// 
+/// test "make null" do
+///   assert is_nil(make_null_example())
+/// end
+/// 
+/// test "make optional" do
+///   assert is_nil(make_optional_example(nil))
+///   assert 47 = make_optional_example(47)
+/// end
 /// ```
 ///
 /// ### arrays
@@ -747,54 +796,38 @@ pub const get = get_.get;
 ///
 /// #### Examples
 ///
-/// array, u8, output as `t:binary/0`:
-///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   return beam.make("foo", .{});
+/// ```elixir
+/// ~Z"""
+/// pub fn make_array_example() beam.term {
+///     const array = [_]u32{47, 48, 49};
+///     return beam.make(array, .{});
 /// }
-/// ```
-///
-/// ```
-/// do_make() # -> "foo"
-/// ```
-///
-/// array, u8, output as `t:list/0`:
-///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   return beam.make("foo", .{.as = .list});
+/// 
+/// pub fn make_array_u8_example() beam.term {
+///     const array = "foo";
+///     return beam.make(array, .{});
 /// }
-/// ```
-///
-/// ```
-/// do_make() # -> ~C'foo'
-/// ```
-///
-/// array, u16, output as `t:list/0`:
-///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   const list = [_]u16{47, 48, 49}
-///   return beam.make(list, .{});
+/// 
+/// pub fn make_array_binary_example() beam.term {
+///     const array = [_]u32{47, 48, 49};
+///     return beam.make(array, .{.as = .binary});
 /// }
-/// ```
-///
-/// ```
-/// do_make() # -> [47, 48, 49]
-/// ```
-///
-/// array, u16, output as `t:binary/0`:
-///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   const list = [_]u16{47, 48, 49}
-///   return beam.make(list, .{.as = .binary});
+/// 
+/// pub fn make_array_u8_list_example() beam.term {
+///     const array = "foo";
+///     return beam.make(array, .{.as = .list});
 /// }
-/// ```
-///
-/// ```
-/// do_make() # -> <<47, 00, 48, 00, 49, 00>>
+/// """
+/// 
+/// test "make u8 array" do
+///   assert "foo" = make_array_u8_example()
+///   assert [102, 111, 111] = make_array_u8_list_example()
+/// end
+/// 
+/// test "make u32 array" do
+///   assert [47, 48, 49] = make_array_example()
+///   assert <<47::native-32, 48::native-32, 49::native-32>> = make_array_binary_example()
+/// end
 /// ```
 ///
 /// ### structs
@@ -809,14 +842,22 @@ pub const get = get_.get;
 ///
 /// #### Examples
 ///
-/// ```zig
-/// pub fn do_make() beam.term {
+/// #### Examples
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn make_struct_example() beam.term {
 ///   return beam.make(.{.foo = 123, .bar = "bar", .baz = .baz}, .{});
 /// }
-/// ```
-///
-/// ```
-/// do_make() # -> %{foo: 123, bar: "bar", baz: :baz}
+/// 
+/// pub fn make_elixir_struct_example() beam.term {
+///   return beam.make(.{.first = 1, .last = 10, .step = 1}, .{.as = .Range});
+/// }
+/// """
+/// 
+/// test "make elixir struct" do
+///   assert 1..10 = make_elixir_struct_example()
+/// end
 /// ```
 ///
 /// ### tuples

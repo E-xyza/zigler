@@ -169,10 +169,9 @@ fn make_struct(value: anytype, opts: anytype) beam.term {
         return value.make(opts);
     } else {
         return switch (options.output(opts)) {
-            .map => make_struct_map(value, opts),
             .binary => make_struct_binary(value, opts),
             .default => if (struct_info.layout == .@"packed") make_struct_binary(value, opts) else make_struct_map(value, opts),
-            else => @compileError("structs must be output as `binary`, `map` or `default` only"),
+            else => make_struct_map(value, opts),
         };
     }
 }
@@ -198,6 +197,15 @@ fn make_struct_map(value: anytype, opts: anytype) beam.term {
     }
 
     _ = e.enif_make_map_from_arrays(env, &keys, &vals, fields.len, &result);
+
+    if (options.output(opts) == .elixir_struct) {
+        // TODO: disambiguate between elixir module names and erlang module names.
+        const modulename = std.fmt.comptimePrint("Elixir{}", .{opts.as});
+        const dunder_struct = make_into_atom("__struct__", opts);
+        const module_atom = make_into_atom(modulename, opts);
+        _ = e.enif_make_map_put(env, result, dunder_struct.v, module_atom.v, &result);
+    }
+
     return .{ .v = result };
 }
 
