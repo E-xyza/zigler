@@ -3,7 +3,7 @@
 //! programming, for example, the use of slices instead of null-terminated
 //! arrays as strings.
 //!
-//! This struct derives from `zig/beam/beam.zig`, and is provided to the
+//! This struct derives from `priv/beam/beam.zig`, and is provided to the
 //! project as a package.  You may import it into any project zig code
 //! using the following code:
 //!
@@ -11,9 +11,14 @@
 //! const beam = @import("beam")
 //! ```
 //!
-//! If there's something you need which is not provided, you can also
-//! import `erl_nif` package which provides direct access to the
+//! If there's something in the BEAM nif API you need which is not provided,
+//! you can also import `erl_nif` package which provides direct access to the
 //! equivalent calls from [`erl_nif.h`](https://www.erlang.org/doc/man/erl_nif.html)
+//! This can be done with the following code:
+//!
+//! ```
+//! const e = @import("erl_nif");
+//! ```
 
 const e = @import("erl_nif");
 const std = @import("std");
@@ -126,35 +131,38 @@ pub const payload = @import("payload.zig");
 /// The following type classes (as passed as 1st argument) are supported by `get`:
 ///
 /// ### integer
-/// - unsigned and signed integers supported
-/// - all integer sizes from 0..64 bits supported (including non-power-of-2
+/// - unsigned and signed integers are supported
+/// - all integer sizes from 0..64 bits are supported (including non-power-of-2
 ///   sizes)
-/// - for sizes bigger than 64, supported, but the passed term must be a
+/// - for sizes bigger than 64, are supported, but the passed term must be a
 ///   native-endian binary with size n*64 bits
 ///
 /// #### Example
 ///
-/// ```
+/// ```elixir
 /// ~Z"""
-/// pub fn get_integer(term: beam.term) i32 {
-///     const x: i32 = beam.get(i32, term, .{});
+/// pub fn get_integer_example(term: beam.term) !i32 {
+///     const x: i32 = try beam.get(i32, term, .{});
 ///     return x + 1;
 /// }
 ///
 /// // NOTE: the size of the integer in the following function
-/// pub fn get_big_integer(term: beam.term) u65 {
-///   const x: u65 = beam.get(u65, term, .{});
+/// pub fn get_big_integer_example(term: beam.term) !u65 {
+///   const x: u65 = try beam.get(u65, term, .{});
 ///   return x + 1;
 /// }
 /// """
 ///
-/// test "small integer" do
-///   assert 48 = get_integer(47)
+/// test "get small integer" do
+///   assert 48 = get_integer_example(47)
 /// end
 ///
-/// test "big integer" do
+/// test "get big integer" do
 ///   # note we must pass as a binary, with width 128 bits.
-///   assert 0x1_0000_0000_0000_0000 = get_big_integer(<<0xffff_ffff_ffff_ffff :: native-unsigned-64, 0::64>>)
+///   assert 0x1_0000_0000_0000_0000 = 
+///     get_big_integer_example(
+///       <<0xffff_ffff_ffff_ffff :: native-unsigned-64, 0::64>>
+///     )
 /// end
 /// ```
 ///
@@ -165,16 +173,21 @@ pub const payload = @import("payload.zig");
 ///
 /// #### Example
 ///
-/// ```
-/// do_get(:foo)
-/// ```
-///
-/// ```zig
+/// ```elixir
+/// ~Z"""
 /// const EnumType = enum {foo, bar};
-/// pub fn do_get(term: beam.term) void {
-///     const x: EnumType = beam.get(EnumType, term, .{});  // -> x = .foo
-///     ...
+/// pub fn get_enum_example(term: beam.term) !EnumType {
+///     return try beam.get(EnumType, term, .{});
 /// }
+/// """
+/// 
+/// test "get integer enum" do
+///   assert :foo = get_enum_example(0)
+/// end
+/// 
+/// test "get atom enum" do
+///   assert :foo = get_enum_example(:foo)
+/// end
 /// ```
 ///
 /// ### float
@@ -184,64 +197,102 @@ pub const payload = @import("payload.zig");
 ///
 /// #### Example
 ///
-/// ```
-/// do_get(47.0)
-/// ```
-///
-/// ```zig
-/// pub fn do_get(term: beam.term) void {
-///     const x: f32 = beam.get(f32, term, .{});  // -> x = 47.0
-///     ...
+/// ```elixir
+/// ~Z"""
+/// const NanError = error {nanerror};
+/// 
+/// pub fn get_float_example(term: beam.term) !f32 {
+///     const x: f32 = try beam.get(f32, term, .{});
+///     if (!std.math.isNan(x)) {
+///          return x + 1.0;
+///     } else {
+///          return error.nanerror;
+///     }
 /// }
+/// """
+/// 
+/// test "get real float" do
+///   assert 48.0 = get_float_example(47.0)
+/// end
+/// 
+/// test "get infinite float" do
+///   assert :infinity = get_float_example(:infinity)
+///   assert :neg_infinity = get_float_example(:neg_infinity)
+/// end
+/// 
+/// test "get nan float" do
+///   assert_raise ErlangError, fn -> get_float_example(:NaN) end
+/// end
+/// 
 /// ```
 ///
 /// ### struct
 /// - may be passed `t:map/0` with `t:atom/0` keys and values of the appropriate type
 /// - may be passed a `t:keyword/0` list with `t:atom/0` keys and values of the
 ///   appropriate type.
-/// - inner values are recursively converted to the appropriate type.
-/// - NOTE: the struct types must be exported as `pub` in the module's
-///   top-level namespace.
+/// - inner values are recursively marshalled to to the appropriate type.
 /// - if the struct is `packed` or `extern`, supports binary data.
 ///
 /// #### Example
 ///
-/// ```
-/// do_get(%{foo: 47, bar: %{baz: :quux}})
-/// ```
-///
-/// ```zig
-/// pub const EnumType = enum {quux, mlem};
-///
-/// pub const InnerType = struct {
-///   baz: EnumType,
+/// ```elixir
+/// ~Z"""
+/// const MathType = packed struct {
+///     left: packed struct{ value: u32 },
+///     right: packed struct{ value: u32 },
+///     op: enum(u8) {add, sub}
 /// };
-///
-/// pub const StructType = struct {
-///   foo: i32,
-///   bar: InnerType
-/// };
-///
-/// pub fn do_get(term: beam.term) void {
-///     const x = beam.get(StructType, term, .{});  // -> x = .{foo: 47, bar: .{baz: .quux}}
-///     ...
+/// 
+/// pub fn get_struct_example(term: beam.term) !u32 {
+///    const operation = try beam.get(MathType, term, .{});
+///    switch (operation.op) {  
+///       .add => return operation.left.value + operation.right.value,
+///       .sub => return operation.left.value - operation.right.value,
+///    }
 /// }
+/// """
+/// 
+/// test "get struct" do
+///   assert 49 = get_struct_example(%{
+///     op: :add, 
+///     left: %{value: 47}, 
+///     right: %{value: 2}})
+/// 
+///   assert 42 = get_struct_example(%{
+///     op: :sub, 
+///     left: %{value: 47}, 
+///     right: %{value: 5}})
+/// end
+/// 
+/// test "get struct as packed binary" do
+///   assert 49 = get_struct_example(<<47::native-32, 2::native-32, 0::8, 0::56>>)
+/// end
 /// ```
+/// 
+/// > #### packed and extern structs {: .warning }
+/// >
+/// > if you are doing binary encoding of these values, be mindful of native-endianness
+/// > of the results and the need for padding to conform to alignment requirements.
+/// >
+/// > note that the C ABI specification may reorder your values, whereas a packed struct
+/// > may have wider than expected alignment.
 ///
 /// ### bool
 /// - supports `true` and `false` `t:boolean/0` terms only.
 ///
 /// #### Example
 ///
-/// ```
-/// do_get(true)
-/// ```
-///
-/// ```zig
-/// pub fn do_get(term: beam.term) void {
-///     const x: bool = beam.get(bool, term, .{});  // -> x = true
-///     ...
+/// ```elixir
+/// ~Z"""
+/// pub fn get_bool_example(term: beam.term) !bool {
+///    return try beam.get(bool, term, .{});
 /// }
+/// """
+/// 
+/// test "get bool" do
+///   assert get_bool_example(true)
+///   refute get_bool_example(false)
+/// end
 /// ```
 ///
 /// ### array
@@ -253,40 +304,71 @@ pub const payload = @import("payload.zig");
 ///     > ### Allocation warning {: .warning }
 ///     >
 ///     > as allocation is not performed, getting could be a very expensive operation.
+///     > these values will be on the stack.
 ///
 /// #### Example
 ///
-/// ```
-/// do_get([47, 48, 49])
-/// do_get(<<47 :: signed-int-size(32), 48 :: signed-int-size(32), 49 :: signed-int-size(32)>>)
-/// ```
-///
-/// ```zig
-/// pub fn do_get(term: beam.term) void {
-///     const x = beam.get([3]i32, term, .{});  // -> x = .{47, 48, 49}
-///     ...
+/// ```elixir
+/// ~Z"""
+/// const PackedValue = packed struct { v: u32 };
+/// pub fn get_array_example(term: beam.term) !u32 {
+///     const array = try beam.get([3]PackedValue, term, .{});
+///     var sum: u32 = 0;
+///     for (array) |item| { sum += item.v; }
+///     return sum;
 /// }
+/// """
+/// 
+/// test "get array" do
+///   assert 144 = get_array_example([%{v: 47}, %{v: 48}, %{v: 49}])
+/// end
+/// 
+/// test "get array as binary" do
+///   assert 144 = get_array_example(<<47::native-32, 48::native-32, 49::native-32>>)
+/// end
 /// ```
 ///
 /// ### single-item pointer
+/// - used if an struct or array must be allocated on the heap.
 /// - allocates memory based on allocator provided in the options, otherwise
 ///   defaults to [`beam.allocator`](#allocator)
-/// - supports any type as above.
+/// - data may be passed as if they were not a pointer.
 /// - returns an error if the allocation fails.
 ///
+/// > ### Allocation warning {: .warning }
+/// >
+/// > it is the caller's responsibility to free the memory allocated by this function,
+/// > via the `allocator.destroy` function, not `allocator.free`
+///
 /// #### Example
-///
-/// ```
-/// do_get(%{foo: 47})
-/// ```
-///
-/// ```zig
-/// const MyStruct = struct { foo: i32 };
-///
-/// pub fn do_get(term: beam.term) void {
-///     const x = beam.get(*MyStruct, term, .{});  // -> x = a pointer to .{.foo = 47}
-///     ...
+/// 
+/// ```elixir
+/// # see previous example cell for type definitions
+/// ~Z"""
+/// pub fn get_struct_pointer_example(term: beam.term) !u32 {
+///     const structptr = try beam.get(*PackedValue, term, .{});
+///     defer beam.allocator.destroy(structptr);
+/// 
+///     return structptr.v;
 /// }
+/// 
+/// pub fn get_array_pointer_example(term: beam.term) !u32 {
+///    const arrayptr = try beam.get(*[3]PackedValue, term, .{});
+///    defer beam.allocator.destroy(arrayptr);
+/// 
+///    var sum: u32 = 0;
+///    for (arrayptr.*) |item| { sum += item.v; }
+///    return sum;
+/// }
+/// """
+/// 
+/// test "get struct pointer" do
+///   assert 47 = get_struct_pointer_example(%{v: 47})
+/// end
+/// 
+/// test "get array pointer" do
+///   assert 144 = get_array_pointer_example(<<47::native-32, 48::native-32, 49::native-32>>)
+/// end
 /// ```
 ///
 /// ### slice
@@ -295,19 +377,32 @@ pub const payload = @import("payload.zig");
 /// - note that slice carries a runtime length
 /// - supports list of any type
 /// - supports binary of any type that can be represented as a fixed size binary.
+/// 
+/// > ### Allocation warning {: .warning }
+/// >
+/// > it is the caller's responsibility to free the memory allocated by this function,
+/// > via the `allocator.free` function, not `allocator.destroy`
 ///
 /// #### Example
 ///
-/// ```
-/// do_get([47, 48, 49])
-/// do_get(<<47 :: signed-int-size(32), 48 :: signed-int-size(32), 49 :: signed-int-size(32)>>)
-/// ```
-///
-/// ```zig
-/// pub fn do_get(term: beam.term) void {
-///     const x = beam.get([]i32, term, .{});  // -> x = a pointer to .{47, 48, 49}
-///     ...
+/// ```elixir
+/// ~Z"""
+/// pub fn get_slice_example(term: beam.term) !u32 {
+///    const slice = try beam.get([]packed struct{ v: u32 }, term, .{});
+///    defer beam.allocator.free(slice);
+///    var sum: u32 = 0;
+///    for (slice) |item| { sum += item.v; }
+///    return sum;
 /// }
+/// """
+/// 
+/// test "get slice" do
+///   assert 144 = get_slice_example([%{v: 47}, %{v: 48}, %{v: 49}])
+/// end
+/// 
+/// test "get slice as binary" do
+///   assert 144 = get_slice_example(<<47::native-32, 48::native-32, 49::native-32>>)
+/// end
 /// ```
 ///
 /// ### many-item-pointer
@@ -317,25 +412,36 @@ pub const payload = @import("payload.zig");
 /// - supports list of any type
 /// - supports binary of any type that can be represented as a fixed size binary.
 /// - the runtime length is not a part of this datastructure, you are
-///   expected to keep track of it using some other mechanism
-///
-///     > ### Length warning {: .warning }
-///     >
-///     > due to the fact that this datatype drops its length information, this
-///     > datatype should be handled with extreme care.
+///   expected to keep track of it using some other mechanism.  Caller is responsible
+///   for tracking the length.
+///    > ### Length warning {: .warning }
+///    >
+///    > due to the fact that this datatype drops its length information, this
+///    > datatype should be handled with extreme care.
+/// - the allocated runtime length can be retrieved by passing a `*usize` parameter
+///   as the `size` parameter to the options.
 ///
 /// #### Example
 ///
-/// ```
-/// do_get([47, 48, 49])
-/// do_get(<<47 :: signed-int-size(32), 48 :: signed-int-size(32), 49 :: signed-int-size(32)>>)
-/// ```
-///
-/// ```zig
-/// pub fn do_get(term: beam.term) void {
-///     const x = beam.get([*]i32, term, .{});  // -> x = a pointer to .{47, 48, 49}
-///     ...
+/// ```elixir
+/// ~Z"""
+/// pub fn get_many_item_pointer_example(term: beam.term) !u32 {
+///   var size: usize = undefined;
+///   const pointer = try beam.get([*]u32, term, .{.size = &size});
+///   defer beam.allocator.free(pointer[0..size]);
+///   var sum: u32 = 0;
+///   for (0..size) |index| { sum += pointer[index]; }
+///   return sum;
 /// }
+/// """
+/// 
+/// test "get many item pointer" do
+///   assert 144 = get_many_item_pointer_example([47, 48, 49])
+/// end
+/// 
+/// test "get many item pointer as binary" do
+///   assert 144 = get_many_item_pointer_example(<<47::native-32, 48::native-32, 49::native-32>>)
+/// end
 /// ```
 ///
 /// ### cpointer
@@ -351,37 +457,75 @@ pub const payload = @import("payload.zig");
 ///     >
 ///     > due to the fact that this datatype drops its length information, this
 ///     > datatype should only be used where c interop is needed
+/// - the allocated runtime length can be retrieved by passing a `*usize` parameter
+///   as the `size` parameter to the options.
 ///
 /// #### Example
 ///
-/// ```
-/// do_get([47, 48, 49])
-/// do_get(<<47 :: signed-int-size(32), 48 :: signed-int-size(32), 49 :: signed-int-size(32)>>)
-/// ```
-///
-/// ```zig
-/// pub fn do_get(term: beam.term) void {
-///     const x = beam.get([*]i32, term, .{});  // -> x = a pointer to .{47, 48, 49}
-///     ...
+/// ```elixir
+/// ~Z"""
+/// pub fn get_c_pointer_example(term: beam.term) !u32 {
+///   var size: usize = undefined;
+///   const pointer = try beam.get([*c]u32, term, .{.size = &size});
+///   defer beam.allocator.free(pointer[0..size]);
+///   var sum: u32 = 0;
+///   for (0..size) |index| { sum += pointer[index]; }
+///   return sum;
 /// }
+/// """
+/// 
+/// test "get c pointer" do
+///   assert 144 = get_c_pointer_example([47, 48, 49])
+/// end
+/// 
+/// test "get c pointer as binary" do
+///   assert 144 = get_c_pointer_example(<<47::native-32, 48::native-32, 49::native-32>>)
+/// end
 /// ```
 ///
 /// ### optional
 ///
 /// - accepts `t:atom/0` `nil` as well as whatever the child type is.
-/// - note that zig has `null` so `nil` will get converted to `null`.
+/// 
+/// > ### nil vs null {: .warning }
+/// >
+/// > note that zig uses `null` as its nil value, but zigler only accepts atom `nil`
+/// > as its null value.
 ///
 /// #### Example
 ///
-/// ```
-/// do_get(nil)
-/// ```
-///
-/// ```zig
-/// pub fn do_get(term: beam.term) void {
-///     const x = beam.get(?i32, term, .{});  // -> x = null
-///     ...
+/// ```elixir
+/// ~Z"""
+/// pub fn get_optional_example(term: beam.term) !u32 {
+///     const x = try beam.get(?u32, term, .{});
+///     if (x) |value| { return value + 1; } else { return 47; }
 /// }
+/// """
+/// 
+/// test "get optional" do
+///   assert 48 = get_optional_example(47)
+///   assert 47 = get_optional_example(nil)
+/// end
+/// ```
+/// 
+/// ### pid
+///
+/// - accepts `t:pid/0`
+///
+/// #### Example
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn get_pid_example(term: beam.term) !void {
+///     const pid = try beam.get(beam.pid, term, .{});
+///     try beam.send(pid, .foo, .{});
+/// }
+/// """
+/// 
+/// test "get pid" do
+///   assert :ok = get_pid_example(self())
+///   assert_receive :foo
+/// end
 /// ```
 ///
 /// ## Supported options
@@ -417,10 +561,38 @@ pub const get = get_.get;
 /// ### [`term`](#term)
 /// - no conversion is performed
 /// - this type is necessary for recursive make operations
+/// 
+/// #### Example
+/// 
+/// ```elixir
+/// ~Z"""
+/// pub fn make_term_example(term: beam.term) beam.term {
+///     return beam.make(term, .{});
+/// }
+/// """
+/// 
+/// test "make term" do
+///   assert 47 = make_term_example(47)
+/// end
+/// ```
 ///
 /// ### `void`
 /// - returns atom `:ok`
 /// - supporting this type makes metaprogramming easier.
+/// 
+/// #### Example
+/// 
+/// ```elixir
+/// ~Z"""
+/// pub fn make_void_example() beam.term {
+///    const v: void = undefined;
+///    return beam.make(v, .{});
+/// }
+/// """
+/// test "make void" do
+///   assert :ok = make_void_example()
+/// end
+/// ```
 ///
 /// ### [`pid`](#pid)
 /// - convrted into a [`term`](#term) representing `t:pid/0`
@@ -910,7 +1082,7 @@ pub const Payload = payload.Payload;
 /// struct (possibly anonymous) with the following fields:
 ///
 /// - `allocator`: which allocator should be used to clean up allocations.
-///   optional, defaults to the threadlocal [`allocator`](#allocator) value
+///   optional, defaults to the threadlocal [`beam.context.allocator`](#context) value
 /// - `size`: if the value does not have a defined size, for example a `Many`
 ///   pointer, you must provide this value.
 ///
@@ -950,16 +1122,16 @@ pub const Compared = enum { lt, eq, gt };
 
 /// <!-- topic: Term Management -->
 /// compares two terms, following Elixir's compare interface.
-/// 
+///
 /// #### Example
-/// 
-/// ```elixir 
+///
+/// ```elixir
 /// ~Z"""
 /// pub fn compare_example(lhs: beam.term, rhs: beam.term) beam.Compared {
 ///     return beam.compare(lhs, rhs);
 /// }
 /// """
-/// 
+///
 /// test "beam.compare" do
 ///   assert :gt == compare_example(:infinity, 47)
 ///   assert :eq == compare_example(self(), self())
@@ -1109,8 +1281,8 @@ pub const monitor = e.ErlNifMonitor;
 /// Synonym for [`e.enif_alloc_env`](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc_env)
 ///
 /// generally, zigler takes care of environments for you, but there may be cases
-/// where you have to manually allocate an environment.  These are `process
-/// independent environments` which manage their own heaps.
+/// where you have to manually allocate an environment.  These are *process
+/// independent environments* which manage their own heaps.
 ///
 /// use your own process independent environment, most `beam` functions can take a
 /// `.env` option which lets you specify the environment; these functions generally
@@ -1234,6 +1406,7 @@ const InitEnvOpts = struct { allocator: ?std.mem.Allocator = null };
 /// pub fn independent_context_example(pid: beam.pid) !void {
 ///    beam.independent_context(.{});
 ///    try beam.send(pid, beam.context.mode, .{});
+///    beam.free_env(beam.context.env);
 /// }
 /// """
 ///
@@ -1360,7 +1533,7 @@ pub const ThreadedCallbacks = threads.Callbacks;
 const yield_ = @import("yield.zig");
 
 /// <!-- topic: Concurrency -->
-/// periodic `check-in` function for long-running nifs.
+/// periodic check-in function for long-running nifs.
 ///
 /// always returns `error.processterminated` if the calling
 /// process has been terminated.
@@ -1368,7 +1541,7 @@ const yield_ = @import("yield.zig");
 /// Note that the environment of the function may be invalid
 /// so if you must send information back to the BEAM on a
 /// process termination event, you should have a beam environment
-/// allocated to communicate with the BEAM using `send/0`
+/// allocated to communicate with the BEAM using [`send`](#send)
 ///
 /// For yielding nifs (not implemented yet):
 ///
@@ -1434,6 +1607,27 @@ pub fn WrappedResult(comptime FunctionType: type) type {
 /// <!-- topic: Exceptions -->
 /// The equivalent of [`error`](https://www.erlang.org/doc/man/erlang.html#error-1)
 /// in erlang.
+/// 
+/// > ### special-cased exception terms {: .info }
+/// >
+/// > N.B. certain erlang terms are caught and handled as special cases
+/// > in elixir, see the following example:
+/// 
+/// #### Example
+/// 
+/// ```elixir
+/// ~Z"""
+/// pub fn raise_exception_example() beam.term {
+///     return beam.raise_exception(.badarg, .{});
+/// }
+/// """
+/// 
+/// test "raise_exception" do
+///   assert_raise ArgumentError, fn -> 
+///     raise_exception_example()
+///   end
+/// end
+/// ``` 
 pub fn raise_exception(reason: anytype, opts: anytype) term {
     return term{ .v = e.enif_raise_exception(options.env(opts), make(reason, opts).v) };
 }
@@ -1459,9 +1653,29 @@ fn has_processterminated(comptime T: type) bool {
 /// - `data` should be a struct (possibly anonymous) that represents the Elixir
 ///   exception payload.
 ///
-/// > #### Exception structs are not checked {: .warning }
+/// #### Example
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn raise_example() beam.term {
+///     return beam.raise_elixir_exception(
+///         "CompileError",
+///         .{.file = "foo", .line = 42, .description = "something went wrong"},
+///         .{});
+/// }
+/// """
+///
+/// test "raise_elixir_execption" do
+///   assert_raise CompileError, "foo:42: something went wrong", fn ->
+///     raise_example()
+///   end
+/// end
+/// ```
+///
+/// > #### Exception structs are not type checked {: .warning }
 /// >
-/// > The validity of the exception struct is not checked when using this function.
+/// > Unlike code in elixir, the validity of the exception struct is not
+/// > checked when using this function.
 pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: anytype) term {
     if (@typeInfo(@TypeOf(data)) != .Struct) {
         @compileError("elixir exceptions must be structs");
@@ -1478,11 +1692,11 @@ pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: 
     _ = e.enif_make_map_put(env_, initial.v, make_into_atom("__struct__", opts).v, make_into_atom(name, opts).v, &exception);
     _ = e.enif_make_map_put(env_, exception, make_into_atom("__exception__", opts).v, make(true, opts).v, &exception);
 
-    return raise_exception(.{ .v = exception }, opts);
+    return raise_exception(term{ .v = exception }, opts);
 }
 
 /// <!-- topic: Exceptions -->
-/// Raises a special error datatype that contains an term-encoded stacktrace
+/// Raises with a special error datatype that contains an term-encoded stacktrace
 /// datastructure.  See also [`make_stacktrace`](#make_stacktrace)
 ///
 /// This datastructure is designed to be concatenated onto the existing

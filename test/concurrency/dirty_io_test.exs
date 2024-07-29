@@ -13,7 +13,7 @@ defmodule ZiglerTest.Concurrency.DirtyIoTest do
       // following code triggered when process is killed.
       defer {
           const env = beam.alloc_env();
-          beam.send(pid, .killed, .{.env = env}) catch unreachable;
+          beam.send(pid, .killed, .{ .env = env }) catch unreachable;
           beam.free_env(env);
       }
 
