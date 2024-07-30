@@ -159,7 +159,7 @@ pub const payload = @import("payload.zig");
 ///
 /// test "get big integer" do
 ///   # note we must pass as a binary, with width 128 bits.
-///   assert 0x1_0000_0000_0000_0000 = 
+///   assert 0x1_0000_0000_0000_0000 =
 ///     get_big_integer_example(
 ///       <<0xffff_ffff_ffff_ffff :: native-unsigned-64, 0::64>>
 ///     )
@@ -180,11 +180,11 @@ pub const payload = @import("payload.zig");
 ///     return try beam.get(EnumType, term, .{});
 /// }
 /// """
-/// 
+///
 /// test "get integer enum" do
 ///   assert :foo = get_enum_example(0)
 /// end
-/// 
+///
 /// test "get atom enum" do
 ///   assert :foo = get_enum_example(:foo)
 /// end
@@ -200,7 +200,7 @@ pub const payload = @import("payload.zig");
 /// ```elixir
 /// ~Z"""
 /// const NanError = error {nanerror};
-/// 
+///
 /// pub fn get_float_example(term: beam.term) !f32 {
 ///     const x: f32 = try beam.get(f32, term, .{});
 ///     if (!std.math.isNan(x)) {
@@ -210,20 +210,20 @@ pub const payload = @import("payload.zig");
 ///     }
 /// }
 /// """
-/// 
+///
 /// test "get real float" do
 ///   assert 48.0 = get_float_example(47.0)
 /// end
-/// 
+///
 /// test "get infinite float" do
 ///   assert :infinity = get_float_example(:infinity)
 ///   assert :neg_infinity = get_float_example(:neg_infinity)
 /// end
-/// 
+///
 /// test "get nan float" do
 ///   assert_raise ErlangError, fn -> get_float_example(:NaN) end
 /// end
-/// 
+///
 /// ```
 ///
 /// ### struct
@@ -242,33 +242,33 @@ pub const payload = @import("payload.zig");
 ///     right: packed struct{ value: u32 },
 ///     op: enum(u8) {add, sub}
 /// };
-/// 
+///
 /// pub fn get_struct_example(term: beam.term) !u32 {
 ///    const operation = try beam.get(MathType, term, .{});
-///    switch (operation.op) {  
+///    switch (operation.op) {
 ///       .add => return operation.left.value + operation.right.value,
 ///       .sub => return operation.left.value - operation.right.value,
 ///    }
 /// }
 /// """
-/// 
+///
 /// test "get struct" do
 ///   assert 49 = get_struct_example(%{
-///     op: :add, 
-///     left: %{value: 47}, 
+///     op: :add,
+///     left: %{value: 47},
 ///     right: %{value: 2}})
-/// 
+///
 ///   assert 42 = get_struct_example(%{
-///     op: :sub, 
-///     left: %{value: 47}, 
+///     op: :sub,
+///     left: %{value: 47},
 ///     right: %{value: 5}})
 /// end
-/// 
+///
 /// test "get struct as packed binary" do
 ///   assert 49 = get_struct_example(<<47::native-32, 2::native-32, 0::8, 0::56>>)
 /// end
 /// ```
-/// 
+///
 /// > #### packed and extern structs {: .warning }
 /// >
 /// > if you are doing binary encoding of these values, be mindful of native-endianness
@@ -288,7 +288,7 @@ pub const payload = @import("payload.zig");
 ///    return try beam.get(bool, term, .{});
 /// }
 /// """
-/// 
+///
 /// test "get bool" do
 ///   assert get_bool_example(true)
 ///   refute get_bool_example(false)
@@ -318,11 +318,11 @@ pub const payload = @import("payload.zig");
 ///     return sum;
 /// }
 /// """
-/// 
+///
 /// test "get array" do
 ///   assert 144 = get_array_example([%{v: 47}, %{v: 48}, %{v: 49}])
 /// end
-/// 
+///
 /// test "get array as binary" do
 ///   assert 144 = get_array_example(<<47::native-32, 48::native-32, 49::native-32>>)
 /// end
@@ -341,31 +341,31 @@ pub const payload = @import("payload.zig");
 /// > via the `allocator.destroy` function, not `allocator.free`
 ///
 /// #### Example
-/// 
+///
 /// ```elixir
 /// # see previous example cell for type definitions
 /// ~Z"""
 /// pub fn get_struct_pointer_example(term: beam.term) !u32 {
 ///     const structptr = try beam.get(*PackedValue, term, .{});
 ///     defer beam.allocator.destroy(structptr);
-/// 
+///
 ///     return structptr.v;
 /// }
-/// 
+///
 /// pub fn get_array_pointer_example(term: beam.term) !u32 {
 ///    const arrayptr = try beam.get(*[3]PackedValue, term, .{});
 ///    defer beam.allocator.destroy(arrayptr);
-/// 
+///
 ///    var sum: u32 = 0;
 ///    for (arrayptr.*) |item| { sum += item.v; }
 ///    return sum;
 /// }
 /// """
-/// 
+///
 /// test "get struct pointer" do
 ///   assert 47 = get_struct_pointer_example(%{v: 47})
 /// end
-/// 
+///
 /// test "get array pointer" do
 ///   assert 144 = get_array_pointer_example(<<47::native-32, 48::native-32, 49::native-32>>)
 /// end
@@ -377,7 +377,7 @@ pub const payload = @import("payload.zig");
 /// - note that slice carries a runtime length
 /// - supports list of any type
 /// - supports binary of any type that can be represented as a fixed size binary.
-/// 
+///
 /// > ### Allocation warning {: .warning }
 /// >
 /// > it is the caller's responsibility to free the memory allocated by this function,
@@ -395,11 +395,11 @@ pub const payload = @import("payload.zig");
 ///    return sum;
 /// }
 /// """
-/// 
+///
 /// test "get slice" do
 ///   assert 144 = get_slice_example([%{v: 47}, %{v: 48}, %{v: 49}])
 /// end
-/// 
+///
 /// test "get slice as binary" do
 ///   assert 144 = get_slice_example(<<47::native-32, 48::native-32, 49::native-32>>)
 /// end
@@ -434,11 +434,11 @@ pub const payload = @import("payload.zig");
 ///   return sum;
 /// }
 /// """
-/// 
+///
 /// test "get many item pointer" do
 ///   assert 144 = get_many_item_pointer_example([47, 48, 49])
 /// end
-/// 
+///
 /// test "get many item pointer as binary" do
 ///   assert 144 = get_many_item_pointer_example(<<47::native-32, 48::native-32, 49::native-32>>)
 /// end
@@ -473,11 +473,11 @@ pub const payload = @import("payload.zig");
 ///   return sum;
 /// }
 /// """
-/// 
+///
 /// test "get c pointer" do
 ///   assert 144 = get_c_pointer_example([47, 48, 49])
 /// end
-/// 
+///
 /// test "get c pointer as binary" do
 ///   assert 144 = get_c_pointer_example(<<47::native-32, 48::native-32, 49::native-32>>)
 /// end
@@ -486,7 +486,7 @@ pub const payload = @import("payload.zig");
 /// ### optional
 ///
 /// - accepts `t:atom/0` `nil` as well as whatever the child type is.
-/// 
+///
 /// > ### nil vs null {: .warning }
 /// >
 /// > note that zig uses `null` as its nil value, but zigler only accepts atom `nil`
@@ -501,13 +501,13 @@ pub const payload = @import("payload.zig");
 ///     if (x) |value| { return value + 1; } else { return 47; }
 /// }
 /// """
-/// 
+///
 /// test "get optional" do
 ///   assert 48 = get_optional_example(47)
 ///   assert 47 = get_optional_example(nil)
 /// end
 /// ```
-/// 
+///
 /// ### pid
 ///
 /// - accepts `t:pid/0`
@@ -521,7 +521,7 @@ pub const payload = @import("payload.zig");
 ///     try beam.send(pid, .foo, .{});
 /// }
 /// """
-/// 
+///
 /// test "get pid" do
 ///   assert :ok = get_pid_example(self())
 ///   assert_receive :foo
@@ -561,16 +561,16 @@ pub const get = get_.get;
 /// ### [`term`](#term)
 /// - no conversion is performed
 /// - this type is necessary for recursive make operations
-/// 
+///
 /// #### Example
-/// 
+///
 /// ```elixir
 /// ~Z"""
 /// pub fn make_term_example(term: beam.term) beam.term {
 ///     return beam.make(term, .{});
 /// }
 /// """
-/// 
+///
 /// test "make term" do
 ///   assert 47 = make_term_example(47)
 /// end
@@ -579,9 +579,9 @@ pub const get = get_.get;
 /// ### `void`
 /// - returns atom `:ok`
 /// - supporting this type makes metaprogramming easier.
-/// 
+///
 /// #### Example
-/// 
+///
 /// ```elixir
 /// ~Z"""
 /// pub fn make_void_example() beam.term {
@@ -596,9 +596,9 @@ pub const get = get_.get;
 ///
 /// ### [`pid`](#pid)
 /// - converted into a [`term`](#term) representing `t:pid/0`
-/// 
+///
 //// #### Example
-/// 
+///
 /// ```elixir
 /// ~Z"""
 /// pub fn make_pid_example(pid: beam.pid) beam.term {
@@ -630,24 +630,24 @@ pub const get = get_.get;
 /// pub fn make_integer_example(integer: u32) beam.term {
 ///   return beam.make(integer + 1, .{});
 /// }
-/// 
+///
 /// pub fn make_big_integer_example(integer: u65) beam.term {
 ///   return beam.make(integer + 1, .{});
 /// }
-/// 
+///
 /// pub fn make_comptime_integer_example() beam.term {
 ///   return beam.make(47, .{});
 /// }
 /// """
-/// 
+///
 /// test "make integer" do
 ///   assert 48 = make_integer_example(47)
 /// end
-/// 
+///
 /// test "make big integer" do
 ///   assert <<0::64, 1::64-native>> = make_big_integer_example(0xFFFF_FFFF_FFFF_FFFF)
 /// end
-/// 
+///
 /// test "make comptime integer" do
 ///   assert 47 = make_comptime_integer_example()
 /// end
@@ -667,19 +667,19 @@ pub const get = get_.get;
 /// pub fn make_float_example(float: f32) beam.term {
 ///   return beam.make(float + 1.0, .{});
 /// }
-/// 
+///
 /// pub fn make_comptime_float_example() beam.term {
 ///   return beam.make(47.0, .{});
 /// }
 /// """
-/// 
+///
 /// test "make float" do
 ///   assert 48.0 = make_float_example(47.0)
 ///   assert :infinity = make_float_example(:infinity)
 ///   assert :neg_infinity = make_float_example(:neg_infinity)
 ///   assert :NaN = make_float_example(:NaN)
 /// end
-/// 
+///
 /// test "make comptime float" do
 ///   assert 47.0 = make_comptime_float_example()
 /// end
@@ -697,7 +697,7 @@ pub const get = get_.get;
 ///   return beam.make(!value, .{});
 /// }
 /// """
-/// 
+///
 /// test "make bool" do
 ///   assert make_bool_example(false)
 ///   refute make_bool_example(true)
@@ -718,30 +718,30 @@ pub const get = get_.get;
 /// pub fn make_enum_example(value: MakeEnums) beam.term {
 ///     return beam.make(value, .{});
 /// }
-/// 
+///
 /// pub fn make_enum_as_int_example(value: MakeEnums) beam.term {
 ///     return beam.make(value, .{.as = .integer});
 /// }
-/// 
+///
 /// const MakeErrorSet = error { MakeEnumError };
 /// pub fn make_error_example() beam.term {
 ///     return beam.make(error.MakeEnumError, .{});
 /// }
-/// 
+///
 /// pub fn make_enum_literal_example() beam.term {
 ///     return beam.make(.foobarbaz, .{});
 /// }
 /// """
-/// 
+///
 /// test "make enum" do
 ///   assert :foo = make_enum_example(:foo)
 ///   assert 0 = make_enum_as_int_example(:foo)
 /// end
-/// 
+///
 /// test "make error" do
 ///   assert :MakeEnumError = make_error_example()
 /// end
-/// 
+///
 /// test "make enum literal" do
 ///   assert :foobarbaz = make_enum_literal_example()
 /// end
@@ -765,16 +765,16 @@ pub const get = get_.get;
 /// pub fn make_null_example() beam.term {
 ///     return beam.make(null, .{});
 /// }
-/// 
+///
 /// pub fn make_optional_example(value: ?u32) beam.term {
 ///     return beam.make(value, .{});
 /// }
 /// """
-/// 
+///
 /// test "make null" do
 ///   assert is_nil(make_null_example())
 /// end
-/// 
+///
 /// test "make optional" do
 ///   assert is_nil(make_optional_example(nil))
 ///   assert 47 = make_optional_example(47)
@@ -793,6 +793,9 @@ pub const get = get_.get;
 ///   data, by setting `as` option to `.binary`
 /// - if the array's element is u8 and you would prefer outputting as a list,
 ///   setting `as` option to `.list` will do this.
+/// - to specify the internal encoding of the array, pass to `as` a struct
+///   with the field `list`; the value of the list field should be the encoding
+///   of the internal terms.
 ///
 /// #### Examples
 ///
@@ -802,31 +805,42 @@ pub const get = get_.get;
 ///     const array = [_]u32{47, 48, 49};
 ///     return beam.make(array, .{});
 /// }
-/// 
+///
 /// pub fn make_array_u8_example() beam.term {
 ///     const array = "foo";
 ///     return beam.make(array, .{});
 /// }
-/// 
+///
 /// pub fn make_array_binary_example() beam.term {
 ///     const array = [_]u32{47, 48, 49};
 ///     return beam.make(array, .{.as = .binary});
 /// }
-/// 
+///
 /// pub fn make_array_u8_list_example() beam.term {
 ///     const array = "foo";
 ///     return beam.make(array, .{.as = .list});
 /// }
+///
+/// pub fn make_array_internal_encoding_example() beam.term {
+///     const aoa = [_][2]u32{[2]u32{47, 48}, [2]u32{49, 50}};
+///     return beam.make(aoa, .{.as = .{.list = .binary}});
+/// }
 /// """
-/// 
+///
 /// test "make u8 array" do
 ///   assert "foo" = make_array_u8_example()
 ///   assert [102, 111, 111] = make_array_u8_list_example()
 /// end
-/// 
+///
 /// test "make u32 array" do
 ///   assert [47, 48, 49] = make_array_example()
 ///   assert <<47::native-32, 48::native-32, 49::native-32>> = make_array_binary_example()
+/// end
+///
+/// test "make array with internal encoding" do
+///   assert [
+///     <<47::native-32, 48::native-32>>,
+///     <<49::native-32, 50::native-32>>] = make_array_internal_encoding_example()
 /// end
 /// ```
 ///
@@ -834,13 +848,28 @@ pub const get = get_.get;
 ///
 /// - supports structs with fields of any term that can be encoded using [`make`](#make)
 /// - outputs as a `t:map/0` with atom keys and the encoded terms as values
-/// - for packed or extern structs, supports binary data by setting `as`
-///   option to `.binary`
-/// - encoding options are passed recursively, if something more complex is needed,
-///   encoding should be performed manually.
+/// - for `packed` or `extern` structs, supports binary data by setting `as`
+///   option to `.binary`.  `extern` structs default to map encoding, `packed` structs
+///   default to binary encoding.  All structs can be forced to `map` encoding by
+///   passing setting `.as = .map`.
+/// - encoding options can be specified by assigning `as` a struct with the
+///   field `map`; the value of the map field should be a struct with keys matching
+///   the struct fields and values being the encoding options for those fields.
+///   It's legal to omit a field from this specification, in which case the encoding
+///   will be `.default`.
 /// - supports anonymous structs
-///
-/// #### Examples
+/// - supports direct output as elixir structs using the `as` option
+///   > #### Elixir structs {: .info }
+///   >
+///   > - non-elixir alias-style structs are not currently supported, but will be
+///   >   in a future release
+///   > - nested output formatting is not currently supported, but will be in a
+///   >   future release.
+///   > - if you need to output a struct that is a multilevel alias, use `@` syntax
+///   >   e.g. `.{.as = .@"Foo.Bar.Baz"}`
+///   >
+///   > the fields and types on the fields are not checked at compile time or
+///   > runtime, so use with caution.
 ///
 /// #### Examples
 ///
@@ -849,35 +878,66 @@ pub const get = get_.get;
 /// pub fn make_struct_example() beam.term {
 ///   return beam.make(.{.foo = 123, .bar = "bar", .baz = .baz}, .{});
 /// }
-/// 
+///
 /// pub fn make_elixir_struct_example() beam.term {
 ///   return beam.make(.{.first = 1, .last = 10, .step = 1}, .{.as = .Range});
 /// }
+///
+/// const MakePacked = packed struct { value: u32 };
+///
+/// pub fn make_packed_struct() beam.term {
+///   return beam.make(MakePacked{.value = 47}, .{});
+/// }
+///
+/// pub fn make_struct_nested() beam.term {
+///     const result = .{
+///         .list = [2]u32{47, 48},
+///         .binary = [2]u32{47, 48}
+///     };
+///     return beam.make(result, .{.as = .{.map = .{.binary = .binary}}});
+/// }
 /// """
-/// 
+///
+/// test "make general struct" do
+///   assert %{foo: 123, bar: "bar", baz: :baz} = make_struct_example()
+/// end
+///
 /// test "make elixir struct" do
 ///   assert 1..10 = make_elixir_struct_example()
+/// end
+///
+/// test "make packed struct" do
+///   assert <<47::native-32>> = make_packed_struct()
+/// end
+///
+/// test "make struct with nested format info" do
+///   assert %{
+///     binary: <<47::native-32, 48::native-32>>,
+///     list: [47, 48]
+///   } = make_struct_nested()
 /// end
 /// ```
 ///
 /// ### tuples
 ///
-/// - supports tuples with any term that can be encoded using [`make`](#make)
+/// - supports zig tuples with any term that can be encoded using [`make`](#make)
 /// - outputs as a `t:tuple/0`.
-/// - encoding options are passed recursively, if something more complex is needed,
-///   encoding should be performed manually.
-/// - note that error atom should be encoded as `.@"error"`
+/// - encoding will always proceed using `.default` encoding.  A scheme to specify
+///   encoding options is planned in the future.
+/// - note that the error atom should be encoded as `.@"error"`; you may also
+///   use [`beam.make_error_atom(...)`](#make_error_atom)
 ///
 /// #### Examples
 ///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   return beam.make(.{.ok, "foo", 47}, .{});
+/// ```elixir
+/// ~Z"""
+/// pub fn make_tuple_example() beam.term {
+///    return beam.make(.{.ok, "foo", 47}, .{});
 /// }
-/// ```
-///
-/// ```
-/// do_make() # -> {:ok, "foo", 47}
+/// """
+/// test "make tuple" do
+///   assert {:ok, "foo", 47} = make_tuple_example()
+/// end
 /// ```
 ///
 /// ### single-item-pointer
@@ -886,19 +946,21 @@ pub const get = get_.get;
 /// - these are only supported because they are assumed to be pointers to
 ///   mutable data
 /// - content will be dereferenced and encoded as if it were the child type
-/// - `as` rules (see [arrays](#make-arrays)) apply.
+/// - `as` rules apply (see [arrays](#make-arrays) and [structs](#make-structs)).
 ///
 /// #### Examples
 ///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   const array = [_]i32{47, 48, 49}
-///   return beam.make(&array, .{});
+/// ```elixir
+/// ~Z"""
+/// pub fn make_pointer_example() beam.term {
+///     const array = [_]u32{47, 48, 49};
+///     return beam.make(&array, .{});
 /// }
-/// ```
+/// """
 ///
-/// ```
-/// do_make() # -> [47, 48, 49]
+/// test "make pointer" do
+///   assert [47, 48, 49] = make_pointer_example()
+/// end
 /// ```
 ///
 /// ### slice
@@ -915,40 +977,44 @@ pub const get = get_.get;
 ///
 /// #### Examples
 ///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   const slice = [_]i32{47, 48, 49}[0..]; // note this is now a slice
-///   return beam.make(&slice, .{});
+/// ```elixir
+/// ~Z"""
+/// pub fn make_slice_example(slice: []u32) beam.term {
+///    for (slice) |*item| { item.* += 1; }
+///    return beam.make(slice, .{});
 /// }
-/// ```
 ///
-/// ```
-/// do_make() # -> [47, 48, 49]
+/// pub fn make_slice_binary_example(slice: []u32) beam.term {
+///   return beam.make(slice, .{.as = .binary});
+/// }
+/// """
+///
+/// test "make slice" do
+///   assert [48, 49, 50] = make_slice_example([47, 48, 49])
+/// end
+///
+/// test "make slice as binary" do
+///   assert <<47::native-32, 48::native-32, 49::native-32>> = make_slice_binary_example([47, 48, 49])
+/// end
 /// ```
 ///
 /// ### many-item-pointer
 ///
-/// - only supported if the pointer is sentinel-terminated.
-/// - outputs as a list of the encoded terms
-/// - pointers of `u8` default to outputting binary, this is the only exception
-///   to the above rule.
-/// - if the pointers's element is integers, floats, packed or extern structs,
-///   or arrays that support binaries, then the slice can be output as binary
-///   data, by setting `as` option to `.binary`
+/// - only supports [*:0]u8 and [*:null]?Pointer.
 /// - `as` rules (see [arrays](#make-arrays)) apply.
 ///
 /// #### Examples
-///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   const slice = [_]i32{47, 48, 49, 0}[0..];
-///   const ptr = @ptrCast([*:0], &slice.ptr);
-///   return beam.make(&slice, .{});
+/// ```elixir
+/// ~Z"""
+/// pub fn make_many_item_pointer_example(pointer: []u8) beam.term {
+///   pointer[5] = 0;
+///   const truncated: [*:0]u8 = @ptrCast(pointer.ptr);
+///   return beam.make(truncated, .{});
 /// }
-/// ```
-///
-/// ```
-/// do_make() # -> [47, 48, 49]
+/// """
+/// test "make many item pointer" do
+///   assert "hello" = make_many_item_pointer_example("hello world")
+/// end
 /// ```
 ///
 /// ### cpointer
@@ -963,27 +1029,22 @@ pub const get = get_.get;
 ///
 /// #### Examples
 ///
-/// ```zig
-/// pub fn do_make() beam.term {
-///   const slice = [_]i32{47, 48, 49, 0}[0..];
-///   const ptr = @ptrCast([*:0], &slice.ptr);
-///   return beam.make(&slice, .{});
+/// ```elixir
+/// ~Z"""
+/// pub fn make_c_pointer_example(pointer: []u8) beam.term {
+///   pointer[5] = 0;
+///   const truncated: [*c]u8 = @ptrCast(pointer.ptr);
+///   return beam.make(truncated, .{});
 /// }
-/// ```
+/// """
 ///
-/// ```
-/// do_make() # -> [47, 48, 49]
+/// test "make c pointer" do
+///  assert "hello" = make_c_pointer_example("hello world")
+/// end
 /// ```
 pub const make = make_.make;
 
 // special makers
-
-/// <!-- topic: Term Management -->
-/// turns a [`e.ErlNifPid`](https://www.erlang.org/doc/man/erl_nif.html#ErlNifPid)
-/// into a `t:pid/0` term.
-///
-/// This is a thin wrapper over [`e.enif_make_pid`](https://www.erlang.org/doc/man/erl_nif.html#enif_make_pid).
-pub const make_pid = make_.make_pid;
 
 /// <!-- topic: Term Management; args: string -->
 /// turns a `[]const u8` into a the corresponding `t:atom/0` term.
@@ -992,36 +1053,116 @@ pub const make_pid = make_.make_pid;
 /// vm atom size limit (255 bytes)
 ///
 /// This is a thin wrapper over [`e.enif_make_atom_len`](https://www.erlang.org/doc/man/erl_nif.html#enif_make_atom_len).
+///
+/// > ### Atom size limit {: .warning }
+/// >
+/// > The BEAM VM has a limit of 255 bytes for atom size.  This function does not protect against this
+/// > and the API may change to accomodate this in the future.
+///
+/// > ### Atom table exhaustion {: .warning }
+/// >
+/// > The BEAM VM has a limit of 1_048_576 atoms.  This function does not provide any protection against
+/// > atom table exhaustion.  A future version will protect against this case.
+///
+/// #### Example
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn make_into_atom_example() beam.term {
+///    return beam.make_into_atom("foo", .{});
+/// }
+/// """
+///
+/// test "make into atom" do
+///  assert :foo = make_into_atom_example()
+/// end
+/// ```
 pub const make_into_atom = make_.make_into_atom;
 
 /// <!-- topic: Term Management -->
 /// returns the empty list term `[]`.
 ///
 /// This is a thin wrapper over [`e.enif_make_empty_list`](https://www.erlang.org/doc/man/erl_nif.html#enif_make_empty_list).
+///
+/// #### Example
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn make_empty_list_example() beam.term {
+///   return beam.make_empty_list(.{});
+/// }
+/// """
+///
+/// test "make empty list" do
+///   assert [] = make_empty_list_example()
+/// end
+/// ```
 pub const make_empty_list = make_.make_empty_list;
 
-/// <!-- topic: Term Management; args: _, head, tail -->
+/// <!-- topic: Term Management; args: head, tail, opts -->
 /// performs a list cons operation for `head` and `tail` variables
 ///
 /// This is a thin wrapper over [`e.enif_make_list_cell`](https://www.erlang.org/doc/man/erl_nif.html#enif_make_list_cell).
+///
+/// #### Example
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn make_list_cell_example() beam.term {
+///    return beam.make_list_cell(47, beam.make_empty_list(.{}), .{});
+/// }
+/// """
+///
+/// test "make list cell" do
+///   assert [47] = make_list_cell_example()
+/// end
+/// ```
 pub const make_list_cell = make_.make_list_cell;
 
 /// <!-- topic: Term Management -->
 /// shortcut for `make(.@"error", .{})`
+///
+/// #### Example
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn make_error_atom_example() beam.term {
+///   return beam.make_error_atom(.{});
+/// }
+/// """
+///
+/// test "make error atom" do
+///   assert :error = make_error_atom_example()
+/// end
+/// ```
 pub const make_error_atom = make_.make_error_atom;
 
 /// <!-- topic: Term Management; args: value, options -->
 /// shortcut for `make(env, .{.@"error", value}, options)`
 pub const make_error_pair = make_.make_error_pair;
 
-/// <!-- topic: Term Management -->
+/// <!-- topic: Term Management; args: options -->
 /// causes the VM to generate a new reference term
 /// equivalent to `Kernel.make_ref/0`
 ///
 /// This is a thin wrapper over [`e.enif_make_ref`](https://www.erlang.org/doc/man/erl_nif.html#enif_make_ref).
+///
+/// #### Example
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn make_ref_example() beam.term {
+///     return beam.make_ref(.{});
+/// }
+/// """
+///
+/// test "make_ref" do
+///   assert is_reference(make_ref_example())
+/// end
+/// ```
 pub const make_ref = make_.make_ref;
 
-/// <!-- topic: Term Management -->
+/// <!-- topic: Term Management; args: _, options -->
 ///
 /// converts a zig `std.builtin.StackTrace` into a special term
 /// that is designed to be translated and concatenated onto a BEAM
@@ -1041,7 +1182,7 @@ pub const make_ref = make_.make_ref;
 /// ```
 pub const make_stacktrace = stacktrace.to_term;
 
-/// <!-- topic: Term Management -->
+/// <!-- topic: Term Management; args: options -->
 /// returns a [`pid`](#pid) value that represents the current or
 /// parent process.
 ///
@@ -1053,16 +1194,30 @@ pub const make_stacktrace = stacktrace.to_term;
 /// > callback contexts.  For threaded processes, it will return the
 /// > process that spawned the thread, whether or not that process is
 /// > still alive.
+///
+/// Example:
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn self_example() !beam.pid {
+///   return try beam.self(.{});
+/// }
+/// """
+///
+/// test "self" do
+///   assert self() == self_example()
+/// end
+/// ```
 pub const self = processes.self;
 
-/// <!-- topic: Term Management; args: _, _, data -->
+/// <!-- topic: Term Management; args: _, data, options -->
 /// sends `data` (as a term) to a target process' mailbox.
 ///
 /// equivalent to `Kernel.send/2`
 ///
 /// This function is a context-aware wrapper over
 /// [`e.enif_send`](https://www.erlang.org/doc/man/erl_nif.html#enif_send).
-/// that also serializes the message term using [`make`](#make)
+/// that also formats the message term using [`make`](#make)
 ///
 /// Note that `send` is designed so that you can switch concurrency modes
 /// without having to change your code.
@@ -1074,6 +1229,8 @@ pub const self = processes.self;
 /// - `persist` (tuple of `beam.term`).  Persists the terms into the new
 ///   environment (see [`clear_env`](#clear_env)).  It is not an error to
 ///   pass `persist` in a process-bound context, though that will no-op.
+/// - `as`: any formatting options to be passed when making the term
+///   to be sent.
 ///
 /// ### Return value
 ///
@@ -1089,8 +1246,12 @@ pub const self = processes.self;
 /// >
 /// > in the case of raw nifs, use `e.enif_send` directly instead.
 /// >
-/// > in the case of non-process-bound threads, if you use `independent_context`
-/// > to initialize the environment, you can use `send` as normal.
+/// > in the case of non-process-bound threads or raw calls, if you use
+/// > `independent_context` to initialize the environment, you can use
+/// > `send` as normal.
+/// >
+/// > The safety characteristics of raw and non-process-bound sending may
+/// > be subject to change in future releases of Zigler.
 ///
 /// > ### clearing your environment {: .info }
 /// >
@@ -1101,6 +1262,22 @@ pub const self = processes.self;
 /// > If you are certain that the send operation is the last operation in your
 /// > function call, you may call the function as `send(data, .{.clear = false})`
 /// > and the clear_env function will not be called.
+///
+/// #### Example
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn send_example() !void {
+///     const self = try beam.self(.{});
+///     try beam.send(self, .{.foo, "bar", 47}, .{});
+/// }
+/// """
+///
+/// test "send" do
+///   send_example()
+///   assert_receive {:foo, "bar", 47}
+/// end
+/// ```
 pub const send = processes.send;
 
 // interfacing with functions
@@ -1648,31 +1825,32 @@ pub fn WrappedResult(comptime FunctionType: type) type {
 /// <!-- topic: Exceptions -->
 /// The equivalent of [`error`](https://www.erlang.org/doc/man/erlang.html#error-1)
 /// in erlang.
-/// 
+///
 /// > ### special-cased exception terms {: .info }
 /// >
 /// > N.B. certain erlang terms are caught and handled as special cases
 /// > in elixir, see the following example:
-/// 
+///
 /// #### Example
-/// 
+///
 /// ```elixir
 /// ~Z"""
 /// pub fn raise_exception_example() beam.term {
 ///     return beam.raise_exception(.badarg, .{});
 /// }
 /// """
-/// 
+///
 /// test "raise_exception" do
-///   assert_raise ArgumentError, fn -> 
+///   assert_raise ArgumentError, fn ->
 ///     raise_exception_example()
 ///   end
 /// end
-/// ``` 
+/// ```
 pub fn raise_exception(reason: anytype, opts: anytype) term {
     return term{ .v = e.enif_raise_exception(options.env(opts), make(reason, opts).v) };
 }
 
+/// <!-- ignore -->
 pub fn thread_not_running(err: anytype) bool {
     if (has_processterminated(@TypeOf(err))) {
         return (err == error.processterminated);

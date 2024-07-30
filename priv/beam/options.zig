@@ -108,6 +108,7 @@ fn MapChildOf(T: type, comptime name: []const u8) type {
             return @TypeOf(.default);
         },
         .Struct => |S| {
+            if (!@hasField(T, name)) return @TypeOf(.default);
             inline for (S.fields) |field| {
                 if (std.mem.eql(u8, field.name, "map")) {
                     const M = field.type;
@@ -116,7 +117,8 @@ fn MapChildOf(T: type, comptime name: []const u8) type {
                             inline for (MT.fields) |mfield| {
                                 if (std.mem.eql(u8, mfield.name, name)) return mfield.type;
                             }
-                            @compileError("field not found in target struct");
+                            const error_msg = std.fmt.comptimePrint("field '{s}' not found in target struct", .{name});
+                            @compileError(error_msg);
                         },
                         else => @compileError("map as definition needs to be a struct"),
                     }

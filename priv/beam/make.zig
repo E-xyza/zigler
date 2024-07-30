@@ -443,8 +443,8 @@ pub fn make_empty_list(opts: anytype) beam.term {
     return .{ .v = e.enif_make_list_from_array(options.env(opts), null, 0) };
 }
 
-pub fn make_list_cell(head: beam.term, tail: beam.term, opts: anytype) beam.term {
-    return .{ .v = e.enif_make_list_cell(options.env(opts), head.v, tail.v) };
+pub fn make_list_cell(head: anytype, tail: beam.term, opts: anytype) beam.term {
+    return .{ .v = e.enif_make_list_cell(options.env(opts), make(head, opts).v, tail.v) };
 }
 
 pub fn make_error_pair(payload: anytype, opts: anytype) beam.term {
