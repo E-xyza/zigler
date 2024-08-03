@@ -5,15 +5,9 @@ Library test status:
 
 ## Installation: Elixir
 
-### Zig dependency
+### Obtaining Zig dependency
 
-Prior to installing Zigler, you should install zig via mix zig.get. To do so, install the minisign and zig.get mix tasks:
-
-`mix archive.install hex minisign` 
-
-`mix archive.install hex zig_get`
-
-And then run `mix zig.get`
+Run `mix zig.get`
 
 ### Main Installation
 
@@ -122,19 +116,16 @@ defmodule Allocations do
   ~Z"""
   const beam = @import("beam");
 
-  pub fn double_atom(string: []u8) beam.term {
-    var double_string = beam.context.allocator.alloc(u8, string.len * 2) catch {
-      return beam.raise_enomem(env);
-    };
-
+  pub fn double_atom(string: []u8) !beam.term {
+    var double_string = try beam.context.allocator.alloc(u8, string.len * 2);
     defer beam.context.allocator.free(double_string);
 
-    for (string) | char, i | {
+    for (string, 0..) | char, i | {
       double_string[i] = char;
       double_string[i + string.len] = char;
     }
 
-    return beam.make_atom(double_string, .{});
+    return beam.make_into_atom(double_string, .{});
   }
   """
 end
@@ -148,32 +139,34 @@ It is a goal for Zigler to make using *it* to bind C libraries easier
 than using C to bind C libraries.  Here is an example:
 
 ```elixir
-defmodule Blas do
-  use Zig,     
-    otp_app: :zigler
-    link_lib: {:system, "blas"},
+if {:unix, :linux} == :os.type() do
+  defmodule Blas do
+    use Zig,     
+      otp_app: :zigler,
+      c: [link_lib: {:system, "blas"}]
+  
+    ~Z"""
+    const beam = @import("beam");
+    const blas = @cImport({
+        @cInclude("cblas.h");
+    });
 
-  ~Z"""
-  const beam = @import("beam");
-  const blas = @cImport({
-    @cInclude("cblas.h");
-  });
-
-  pub fn blas_axpy(a: f64, x: []f64, y: []f64) beam.term {
-    if (x.len != y.len) {
-      return beam.raise_function_clause_error(.{});
+    const BadArgs = error { badarg };
+  
+    pub fn blas_axpy(a: f64, x: []f64, y: []f64) ![]f64 {
+        if (x.len != y.len) return error.badarg;
+    
+        blas.cblas_daxpy(@intCast(x.len), a, x.ptr, 1, y.ptr, 1);
+    
+        return y;
     }
-
-    blas.cblas_daxpy(@intCast(x.len), a, x.ptr, 1, y.ptr, 1);
-
-    return y;
-  }
-  """
-end
-
-test "we can use a blas shared library" do
-  # returns aX+Y
-  assert [11.0, 18.0] == Blas.blas_axpy(3.0, [2.0, 4.0], [5.0, 6.0])
+    """
+  end
+  
+  test "we can use a blas shared library" do
+    # returns aX+Y
+    assert [11.0, 18.0] == Blas.blas_axpy(3.0, [2.0, 4.0], [5.0, 6.0])
+  end
 end
 ```
 
