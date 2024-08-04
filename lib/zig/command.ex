@@ -134,12 +134,15 @@ defmodule Zig.Command do
 
     cond do
       path = find_from_env() ->
+        Logger.info("zig expected (via env variable) in #{path}")
         path
 
       path = find_in_basedir() ->
+        Logger.info("zig expected (via cache) in #{path}")
         path
 
       path = System.find_executable("zig") ->
+        Logger.info("system zig found in #{path}")
         path
 
       true ->
@@ -165,6 +168,9 @@ defmodule Zig.Command do
     {os, arch} = os_info()
 
     zig_executable = Path.join(path, "zig-#{os}-#{arch}-#{@default_version}/zig")
+
+    Logger.info("searching for zig in #{zig_executable}")
+
     if File.exists?(zig_executable), do: zig_executable
   end
 
