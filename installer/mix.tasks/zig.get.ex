@@ -6,8 +6,6 @@ defmodule Mix.Tasks.Zig.Get do
   @moduledoc """
   obtains the Zig compiler toolchain
 
-  It expects the path of the project as an argument.
-
       $ mix zig.get [--version VERSION] [--from FROM] [--os OS] [--arch ARCH] [--public-key PUBLIC_KEY]
 
   the zigler compiler will be downloaded to ZIG_ARCHIVE_PATH/VERSION
@@ -17,8 +15,7 @@ defmodule Mix.Tasks.Zig.Get do
   if FROM is specified, will use the FROM file instead of getting from the internet.
 
   if PUBLIC_KEY is not specified, will attempt to get the public key from 
-  https://ziglang.org/download/ note that obtaining the public key in this fashion is 
-  fragile and provided only for convenience.
+  https://ziglang.org/download/index.json.
 
   if unspecified, ZIG_ARCHIVE_PATH defaults to the user cache path given by
   `:filename.basedir/3` with application name `"zigler"`.
@@ -35,7 +32,7 @@ defmodule Mix.Tasks.Zig.Get do
   - `ZIG_ARCHIVE_PATH`: path to desired directory to achive the zig compiler toolchain.
   """
 
-  defstruct ~w(version path arch os url file verify public_key signature)a
+  defstruct ~w(version path arch os url file verify hash)a
 
   def run(app_opts) do
     # Elixir 1.14 cannot take a list of applications for this function
@@ -43,21 +40,16 @@ defmodule Mix.Tasks.Zig.Get do
 
     :ssl.cipher_suites(:all, :"tlsv1.2")
 
-    opts =
-      app_opts
-      |> parse_opts()
-      |> set_archive_path()
-      |> ensure_tar()
-      |> select_no_verify()
-      |> get_public_key()
-
-    opts
+    app_opts
+    |> parse_opts()
+    |> set_archive_path()
+    |> ensure_tar()
+    |> verify()
+    |> get_meta()
     |> ensure_destination
-    |> url_for
-    |> fetch_signature!
     |> request!
-    |> verify_signature!
-    |> do_extract(opts)
+    |> verify_hash!
+    |> do_extract
 
     IO.puts("completed download of zig compiler toolchain")
   end
@@ -148,37 +140,24 @@ defmodule Mix.Tasks.Zig.Get do
     opts
   end
 
-  defp url_for(opts) do
-    %{
-      opts
-      | url:
-          ~c"https://ziglang.org/builds/zig-#{opts.os}-#{opts.arch}-#{opts.version}.#{extension(opts)}"
-    }
+  defp verify(opts) do
+    if System.get_env("VERIFY", "true") == "false" do
+      %{opts | verify: false} 
+    else
+      %{opts | verify: true}
+    end
   end
 
-  defp extension(%{os: "windows"}), do: "zip"
-  defp extension(_), do: "tar.xz"
+  defp get_meta(opts) do
+    meta = "https://ziglang.org/download/index.json"
+      |> http_get!()
+      |> Jason.decode!()
+      |> Map.fetch!(opts.version)
+      |> Map.fetch!("#{opts.arch}-#{opts.os}")
 
-  defp select_no_verify(opts) do
-    if System.get_env("VERIFY") == "false", do: %{opts | verify: false}, else: opts
-  end
+    hash = if opts.verify, do: Map.fetch!(meta, "shasum")
 
-  defp get_public_key(%{verify: false} = opts) do
-    IO.warn("extracting an unverified version of zig compiler toolchain")
-    opts
-  end
-
-  defp get_public_key(%{public_key: pk} = opts) when is_binary(pk), do: opts
-
-  defp get_public_key(opts) do
-    # this might be fragile.
-    public_key =
-      http_get!("https://ziglang.org/download/")
-      |> then(&Regex.run(~r[<code>(.*)</code>], &1))
-      |> Enum.at(1)
-      |> String.trim()
-
-    %{opts | public_key: public_key}
+    %{opts | hash: hash, url: Map.fetch!(meta, "tarball")}
   end
 
   defp request!(%{file: file} = opts) when not is_nil(file) do
@@ -192,7 +171,22 @@ defmodule Mix.Tasks.Zig.Get do
     end)
   end
 
-  defp do_extract(bin, opts) do
+  defp verify_hash!({contents, opts} = state) do
+    if opts.verify do
+      hashed = :sha256
+      |> :crypto.hash(contents)
+      |> Base.encode16(case: :lower)
+
+      unless hashed == opts.hash do
+        Mix.raise("hash mismatch: expected #{opts.hash}, got #{hashed}")
+      end
+      state
+    else
+      state
+    end
+  end
+
+  defp do_extract({bin, opts}) do
     spin_with("Extracting Zig compiler toolchain to #{opts.path} ", fn ->
       extract_mod(opts).extract({:binary, bin}, extract_opts(opts))
     end)
@@ -243,19 +237,6 @@ defmodule Mix.Tasks.Zig.Get do
       )
 
     body
-  end
-
-  defp fetch_signature!(%{verify: false} = opts), do: opts
-
-  defp fetch_signature!(opts) do
-    %{opts | signature: http_get!(opts.url ++ ~c'.minisig')}
-  end
-
-  defp verify_signature!({bin, %{verify: false}}), do: bin
-
-  defp verify_signature!({bin, opts}) do
-    Minisign.verify!(bin, opts.signature, opts.public_key)
-    bin
   end
 
   @spinners ~w(| / - \\)
