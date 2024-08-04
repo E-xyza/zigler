@@ -38,7 +38,8 @@ defmodule Mix.Tasks.Zig.Get do
   defstruct ~w(version path arch os url file verify public_key signature)a
 
   def run(app_opts) do
-    Application.ensure_all_started([:inets, :ssl, :crypto])
+    # Elixir 1.14 cannot take a list of applications for this function
+    Enum.each([:inets, :ssl, :crypto], &Application.ensure_all_started/1)
 
     :ssl.cipher_suites(:all, :"tlsv1.2")
 
