@@ -44,7 +44,7 @@ jobs:
 
     - name: Get Zig version
       id: get-zig-version
-      run: echo "version=$(mix zig.version)" >> $GITHUB_OUTPUT
+      run: mix eval "IO.puts(Zig.version())" >> $GITHUB_OUTPUT
 
     - uses: actions/cache@v1
       id: zig-cache

@@ -416,6 +416,8 @@ defmodule Zig do
     end
   end
 
+  @version Zigler.MixProject.zig_version()
+
   @doc """
   default version of zig supported by this version of zigler.
 
@@ -423,5 +425,5 @@ defmodule Zig do
   >
   > this API may change in the future.
   """
-  def version, do: "0.12.0"
+  def version, do: @version
 end

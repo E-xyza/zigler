@@ -10,6 +10,7 @@ defmodule Zig.Command do
   alias Zig.Target
 
   require Logger
+  require Zig
 
   #############################################################################
   ## API
@@ -153,7 +154,7 @@ defmodule Zig.Command do
     end
   end
 
-  @default_version "0.12.1"
+  @default_version Zig.version()
 
   defp find_in_basedir do
     :user_cache
