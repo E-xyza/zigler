@@ -14,6 +14,12 @@ defmodule ZiglerTest.SpecTemplate do
     end
   end
 
+  defp convert(a..b, context) do
+    quote do
+      {:type, _, :range, [unquote(convert(a, context)), unquote(convert(b, context))]}
+    end
+  end
+
   defp convert({:@, _, _} = macro, context) do
     convert(Macro.expand(macro, context), context)
   end

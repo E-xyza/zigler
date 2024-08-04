@@ -138,8 +138,7 @@ defmodule ZiglerTest.Types.ArrayTest do
     test "you can set u32 to be generally binary" do
       assert <<1::32-native, 2::32-native, 3::32-native, 4::32-native, 5::32-native, 6::32-native,
                7::32-native, 8::32-native,
-               9::32-native>> =
-               array_of_u32_array_as_binary([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
+               9::32-native>> = array_of_u32_array_as_binary([[1, 2, 3], [4, 5, 6], [7, 8, 9]])
     end
 
     test "you can set internal u32 to be binary" do

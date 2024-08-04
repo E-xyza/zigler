@@ -79,8 +79,7 @@ defmodule Zig.Command do
 
     analyte_deps = [:erl_nif]
 
-    mods =
-      [erl_nif: %{path: erl_nif_file}, analyte: %{deps: analyte_deps, path: file}]
+    mods = [erl_nif: %{path: erl_nif_file}, analyte: %{deps: analyte_deps, path: file}]
 
     sema_command(
       sema: sema_file,

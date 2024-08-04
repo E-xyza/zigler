@@ -41,6 +41,8 @@ try do
     """
   end
 rescue
-  _ -> 
-    IO.warn("Zig.Formatter not active.  If you need Formatter function, Please run `mix zig.get` to install it.")
+  _ ->
+    IO.warn(
+      "Zig.Formatter not active.  If you need Formatter function, Please run `mix zig.get` to install it."
+    )
 end
