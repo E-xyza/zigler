@@ -11,6 +11,8 @@ defmodule ZiglerTest.Types.EnumTest do
   }
   """
 
+  @prefix if Version.match?("#{Application.spec(:elixir)[:vsn]}", "~> 1.14.0"), do: " ", else: ""
+
   describe "given an enum" do
     test "you can pass in atoms to get the value out" do
       assert :foo = untagged_swap(:bar)
@@ -44,7 +46,7 @@ defmodule ZiglerTest.Types.EnumTest do
   describe "if you try to make" do
     test "zero item enum, it's a compiler error" do
       assert_raise CompileError,
-                   "zigler encountered the unusable type .Elixir.ZiglerTest.Types.ZeroItemEnum.E",
+                   @prefix <> "zigler encountered the unusable type .Elixir.ZiglerTest.Types.ZeroItemEnum.E",
                    fn ->
                      Code.compile_quoted(
                        quote do
@@ -65,7 +67,7 @@ defmodule ZiglerTest.Types.EnumTest do
 
     test "one item enum, it's a compiler error" do
       assert_raise CompileError,
-                   "zigler encountered the unusable type .Elixir.ZiglerTest.Types.OneItemEnum.E",
+                   @prefix <> "zigler encountered the unusable type .Elixir.ZiglerTest.Types.OneItemEnum.E",
                    fn ->
                      Code.compile_quoted(
                        quote do
