@@ -59,7 +59,7 @@ pub const port = e.ErlNifPort;
 
 /// A zig enum equivalent to [`e.ErlNifTermType`](https://www.erlang.org/doc/man/erl_nif.html#enif_term_type)
 ///
-/// retrievable from [`term`](#term) using the [`term.term_type`](#term-term_type) method.
+/// retrievable from [`term`](#term) using the [`beam.term_type`](#term-term_type) method.
 pub const TermType = enum(e.ErlNifTermType) { atom = e.ERL_NIF_TERM_TYPE_ATOM, bitstring = e.ERL_NIF_TERM_TYPE_BITSTRING, float = e.ERL_NIF_TERM_TYPE_FLOAT, fun = e.ERL_NIF_TERM_TYPE_FUN, integer = e.ERL_NIF_TERM_TYPE_INTEGER, list = e.ERL_NIF_TERM_TYPE_LIST, map = e.ERL_NIF_TERM_TYPE_MAP, pid = e.ERL_NIF_TERM_TYPE_PID, port = e.ERL_NIF_TERM_TYPE_PORT, ref = e.ERL_NIF_TERM_TYPE_REFERENCE, tuple = e.ERL_NIF_TERM_TYPE_TUPLE };
 
 /// wrapped term.

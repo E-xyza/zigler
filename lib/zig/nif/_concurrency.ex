@@ -1,8 +1,8 @@
 defmodule Zig.Nif.Concurrency do
-  @moduledoc """
-  behaviour module which describes the interface for "plugins" which
-  generate concurrency-specific code.
-  """
+  @moduledoc false
+  
+  # behaviour module which describes the interface for "plugins" which
+  # generate concurrency-specific code.
 
   alias Zig.Nif
   alias Zig.Nif.DirtyCpu

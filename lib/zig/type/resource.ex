@@ -1,4 +1,6 @@
 defmodule Zig.Type.Resource do
+  @moduledoc false
+
   alias Zig.Return
   alias Zig.Type
   use Type

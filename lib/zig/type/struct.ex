@@ -1,4 +1,6 @@
 defmodule Zig.Type.Struct do
+  @moduledoc false
+
   alias Zig.Parameter
   alias Zig.Return
   alias Zig.Type

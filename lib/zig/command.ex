@@ -1,10 +1,10 @@
 defmodule Zig.Command do
-  @moduledoc """
-  contains all parts of the Zig library involved in calling the
-  zig compiler toolchain, especially with regards to the `zig` command, except
-  for assembling the build.zig file, which is performed by the
-  `Zig.Builder` module.
-  """
+  @moduledoc false 
+  
+  # contains all parts of the Zig library involved in calling the
+  # zig compiler toolchain, especially with regards to the `zig` command, except
+  # for assembling the build.zig file, which is performed by the
+  # `Zig.Builder` module.
 
   alias Zig.Builder
   alias Zig.Target

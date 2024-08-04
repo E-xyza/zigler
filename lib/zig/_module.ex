@@ -1,8 +1,7 @@
 defmodule Zig.Module do
-  @moduledoc """
-  abstraction representing multiple zig nif functions bound into a single
-  module
-  """
+  @moduledoc false
+  # abstraction representing multiple zig nif functions bound into a single
+  # module
 
   alias Zig.C
   alias Zig.Nif

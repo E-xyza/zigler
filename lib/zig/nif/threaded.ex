@@ -1,4 +1,6 @@
 defmodule Zig.Nif.Threaded do
+  @moduledoc false
+
   @behaviour Zig.Nif.Concurrency
 
   alias Zig.ErrorProng

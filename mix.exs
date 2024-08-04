@@ -37,57 +37,18 @@ defmodule Zigler.MixProject do
   defp docs do
     [
       main: "Zig",
-      extras: ["README.md" | guides(Mix.env())],
+      extras: ["README.md" | guides()],
       groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
-      groups_for_modules: [
-        "Compilation Steps": compilation_steps(),
-        Types: ~r/Zig\.Type(^\.ParseError)/,
-        "Nif Modes": [~r/Zig\.Nif.+/, Zig.EasyC],
-        "Data Structures": data_structures(),
-        tools: tools()
-      ],
       zig_doc: [beam: [file: "priv/beam/beam.zig"]]
     ]
   end
 
-  defp guides(:dev) do
+  defp guides() do
     "guides"
     |> File.ls!()
     |> Enum.sort()
     |> Enum.filter(&String.ends_with?(&1, ".md"))
     |> Enum.map(&Path.join("guides", &1))
-  end
-
-  defp guides(_), do: []
-
-  defp compilation_steps do
-    [
-      Zig.Assembler,
-      Zig.Builder,
-      Zig.Command,
-      Zig.Compiler,
-      Zig.Sema
-    ]
-  end
-
-  defp data_structures do
-    [
-      Zig.Module,
-      Zig.Nif,
-      Zig.Manifest,
-      Zig.Resources
-    ]
-  end
-
-  defp tools do
-    [
-      Zig.Analyzer,
-      Zig.Macro,
-      Zig.Options,
-      Zig.QuoteErl,
-      Zig.ErrorProng,
-      Zig.Target
-    ]
   end
 
   def application, do: [extra_applications: [:logger, :inets, :crypto, :public_key, :ssl]]
@@ -110,9 +71,7 @@ defmodule Zigler.MixProject do
       # utility to help manage type protocols
       {:protoss, "~> 0.2"},
       # documentation
-      {:ex_doc, "~> 0.34", only: :dev, runtime: false},
-      {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
-      {:zig_doc, "~> 0.4.0", path: "../zig_doc", only: :dev, runtime: false}
+      {:zig_doc, "~> 0.4.0", only: :dev, runtime: false}
     ]
   end
 end

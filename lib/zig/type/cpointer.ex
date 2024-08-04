@@ -1,4 +1,6 @@
 defmodule Zig.Type.Cpointer do
+  @moduledoc false
+
   alias Zig.Parameter
   alias Zig.Type
   alias Zig.Type.Struct

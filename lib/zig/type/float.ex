@@ -1,4 +1,6 @@
 defmodule Zig.Type.Float do
+  @moduledoc false
+
   alias Zig.Type
   use Type
 

@@ -1,6 +1,8 @@
 use Protoss
 
 defprotocol Zig.Type do
+  @moduledoc false
+
   alias Zig.Type.Array
   alias Zig.Type.Bool
   alias Zig.Type.Cpointer

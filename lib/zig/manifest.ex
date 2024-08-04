@@ -1,4 +1,6 @@
 defmodule Zig.Manifest do
+  @moduledoc false
+
   # TODO: spec this better
   @type t :: [{pos_integer(), {Path.t(), pos_integer()}}]
 
@@ -69,6 +71,7 @@ defmodule Zig.Manifest do
       Code.compile_quoted(
         quote do
           defmodule unquote(manifest_module) do
+            @moduledoc false
             require Zig.Manifest
             Zig.Manifest.resolver(unquote(manifest), unquote(module.zig_code_path), :def)
           end

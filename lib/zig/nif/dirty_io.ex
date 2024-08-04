@@ -1,7 +1,5 @@
 defmodule Zig.Nif.DirtyIo do
-  @moduledoc """
-  Dirty Cpu Nifs run dirty, on the cpu
-  """
+  @moduledoc false
 
   @behaviour Zig.Nif.Concurrency
 

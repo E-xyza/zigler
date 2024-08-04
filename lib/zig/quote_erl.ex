@@ -1,4 +1,5 @@
 defmodule Zig.QuoteErl do
+  @moduledoc false
   def quote_erl(quoted, substitutions \\ []) do
     # erlang separates tokenization and parsing into separate modules.
     # tokenization occurs in the erl_scan module, and this produces a tuple

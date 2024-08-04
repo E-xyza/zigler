@@ -1,4 +1,6 @@
 defmodule Zig.Type.Error do
+  @moduledoc false
+
   alias Zig.Type
   use Type
 

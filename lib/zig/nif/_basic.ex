@@ -1,14 +1,5 @@
 defmodule Zig.Nif.Basic do
-  @moduledoc """
-  Architecture:
-
-  Synchronous has two different cases.  The first case is that the nif can be called
-  directly.  In this case, the function is mapped directly to function name.  In the
-  case that the nif needs marshalling, the function is mapped to `marshalled-<nifname>`.
-  and the called function contains wrapping logic.
-
-  To understand wrapping logic, see `Zig.Nif.Marshaller`
-  """
+  @moduledoc false 
 
   alias Zig.ErrorProng
   alias Zig.Nif

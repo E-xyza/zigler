@@ -1,4 +1,5 @@
 defmodule Zig.Resources do
+  @moduledoc false
   require EEx
 
   @type t :: atom | {:root, atom}

@@ -1,7 +1,7 @@
 defmodule Zig.Compiler do
-  @moduledoc """
-  handles instrumenting elixir code with hooks for zig NIFs.
-  """
+  @moduledoc false 
+
+  # handles instrumenting elixir code with hooks for zig NIFs.
 
   require Logger
 

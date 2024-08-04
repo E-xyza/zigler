@@ -1,4 +1,6 @@
 defmodule Zig.Nif.Synchronous do
+  @moduledoc false
+  
   @behaviour Zig.Nif.Concurrency
 
   alias Zig.Nif

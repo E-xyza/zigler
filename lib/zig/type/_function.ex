@@ -1,8 +1,7 @@
 defmodule Zig.Type.Function do
-  @moduledoc """
-  module representing the zig type, as identified by performing semantic
-  analysis on the zig code.
-  """
+  @moduledoc false
+
+  # functions, as identified by performing semantic analysis on the zig code.
 
   defstruct [:name, :arity, :params, :return]
 

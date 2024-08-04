@@ -1,4 +1,6 @@
 defmodule Zig.Type.Integer do
+  @moduledoc false
+
   alias Zig.Type
 
   use Type

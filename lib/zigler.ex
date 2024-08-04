@@ -50,6 +50,9 @@ defmodule :zigler do
   > may be changed in the future.
   """
 
+  @typedoc "foobarbaz"
+  @type foo :: term
+
   alias Zig.Compiler
   alias Zig.EasyC
 

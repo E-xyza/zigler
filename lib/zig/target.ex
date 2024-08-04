@@ -1,15 +1,15 @@
 defmodule Zig.Target do
-  @moduledoc """
-  interfaces for cross-compilation logic.
+  @moduledoc false 
 
-  this function primarily exists to support Nerves deployments, though
-  it is possible to set an arbitrary cross-compilation target using a
-  setting in your `use Zig` directive.  This selects the architecture
-  by checking your "CC" environment variable, which is in turn set by
-  Nerves, then adjusts gcc's machine type to a string which allows zig to
-  select the appropriate cross-compilation settings and libc.
-  """
+  #interfaces for cross-compilation logic.
 
+  #this function primarily exists to support Nerves deployments, though
+  #it is possible to set an arbitrary cross-compilation target using a
+  #setting in your `use Zig` directive.  This selects the architecture
+  #by checking your "CC" environment variable, which is in turn set by
+  #Nerves, then adjusts gcc's machine type to a string which allows zig to
+  #select the appropriate cross-compilation settings and libc.
+  
   defstruct [:arch, :os, :abi]
 
   @type t :: %__MODULE__{

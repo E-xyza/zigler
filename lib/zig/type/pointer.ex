@@ -1,4 +1,6 @@
 defmodule Zig.Type.Pointer do
+  @moduledoc false
+
   alias Zig.Type
   alias Zig.Type.Optional
 
