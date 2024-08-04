@@ -40,6 +40,7 @@ try do
     }
     """
   end
-catch
-  _ -> nil
+rescue
+  _ -> 
+    IO.warn("Zig.Formatter not active.  If you need Formatter function, Please run `mix zig.get` to install it.")
 end
