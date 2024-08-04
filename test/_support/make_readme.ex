@@ -16,6 +16,15 @@ defmodule ZiglerTest.MakeReadme do
     defmodule ZiglerTest.ReadmeTest do
       use ExUnit.Case
 
+      test "version" do
+        this_version = Zigler.MixProject.project()
+        |> Keyword.fetch!(:version)
+
+        [{:zigler, version_requirement, _opts}] = deps()
+
+        assert Version.match?(this_version, version_requirement)
+      end
+
     #{internal_code}
       
     end
