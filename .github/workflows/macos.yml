@@ -46,4 +46,5 @@ jobs:
       - name: Run Tests
         env:
           RUNNING_CI: "true"
+          CI_LOG_LEVEL: "info"
         run: mix test --exclude no_ci
