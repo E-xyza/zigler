@@ -1,4 +1,4 @@
-if File.exists?(Zig.Command.executable_path()) do
+try do
   defmodule Zig.Formatter do
     use Zig, otp_app: :zigler
 
@@ -40,4 +40,6 @@ if File.exists?(Zig.Command.executable_path()) do
     }
     """
   end
+catch
+  _ -> nil
 end
