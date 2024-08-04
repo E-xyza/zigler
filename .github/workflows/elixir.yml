@@ -44,13 +44,13 @@ jobs:
 
     - name: Get Zig version
       id: get-zig-version
-      run: mix eval "IO.puts(Zig.version())" >> $GITHUB_OUTPUT
+      run: mix eval "IO.puts(Zig.version())"
 
     - uses: actions/cache@v1
       id: zig-cache
       with:
         path: zig
-        key: ${{ runner.os }}-zig-${{ steps.get-zig-version.outputs.version }}
+        key: ${{ runner.os }}-zig-${{ steps.get-zig-version.outputs.stdout }}
 
     - name: Get Zig
       run: mix zig.get
