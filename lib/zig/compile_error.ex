@@ -111,9 +111,10 @@ defmodule Zig.CompileError do
   defp just_replace("", _, _, _), do: []
 
   defp just_replace(error_rest, absolute_path, relative_path, manifest_module) do
-    case error_rest do
+    cond do
       # if it's the first part of the error message, we must memoize the new file/line
-      ^absolute_path <> ":" <> linerest ->
+      String.starts_with?(error_rest, "#{absolute_path}:") ->
+        linerest = String.trim_leading(error_rest, "#{absolute_path}:")
         {new_file, new_line, rest} = do_resolution(linerest, absolute_path, manifest_module)
 
         [
@@ -122,7 +123,8 @@ defmodule Zig.CompileError do
           just_replace(rest, absolute_path, relative_path, manifest_module)
         ]
 
-      ^relative_path <> ":" <> linerest ->
+      String.starts_with?(error_rest, "#{relative_path}:") ->
+        linerest = String.trim_leading(error_rest, "#{relative_path}:")
         {new_file, new_line, rest} = do_resolution(linerest, absolute_path, manifest_module)
 
         [
@@ -131,7 +133,8 @@ defmodule Zig.CompileError do
           just_replace(rest, absolute_path, relative_path, manifest_module)
         ]
 
-      <<one_char, rest::binary>> ->
+      :else ->
+        <<one_char, rest::binary>> = error_rest
         [one_char | just_replace(rest, absolute_path, relative_path, manifest_module)]
     end
   end
