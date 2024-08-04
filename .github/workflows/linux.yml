@@ -43,14 +43,14 @@ jobs:
       run: mix compile
 
     - name: Get Zig version
-      id: get-zig-version
+      id: zig-version
       run: mix eval "IO.puts(Zig.version())"
 
     - uses: actions/cache@v1
       id: zig-cache
       with:
         path: zig
-        key: ${{ runner.os }}-zig-${{ steps.get-zig-version.outputs.stdout }}
+        key: ${{ runner.os }}-zig-${{ steps.zig-version.outputs.stdout }}
 
     - name: Get Zig
       run: mix zig.get

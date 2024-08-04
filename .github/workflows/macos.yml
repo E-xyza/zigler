@@ -10,5 +10,40 @@ jobs:
        run: brew update
      - name: install-elixir
        run: brew install elixir
-     - name: activate hex
-       run: mix local.hex
+
+    - name: activate hex
+      run: yes | mix local.hex
+
+    - name: get elixir version
+      id: elixir-version
+      run: elixir --version | tail -n 1 | awk '{ print $2 }'
+      
+    - uses: actions/cache@v1
+      id: deps-cache
+      with:
+        path: deps
+        key: ${{ runner.os }}-mix-${{ steps.elixir-version.outputs.stdout }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+
+    - name: Install dependencies
+      run: mix deps.get
+
+    - uses: actions/cache@v1
+      id: build-cache
+      with:
+        path: _build
+        key: ${{ runner.os }}-build-${{ steps.elixir-version.outputs.stdout }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+
+    - name: Compile base
+      run: mix compile
+
+    - name: Get Zig version
+      id: zig-version
+      run: mix eval "IO.puts(Zig.version())"
+
+    - name: Get Zig
+      run: mix zig.get
+
+    - name: Run Tests
+      env:
+        RUNNING_CI: "true"
+      run: mix test --exclude no_ci
