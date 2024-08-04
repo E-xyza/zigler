@@ -106,6 +106,7 @@ defmodule Mix.Tasks.Zig.Get do
     |> decode_os_info()
   end
 
+  defp decode_os_info([arch, "apple" | _]), do: {"macos", arch}
   defp decode_os_info([arch, _vendor, os | _]), do: {os, arch}
 
   defp ensure_tar(%{os: "windows"} = opts), do: opts
