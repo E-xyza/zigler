@@ -1,5 +1,5 @@
 defmodule Zig.Compiler do
-  @moduledoc false 
+  @moduledoc false
 
   # handles instrumenting elixir code with hooks for zig NIFs.
 

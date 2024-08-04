@@ -1,6 +1,6 @@
 defmodule Zig.Nif.Concurrency do
   @moduledoc false
-  
+
   # behaviour module which describes the interface for "plugins" which
   # generate concurrency-specific code.
 

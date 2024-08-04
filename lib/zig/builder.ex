@@ -1,6 +1,6 @@
 defmodule Zig.Builder do
   @moduledoc false
-  
+
   # Code for interfacing with `std.build.Builder`, the interface for programmatically invoking
   # build code with the `zig build` command.
 

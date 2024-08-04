@@ -1,5 +1,5 @@
 defmodule Zig.Nif.DirtyCpu do
-  @moduledoc false 
+  @moduledoc false
 
   @behaviour Zig.Nif.Concurrency
 

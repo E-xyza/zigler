@@ -1,5 +1,5 @@
 defmodule Zig.Nif.Basic do
-  @moduledoc false 
+  @moduledoc false
 
   alias Zig.ErrorProng
   alias Zig.Nif

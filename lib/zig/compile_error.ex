@@ -51,9 +51,10 @@ defmodule Zig.CompileError do
   end
 
   defp parse_line(error_line, absolute_path, relative_path, manifest_module) do
-    case error_line do
+    cond do
       # if it's the first part of the error message, we must memoize the new file/line
-      ^absolute_path <> ":" <> linerest ->
+      String.starts_with?(error_line, "#{absolute_path}:") ->
+        linerest = String.trim_leading(error_line, "#{absolute_path}:")
         {new_file, new_line, rest} = do_resolution(linerest, absolute_path, manifest_module)
 
         {[
@@ -64,7 +65,8 @@ defmodule Zig.CompileError do
            |> remove_column()
          ], {new_file, new_line}}
 
-      ^relative_path <> ":" <> linerest ->
+      String.starts_with?(error_line, "#{relative_path}:") ->
+        linerest = String.trim_leading(error_line, "#{relative_path}:")
         {new_file, new_line, rest} = do_resolution(linerest, absolute_path, manifest_module)
 
         {[
@@ -75,7 +77,7 @@ defmodule Zig.CompileError do
            |> remove_column()
          ], {new_file, new_line}}
 
-      _other ->
+      :else ->
         {just_replace(error_line, absolute_path, relative_path, manifest_module), nil}
     end
   end
