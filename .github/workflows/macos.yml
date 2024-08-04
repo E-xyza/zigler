@@ -3,11 +3,12 @@ on: push
 jobs:
   build:
     runs-on: macos-latest
-     steps:
-      - uses: actions/checkout@v2
-      - name: update-brew
-        run: brew update
-      - name: install-elixir
-        run: brew install elixir
-      - name: activate hex
-        run: mix local.hex
+    name: MacOS-latest-latest
+    steps:
+     - uses: actions/checkout@v2
+     - name: update-brew
+       run: brew update
+     - name: install-elixir
+       run: brew install elixir
+     - name: activate hex
+       run: mix local.hex
