@@ -1,0 +1,13 @@
+name: Elixir CI - MacOS
+on: push
+jobs:
+  build:
+    runs-on: macos-12
+     steps:
+      - uses: actions/checkout@v2
+      - name: update-brew
+        run: brew update
+      - name: install-elixir
+        run: brew install elixir
+      - name: activate hex
+        run: mix local.hex
