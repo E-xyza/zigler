@@ -1,4 +1,4 @@
-name: Elixir CI
+name: Elixir CI - Linux
 
 on: push
 
@@ -9,14 +9,14 @@ jobs:
     strategy:
       matrix:
         pair:
-          - otp-version: '25.3'
-            elixir-version: '1.14.5'
-          - otp-version: '26.2'
-            elixir-version: '1.15.2'
-          - otp-version: '26.2'
-            elixir-version: '1.16.3'
           - otp-version: '27.0'
             elixir-version: '1.17.2'
+          - otp-version: '26.2'
+            elixir-version: '1.16.3'
+          - otp-version: '26.2'
+            elixir-version: '1.15.2'
+          - otp-version: '25.3'
+            elixir-version: '1.14.5'
     steps:
     - uses: actions/checkout@v1
     - uses: erlef/setup-beam@v1
