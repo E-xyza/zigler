@@ -100,6 +100,8 @@ pub fn build(b: *std.Build) void {
 
     lib.linkLibC();
 
+    lib.linker_allow_shlib_undefined = true;
+
     lib.root_module.addImport("erl_nif", erl_nif);
     lib.root_module.addImport("beam", beam);
     lib.root_module.addImport("nif", nif);
