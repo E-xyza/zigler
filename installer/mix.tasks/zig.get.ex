@@ -1,3 +1,16 @@
+defmodule Zig.Get do
+  def os_info do
+    :system_architecture
+    |> :erlang.system_info()
+    |> to_string
+    |> String.split("-")
+    |> decode_os_info()
+  end
+
+  defp decode_os_info([arch, "apple" | _]), do: {"macos", arch}
+  defp decode_os_info([arch, _vendor, os | _]), do: {os, arch}
+end
+
 defmodule Mix.Tasks.Zig.Get do
   use Mix.Task
 
@@ -88,7 +101,7 @@ defmodule Mix.Tasks.Zig.Get do
   @default_version Zig.Get.MixProject.project()[:version]
 
   defp defaults do
-    {os, arch} = os_info()
+    {os, arch} = Zig.Get.os_info()
 
     %__MODULE__{
       version: @default_version,
@@ -97,17 +110,6 @@ defmodule Mix.Tasks.Zig.Get do
       arch: arch
     }
   end
-
-  defp os_info do
-    :system_architecture
-    |> :erlang.system_info()
-    |> to_string
-    |> String.split("-")
-    |> decode_os_info()
-  end
-
-  defp decode_os_info([arch, "apple" | _]), do: {"macos", arch}
-  defp decode_os_info([arch, _vendor, os | _]), do: {os, arch}
 
   defp ensure_tar(%{os: "windows"} = opts), do: opts
 

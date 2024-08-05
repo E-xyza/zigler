@@ -165,7 +165,7 @@ defmodule Zig.Command do
   end
 
   defp versioned_path(path) do
-    {os, arch} = os_info()
+    {os, arch} = Zig.Get.os_info()
 
     zig_executable = Path.join(path, "zig-#{os}-#{arch}-#{@default_version}/zig")
 
@@ -173,16 +173,6 @@ defmodule Zig.Command do
 
     if File.exists?(zig_executable), do: zig_executable
   end
-
-  defp os_info do
-    :system_architecture
-    |> :erlang.system_info()
-    |> to_string
-    |> String.split("-")
-    |> decode_os_info()
-  end
-
-  defp decode_os_info([arch, _vendor, os | _]), do: {os, arch}
 
   defp src_lib_name(module) do
     case {Target.resolve(), :os.type()} do
