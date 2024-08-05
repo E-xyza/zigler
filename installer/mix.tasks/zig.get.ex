@@ -1,4 +1,6 @@
 defmodule Zig.Get do
+  @moduledoc false
+
   def os_info do
     :system_architecture
     |> :erlang.system_info()
@@ -19,16 +21,13 @@ defmodule Mix.Tasks.Zig.Get do
   @moduledoc """
   obtains the Zig compiler toolchain
 
-      $ mix zig.get [--version VERSION] [--from FROM] [--os OS] [--arch ARCH] [--public-key PUBLIC_KEY]
+      $ mix zig.get [--version VERSION] [--from FROM] [--os OS] [--arch ARCH]
 
   the zigler compiler will be downloaded to ZIG_ARCHIVE_PATH/VERSION
 
   if unspecified, VERSION defaults to the major/minor version of zig.get
 
   if FROM is specified, will use the FROM file instead of getting from the internet.
-
-  if PUBLIC_KEY is not specified, will attempt to get the public key from 
-  https://ziglang.org/download/index.json.
 
   if unspecified, ZIG_ARCHIVE_PATH defaults to the user cache path given by
   `:filename.basedir/3` with application name `"zigler"`.
@@ -85,10 +84,6 @@ defmodule Mix.Tasks.Zig.Get do
 
   defp parse_opts(["--arch", arch | rest], so_far) do
     parse_opts(rest, %{so_far | arch: arch})
-  end
-
-  defp parse_opts(["--public-key", pk | rest], so_far) do
-    parse_opts(rest, %{so_far | public_key: pk})
   end
 
   defp set_archive_path(opts) do

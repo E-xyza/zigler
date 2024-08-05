@@ -52,4 +52,4 @@ jobs:
         env:
           RUNNING_CI: "true"
           CI_LOG_LEVEL: warning
-        run: unset LDFLAGS; mix test --exclude no_ci
+        run: mix test --exclude no_ci
