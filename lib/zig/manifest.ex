@@ -55,6 +55,10 @@ defmodule Zig.Manifest do
 
             [file, line] ->
               [{anchor, {Path.absname(file), String.to_integer(line)}}]
+
+            # for livebook, there's a colon in the path.
+            [file, second_part, line] ->
+              [{anchor, {Path.absname("#{file}:#{second_part}"), String.to_integer(line)}}]
           end
 
         _ ->

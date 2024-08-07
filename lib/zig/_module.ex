@@ -134,15 +134,14 @@ defmodule Zig.Module do
     Keyword.put_new_lazy(opts, :version, fn ->
       cond do
         # try checking the mix project first (this is if the project is being compiled for the first time)
-        function_exported?(Mix.Project, :config, 0) ->
-          Mix.Project.config()
-          |> Keyword.fetch!(:version)
-          |> Version.parse!()
+        version = (function_exported?(Mix.Project, :config, 0) and Mix.Project.config()[:version]) ->
+          Version.parse!(version)
 
         # try checking the application version (this is if we are hot-patching the so file)
-        tuple = Application.loaded_applications()[otp_app] ->
+        tuple = Application.loaded_applications() |> List.keyfind(otp_app, 0) ->
           tuple
           |> elem(2)
+          |> to_string()
           |> Version.parse!()
 
         :else ->
