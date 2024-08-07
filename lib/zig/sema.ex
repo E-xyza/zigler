@@ -35,6 +35,7 @@ defmodule Zig.Sema do
     |> Jason.decode!()
     |> tap(&maybe_dump(&1, module))
     |> reject_ignored(module)
+    |> reject_allocators(module)
     |> reject_error_interpreters(module)
     |> assign_callbacks(module)
     |> integrate_sema(module)
@@ -74,13 +75,31 @@ defmodule Zig.Sema do
 
   defp find_remove([], so_far, _name, _type, _module), do: {so_far, nil}
 
-  # removes "ignored" and "callback" functions from the semantic analysis.
+  # removes "ignored", "allocators" and "error_interpreter" functions from the semantic analysis.
   defp reject_ignored(json, module) do
     ignored = Enum.map(module.ignore, &"#{&1}")
 
     Map.update!(json, "functions", fn
       functions ->
         Enum.reject(functions, &(&1["name"] in ignored))
+    end)
+  end
+
+  defp reject_allocators(json, module) do
+    nifs =
+      case module.nifs do
+        {:auto, list} -> list
+        list -> list
+      end
+
+    allocators =
+      nifs
+      |> Enum.flat_map(fn {_name, opts} -> List.wrap(opts[:allocator]) end)
+      |> Enum.map(&"#{&1}")
+
+    Map.update!(json, "functions", fn
+      functions ->
+        Enum.reject(functions, &(&1["name"] in allocators))
     end)
   end
 

@@ -1,4 +1,4 @@
-defmodule ZiglerTest.LeakCheckTest do
+defmodule ZiglerTest.Allocator.LeakCheckTest do
   use ZiglerTest.IntegrationCase
 
   require Logger
@@ -32,7 +32,7 @@ defmodule ZiglerTest.LeakCheckTest do
       Process.sleep(200)
 
       assert_raise RuntimeError,
-                   "memory leak detected in function `ZiglerTest.LeakCheckTest.leaky_string/1`",
+                   "memory leak detected in function `ZiglerTest.Allocator.LeakCheckTest.leaky_string/1`",
                    fn ->
                      leaky_string("some string")
                    end

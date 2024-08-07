@@ -1,10 +1,13 @@
 <% needs_make? = @params |> Map.values |> Enum.any?(&Type.needs_make?(&1.type)) %>
 
 fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
-    <%= if @leak_check do %>
+    <%= cond do %>
+    <% allocator = @allocator -> %>
+    const allocator = nif.<%= allocator %>();
+    <% @leak_check -> %>
     var gpa = beam.make_general_purpose_allocator_instance();
     const allocator = gpa.allocator(); 
-    <% else %>
+    <% :else -> %>
     const allocator = beam.allocator;
     <% end %>
 

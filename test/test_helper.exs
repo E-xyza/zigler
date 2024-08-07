@@ -1,7 +1,8 @@
-log_level = case System.get_env("CI_LOG_LEVEL", "warning") do
-  "warning" -> :warning
-  "info" -> :info
-end
+log_level =
+  case System.get_env("CI_LOG_LEVEL", "warning") do
+    "warning" -> :warning
+    "info" -> :info
+  end
 
 Logger.configure(level: log_level)
 

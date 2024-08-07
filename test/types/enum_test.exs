@@ -46,7 +46,8 @@ defmodule ZiglerTest.Types.EnumTest do
   describe "if you try to make" do
     test "zero item enum, it's a compiler error" do
       assert_raise CompileError,
-                   @prefix <> "zigler encountered the unusable type .Elixir.ZiglerTest.Types.ZeroItemEnum.E",
+                   @prefix <>
+                     "zigler encountered the unusable type .Elixir.ZiglerTest.Types.ZeroItemEnum.E",
                    fn ->
                      Code.compile_quoted(
                        quote do
@@ -67,7 +68,8 @@ defmodule ZiglerTest.Types.EnumTest do
 
     test "one item enum, it's a compiler error" do
       assert_raise CompileError,
-                   @prefix <> "zigler encountered the unusable type .Elixir.ZiglerTest.Types.OneItemEnum.E",
+                   @prefix <>
+                     "zigler encountered the unusable type .Elixir.ZiglerTest.Types.OneItemEnum.E",
                    fn ->
                      Code.compile_quoted(
                        quote do

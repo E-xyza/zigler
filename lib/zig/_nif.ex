@@ -12,7 +12,8 @@ defmodule Zig.Nif do
 
   @enforce_keys ~w[name export module concurrency file module_code_path zig_code_path spec]a
 
-  defstruct @enforce_keys ++ ~w[line signature params return leak_check alias doc raw impl]a
+  defstruct @enforce_keys ++
+              ~w[line signature params allocator return leak_check alias doc raw impl]a
 
   alias Zig.Nif.Concurrency
   alias Zig.Nif.DirtyCpu
@@ -37,6 +38,7 @@ defmodule Zig.Nif do
            zig_code_path: Path.t(),
            spec: boolean(),
            signature: Function.t(),
+           allocator: nil | atom,
            params: integer,
            return: Return.t(),
            leak_check: boolean(),
@@ -116,6 +118,7 @@ defmodule Zig.Nif do
       concurrency: Map.get(@concurrency_modules, opts![:concurrency], Synchronous),
       spec: Keyword.get(opts!, :spec, true),
       leak_check: Keyword.get(opts!, :leak_check, @defaults[:leak_check]),
+      allocator: opts![:allocator],
       params: opts![:params],
       alias: opts![:alias],
       impl: opts![:impl]

@@ -140,14 +140,15 @@ defmodule Mix.Tasks.Zig.Get do
 
   defp verify(opts) do
     if System.get_env("VERIFY", "true") == "false" do
-      %{opts | verify: false} 
+      %{opts | verify: false}
     else
       %{opts | verify: true}
     end
   end
 
   defp get_meta(opts) do
-    meta = "https://ziglang.org/download/index.json"
+    meta =
+      "https://ziglang.org/download/index.json"
       |> http_get!()
       |> Jason.decode!()
       |> Map.fetch!(opts.version)
@@ -171,13 +172,15 @@ defmodule Mix.Tasks.Zig.Get do
 
   defp verify_hash!({contents, opts} = state) do
     if opts.verify do
-      hashed = :sha256
-      |> :crypto.hash(contents)
-      |> Base.encode16(case: :lower)
+      hashed =
+        :sha256
+        |> :crypto.hash(contents)
+        |> Base.encode16(case: :lower)
 
       unless hashed == opts.hash do
         Mix.raise("hash mismatch: expected #{opts.hash}, got #{hashed}")
       end
+
       state
     else
       state
