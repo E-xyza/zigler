@@ -113,7 +113,7 @@ defmodule :zigler do
       end
 
     code_dir =
-      case Keyword.fetch(opts, :code_dir) do
+      case Keyword.fetch(opts, :code_dir) |> dbg do
         {:ok, code_dir = "/" <> _} ->
           code_dir
 

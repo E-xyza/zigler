@@ -39,7 +39,7 @@ defmodule Zig.Builder do
       beam_dir: Path.join(:code.priv_dir(:zigler), "beam"),
       c: module.c,
       packages: make_packages(module),
-      zig_code_path: module.zig_code_path
+      zig_code_path: module.zig_code_path |> dbg
     }
 
     build_file = build_zig(assigns)

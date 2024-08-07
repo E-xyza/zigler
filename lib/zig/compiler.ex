@@ -14,6 +14,8 @@ defmodule Zig.Compiler do
   alias Zig.Parser
   alias Zig.Sema
 
+  @nofile ~w[nofile iex]
+
   defmacro __before_compile__(%{module: module, file: file} = env) do
     # NOTE: this is going to be called only from Elixir.  Erlang will not call this.
     # all functionality in this macro must be replicated when running compilation from
@@ -25,7 +27,11 @@ defmodule Zig.Compiler do
       |> Map.replace!(:attributes, Attributes.from_module(module))
       |> adjust_elixir_options
 
-    code_dir = opts.dir || Path.dirname(file)
+    code_dir = case {opts.dir, file} |> dbg do
+      {nil, nofile} when nofile in @nofile -> File.cwd!()
+      {nil, file} -> Path.dirname(file)
+      {dir, _} -> dir
+    end
 
     code =
       cond do
