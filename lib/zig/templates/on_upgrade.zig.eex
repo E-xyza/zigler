@@ -1,27 +1,25 @@
 // TODO: deprecate this content being an elixir template and provide it entirely
 // using Zig comptime logic.
-fn upgrade(env: beam.env, priv_data: [*c]?*anyopaque, old_priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.C) c_int {
-    beam.context.env = env;
-    beam.context.mode = .callback;
-    beam.context.allocator = beam.allocator;
+beam.context.env = env;
+beam.context.mode = .callback;
+beam.context.allocator = beam.allocator;
 <% name = @on_upgrade.name %>
 <%= if @on_upgrade.arity == 3 do %>
-  // following type is guaranteed to exist as per semantic analysis.
-  const Payload = @typeInfo(@TypeOf(nif.<%= @on_upgrade.name%>)).Fn.params[2].type.?;
-  const payload = beam.get(Payload, .{.v = load_info}, .{}) catch return -1;
+// following type is guaranteed to exist as per semantic analysis.
+const Payload = @typeInfo(@TypeOf(nif.<%= @on_upgrade.name%>)).Fn.params[2].type.?;
+const payload = beam.get(Payload, .{.v = load_info}, .{}) catch return -1;
 <%= case @on_upgrade.return do %>
   <% %Zig.Type.Enum{} -> %>
-    return @intFromEnum(nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload));
+return @intFromEnum(nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload));
   <% %Zig.Type.Integer{} -> %>
-    return @intCast(nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload));
+return @intCast(nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload));
   <% %Zig.Type.Error{child: :void} -> %>
-    nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload) catch return -1;
-    return 0;
+nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload) catch return -1;
+return 0;
   <% :void -> %>
-    nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload);
-    return 0;
+nif.<%= name %>(@ptrCast(priv_data), @ptrCast(old_priv_data), payload);
+return 0;
 <% end %>
 <% else %>
-    return nif.<%= name %>(env, @ptrCast(priv_data), @ptrCast(old_priv_data), load_info);
+return nif.<%= name %>(env, @ptrCast(priv_data), @ptrCast(old_priv_data), load_info);
 <% end %>
-}
