@@ -7,13 +7,22 @@ pub const @"ThreadResource-<%= @name %>" = beam.Resource(*@"Thread-<%= @name %>"
 
 fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
 
+    <%= cond do %>
+    <% allocator = @allocator -> %>
+    const allocator = nif.<%= allocator %>();
+    <% @leak_check -> %>
+    var gpa = beam.make_general_purpose_allocator_instance();
+    const allocator = gpa.allocator(); 
+    <% :else -> %>
+    const allocator = beam.allocator;
+    <% end %>
+
     // set context due to reentry
     beam.context = .{
         .env = env,
         // TODO: make this configurable
         .mode = .synchronous,
-        // TODO: make this be configurable
-        .allocator = beam.allocator
+        .allocator = allocator
     };
 
     <%= if needs_make? do %>
@@ -39,18 +48,17 @@ fn @"<%= @name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTer
     // argc must be 1.
     _ = argc;
 
-    // set context due to reentry
-    beam.context = .{
-        .env = env,
-        .mode = .threaded,
-        // TODO: make this be configurable
-        .allocator = beam.allocator
-    };
-
     const thread_rsrc = beam.get(@"ThreadResource-<%= @name %>", .{.v = args[0]}, .{}) catch {
         @panic("error getting thread resource");
     };
     const thread = @"ThreadResource-<%= @name %>".unpack(thread_rsrc);
+
+    // set context due to reentry
+    beam.context = .{
+        .env = env,
+        .mode = .threaded,
+        .allocator = beam.allocator, //thread.allocator
+    };
     
     const result = thread.join() catch {
         // TODO: fix this

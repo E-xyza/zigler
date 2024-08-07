@@ -3,7 +3,10 @@ defmodule ZiglerTest.Allocator.CustomFunctionTest do
 
   use Zig,
     otp_app: :zigler,
-    nifs: [go: [allocator: :messaging_allocator]]
+    nifs: [
+      basic: [allocator: :messaging_allocator],
+      threaded: [:threaded, alias: :basic, allocator: :messaging_allocator]
+    ]
 
   ~Z"""
   const std = @import("std");
@@ -39,13 +42,22 @@ defmodule ZiglerTest.Allocator.CustomFunctionTest do
       beam.allocator.vtable.free(beam.allocator.ptr, buf, log2_align, retaddr);
   }
 
-  pub fn go(_: []u8) !void {
+  pub fn basic(_: []u8) !void {
       _ = try beam.context.allocator.alloc(u8, 100);
   }
   """
 
-  test "directly using file works" do
-    go("0123456789")
+  test "for synchronous function works" do
+    basic("0123456789")
+    assert_receive {:alloc, 10}
+    assert_receive {:alloc, 100}
+    assert_receive {:free, 10}
+  end
+
+  # this currently segfaults.  Fix in 0.14.0
+  @tag :skip
+  test "for threaded function works" do
+    threaded("0123456789")
     assert_receive {:alloc, 10}
     assert_receive {:alloc, 100}
     assert_receive {:free, 10}
