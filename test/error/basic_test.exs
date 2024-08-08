@@ -32,7 +32,7 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
 
     assert %{payload: :my_error, stacktrace: [head, next | _]} = error
 
-    expected_file = Path.absname(__ENV__.file)
+    expected_file = Path.relative_to_cwd(__ENV__.file)
 
     assert {__MODULE__, :basic_error_return, [:...], [file: ^expected_file, line: 20]} = next
     assert {__MODULE__, :nested_error, [:...], [file: ^expected_file, line: 15]} = head

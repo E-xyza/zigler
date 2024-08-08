@@ -33,7 +33,7 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
 
     assert %{payload: :BadNumber, stacktrace: [head | _] = stacktrace} = error
 
-    expected_file = Path.absname(__ENV__.file)
+    expected_file = Path.relative_to_cwd(__ENV__.file)
 
     assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 15]} = head
 
