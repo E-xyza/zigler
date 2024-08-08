@@ -219,6 +219,23 @@ defmodule Mix.Tasks.Zig.Get do
     result
   end
 
+  @otp_version :otp_release
+               |> :erlang.system_info()
+               |> List.to_integer()
+
+  defp ssl_opts do
+    if @otp_version >= 25 do
+      [
+        verify: :verify_peer,
+        cacerts: apply(:public_key, :cacerts_get, [])
+      ]
+    else
+      # unfortunately in otp 24 there is not a clean way of obtaining cacerts so we
+      # must disable ssl verification.  A warning will appear.
+      []
+    end 
+  end
+
   defp http_get!(url) do
     {:ok, {{_, 200, _}, _headers, body}} =
       :httpc.request(
@@ -226,12 +243,11 @@ defmodule Mix.Tasks.Zig.Get do
         {url, []},
         [
           ssl: [
-            verify: :verify_peer,
-            cacerts: :public_key.cacerts_get(),
             depth: 100,
-            customize_hostname_check: [
-              match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
-            ]
+            customize_hostname_check:
+              [
+                match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+              ] ++ ssl_opts()
           ]
         ],
         body_format: :binary

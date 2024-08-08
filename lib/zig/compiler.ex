@@ -27,11 +27,12 @@ defmodule Zig.Compiler do
       |> Map.replace!(:attributes, Attributes.from_module(module))
       |> adjust_elixir_options
 
-    code_dir = case {opts.dir, file} do
-      {nil, nofile} when nofile in @nofile -> File.cwd!()
-      {nil, file} -> Path.dirname(file)
-      {dir, _} -> dir
-    end
+    code_dir =
+      case {opts.dir, file} do
+        {nil, nofile} when nofile in @nofile -> File.cwd!()
+        {nil, file} -> Path.dirname(file)
+        {dir, _} -> dir
+      end
 
     code =
       cond do

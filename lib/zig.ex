@@ -429,9 +429,10 @@ defmodule Zig do
 end
 
 # check that the otp_version is 24 or greater.
-otp_version = :otp_release
-|> :erlang.system_info
-|> List.to_integer
+otp_version =
+  :otp_release
+  |> :erlang.system_info()
+  |> List.to_integer()
 
 if otp_version < 24 do
   raise CompileError, description: "zigler requires OTP 24 or greater"

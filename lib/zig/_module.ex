@@ -134,7 +134,7 @@ defmodule Zig.Module do
     Keyword.put_new_lazy(opts, :version, fn ->
       cond do
         # try checking the mix project first (this is if the project is being compiled for the first time)
-        version = (function_exported?(Mix.Project, :config, 0) and Mix.Project.config()[:version]) ->
+        version = function_exported?(Mix.Project, :config, 0) and Mix.Project.config()[:version] ->
           Version.parse!(version)
 
         # try checking the application version (this is if we are hot-patching the so file)
