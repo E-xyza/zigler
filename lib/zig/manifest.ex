@@ -53,12 +53,11 @@ defmodule Zig.Manifest do
             ["nofile", ""] ->
               [{anchor, {"nofile", 0}}]
 
-            [file, line] ->
-              [{anchor, {Path.absname(file), String.to_integer(line)}}]
-
-            # for livebook, there's a colon in the path.
-            [file, second_part, line] ->
-              [{anchor, {Path.absname("#{file}:#{second_part}"), String.to_integer(line)}}]
+            list ->
+              # livebooks can have colons in the path.
+              line = Access.at(list, -1)
+              file = list |> Enum.slice(0..-2) |> Enum.join(":")
+              [{anchor, {file, String.to_integer(line)}}]
           end
 
         _ ->
