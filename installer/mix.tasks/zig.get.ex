@@ -223,17 +223,18 @@ defmodule Mix.Tasks.Zig.Get do
                |> :erlang.system_info()
                |> List.to_integer()
 
-  defp ssl_opts do
-    if @otp_version >= 25 do
+  if @otp_version >= 25 do
+    defp ssl_opts do
       [
         verify: :verify_peer,
-        cacerts: apply(:public_key, :cacerts_get, [])
+        cacerts: :public_key.cacerts_get()
       ]
-    else
-      # unfortunately in otp 24 there is not a clean way of obtaining cacerts so we
-      # must disable ssl verification.  A warning will appear.
+    end
+  else
+    defp ssl_opts do
+      # unfortunately in otp 24 there is not a clean way of obtaining cacerts
       []
-    end 
+    end
   end
 
   defp http_get!(url) do
