@@ -248,8 +248,8 @@ defmodule Mix.Tasks.Zig.Get do
             customize_hostname_check:
               [
                 match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
-              ] ++ ssl_opts()
-          ]
+              ] 
+          ] ++ ssl_opts()
         ],
         body_format: :binary
       )
