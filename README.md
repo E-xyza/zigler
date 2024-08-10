@@ -117,8 +117,8 @@ defmodule Allocations do
   const beam = @import("beam");
 
   pub fn double_atom(string: []u8) !beam.term {
-    var double_string = try beam.context.allocator.alloc(u8, string.len * 2);
-    defer beam.context.allocator.free(double_string);
+    var double_string = try beam.allocator.alloc(u8, string.len * 2);
+    defer beam.allocator.free(double_string);
 
     for (string, 0..) | char, i | {
       double_string[i] = char;
@@ -192,15 +192,30 @@ end
 
 ### Formatting (Elixir-only)
 
-A mix format plugin is available through the `zigler_format` package.
-[See the installation instructions](https://github.com/v0idpwn/zigler_format#installation)
+Zigler ships with a formatter.  To activate the formatter, adapt the following to your
+`.formatter.exs`:
 
-## Erlang support
+```elixir
+[
+  inputs: ~w[
+    {mix,.formatter,.credo}.exs
+    {config,lib,rel,test}/**/*.{ex,exs,zig}
+    installer/**/*.{ex,exs}
+  ],
+  plugins: [Zig.Formatter]
+]
+```
 
-Use of Zigler with erlang is possible using parse transforms.  Annotate the zig
-code into a `zig_code` attribute and pass zigler options (identical to the elixir
-options) into a `zig_opts` attribute.  Zigler will then create appropriate
-functions matching the zig functions.
+## Erlang support (highly experimental)
+
+Use of Zigler with erlang is possible using parse transforms.  You must obtain
+zigler using the `rebar3` and the `rebar_mix` plugin.  Modules with zigler
+nifs should inculde code into one or more `zig_code` attribute and pass 
+zigler options (identical to the elixir options) into a `zig_opts` attribute.  
+Zigler will then create appropriate functions matching the zig functions as
+it does with elixir.  Please not that some features (such as integers > 64 
+bits) are not currently supported in erlang, although nearly full feature parity
+is planned.
 
 ```erlang
 -module(erlang_zigler_module).

@@ -14,4 +14,6 @@ ZiglerTest.MakeBeam.go()
 
 ZiglerTest.MakeReadme.go()
 
+ZiglerTest.MakeZig.go()
+
 ExUnit.start()

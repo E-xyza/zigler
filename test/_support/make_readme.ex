@@ -31,6 +31,6 @@ defmodule ZiglerTest.MakeReadme do
     end
     """
 
-    File.write!("test/readme_test.exs", templated)
+    File.write!("test/.readme_test.exs", templated)
   end
 end

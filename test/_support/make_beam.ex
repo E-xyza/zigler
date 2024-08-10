@@ -29,6 +29,6 @@ defmodule ZiglerTest.MakeBeam do
     end
     """
 
-    File.write!("test/beam_test.exs", templated)
+    File.write!("test/.beam_test.exs", templated)
   end
 end
