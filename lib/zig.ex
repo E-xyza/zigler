@@ -248,7 +248,7 @@ defmodule Zig do
   end
   ```
 
-  ### Custom source location
+  ### Advanced Usage: Custom source location
 
   By default, Zigler places generated source code in the same directory
   as the module that uses Zigler, however, you may specify a different
@@ -270,6 +270,15 @@ defmodule Zig do
     assert File.exists?("test/.custom_location/.Elixir.CustomSourceLocation.zig")
   end
   ```
+
+  ### Advanced usage: change staging directory location
+
+  By default, zigler stages files in `/tmp/{modulename}` directory.  In some cases
+  this will cause user collisions and permissions errors when trying to build modules
+  on multitenant systems.  If you need to change the staging directory, set the
+  `ZIGLER_STAGING_ROOT` environment variable to the desired directory.  The
+  recommended staging directory is `~/.cache/zigler`.  NB: In the future, this
+  may become the default staging directory.
 
   """
   # default release modes.
