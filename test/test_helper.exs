@@ -6,6 +6,11 @@ log_level =
 
 Logger.configure(level: log_level)
 
+custom_directory = "test/.custom_location"
+
+if File.dir?(custom_directory), do: File.rm_rf!("test/.custom_location")
+File.mkdir_p!("test/.custom_location")
+
 ZiglerTest.Compiler.init()
 
 ZiglerTest.MakeGuides.go()

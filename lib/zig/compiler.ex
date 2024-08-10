@@ -137,7 +137,9 @@ defmodule Zig.Compiler do
   # from the :zigler entrypoint for erlang parse transforms, as well as the
   # __before_compile__ entrypoint for Elixir
   def compile(zig_code, code_dir, opts) do
-    zig_code_path = Path.join(code_dir, ".#{opts.module}.zig")
+    zig_code_path = code_dir
+    |> Path.join(".#{opts.module}.zig")
+    |> Path.expand()
 
     opts
     |> Map.replace!(:zig_code_path, zig_code_path)

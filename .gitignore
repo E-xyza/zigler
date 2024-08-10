@@ -43,6 +43,7 @@ zigler-*.tar
 /test/guides/*.exs
 /test/.*.exs
 /test/.*.zig
+/test/.custom_location/*
 
 # module zig files
 .Elixir.*.zig

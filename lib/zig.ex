@@ -247,6 +247,30 @@ defmodule Zig do
     assert 48 = ExternalImport.forwarded_add_one(47)
   end
   ```
+
+  ### Custom source location
+
+  By default, Zigler places generated source code in the same directory
+  as the module that uses Zigler, however, you may specify a different
+  directory:
+
+  ```elixir
+  defmodule CustomSourceLocation do
+    use Zig, otp_app: :zigler, dir: "test/.custom_location"
+    
+    ~Z\"""
+    pub fn add_one(number: u64) u64 {
+        return number + 1;
+    }
+    \"""
+  end
+
+  test "custom_location is built" do
+    assert File.dir?("test/custom_location")
+    assert File.exists?("test/.custom_location/.Elixir.CustomSourceLocation.zig")
+  end
+  ```
+
   """
   # default release modes.
   # you can override these in your `use Zigler` statement.

@@ -56,7 +56,7 @@ defmodule Zig.Manifest do
             list ->
               # livebooks can have colons in the path.
               line = Enum.at(list, -1)
-              file = list |> Enum.slice(0..-2) |> Enum.join(":")
+              file = list |> Enum.slice(0..-2//1) |> Enum.join(":")
               [{anchor, {file, String.to_integer(line)}}]
           end
 
