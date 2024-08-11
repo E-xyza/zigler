@@ -281,8 +281,6 @@ defmodule Zig do
   may become the default staging directory.
 
   """
-  # default release modes.
-  # you can override these in your `use Zigler` statement.
   @spec __using__(keyword) :: Macro.t()
   defmacro __using__(opts) do
     module = __CALLER__.module

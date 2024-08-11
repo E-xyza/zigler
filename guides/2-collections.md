@@ -418,7 +418,7 @@ test "struct of array" do
 end
 ```
 
-> ## Interaction with allocators {: .warning}
+> ### Interaction with allocators {: .warning}
 >
 > if you directly return a datatype that was allocated, it won't be properly cleaned up. However, it
 > can be properly cleaned up by manually deferring its cleanup after calling

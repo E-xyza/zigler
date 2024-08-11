@@ -135,9 +135,6 @@ You may also manually marshal types into and out of the beam by using the
 package. The `beam.term` type is an opaque, wrapped datatype that ensures safe manipulation of terms
 as a token in your zig code.
 
-You will also need [`beam.env`](beam.html#env) environment variable to reference the execution
-environmet of your nif, to box and unbox data from the beam terms.
-
 ```elixir
 ~Z"""
 const beam = @import("beam");
@@ -153,6 +150,49 @@ test "manual marshalling" do
 end
 ```
 
+## Optional values
+
+You may use optional values as both input and output terms.  Note that the empty optional
+value in elixir is `nil` and the empty optional value in zig is `null`.
+
+```elixir
+~Z"""
+pub fn optional(number: ?u32) ?u32 {
+  if (number) | n | {
+    if (n == 42) return null;
+    return n;
+  } else {
+    return 47;
+  }
+}
+"""
+
+test "optionals" do
+  assert is_nil(optional(42))
+  assert 47 = optional(nil)
+  assert 10 = optional(10)
+end
+```
+
+## Error Returns
+
+You may use functions which return an error, in which case an `ErlangException` will be
+thrown with the value being the atom representing the error.
+
+```elixir
+~Z"""
+const OopsError = error { oops };
+
+pub fn erroring() !void {
+    return error.oops;
+}
+"""
+
+test "erroring" do
+  assert_raise ErlangError, "Erlang error: :oops", fn -> erroring() end
+end
+```
+
 ### A few notes on the above code.
 
 - to marshal a value out of a `beam.term` and into a zig static type, use [`beam.get`](beam.html#get).
@@ -161,6 +201,4 @@ end
   This function *does not fail*.
 - for more information on the final options parameter of `get` and `make`, see their respective
   documentation.
-- zigler will translate the hoisted marshalling failures into BEAM exceptions.
-- zigler automatically ignores the `beam.env` parameter in the first position, and assigns the correct
-  arity (1). Compilation will fail if a `beam.env` parameter is present in any other location.
+- zigler will translate the hoisted marshalling failures into detailed BEAM exceptions of type `ArgumentError`.

@@ -93,11 +93,15 @@ test "malloc memory is not tracked" do
 end
 ```
 
-## Large Allocator
+## Wide Alignment Allocator
 
-Zigler provides a `large allocator` which allows you to allocate memory ranges that have a higher
-alignment than the maximum alignment for builtin types. Note that using this allocator comes with a
-memory penalty.
+Zigler provides a `wide_alignment_allocator` which allows you to allocate memory ranges that have a 
+higher alignment than the maximum alignment for builtin types. 
+
+> ### memory penalty {: .warning }
+>
+> Note that using this allocator comes with a memory penalty, so use as a general allocator
+> is not recommended.
 
 ```elixir
 ~Z"""
@@ -120,7 +124,10 @@ Zigler provides a version of the zig standard library's `GeneralPurposeAllocator
 top of the large allocator. Two advantages of using the general purpose allocator include optimized
 memory layouts for mixed allocation sizes and the ability to track memory leaks.
 
-The state of the general purpose allocator is accessible using `beam.allocator_.general_purpose_allocator_instance`
+The state of the global general purpose allocator is accessible using `beam.allocator_.general_purpose_allocator_instance`
+
+You may also create a custom general purpose allocator instance using `beam.make_general_purpose_allocator_instance`,
+whcih is what happens on a per-nif basis if the nif is checking for leaks.
 
 ```elixir
 ~Z"""
