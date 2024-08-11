@@ -1,7 +1,8 @@
 # Zigler
 
 Library test status:
-![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI/badge.svg)
+Linux: ![](https://github.com/ityonemo/zigler/workflows/linux/badge.svg)
+MacOS: ![](https://github.com/ityonemo/zigler/workflows/macos/badge.svg)
 
 ## Installation: Elixir
 
