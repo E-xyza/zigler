@@ -2,8 +2,8 @@
 
 Library test status:
 
-- Linux: ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI%20-%20Linux/badge.svg)
-- MacOS: ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI%20-%20MacOS/badge.svg)
+- ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI%20-%20Linux/badge.svg)
+- ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI%20-%20MacOS/badge.svg)
 
 ## Installation: Elixir
 
