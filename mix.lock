@@ -14,6 +14,5 @@
   "pegasus": {:hex, :pegasus, "0.2.5", "38123461fe41add54f715ce41f89137a31cd217d353005b057f88b9b67c39b6f", [:mix], [{:nimble_parsec, "~> 1.2", [hex: :nimble_parsec, repo: "hexpm", optional: false]}], "hexpm", "ee80708608807f4447f1da1e6e0ebd9604f5bda4fbe2d4bdd9aa6dd67afde020"},
   "protoss": {:hex, :protoss, "0.2.1", "fcf437ed65178d6cbf9a600886e3da9f7173697223972f062ee593941c2588b1", [:mix], [], "hexpm", "2261dbdc4d5913ce1e88d1410108d97f21140a118f45f6acc3edc4ecdb952052"},
   "zig_doc": {:hex, :zig_doc, "0.4.0", "fdaee133165fa3c3a17e8ff7d62ab60be4ad011ff128d567151dbca2026f44d0", [:mix], [{:ex_doc, "~> 0.34.2", [hex: :ex_doc, repo: "hexpm", optional: false]}, {:zig_parser, "~> 0.4.0", [hex: :zig_parser, repo: "hexpm", optional: false]}], "hexpm", "d07c69a210d7ae3732493bf7e55628e30c4a68fec47c244e3f40f6c7323b819d"},
-  "zig_get": {:hex, :zig_get, "0.12.2", "713de7f73c508386e7ac93c8479b1e196a24834c95fd03f1dd3dc8133857c063", [:mix], [{:jason, "~> 1.4", [hex: :jason, repo: "hexpm", optional: false]}], "hexpm", "81a5c562fdef8b4affd28a94a41a725c355b26021f5a8ddb550f19d319aa3010"},
   "zig_parser": {:hex, :zig_parser, "0.4.0", "5230576fcea30c061f08f6053448ad3dc5194a45485065564a7f8047bb351ce9", [:mix], [{:pegasus, "~> 0.2.4", [hex: :pegasus, repo: "hexpm", optional: false]}], "hexpm", "ec54cf14e80a1485e29a80b42756d0421426db81eb9e2630721fd46ab5c21bcb"},
 }

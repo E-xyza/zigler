@@ -93,7 +93,7 @@ defmodule Mix.Tasks.Zig.Get do
     end
   end
 
-  @default_version "0.12.1"
+  @default_version "0.13.0"
 
   defp defaults do
     {os, arch} = Zig.Get.os_info()
