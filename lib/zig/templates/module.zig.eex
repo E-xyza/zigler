@@ -14,7 +14,7 @@ const threads = beam.threads;
 
 // this will be filled out later.
 fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.C) c_int {
-    load_resources(env);
+    defer load_resources(env);
     <%= if @callbacks[:on_load] do %>
       <%= render_on_load(assigns) %>
     <% else %>
@@ -27,7 +27,7 @@ fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) call
 var exported_nifs = [_]e.ErlNifFunc{<%= table_entries(@nifs) %>};
 
 fn upgrade(env: beam.env, priv_data: [*c]?*anyopaque, old_priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.C) c_int {
-    load_resources(env);
+    defer load_resources(env);
     <%= if @callbacks[:on_upgrade] do %>
       <%= render_on_upgrade(@sema.callbacks) %>
     <% else %>

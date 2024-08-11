@@ -22,8 +22,7 @@ defmodule Zig.Attributes do
   end
 
   defguardp is_primitive(value)
-            when is_nil(value) or is_boolean(value) or is_integer(value) or is_float(value) or
-                   is_binary(value) or is_atom(value)
+            when is_integer(value) or is_float(value) or is_binary(value) or is_atom(value)
 
   defp usable?(value) when is_primitive(value), do: true
 

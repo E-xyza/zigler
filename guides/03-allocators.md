@@ -1,4 +1,4 @@
-# Allocation using zigler
+# Allocations
 
 Zig the language has no offically supported allocator, and the standard library datastructures are
 all allocator-agnostic. 
@@ -8,12 +8,11 @@ top* of those allocators.
 
 ## Basic Allocator
 
-The first allocator is `allocator`, which we will call `basic allocator`. This allocator wraps the
-[nif allocator](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc) provided by the BEAM in the
-zig allocator interface. You should generally use this allocator over `malloc` because it often
-saves a syscall by using existing preallocated memory pools, because it allows the VM to track how
-much memory your NIF is using, and possibly gives better memory placement to avoid cache misses in
-your execution thread.
+The first allocator is `allocator`. This allocator wraps the [nif allocator](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc) 
+provided by the BEAM in the zig allocator interface. You should generally use this allocator over 
+`malloc` because it often saves a syscall by using existing preallocated memory pools, because it 
+allows the VM to track how much memory your NIF is using, and possibly gives better memory placement 
+to avoid cache misses in your execution thread.
 
 ```elixir
 ~Z"""

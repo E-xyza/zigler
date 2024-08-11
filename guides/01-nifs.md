@@ -38,7 +38,7 @@ function in the body of the module.
 ```elixir
 ~Z"""
 pub fn add_one(input: i32) i32 {
-  return input + 1;
+    return input + 1;
 }
 """
 
@@ -73,9 +73,9 @@ Zigler can also marshal list parameters into array, and array-like datatypes:
 ```elixir
 ~Z"""
 pub fn sum(input: []f32) f32 {
-  var total: f32 = 0.0;
-  for (input) | value | { total += value; }
-  return total;
+    var total: f32 = 0.0;
+    for (input) | value | { total += value; }
+    return total;
 }
 """
 
@@ -150,6 +150,28 @@ test "manual marshalling" do
 end
 ```
 
+## Send
+
+An important mechanism for exporting values out of a NIF is to send it to a process
+ID using the `send` function.  Zigler provides an advanced `beam.send` function which
+will perform this operation for you.
+
+```elixir
+~Z"""
+pub fn test_send(pid: beam.pid) !void {
+    try beam.send(pid, .{.ok, 47}, .{});
+}
+"""
+
+test "sending" do
+  test_send(self())
+  assert_receive {:ok, 47}
+end
+```
+
+Note that the second argument of send and the options argument are equivalent to a `beam.make`
+function call.
+
 ## Optional values
 
 You may use optional values as both input and output terms.  Note that the empty optional
@@ -158,12 +180,12 @@ value in elixir is `nil` and the empty optional value in zig is `null`.
 ```elixir
 ~Z"""
 pub fn optional(number: ?u32) ?u32 {
-  if (number) | n | {
-    if (n == 42) return null;
-    return n;
-  } else {
-    return 47;
-  }
+    if (number) | n | {
+        if (n == 42) return null;
+        return n;
+    } else {
+        return 47;
+    }
 }
 """
 
