@@ -38,7 +38,7 @@ defmodule Zig do
   - [C integration](6-c_integration.html)
   - [Concurrency strategies](7-concurrency.html)
   - [Global module options](8-module_options.html)
-  - [Raw calling](9-raw_mode.html)
+  - [Raw calling](9-raw_nifs.html)
 
   > ### Zig version support {: .warning }
   >
