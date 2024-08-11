@@ -122,9 +122,18 @@ Thanks to Dave Cottlehuber @dch for testing.
   - yielding nifs are not supported, but will return in 0.11
     due to zig async not working in 0.10.x
 
-## 0.12.0
+## 0.12.1
 - breakout `zig.get` into its own package to prevent dependency problems.
+- breakout `zig.doc` into its own package to prevent dependency problems.
 - versioning of .so files should track the version.  This feature should be considered experimental.
+- use of threadlocal `beam.context` to keep contextual information for your NIF
+  - major changes in `beam.get` and `beam.make`
+  - `.as` option for `beam.make` with recursive descent
+- full range of `on_load`, `on_update`, and `on_reload` functions
+- optional allocator functions usable with nifs
+- better recursive typing
+- smarter `beam.send`
+- attributes imported as compile-time values
 
 ## Upcoming
 - `precompiled` mode that will let you obtain packages with precompiled assets.
