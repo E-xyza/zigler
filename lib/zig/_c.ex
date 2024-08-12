@@ -51,10 +51,7 @@ defmodule Zig.C do
   defp solve_relative({:system, _} = system, _), do: system
 
   defp solve_relative(file, module_file) do
-    module_file
-    |> Path.dirname()
-    |> Path.join(file)
-    |> Path.expand()
+    Path.expand(file, module_file)
   end
 
   defp normalize_src(file, module_file) when is_binary(file) do

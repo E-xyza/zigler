@@ -46,11 +46,9 @@ defmodule Zigler.MixProject do
   end
 
   defp guides() do
-    "guides"
-    |> File.ls!()
-    |> Enum.sort()
-    |> Enum.filter(&String.ends_with?(&1, ".md"))
-    |> Enum.map(&Path.join("guides", &1))
+    "guides/*.md"
+    |> Path.wildcard()
+    |> Enum.map(&Path.join("guides", Path.basename(&1, ".md")))
   end
 
   def application, do: [extra_applications: [:logger, :inets, :crypto, :public_key, :ssl]]

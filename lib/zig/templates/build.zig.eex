@@ -74,7 +74,7 @@ pub fn build(b: *std.Build) void {
         <% {:system, lib} -> %>
     nif.linkSystemLibrary("<%= lib %>", .{});
         <% lib -> %>
-    nif.addObjectFile("<%= lib %>");
+    nif.addObjectFile(.{.cwd_relative = "<%= lib %>"});
       <% end %>
     <% end %>
     <% end %>
