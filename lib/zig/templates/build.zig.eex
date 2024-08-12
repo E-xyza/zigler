@@ -90,7 +90,7 @@ pub fn build(b: *std.Build) void {
 
     const lib = b.addSharedLibrary(.{
         .name = "<%= @module %>",
-        .root_source_file = .{.path = "module.zig"},
+        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "module.zig"} },
         .version = .{.major = <%= @version.major %>,
                      .minor = <%= @version.minor %>,
                      .patch = <%= @version.patch %>},
