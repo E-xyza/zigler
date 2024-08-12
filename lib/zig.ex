@@ -30,15 +30,16 @@ defmodule Zig do
 
   Please consult the following guides for detailed topics:
 
-  - [Using Nifs](1-nifs.html)
-  - [Collection datatypes](2-collections.html)
-  - [Allocator strategies](3-allocators.html)
-  - [Nif options](4-nif_options.html)
-  - [Resources](5-nif_options.html)
-  - [C integration](6-c_integration.html)
-  - [Concurrency strategies](7-concurrency.html)
-  - [Global module options](8-module_options.html)
-  - [Raw calling](9-raw_nifs.html)
+  - [Using Nifs](01-nifs.html)
+  - [Collection datatypes](02-collections.html)
+  - [Allocator strategies](03-allocators.html)
+  - [Nif options](04-nif_options.html)
+  - [Resources](05-resources.html)
+  - [C integration](06-c_integration.html)
+  - [Concurrency strategies](07-concurrency.html)
+  - [Global module options](08-module_options.html)
+  - [Raw calling](09-raw_nifs.html)
+  - [Module callbacks](10-callbacks.html)
 
   > ### Zig version support {: .warning }
   >

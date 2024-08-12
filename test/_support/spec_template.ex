@@ -14,7 +14,7 @@ defmodule ZiglerTest.SpecTemplate do
     end
   end
 
-  defp convert(a..b//_, context) do
+  defp convert(a..b//1, context) do
     quote do
       {:type, _, :range, [unquote(convert(a, context)), unquote(convert(b, context))]}
     end
