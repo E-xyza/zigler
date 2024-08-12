@@ -135,6 +135,9 @@ Thanks to Dave Cottlehuber @dch for testing.
 - smarter `beam.send`
 - attributes imported as compile-time values
 
+## 0.13.0
+- updated to zig 0.13.0
+
 ## Upcoming
 - `precompiled` mode that will let you obtain packages with precompiled assets.
 - Breaking changes:
