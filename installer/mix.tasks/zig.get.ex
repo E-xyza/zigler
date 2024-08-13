@@ -39,12 +39,12 @@ defmodule Mix.Tasks.Zig.Get do
 
   - `TAR_COMMAND`: path to a tar executable that is equivalent to gnu tar.
     only useful for non-windows architectures.
-  - `NO_VERIFY`: disable signature verification of the downloaded file.  
-    Not recommended. 
+  - `NO_VERIFY`: disable signature verification of the downloaded file.
+    Not recommended.
   - `ZIG_ARCHIVE_PATH`: path to desired directory to achive the zig compiler toolchain.
   """
 
-  defstruct ~w(version path arch os url file verify hash)a
+  defstruct ~w(version path arch os url file verify hash force)a
 
   def run(app_opts) do
     # Elixir 1.14 cannot take a list of applications for this function
@@ -86,6 +86,10 @@ defmodule Mix.Tasks.Zig.Get do
     parse_opts(rest, %{so_far | arch: arch})
   end
 
+  defp parse_opts(["--force" | rest], so_far) do
+    parse_opts(rest, %{so_far | force: true})
+  end
+
   defp set_archive_path(opts) do
     case System.get_env("ZIG_ARCHIVE_PATH", "") do
       "" -> opts
@@ -102,7 +106,8 @@ defmodule Mix.Tasks.Zig.Get do
       version: @default_version,
       path: :filename.basedir(:user_cache, ~C"zigler"),
       os: os,
-      arch: arch
+      arch: arch,
+      force: false
     }
   end
 
@@ -127,13 +132,16 @@ defmodule Mix.Tasks.Zig.Get do
   defp ensure_destination(opts) do
     target_directory = Path.join(opts.path, "zig-#{opts.os}-#{opts.arch}-#{opts.version}")
 
-    if File.exists?(target_directory) do
-      Mix.raise(
-        "destination directory #{target_directory} already exists.  Please remove it and try again."
-      )
+    cond do
+      File.exists?(target_directory) && opts.force ->
+        File.rm_rf!(target_directory)
+      File.exists?(target_directory) ->
+        Mix.shell().info("zig is already installed, rerun with --force to overwrite")
+        System.halt()
+      true -> :nothing_to_do
     end
 
-    File.mkdir_p(opts.path)
+    File.mkdir_p!(opts.path)
 
     opts
   end
