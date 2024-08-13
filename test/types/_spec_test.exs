@@ -68,7 +68,7 @@ defmodule ZiglerTest.Types.SpecTest do
   end
 
   test "void", specs do
-    assert spec((() -> :ok)) = Map.fetch!(specs, {:void_fn, 0})
+    assert spec((-> :ok)) = Map.fetch!(specs, {:void_fn, 0})
   end
 
   describe "for arrays" do
@@ -130,11 +130,11 @@ defmodule ZiglerTest.Types.SpecTest do
     end
 
     test "gives a result for sentinel-terminated u8", specs do
-      assert spec((() -> binary)) = Map.fetch!(specs, {:manypointer_return_fn, 0})
+      assert spec((-> binary)) = Map.fetch!(specs, {:manypointer_return_fn, 0})
     end
 
     test "gives a result for sentinel-terminated u8 to be list", specs do
-      assert spec((() -> [byte])) = Map.fetch!(specs, {:manypointer_list_return_fn, 0})
+      assert spec((-> [byte])) = Map.fetch!(specs, {:manypointer_list_return_fn, 0})
     end
   end
 

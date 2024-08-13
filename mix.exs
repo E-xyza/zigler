@@ -8,7 +8,7 @@ defmodule Zigler.MixProject do
 
     [
       app: :zigler,
-      version: zig_version(),
+      version: "0.13.1",
       elixir: "~> 1.14",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
@@ -39,17 +39,21 @@ defmodule Zigler.MixProject do
   defp docs do
     [
       main: "Zig",
-      extras: ["README.md" | guides()],
+      extras: ["README.md" | guides(Mix.env())],
       groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
       zig_doc: [beam: [file: "priv/beam/beam.zig"]]
     ]
   end
 
-  defp guides() do
-    "guides/*.md"
-    |> Path.wildcard()
-    |> Enum.map(&Path.join("guides", Path.basename(&1, ".md")))
+  defp guides(:dev) do
+    "guides"
+    |> File.ls!()
+    |> Enum.sort()
+    |> Enum.filter(&String.ends_with?(&1, ".md"))
+    |> Enum.map(&Path.join("guides", &1))
   end
+
+  defp guides(_), do: []
 
   def application, do: [extra_applications: [:logger, :inets, :crypto, :public_key, :ssl]]
 
@@ -70,7 +74,7 @@ defmodule Zigler.MixProject do
       {:zig_parser, "~> 0.4.0"},
       # utility to help manage type protocols
       {:protoss, "~> 0.2"},
-      {:zig_get, "== 0.13.0"},
+      {:zig_get, "== 0.13.1"},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
       {:zig_doc, "~> 0.4.0", only: :dev, runtime: false}

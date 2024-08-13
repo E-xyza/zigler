@@ -135,10 +135,13 @@ defmodule Mix.Tasks.Zig.Get do
     cond do
       File.exists?(target_directory) && opts.force ->
         File.rm_rf!(target_directory)
+
       File.exists?(target_directory) ->
         Mix.shell().info("zig is already installed, rerun with --force to overwrite")
         System.halt()
-      true -> :nothing_to_do
+
+      true ->
+        :nothing_to_do
     end
 
     File.mkdir_p!(opts.path)

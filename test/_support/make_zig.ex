@@ -1,5 +1,5 @@
 defmodule ZiglerTest.MakeZig do
-  defstruct [elixir: [], zig: %{}]
+  defstruct elixir: [], zig: %{}
 
   def go do
     # Read the readme document
@@ -11,20 +11,32 @@ defmodule ZiglerTest.MakeZig do
       # deescape escaped quotes
       |> Enum.map(&String.replace(&1, ~S(\"), ~S(")))
       |> Enum.reduce({nil, %__MODULE__{}}, fn
-        "```" <> _, {Elixir, so_far} -> {nil, so_far}
-        "```" <> _, {Zig, so_far, _} -> {nil, so_far}
-        line, {Elixir, so_far} -> 
+        "```" <> _, {Elixir, so_far} ->
+          {nil, so_far}
+
+        "```" <> _, {Zig, so_far, _} ->
+          {nil, so_far}
+
+        line, {Elixir, so_far} ->
           {Elixir, Map.update!(so_far, :elixir, &add_line(&1, line))}
-        "```elixir" <> _, {nil, so_far} -> {Elixir, so_far}
-        "```zig" <> _, {nil, so_far} -> {Zig, so_far, nil}
-        ~S(\\\\) <> filename, {Zig, so_far, nil} -> 
+
+        "```elixir" <> _, {nil, so_far} ->
+          {Elixir, so_far}
+
+        "```zig" <> _, {nil, so_far} ->
+          {Zig, so_far, nil}
+
+        ~S(\\\\) <> filename, {Zig, so_far, nil} ->
           filename = String.trim(filename)
           new_zig = Map.put(so_far.zig, filename, "")
           {Zig, %{so_far | zig: new_zig}, filename}
-        line, {Zig, so_far, filename} -> 
+
+        line, {Zig, so_far, filename} ->
           new_zig = Map.update!(so_far.zig, filename, &add_line(&1, line))
           {Zig, %{so_far | zig: new_zig}, filename}
-        _, state -> state
+
+        _, state ->
+          state
       end)
       |> elem(1)
 

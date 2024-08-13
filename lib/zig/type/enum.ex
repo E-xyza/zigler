@@ -82,7 +82,10 @@ defmodule Zig.Type.Enum do
 
   defp accumulate(number, []), do: [number]
   defp accumulate(number, [succ | rest]) when succ == number + 1, do: [number..succ | rest]
-  defp accumulate(number, [succ..last//1 | rest]) when succ == number + 1, do: [number..last | rest]
+
+  defp accumulate(number, [succ..last//1 | rest]) when succ == number + 1,
+    do: [number..last | rest]
+
   defp accumulate(number, noncontiguous), do: [number | noncontiguous]
 
   defp unionize(content) do

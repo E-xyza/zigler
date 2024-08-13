@@ -183,9 +183,8 @@ end
 
 ## Typespec override
 
-Typespecs generation can be suppressed by setting `spec: false`.
-If you want typespecs for such functions, specify using `@spec` elsewhere
-in your module.
+Typespecs generation can be suppressed by setting `spec: false`. If you want typespecs for such
+functions, specify using `@spec` elsewhere in your module.
 
 For example:
 
@@ -222,5 +221,3 @@ defmodule DisableDoc do
 end
 #module
 ```
-
-

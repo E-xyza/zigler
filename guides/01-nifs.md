@@ -152,9 +152,9 @@ end
 
 ## Send
 
-An important mechanism for exporting values out of a NIF is to send it to a process
-ID using the `send` function.  Zigler provides an advanced `beam.send` function which
-will perform this operation for you.
+An important mechanism for exporting values out of a NIF is to send it to a process ID using the
+`send` function. Zigler provides an advanced `beam.send` function which will perform this operation
+for you.
 
 ```elixir
 ~Z"""
@@ -174,8 +174,8 @@ function call.
 
 ## Optional values
 
-You may use optional values as both input and output terms.  Note that the empty optional
-value in elixir is `nil` and the empty optional value in zig is `null`.
+You may use optional values as both input and output terms. Note that the empty optional value in
+elixir is `nil` and the empty optional value in zig is `null`.
 
 ```elixir
 ~Z"""
@@ -198,8 +198,8 @@ end
 
 ## Error Returns
 
-You may use functions which return an error, in which case an `ErlangException` will be
-thrown with the value being the atom representing the error.
+You may use functions which return an error, in which case an `ErlangException` will be thrown with
+the value being the atom representing the error.
 
 ```elixir
 ~Z"""
@@ -223,4 +223,5 @@ end
   This function *does not fail*.
 - for more information on the final options parameter of `get` and `make`, see their respective
   documentation.
-- zigler will translate the hoisted marshalling failures into detailed BEAM exceptions of type `ArgumentError`.
+- zigler will translate the hoisted marshalling failures into detailed BEAM exceptions of type
+  `ArgumentError`.

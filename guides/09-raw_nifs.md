@@ -1,8 +1,8 @@
 # Raw nifs
 
-All of the nifs shown to this point involve zigler constructing an adapter function with
-term marshalling automatically generated.  It is also possible to run a nif without
-doing any of those steps.
+All of the nifs shown to this point involve zigler constructing an adapter function with term
+marshalling automatically generated. It is also possible to run a nif without doing any of those
+steps.
 
 The normal (C) header for a BEAM nif is as follows:
 
@@ -19,7 +19,7 @@ The following two zig function signatures are interpreted as raw nifs:
 
 ## nif options setup
 
-A raw nif MUST contain the `arity` option.  This can be one of:
+A raw nif MUST contain the `arity` option. This can be one of:
 
 - a single integer, representing the desired arity of the nif function
 - a single range, representing a range of arities for the nif function

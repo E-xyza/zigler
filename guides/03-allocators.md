@@ -8,11 +8,12 @@ top* of those allocators.
 
 ## Basic Allocator
 
-The first allocator is `allocator`. This allocator wraps the [nif allocator](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc) 
-provided by the BEAM in the zig allocator interface. You should generally use this allocator over 
-`malloc` because it often saves a syscall by using existing preallocated memory pools, because it 
-allows the VM to track how much memory your NIF is using, and possibly gives better memory placement 
-to avoid cache misses in your execution thread.
+The first allocator is `allocator`. This allocator wraps the [nif
+allocator](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc) provided by the BEAM in the zig
+allocator interface. You should generally use this allocator over `malloc` because it often saves a
+syscall by using existing preallocated memory pools, because it allows the VM to track how much
+memory your NIF is using, and possibly gives better memory placement to avoid cache misses in your
+execution thread.
 
 ```elixir
 ~Z"""
@@ -94,13 +95,13 @@ end
 
 ## Wide Alignment Allocator
 
-Zigler provides a `wide_alignment_allocator` which allows you to allocate memory ranges that have a 
+Zigler provides a `wide_alignment_allocator` which allows you to allocate memory ranges that have a
 higher alignment than the maximum alignment for builtin types. 
 
-> ### memory penalty {: .warning }
+> ### memory penalty {: .warning}
 >
-> Note that using this allocator comes with a memory penalty, so use as a general allocator
-> is not recommended.
+> Note that using this allocator comes with a memory penalty, so use as a general allocator is not
+> recommended.
 
 ```elixir
 ~Z"""
@@ -125,8 +126,9 @@ memory layouts for mixed allocation sizes and the ability to track memory leaks.
 
 The state of the global general purpose allocator is accessible using `beam.allocator_.general_purpose_allocator_instance`
 
-You may also create a custom general purpose allocator instance using `beam.make_general_purpose_allocator_instance`,
-whcih is what happens on a per-nif basis if the nif is checking for leaks.
+You may also create a custom general purpose allocator instance using
+`beam.make_general_purpose_allocator_instance`, whcih is what happens on a per-nif basis if the nif
+is checking for leaks.
 
 ```elixir
 ~Z"""
