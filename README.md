@@ -19,7 +19,7 @@ by adding `zigler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:zigler, "~> 0.13.0", runtime: false}
+    {:zigler, "~> 0.13.1", runtime: false}
   ]
 end
 ```
@@ -30,7 +30,7 @@ end
 
 TBD.
 
-`~/.cache/zigler/zig-linux-<arch>-0.11.1`
+`~/.cache/zigler/zig-linux-<arch>-0.13.0`
 
 ### Main Installation
 
