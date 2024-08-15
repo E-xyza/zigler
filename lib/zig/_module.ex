@@ -124,7 +124,7 @@ defmodule Zig.Module do
   defp normalize_options(opts) do
     opts
     |> obtain_version
-    |> Keyword.update(:c, %C{}, &C.new(&1, Keyword.fetch!(opts, :file)))
+    |> Keyword.update(:c, %C{}, &C.new(&1, opts))
     |> Keyword.update(:callbacks, [], &normalize_callbacks(&1, opts))
   end
 
