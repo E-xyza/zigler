@@ -83,6 +83,10 @@ pub fn build(b: *std.Build) void {
     nif.addIncludePath(.{.cwd_relative = "<%= include_dir %>"});
     <% end %>
 
+    <%= for library_dir <- @c.library_dirs do %>
+    nif.addLibraryPath(.{.cwd_relative = "<%= library_dir %>"});
+    <% end %>
+
     <%= for {src, src_opts} <- @c.src do %>
     <% ccompileparams = Enum.map_join(src_opts, ", ", &~s("#{&1}")) %>
     nif.addCSourceFile(.{.file = .{.cwd_relative = "<%= src %>"}, .flags = &[_][]const u8{<%= ccompileparams %>}});

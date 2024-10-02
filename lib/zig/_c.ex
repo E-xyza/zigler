@@ -5,12 +5,14 @@ defmodule Zig.C do
   # c-interoperability with zigler
 
   defstruct include_dirs: [],
+            library_dirs: [],
             src: [],
             link_lib: [],
             link_libcpp: false
 
   @type t :: %__MODULE__{
           include_dirs: [Path.t()],
+          library_dirs: [Path.t()],
           link_lib: [Path.t()],
           link_libcpp: boolean,
           src: src_opts()
@@ -18,6 +20,7 @@ defmodule Zig.C do
 
   @type opts :: [
           include_dirs: Path.t() | [Path.t()],
+          library_dirs: Path.t() | [Path.t()],
           link_lib: Path.t() | [Path.t()],
           link_libcpp: boolean,
           src: src_opts()
@@ -33,6 +36,7 @@ defmodule Zig.C do
 
     struct!(__MODULE__,
       include_dirs: normalize_filelist(opts, :include_dirs, module_dir),
+      library_dirs: normalize_filelist(opts, :library_dirs, module_dir),
       link_lib: normalize_filelist(opts, :link_lib, module_dir),
       link_libcpp: Keyword.get(opts, :link_libcpp, false),
       src: normalized_srclist(opts, module_dir)
