@@ -15,7 +15,7 @@ defmodule Zig do
   The following features make Zig extremely amenable to inline language
   support in a BEAM language:
 
-  - simplicity.  Zig's syntax is definable in a simple YACC document and
+  - Simplicity.  Zig's syntax is definable in a simple YACC document and
     Zig takes a stance against making its featureset more complex (though
     it may evolve somewhat en route to 1.0)
   - Composability.  Zig is unopinionated about how to go about memory
