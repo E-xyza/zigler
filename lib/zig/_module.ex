@@ -36,7 +36,7 @@ defmodule Zig.Module do
                 :c,
                 :dir,
                 :easy_c,
-                release_mode: :safe,
+                release_mode: :debug,
                 language: Elixir,
                 nifs: {:auto, []},
                 ignore: [],

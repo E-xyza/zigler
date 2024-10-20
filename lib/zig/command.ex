@@ -131,6 +131,10 @@ defmodule Zig.Command do
     safe: "ReleaseSafe"
   }
 
+  def release_mode(%{release_mode: :env}) do
+    System.fetch_env!("ZIGLER_RELEASE_MODE")
+  end
+  
   def release_mode(module) do
     Map.fetch!(@release_modes, module.release_mode)
   end
