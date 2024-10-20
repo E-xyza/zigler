@@ -102,7 +102,7 @@ defmodule Zig.Command do
 
     lib_dir = Path.join(so_dir, "lib")
 
-    run_zig("build --prefix #{so_dir}", cd: staging_directory, stderr_to_stdout: true)
+    run_zig("build -Doptimize=#{release_mode(module)} --prefix #{so_dir}", cd: staging_directory, stderr_to_stdout: true)
 
     src_lib_name = Path.join(lib_dir, src_lib_name(module.module))
     dst_lib_name = Path.join(lib_dir, dst_lib_name(module.module))
@@ -122,6 +122,17 @@ defmodule Zig.Command do
 
   def targets do
     run_zig("targets", [])
+  end
+
+  @release_modes %{
+    debug: "Debug",
+    fast: "ReleaseFast",
+    small: "ReleaseSmall",
+    safe: "ReleaseSafe"
+  }
+
+  def release_mode(module) do
+    Map.fetch!(@release_modes, module.release_mode)
   end
 
   def executable_path do

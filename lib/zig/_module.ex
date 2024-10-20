@@ -36,6 +36,7 @@ defmodule Zig.Module do
                 :c,
                 :dir,
                 :easy_c,
+                release_mode: :safe,
                 language: Elixir,
                 nifs: {:auto, []},
                 ignore: [],
@@ -68,6 +69,7 @@ defmodule Zig.Module do
           c: C.opts() | C.t(),
           dir: Path.t(),
           easy_c: Path.t(),
+          release_mode: release_modes(),
           language: Elixir | :erlang,
           nifs: {:auto, Nif.opts()} | Nif.opts() | [Nif.t()],
           ignore: [atom()],
@@ -83,6 +85,7 @@ defmodule Zig.Module do
           attributes: keyword
         }
 
+  @type release_modes :: :debug | :safe | :fast | :small
   @type packagespec() :: {name :: atom(), {path :: Path.t(), deps :: [atom]}}
   # NB: this is going to become more complex for security reasons.
   @type precompiledspec() :: Path.t()
