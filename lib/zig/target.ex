@@ -21,14 +21,12 @@ defmodule Zig.Target do
   # obtains the target from the
   @spec resolve() :: nil | t
   def resolve do
-    unless function_exported?(Mix, :target, 0) and Mix.target() === :host do
-      arch = System.get_env("TARGET_ARCH")
-      os = System.get_env("TARGET_OS")
-      abi = System.get_env("TARGET_ABI")
+    arch = System.get_env("TARGET_ARCH")
+    os = System.get_env("TARGET_OS")
+    abi = System.get_env("TARGET_ABI")
 
-      if arch && os && abi do
-        %__MODULE__{arch: arch, os: os, abi: abi}
-      end
+    if arch && os && abi do
+      %__MODULE__{arch: arch, os: os, abi: abi}
     end
   end
 
