@@ -56,10 +56,23 @@ defmodule Zig.Compiler do
                 "(module #{inspect(module)}) you may not use ~Z when `:zig_code_path` is specified"
           end
 
-          env.file
-          |> Path.dirname()
-          |> Path.join(path)
-          |> File.read!()
+          path =
+            if is_binary(path) do
+              env.file
+              |> Path.dirname()
+              |> Path.join(path)
+            else
+              # This allows for using module attributes and
+              # other non-literal constructs for the file path
+              {result, _} = Code.eval_quoted(path, [], env)
+              result
+            end
+
+          # Register the file as an @external_resource so that the
+          # module recompiles whenever the zig source changes
+          Module.put_attribute(module, :external_resource, path)
+
+          File.read!(path)
 
         :else ->
           module
@@ -83,11 +96,11 @@ defmodule Zig.Compiler do
     Map.update!(opts, :nifs, &nif_substitution/1)
   end
 
-  # if the elixir `nif` option contains `...` then this should be converted 
+  # if the elixir `nif` option contains `...` then this should be converted
   # into `{:auto, <other_options>}`.  Also, if the nif entry is just an atom,
   # converts that entry into `{nif, []}`
   #
-  # This function will reverse the list, but since order doesn't matter for this 
+  # This function will reverse the list, but since order doesn't matter for this
   # option, it is okay.
   defp nif_substitution(:auto), do: {:auto, []}
 
