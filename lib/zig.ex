@@ -62,8 +62,8 @@ defmodule Zig do
 
   Simply `use Zig` in your module, providing the otp_app name as an option.
 
-  Then, use the `sigil_Z/2` macro and write inline zig code.  To present a 
-  function as a nif in your module, simply export it from your code namespace 
+  Then, use the `sigil_Z/2` macro and write inline zig code.  To present a
+  function as a nif in your module, simply export it from your code namespace
   by making it a `pub` function in your zig code.
 
   #### Example
@@ -87,7 +87,7 @@ defmodule Zig do
   > #### otp_app setting {: .info }
   >
   > You should replace `:zigler` in the following example with the name of
-  > your own app.  If no such app exists (e.g. you are using livebook or 
+  > your own app.  If no such app exists (e.g. you are using livebook or
   > are in the terminal or escript), you can use `:zigler` as a fallback.
 
   Zigler will *automatically* fill out the appropriate NIF C template, compile
@@ -129,7 +129,7 @@ defmodule Zig do
   ### Advanced usage: Unsupported erl_nif functions
 
   the `beam` import does not comprehensively provide support for all functions
-  in `erl_nif.h`.  If you need access to a function in `erl_nif.h` that isn't 
+  in `erl_nif.h`.  If you need access to a function in `erl_nif.h` that isn't
   provided by zigler, you would do it in the following fashion:
 
   - import `erl_nif` into your zig code, typically under the `e` namespace.
@@ -166,7 +166,7 @@ defmodule Zig do
 
   ### Advanced usage: Manual marshalling
 
-  If you need to marshal your own data, you may use the `beam.get` and 
+  If you need to marshal your own data, you may use the `beam.get` and
   `beam.make` functions to marshal data to and from the BEAM world.
 
   #### Example
@@ -214,7 +214,7 @@ defmodule Zig do
   the same directory as your module.
 
   You may either call imported functions from the external file, or
-  forward a function from the external file, either strategy will 
+  forward a function from the external file, either strategy will
   work correctly.
 
   #### Example
@@ -258,7 +258,7 @@ defmodule Zig do
   ```elixir
   defmodule CustomSourceLocation do
     use Zig, otp_app: :zigler, dir: "test/.custom_location"
-    
+
     ~Z\"""
     pub fn add_one(number: u64) u64 {
         return number + 1;
