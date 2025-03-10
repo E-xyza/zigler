@@ -9,35 +9,40 @@ jobs:
     strategy:
       matrix:
         pair:
-          - otp-version: '27.0'
-            elixir-version: '1.17.2'
+          - otp-version: '27.3'
+            elixir-version: '1.18.3'
+          - otp-version: '27.3'
+            elixir-version: '1.17.3'
           - otp-version: '26.2'
             elixir-version: '1.16.3'
           - otp-version: '25.3'
-            elixir-version: '1.15.2'
+            elixir-version: '1.15.8'
           - otp-version: '24.3'
             elixir-version: '1.14.5'
     steps:
-    - uses: actions/checkout@v1
+    - uses: actions/checkout@v4
     - uses: erlef/setup-beam@v1
       with:
         otp-version: ${{matrix.pair.otp-version}}
         elixir-version: ${{matrix.pair.elixir-version}}
 
-    - uses: actions/cache@v1
+    - uses: actions/cache@v3
       id: deps-cache
       with:
         path: deps
-        key: ${{ runner.os }}-mix-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+        key: ${{ runner.os }}-mix-${{ matrix.pair.otp-version }}-${{ matrix.pair.elixir-version }}-${{ hashFiles('/mix.lock') }}
 
     - name: Install dependencies
       run: mix deps.get
 
-    - uses: actions/cache@v1
+    - uses: actions/cache@v3
       id: build-cache
       with:
         path: _build
-        key: ${{ runner.os }}-build-${{ matrix.otp }}-${{ matrix.elixir }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+        key: ${{ runner.os }}-build-${{ matrix.pair.otp-version }}-${{ matrix.elixir-version }}-${{ hashFiles('/mix.lock') }}
+
+    - name: Compile base
+      run: mix compile
 
     - name: Compile base
       run: mix compile
@@ -46,7 +51,7 @@ jobs:
       id: zig-version
       run: mix eval "IO.puts(Zig.version())"
 
-    - uses: actions/cache@v1
+    - uses: actions/cache@v3
       id: zig-cache
       with:
         path: zig

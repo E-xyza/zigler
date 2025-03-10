@@ -5,7 +5,7 @@ jobs:
     runs-on: macos-latest
     name: MacOS-latest-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v4
       
       - name: update-brew
         run: brew update
@@ -23,7 +23,7 @@ jobs:
         id: elixir-version
         run: elixir --version | tail -n 1 | awk '{ print $2 }'
         
-      - uses: actions/cache@v1
+      - uses: actions/cache@v3
         id: deps-cache
         with:
           path: deps
@@ -32,7 +32,7 @@ jobs:
       - name: Install dependencies
         run: mix deps.get
   
-      - uses: actions/cache@v1
+      - uses: actions/cache@v3
         id: build-cache
         with:
           path: _build
