@@ -50,6 +50,6 @@ jobs:
   
       - name: Run Tests
         env:
-          RUNNING_CI: "true"
+          RUNNING_CI: "TRUE"
           CI_LOG_LEVEL: warning
         run: mix test --exclude no_ci

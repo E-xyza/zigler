@@ -62,5 +62,6 @@ jobs:
 
     - name: Run Tests
       env:
-        RUNNING_CI: "true"
+        RUNNING_CI: "TRUE"
+        ZIGLER_TEST_BLAS: "TRUE"
       run: mix test --exclude no_ci

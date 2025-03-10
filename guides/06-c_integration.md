@@ -63,10 +63,7 @@ The [rules for collections](#2-collections.html) apply to functions that are dir
 C files.
 
 ```elixir
-if {:unix, :linux} == :os.type() do
-# currently we only have access to the BLAS library on linux CI actions, so
-# it's unavailable for other operating systems for automated testing purposes
-
+if Application.fetch_env!(:zigler, :test_blas) do
   defmodule LibraryTest do
     use ExUnit.Case, async: true
     use Zig, 
