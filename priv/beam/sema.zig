@@ -192,7 +192,7 @@ fn streamType(stream: anytype, comptime T: type) WriteError!void {
     try stream.endObject();
 }
 
-pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.Fn) WriteError!void {
+pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.@"fn") WriteError!void {
     try stream.beginObject();
 
     // emit name
@@ -230,8 +230,8 @@ pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
     inline for (mod_info.decls) |decl| {
         const decl_info = @typeInfo(@TypeOf(@field(Mod, decl.name)));
 
-        if (.Fn == decl_info) {
-            try streamFun(stream, decl.name, decl_info.Fn);
+        if (.@"fn" == decl_info) {
+            try streamFun(stream, decl.name, decl_info.@"fn");
         }
     }
 
@@ -261,7 +261,7 @@ pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
     inline for (mod_info.decls) |decl| {
         switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
             .Type => {},
-            .Fn => {},
+            .@"fn" => {},
             else => {
                 try stream.beginObject();
                 try stream.objectField("name");

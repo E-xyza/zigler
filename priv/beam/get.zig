@@ -695,7 +695,7 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
     const source_fields = source_info.@"struct".fields;
     const default = false;
 
-    var fields: [source_fields.len]std.builtin.Type.@"struct"Field = undefined;
+    var fields: [source_fields.len]std.builtin.Type.StructField = undefined;
 
     for (source_fields, 0..) |source_field, index| {
         fields[index] = .{ .name = source_field.name, .type = bool, .default_value = &default, .is_comptime = false, .alignment = @alignOf(*bool) };

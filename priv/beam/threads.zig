@@ -64,7 +64,7 @@ pub threadlocal var local_join_started: *bool = undefined;
 pub threadlocal var self_pid: *const fn () beam.pid = undefined;
 
 fn makes_error_result__(comptime F: type) bool {
-    const NaiveReturnType = @typeInfo(F).Fn.return_type.?;
+    const NaiveReturnType = @typeInfo(F).@"fn".return_type.?;
     return (@typeInfo(NaiveReturnType) == .ErrorUnion);
 }
 

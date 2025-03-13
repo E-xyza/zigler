@@ -1815,7 +1815,7 @@ const WrappedResultTag = enum { ok, error_return_trace };
 
 /// <!-- ignore -->
 pub fn WrappedResult(comptime FunctionType: type) type {
-    const NaiveReturnType = @typeInfo(FunctionType).Fn.return_type.?;
+    const NaiveReturnType = @typeInfo(FunctionType).@"fn".return_type.?;
     return switch (@typeInfo(NaiveReturnType)) {
         .ErrorUnion => |eu| union(WrappedResultTag) {
             ok: eu.payload,
