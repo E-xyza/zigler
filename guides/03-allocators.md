@@ -118,38 +118,39 @@ test "aligned allocation" do
 end
 ```
 
-## General Purpose Allocator
+## Other Allocators Provided
 
-Zigler provides a version of the zig standard library's `GeneralPurposeAllocator` which is built on
-top of the large allocator. Two advantages of using the general purpose allocator include optimized
-memory layouts for mixed allocation sizes and the ability to track memory leaks.
+### DebugAllocator
 
-The state of the global general purpose allocator is accessible using `beam.allocator_.general_purpose_allocator_instance`
+Zigler provides a version of the zig standard library's `DebugAllocator` which is built on
+top of the large allocator. You may use this to easily track memory leaks.
+
+The state of the global general purpose allocator is accessible using `beam.allocator_.debug_allocator_instance`
 
 You may also create a custom general purpose allocator instance using
-`beam.make_general_purpose_allocator_instance`, whcih is what happens on a per-nif basis if the nif
+`beam.make_debug_allocator_instance`, whcih is what happens on a per-nif basis if the nif
 is checking for leaks.
 
 ```elixir
 ~Z"""
 pub fn leaks() !bool {
-    const memory = try beam.general_purpose_allocator.alloc(u8, 8);
-    defer beam.general_purpose_allocator.free(memory);
+    const memory = try beam.debug_allocator.alloc(u8, 8);
+    defer beam.debug_allocator.free(memory);
 
     // note that we haven't freed it yet, that happens on deferral,
     // which lands after the return call.
 
-    return beam.allocator_.general_purpose_allocator_instance.detectLeaks();
+    return beam.allocator_.debug_allocator_instance.detectLeaks();
 }
 
 pub fn noleak() !bool {
-    const memory = try beam.general_purpose_allocator.alloc(u8, 8);
-    beam.general_purpose_allocator.free(memory);
-    return beam.allocator_.general_purpose_allocator_instance.detectLeaks();
+    const memory = try beam.debug_allocator.alloc(u8, 8);
+    beam.debug_allocator.free(memory);
+    return beam.allocator_.debug_allocator_instance.detectLeaks();
 }
 """
 
-test "leak checks with general purpose allocator" do
+test "leak checks with debug allocator" do
   require Logger
   Logger.warning("====== the following leak message is expected: =========== START")
   Process.sleep(200)
@@ -160,10 +161,11 @@ test "leak checks with general purpose allocator" do
 end
 ```
 
-## Custom allocators
+## Building composable allocators backed by zig's beam allocator
 
-Because zigler's allocators conform to zig's allocator interface, you can use any composed allocator
-in the standard library or any composable allocator from an imported zig package.
+Because zigler's beam allocators conform to zig's allocator interface, you may use use 
+any composable allocator in the standard library or any composable allocator from an 
+imported zig package, passing any one of the beam allocators into place. 
 
 ```elixir
 ~Z"""
@@ -191,21 +193,19 @@ test "arena allocator" do
 end
 ```
 
-### Custom allocators in `beam.get`
+## Zig allocators in `beam.get`
 
-If you choose to use a custom allocator, you may use it in the `beam.get` functions to instantiate
-data where it's the allocator's responsibility to free it at the end.
+You may use zig standard library allocators or other custom alloctors in the `beam.get` functions 
+to instantiate data where it's the allocator's responsibility to free it at the end.
 
 ```elixir
 ~Z"""
 pub fn arena_sum(array: beam.term) !u64 {
-    const std = @import("std");
+    // use the zig std-provided heap allocator.
+    const malloc = @import("std").heap.c_allocator;
 
-    var arena = std.heap.ArenaAllocator.init(beam.allocator);
-    defer arena.deinit();
-    const arena_allocator = arena.allocator();
-
-    const slice = try beam.get([]u64, array, .{.allocator = arena_allocator});
+    const slice = try beam.get([]u64, array, .{.allocator = malloc});
+    defer malloc.free(slice);
 
     var total: u64 = 0;
 

@@ -119,7 +119,7 @@ This flag can be stacked with previous options, for example: `return: [:noclean,
 ## Leak Check
 
 It's possible to wrap each function call in its own instance of
-[`beam.general_purpose_allocator`](beam.html#general_purpose_allocator) bound into the
+[`beam.debug_allocator`](beam.html#debug_allocator) bound into the
 [`beam.allocator`](beam.html#allocator) threadlocal variable. If you tag your nif as `leak_check`,
 it will check that `beam.allocator` has cleared all of its contents at the end of the function call,
 and if that hasn't happened, it raises.

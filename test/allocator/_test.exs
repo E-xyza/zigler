@@ -77,12 +77,12 @@ defmodule ZiglerTest.AllocatorTest do
 
   ~Z"""
   pub fn gpa_allocate() usize {
-      const ptr = beam.general_purpose_allocator.alloc(u8, 10_000) catch unreachable;
+      const ptr = beam.debug_allocator.alloc(u8, 10_000) catch unreachable;
       return @intFromPtr(ptr.ptr);
   }
 
   pub fn gpa_free(addr: usize) void {
-      beam.general_purpose_allocator.free(@as([*]u8, @ptrFromInt(addr))[0..10_000]);
+      beam.debug_allocator.free(@as([*]u8, @ptrFromInt(addr))[0..10_000]);
   }
   """
 

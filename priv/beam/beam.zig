@@ -1313,7 +1313,7 @@ pub const Payload = payload.Payload;
 /// const CleanupErrors = error{leaked};
 ///
 /// pub fn cleanup_example(term: beam.term) !i32 {
-///     var gpa = beam.make_general_purpose_allocator_instance();
+///     var gpa = beam.make_debug_allocator_instance();
 ///     const allocator = gpa.allocator();
 ///     const slice = try beam.get([]i32, term, .{.allocator = allocator});
 ///     const number = slice[0];
@@ -1454,7 +1454,10 @@ const zigler_options = @import("zigler_options");
 /// <!-- ignore -->
 pub const allocator_ = @import("allocator.zig");
 
-pub const make_general_purpose_allocator_instance = allocator_.make_general_purpose_allocator_instance;
+pub const make_debug_allocator_instance = allocator_.make_debug_allocator_instance;
+
+// Deprecated
+// pub const make_debug_allocator_instance = make_debug_allocator_instance;
 
 /// provides a BEAM allocator that can perform allocations with greater
 /// alignment than the machine word.
@@ -1464,14 +1467,17 @@ pub const make_general_purpose_allocator_instance = allocator_.make_general_purp
 /// > This comes at the cost of some memory to store metadata
 ///
 /// currently does not release memory that is resized.  For this behaviour
-/// use `beam.general_purpose_allocator`.
+/// use `beam.debug_allocator`.
 ///
-/// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
+/// not threadsafe.  for a threadsafe allocator, use `beam.debug_allocator`
 pub const wide_alignment_allocator = allocator_.wide_alignment_allocator;
 
-/// implements `std.mem.Allocator` using the `std.mem.GeneralPurposeAllocator`
+/// implements `std.mem.Allocator` using the `std.mem.DebugAllocator`
 /// factory, backed by `beam.wide_alignment_allocator`.
-pub const general_purpose_allocator = allocator_.general_purpose_allocator;
+pub const debug_allocator = allocator_.debug_allocator;
+
+// Deprecated
+// pub const debug_allocator = debug_allocator;
 
 /// wraps [`e.enif_alloc`](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc)
 /// and [`e.enif_free`](https://www.erlang.org/doc/man/erl_nif.html#enif_free)

@@ -20,8 +20,8 @@ const raw_beam_allocator_vtable = Allocator.VTable{
     .free = raw_beam_free,
 };
 
-pub var general_purpose_allocator_instance = make_general_purpose_allocator_instance();
-pub const general_purpose_allocator = general_purpose_allocator_instance.allocator();
+pub var debug_allocator_instance = make_debug_allocator_instance();
+pub const debug_allocator = debug_allocator_instance.allocator();
 
 fn raw_beam_alloc(
     _: *anyopaque,
@@ -131,8 +131,8 @@ fn wide_align_free(
     alignedFree(buf.ptr);
 }
 
-const BeamGpa = std.heap.GeneralPurposeAllocator(.{ .thread_safe = false });
+const BeamDebugAllocator = std.heap.DebugAllocator(.{ .thread_safe = false });
 
-pub fn make_general_purpose_allocator_instance() BeamGpa {
-    return BeamGpa{ .backing_allocator = wide_alignment_allocator };
+pub fn make_debug_allocator_instance() BeamDebugAllocator {
+    return BeamDebugAllocator{ .backing_allocator = wide_alignment_allocator };
 }
