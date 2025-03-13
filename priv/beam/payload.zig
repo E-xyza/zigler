@@ -26,7 +26,7 @@ pub fn Payload(comptime function: anytype) type {
         fields = fields ++ &new_field;
     }
 
-    const result_type_info: std.builtin.Type = .{ .Struct = .{
+    const result_type_info: std.builtin.Type = .{ .@"struct" = .{
         .layout = .auto,
         .fields = fields,
         .decls = &decls,
@@ -41,7 +41,7 @@ pub fn Payload(comptime function: anytype) type {
 fn arity(fun: anytype) u8 {
     return switch (@typeInfo(@TypeOf(fun))) {
         .Fn => |f| f.params.len,
-        .Struct => |s| s.fields.len,
+        .@"struct" => |s| s.fields.len,
         else => @compileError("arity is only available for a function"),
     };
 }

@@ -36,7 +36,7 @@ pub const ThreadState = enum {
 
     fn check_against(state: This, state_or_states: anytype) bool {
         switch (@typeInfo(@TypeOf(state_or_states))) {
-            .Struct => {
+            .@"struct" => {
                 inline for (state_or_states) |check| {
                     if (state == check) return true;
                 }

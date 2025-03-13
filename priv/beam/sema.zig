@@ -6,7 +6,7 @@ const WriteError = std.fs.File.WriteError;
 const FileWriter = std.io.Writer(std.fs.File, WriteError, std.fs.File.write);
 const JsonStreamPtr = *json.WriteStream(FileWriter, .{ .assumed_correct = {} });
 
-fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) WriteError!void {
+fn streamInt(stream: anytype, comptime i: std.builtin.Type.int) WriteError!void {
     try typeHeader(stream, "integer");
     try stream.objectField("signedness");
     switch (i.signedness) {
@@ -17,7 +17,7 @@ fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) WriteError!void 
     try stream.write(i.bits);
 }
 
-fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: type) WriteError!void {
+fn streamEnum(stream: anytype, comptime en: std.builtin.Type.@"enum", comptime T: type) WriteError!void {
     if (en.fields.len <= 1) {
         try typeHeader(stream, "unusable:" ++ @typeName(T));
         return;
@@ -35,13 +35,13 @@ fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: t
     try stream.endObject();
 }
 
-fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) WriteError!void {
+fn streamFloat(stream: anytype, comptime f: std.builtin.Type.float) WriteError!void {
     try typeHeader(stream, "float");
     try stream.objectField("bits");
     try stream.write(f.bits);
 }
 
-fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S: type) WriteError!void {
+fn streamStruct(stream: anytype, comptime s: std.builtin.Type.@"struct", comptime S: type) WriteError!void {
     const name = @typeName(S);
 
     try typeHeader(stream, "struct");
@@ -80,7 +80,7 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S
     try stream.endArray();
 }
 
-fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) WriteError!void {
+fn streamArray(stream: anytype, comptime a: std.builtin.Type.array, repr: anytype) WriteError!void {
     try typeHeader(stream, "array");
     try stream.objectField("len");
     try stream.write(a.len);
@@ -92,7 +92,7 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
     try stream.write(repr);
 }
 
-fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) WriteError!void {
+fn streamPointer(stream: anytype, comptime p: std.builtin.Type.pointer, repr: anytype) WriteError!void {
     switch (p.size) {
         .One => {
             try typeHeader(stream, "pointer");
@@ -121,7 +121,7 @@ fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: an
     try streamType(stream, p.child);
 }
 
-fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) WriteError!void {
+fn streamOptional(stream: anytype, comptime o: std.builtin.Type.optional) WriteError!void {
     try typeHeader(stream, "optional");
     try stream.objectField("child");
     try streamType(stream, o.child);
@@ -169,15 +169,15 @@ fn streamType(stream: anytype, comptime T: type) WriteError!void {
         },
         else => {
             switch (@typeInfo(T)) {
-                .Int => |i| try streamInt(stream, i),
-                .Enum => |en| try streamEnum(stream, en, T),
-                .Float => |f| try streamFloat(stream, f),
-                .Struct => |s| try streamStruct(stream, s, T),
-                .Array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
-                .Pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
-                .Optional => |o| try streamOptional(stream, o),
-                .Bool => try typeHeader(stream, "bool"),
-                .Void => try typeHeader(stream, "void"),
+                .int => |i| try streamInt(stream, i),
+                .@"enum" => |en| try streamEnum(stream, en, T),
+                .float => |f| try streamFloat(stream, f),
+                .@"struct" => |s| try streamStruct(stream, s, T),
+                .array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
+                .pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
+                .optional => |o| try streamOptional(stream, o),
+                .bool => try typeHeader(stream, "bool"),
+                .void => try typeHeader(stream, "void"),
                 .ErrorUnion => |eu| {
                     try typeHeader(stream, "error");
                     try stream.objectField("child");
@@ -222,7 +222,7 @@ pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.buil
 }
 
 pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
-    const mod_info = @typeInfo(Mod).Struct;
+    const mod_info = @typeInfo(Mod).@"struct";
     try stream.beginObject();
     try stream.objectField("functions");
     try stream.beginArray();

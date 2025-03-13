@@ -10,15 +10,15 @@ pub fn CPointerCleanup(comptime T: type) type {
 
 fn needs_cleanup(comptime T: type, comptime should: bool) bool {
     return if (should) switch (@typeInfo(T)) {
-            .Pointer => true,
-            .Optional => |optional| needs_cleanup(optional.child, should),
-            .Struct => struct_needs_cleanup(T, should),
-            else => false
-        } else false;
+        .pointer => true,
+        .optional => |optional| needs_cleanup(optional.child, should),
+        .@"struct" => struct_needs_cleanup(T, should),
+        else => false,
+    } else false;
 }
 
 fn struct_needs_cleanup(comptime T: type, comptime should: bool) bool {
-    inline for (@typeInfo(T).Struct.fields) |field| {
+    inline for (@typeInfo(T).@"struct".fields) |field| {
         if (needs_cleanup(field.type, should)) return true;
     }
     return false;
@@ -26,7 +26,7 @@ fn struct_needs_cleanup(comptime T: type, comptime should: bool) bool {
 
 pub fn cleanup(what: anytype, opts: anytype) void {
     const T = @TypeOf(what);
-    // TODO: this should work  via options.should_cleanup but somehow the 
+    // TODO: this should work  via options.should_cleanup but somehow the
     // comptime-ness of this extracted field is not identified.
     const should = if (@hasField(@TypeOf(opts), "cleanup")) opts.cleanup else true;
     // TODO: eliminate this following dead code that forces comptime-ness:
@@ -34,15 +34,15 @@ pub fn cleanup(what: anytype, opts: anytype) void {
     c = c and true;
     if (c) {
         switch (@typeInfo(T)) {
-            .Pointer => {
+            .pointer => {
                 cleanup_pointer(what, opts);
             },
-            .Optional => {
+            .optional => {
                 if (what) |pointer| {
                     cleanup(pointer, opts);
                 }
             },
-            .Struct => |s| {
+            .@"struct" => |s| {
                 if (resource.MaybeUnwrap(s)) |_| {
                     what.release();
                 } else {
@@ -55,7 +55,7 @@ pub fn cleanup(what: anytype, opts: anytype) void {
 }
 
 fn cleanup_pointer(ptr: anytype, opts: anytype) void {
-    const info = @typeInfo(@TypeOf(ptr)).Pointer;
+    const info = @typeInfo(@TypeOf(ptr)).pointer;
     if (info.is_const) return;
 
     switch (info.size) {
@@ -64,7 +64,9 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
             options.allocator(opts).destroy(ptr);
         },
         .Slice => {
-            for (ptr) |item| { cleanup(item, opts); }
+            for (ptr) |item| {
+                cleanup(item, opts);
+            }
             if (info.sentinel) |_| {
                 options.allocator(opts).free(@as([]u8, @ptrCast(ptr)));
             } else {
@@ -98,7 +100,7 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
 }
 
 fn cleanup_struct(s: anytype, opts: anytype) void {
-    const info = @typeInfo(@TypeOf(s)).Struct;
+    const info = @typeInfo(@TypeOf(s)).@"struct";
 
     inline for (info.fields) |field| {
         cleanup(@field(s, field.name), opts);

@@ -1653,9 +1653,9 @@ pub fn independent_context(opts: InitEnvOpts) void {
 // tuple is empty.
 pub fn ClearEnvReturn(comptime T: type) type {
     const info = @typeInfo(T);
-    if (info != .Struct) @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
-    if (!info.Struct.is_tuple) @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
-    const fields = info.Struct.fields;
+    if (info != .@"struct") @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
+    if (!info.@"struct".is_tuple) @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
+    const fields = info.@"struct".fields;
 
     // type assertion that it's a struct.
     inline for (fields) |field| {
@@ -1711,7 +1711,7 @@ pub fn ClearEnvReturn(comptime T: type) type {
 pub fn clear_env(env_: env, persist: anytype) ClearEnvReturn(@TypeOf(persist)) {
     const T = @TypeOf(persist);
     e.enif_clear_env(env_);
-    if (@typeInfo(T).Struct.fields.len == 1) {
+    if (@typeInfo(T).@"struct".fields.len == 1) {
         return .{ .v = e.enif_make_copy(env_, persist[0].v) };
     } else {
         var result: ClearEnvReturn(T) = undefined;
@@ -1864,7 +1864,7 @@ pub fn thread_not_running(err: anytype) bool {
 }
 
 fn has_processterminated(comptime T: type) bool {
-    inline for (@typeInfo(T).ErrorSet.?) |err| {
+    inline for (@typeInfo(T).error_set.?) |err| {
         if (std.mem.eql(u8, err.name, "processterminated")) return true;
     }
     return false;
@@ -1902,7 +1902,7 @@ fn has_processterminated(comptime T: type) bool {
 /// > Unlike code in elixir, the validity of the exception struct is not
 /// > checked when using this function.
 pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: anytype) term {
-    if (@typeInfo(@TypeOf(data)) != .Struct) {
+    if (@typeInfo(@TypeOf(data)) != .@"struct") {
         @compileError("elixir exceptions must be structs");
     }
 

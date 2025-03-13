@@ -27,20 +27,20 @@ pub fn make(value: anytype, opts: anytype) beam.term {
     if (T == beam.port) @compileError("you cannot convert a port into a term");
 
     switch (@typeInfo(T)) {
-        .Array => return make_array(value, opts),
-        .Pointer => return make_pointer(value, opts),
-        .Int => return make_int(value, opts),
-        .Struct => return make_struct(value, opts),
-        .EnumLiteral => return make_enum_literal(value, opts),
-        .Enum => return make_enum(value, opts),
-        .ErrorSet => return make_error(value, opts),
-        .Null => return make_null(opts),
-        .Float => return make_float(value, opts),
-        .Bool => return make_bool(value, opts),
-        .Optional => return make_optional(value, opts),
-        .ComptimeInt => return make_comptime_int(value, opts),
-        .ComptimeFloat => return make_comptime_float(value, opts),
-        .Void => return make_enum(.ok, opts),
+        .array => return make_array(value, opts),
+        .pointer => return make_pointer(value, opts),
+        .int => return make_int(value, opts),
+        .@"struct" => return make_struct(value, opts),
+        .enum_literal => return make_enum_literal(value, opts),
+        .@"enum" => return make_enum(value, opts),
+        .error_set => return make_error(value, opts),
+        .null => return make_null(opts),
+        .float => return make_float(value, opts),
+        .bool => return make_bool(value, opts),
+        .optional => return make_optional(value, opts),
+        .comptime_int => return make_comptime_int(value, opts),
+        .comptime_float => return make_comptime_float(value, opts),
+        .void => return make_enum(.ok, opts),
         else => {
             @compileError("unusable type " ++ @typeName(T) ++ " encountered");
         },
@@ -75,7 +75,7 @@ fn make_array(value: anytype, opts: anytype) beam.term {
 }
 
 fn make_pointer(value: anytype, opts: anytype) beam.term {
-    const pointer = @typeInfo(@TypeOf(value)).Pointer;
+    const pointer = @typeInfo(@TypeOf(value)).pointer;
     switch (pointer.size) {
         .One => return make_mut(value, opts),
         .Many => return make_manypointer(value, opts),
@@ -91,7 +91,7 @@ fn make_optional(value: anytype, opts: anytype) beam.term {
 fn make_int(value: anytype, opts: anytype) beam.term {
     options.assert_default(@TypeOf(value), opts);
 
-    const int = @typeInfo(@TypeOf(value)).Int;
+    const int = @typeInfo(@TypeOf(value)).int;
     switch (int.signedness) {
         .signed => switch (int.bits) {
             0 => return .{ .v = e.enif_make_int(options.env(opts), 0) },
@@ -149,7 +149,7 @@ pub fn make_comptime_float(comptime float: comptime_float, opts: anytype) beam.t
 const EMPTY_TUPLE_LIST = [_]beam.term{};
 
 fn make_struct(value: anytype, opts: anytype) beam.term {
-    const struct_info = @typeInfo(@TypeOf(value)).Struct;
+    const struct_info = @typeInfo(@TypeOf(value)).@"struct";
     const env = options.env(opts);
     if (struct_info.is_tuple) {
         if (value.len > 16_777_215) {
@@ -177,7 +177,7 @@ fn make_struct(value: anytype, opts: anytype) beam.term {
 }
 
 fn make_struct_map(value: anytype, opts: anytype) beam.term {
-    const struct_info = @typeInfo(@TypeOf(value)).Struct;
+    const struct_info = @typeInfo(@TypeOf(value)).@"struct";
     const env = options.env(opts);
     const fields = struct_info.fields;
     var result: e.ErlNifTerm = undefined;
@@ -211,7 +211,7 @@ fn make_struct_map(value: anytype, opts: anytype) beam.term {
 
 fn make_struct_binary(value: anytype, opts: anytype) beam.term {
     const T = @TypeOf(value);
-    const struct_info = @typeInfo(T).Struct;
+    const struct_info = @typeInfo(T).@"struct";
     switch (struct_info.layout) {
         .@"packed", .@"extern" => {},
         else => @compileError("only packed and extern structs can be output as binary"),
@@ -267,14 +267,14 @@ fn make_bool(value: bool, opts: anytype) beam.term {
 fn make_mut(value_ptr: anytype, opts: anytype) beam.term {
     const child = @TypeOf(value_ptr.*);
     switch (@typeInfo(child)) {
-        .Array => return make_array_from_pointer(child, value_ptr, opts),
-        .Struct => return make_struct(value_ptr.*, opts),
+        .array => return make_array_from_pointer(child, value_ptr, opts),
+        .@"struct" => return make_struct(value_ptr.*, opts),
         else => @compileError("this type is unsupported"),
     }
 }
 
 fn make_array_from_pointer(comptime T: type, array_ptr: anytype, opts: anytype) beam.term {
-    const array_info = @typeInfo(T).Array;
+    const array_info = @typeInfo(T).array;
     const Child = array_info.child;
 
     // u8 arrays (sentinel terminated or otherwise) are treated as
@@ -318,7 +318,7 @@ fn make_array_from_pointer(comptime T: type, array_ptr: anytype, opts: anytype) 
 }
 
 pub fn make_manypointer(manypointer: anytype, opts: anytype) beam.term {
-    const pointer = @typeInfo(@TypeOf(manypointer)).Pointer;
+    const pointer = @typeInfo(@TypeOf(manypointer)).pointer;
     if (pointer.sentinel) |_| {
         const len = std.mem.len(manypointer);
         return make_slice(manypointer[0..len], opts);
@@ -328,7 +328,7 @@ pub fn make_manypointer(manypointer: anytype, opts: anytype) beam.term {
 }
 
 fn make_cpointer(cpointer: anytype, opts: anytype) beam.term {
-    const pointer = @typeInfo(@TypeOf(cpointer)).Pointer;
+    const pointer = @typeInfo(@TypeOf(cpointer)).pointer;
     const Child = pointer.child;
 
     if (@hasField(@TypeOf(opts), "length")) {
@@ -339,23 +339,23 @@ fn make_cpointer(cpointer: anytype, opts: anytype) beam.term {
             if (Child == u8) {
                 return make(@as([*:0]u8, @ptrCast(cpointer)), opts);
             }
-            if (@typeInfo(Child) == .Pointer) {
+            if (@typeInfo(Child) == .pointer) {
                 return make(@as([*:null]Child, @ptrCast(cpointer)), opts);
             }
-    
+
             switch (@typeInfo(Child)) {
-                .Struct => return make(@as(*Child, @ptrCast(cpointer)), opts),
+                .@"struct" => return make(@as(*Child, @ptrCast(cpointer)), opts),
                 else => @compileError("this is not supported"),
             }
         } else {
-            return make(.nil, .{.env = options.env(opts)});
+            return make(.nil, .{ .env = options.env(opts) });
         }
     }
 }
 
 pub fn make_slice(slice: anytype, opts: anytype) beam.term {
     const T = @TypeOf(slice);
-    const slice_info = @typeInfo(T).Pointer;
+    const slice_info = @typeInfo(T).pointer;
     const Child = slice_info.child;
 
     // u8 slices default to binary and must be opt-in to get charlists out.
@@ -403,7 +403,7 @@ pub fn make_into_atom(atom_string: []const u8, opts: anytype) beam.term {
 fn make_binary(content: anytype, opts: anytype) beam.term {
     const T = @TypeOf(content);
     switch (@typeInfo(T)) {
-        .Pointer => |P| {
+        .pointer => |P| {
             const Child = P.child;
             switch (P.size) {
                 .Slice => {
@@ -413,17 +413,17 @@ fn make_binary(content: anytype, opts: anytype) beam.term {
                 },
                 // it is possible that this is a const pointer to an array in memory.
                 .One => {
-                    if (@typeInfo(Child) != .Array) {
+                    if (@typeInfo(Child) != .array) {
                         @compileError("make_binary is only supported for array and slice pointers");
                     }
-                    const binary_size = @sizeOf(@typeInfo(Child).Array.child) * content.len;
+                    const binary_size = @sizeOf(@typeInfo(Child).array.child) * content.len;
                     const u8buf = @as([*]const u8, @ptrCast(content));
                     return make_binary_from_u8_slice(u8buf[0..binary_size], opts);
                 },
                 else => @compileError("make_binary is only supported for array and slice pointers"),
             }
         },
-        .Array => |A| {
+        .array => |A| {
             const binary_size = @sizeOf(A.child) * content.len;
             const u8buf = @as([*]const u8, @ptrCast(&content));
             return make_binary_from_u8_slice(u8buf[0..binary_size], opts);

@@ -195,7 +195,7 @@ fn set_callback_context(env_: beam.env) void {
     };
 }
 
-pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
+pub fn MaybeUnwrap(comptime s: builtin.Type.@"struct") ?type {
     // verify that this is indeed a resource.  A resource has the
     // a single field called `__payload` which is a pointer to the wrapped type.
     // return the wrapped type, otherwise return null.
@@ -205,7 +205,7 @@ pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
     if (!std.mem.eql(u8, s.fields[1].name, "__should_release")) return null;
 
     switch (@typeInfo(s.fields[0].type)) {
-        .Pointer => |p| {
+        .pointer => |p| {
             if (p.size != .One) return null;
             if (p.is_allowzero) return null;
             return p.child;
