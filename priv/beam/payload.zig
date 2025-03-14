@@ -19,9 +19,9 @@ pub fn Payload(comptime function: anytype) type {
         const new_field = [1]SF{.{
             .name = std.fmt.comptimePrint("{}", .{index}),
             .type = param.type.?,
-            .default_value = null,
+            .default_value_ptr = null,
             .is_comptime = false,
-            .alignment = 4,
+            .alignment = @alignOf(param.type.?),
         }};
         fields = fields ++ &new_field;
     }

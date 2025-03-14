@@ -195,7 +195,7 @@ fn set_callback_context(env_: beam.env) void {
     };
 }
 
-pub fn MaybeUnwrap(comptime s: builtin.Type.@"struct") ?type {
+pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
     // verify that this is indeed a resource.  A resource has the
     // a single field called `__payload` which is a pointer to the wrapped type.
     // return the wrapped type, otherwise return null.

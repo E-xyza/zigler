@@ -6,7 +6,7 @@ const WriteError = std.fs.File.WriteError;
 const FileWriter = std.io.Writer(std.fs.File, WriteError, std.fs.File.write);
 const JsonStreamPtr = *json.WriteStream(FileWriter, .{ .assumed_correct = {} });
 
-fn streamInt(stream: anytype, comptime i: std.builtin.Type.int) WriteError!void {
+fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) WriteError!void {
     try typeHeader(stream, "integer");
     try stream.objectField("signedness");
     switch (i.signedness) {
@@ -17,7 +17,7 @@ fn streamInt(stream: anytype, comptime i: std.builtin.Type.int) WriteError!void 
     try stream.write(i.bits);
 }
 
-fn streamEnum(stream: anytype, comptime en: std.builtin.Type.@"enum", comptime T: type) WriteError!void {
+fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: type) WriteError!void {
     if (en.fields.len <= 1) {
         try typeHeader(stream, "unusable:" ++ @typeName(T));
         return;
@@ -35,13 +35,13 @@ fn streamEnum(stream: anytype, comptime en: std.builtin.Type.@"enum", comptime T
     try stream.endObject();
 }
 
-fn streamFloat(stream: anytype, comptime f: std.builtin.Type.float) WriteError!void {
+fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) WriteError!void {
     try typeHeader(stream, "float");
     try stream.objectField("bits");
     try stream.write(f.bits);
 }
 
-fn streamStruct(stream: anytype, comptime s: std.builtin.Type.@"struct", comptime S: type) WriteError!void {
+fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S: type) WriteError!void {
     const name = @typeName(S);
 
     try typeHeader(stream, "struct");
@@ -67,7 +67,7 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.@"struct", comptim
         try stream.objectField("type");
         try streamType(stream, field.type);
         try stream.objectField("required");
-        if (field.default_value) |default_value| {
+        if (field.default_value_ptr) |default_value| {
             _ = default_value;
             try stream.write(false);
         } else {
@@ -80,38 +80,38 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.@"struct", comptim
     try stream.endArray();
 }
 
-fn streamArray(stream: anytype, comptime a: std.builtin.Type.array, repr: anytype) WriteError!void {
+fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) WriteError!void {
     try typeHeader(stream, "array");
     try stream.objectField("len");
     try stream.write(a.len);
     try stream.objectField("child");
     try streamType(stream, a.child);
     try stream.objectField("has_sentinel");
-    try stream.write(if (a.sentinel) |_| true else false);
+    try stream.write(if (a.sentinel_ptr) |_| true else false);
     try stream.objectField("repr");
     try stream.write(repr);
 }
 
-fn streamPointer(stream: anytype, comptime p: std.builtin.Type.pointer, repr: anytype) WriteError!void {
+fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) WriteError!void {
     switch (p.size) {
-        .One => {
+        .one => {
             try typeHeader(stream, "pointer");
         },
-        .Many => {
+        .many => {
             try typeHeader(stream, "manypointer");
             try stream.objectField("has_sentinel");
-            try stream.write(if (p.sentinel) |_| true else false);
+            try stream.write(if (p.sentinel_ptr) |_| true else false);
             try stream.objectField("repr");
             try stream.write(repr);
         },
-        .Slice => {
+        .slice => {
             try typeHeader(stream, "slice");
             try stream.objectField("has_sentinel");
-            try stream.write(if (p.sentinel) |_| true else false);
+            try stream.write(if (p.sentinel_ptr) |_| true else false);
             try stream.objectField("repr");
             try stream.write(repr);
         },
-        .C => {
+        .c => {
             try typeHeader(stream, "cpointer");
         },
     }
@@ -121,7 +121,7 @@ fn streamPointer(stream: anytype, comptime p: std.builtin.Type.pointer, repr: an
     try streamType(stream, p.child);
 }
 
-fn streamOptional(stream: anytype, comptime o: std.builtin.Type.optional) WriteError!void {
+fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) WriteError!void {
     try typeHeader(stream, "optional");
     try stream.objectField("child");
     try streamType(stream, o.child);
@@ -178,7 +178,7 @@ fn streamType(stream: anytype, comptime T: type) WriteError!void {
                 .optional => |o| try streamOptional(stream, o),
                 .bool => try typeHeader(stream, "bool"),
                 .void => try typeHeader(stream, "void"),
-                .ErrorUnion => |eu| {
+                .error_union => |eu| {
                     try typeHeader(stream, "error");
                     try stream.objectField("child");
                     try streamType(stream, eu.payload);
@@ -192,7 +192,7 @@ fn streamType(stream: anytype, comptime T: type) WriteError!void {
     try stream.endObject();
 }
 
-pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.@"fn") WriteError!void {
+pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.Fn) WriteError!void {
     try stream.beginObject();
 
     // emit name
@@ -242,7 +242,7 @@ pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
     // types are found in decls
     inline for (mod_info.decls) |decl| {
         switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
-            .Type => {
+            .type => {
                 const T = @field(Mod, decl.name);
                 try stream.beginObject();
                 try stream.objectField("name");
@@ -260,7 +260,7 @@ pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
     try stream.beginArray();
     inline for (mod_info.decls) |decl| {
         switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
-            .Type => {},
+            .type => {},
             .@"fn" => {},
             else => {
                 try stream.beginObject();

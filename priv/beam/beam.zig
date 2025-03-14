@@ -1454,35 +1454,23 @@ const zigler_options = @import("zigler_options");
 /// <!-- ignore -->
 pub const allocator_ = @import("allocator.zig");
 
-pub const make_debug_allocator_instance = allocator_.make_debug_allocator_instance;
-
-// Deprecated
-// pub const make_debug_allocator_instance = make_debug_allocator_instance;
+/// directly wraps the allocator functions into the `std.mem.Allocator` 
+/// interface.  This will only allocate memory at the machine word alignment.
+/// if you need greater alignment, use `beam.allocator`
+pub const raw_allocator = allocator_.raw_beam_allocator;
 
 /// provides a BEAM allocator that can perform allocations with greater
 /// alignment than the machine word.
 ///
 /// > #### Memory performance {: .warning }
 /// >
-/// > This comes at the cost of some memory to store metadata
-///
-/// currently does not release memory that is resized.  For this behaviour
-/// use `beam.debug_allocator`.
-///
-/// not threadsafe.  for a threadsafe allocator, use `beam.debug_allocator`
-pub const wide_alignment_allocator = allocator_.wide_alignment_allocator;
+/// > This comes at the cost of some memory to store metadata and some
+/// > performance on the allocation step.
+pub const allocator = allocator_.beam_allocator;
 
 /// implements `std.mem.Allocator` using the `std.mem.DebugAllocator`
 /// factory, backed by `beam.wide_alignment_allocator`.
 pub const debug_allocator = allocator_.debug_allocator;
-
-// Deprecated
-// pub const debug_allocator = debug_allocator;
-
-/// wraps [`e.enif_alloc`](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc)
-/// and [`e.enif_free`](https://www.erlang.org/doc/man/erl_nif.html#enif_free)
-/// into the zig standard library allocator interface.
-pub const allocator = allocator_.allocator;
 
 ///////////////////////////////////////////////////////////////////////////////
 // resources
@@ -1817,7 +1805,7 @@ const WrappedResultTag = enum { ok, error_return_trace };
 pub fn WrappedResult(comptime FunctionType: type) type {
     const NaiveReturnType = @typeInfo(FunctionType).@"fn".return_type.?;
     return switch (@typeInfo(NaiveReturnType)) {
-        .ErrorUnion => |eu| union(WrappedResultTag) {
+        .error_union => |eu| union(WrappedResultTag) {
             ok: eu.payload,
             error_return_trace: term,
         },
