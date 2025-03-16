@@ -213,13 +213,18 @@ defmodule Zig.Compiler do
         |> Path.expand(Path.dirname(path))
         |> Path.relative_to_cwd()
 
-      if dep_path in so_far do
-        so_far
-      else
-        dep_path
-        |> File.read!()
-        |> Parser.parse()
-        |> recursive_resource_search(dep_path, MapSet.put(so_far, dep_path))
+      cond do
+        dep_path in so_far ->
+          so_far
+
+        Path.extname(dep_path) == ".zig" ->
+          dep_path
+          |> File.read!()
+          |> Parser.parse()
+          |> recursive_resource_search(dep_path, MapSet.put(so_far, dep_path))
+
+        true ->
+          MapSet.put(so_far, dep_path)
       end
     end)
   end
