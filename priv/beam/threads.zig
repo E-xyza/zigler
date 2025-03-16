@@ -65,7 +65,7 @@ pub threadlocal var self_pid: *const fn () beam.pid = undefined;
 
 fn makes_error_result__(comptime F: type) bool {
     const NaiveReturnType = @typeInfo(F).@"fn".return_type.?;
-    return (@typeInfo(NaiveReturnType) == .ErrorUnion);
+    return (@typeInfo(NaiveReturnType) == .error_union);
 }
 
 pub fn Thread(comptime function: anytype) type {

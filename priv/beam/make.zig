@@ -77,10 +77,10 @@ fn make_array(value: anytype, opts: anytype) beam.term {
 fn make_pointer(value: anytype, opts: anytype) beam.term {
     const pointer = @typeInfo(@TypeOf(value)).pointer;
     switch (pointer.size) {
-        .One => return make_mut(value, opts),
-        .Many => return make_manypointer(value, opts),
-        .Slice => return make_slice(value, opts),
-        .C => return make_cpointer(value, opts),
+        .one => return make_mut(value, opts),
+        .many => return make_manypointer(value, opts),
+        .slice => return make_slice(value, opts),
+        .c => return make_cpointer(value, opts),
     }
 }
 
@@ -319,7 +319,7 @@ fn make_array_from_pointer(comptime T: type, array_ptr: anytype, opts: anytype) 
 
 pub fn make_manypointer(manypointer: anytype, opts: anytype) beam.term {
     const pointer = @typeInfo(@TypeOf(manypointer)).pointer;
-    if (pointer.sentinel) |_| {
+    if (pointer.sentinel_ptr) |_| {
         const len = std.mem.len(manypointer);
         return make_slice(manypointer[0..len], opts);
     } else {
@@ -406,13 +406,13 @@ fn make_binary(content: anytype, opts: anytype) beam.term {
         .pointer => |P| {
             const Child = P.child;
             switch (P.size) {
-                .Slice => {
+                .slice => {
                     const binary_size = @sizeOf(Child) * content.len;
                     const u8buf = @as([*]const u8, @ptrCast(content.ptr));
                     return make_binary_from_u8_slice(u8buf[0..binary_size], opts);
                 },
                 // it is possible that this is a const pointer to an array in memory.
-                .One => {
+                .one => {
                     if (@typeInfo(Child) != .array) {
                         @compileError("make_binary is only supported for array and slice pointers");
                     }

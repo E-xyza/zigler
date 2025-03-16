@@ -289,9 +289,9 @@ fn get_tuple_to_buf(src: beam.term, buf: anytype, opts: anytype) !void {
     if (src.term_type(options.env(opts)) != .tuple) return GetError.argument_error;
 
     var arity: c_int = undefined;
-    var src_array: [*c]e.ErlNifTerm = undefined;
+    var src_array: [*c]const e.ErlNifTerm = undefined;
 
-    const result = e.enif_get_tuple(options.env(opts), src.v, &arity, &src_array);
+    const result = e.enif_get_tuple(options.env(opts), src.v, &arity, @ptrCast(&src_array));
 
     if (result == 0) return GetError.argument_error;
     if (arity != child_type_info.array.len) return GetError.argument_error;
@@ -336,16 +336,16 @@ pub fn get_array(comptime T: type, src: beam.term, opts: anytype) !T {
 pub fn get_pointer(comptime T: type, src: beam.term, opts: anytype) !T {
     const pointer_info = @typeInfo(T).pointer;
     switch (pointer_info.size) {
-        .One => {
+        .one => {
             return get_onepointer(T, src, opts);
         },
-        .Slice => {
+        .slice => {
             return get_slice(T, src, opts);
         },
-        .Many => {
+        .many => {
             return get_manypointer(T, src, opts);
         },
-        .C => {
+        .c => {
             return get_cpointer(T, src, opts);
         },
     }
@@ -412,7 +412,7 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
         return result_ptr[0..item_count];
     } else {
         const alloc = options.allocator(opts);
-        const alloc_count = if (slice_info.sentinel) |_| item_count + 1 else item_count;
+        const alloc_count = if (slice_info.sentinel_ptr) |_| item_count + 1 else item_count;
 
         const result = alloc.alloc(Child, alloc_count) catch |err| {
             return err;
@@ -420,7 +420,7 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
 
         @memcpy(result, result_ptr[0..item_count]);
 
-        if (slice_info.sentinel) |sentinel| {
+        if (slice_info.sentinel_ptr) |sentinel| {
             result[item_count] = @as(*const Child, @ptrCast(@alignCast(sentinel))).*;
         }
 
@@ -435,7 +435,7 @@ pub fn get_slice_list(comptime T: type, src: beam.term, opts: anytype) !T {
     const alloc = options.allocator(opts);
 
     if (e.enif_get_list_length(options.env(opts), src.v, &length) == 0) return GetError.unreachable_error;
-    const alloc_length = if (slice_info.sentinel) |_| length + 1 else length;
+    const alloc_length = if (slice_info.sentinel_ptr) |_| length + 1 else length;
 
     const result = try alloc.alloc(Child, alloc_length);
     errdefer alloc.free(result);
@@ -454,7 +454,7 @@ pub fn get_slice_list(comptime T: type, src: beam.term, opts: anytype) !T {
 
     if (e.enif_is_empty_list(options.env(opts), list) == 0) return GetError.unreachable_error;
 
-    if (slice_info.sentinel) |sentinel| {
+    if (slice_info.sentinel_ptr) |sentinel| {
         result[length] = @as(*const Child, @ptrCast(@alignCast(sentinel))).*;
     }
 
@@ -466,8 +466,8 @@ pub fn get_manypointer(comptime T: type, src: beam.term, opts: anytype) !T {
     const Child = @typeInfo(T).pointer.child;
     const slice = try get_slice([]Child, src, opts);
     const result = @as(T, @ptrCast(slice.ptr));
-    if (@typeInfo(T).pointer.sentinel) |sentinel_ptr| {
-        result[slice.len] = @as(*const Child, @ptrCast(@alignCast(sentinel_ptr))).*;
+    if (@typeInfo(T).pointer.sentinel_ptr) |sentinel| {
+        result[slice.len] = @as(*const Child, @ptrCast(@alignCast(sentinel))).*;
     }
     if (@hasField(@TypeOf(opts), "size")) {
         opts.size.* = slice.len;
@@ -617,7 +617,7 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
                     };
                 } else {
                     // note that this is a comptime if.
-                    if (field.default_value) |default_value| {
+                    if (field.default_value_ptr) |default_value| {
                         @field(result.*, field.name) = @as(*const F, @ptrCast(@alignCast(default_value))).*;
                     } else {
                         // can't return this directly due to compilation error.
@@ -666,7 +666,7 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
                 // skip anything that was defined in the last section.
                 if (!@field(registry, field.name)) {
                     const Tf = field.type;
-                    if (field.default_value) |defaultptr| {
+                    if (field.default_value_ptr) |defaultptr| {
                         @field(result.*, field.name) = @as(*const Tf, @ptrCast(@alignCast(defaultptr))).*;
                     } else {
                         error_line(.{ "note: ", .{ .typename, @typeName(T) }, " requires the field `:", field.name, "`, which is missing.)" }, opts);
@@ -698,11 +698,11 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
     var fields: [source_fields.len]std.builtin.Type.StructField = undefined;
 
     for (source_fields, 0..) |source_field, index| {
-        fields[index] = .{ .name = source_field.name, .type = bool, .default_value = &default, .is_comptime = false, .alignment = @alignOf(*bool) };
+        fields[index] = .{ .name = source_field.name, .type = bool, .default_value_ptr = &default, .is_comptime = false, .alignment = @alignOf(*bool) };
     }
 
     const decls = [0]std.builtin.Type.Declaration{};
-    const constructed_struct = std.builtin.Type.@"struct"{
+    const constructed_struct = std.builtin.Type.Struct{
         .layout = .auto,
         .fields = fields[0..],
         .decls = decls[0..],
@@ -810,10 +810,10 @@ fn typespec_for(comptime T: type) []const u8 {
         .array => |a| "list(" ++ typespec_for(a.child) ++ ")" ++ binary_spec(T),
         .pointer => |p| switch (p.size) {
             // pointer to one can only be a map or keyword.
-            .One => "map | keyword",
-            .Slice => "list(" ++ typespec_for(p.child) ++ ")" ++ binary_spec(T),
-            .Many => "list(" ++ typespec_for(p.child) ++ ")" ++ binary_spec(T),
-            .C => (if (@typeInfo(p.child) == .@"struct") "map | list(" ++ typespec_for(p.child) ++ ")" else "") ++ binary_spec(T),
+            .one => "map | keyword",
+            .slice => "list(" ++ typespec_for(p.child) ++ ")" ++ binary_spec(T),
+            .many => "list(" ++ typespec_for(p.child) ++ ")" ++ binary_spec(T),
+            .c => (if (@typeInfo(p.child) == .@"struct") "map | list(" ++ typespec_for(p.child) ++ ")" else "") ++ binary_spec(T),
         },
         .optional => |o| comptime make_optional: {
             break :make_optional "nil | " ++ typespec_for(o.child);
@@ -875,7 +875,7 @@ fn get_byte_size(comptime T: type) ?BinarySize {
         },
         .pointer => |p| {
             switch (p.size) {
-                .Slice, .Many, .C => {
+                .slice, .many, .c => {
                     // pointers can only be binary if the associated child size is integer, float, or fixed, but
                     // the result is variable.
                     switch (@typeInfo(p.child)) {
@@ -889,7 +889,7 @@ fn get_byte_size(comptime T: type) ?BinarySize {
                     }
                     return null;
                 },
-                .One => return null,
+                .one => return null,
             }
         },
         .@"struct" => |s| {

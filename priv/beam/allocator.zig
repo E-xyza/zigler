@@ -102,7 +102,7 @@ pub const raw_beam_allocator: std.mem.Allocator = .{
     .vtable = &raw_beam_allocator_vtable,
 };
 
-const raw_beam_allocator_vtable = .{
+const raw_beam_allocator_vtable = std.mem.Allocator.VTable{
     .alloc = raw_alloc,
     .resize = raw_resize,
     .remap = raw_remap,

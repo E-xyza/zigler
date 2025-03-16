@@ -59,21 +59,21 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
     if (info.is_const) return;
 
     switch (info.size) {
-        .One => {
+        .one => {
             // TODO: more detailed cleanup.
             options.allocator(opts).destroy(ptr);
         },
-        .Slice => {
+        .slice => {
             for (ptr) |item| {
                 cleanup(item, opts);
             }
-            if (info.sentinel) |_| {
+            if (info.sentinel_ptr) |_| {
                 options.allocator(opts).free(@as([]u8, @ptrCast(ptr)));
             } else {
                 options.allocator(opts).free(ptr);
             }
         },
-        .Many, .C => {
+        .many, .c => {
             // cleaning up content can be done by specifying either a size parameter in the
             // cleanup options, or by specifying a cleanup function.  It can also be explictly
             // ignored by specifying a null cleanup function.  This function should take

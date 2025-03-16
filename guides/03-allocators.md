@@ -106,8 +106,8 @@ higher alignment than the maximum alignment for builtin types.
 ```elixir
 ~Z"""
 pub fn allocate_large_aligned(count: usize) !usize {
-    const page = try beam.wide_alignment_allocator.allocWithOptions(u8, count, 4096, null);
-    defer beam.wide_alignment_allocator.free(page);
+    const page = try beam.allocator.allocWithOptions(u8, count, 4096, null);
+    defer beam.allocator.free(page);
 
     return @intFromPtr(page.ptr);
 }

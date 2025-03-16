@@ -1173,7 +1173,11 @@ pub const make_ref = make_.make_ref;
 /// ```
 /// [
 ///   %{
-///     line_info: %{file_name: "/path/to/project/lib/my_app/.Elixir.MyApp.MyModule.zig", line: 15},
+///     source_location: %{
+///        file_name: "/path/to/project/lib/my_app/.Elixir.MyApp.MyModule.zig", 
+///        line: 15,
+///        column: 5
+///     },
 ///     symbol_name: "my_fun",
 ///     compile_unit_name: "Elixir.MyApp.MyModule"
 ///   }
@@ -1467,6 +1471,9 @@ pub const raw_allocator = allocator_.raw_beam_allocator;
 /// > This comes at the cost of some memory to store metadata and some
 /// > performance on the allocation step.
 pub const allocator = allocator_.beam_allocator;
+
+/// a function which returns a new debug allocator instance.
+pub const make_debug_allocator_instance = allocator_.make_debug_allocator_instance;
 
 /// implements `std.mem.Allocator` using the `std.mem.DebugAllocator`
 /// factory, backed by `beam.wide_alignment_allocator`.
