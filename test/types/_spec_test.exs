@@ -115,8 +115,9 @@ defmodule ZiglerTest.Types.SpecTest do
   end
 
   describe "for c pointers" do
-    @tag :skip
-    test "cpointer"
+    test "cpointer", specs do
+      assert spec(([byte] | binary | nil -> binary | nil)) = Map.fetch!(specs, {:cpointer_fn, 1})
+    end
   end
 
   describe "for manypointers" do

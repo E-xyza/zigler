@@ -103,7 +103,7 @@ defmodule Zig.Type.Cpointer do
 
       %{as: type} when type in ~w(default binary)a ->
         quote do
-          binary()
+          binary() | nil
         end
     end
   end
