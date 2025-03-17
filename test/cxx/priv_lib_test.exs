@@ -1,12 +1,13 @@
-file_in_priv = File.cwd!() 
-|> Path.join("priv/lib/libblas.so")
-|> File.exists?
+is_blas_in_priv = :zigler
+  |> :code.priv_dir()
+  |> Path.join("lib/libblas.so")
+  |> File.exists?
 
-if {:unix, :linux} == :os.type() and file_in_priv do
-  defmodule ZiglerTest.CXX.LocalLibTest do
+if {:unix, :linux} == :os.type() and is_blas_in_priv do
+  defmodule ZiglerTest.CXX.PrivLibTest do
     use ZiglerTest.IntegrationCase, async: true
 
-    use Zig, otp_app: :zigler, c: [link_lib: "../../priv/lib/libblas.so"]
+    use Zig, otp_app: :zigler, c: [link_lib: {:priv, "lib/libblas.so"}]
 
     ~Z"""
     const c = @cImport(@cInclude("cblas.h"));
