@@ -418,7 +418,12 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
             return err;
         };
 
-        @memcpy(result, result_ptr[0..item_count]);
+        if (slice_info.sentinel_ptr) |_| {
+            @memcpy(result[0..item_count], result_ptr[0..item_count]);
+            result[alloc_count - 1] = @as(*const Child, @ptrCast(@alignCast(slice_info.sentinel_ptr))).*;
+        } else {
+            @memcpy(result, result_ptr[0..item_count]);
+        }
 
         if (slice_info.sentinel_ptr) |sentinel| {
             result[item_count] = @as(*const Child, @ptrCast(@alignCast(sentinel))).*;
