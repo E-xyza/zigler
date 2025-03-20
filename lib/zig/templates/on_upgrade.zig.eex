@@ -6,7 +6,7 @@ beam.context.allocator = beam.allocator;
 <% name = @on_upgrade.name %>
 <%= if @on_upgrade.arity == 3 do %>
 // following type is guaranteed to exist as per semantic analysis.
-const Payload = @typeInfo(@TypeOf(nif.<%= @on_upgrade.name%>)).Fn.params[2].type.?;
+const Payload = @typeInfo(@TypeOf(nif.<%= @on_upgrade.name%>)).@"fn".params[2].type.?;
 const payload = beam.get(Payload, .{.v = load_info}, .{}) catch return -1;
 <%= case @on_upgrade.return do %>
   <% %Zig.Type.Enum{} -> %>

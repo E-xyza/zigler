@@ -30,7 +30,7 @@ end
 
 TBD.
 
-`~/.cache/zigler/zig-linux-<arch>-0.13.0`
+`~/.cache/zigler/zig-linux-<arch>-0.14.0`
 
 ### Main Installation
 

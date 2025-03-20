@@ -6,7 +6,7 @@ pub fn Payload(comptime function: anytype) type {
     const T = if (@TypeOf(function) == type) function else @TypeOf(function);
 
     const params = switch (@typeInfo(T)) {
-        .Fn => |f| f.params,
+        .@"fn" => |f| f.params,
         else => @compileError("Payload is only available for a function"),
     };
 
@@ -19,14 +19,14 @@ pub fn Payload(comptime function: anytype) type {
         const new_field = [1]SF{.{
             .name = std.fmt.comptimePrint("{}", .{index}),
             .type = param.type.?,
-            .default_value = null,
+            .default_value_ptr = null,
             .is_comptime = false,
-            .alignment = 4,
+            .alignment = @alignOf(param.type.?),
         }};
         fields = fields ++ &new_field;
     }
 
-    const result_type_info: std.builtin.Type = .{ .Struct = .{
+    const result_type_info: std.builtin.Type = .{ .@"struct" = .{
         .layout = .auto,
         .fields = fields,
         .decls = &decls,
@@ -40,8 +40,8 @@ pub fn Payload(comptime function: anytype) type {
 
 fn arity(fun: anytype) u8 {
     return switch (@typeInfo(@TypeOf(fun))) {
-        .Fn => |f| f.params.len,
-        .Struct => |s| s.fields.len,
+        .@"fn" => |f| f.params.len,
+        .@"struct" => |s| s.fields.len,
         else => @compileError("arity is only available for a function"),
     };
 }

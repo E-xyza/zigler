@@ -1,14 +1,14 @@
 defmodule Zigler.MixProject do
   use Mix.Project
 
-  def zig_version, do: "0.13.0"
+  def zig_version, do: "0.14.0"
 
   def project do
     env = Mix.env()
 
     [
       app: :zigler,
-      version: "0.13.3",
+      version: "0.14.0",
       elixir: "~> 1.14",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
@@ -74,7 +74,7 @@ defmodule Zigler.MixProject do
       {:zig_parser, "~> 0.4.0"},
       # utility to help manage type protocols
       {:protoss, "~> 0.2"},
-      {:zig_get, "== 0.13.1"},
+      {:zig_get, "== 0.14.0"},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
       {:zig_doc, "~> 0.4.0", only: :dev, runtime: false}

@@ -97,9 +97,9 @@ defmodule Zig.ErrorProng do
           |> Enum.map(fn %{
                            compile_unit_name: module_str,
                            symbol_name: fn_str,
-                           line_info: line_info
+                           source_location: source_location
                          } ->
-            {file, line} = __resolve(line_info)
+            {file, line} = __resolve(source_location)
             {String.to_atom(module_str), String.to_atom(fn_str), [:...], [file: file, line: line]}
           end)
           |> Enum.reverse(stacktrace)

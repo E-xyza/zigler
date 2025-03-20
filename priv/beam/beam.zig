@@ -1173,7 +1173,11 @@ pub const make_ref = make_.make_ref;
 /// ```
 /// [
 ///   %{
-///     line_info: %{file_name: "/path/to/project/lib/my_app/.Elixir.MyApp.MyModule.zig", line: 15},
+///     source_location: %{
+///        file_name: "/path/to/project/lib/my_app/.Elixir.MyApp.MyModule.zig", 
+///        line: 15,
+///        column: 5
+///     },
 ///     symbol_name: "my_fun",
 ///     compile_unit_name: "Elixir.MyApp.MyModule"
 ///   }
@@ -1313,7 +1317,7 @@ pub const Payload = payload.Payload;
 /// const CleanupErrors = error{leaked};
 ///
 /// pub fn cleanup_example(term: beam.term) !i32 {
-///     var gpa = beam.make_general_purpose_allocator_instance();
+///     var gpa = beam.make_debug_allocator_instance();
 ///     const allocator = gpa.allocator();
 ///     const slice = try beam.get([]i32, term, .{.allocator = allocator});
 ///     const number = slice[0];
@@ -1454,29 +1458,26 @@ const zigler_options = @import("zigler_options");
 /// <!-- ignore -->
 pub const allocator_ = @import("allocator.zig");
 
-pub const make_general_purpose_allocator_instance = allocator_.make_general_purpose_allocator_instance;
+/// directly wraps the allocator functions into the `std.mem.Allocator` 
+/// interface.  This will only allocate memory at the machine word alignment.
+/// if you need greater alignment, use `beam.allocator`
+pub const raw_allocator = allocator_.raw_beam_allocator;
 
 /// provides a BEAM allocator that can perform allocations with greater
 /// alignment than the machine word.
 ///
 /// > #### Memory performance {: .warning }
 /// >
-/// > This comes at the cost of some memory to store metadata
-///
-/// currently does not release memory that is resized.  For this behaviour
-/// use `beam.general_purpose_allocator`.
-///
-/// not threadsafe.  for a threadsafe allocator, use `beam.general_purpose_allocator`
-pub const wide_alignment_allocator = allocator_.wide_alignment_allocator;
+/// > This comes at the cost of some memory to store metadata and some
+/// > performance on the allocation step.
+pub const allocator = allocator_.beam_allocator;
 
-/// implements `std.mem.Allocator` using the `std.mem.GeneralPurposeAllocator`
+/// a function which returns a new debug allocator instance.
+pub const make_debug_allocator_instance = allocator_.make_debug_allocator_instance;
+
+/// implements `std.mem.Allocator` using the `std.mem.DebugAllocator`
 /// factory, backed by `beam.wide_alignment_allocator`.
-pub const general_purpose_allocator = allocator_.general_purpose_allocator;
-
-/// wraps [`e.enif_alloc`](https://www.erlang.org/doc/man/erl_nif.html#enif_alloc)
-/// and [`e.enif_free`](https://www.erlang.org/doc/man/erl_nif.html#enif_free)
-/// into the zig standard library allocator interface.
-pub const allocator = allocator_.allocator;
+pub const debug_allocator = allocator_.debug_allocator;
 
 ///////////////////////////////////////////////////////////////////////////////
 // resources
@@ -1647,9 +1648,9 @@ pub fn independent_context(opts: InitEnvOpts) void {
 // tuple is empty.
 pub fn ClearEnvReturn(comptime T: type) type {
     const info = @typeInfo(T);
-    if (info != .Struct) @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
-    if (!info.Struct.is_tuple) @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
-    const fields = info.Struct.fields;
+    if (info != .@"struct") @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
+    if (!info.@"struct".is_tuple) @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
+    const fields = info.@"struct".fields;
 
     // type assertion that it's a struct.
     inline for (fields) |field| {
@@ -1705,7 +1706,7 @@ pub fn ClearEnvReturn(comptime T: type) type {
 pub fn clear_env(env_: env, persist: anytype) ClearEnvReturn(@TypeOf(persist)) {
     const T = @TypeOf(persist);
     e.enif_clear_env(env_);
-    if (@typeInfo(T).Struct.fields.len == 1) {
+    if (@typeInfo(T).@"struct".fields.len == 1) {
         return .{ .v = e.enif_make_copy(env_, persist[0].v) };
     } else {
         var result: ClearEnvReturn(T) = undefined;
@@ -1809,9 +1810,9 @@ const WrappedResultTag = enum { ok, error_return_trace };
 
 /// <!-- ignore -->
 pub fn WrappedResult(comptime FunctionType: type) type {
-    const NaiveReturnType = @typeInfo(FunctionType).Fn.return_type.?;
+    const NaiveReturnType = @typeInfo(FunctionType).@"fn".return_type.?;
     return switch (@typeInfo(NaiveReturnType)) {
-        .ErrorUnion => |eu| union(WrappedResultTag) {
+        .error_union => |eu| union(WrappedResultTag) {
             ok: eu.payload,
             error_return_trace: term,
         },
@@ -1858,7 +1859,7 @@ pub fn thread_not_running(err: anytype) bool {
 }
 
 fn has_processterminated(comptime T: type) bool {
-    inline for (@typeInfo(T).ErrorSet.?) |err| {
+    inline for (@typeInfo(T).error_set.?) |err| {
         if (std.mem.eql(u8, err.name, "processterminated")) return true;
     }
     return false;
@@ -1896,7 +1897,7 @@ fn has_processterminated(comptime T: type) bool {
 /// > Unlike code in elixir, the validity of the exception struct is not
 /// > checked when using this function.
 pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: anytype) term {
-    if (@typeInfo(@TypeOf(data)) != .Struct) {
+    if (@typeInfo(@TypeOf(data)) != .@"struct") {
         @compileError("elixir exceptions must be structs");
     }
 

@@ -36,7 +36,7 @@ pub const ThreadState = enum {
 
     fn check_against(state: This, state_or_states: anytype) bool {
         switch (@typeInfo(@TypeOf(state_or_states))) {
-            .Struct => {
+            .@"struct" => {
                 inline for (state_or_states) |check| {
                     if (state == check) return true;
                 }
@@ -64,8 +64,8 @@ pub threadlocal var local_join_started: *bool = undefined;
 pub threadlocal var self_pid: *const fn () beam.pid = undefined;
 
 fn makes_error_result__(comptime F: type) bool {
-    const NaiveReturnType = @typeInfo(F).Fn.return_type.?;
-    return (@typeInfo(NaiveReturnType) == .ErrorUnion);
+    const NaiveReturnType = @typeInfo(F).@"fn".return_type.?;
+    return (@typeInfo(NaiveReturnType) == .error_union);
 }
 
 pub fn Thread(comptime function: anytype) type {

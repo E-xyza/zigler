@@ -18,14 +18,16 @@ defmodule Mix.Tasks.Zig.Get do
 
   @shortdoc "Obtains the Zig compiler toolchain"
 
+  @default_version "0.14.0"
+
   @moduledoc """
   obtains the Zig compiler toolchain
 
-      $ mix zig.get [--version VERSION] [--from FROM] [--os OS] [--arch ARCH]
+      $ mix zig.get [--version VERSION] [--from FROM] [--os OS] [--arch ARCH] [other options]
 
   the zigler compiler will be downloaded to ZIG_ARCHIVE_PATH/VERSION
 
-  if unspecified, VERSION defaults to the major/minor version of zig.get
+  if unspecified, VERSION defaults to #{@default_version}.
 
   if FROM is specified, will use the FROM file instead of getting from the internet.
 
@@ -39,9 +41,13 @@ defmodule Mix.Tasks.Zig.Get do
 
   - `TAR_COMMAND`: path to a tar executable that is equivalent to gnu tar.
     only useful for non-windows architectures.
-  - `NO_VERIFY`: disable signature verification of the downloaded file.
-    Not recommended.
   - `ZIG_ARCHIVE_PATH`: path to desired directory to achive the zig compiler toolchain.
+
+  ### other options
+
+  - `--force` overwrites the existing installation if it exists.
+  - `--disable-verify` disables the hash verification of the downloaded file.
+    it's possible that the manifest at `https://ziglang.org/download/index.json`
   """
 
   defstruct ~w(version path arch os url file verify hash force)a
@@ -96,8 +102,6 @@ defmodule Mix.Tasks.Zig.Get do
       path -> %{opts | path: to_charlist(Path.expand(path))}
     end
   end
-
-  @default_version "0.13.0"
 
   defp defaults do
     {os, arch} = Zig.Get.os_info()

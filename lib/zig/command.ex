@@ -102,7 +102,10 @@ defmodule Zig.Command do
 
     lib_dir = Path.join(so_dir, "lib")
 
-    run_zig("build -Doptimize=#{release_mode(module)} --prefix #{so_dir}", cd: staging_directory, stderr_to_stdout: true)
+    run_zig("build -Doptimize=#{release_mode(module)} --prefix #{so_dir}",
+      cd: staging_directory,
+      stderr_to_stdout: true
+    )
 
     src_lib_name = Path.join(lib_dir, src_lib_name(module.module))
     dst_lib_name = Path.join(lib_dir, dst_lib_name(module.module))
@@ -134,7 +137,7 @@ defmodule Zig.Command do
   def release_mode(%{release_mode: :env}) do
     System.fetch_env!("ZIGLER_RELEASE_MODE")
   end
-  
+
   def release_mode(module) do
     Map.fetch!(@release_modes, module.release_mode)
   end
