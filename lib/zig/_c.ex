@@ -29,10 +29,11 @@ defmodule Zig.C do
   @type src_opts :: term
 
   def new(opts, module_opts) do
-    module_dir = cond do
-      dir = module_opts[:dir] -> dir
-      file = module_opts[:file] -> Path.dirname(file)
-    end
+    module_dir =
+      cond do
+        dir = module_opts[:dir] -> dir
+        file = module_opts[:file] -> Path.dirname(file)
+      end
 
     otp_app = Keyword.fetch!(module_opts, :otp_app)
 

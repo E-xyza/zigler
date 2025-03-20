@@ -47,10 +47,9 @@ defmodule ZiglerTest.Types.SpecTest do
     end
 
     test "u128", specs do
-      assert spec(
-               (0..340_282_366_920_938_463_463_374_607_431_768_211_455 ->
-                  0..340_282_366_920_938_463_463_374_607_431_768_211_455)
-             ) = Map.fetch!(specs, {:u128_fn, 1})
+      assert spec((0..340_282_366_920_938_463_463_374_607_431_768_211_455 ->
+                     0..340_282_366_920_938_463_463_374_607_431_768_211_455)) =
+               Map.fetch!(specs, {:u128_fn, 1})
     end
   end
 
@@ -166,53 +165,41 @@ defmodule ZiglerTest.Types.SpecTest do
 
   describe "for normal structs" do
     test "input can be keyword or map with required", specs do
-      assert spec(
-               (%{value: unquote(u38_range)} | [value: unquote(u38_range)] ->
-                  %{value: unquote(u38_range)})
-             ) = Map.fetch!(specs, {:required_struct_fn, 1})
+      assert spec((%{value: unquote(u38_range)} | [value: unquote(u38_range)] ->
+                     %{value: unquote(u38_range)})) = Map.fetch!(specs, {:required_struct_fn, 1})
     end
 
     test "input can be keyword or map with optional, but the output is required", specs do
-      assert spec(
-               (%{optional(:value) => unquote(u38_range)} | [value: unquote(u38_range)] ->
-                  %{value: unquote(u38_range)})
-             ) = Map.fetch!(specs, {:optional_struct_fn, 1})
+      assert spec((%{optional(:value) => unquote(u38_range)} | [value: unquote(u38_range)] ->
+                     %{value: unquote(u38_range)})) = Map.fetch!(specs, {:optional_struct_fn, 1})
     end
 
     test "input can be binary for packed struct", specs do
-      assert spec(
-               (%{value: unquote(u38_range)} | [value: unquote(u38_range)] | <<_::32>> ->
-                  <<_::32>>)
-             ) = Map.fetch!(specs, {:packed_struct_fn, 1})
+      assert spec((%{value: unquote(u38_range)} | [value: unquote(u38_range)] | <<_::32>> ->
+                     <<_::32>>)) = Map.fetch!(specs, {:packed_struct_fn, 1})
     end
 
     test "output can be forced to map for packed struct", specs do
-      assert spec(
-               (%{value: unquote(u38_range)} | [value: unquote(u38_range)] | <<_::32>> ->
-                  %{value: unquote(u38_range)})
-             ) = Map.fetch!(specs, {:packed_struct_fn_map_return, 1})
+      assert spec((%{value: unquote(u38_range)} | [value: unquote(u38_range)] | <<_::32>> ->
+                     %{value: unquote(u38_range)})) =
+               Map.fetch!(specs, {:packed_struct_fn_map_return, 1})
     end
 
     test "input can be binary for extern struct", specs do
-      assert spec(
-               (%{value: unquote(u38_range)} | [value: unquote(u38_range)] | <<_::32>> ->
-                  %{value: unquote(u38_range)})
-             ) = Map.fetch!(specs, {:extern_struct_fn, 1})
+      assert spec((%{value: unquote(u38_range)} | [value: unquote(u38_range)] | <<_::32>> ->
+                     %{value: unquote(u38_range)})) = Map.fetch!(specs, {:extern_struct_fn, 1})
     end
 
     test "output can be forced to map for extern struct", specs do
-      assert spec(
-               (%{value: unquote(u38_range)} | [value: unquote(u38_range)] | <<_::32>> ->
-                  <<_::32>>)
-             ) = Map.fetch!(specs, {:extern_struct_fn_binary_return, 1})
+      assert spec((%{value: unquote(u38_range)} | [value: unquote(u38_range)] | <<_::32>> ->
+                     <<_::32>>)) = Map.fetch!(specs, {:extern_struct_fn_binary_return, 1})
     end
 
     test "you can declare internal map output", specs do
-      assert spec(
-               (%{value: [unquote(u38_range)] | <<_::64>>}
-                | [value: [unquote(u38_range)] | <<_::64>>] ->
-                  %{value: <<_::64>>})
-             ) = Map.fetch!(specs, {:extern_struct_fn_internal_binary_return, 1})
+      assert spec((%{value: [unquote(u38_range)] | <<_::64>>}
+                   | [value: [unquote(u38_range)] | <<_::64>>] ->
+                     %{value: <<_::64>>})) =
+               Map.fetch!(specs, {:extern_struct_fn_internal_binary_return, 1})
     end
   end
 
@@ -223,34 +210,32 @@ defmodule ZiglerTest.Types.SpecTest do
     assert spec(([[unquote(u64_range)] | <<_::320>>] | binary -> [[unquote(u64_range)]])) =
              Map.fetch!(specs, {:really_big_array, 1})
 
-    assert spec(
-             ([
-                %{
-                  v1: unquote(u64_range),
-                  v2: unquote(u64_range),
-                  v3: unquote(u64_range),
-                  v4: unquote(u64_range),
-                  v5: unquote(u64_range)
-                }
-                | [
-                    v1: unquote(u64_range),
-                    v2: unquote(u64_range),
-                    v3: unquote(u64_range),
-                    v4: unquote(u64_range),
-                    v5: unquote(u64_range)
-                  ]
-                | <<_::320>>
-              ]
-              | binary ->
-                [
-                  %{
-                    v1: unquote(u64_range),
-                    v2: unquote(u64_range),
-                    v3: unquote(u64_range),
-                    v4: unquote(u64_range),
-                    v5: unquote(u64_range)
-                  }
-                ])
-           ) = Map.fetch!(specs, {:really_big_struct, 1})
+    assert spec(([
+                   %{
+                     v1: unquote(u64_range),
+                     v2: unquote(u64_range),
+                     v3: unquote(u64_range),
+                     v4: unquote(u64_range),
+                     v5: unquote(u64_range)
+                   }
+                   | [
+                       v1: unquote(u64_range),
+                       v2: unquote(u64_range),
+                       v3: unquote(u64_range),
+                       v4: unquote(u64_range),
+                       v5: unquote(u64_range)
+                     ]
+                   | <<_::320>>
+                 ]
+                 | binary ->
+                   [
+                     %{
+                       v1: unquote(u64_range),
+                       v2: unquote(u64_range),
+                       v3: unquote(u64_range),
+                       v4: unquote(u64_range),
+                       v5: unquote(u64_range)
+                     }
+                   ])) = Map.fetch!(specs, {:really_big_struct, 1})
   end
 end

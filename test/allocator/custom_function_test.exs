@@ -37,13 +37,8 @@ defmodule ZiglerTest.Allocator.CustomFunctionTest do
       return beam.allocator.vtable.resize(beam.allocator.ptr, buf, alignment, new_len, retaddr);
   }
 
-  fn messaging_remap(    
-    context: *anyopaque,
-    memory: []u8,
-    alignment: std.mem.Alignment,
-    new_len: usize,
-    return_address: usize) ?[*]u8 {
-    return beam.allocator.vtable.remap(context, memory, alignment, new_len, return_address);
+  fn messaging_remap(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, return_address: usize) ?[*]u8 {
+      return beam.allocator.vtable.remap(context, memory, alignment, new_len, return_address);
   }
 
   fn messaging_free(_: *anyopaque, buf: []u8, alignment: std.mem.Alignment, retaddr: usize) void {

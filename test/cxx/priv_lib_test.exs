@@ -1,7 +1,8 @@
-is_blas_in_priv = :zigler
+is_blas_in_priv =
+  :zigler
   |> :code.priv_dir()
   |> Path.join("lib/libblas.so")
-  |> File.exists?
+  |> File.exists?()
 
 if {:unix, :linux} == :os.type() and is_blas_in_priv do
   defmodule ZiglerTest.CXX.PrivLibTest do

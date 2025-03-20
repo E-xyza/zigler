@@ -1,6 +1,7 @@
-file_in_priv = File.cwd!() 
-|> Path.join("priv/lib/libblas.so")
-|> File.exists?
+file_in_priv =
+  File.cwd!()
+  |> Path.join("priv/lib/libblas.so")
+  |> File.exists?()
 
 if {:unix, :linux} == :os.type() and file_in_priv do
   defmodule ZiglerTest.CXX.LocalLibTest do

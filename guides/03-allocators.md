@@ -122,14 +122,14 @@ end
 
 ### DebugAllocator
 
-Zigler provides a version of the zig standard library's `DebugAllocator` which is built on
-top of the large allocator. You may use this to easily track memory leaks.
+Zigler provides a version of the zig standard library's `DebugAllocator` which is built on top of
+the large allocator. You may use this to easily track memory leaks.
 
 The state of the global general purpose allocator is accessible using `beam.allocator_.debug_allocator_instance`
 
 You may also create a custom general purpose allocator instance using
-`beam.make_debug_allocator_instance`, whcih is what happens on a per-nif basis if the nif
-is checking for leaks.
+`beam.make_debug_allocator_instance`, whcih is what happens on a per-nif basis if the nif is
+checking for leaks.
 
 ```elixir
 ~Z"""
@@ -163,9 +163,9 @@ end
 
 ## Building composable allocators backed by zig's beam allocator
 
-Because zigler's beam allocators conform to zig's allocator interface, you may use use 
-any composable allocator in the standard library or any composable allocator from an 
-imported zig package, passing any one of the beam allocators into place. 
+Because zigler's beam allocators conform to zig's allocator interface, you may use use any
+composable allocator in the standard library or any composable allocator from an imported zig
+package, passing any one of the beam allocators into place. 
 
 ```elixir
 ~Z"""
@@ -195,8 +195,8 @@ end
 
 ## Zig allocators in `beam.get`
 
-You may use zig standard library allocators or other custom alloctors in the `beam.get` functions 
-to instantiate data where it's the allocator's responsibility to free it at the end.
+You may use zig standard library allocators or other custom alloctors in the `beam.get` functions to
+instantiate data where it's the allocator's responsibility to free it at the end.
 
 ```elixir
 ~Z"""

@@ -57,11 +57,10 @@ functions in the library, there must also be an associated `.h` file with `exter
 
 If you wish to package a `.so` file with the project, you have two options:
 
-1. package the file in the `priv` directory and use `{:priv, "path/to/lib.so"}`.  Note that
-   in this case, you must provide `lib` prefix and `.so` or `.dylib` or `.dll` extensions,
-   if applicable.
-2. package the file using an absolute or relative path (relative the code file location).
-   use `"path/to/lib.so"`.  You must provide `lib` and `.so` or `.dylib` or `.dll` extension.
+1. package the file in the `priv` directory and use `{:priv, "path/to/lib.so"}`. Note that in this
+  case, you must provide `lib` prefix and `.so` or `.dylib` or `.dll` extensions, if applicable.
+1. package the file using an absolute or relative path (relative the code file location). use
+  `"path/to/lib.so"`. You must provide `lib` and `.so` or `.dylib` or `.dll` extension.
 
 In this example we'll use the `cblas_dasum` function, which takes a length, an pointer to
 double-precision floating point list, and a integer stride. The result is a sum of the numbers in

@@ -64,14 +64,25 @@ defmodule ZiglerTest.AllocatorTest do
     end
   end
 
-
   describe "for the debug allocator" do
-    @tag :skip
+    ~Z"""
+    pub fn debug_allocate() usize {
+        const ptr = beam.debug_allocator.alloc(u8, 10_000) catch unreachable;
+        return @intFromPtr(ptr.ptr);
+    }
+
+    pub fn debug_free(addr: usize) void {
+        beam.debug_allocator.free(@as([*]u8, @ptrFromInt(addr))[0..10_000]);
+    }
+    """
+
     test "allocate works" do
+      debug_allocate()
     end
 
-    @tag :skip
     test "free works" do
+      addr = debug_allocate()
+      debug_free(addr)
     end
   end
 end
