@@ -4,7 +4,7 @@ on: push
 
 jobs:
   freebsd:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-latest
     name: FreeBSD / Elixir
     steps:
     - uses: actions/checkout@v4
