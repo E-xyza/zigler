@@ -14,7 +14,9 @@ jobs:
       with:
         usesh: true
         prepare: |
+          pkg install -y erlang
           pkg install -y elixir-devel
 
         run: |
-          pwd
+          elixir -e 'IO.puts("hello world")'
+          ls -laF
