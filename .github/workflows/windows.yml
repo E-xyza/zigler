@@ -20,7 +20,7 @@ jobs:
         id: deps-cache
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ matrix.pair.otp-version }}-${{ matrix.pair.elixir-version }}-${{ hashFiles('/mix.lock') }}-${{ hashfiles('installer/**/*') }}
+          key: ${{ runner.os }}-mix-${{ hashFiles('/mix.lock') }}-${{ hashfiles('/installer/**/*') }}
   
       - name: Install dependencies
         run: mix deps.get
@@ -29,7 +29,7 @@ jobs:
         id: build-cache
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ matrix.pair.otp-version }}-${{ matrix.elixir-version }}-${{ hashFiles('/mix.lock') }}
+          key: ${{ runner.os }}-build-${{ hashFiles('/mix.lock') }}
   
       - name: Compile base
         run: mix compile
@@ -53,5 +53,4 @@ jobs:
       - name: Run Tests
         env:
           RUNNING_CI: "TRUE"
-          ZIGLER_TEST_BLAS: "TRUE"
         run: mix test --exclude no_ci
