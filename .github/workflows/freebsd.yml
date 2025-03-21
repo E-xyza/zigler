@@ -17,6 +17,9 @@ jobs:
           pkg install -y erlang-runtime27
           pkg install -y elixir-devel
 
+          # see: https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=284533
+          cat /etc/ssl/certs/*.0 > /etc/ssl/cert.pem
+
         run: |
           PATH=$PATH:/usr/local/lib/erlang27/bin
           mix local.hex --force
