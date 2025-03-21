@@ -18,5 +18,7 @@ jobs:
           pkg install -y elixir-devel
 
         run: |
-          elixir -e 'IO.puts("hello world")'
-          ls -laF
+          mix deps.get
+          mix compile        
+          mix zig.get
+          mix test --exclude no_ci
