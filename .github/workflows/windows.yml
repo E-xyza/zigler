@@ -1,0 +1,57 @@
+name: Elixir CI - Windows
+
+on: push
+
+jobs:
+  test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Elixir
+        uses: erlef/setup-beam@v1
+        with:
+          elixir-version: '1.18.3'  # adjust as needed
+          otp-version: '27.3'       # adjust as needed
+
+      - uses: actions/cache@v3
+        id: deps-cache
+        with:
+          path: deps
+          key: ${{ runner.os }}-mix-${{ matrix.pair.otp-version }}-${{ matrix.pair.elixir-version }}-${{ hashFiles('/mix.lock') }}
+  
+      - name: Install dependencies
+        run: mix deps.get
+  
+      - uses: actions/cache@v3
+        id: build-cache
+        with:
+          path: _build
+          key: ${{ runner.os }}-build-${{ matrix.pair.otp-version }}-${{ matrix.elixir-version }}-${{ hashFiles('/mix.lock') }}
+  
+      - name: Compile base
+        run: mix compile
+  
+      - name: Compile base
+        run: mix compile
+  
+      - name: Get Zig version
+        id: zig-version
+        run: mix eval "IO.puts(Zig.version())"
+  
+      - uses: actions/cache@v3
+        id: zig-cache
+        with:
+          path: zig
+          key: ${{ runner.os }}-zig-${{ steps.zig-version.outputs.stdout }}
+  
+      - name: Get Zig
+        run: mix zig.get
+  
+      - name: Run Tests
+        env:
+          RUNNING_CI: "TRUE"
+          ZIGLER_TEST_BLAS: "TRUE"
+        run: mix test --exclude no_ci
