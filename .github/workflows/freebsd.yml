@@ -18,7 +18,11 @@ jobs:
           pkg install -y elixir-devel
 
         run: |
+          echo "getting deps"
           mix deps.get
-          mix compile        
+          echo "compiling"
+          mix compile    
+          echo "getting zig"    
           mix zig.get
+          echo "running tests"
           mix test --exclude no_ci
