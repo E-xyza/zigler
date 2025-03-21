@@ -205,7 +205,7 @@ defmodule Mix.Tasks.Zig.Get do
 
   defp do_extract({bin, opts}) do
     spin_with("Extracting Zig compiler toolchain to #{opts.path} ", fn ->
-      extract_mod(opts).extract({:binary, bin}, extract_opts(opts))
+      {:ok, _} = extract_mod(opts).extract(bin, extract_opts(opts))
     end)
   end
 
@@ -216,7 +216,7 @@ defmodule Mix.Tasks.Zig.Get do
     [cwd: path]
   end
 
-  def extract({:binary, bin}, opts) do
+  def extract(bin, opts) do
     {:spawn_executable, System.fetch_env!("TAR_COMMAND")}
     |> Port.open(args: ~w(-xJf -), cd: opts[:cwd])
     |> Port.command(bin)
