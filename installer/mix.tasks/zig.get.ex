@@ -205,7 +205,8 @@ defmodule Mix.Tasks.Zig.Get do
 
   defp do_extract({bin, opts}) do
     spin_with("Extracting Zig compiler toolchain to #{opts.path} ", fn ->
-      {:ok, _} = extract_mod(opts).extract(bin, extract_opts(opts)) |> dbg(limit: 25)
+      {:ok, list} = extract_mod(opts).extract(bin, extract_opts(opts))
+      if !is_list(list), do: raise("extraction failed")
     end)
   end
 
@@ -221,7 +222,7 @@ defmodule Mix.Tasks.Zig.Get do
     |> Port.open(args: ~w(-xJf -), cd: opts[:cwd])
     |> Port.command(bin)
 
-    {:ok, :done}
+    {:ok, []}
   end
 
   defp spin_with(message, fun) do

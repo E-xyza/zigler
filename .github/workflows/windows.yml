@@ -49,9 +49,6 @@ jobs:
   
       - name: Get Zig
         run: mix zig.get
-
-      - name: List Zig Directory
-        run: ls c:/Users/runneradmin/AppData/Local/zigler/Cache
   
       - name: Run Tests
         env:
