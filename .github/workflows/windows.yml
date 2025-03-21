@@ -34,18 +34,18 @@ jobs:
       - name: Compile base
         run: mix compile
   
-      - name: Compile base
-        run: mix compile
-  
       - name: Get Zig version
         id: zig-version
-        run: mix eval "IO.puts(Zig.version())"
+        shell: bash
+        run: | 
+          VERSION=$(mix eval "IO.puts(Zig.version())" | tail -n 1)
+          echo "zig_version=$VERSION" >> $GITHUB_OUTPUT
   
       - uses: actions/cache@v3
         id: zig-cache
         with:
           path: zig
-          key: ${{ runner.os }}-zig-${{ steps.zig-version.outputs.stdout }}
+          key: ${{ runner.os }}-zig-${{ steps.zig-version.outputs.zig_version }}
   
       - name: Get Zig
         run: mix zig.get
