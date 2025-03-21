@@ -19,7 +19,7 @@ jobs:
 
         run: |
           PATH=$PATH:/usr/local/lib/erlang27/bin
-          echo "getting zig"    
+          mix local.hex --force
+          mix deps.get
           mix zig.get
-          # echo "running tests"
-          # mix test --exclude no_ci
+          mix test --exclude no_ci
