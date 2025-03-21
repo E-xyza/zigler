@@ -11,6 +11,7 @@ defmodule Zig.Get do
 
   defp decode_os_info([arch, "apple" | _]), do: {"macos", arch}
   defp decode_os_info([arch, _vendor, os | _]), do: {os, arch}
+  defp decode_os_info(["win32"]), do: {"win32", "x86_64"}
 end
 
 defmodule Mix.Tasks.Zig.Get do
