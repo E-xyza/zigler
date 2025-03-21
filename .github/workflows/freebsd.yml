@@ -18,10 +18,7 @@ jobs:
           pkg install -y elixir-devel
 
         run: |
-          echo "getting deps"
-          mix deps.get
-          echo "compiling"
-          mix compile    
+          PATH=$PATH:/usr/local/lib/erlang27/bin
           echo "getting zig"    
           mix zig.get
           # echo "running tests"
