@@ -17,8 +17,10 @@ jobs:
 
     - name: Install llvm
       run: |
+        sudo apt-get install clang-19
+        sudo apt-get install lld-19
+        sudo apt-get install libclang-dev
         sudo apt-get install llvm-19-dev
-        sudo apt-get install libclang1-19
 
     - name: Download Zig
       run: |
