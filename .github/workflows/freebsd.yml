@@ -46,7 +46,8 @@ jobs:
           pkg install -y erlang-runtime27
           pkg install -y elixir-devel
           pkg install -y llvm19
-          pkg install -y cmake
+
+          pkg install -qyr FreeBSD devel/llvm19 devel/cmake archivers/zstd textproc/libxml2 archivers/lzma
 
           # see: https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=284533
           cat /etc/ssl/certs/*.0 > /etc/ssl/cert.pem
@@ -55,8 +56,8 @@ jobs:
           cd zig-0.14.0
           mkdir build
           cd build
-          cmake ..
-          make install
+          cmake .. -DZIG_STATIC_LLVM=ON -DCMAKE_PREFIX_PATH="/usr/local/llvm19;/usr/local" DCMAKE_BUILD_TYPE=Release
+          make -j2 install
           cd ../..
 
           PATH=$PATH:/usr/local/lib/erlang27/bin
