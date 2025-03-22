@@ -8,10 +8,34 @@ jobs:
     name: FreeBSD / Elixir
     steps:
     - uses: actions/checkout@v4
+
+    - uses: actions/cache@v3
+      id: zig-cache
+      with:
+        path: zig-0.14.0.tar.xz
+        key: ${{ hashFiles('zig-0.14.0.tar.xz') }}
+
     - name: Download Zig
       run: |
-        wget https://ziglang.org/download/0.14.0/zig-0.14.0.tar.xz
-        tar -xf zig-0.14.0.tar.xz
+        if [ ! -f zig-0.14.0.tar.xz ]; then
+          wget https://ziglang.org/download/0.14.0/zig-0.14.0.tar.xz
+          tar -xf zig-0.14.0.tar.xz
+        fi
+
+    - uses: erlef/setup-beam@v1
+      name: Setup Erlang
+      with:
+        otp-version: '27.3'
+        elixir-version: '1.18.3'
+
+    - uses: actions/cache@v3
+      id: deps-cache
+      with:
+        path: deps
+        key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+
+    - name: get deps
+      run: mix deps.get
 
     - name: Test in FreeBSD
       id: test
@@ -27,8 +51,8 @@ jobs:
 
         run: |
           PATH=$PATH:/usr/local/lib/erlang27/bin
-          ls -laF
+          PWD=`pwd`
+          ZIG_ARCHIVE_PATH="$PWD/zig-0.14.0.tar.xz"
 
-          # mix local.hex --force
-          # mix deps.get
-          # mix test --exclude no_ci
+          mix compile
+          mix test --exclude no_ci
