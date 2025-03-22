@@ -8,6 +8,7 @@ jobs:
     name: FreeBSD / Elixir
     steps:
     - uses: actions/checkout@v4
+    - uses: mlugg/setup-zig@v1
 
     - uses: actions/cache@v3
       id: zig-cache
@@ -18,23 +19,20 @@ jobs:
     - name: Download Zig
       run: |
         mkdir -p zig
+        PD=`pwd`
         cd zig
         if [ ! -f zig-0.14.0.tar.xz ]; then
           wget https://ziglang.org/download/0.14.0/zig-0.14.0.tar.xz
           tar -xf zig-0.14.0.tar.xz
         fi 
-        if [ ! -f zig-linux-x86_64-0.14.0.tar.xz ]; then
-          wget https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz
-          tar -xf zig-linux-x86_64-0.14.0.tar.xz
-        fi
         if [ ! -f base.txz ]; then
           wget https://download.freebsd.org/releases/amd64/14.2-RELEASE/base.txz
           mkdir -p sysroot
-          tar -xvf base.txz -C sysroot
+          tar -xf base.txz -C sysroot
         fi
 
         cd zig-0.14.0
-        ../zig-linux-x86_64-0.14.0/zig build -Dtarget=x86_64-freebsd-gnu -Doptimize=ReleaseSafe --sysroot sysroot
+        zig build -Dtarget=x86_64-freebsd-gnu -Doptimize=ReleaseSafe --sysroot "$PD/zig/sysroot"
 
     - uses: erlef/setup-beam@v1
       name: Setup Erlang
