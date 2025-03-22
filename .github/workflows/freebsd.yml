@@ -13,7 +13,7 @@ jobs:
       id: zig-cache
       with:
         path: zig-0.14.0.tar.xz
-        key: ${{ hashFiles('zig-0.14.0.tar.xz') }}
+        key: ${{ hashFiles('/zig-0.14.0.tar.xz') }}
 
     - name: Download Zig
       run: |
@@ -32,7 +32,7 @@ jobs:
       id: deps-cache
       with:
         path: deps
-        key: ${{ runner.os }}-mix-${{ hashFiles('mix.lock') }}
+        key: mix-${{ hashFiles('/mix.lock') }}
 
     - name: get deps
       run: mix deps.get
