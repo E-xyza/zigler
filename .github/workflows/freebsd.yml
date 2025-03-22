@@ -12,22 +12,24 @@ jobs:
     - uses: actions/cache@v3
       id: zig-cache
       with:
-        path: zig-0.14.0.tar.xz
+        path: zig
         key: zig-freebsd
 
     - name: Download Zig
       run: |
+        mkdir -p zig
+        cd zig
         if [ ! -f zig-0.14.0.tar.xz ]; then
-          wget https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz
           wget https://ziglang.org/download/0.14.0/zig-0.14.0.tar.xz
-
-          tar -xf zig-linux-x86_64-0.14.0.tar.xz
           tar -xf zig-0.14.0.tar.xz
-
-          cd zig-0.14.0
-
-          ../zig-linux-x86_64-0.14.0/zig build -Dtarget=x86_64-freebsd
+        fi 
+        if [ ! -f zig-linux-x86_64-0.14.0.tar.xz ]; then
+          wget https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz
+          tar -xf zig-linux-x86_64-0.14.0.tar.xz
         fi
+
+        cd zig-0.14.0
+        ../zig-linux-x86_64-0.14.0/zig build -Dtarget=x86_64-freebsd-gnu
 
     - uses: erlef/setup-beam@v1
       name: Setup Erlang
@@ -59,7 +61,7 @@ jobs:
         run: |
           PATH=$PATH:/usr/local/lib/erlang27/bin
           PWD=`pwd`
-          ZIG_ARCHIVE_PATH="$PWD/zig-0.14.0.tar.xz"
+          ZIG_ARCHIVE_PATH="$PWD/zig/zig-0.14.0"
 
           mix local.hex --force
           mix compile
