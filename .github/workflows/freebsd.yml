@@ -32,7 +32,7 @@ jobs:
         fi
 
         cd zig-0.14.0
-        zig build -Dtarget=x86_64-freebsd-gnu -Doptimize=ReleaseSafe --sysroot "$PD/zig/sysroot"
+        zig build -Dtarget=x86_64-freebsd -Doptimize=ReleaseSafe --sysroot "$PD/zig/sysroot"
 
     - uses: erlef/setup-beam@v1
       name: Setup Erlang
