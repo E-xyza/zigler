@@ -1,0 +1,69 @@
+name: Elixir CI - FreeBSD
+
+on: push
+
+jobs:
+  freebsd:
+    runs-on: ubuntu-latest
+    name: FreeBSD / Elixir
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: erlef/setup-beam@v1
+      name: Setup Erlang
+      with:
+        otp-version: '27.3'
+        elixir-version: '1.18.3'
+
+    - uses: actions/cache@v3
+      id: deps-cache
+      with:
+        path: deps
+        key: mix-${{ hashFiles('/mix.lock') }}
+
+    - name: get deps
+      run: mix deps.get
+
+    - uses: actions/cache@v3
+      id: zig-cache
+      with:
+        path: zig
+        key: zig-freebsd
+
+    - name: get zig
+      run: |
+        if [ ! -d zig-0.14.0 ]; then
+          wget https://ziglang.org/download/0.14.0/zig-0.14.0.tar.xz
+          tar -xf zig-0.14.0.tar.xz
+        fi 
+
+    - name: Test in FreeBSD
+      id: test
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        prepare: |
+          pkg install -y erlang-runtime27
+          pkg install -y elixir-devel
+          pkg install -y llvm19
+
+          pkg install -qyr FreeBSD devel/llvm19 devel/cmake archivers/zstd textproc/libxml2 archivers/lzma
+
+          # see: https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=284533
+          cat /etc/ssl/certs/*.0 > /etc/ssl/cert.pem
+
+        run: |
+          cd zig-0.14.0
+          mkdir build
+          cd build
+          cmake .. -DZIG_STATIC_LLVM=ON -DCMAKE_PREFIX_PATH="/usr/local/llvm19;/usr/local" DCMAKE_BUILD_TYPE=Release
+          make -j2 install
+          cd ../..
+
+          PATH=$PATH:/usr/local/lib/erlang27/bin
+          PWD=`pwd`
+          ZIG_ARCHIVE_PATH="$PWD/zig-0.14.0"
+
+          mix local.hex --force
+          mix compile
+          mix test --exclude no_ci
