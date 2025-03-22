@@ -33,9 +33,10 @@ jobs:
 
         cd zig-0.14.0
 
-        ls "$PD/zig/sysroot"
+        ls "$PD/zig/sysroot/lib"
+        ls "$PD/zig/sysroot/usr/lib"
 
-        zig build -Dtarget=x86_64-freebsd -Doptimize=ReleaseSafe --sysroot "$PD/zig/sysroot" -lc
+        zig build -Dtarget=x86_64-freebsd -Doptimize=ReleaseSafe --sysroot "$PD/zig/sysroot"
 
     - uses: erlef/setup-beam@v1
       name: Setup Erlang
