@@ -8,35 +8,6 @@ jobs:
     name: FreeBSD / Elixir
     steps:
     - uses: actions/checkout@v4
-    - uses: mlugg/setup-zig@v1
-
-    - uses: actions/cache@v3
-      id: zig-cache
-      with:
-        path: zig
-        key: zig-freebsd
-
-    - name: Download Zig
-      run: |
-        mkdir -p zig
-        PD=`pwd`
-        cd zig
-        if [ ! -f zig-0.14.0.tar.xz ]; then
-          wget https://ziglang.org/download/0.14.0/zig-0.14.0.tar.xz
-          tar -xf zig-0.14.0.tar.xz
-        fi 
-        if [ ! -f base.txz ]; then
-          wget https://download.freebsd.org/releases/amd64/14.2-RELEASE/base.txz
-          mkdir -p sysroot
-          tar -xf base.txz -C sysroot
-        fi
-
-        cd zig-0.14.0
-
-        ln -sf "$PD/zig/sysroot/lib/libc.so.7" "$PD/zig/sysroot/usr/lib/libc.so"
-        file "$PD/zig/sysroot/usr/lib/libc.so"
-
-        zig build -Dtarget=x86_64-freebsd -Doptimize=ReleaseSafe --sysroot "$PD/zig/sysroot" --verbose
 
     - uses: erlef/setup-beam@v1
       name: Setup Erlang
@@ -53,6 +24,19 @@ jobs:
     - name: get deps
       run: mix deps.get
 
+    - uses: actions/cache@v3
+      id: zig-cache
+      with:
+        path: zig
+        key: zig-freebsd
+
+    - name: get zig
+      run: |
+        if [ ! -d zig-0.14.0 ]; then
+          wget https://ziglang.org/download/0.14.0/zig-0.14.0.tar.xz
+          tar -xf zig-0.14.0.tar.xz
+        fi 
+
     - name: Test in FreeBSD
       id: test
       uses: vmactions/freebsd-vm@v1
@@ -61,14 +45,23 @@ jobs:
         prepare: |
           pkg install -y erlang-runtime27
           pkg install -y elixir-devel
+          pkg install -y llvm19
+          pkg install -y cmake
 
           # see: https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=284533
           cat /etc/ssl/certs/*.0 > /etc/ssl/cert.pem
 
         run: |
+          cd zig-0.14.0
+          mkdir build
+          cd build
+          cmake ..
+          make install
+          cd ../..
+
           PATH=$PATH:/usr/local/lib/erlang27/bin
           PWD=`pwd`
-          ZIG_ARCHIVE_PATH="$PWD/zig/zig-0.14.0"
+          ZIG_ARCHIVE_PATH="$PWD/zig-0.14.0"
 
           mix local.hex --force
           mix compile
