@@ -27,9 +27,14 @@ jobs:
           wget https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz
           tar -xf zig-linux-x86_64-0.14.0.tar.xz
         fi
+        if [ ! -f base.txz ]; then
+          wget https://download.freebsd.org/releases/amd64/14.2-RELEASE/base.txz
+          mkdir -p sysroot
+          tar -xvf base.txz -C sysroot
+        fi
 
         cd zig-0.14.0
-        ../zig-linux-x86_64-0.14.0/zig build -Dtarget=x86_64-freebsd-gnu
+        ../zig-linux-x86_64-0.14.0/zig build -Dtarget=x86_64-freebsd-gnu -Doptimize=ReleaseSafe --sysroot sysroot
 
     - uses: erlef/setup-beam@v1
       name: Setup Erlang
