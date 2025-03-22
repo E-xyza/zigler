@@ -15,6 +15,11 @@ jobs:
         path: zig-0.14.0.tar.xz
         key: ${{ hashFiles('zig-0.14.0/**/*') }}
 
+    - name: Install llvm
+      run: |
+        sudo apt-get install llvm-19-dev
+        sudo apt-get install libclang1-19
+
     - name: Download Zig
       run: |
         if [ ! -f zig-0.14.0.tar.xz ]; then
