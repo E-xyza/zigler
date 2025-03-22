@@ -13,7 +13,7 @@ jobs:
       id: zig-cache
       with:
         path: zig-0.14.0.tar.xz
-        key: ${{ hashFiles('/zig-0.14.0.tar.xz') }}
+        key: ${{ hashFiles('zig-0.14.0/**/*') }}
 
     - name: Download Zig
       run: |
@@ -21,6 +21,11 @@ jobs:
           wget https://ziglang.org/download/0.14.0/zig-0.14.0.tar.xz
           tar -xf zig-0.14.0.tar.xz
         fi
+
+        mkdir -p zig-0.14.0/build
+        cd zig-0.14.0/build
+        cmake ..
+        make install
 
     - uses: erlef/setup-beam@v1
       name: Setup Erlang
@@ -54,5 +59,6 @@ jobs:
           PWD=`pwd`
           ZIG_ARCHIVE_PATH="$PWD/zig-0.14.0.tar.xz"
 
+          mix local.hex --force
           mix compile
           mix test --exclude no_ci
