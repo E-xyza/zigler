@@ -13,26 +13,21 @@ jobs:
       id: zig-cache
       with:
         path: zig-0.14.0.tar.xz
-        key: ${{ hashFiles('zig-0.14.0/**/*') }}
-
-    - name: Install llvm
-      run: |
-        sudo apt-get install clang-19
-        sudo apt-get install lld-19
-        sudo apt-get install libclang-dev
-        sudo apt-get install llvm-19-dev
+        key: zig-freebsd
 
     - name: Download Zig
       run: |
         if [ ! -f zig-0.14.0.tar.xz ]; then
+          wget https://ziglang.org/download/0.14.0/zig-linux-x86_64-0.14.0.tar.xz
           wget https://ziglang.org/download/0.14.0/zig-0.14.0.tar.xz
-          tar -xf zig-0.14.0.tar.xz
-        fi
 
-        mkdir -p zig-0.14.0/build
-        cd zig-0.14.0/build
-        cmake ..
-        make install
+          tar -xf zig-linux-x86_64-0.14.0.tar.xz
+          tar -xf zig-0.14.0.tar.xz
+
+          cd zig-0.14.0
+
+          ../zig-linux-x86_64-0.14.0/zig build -Dtarget=x86_64-freebsd
+        fi
 
     - uses: erlef/setup-beam@v1
       name: Setup Erlang
