@@ -1,0 +1,60 @@
+name: Elixir CI - FreeBSD
+
+on: push
+
+jobs:
+  freebsd:
+    runs-on: ubuntu-latest
+    name: FreeBSD / Elixir
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: erlef/setup-beam@v1
+      name: Setup Erlang
+      with:
+        otp-version: '27.3'
+        elixir-version: '1.18.3'
+
+    - uses: actions/cache@v3
+      id: deps-cache
+      with:
+        path: deps
+        key: mix-${{ hashFiles('/mix.lock') }}
+
+    - name: get deps
+      run: mix deps.get
+
+    - uses: actions/cache@v3
+      id: zig-cache
+      with:
+        path: zig
+        key: zig-freebsd
+
+    - name: get zig
+      run: |
+        if [ ! -d zig-bootstrap ]; then
+          git clone https://github.com/ziglang/zig-bootstrap
+        fi 
+
+    - name: Test in FreeBSD
+      id: test
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        prepare: |
+          pkg install -y erlang-runtime27
+          pkg install -y elixir-devel
+
+          pkg install -qyr FreeBSD devel/llvm19 devel/cmake archivers/zstd textproc/libxml2 archivers/lzma devel/ninja
+
+          # see: https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=284533
+          cat /etc/ssl/certs/*.0 > /etc/ssl/cert.pem
+
+        run: |
+          cd zig-bootstrap
+          # see https://github.com/ziglang/zig-bootstrap/issues/45
+          ZIG_VERSION="0.14.0-dev.3299+31f353cd9" CMAKE_GENERATOR=Ninja ./build x86_64-native baseline
+
+          mix local.hex --force
+          mix compile
+          mix test --exclude no_ci
