@@ -159,7 +159,7 @@ defmodule Zig.Command do
         Logger.info("zig expected (via cache) in #{path}")
         path
 
-      path = System.find_executable("zig") ->
+      path = System.find_executable(zig_cmd_name()) ->
         Logger.info("system zig found in #{path}")
         path
 
@@ -185,7 +185,7 @@ defmodule Zig.Command do
   defp versioned_path(path) do
     {os, arch} = Zig.Get.os_info()
 
-    zig_executable = Path.join(path, "zig-#{os}-#{arch}-#{@default_version}/zig")
+    zig_executable = Path.join(path, "zig-#{os}-#{arch}-#{@default_version}/#{zig_cmd_name()}")
 
     Logger.info("searching for zig in #{zig_executable}")
 
@@ -215,6 +215,13 @@ defmodule Zig.Command do
 
       _ ->
         "#{module}.so"
+    end
+  end
+
+  defp zig_cmd_name do
+    case :os.type() do
+      {_, :nt} -> "zig.exe"
+      _ -> "zig"
     end
   end
 end
