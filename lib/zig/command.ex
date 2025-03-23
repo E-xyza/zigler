@@ -224,4 +224,19 @@ defmodule Zig.Command do
       _ -> "zig"
     end
   end
+
+  # utility function to split on CR(/LF).  This could be platform-dependent.
+
+  def split_on_newline(str) do
+    str
+    |> String.split("\n")
+    |> Enum.map(&String.trim_trailing(&1, "\r"))
+  end
+
+  def newline do
+    case :os.type() do
+      {_, :nt} -> "\r\n"
+      _ -> "\n"
+    end
+  end
 end

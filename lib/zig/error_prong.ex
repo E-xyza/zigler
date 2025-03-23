@@ -4,6 +4,8 @@ defmodule Zig.ErrorProng do
   # default parameter errors handling.
 
   def argument_error_prong(:elixir, file, line) do
+    newline = Zig.Command.newline()
+
     quote do
       :error, {:argument_error, index, error_lines} ->
         new_stacktrace =
@@ -50,7 +52,7 @@ defmodule Zig.ErrorProng do
                       end)
                       |> elem(0)
                       |> Enum.reverse()
-                      |> List.insert_at(0, "\n")
+                      |> List.insert_at(0, unquote(newline))
                       |> IO.iodata_to_binary()
                   }
                 )

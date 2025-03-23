@@ -231,7 +231,7 @@ defmodule Mix.Tasks.Zig.Get do
 
     result = fun.()
 
-    IO.write("\n")
+    IO.write(newline())
     Process.exit(spinner, :normal)
     result
   end
@@ -284,4 +284,11 @@ defmodule Mix.Tasks.Zig.Get do
   end
 
   defp spinner([]), do: spinner(@spinners)
+
+  defp newline do
+    case :os.type() do
+      {_, :nt} -> "\r\n"
+      _ -> "\n"
+    end
+  end
 end

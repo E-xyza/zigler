@@ -1,11 +1,14 @@
 defmodule ZiglerTest.MakeBeam do
+
+  alias Zig.Command
+
   def go do
     code =
       :zigler
       |> :code.priv_dir()
       |> Path.join("beam/beam.zig")
       |> File.read!()
-      |> String.split("\n")
+      |> Command.split_on_newline()
       |> Enum.reduce({false, []}, fn
         "/// ```" <> _, {true, so_far} -> {false, so_far}
         "///" <> line, {true, so_far} -> {true, [so_far, line, "\n"]}
