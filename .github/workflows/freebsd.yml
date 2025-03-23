@@ -32,9 +32,8 @@ jobs:
 
     - name: get zig
       run: |
-        if [ ! -d zig-0.14.0 ]; then
-          wget https://ziglang.org/download/0.14.0/zig-0.14.0.tar.xz
-          tar -xf zig-0.14.0.tar.xz
+        if [ ! -d zig-bootstrap ]; then
+          git clone https://github.com/ziglang/zig-bootstrap
         fi 
 
     - name: Test in FreeBSD
@@ -45,24 +44,16 @@ jobs:
         prepare: |
           pkg install -y erlang-runtime27
           pkg install -y elixir-devel
-          pkg install -y llvm19
 
-          pkg install -qyr FreeBSD devel/llvm19 devel/cmake archivers/zstd textproc/libxml2 archivers/lzma
+          pkg install -qyr FreeBSD devel/llvm19 devel/cmake archivers/zstd textproc/libxml2 archivers/lzma devel/ninja
 
           # see: https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=284533
           cat /etc/ssl/certs/*.0 > /etc/ssl/cert.pem
 
         run: |
-          cd zig-0.14.0
-          mkdir build
-          cd build
-          cmake .. -DZIG_STATIC_LLVM=ON -DCMAKE_PREFIX_PATH="/usr/local/llvm19;/usr/local" DCMAKE_BUILD_TYPE=Release
-          make -j2 install
-          cd ../..
-
-          PATH=$PATH:/usr/local/lib/erlang27/bin
-          PWD=`pwd`
-          ZIG_ARCHIVE_PATH="$PWD/zig-0.14.0"
+          cd zig-bootstrap
+          # see https://github.com/ziglang/zig-bootstrap/issues/45
+          ZIG_VERSION="0.14.0-dev.3299+31f353cd9" CMAKE_GENERATOR=Ninja ./build x86_64-native baseline
 
           mix local.hex --force
           mix compile
