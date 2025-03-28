@@ -3,7 +3,7 @@ defmodule ZiglerTest.Callbacks.OnLoadErroringEnumTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
-  @moduletag ~w[on_load callbacks]a
+  @moduletag [on_load: true, callbacks: true]
 
   import ExUnit.CaptureLog
 

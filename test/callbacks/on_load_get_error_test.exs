@@ -3,7 +3,7 @@ defmodule ZiglerTest.Callbacks.OnLoadGetErrorTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
-  @moduletag ~w[on_load callbacks]a
+  @moduletag [on_load: true, callbacks: true]
 
   import ExUnit.CaptureLog
 

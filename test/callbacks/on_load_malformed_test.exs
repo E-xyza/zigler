@@ -3,7 +3,7 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
-  @moduletag ~w[on_load callbacks]a
+  @moduletag [on_load: true, callbacks: true]
 
   test "compiler error when on_load function has the wrong arity" do
     assert_raise CompileError,

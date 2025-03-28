@@ -1,7 +1,7 @@
 defmodule ZiglerTest.Callbacks.OnUpgradeMissingTest do
   use ZiglerTest.IntegrationCase, async: true
 
-  @moduletag ~w[on_upgrade callbacks]a
+  @moduletag [on_upgrade: true, callbacks: true]
 
   test "compiler error when on_upgrade function is missing" do
     assert_raise CompileError, "nofile: on_upgrade callback foo not found", fn ->

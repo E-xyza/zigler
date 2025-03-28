@@ -5,7 +5,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticIntTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
-  @moduletag ~w[on_upgrade callbacks]a
+  @moduletag [on_upgrade: true, callbacks: true]
 
   import ExUnit.CaptureIO
   import ExUnit.CaptureLog
