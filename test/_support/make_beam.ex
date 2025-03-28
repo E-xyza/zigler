@@ -1,5 +1,4 @@
 defmodule ZiglerTest.MakeBeam do
-
   alias Zig.Command
 
   def go do

@@ -42,15 +42,17 @@ defmodule Zig.Builder do
       zig_code_path: module.zig_code_path
     }
 
-    assigns = case :os.type() do
-      {_, :nt} -> 
-        :zigler
-        |> :code.priv_dir()
-        |> Path.join("erl_nif_win")
-        |> then(&Map.put(assigns, :windows_shim_dir, &1)) 
+    assigns =
+      case :os.type() do
+        {_, :nt} ->
+          :zigler
+          |> :code.priv_dir()
+          |> Path.join("erl_nif_win")
+          |> then(&Map.put(assigns, :windows_shim_dir, &1))
 
-      _ -> assigns
-    end
+        _ ->
+          assigns
+      end
 
     build_file = build_zig(assigns)
 

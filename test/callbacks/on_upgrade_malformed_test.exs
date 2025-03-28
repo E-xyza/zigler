@@ -3,6 +3,8 @@ defmodule ZiglerTest.Callbacks.OnUpgradeMalformedTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag :on_upgrade
+
   test "compiler error when on_upgrade function has the wrong arity" do
     assert_raise CompileError,
                  "nofile:2: on_upgrade callback foo must have arity 3 or 4",

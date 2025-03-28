@@ -72,13 +72,13 @@ defmodule Zig.Command do
     # TODO: replace this with Target info
     case :os.type() do
       {_, :nt} ->
-        :zigler 
-        |> :code.priv_dir() 
+        :zigler
+        |> :code.priv_dir()
         |> Path.join("erl_nif_win")
         |> then(&%{c | include_dirs: [&1 | c.include_dirs]})
 
       _ ->
-        c 
+        c
     end
   end
 
@@ -122,7 +122,7 @@ defmodule Zig.Command do
     )
 
     case :os.type() do
-      {_, :nt} -> 
+      {_, :nt} ->
         # windows dlls wind up in the bin directory instead of the lib directory.
         bin_dir = Path.join(so_dir, "bin")
         src_lib_path = Path.join(bin_dir, src_lib_name(module.module))
@@ -130,11 +130,11 @@ defmodule Zig.Command do
         File.cp!(src_lib_path, dst_lib_path)
 
         Logger.debug("built library at #{dst_lib_path}")
-      _ ->
 
+      _ ->
         src_lib_path = Path.join(lib_dir, src_lib_name(module.module))
         dst_lib_path = Path.join(lib_dir, dst_lib_name(module.module))
-    
+
         # on MacOS, we must delete the old library because otherwise library
         # integrity checker will kill the process
         File.rm(dst_lib_path)
