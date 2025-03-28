@@ -42,7 +42,7 @@ defmodule Zig.Command do
     beam_file = Path.join(priv_dir, "beam/beam.zig")
     erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
     attribs_file = opts[:attribs_file]
-    c = opts[:c]
+    c = maybe_add_windows_shim(opts[:c])
 
     # nerves will put in a `CC` command that we need to bypass because it misidentifies
     # libc locations for statically linking it.
@@ -66,6 +66,20 @@ defmodule Zig.Command do
     |> String.split()
     |> Enum.join(" ")
     |> run_zig(stderr_to_stdout: true)
+  end
+
+  defp maybe_add_windows_shim(c) do
+    # TODO: replace this with Target info
+    case :os.type() do
+      {_, :nt} ->
+        :zigler 
+        |> :code.priv_dir() 
+        |> Path.join("erl_nif_win")
+        |> then(&%{c | include_dirs: [&1 | c.include_dirs]})
+
+      _ ->
+        c 
+    end
   end
 
   # documentation requires a separate pathway because otherwise compilation
