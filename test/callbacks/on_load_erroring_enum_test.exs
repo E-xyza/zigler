@@ -3,6 +3,8 @@ defmodule ZiglerTest.Callbacks.OnLoadErroringEnumTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag ~w[on_load callbacks]a
+
   import ExUnit.CaptureLog
 
   test "error when on_load function errors out" do

@@ -4,6 +4,8 @@ defmodule ZiglerTest.Callbacks.OnUnloadAutomaticTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag ~w[on_unload callbacks]a
+
   def build_module do
     Code.compile_quoted(
       quote do

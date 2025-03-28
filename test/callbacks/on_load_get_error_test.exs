@@ -3,6 +3,8 @@ defmodule ZiglerTest.Callbacks.OnLoadGetErrorTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag ~w[on_load callbacks]a
+
   import ExUnit.CaptureLog
 
   test "error when on_load function is passed the wrong type" do

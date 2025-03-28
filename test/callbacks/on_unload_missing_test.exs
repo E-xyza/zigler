@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Callbacks.OnUnloadMissingTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag ~w[on_unload callbacks]a
+
   test "compiler error when on_unload function is missing" do
     assert_raise CompileError, "nofile: on_unload callback foo not found", fn ->
       Code.compile_quoted(

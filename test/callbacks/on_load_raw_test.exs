@@ -6,6 +6,8 @@ defmodule ZiglerTest.Callbacks.OnLoadRawTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag ~w[on_load callbacks]a
+
   use Zig, otp_app: :zigler, callbacks: [on_load: :automatic]
 
   ~Z"""

@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Callbacks.OnLoadMissingTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag ~w[on_load callbacks]a
+
   test "compiler error when named on_load function is missing" do
     assert_raise CompileError, "nofile: on_load callback foo not found", fn ->
       Code.compile_quoted(
