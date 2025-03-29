@@ -56,6 +56,15 @@ const entry = e.ErlNifEntry{
     .min_erts = "erts-<%= :erlang.system_info(:version)%>"
 };
 
+<% # todo: use a better target feature %>
+<%= case :os.type() do %>
+<% {_, :nt} -> %>
+export fn nif_init(callbacks: *e.TWinDynNifCallbacks) *const e.ErlNifEntry {
+    _ = @cImport(@cInclude("string.h")).memcpy(&e.WinDynNifCallbacks, callbacks, @sizeOf(e.TWinDynNifCallbacks));
+    return &entry;
+}
+<% _ -> %>
 export fn nif_init() *const e.ErlNifEntry {
     return &entry;
 }
+<% end %>

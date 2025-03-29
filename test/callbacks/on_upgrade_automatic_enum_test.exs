@@ -5,6 +5,8 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticEnumTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag [on_upgrade: true, callbacks: true]
+
   import ExUnit.CaptureIO
   import ExUnit.CaptureLog
 

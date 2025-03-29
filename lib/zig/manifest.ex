@@ -1,6 +1,8 @@
 defmodule Zig.Manifest do
   @moduledoc false
 
+  alias Zig.Command
+
   # TODO: spec this better
   @type t :: [{pos_integer(), {Path.t(), pos_integer()}}]
 
@@ -45,7 +47,7 @@ defmodule Zig.Manifest do
   def create(module, code) do
     manifest =
       code
-      |> String.split("\n")
+      |> Command.split_on_newline()
       |> Enum.with_index(1)
       |> Enum.flat_map(fn
         {"// ref " <> rest, anchor} ->

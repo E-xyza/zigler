@@ -1,10 +1,12 @@
 defmodule ZiglerTest.MakeReadme do
+  alias Zig.Command
+
   def go do
     # Read the readme document
     internal_code =
       "README.md"
       |> File.read!()
-      |> String.split("\n")
+      |> Command.split_on_newline()
       |> Enum.reduce({false, []}, fn
         "```" <> _, {true, so_far} -> {false, so_far}
         line, {true, so_far} -> {true, [so_far, line, "\n"]}
