@@ -62,7 +62,7 @@ const entry = e.ErlNifEntry{
 
 const string = @cImport(@cInclude("string.h"));
 
-export fn nif_init(callbacks: *e.TWinDynNifCallbacks) *const e.ErlNifEntry {
+export fn nif_init(callbacks: [*c]e.TWinDynNifCallbacks) callconv(.Stdcall) [*c]const e.ErlNifEntry {
     _ = string.memcpy(&e.WinDynNifCallbacks, callbacks, @sizeOf(e.TWinDynNifCallbacks));
     return &entry;
 }
