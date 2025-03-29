@@ -59,8 +59,11 @@ const entry = e.ErlNifEntry{
 <% # todo: use a better target feature %>
 <%= case :os.type() do %>
 <% {_, :nt} -> %>
+
+const string = @cImport(@cInclude("string.h"));
+
 export fn nif_init(callbacks: *e.TWinDynNifCallbacks) *const e.ErlNifEntry {
-    _ = @cImport(@cInclude("string.h")).memcpy(&e.WinDynNifCallbacks, callbacks, @sizeOf(e.TWinDynNifCallbacks));
+    _ = string.memcpy(&e.WinDynNifCallbacks, callbacks, @sizeOf(e.TWinDynNifCallbacks));
     return &entry;
 }
 <% _ -> %>
