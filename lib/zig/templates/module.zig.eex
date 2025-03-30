@@ -61,7 +61,7 @@ const entry = e.ErlNifEntry{
 <% {_, :nt} -> %>
 
 const string = @cImport(@cInclude("string.h"));
-const cc = if (@import("builtin").cpu.arch == .x86) .Stdcall else .C;
+const cc = if (@import("builtin").cpu.arch == .x86) .x86_stdcall else .c;
 
 export fn nif_init(callbacks: [*c]e.TWinDynNifCallbacks) callconv(cc) [*c]const e.ErlNifEntry {
     _ = string.memcpy(&e.WinDynNifCallbacks, callbacks, @sizeOf(e.TWinDynNifCallbacks));
