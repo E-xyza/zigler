@@ -9,8 +9,9 @@ defmodule ZiglerTest.CompilerError.SyntaxErrorTest do
       _ -> 
         @syntax_error """
         test/compiler_error/_syntax_error.exs:8: error: expected ';' after statement
+
           return 42 // note a semicolon is missing here.
-                     ^
+                   ^
         """
     end
 

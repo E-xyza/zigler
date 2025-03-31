@@ -31,8 +31,7 @@ defmodule Zig.CompileError do
     error =
       lines
       |> Enum.reverse()
-      |> Enum.join(Command.newline())
-      |> String.trim()
+      |> IO.iodata_to_binary()
 
     case file_line do
       nil ->
