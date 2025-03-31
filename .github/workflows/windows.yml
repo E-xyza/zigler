@@ -49,11 +49,8 @@ jobs:
   
       - name: Get Zig
         run: mix zig.get
-
-      - name: List Zig Directory
-        run: ls c:/Users/runneradmin/AppData/Local/zigler/Cache/zig-windows-x86_64-0.14.0
-  
+        
       - name: Run Tests
         env:
           RUNNING_CI: "TRUE"
-        run: mix test --exclude no_ci --exclude callbacks --trace
+        run: mix test --exclude no_ci
