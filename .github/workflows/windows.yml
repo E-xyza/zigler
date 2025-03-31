@@ -49,8 +49,8 @@ jobs:
   
       - name: Get Zig
         run: mix zig.get
-        
+
       - name: Run Tests
         env:
           RUNNING_CI: "TRUE"
-        run: mix test --exclude no_ci
+        run: mix test --exclude no_ci --trace
