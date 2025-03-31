@@ -32,6 +32,7 @@ defmodule Zig.CompileError do
       lines
       |> Enum.reverse()
       |> IO.iodata_to_binary()
+      |> String.trim()
 
     case file_line do
       nil ->
