@@ -139,6 +139,7 @@ defmodule LeakCheckTest do
   }
   """
 
+  @tag :erroring
   test "leak check" do
     require Logger
     Logger.warning("====== the following leak message is expected: =========== START")
@@ -168,6 +169,7 @@ defmodule LeakCheckAllTest do
   }
   """
 
+  @tag :erroring
   test "leak check" do
     require Logger
     Logger.warning("====== the following leak message is expected: =========== START")

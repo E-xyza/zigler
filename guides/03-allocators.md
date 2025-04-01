@@ -150,6 +150,7 @@ pub fn noleak() !bool {
 }
 """
 
+@tag :erroring
 test "leak checks with debug allocator" do
   require Logger
   Logger.warning("====== the following leak message is expected: =========== START")
