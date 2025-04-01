@@ -127,6 +127,9 @@ defmodule Zig.Command do
         bin_dir = Path.join(so_dir, "bin")
         src_lib_path = Path.join(bin_dir, src_lib_name(module.module))
         dst_lib_path = Path.join(lib_dir, dst_lib_name(module.module))
+
+        # on Windows, not deleting this causes a file permissions error.
+        File.rm(dst_lib_path)
         File.cp!(src_lib_path, dst_lib_path)
 
         Logger.debug("built library at #{dst_lib_path}")
