@@ -42,7 +42,7 @@ defmodule Zig.Command do
     beam_file = Path.join(priv_dir, "beam/beam.zig")
     erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
     attribs_file = opts[:attribs_file]
-    c = opts[:c]
+    c = maybe_add_windows_shim(opts[:c])
 
     # nerves will put in a `CC` command that we need to bypass because it misidentifies
     # libc locations for statically linking it.
@@ -66,6 +66,20 @@ defmodule Zig.Command do
     |> String.split()
     |> Enum.join(" ")
     |> run_zig(stderr_to_stdout: true)
+  end
+
+  defp maybe_add_windows_shim(c) do
+    # TODO: replace this with Target info
+    case :os.type() do
+      {_, :nt} ->
+        :zigler
+        |> :code.priv_dir()
+        |> Path.join("erl_nif_win")
+        |> then(&%{c | include_dirs: [&1 | c.include_dirs]})
+
+      _ ->
+        c
+    end
   end
 
   # documentation requires a separate pathway because otherwise compilation
@@ -107,15 +121,30 @@ defmodule Zig.Command do
       stderr_to_stdout: true
     )
 
-    src_lib_name = Path.join(lib_dir, src_lib_name(module.module))
-    dst_lib_name = Path.join(lib_dir, dst_lib_name(module.module))
+    case :os.type() do
+      {_, :nt} ->
+        # windows dlls wind up in the bin directory instead of the lib directory.
+        bin_dir = Path.join(so_dir, "bin")
+        src_lib_path = Path.join(bin_dir, src_lib_name(module.module))
+        dst_lib_path = Path.join(lib_dir, dst_lib_name(module.module))
 
-    # on MacOS, we must delete the old library because otherwise library
-    # integrity checker will kill the process
-    File.rm(dst_lib_name)
-    File.cp!(src_lib_name, dst_lib_name)
+        # on Windows, not deleting this causes a file permissions error.
+        File.rm(dst_lib_path)
+        File.cp!(src_lib_path, dst_lib_path)
 
-    Logger.debug("built library at #{dst_lib_name}")
+        Logger.debug("built library at #{dst_lib_path}")
+
+      _ ->
+        src_lib_path = Path.join(lib_dir, src_lib_name(module.module))
+        dst_lib_path = Path.join(lib_dir, dst_lib_name(module.module))
+
+        # on MacOS, we must delete the old library because otherwise library
+        # integrity checker will kill the process
+        File.rm(dst_lib_path)
+        File.cp!(src_lib_path, dst_lib_path)
+
+        Logger.debug("built library at #{dst_lib_path}")
+    end
 
     module
   rescue
@@ -159,7 +188,7 @@ defmodule Zig.Command do
         Logger.info("zig expected (via cache) in #{path}")
         path
 
-      path = System.find_executable("zig") ->
+      path = System.find_executable(zig_cmd_name()) ->
         Logger.info("system zig found in #{path}")
         path
 
@@ -185,7 +214,7 @@ defmodule Zig.Command do
   defp versioned_path(path) do
     {os, arch} = Zig.Get.os_info()
 
-    zig_executable = Path.join(path, "zig-#{os}-#{arch}-#{@default_version}/zig")
+    zig_executable = Path.join(path, "zig-#{os}-#{arch}-#{@default_version}/#{zig_cmd_name()}")
 
     Logger.info("searching for zig in #{zig_executable}")
 
@@ -215,6 +244,28 @@ defmodule Zig.Command do
 
       _ ->
         "#{module}.so"
+    end
+  end
+
+  defp zig_cmd_name do
+    case :os.type() do
+      {_, :nt} -> "zig.exe"
+      _ -> "zig"
+    end
+  end
+
+  # utility function to split on CR(/LF).  This could be platform-dependent.
+
+  def split_on_newline(str) do
+    str
+    |> String.split("\n")
+    |> Enum.map(&String.trim_trailing(&1, "\r"))
+  end
+
+  def newline do
+    case :os.type() do
+      {_, :nt} -> "\r\n"
+      _ -> "\n"
     end
   end
 end
