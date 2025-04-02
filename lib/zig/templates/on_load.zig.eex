@@ -6,7 +6,7 @@ beam.context.mode = .callback;
 beam.context.allocator = beam.allocator;
 <%= if on_load_fn.arity == 2 do %>
   // following type is guaranteed to exist as per semantic analysis.
-  const Payload = @typeInfo(@TypeOf(nif.<%= on_load_fn.name%>)).Fn.params[1].type.?;
+  const Payload = @typeInfo(@TypeOf(nif.<%= on_load_fn.name%>)).@"fn".params[1].type.?;
   const payload = beam.get(Payload, .{.v = load_info}, .{}) catch return -1;
   <%= case on_load_fn.return do %>
     <% %Zig.Type.Integer{} -> %>

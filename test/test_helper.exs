@@ -4,6 +4,8 @@ log_level =
     "info" -> :info
   end
 
+Application.put_env(:zigler, :test_blas, System.get_env("ZIGLER_TEST_BLAS", "FALSE") == "TRUE")
+
 Logger.configure(level: log_level)
 
 custom_directory = "test/.custom_location"

@@ -14,6 +14,13 @@ pub fn build(b: *std.Build) void {
         .{.cwd_relative = "<%= :code.root_dir() %>/erts-<%= :erlang.system_info(:version) %>/include"}
     );
 
+
+    <%= if windows_shim_dir = assigns[:windows_shim_dir] do %>
+    erl_nif.addSystemIncludePath(
+        .{.cwd_relative = "<%= windows_shim_dir %>"}
+    );
+    <% end %>
+
     const beam = b.createModule(
         .{
             .root_source_file = .{.cwd_relative = "<%= Path.join(@beam_dir, "beam.zig")%>"},
