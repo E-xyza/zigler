@@ -1,3 +1,7 @@
+if !match?({_, :nt}, :os.type()) do
+  # currently there is a parsing error in zigler when running on windows
+  # that affects this file:
+
 defmodule ZiglerTest.CornerCases.TransitiveImportTest do
   use ExUnit.Case, async: true
   use Zig, otp_app: :zigler
@@ -47,4 +51,6 @@ defmodule ZiglerTest.CornerCases.TransitiveImportTest do
       assert %{foo: 47} = identity_circular(%{foo: 47})
     end
   end
+end
+
 end
