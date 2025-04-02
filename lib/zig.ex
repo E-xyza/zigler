@@ -286,7 +286,7 @@ defmodule Zig do
   defmacro __using__(opts) do
     module = __CALLER__.module
 
-    if module in :erlang.loaded() do
+    if :loaded == :code.module_status(module) do
       :code.purge(module)
     end
 

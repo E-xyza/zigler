@@ -7,6 +7,8 @@ defmodule ZiglerTest.Callbacks.OnLoadAutomaticEnumTest do
 
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag [on_load: true, callbacks: true]
+
   use Zig, otp_app: :zigler, callbacks: [on_load: :automatic]
 
   ~Z"""

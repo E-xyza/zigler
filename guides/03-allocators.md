@@ -76,6 +76,7 @@ pub fn c_free() void {
 }
 """
 
+@tag :erroring
 test "zigler memory is tracked" do
   Process.sleep(100)
   start = :erlang.memory[:total]
@@ -150,6 +151,7 @@ pub fn noleak() !bool {
 }
 """
 
+@tag [erroring: true, no_windows: true]
 test "leak checks with debug allocator" do
   require Logger
   Logger.warning("====== the following leak message is expected: =========== START")

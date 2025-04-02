@@ -143,7 +143,13 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 ## 0.14.0
 - Breaking changes:
-  - deprecation of General Purpose Allocator in favor of 
+  - deprecation of General Purpose Allocator in favor of DebugAllocator
+- Windows support:
+  - Experimental windows support added.
+  - Error return traces not supported.
+  - on_upgrade hooks not supported pending module .so versioning changes.
+- Outstanding issues:
+  - c_ulonglong doesn't work on windows; c_long doesn't work on other platforms.
 
 ## Upcoming
 - `precompiled` mode that will let you obtain packages with precompiled assets.

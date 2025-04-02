@@ -149,8 +149,16 @@ defmodule ZiglerTest.Types.IntegerTest do
   end
 
   describe "for c integer types" do
-    @ctypes ~w(c_short c_ushort c_int c_uint c_long c_longlong c_ulonglong)
-    # note that c_ulong is missing, it's not entirely clear why that doesn't work.
+    # it's not entirely clear why these data types don't work on these platforms
+    # in either case, this fails with 7
+    if match?({_, :nt}, :os.type()) do
+      @unsupported [:c_ulonglong]
+    else
+      @unsupported [:c_ulong]
+    end
+
+    @ctypes ~w(c_short c_ushort c_int c_uint c_long c_ulong c_longlong c_ulonglong)a --
+              @unsupported
 
     for type <- @ctypes do
       function = :"addone_#{type}"

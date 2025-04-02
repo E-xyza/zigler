@@ -124,6 +124,8 @@ It's possible to wrap each function call in its own instance of
 it will check that `beam.allocator` has cleared all of its contents at the end of the function call,
 and if that hasn't happened, it raises.
 
+Note that this is currently not supported in windows builds.
+
 ```elixir
 defmodule LeakCheckTest do
   use ExUnit.Case, async: true
@@ -139,6 +141,7 @@ defmodule LeakCheckTest do
   }
   """
 
+  @tag [erroring: true, no_windows: true]
   test "leak check" do
     require Logger
     Logger.warning("====== the following leak message is expected: =========== START")
@@ -168,6 +171,7 @@ defmodule LeakCheckAllTest do
   }
   """
 
+  @tag [erroring: true, no_windows: true]
   test "leak check" do
     require Logger
     Logger.warning("====== the following leak message is expected: =========== START")

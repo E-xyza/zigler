@@ -50,10 +50,9 @@ jobs:
           portsnap extract
 
           cd /usr/ports/devel/llvm70
-          sudo make -DBATCH install clean
+          make -DBATCH install clean
 
         run: |
-          cd zig
           mkdir build
           cd build
           cmake .. -DCMAKE_PREFIX_PATH=/usr/local/llvm70/ -DCMAKE_BUILD_TYPE=Release

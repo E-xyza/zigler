@@ -184,7 +184,10 @@ defmodule Zig.Compiler do
   end
 
   defp apply_parser(module, zig_code) do
-    parsed = Parser.parse(zig_code)
+    parsed =
+      zig_code
+      |> String.replace("\r\n", "\n")
+      |> Parser.parse()
 
     external_resources =
       parsed
