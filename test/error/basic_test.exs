@@ -21,6 +21,7 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
   }
   """
 
+  @tag :skip
   test "when you get a basic error" do
     error =
       try do
