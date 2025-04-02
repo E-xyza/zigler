@@ -26,7 +26,7 @@ defmodule ZiglerTest.Allocator.LeakCheckTest do
   """
 
   describe "a leak is detected" do
-    @tag :erroring
+    @tag [erroring: true, no_windows: true]
     test "when you don't cleanup" do
       Logger.warning("====== the following leak message is expected: =========== START")
       Process.sleep(200)
