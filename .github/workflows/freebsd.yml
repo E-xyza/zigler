@@ -32,8 +32,8 @@ jobs:
 
     - name: get zig
       run: |
-        if [ ! -d zig-bootstrap ]; then
-          git clone https://github.com/ziglang/zig-bootstrap
+        if [ ! -d zig ]; then
+          git clone https://github.com/ziglang/zig.git
         fi 
 
     - name: Test in FreeBSD
@@ -42,19 +42,21 @@ jobs:
       with:
         usesh: true
         prepare: |
+          pkg update -y
           pkg install -y erlang-runtime27
           pkg install -y elixir-devel
 
-          pkg install -qyr FreeBSD devel/llvm19 devel/cmake archivers/zstd textproc/libxml2 archivers/lzma devel/ninja
+          portsnap fetch
+          portsnap extract
 
-          # see: https://bugs.freebsd.org/bugzilla/show_bug.cgi?id=284533
-          cat /etc/ssl/certs/*.0 > /etc/ssl/cert.pem
+          cd /usr/ports/devel/llvm70
+          sudo make -DBATCH install clean
 
         run: |
-          cd zig-bootstrap
-          # see https://github.com/ziglang/zig-bootstrap/issues/45
-          ZIG_VERSION="0.14.0-dev.3299+31f353cd9" CMAKE_GENERATOR=Ninja ./build x86_64-native baseline
-
-          mix local.hex --force
-          mix compile
-          mix test --exclude no_ci
+          cd zig
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_PREFIX_PATH=/usr/local/llvm70/ -DCMAKE_BUILD_TYPE=Release
+          make VERBOSE=1
+          make install
+          ./zig build --build-file ../build.zig test -Dskip-release-small
