@@ -148,6 +148,8 @@ Thanks to Dave Cottlehuber @dch for testing.
   - Experimental windows support added.
   - Error return traces not supported.
   - on_upgrade hooks not supported pending module .so versioning changes.
+- Outstanding issues:
+  - c_ulonglong doesn't work on windows; c_long doesn't work on other platforms.
 
 ## Upcoming
 - `precompiled` mode that will let you obtain packages with precompiled assets.
