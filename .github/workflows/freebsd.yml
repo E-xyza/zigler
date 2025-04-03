@@ -1,0 +1,62 @@
+name: Elixir CI - FreeBSD
+
+on: push
+
+jobs:
+  freebsd:
+    runs-on: ubuntu-latest
+    name: FreeBSD / Elixir
+    steps:
+    - uses: actions/checkout@v4
+
+    - uses: erlef/setup-beam@v1
+      name: Setup Erlang
+      with:
+        otp-version: '27.3'
+        elixir-version: '1.18.3'
+
+    - uses: actions/cache@v3
+      id: deps-cache
+      with:
+        path: deps
+        key: mix-${{ hashFiles('/mix.lock') }}
+
+    - name: get deps
+      run: mix deps.get
+
+    - uses: actions/cache@v3
+      id: zig-cache
+      with:
+        path: zig
+        key: zig-freebsd
+
+    - name: get zig
+      run: |
+        if [ ! -d zig ]; then
+          git clone https://github.com/ziglang/zig.git
+        fi 
+
+    - name: Test in FreeBSD
+      id: test
+      uses: vmactions/freebsd-vm@v1
+      with:
+        usesh: true
+        prepare: |
+          pkg update -y
+          pkg install -y erlang-runtime27
+          pkg install -y elixir-devel
+          pkg install -y portsnap
+
+          portsnap fetch
+          portsnap extract
+
+          cd /usr/ports/devel/llvm70
+          make -DBATCH install clean
+
+        run: |
+          mkdir build
+          cd build
+          cmake .. -DCMAKE_PREFIX_PATH=/usr/local/llvm70/ -DCMAKE_BUILD_TYPE=Release
+          make VERBOSE=1
+          make install
+          ./zig build --build-file ../build.zig test -Dskip-release-small
