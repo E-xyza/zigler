@@ -45,6 +45,7 @@ jobs:
           pkg update -y
           pkg install -y erlang-runtime27
           pkg install -y elixir-devel
+          pkg install -y portsnap
 
           portsnap fetch
           portsnap extract
