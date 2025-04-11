@@ -47,11 +47,13 @@ jobs:
           pkg install -y llvm19
           pkg install -y cmake zstd
 
+          ldconfig /usr/local/lib
+
         run: |
           cd zig
           mkdir build
           cd build
-          cmake .. -DCMAKE_PREFIX_PATH=/usr/local/llvm19/ -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DCMAKE_PREFIX_PATH=/usr/local/llvm19/ -DCMAKE_BUILD_TYPE=ReleaseSafe -DCMAKE_PREFIX_PATH=/usr/local -DCMAKE_EXE_LINKER_FLAGS="-L/usr/local/lib"
           make VERBOSE=1
           make install
           ./zig build --build-file ../build.zig test -Dskip-release-small
