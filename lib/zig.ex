@@ -362,9 +362,9 @@ defmodule Zig do
   end
 
   @extension (case :os.type() do
-                {:unix, :linux} -> ".so"
-                {:unix, :freebsd} -> ".so"
                 {:unix, :darwin} -> ".dylib"
+                # linux, freebsd, openbsd
+                {:unix, _} -> ".so"
                 {_, :nt} -> ".dll"
               end)
 
