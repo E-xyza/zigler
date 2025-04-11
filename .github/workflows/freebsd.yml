@@ -55,3 +55,9 @@ jobs:
           cd build
           cmake .. -G Ninja -DCMAKE_PREFIX_PATH=/usr/local/llvm19/ -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/usr/local -DCMAKE_EXE_LINKER_FLAGS="-L/usr/local/lib" -DZIG_BUILD_MODE=ReleaseSafe
           ninja zig1
+
+          mv zig1 zig
+          export ZIG_ARCHIVE_PATH=`pwd`
+
+          cd ..
+          mix test --exclude no_ci
