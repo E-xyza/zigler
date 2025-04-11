@@ -42,21 +42,16 @@ jobs:
       with:
         usesh: true
         prepare: |
-          pkg update -y
           pkg install -y erlang-runtime27
           pkg install -y elixir-devel
-          pkg install -y portsnap
-
-          portsnap fetch
-          portsnap extract
-
-          cd /usr/ports/devel/llvm70
-          make -DBATCH install clean
+          pkg install -y llvm19
+          pkg install -y cmake zstd
 
         run: |
+          cd zig
           mkdir build
           cd build
-          cmake .. -DCMAKE_PREFIX_PATH=/usr/local/llvm70/ -DCMAKE_BUILD_TYPE=Release
+          cmake .. -DCMAKE_PREFIX_PATH=/usr/local/llvm19/ -DCMAKE_BUILD_TYPE=Release
           make VERBOSE=1
           make install
           ./zig build --build-file ../build.zig test -Dskip-release-small
