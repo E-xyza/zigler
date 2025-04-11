@@ -11,7 +11,7 @@ fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifT
     <% allocator = @allocator -> %>
     const allocator = nif.<%= allocator %>();
     <% @leak_check -> %>
-    var gpa = beam.make_general_purpose_allocator_instance();
+    var gpa = beam.make_debug_allocator_instance();
     const allocator = gpa.allocator(); 
     <% :else -> %>
     const allocator = beam.allocator;

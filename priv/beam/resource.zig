@@ -205,8 +205,8 @@ pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
     if (!std.mem.eql(u8, s.fields[1].name, "__should_release")) return null;
 
     switch (@typeInfo(s.fields[0].type)) {
-        .Pointer => |p| {
-            if (p.size != .One) return null;
+        .pointer => |p| {
+            if (p.size != .one) return null;
             if (p.is_allowzero) return null;
             return p.child;
         },
@@ -217,10 +217,10 @@ pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
 fn resource_alloc(
     resource_ptr: *anyopaque,
     len: usize,
-    ptr_align: u8,
+    ptr_align: std.mem.Alignment,
     _: usize,
 ) ?[*]u8 {
-    if (ptr_align > MAX_ALIGN) return null;
+    if (ptr_align.compare(.gt, comptime .fromByteUnits(MAX_ALIGN))) return null;
     // don't deal with alignment issues at the moment.
     const resource_type = @as(*e.ErlNifResourceType, @ptrCast(resource_ptr));
     const ptr = e.enif_alloc_resource(resource_type, @as(c_uint, @intCast(len))) orelse return null;
@@ -230,6 +230,7 @@ fn resource_alloc(
 const resource_vtable = Allocator.VTable{
     .alloc = resource_alloc,
     .resize = std.mem.Allocator.noResize,
+    .remap = std.mem.Allocator.noRemap,
     .free = std.mem.Allocator.noFree,
 };
 

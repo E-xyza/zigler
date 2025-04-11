@@ -55,6 +55,13 @@ This example shows you how to link in a system library (which can be `.a`, `.so`
 `.dll`). Zig will resolve the extension based on the operating system native rules. To use the
 functions in the library, there must also be an associated `.h` file with `extern` functions.
 
+If you wish to package a `.so` file with the project, you have two options:
+
+1. package the file in the `priv` directory and use `{:priv, "path/to/lib.so"}`. Note that in this
+  case, you must provide `lib` prefix and `.so` or `.dylib` or `.dll` extensions, if applicable.
+1. package the file using an absolute or relative path (relative the code file location). use
+  `"path/to/lib.so"`. You must provide `lib` and `.so` or `.dylib` or `.dll` extension.
+
 In this example we'll use the `cblas_dasum` function, which takes a length, an pointer to
 double-precision floating point list, and a integer stride. The result is a sum of the numbers in
 the list.
@@ -63,10 +70,7 @@ The [rules for collections](#2-collections.html) apply to functions that are dir
 C files.
 
 ```elixir
-if {:unix, :linux} == :os.type() do
-# currently we only have access to the BLAS library on linux CI actions, so
-# it's unavailable for other operating systems for automated testing purposes
-
+if Application.fetch_env!(:zigler, :test_blas) do
   defmodule LibraryTest do
     use ExUnit.Case, async: true
     use Zig, 

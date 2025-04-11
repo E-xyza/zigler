@@ -24,8 +24,8 @@ pub fn self(opts: anytype) PidError!beam.pid {
 }
 
 fn SendReturnType(Opts: type) type {
-    if (@typeInfo(Opts) != .Struct) @compileError("opts must be a tuple");
-    inline for (@typeInfo(Opts).Struct.fields) |field| {
+    if (@typeInfo(Opts) != .@"struct") @compileError("opts must be a tuple");
+    inline for (@typeInfo(Opts).@"struct".fields) |field| {
         if (std.mem.eql(u8, field.name, "persist")) {
             return field.type;
         }

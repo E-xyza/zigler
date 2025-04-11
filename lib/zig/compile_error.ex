@@ -1,6 +1,8 @@
 defmodule Zig.CompileError do
   defexception [:command, :code, :error]
 
+  alias Zig.Command
+
   def message(error) do
     "zig command failed: #{error.command} failed with error #{error.code}: #{error.error}"
   end
@@ -8,7 +10,7 @@ defmodule Zig.CompileError do
   def resolve(error, %{zig_code_path: zig_code_path, manifest_module: manifest_module}) do
     {lines, file_line} =
       error.error
-      |> String.split("\n")
+      |> Command.split_on_newline()
       |> Enum.reduce({[], nil}, fn
         error_line, {so_far, nil} ->
           {maybe_line, fileline} = revise_line(error_line, so_far, zig_code_path, manifest_module)
@@ -29,7 +31,7 @@ defmodule Zig.CompileError do
     error =
       lines
       |> Enum.reverse()
-      |> Enum.join("\n")
+      |> IO.iodata_to_binary()
       |> String.trim()
 
     case file_line do
@@ -47,7 +49,7 @@ defmodule Zig.CompileError do
     {replaced_line, fileline} =
       parse_line(error_line, absolute_path, relative_path, manifest_module)
 
-    {[replaced_line, "\n" | acc], fileline}
+    {[replaced_line, Command.newline() | acc], fileline}
   end
 
   defp parse_line(error_line, absolute_path, relative_path, manifest_module) do

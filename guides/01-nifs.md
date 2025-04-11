@@ -210,6 +210,7 @@ pub fn erroring() !void {
 }
 """
 
+@tag :erroring
 test "erroring" do
   assert_raise ErlangError, "Erlang error: :oops", fn -> erroring() end
 end
