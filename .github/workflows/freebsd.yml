@@ -45,8 +45,9 @@ jobs:
           pkg install -y erlang-runtime27
           pkg install -y elixir-devel
           pkg install -y llvm19
-          pkg install -y cmake zstd ninja
           pkg install -y ca_root_nss
+
+          pkg install -y cmake zstd libxml2 lzma ninja
 
           ldconfig /usr/local/lib
 
@@ -54,13 +55,15 @@ jobs:
           cd zig
           mkdir build
           cd build
-          cmake .. -G Ninja -DCMAKE_PREFIX_PATH=/usr/local/llvm19/ -DCMAKE_BUILD_TYPE=Release -DCMAKE_PREFIX_PATH=/usr/local -DCMAKE_EXE_LINKER_FLAGS="-L/usr/local/lib" -DZIG_BUILD_MODE=ReleaseSafe
-          ninja zig1
+          cmake .. -G Ninja -DZIG_STATIC_LLVM=ON -DCMAKE_PREFIX_PATH="/usr/local/llvm19;/usr/local" -DCMAKE_BUILD_TYPE=ReleaseSafe
+          ninja -C build
 
-          export ZIG_EXECUTABLE_PATH="$(pwd)/zig1"
+          zig version
+
+          export ZIG_EXECUTABLE_PATH="$(pwd)/zig"
           export PATH="/usr/local/lib/erlang27/bin:$PATH"
           export SSL_CACERTFILE=/usr/local/etc/ssl/cert.pem
-          export ZIG_FMT=false
+          export CI_LOG_LEVEL=debug
 
           cd ../..
 
