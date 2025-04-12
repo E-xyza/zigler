@@ -62,6 +62,6 @@ jobs:
 
           cd ../..
 
-          ls
+          mix local.hex --force
 
           mix test --exclude no_ci
