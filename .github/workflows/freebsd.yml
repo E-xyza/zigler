@@ -38,8 +38,9 @@ jobs:
 
     - name: Test in FreeBSD
       id: test
-      uses: vmactions/freebsd-vm@v1
+      uses: vmactions/freebsd-vm@v1      
       with:
+        mem: 8192
         usesh: true
         prepare: |
           pkg install -y erlang-runtime27
@@ -54,13 +55,14 @@ jobs:
         run: |
           cd zig
           mkdir build
+
           cd build
-          cmake .. -G Ninja -DZIG_STATIC_LLVM=ON -DCMAKE_PREFIX_PATH="/usr/local/llvm19;/usr/local" -DCMAKE_BUILD_TYPE=ReleaseSafe
-          ninja -C build
+          cmake .. -G Ninja -DZIG_STATIC_LLVM=ON -DCMAKE_PREFIX_PATH="/usr/local/llvm19;/usr/local;/usr/local/lib" -DCMAKE_EXE_LINKER_FLAGS="-L/usr/local/lib" -DCMAKE_BUILD_TYPE=ReleaseSafe
+          
+          ninja -C .
 
-          zig version
-
-          export ZIG_EXECUTABLE_PATH="$(pwd)/zig"
+          export ZIG_EXECUTABLE_PATH="$(pwd)/stage3"
+          export ZIG_FMT=false
           export PATH="/usr/local/lib/erlang27/bin:$PATH"
           export SSL_CACERTFILE=/usr/local/etc/ssl/cert.pem
           export CI_LOG_LEVEL=debug
