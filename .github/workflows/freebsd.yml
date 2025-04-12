@@ -58,6 +58,10 @@ jobs:
 
           mv zig1 zig
           export ZIG_ARCHIVE_PATH=`pwd`
+          export PATH="/usr/local/lib/erlang27/bin:$PATH"
 
-          cd ..
+          cd ../..
+
+          ls
+
           mix test --exclude no_ci
