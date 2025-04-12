@@ -48,7 +48,6 @@ defmodule Mix.Tasks.Zig.Get do
   - `TAR_COMMAND`: path to a tar executable that is equivalent to gnu tar.
     only useful for non-windows architectures.
   - `ZIG_ARCHIVE_PATH`: path to desired directory to achive the zig compiler toolchain.
-  - `ZIG_EXECUTABLE_PATH`: direct path to the zig executable
 
   ### other options
 

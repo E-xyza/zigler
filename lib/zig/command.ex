@@ -106,7 +106,9 @@ defmodule Zig.Command do
   end
 
   def fmt(file) do
-    run_zig("fmt #{file}", [])
+    if System.get_env("ZIG_FMT", "true") != "false" do
+      run_zig("fmt #{file}", [])
+    end
   end
 
   def compile!(module) do
