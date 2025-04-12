@@ -148,6 +148,8 @@ Thanks to Dave Cottlehuber @dch for testing.
   - Experimental windows support added.
   - Error return traces not supported.
   - on_upgrade hooks not supported pending module .so versioning changes.
+- Features:
+  - adds ZIG_EXECUTABLE_PATH environment variable
 - Outstanding issues:
   - c_ulonglong doesn't work on windows; c_long doesn't work on other platforms.
 
