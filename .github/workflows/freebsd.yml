@@ -46,6 +46,7 @@ jobs:
           pkg install -y elixir-devel
           pkg install -y llvm19
           pkg install -y cmake zstd ninja
+          pkg install -y ca_root_nss
 
           ldconfig /usr/local/lib
 
@@ -59,6 +60,7 @@ jobs:
           mv zig1 zig
           export ZIG_ARCHIVE_PATH=`pwd`
           export PATH="/usr/local/lib/erlang27/bin:$PATH"
+          export SSL_CACERTFILE=/usr/local/etc/ssl/cert.pem
 
           cd ../..
 
