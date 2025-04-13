@@ -13,3 +13,6 @@ run
 -I <%= dir %>
 <% end %>
 <% end %>
+<%= if System.get_env("VERBOSE_SEMA", "false") == "true" do %>
+--verbose
+<% end %>

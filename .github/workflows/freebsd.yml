@@ -61,11 +61,11 @@ jobs:
           
           ninja -C .
 
-          export ZIG_EXECUTABLE_PATH="$(pwd)/stage3"
-          export ZIG_FMT=false
+          export ZIG_EXECUTABLE_PATH="$(pwd)/stage3/bin/zig"
           export PATH="/usr/local/lib/erlang27/bin:$PATH"
           export SSL_CACERTFILE=/usr/local/etc/ssl/cert.pem
           export CI_LOG_LEVEL=debug
+          export VERBOSE_SEMA=true
 
           cd ../..
 

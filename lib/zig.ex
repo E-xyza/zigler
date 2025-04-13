@@ -287,7 +287,7 @@ defmodule Zig do
     Expects an executable at: `ZIG_ARCHIVE_PATH/zig-<os>-<arch>-<version>/zig`.
   - `ZIG_EXECUTABLE_PATH`: direct path to the zig executable.
   - `ZIG_FMT`: if set to `false`, disables zig formatting steps.
-
+  - `VERBOSE_SEMA`: if set to `true`, enables `--verbose` on the semantic analysis pass.
   """
   @spec __using__(keyword) :: Macro.t()
   defmacro __using__(opts) do
