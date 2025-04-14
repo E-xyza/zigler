@@ -273,7 +273,7 @@ defmodule Zig.Sema do
         {:ok, arity} when arity in 0..63 ->
           arities(arity)
 
-        {:ok, {:.., _, _} = range} ->
+        {:ok, %Range{} = range} ->
           arities(range)
 
         {:ok, list} when is_list(list) ->
@@ -313,7 +313,7 @@ defmodule Zig.Sema do
   end
 
   defp arities(integer) when is_integer(integer), do: [integer]
-  defp arities({:.., _, [start, finish]}), do: Enum.to_list(start..finish)
+  defp arities(start..finish//1), do: Enum.to_list(start..finish)
 
   defp params_from_sema(%{params: params}, opts) do
     params

@@ -24,6 +24,7 @@ defmodule Zig.Compiler do
     opts =
       module
       |> Module.get_attribute(:zigler_opts)
+      |> Zig.Module.new(__CALLER__)
       |> Map.replace!(:attributes, Attributes.from_module(module))
       |> adjust_elixir_options
 

@@ -288,6 +288,9 @@ defmodule Zig do
   - `ZIG_EXECUTABLE_PATH`: direct path to the zig executable.
   - `ZIG_FMT`: if set to `false`, disables zig formatting steps.
   """
+
+  alias Zig.Options
+
   @spec __using__(keyword) :: Macro.t()
   defmacro __using__(opts) do
     module = __CALLER__.module
@@ -296,24 +299,22 @@ defmodule Zig do
       :code.purge(module)
     end
 
-    unless Keyword.has_key?(opts, :otp_app) do
-      raise CompileError,
-        file: __CALLER__.file,
-        description:
-          "(module #{inspect(module)}) you must supply an `otp_app` option to `use Zig`"
+    if not Keyword.has_key?(opts, :otp_app) do
+      raise CompileError, file: __CALLER__.file, line: __CALLER__.line,
+        description: "(module #{inspect module}) you must supply an `otp_app` option to `use Zig`"
     end
 
     opts =
       opts
       |> Keyword.put(:language, Elixir)
-      |> Zig.Module.new(__CALLER__)
+      |> Options.quote_elixir_ast()
 
     Module.register_attribute(module, :zig_code_parts, accumulate: true)
     Module.register_attribute(module, :zig_code, persist: true)
 
     code =
       quote do
-        @zigler_opts unquote(Macro.escape(opts))
+        @zigler_opts unquote(opts)
 
         import Zig, only: [sigil_Z: 2, sigil_z: 2]
         @on_load :__load_nifs__
