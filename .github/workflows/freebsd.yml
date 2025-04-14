@@ -64,10 +64,9 @@ jobs:
           export ZIG_EXECUTABLE_PATH="$(pwd)/stage3/bin/zig"
           export PATH="/usr/local/lib/erlang27/bin:$PATH"
           export SSL_CACERTFILE=/usr/local/etc/ssl/cert.pem
-          export CI_LOG_LEVEL=debug
 
           cd ../..
 
           mix local.hex --force
 
-          mix test --exclude no_ci
+          mix test --exclude no_ci --exclude skip_freebsd

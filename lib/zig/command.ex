@@ -203,9 +203,12 @@ defmodule Zig.Command do
     cond do
       (path = System.get_env("ZIG_ARCHIVE_PATH", "")) != "" ->
         versioned_path(path)
+
       (path = System.get_env("ZIG_EXECUTABLE_PATH", "")) != "" ->
         if File.exists?(path), do: path
-      :else -> nil
+
+      :else ->
+        nil
     end
   end
 
