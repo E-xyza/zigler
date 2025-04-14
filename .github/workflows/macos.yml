@@ -27,8 +27,8 @@ jobs:
         id: deps-cache
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ steps.elixir-version.outputs.stdout }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}-${{ hashfiles('installer/**/*') }}
-  
+          key: ${{ runner.os }}-mix-${{ steps.elixir-version.outputs.stdout }}-${{ hashFiles('/mix.lock')) }}
+
       - name: Install dependencies
         run: mix deps.get
   
@@ -36,7 +36,7 @@ jobs:
         id: build-cache
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ steps.elixir-version.outputs.stdout }}-${{ hashFiles(format('{0}{1}', github.workspace, '/mix.lock')) }}
+          key: ${{ runner.os }}-build-${{ steps.elixir-version.outputs.stdout }}-${{ hashFiles('/mix.lock')) }}
   
       - name: Compile base
         run: mix compile
@@ -44,6 +44,12 @@ jobs:
       - name: Get Zig version
         id: zig-version
         run: mix eval "IO.puts(Zig.version())"
+
+      - uses: actions/cache@v3
+        id: zig-cache
+        with:
+          path: zig
+          key: ${{ runner.os }}-zig-${{ steps.zig-version.outputs.stdout }}
   
       - name: Get Zig
         run: mix zig.get

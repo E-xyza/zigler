@@ -44,9 +44,6 @@ jobs:
     - name: Compile base
       run: mix compile
 
-    - name: Compile base
-      run: mix compile
-
     - name: Get Zig version
       id: zig-version
       run: mix eval "IO.puts(Zig.version())"

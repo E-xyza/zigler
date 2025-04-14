@@ -13,6 +13,8 @@ defmodule Zig.Sema do
   alias Zig.Type.Manypointer
   alias Zig.Type.Pointer
 
+  require Logger
+
   @enforce_keys [:functions, :types, :decls, :callbacks]
   defstruct @enforce_keys
 
@@ -42,6 +44,7 @@ defmodule Zig.Sema do
     |> then(&Map.replace!(module, :sema, &1))
   rescue
     e in Zig.CompileError ->
+      Logger.error("sema error: #{Exception.message(e)}")
       reraise Zig.CompileError.resolve(e, module), __STACKTRACE__
   end
 

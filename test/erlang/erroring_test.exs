@@ -13,14 +13,15 @@ defmodule ZiglerTest.Erlang.ErroringTest do
     Compiler.compile_erlang(@test_file)
 
     case :os.type() do
-        {_, :nt} ->
-          # this will probably change.
-          try do
-            :erlang_erroring_test.errors()
-          catch
-            :error, {:error, :some_error} ->
-              :ok
-          end
+      {_, :nt} ->
+        # this will probably change.
+        try do
+          :erlang_erroring_test.errors()
+        catch
+          :error, {:error, :some_error} ->
+            :ok
+        end
+
       _ ->
         assert_raise ErlangError, "Erlang error: :some_error", fn ->
           :erlang_erroring_test.errors()

@@ -2,6 +2,7 @@ log_level =
   case System.get_env("CI_LOG_LEVEL", "warning") do
     "warning" -> :warning
     "info" -> :info
+    "debug" -> :debug
   end
 
 Application.put_env(:zigler, :test_blas, System.get_env("ZIGLER_TEST_BLAS", "FALSE") == "TRUE")

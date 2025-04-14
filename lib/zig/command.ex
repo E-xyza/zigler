@@ -106,7 +106,9 @@ defmodule Zig.Command do
   end
 
   def fmt(file) do
-    run_zig("fmt #{file}", [])
+    if System.get_env("ZIG_FMT", "true") != "false" do
+      run_zig("fmt #{file}", [])
+    end
   end
 
   def compile!(module) do
@@ -198,8 +200,15 @@ defmodule Zig.Command do
   end
 
   defp find_from_env do
-    if (path = System.get_env("ZIG_ARCHIVE_PATH", "")) != "" do
-      versioned_path(path)
+    cond do
+      (path = System.get_env("ZIG_ARCHIVE_PATH", "")) != "" ->
+        versioned_path(path)
+
+      (path = System.get_env("ZIG_EXECUTABLE_PATH", "")) != "" ->
+        if File.exists?(path), do: path
+
+      :else ->
+        nil
     end
   end
 

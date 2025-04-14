@@ -5,7 +5,7 @@ Library test status:
 - ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI%20-%20Linux/badge.svg)
 - ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI%20-%20MacOS/badge.svg)
 - ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI%20-%20Windows/badge.svg)
-
+- ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI%20-%20FreeBSD/badge.svg)
 
 ## Installation: Elixir
 
@@ -106,7 +106,7 @@ defmodule ZigCollections do
     }
     return sum;
   }
-  """
+  """:nt}
 end
 
 test "type marshalling" do

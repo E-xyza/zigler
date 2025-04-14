@@ -10,6 +10,11 @@ defmodule Zig.Get do
   end
 
   defp decode_os_info([arch, "apple" | _]), do: {"macos", arch}
+
+  defp decode_os_info([_, "freebsd" | _]) do
+    Mix.raise("FreeBSD is not supported by the installer: please install Zig manually")
+  end
+
   defp decode_os_info([arch, _vendor, os | _]), do: {os, arch}
   defp decode_os_info(["win32"]), do: {"windows", "x86_64"}
 end

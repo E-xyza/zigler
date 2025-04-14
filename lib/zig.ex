@@ -281,6 +281,12 @@ defmodule Zig do
   recommended staging directory is `~/.cache/zigler`.  NB: In the future, this
   may become the default staging directory.
 
+  ### Other Environment Variables
+
+  - `ZIG_ARCHIVE_PATH`: path to the directory where the zig compiler toolchain WAS downloaded.
+    Expects an executable at: `ZIG_ARCHIVE_PATH/zig-<os>-<arch>-<version>/zig`.
+  - `ZIG_EXECUTABLE_PATH`: direct path to the zig executable.
+  - `ZIG_FMT`: if set to `false`, disables zig formatting steps.
   """
   @spec __using__(keyword) :: Macro.t()
   defmacro __using__(opts) do
