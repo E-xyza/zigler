@@ -65,7 +65,6 @@ jobs:
           export PATH="/usr/local/lib/erlang27/bin:$PATH"
           export SSL_CACERTFILE=/usr/local/etc/ssl/cert.pem
           export CI_LOG_LEVEL=debug
-          export VERBOSE_SEMA=true
 
           cd ../..
 

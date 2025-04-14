@@ -150,7 +150,6 @@ Thanks to Dave Cottlehuber @dch for testing.
   - on_upgrade hooks not supported pending module .so versioning changes.
 - Features:
   - adds ZIG_EXECUTABLE_PATH environment variable
-  - adds VERBOSE_SEMA environment variable
 - Outstanding issues:
   - c_ulonglong doesn't work on windows; c_long doesn't work on other platforms.
 
