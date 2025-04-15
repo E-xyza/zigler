@@ -21,8 +21,6 @@ defmodule Zig.Module do
 
   defstruct @enforce_keys ++
               [
-                :on_load,
-                :upgrade,
                 :extern,
                 :build_zig,
                 :precompiled,
@@ -56,8 +54,6 @@ defmodule Zig.Module do
           module: module(),
           file: Path.t(),
           line: non_neg_integer(),
-          on_load: atom(),
-          upgrade: atom(),
           extern: nil | Path.t(),
           module_code_path: nil | Path.t(),
           zig_code_path: nil | Path.t(),
@@ -122,6 +118,7 @@ defmodule Zig.Module do
     )
     |> normalize_options()
     |> then(&struct!(__MODULE__, &1))
+    |> validate(caller)
   end
 
   defp normalize_options(opts) do
@@ -291,6 +288,17 @@ defmodule Zig.Module do
     function_code = Enum.map(module.nifs, &Nif.render_erlang/1)
 
     Enum.flat_map(function_code, & &1) ++ init_function
+  end
+
+  defp validate(this, context) do
+    assert(this, :on_load, &is_atom/1, "on_load must be an atom", context)
+    this
+  end
+
+  defp assert(this, field, condition, message, context) do
+    if not condition.(this[field]) do
+      raise CompileError, description: message, file: context.file, line: context.line
+    end
   end
 
   # Access behaviour guards
