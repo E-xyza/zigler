@@ -21,8 +21,6 @@ defmodule Zig.Module do
 
   defstruct @enforce_keys ++
               [
-                :extern,
-                :build_zig,
                 :precompiled,
                 :module_code_path,
                 :zig_code_path,
@@ -54,7 +52,6 @@ defmodule Zig.Module do
           module: module(),
           file: Path.t(),
           line: non_neg_integer(),
-          extern: nil | Path.t(),
           module_code_path: nil | Path.t(),
           zig_code_path: nil | Path.t(),
           manifest: nil | Manifest.t(),
@@ -74,7 +71,6 @@ defmodule Zig.Module do
           dump: boolean,
           dump_sema: boolean,
           dump_build_zig: boolean | :stdout | :stderr | Path.t(),
-          build_zig: nil | Path.t(),
           precompiled: nil | precompiledspec(),
           callbacks: callback_opts(),
           default_nif_opts: [Nif.defaultable_opts()],
