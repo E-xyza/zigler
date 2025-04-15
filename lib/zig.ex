@@ -307,7 +307,7 @@ defmodule Zig do
     opts =
       opts
       |> Keyword.put(:language, Elixir)
-      |> Options.quote_elixir_ast()
+      |> requote_use_opts
 
     Module.register_attribute(module, :zig_code_parts, accumulate: true)
     Module.register_attribute(module, :zig_code, persist: true)
@@ -399,6 +399,49 @@ defmodule Zig do
   > this API may change in the future.
   """
   def version, do: @version
+
+  # UTILITIES
+
+  # converts `use Zig` options AST to a form that can be stored into a module
+  # attribute.  Two `use Zig` features cannot be directly evaluated inside the
+  # module.  First one is the `...` used to indicate to autodetect nifs.  Second
+  # one is return: [spec: <typespec>] which uses typespec AST that can't be
+  # evaluated by Elixir.
+
+  defp requote_use_opts(ast) do
+    Keyword.update(ast, :nifs, {:auto, []}, &requote_nifs/1)
+  end
+  
+  defp requote_nifs(nifs_ast) do
+    if Enum.any?(nifs_ast, &match?({:..., _, _}, &1)) do
+      {:auto, requote_nifs_list(nifs_ast)}
+    else 
+      requote_nifs_list(nifs_ast)
+    end
+  end
+
+  defp requote_nifs_list(ast) do
+    Enum.flat_map(ast, fn
+      {:..., _, _} -> []
+      {fun, opts} -> [{fun, requote_fun_opts(opts)}]
+      fun when is_atom(fun) -> [{fun, []}]
+    end)
+  end
+  
+  defp requote_fun_opts(opts) do
+    Enum.map(opts, fn 
+      {:return, opts} when is_list(opts)-> 
+        {:return, requote_return_opts(opts)}
+      other -> other
+    end)
+  end
+
+  defp requote_return_opts(opts) do
+    Enum.map(opts, fn
+      {:spec, spec} -> {:spec, Macro.escape(spec)}
+      other -> other
+    end)
+  end
 end
 
 # check that the otp_version is 24 or greater.
