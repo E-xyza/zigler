@@ -11,25 +11,24 @@ defmodule Zig.C do
             link_libcpp: false
 
   @type t :: %__MODULE__{
-          include_dirs: [String.t()],
-          library_dirs: [String.t()],
-          link_lib: [String.t()],
+          include_dirs: [String.t() | {:system, String.t()}],
+          library_dirs: [String.t() | {:system, String.t()}],
+          link_lib: [String.t() | {:system, String.t()}],
           link_libcpp: boolean,
-          src: src_opts()
+          src: [{String.t(), [String.t()]}]
         }
 
   @type dirpath :: String.t() | {:priv, String.t()} | {:system, String.t()}
   @type dirspec :: dirpath() | [dirpath()]
+  @type srcspec :: String.t() | {String.t(), [String.t()]}
 
   @type opts :: [
           include_dirs: dirspec(),
           library_dirs: dirspec(),
           link_lib: dirspec(),
           link_libcpp: boolean,
-          src: src_opts()
+          src: srcspec()
         ]
-
-  @type src_opts :: term
 
   @valid_keys ~w[include_dirs library_dirs src link_lib link_libcpp]a
 
