@@ -67,6 +67,13 @@ defmodule Zig.C do
         line: module_opts[:line],
         description:
           "`c` option `#{key}` must be a string, `{:priv, string}`, `{:system, string}`, or a list of those, got: `#{inspect(value)}`"
+
+    {:src_error, value} ->
+      raise CompileError,
+        file: module_opts[:file],
+        line: module_opts[:line],
+        description:
+          "`c` option `src` must be a string, `{string, [string]}`, `{:priv, string}`, `{:priv, string, [string]}`, `{:system, string}`, `{:system, string, [string]}`, or a list of those, got: `#{inspect(value)}`"
   end
 
   defp normalize_filelist(opts, key, module_dir, otp_app) do
@@ -102,11 +109,22 @@ defmodule Zig.C do
     maybe_with_wildcard(file, module_dir, [], otp_app)
   end
 
+  @tags ~w[priv system]a
+
+  defp normalize_src({tag, file}, module_dir, otp_app) when tag in @tags and is_binary(file) do
+    maybe_with_wildcard({tag, file}, module_dir, [], otp_app)
+  end
+
+  defp normalize_src({tag, file, opts}, module_dir, otp_app)
+       when tag in @tags and is_binary(file) do
+    maybe_with_wildcard({tag, file}, module_dir, opts, otp_app)
+  end
+
   defp normalize_src({file, opts}, module_dir, otp_app) do
     maybe_with_wildcard(file, module_dir, opts, otp_app)
   end
 
-  defp normalize_src(other, _, _), do: throw({:dirspec_error, :src, other})
+  defp normalize_src(other, _, _), do: throw({:src_error, other})
 
   defp maybe_with_wildcard(file, module_dir, opts, otp_app) do
     if String.ends_with?(file, "/*") do

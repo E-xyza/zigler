@@ -141,16 +141,23 @@ defmodule ZiglerTest.OptionsTest do
                    end
     end
 
-    test "src accepts bosic string forms" do
+    test "src accepts basic string forms" do
       local_dir = Path.join(__DIR__, "my_dir")
 
       assert %{c: %{src: [{^local_dir, []}]}} =
                make_module(otp_app: :zigler, c: [src: "my_dir"])
     end
 
+    test "src accepts string with string options" do
+      local_dir = Path.join(__DIR__, "my_dir")
+
+      assert %{c: %{src: [{^local_dir, ["foo", "bar"]}]}} =
+               make_module(otp_app: :zigler, c: [src: {"my_dir", ["foo", "bar"]}])
+    end
+
     test "src not a string list" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `c` option `src` must be #{@valid_type_phrase}, got: `:moop`",
+                   "test/options_test.exs:4: `c` option `src` must be a string, `{string, [string]}`, `{:priv, string}`, `{:priv, string, [string]}`, `{:system, string}`, `{:system, string, [string]}`, or a list of those, got: `:moop`",
                    fn ->
                      make_module(otp_app: :zigler, c: [src: :moop])
                    end
