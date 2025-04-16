@@ -300,8 +300,11 @@ defmodule Zig do
     end
 
     if not Keyword.has_key?(opts, :otp_app) do
-      raise CompileError, file: __CALLER__.file, line: __CALLER__.line,
-        description: "(module #{inspect module}) you must supply an `otp_app` option to `use Zig`"
+      raise CompileError,
+        file: __CALLER__.file,
+        line: __CALLER__.line,
+        description:
+          "(module #{inspect(module)}) you must supply an `otp_app` option to `use Zig`"
     end
 
     opts =
@@ -411,11 +414,11 @@ defmodule Zig do
   defp requote_use_opts(ast) do
     Keyword.update(ast, :nifs, {:auto, []}, &requote_nifs/1)
   end
-  
+
   defp requote_nifs(nifs_ast) do
     if Enum.any?(nifs_ast, &match?({:..., _, _}, &1)) do
       {:auto, requote_nifs_list(nifs_ast)}
-    else 
+    else
       requote_nifs_list(nifs_ast)
     end
   end
@@ -427,12 +430,14 @@ defmodule Zig do
       fun when is_atom(fun) -> [{fun, []}]
     end)
   end
-  
+
   defp requote_fun_opts(opts) do
-    Enum.map(opts, fn 
-      {:return, opts} when is_list(opts)-> 
+    Enum.map(opts, fn
+      {:return, opts} when is_list(opts) ->
         {:return, requote_return_opts(opts)}
-      other -> other
+
+      other ->
+        other
     end)
   end
 

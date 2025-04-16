@@ -115,6 +115,12 @@ defmodule Zig.Module do
     |> normalize_options()
     |> then(&struct!(__MODULE__, &1))
     |> validate(caller)
+  rescue
+    e in KeyError ->
+      raise CompileError,
+        file: caller.file,
+        line: caller.line,
+        description: "`#{e.key}` is not a valid option"
   end
 
   defp normalize_options(opts) do
@@ -287,12 +293,21 @@ defmodule Zig.Module do
   end
 
   defp validate(this, context) do
-    assert(this, :on_load, &is_atom/1, "on_load must be an atom", context)
+    assert(this, :module_code_path, &valid_iodata?/1, "module_code_path must be a path", context)
+    assert(this, :zig_code_path, &valid_iodata?/1, "zig_code_path must be a path", context)
     this
   end
 
+  defp valid_iodata?(maybe_iodata) do
+    IO.iodata_to_binary(maybe_iodata)
+    true
+  rescue
+    _ in ArgumentError ->
+      false
+  end
+
   defp assert(this, field, condition, message, context) do
-    if not condition.(this[field]) do
+    if this[field] && not condition.(this[field]) do
       raise CompileError, description: message, file: context.file, line: context.line
     end
   end
