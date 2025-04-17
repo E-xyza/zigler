@@ -127,17 +127,18 @@ defmodule Zig.C do
   defp normalize_src(other, _, _), do: throw({:src_error, other})
 
   defp maybe_with_wildcard(file, module_dir, opts, otp_app) do
-    if String.ends_with?(file, "/*") do
-      file
+    relative_path = solve_relative(file, :src, module_dir, otp_app)
+
+    if String.ends_with?(relative_path, "/*") do
+      relative_path
       |> Path.dirname()
-      |> solve_relative(:src, module_dir, otp_app)
       |> then(fn wildcard_dir ->
         wildcard_dir
         |> File.ls!()
         |> Enum.map(&{Path.join(wildcard_dir, &1), opts})
       end)
     else
-      [{solve_relative(file, :src, module_dir, otp_app), opts}]
+      [{relative_path, opts}]
     end
   end
 

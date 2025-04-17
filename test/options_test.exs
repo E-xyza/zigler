@@ -142,10 +142,15 @@ defmodule ZiglerTest.OptionsTest do
     end
 
     test "src accepts basic string forms" do
-      local_dir = Path.join(__DIR__, "my_dir")
+      local_file = Path.join(__DIR__, "my_file.c")
 
-      assert %{c: %{src: [{^local_dir, []}]}} =
-               make_module(otp_app: :zigler, c: [src: "my_dir"])
+      assert %{c: %{src: [{^local_file, []}]}} =
+               make_module(otp_app: :zigler, c: [src: "my_file.c"])
+
+      priv_file = Path.join(:code.priv_dir(:zigler), "my_file.c")
+
+      assert %{c: %{src: [{^priv_file, []}]}} =
+               make_module(otp_app: :zigler, c: [src: {:priv, "my_file.c"}])
     end
 
     test "src accepts string with string options" do
@@ -161,6 +166,18 @@ defmodule ZiglerTest.OptionsTest do
                    fn ->
                      make_module(otp_app: :zigler, c: [src: :moop])
                    end
+    end
+  end
+
+  describe "the dir option" do
+    test "accepts iodata" do
+      assert %{dir: "foo/bar"} = make_module(otp_app: :zigler, dir: ["foo", "/" | "bar"])
+    end
+
+    test "must be iodata" do
+      assert_raise CompileError, "test/options_test.exs:4: option `dir` must be a path", fn ->
+        make_module(otp_app: :zigler, dir: :foo)
+      end
     end
   end
 
