@@ -13,9 +13,11 @@ defmodule ZiglerTest.OptionsTest do
     end
 
     test "non-path raises" do
-      assert_raise CompileError, "test/options_test.exs:4: module_code_path must be a path", fn ->
-        make_module(otp_app: :zigler, module_code_path: :foo)
-      end
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `module_code_path` must be a path, got: `:foo`",
+                   fn ->
+                     make_module(otp_app: :zigler, module_code_path: :foo)
+                   end
     end
   end
 
@@ -29,9 +31,11 @@ defmodule ZiglerTest.OptionsTest do
     end
 
     test "non-path raises" do
-      assert_raise CompileError, "test/options_test.exs:4: zig_code_path must be a path", fn ->
-        make_module(otp_app: :zigler, zig_code_path: :foo)
-      end
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `zig_code_path` must be a path, got: `:foo`",
+                   fn ->
+                     make_module(otp_app: :zigler, zig_code_path: :foo)
+                   end
     end
   end
 
@@ -195,6 +199,86 @@ defmodule ZiglerTest.OptionsTest do
                      make_module(otp_app: :zigler, easy_c: :foo)
                    end
     end
+  end
+
+  describe "release_mode" do
+    test "is ok with fast, small, safe, debug, env" do
+      Enum.each(~w[fast small safe debug env]a, fn mode ->
+        assert %{release_mode: ^mode} = make_module(otp_app: :zigler, release_mode: mode)
+      end)
+    end
+
+    test "rejects other" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `release_mode` must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env`, got: `:foo`",
+                   fn ->
+                     make_module(otp_app: :zigler, release_mode: :foo)
+                   end
+    end
+  end
+
+  describe "ignore" do
+    test "is ok with a list of atoms" do
+      assert %{ignore: [:foo, :bar]} =
+               make_module(otp_app: :zigler, ignore: [:foo, :bar])
+    end
+
+    test "is not ok with something else" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `ignore` must be a list of atoms, got: `:foo`",
+                   fn ->
+                     make_module(otp_app: :zigler, ignore: :foo)
+                   end
+
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `ignore` must be a list of atoms, got: `[\"foo\"]`",
+                   fn ->
+                     make_module(otp_app: :zigler, ignore: ["foo"])
+                   end
+    end
+  end
+
+  @tag :skip
+  test "nifs"
+  # do this in another file.
+
+  @tag :skip
+  test "packages"
+
+  describe "resources" do
+    test "is ok with a list of atoms" do
+      assert %{resources: [:foo, :bar]} =
+               make_module(otp_app: :zigler, resources: [:foo, :bar])
+    end
+
+    test "is not ok with something else" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `resources` must be a list of atoms, got: `:foo`",
+                   fn ->
+                     make_module(otp_app: :zigler, resources: :foo)
+                   end
+
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `resources` must be a list of atoms, got: `[\"foo\"]`",
+                   fn ->
+                     make_module(otp_app: :zigler, resources: ["foo"])
+                   end
+    end
+  end
+
+  describe "callbacks" do
+    @tag :skip
+    test "blah"
+  end
+
+  describe "cleanup" do
+    @tag :skip
+    test "implement me"
+  end
+
+  describe "leak_check" do
+    @tag :skip
+    test "do it"
   end
 
   test "an invalid key" do
