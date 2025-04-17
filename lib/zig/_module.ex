@@ -128,7 +128,8 @@ defmodule Zig.Module do
     |> obtain_version
     |> Keyword.update(:c, %C{}, &C.new(&1, opts))
     |> Keyword.update(:callbacks, [], &normalize_callbacks(&1, opts))
-    |> Keyword.update(:dir, nil, &normalize_dir(&1, opts))
+    |> Keyword.update(:dir, nil, &normalize_path(&1, :dir, opts))
+    |> Keyword.update(:easy_c, nil, &normalize_path(&1, :easy_c, opts))
   end
 
   defp obtain_version(opts) do
@@ -171,12 +172,12 @@ defmodule Zig.Module do
     end)
   end
 
-  defp normalize_dir(dir, opts) do
-    IO.iodata_to_binary(dir)
+  defp normalize_path(path, tag, opts) do
+    IO.iodata_to_binary(path)
   rescue
     _ in ArgumentError ->
       raise CompileError,
-        description: "option `dir` must be a path",
+        description: "option `#{tag}` must be a path, got: `#{inspect(path)}`",
         file: opts[:file],
         line: opts[:line]
   end

@@ -174,10 +174,26 @@ defmodule ZiglerTest.OptionsTest do
       assert %{dir: "foo/bar"} = make_module(otp_app: :zigler, dir: ["foo", "/" | "bar"])
     end
 
-    test "must be iodata" do
-      assert_raise CompileError, "test/options_test.exs:4: option `dir` must be a path", fn ->
-        make_module(otp_app: :zigler, dir: :foo)
-      end
+    test "rejects non-iodata" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `dir` must be a path, got: `:foo`",
+                   fn ->
+                     make_module(otp_app: :zigler, dir: :foo)
+                   end
+    end
+  end
+
+  describe "the easy_c option" do
+    test "accepts iodata" do
+      assert %{easy_c: "foo/bar"} = make_module(otp_app: :zigler, easy_c: ["foo", "/" | "bar"])
+    end
+
+    test "rejects non-iodata" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `easy_c` must be a path, got: `:foo`",
+                   fn ->
+                     make_module(otp_app: :zigler, easy_c: :foo)
+                   end
     end
   end
 
