@@ -50,7 +50,7 @@ defmodule Zig.Module do
                 # debug options:  user-supplied, but unchecked.
                 dump: false,
                 dump_sema: false,
-                dump_build_zig: false,
+                dump_build_zig: false
               ]
 
   @type t :: %__MODULE__{
@@ -138,6 +138,7 @@ defmodule Zig.Module do
     |> Keyword.update(:module_code_path, nil, &normalize_path(&1, :module_code_path, opts))
     |> Keyword.update(:zig_code_path, nil, &normalize_path(&1, :zig_code_path, opts))
     |> Keyword.update(:easy_c, nil, &normalize_path(&1, :easy_c, opts))
+    |> Keyword.update(:packages, [], &normalize_packages(&1, opts))
   end
 
   defp obtain_version(opts) do
@@ -165,12 +166,28 @@ defmodule Zig.Module do
   @callbacks ~w[on_load on_upgrade on_unload]a
 
   defp normalize_callbacks(callbacks, opts) do
+    if not is_list(callbacks) do
+      raise CompileError,
+        description:
+          "`callbacks` option must be a keyword list of callbacks, got: `#{inspect(callbacks)}`",
+        file: opts[:file],
+        line: opts[:line]
+    end
+
     Enum.map(callbacks, fn
       callback when callback in @callbacks ->
         {callback, callback}
 
-      {callback, _} = option when callback in @callbacks ->
-        option
+      {callback, fun} = option when callback in @callbacks ->
+        if is_atom(fun) do
+          option
+        else
+          raise CompileError,
+            description:
+              "`callbacks` option `#{callback}` must be an atom, got: `#{inspect(fun)}`",
+            file: opts[:file],
+            line: opts[:line]
+        end
 
       other ->
         raise CompileError,
@@ -188,6 +205,52 @@ defmodule Zig.Module do
         description: "option `#{tag}` must be a path, got: `#{inspect(path)}`",
         file: opts[:file],
         line: opts[:line]
+  end
+
+  defp normalize_packages(packages, opts) do
+    Enum.map(packages, &normalize_package_spec(&1, opts))
+  rescue
+    e in CompileError ->
+      raise e
+
+    _ ->
+      raise CompileError,
+        description:
+          "option `packages` must be a keyword list of package specs, got: `#{inspect(packages)}`",
+        file: opts[:file],
+        line: opts[:line]
+  end
+
+  defp normalize_package_spec({k, {path, deps}}, opts) when is_atom(k) do
+    try do
+      Enum.each(deps, fn dep when is_atom(dep) -> :ok end)
+    rescue
+      _ ->
+        raise CompileError,
+          description:
+            "option `packages` spec for `#{k}` must have a list of atoms for deps, got: `#{inspect(deps)}`",
+          file: opts[:file],
+          line: opts[:line]
+    end
+
+    try do
+      {k, {IO.iodata_to_binary(path), deps}}
+    rescue
+      _ ->
+        raise CompileError,
+          description:
+            "option `packages` spec for `#{k}` must be a tuple of the form `{path, [deps...]}`, got: `#{inspect(path)}` for path",
+          file: opts[:file],
+          line: opts[:line]
+    end
+  end
+
+  defp normalize_package_spec({k, malformed}, opts) when is_atom(k) do
+    raise CompileError,
+      description:
+        "option `packages` spec for `foo` must be a tuple of the form `{path, [deps...]}`, got: `#{inspect(malformed)}`",
+      file: opts[:file],
+      line: opts[:line]
   end
 
   # internal helpers

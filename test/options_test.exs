@@ -242,8 +242,44 @@ defmodule ZiglerTest.OptionsTest do
   test "nifs"
   # do this in another file.
 
-  @tag :skip
-  test "packages"
+  describe "packages" do
+    test "accepts name-path-deps" do
+      assert %{packages: [foo: {"bar", [:baz, :quux]}]} =
+               make_module(otp_app: :zigler, packages: [foo: {"bar", [:baz, :quux]}])
+    end
+
+    test "path must be a string" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `packages` spec for `foo` must be a tuple of the form `{path, [deps...]}`, got: `:bar` for path",
+                   fn ->
+                     make_module(otp_app: :zigler, packages: [foo: {:bar, [:baz, :quux]}])
+                   end
+    end
+
+    test "deps must be a list of atoms" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `packages` spec for `foo` must have a list of atoms for deps, got: `\"baz\"`",
+                   fn ->
+                     make_module(otp_app: :zigler, packages: [foo: {"bar", "baz"}])
+                   end
+    end
+
+    test "must be a keyword list" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `packages` must be a keyword list of package specs, got: `\"foo\"`",
+                   fn ->
+                     make_module(otp_app: :zigler, packages: "foo")
+                   end
+    end
+
+    test "payload must be a tuple" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `packages` spec for `foo` must be a tuple of the form `{path, [deps...]}`, got: `\"bar\"`",
+                   fn ->
+                     make_module(otp_app: :zigler, packages: [foo: "bar"])
+                   end
+    end
+  end
 
   describe "resources" do
     test "is ok with a list of atoms" do
@@ -267,8 +303,67 @@ defmodule ZiglerTest.OptionsTest do
   end
 
   describe "callbacks" do
-    @tag :skip
-    test "blah"
+    test "can have on_load as an atom" do
+      assert %{callbacks: [on_load: :on_load]} =
+               make_module(otp_app: :zigler, callbacks: [:on_load])
+    end
+
+    test "on_load can be keyword atom" do
+      assert %{callbacks: [on_load: :fun]} =
+               make_module(otp_app: :zigler, callbacks: [on_load: :fun])
+    end
+
+    test "on_load rejects anything else" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: `callbacks` option `on_load` must be an atom, got: `[\"foo\"]`",
+                   fn ->
+                     make_module(otp_app: :zigler, callbacks: [on_load: ["foo"]])
+                   end
+    end
+
+    test "can have on_upgrade as an atom" do
+      assert %{callbacks: [on_upgrade: :on_upgrade]} =
+               make_module(otp_app: :zigler, callbacks: [:on_upgrade])
+    end
+
+    test "on_upgrade can be keyword atom" do
+      assert %{callbacks: [on_upgrade: :fun]} =
+               make_module(otp_app: :zigler, callbacks: [on_upgrade: :fun])
+    end
+
+    test "on_upgrade rejects anything else" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: `callbacks` option `on_upgrade` must be an atom, got: `[\"foo\"]`",
+                   fn ->
+                     make_module(otp_app: :zigler, callbacks: [on_upgrade: ["foo"]])
+                   end
+    end
+
+    test "can have on_unload as an atom" do
+      assert %{callbacks: [on_unload: :on_unload]} =
+               make_module(otp_app: :zigler, callbacks: [:on_unload])
+    end
+
+    test "on_unload can be keyword atom" do
+      assert %{callbacks: [on_unload: :fun]} =
+               make_module(otp_app: :zigler, callbacks: [on_unload: :fun])
+    end
+
+    test "on_unload rejects anything else" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: `callbacks` option `on_unload` must be an atom, got: `[\"foo\"]`",
+                   fn ->
+                     make_module(otp_app: :zigler, callbacks: [on_unload: ["foo"]])
+                   end
+    end
+
+    test "anything else is not allowed" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: `callbacks` option must be a keyword list of callbacks, got: `:foo`",
+                   fn ->
+                     make_module(otp_app: :zigler, callbacks: :foo)
+                   end
+    end
   end
 
   describe "cleanup" do
