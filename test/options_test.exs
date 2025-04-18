@@ -238,10 +238,6 @@ defmodule ZiglerTest.OptionsTest do
     end
   end
 
-  @tag :skip
-  test "nifs"
-  # do this in another file.
-
   describe "packages" do
     test "accepts name-path-deps" do
       assert %{packages: [foo: {"bar", [:baz, :quux]}]} =
@@ -369,7 +365,7 @@ defmodule ZiglerTest.OptionsTest do
   describe "cleanup" do
     test "cleanup gets placed in default nif opts" do
       assert %{default_nif_opts: [cleanup: true]} =
-                make_module(otp_app: :zigler, cleanup: true)
+               make_module(otp_app: :zigler, cleanup: true)
     end
 
     test "cleanup must be a boolean" do
@@ -384,7 +380,7 @@ defmodule ZiglerTest.OptionsTest do
   describe "leak_check" do
     test "leak_check gets placed in default nif opts" do
       assert %{default_nif_opts: [leak_check: true]} =
-                make_module(otp_app: :zigler, leak_check: true)
+               make_module(otp_app: :zigler, leak_check: true)
     end
 
     test "leak_check must be a boolean" do

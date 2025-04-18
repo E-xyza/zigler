@@ -10,11 +10,6 @@ defmodule Zig.Nif do
   # This module gets an access behaviour so that it can be easily used in EEx files.
   @behaviour Access
 
-  @enforce_keys ~w[name export module concurrency file module_code_path zig_code_path spec]a
-
-  defstruct @enforce_keys ++
-              ~w[line signature params allocator return leak_check alias doc raw impl]a
-
   alias Zig.Nif.Concurrency
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
@@ -26,6 +21,27 @@ defmodule Zig.Nif do
   alias Zig.Type
   alias Zig.Type.Error
   alias Zig.Type.Function
+
+  @enforce_keys ~w[name module file line module_code_path zig_code_path]a
+
+  defstruct @enforce_keys ++
+              [
+                :params,
+                :return,
+                :allocator,
+                :impl,
+                :alias,
+                # next three are determined internally as a part of parsing or sema.
+                :signature,
+                :raw,
+                :doc,
+                # user-specified options with defaults
+                export: true,
+                concurrency: Synchronous,
+                cleanup: true,
+                spec: true,
+                leak_check: false
+              ]
 
   @typep raw :: %__MODULE__{
            name: atom,
@@ -105,32 +121,110 @@ defmodule Zig.Nif do
   @doc """
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
-  def new(name, module, opts!) do
-    opts! = adjust(opts!)
-
-    %__MODULE__{
+  def new(name, module, opts) do
+    opts
+    |> normalize
+    |> Keyword.merge(
       name: name,
       file: module.file,
       module: module.module,
       module_code_path: module.module_code_path,
-      zig_code_path: module.zig_code_path,
-      export: Keyword.get(opts!, :export, true),
-      concurrency: Map.get(@concurrency_modules, opts![:concurrency], Synchronous),
-      spec: Keyword.get(opts!, :spec, true),
-      leak_check: Keyword.get(opts!, :leak_check, @defaults[:leak_check]),
-      allocator: opts![:allocator],
-      params: opts![:params],
-      alias: opts![:alias],
-      impl: opts![:impl]
-    }
+      zig_code_path: module.zig_code_path
+    )
+    |> then(&struct(__MODULE__, &1))
   end
 
-  def adjust(opts) do
+  def normalize(opts) do
     Enum.map(opts, fn
-      defaultable when defaultable in @defaultable_opts -> {defaultable, true}
-      :nocleanup -> {:cleanup, false}
-      concurrency when concurrency in @concurrency_opts -> {:concurrency, concurrency}
-      {atom, _} = kv when is_atom(atom) -> kv
+      defaultable when defaultable in @defaultable_opts ->
+        {defaultable, true}
+
+      :noclean ->
+        {:cleanup, false}
+
+      :nospec ->
+        {:spec, false}
+
+      concurrency when concurrency in @concurrency_opts ->
+        {:concurrency, Map.fetch!(@concurrency_modules, concurrency)}
+
+      {:concurrency, concurrency} when concurrency in @concurrency_opts ->
+        {:concurrency, Map.fetch!(@concurrency_modules, concurrency)}
+
+      {:concurrency, concurrency} ->
+        text = Enum.map_join(@concurrency_opts, ", ", &"`#{inspect(&1)}`")
+
+        raise CompileError,
+          description:
+            "nif option `concurrency` must be one of #{text}, got: `#{inspect(concurrency)}`",
+          file: opts[:file],
+          line: opts[:line]
+
+      {:params, params} when is_map(params) ->
+        {params, Enum.map(params, &Parameter.new(&1, opts))}
+
+      {:return, return} when is_map(return) ->
+        {return, Return.new(return)}
+
+      {:return, return} when is_atom(return) ->
+        {return, Return.new(type: return)}
+
+      {:return, return} ->
+        raise CompileError,
+          description: "nif option `return` must be a map or an atom, got: #{inspect(return)}",
+          file: opts[:file],
+          line: opts[:line]
+
+      {:alias, alias} when is_atom(alias) ->
+        {alias, alias}
+
+      {:doc, doc} when is_binary(doc) ->
+        {doc, doc}
+
+      {:export, v} when not is_boolean(v) ->
+        raise CompileError,
+          description: "nif option `export` must be a boolean, got: #{inspect(v)}",
+          file: opts[:file],
+          line: opts[:line]
+
+      {:spec, v} when not is_boolean(v) ->
+        raise CompileError,
+          description: "nif option `spec` must be a boolean, got: #{inspect(v)}",
+          file: opts[:file],
+          line: opts[:line]
+
+      {:impl, v} when is_atom(v) ->
+        {:impl, v}
+
+      {:impl, v} ->
+        raise CompileError,
+          description: "nif option `impl` must be a module or `true`, got: #{inspect(v)}",
+          file: opts[:file],
+          line: opts[:line]
+
+      :leak_check ->
+        {:leak_check, true}
+
+      {:leak_check, v} when is_boolean(v) ->
+        {:leak_check, v}
+
+      {:leak_check, v} ->
+        raise CompileError,
+          description: "nif option `leak_check` must be a boolean, got: #{inspect(v)}",
+          file: opts[:file],
+          line: opts[:line]
+
+      {:cleanup, v} when is_boolean(v) ->
+        {:cleanup, v}
+
+      {:cleanup, v} ->
+        raise CompileError,
+          description: "nif option `cleanup` must be a boolean, got: #{inspect(v)}",
+          file: opts[:file],
+          line: opts[:line]
+
+      {atom, _} = kv when is_atom(atom) ->
+        kv
     end)
   end
 
