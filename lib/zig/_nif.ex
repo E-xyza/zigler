@@ -123,10 +123,11 @@ defmodule Zig.Nif do
   """
   def new(name, module, opts) do
     opts
-    |> normalize
+    |> normalize(name, module)
     |> Keyword.merge(
       name: name,
       file: module.file,
+      line: module.line,
       module: module.module,
       module_code_path: module.module_code_path,
       zig_code_path: module.zig_code_path
@@ -134,7 +135,7 @@ defmodule Zig.Nif do
     |> then(&struct(__MODULE__, &1))
   end
 
-  def normalize(opts) do
+  def normalize(opts, name, module) do
     Enum.map(opts, fn
       defaultable when defaultable in @defaultable_opts ->
         {defaultable, true}
@@ -157,8 +158,8 @@ defmodule Zig.Nif do
         raise CompileError,
           description:
             "nif option `concurrency` must be one of #{text}, got: `#{inspect(concurrency)}`",
-          file: opts[:file],
-          line: opts[:line]
+          file: module.file,
+          line: module.line
 
       {:params, params} when is_map(params) ->
         {params, Enum.map(params, &Parameter.new(&1, opts))}
@@ -172,11 +173,23 @@ defmodule Zig.Nif do
       {:return, return} ->
         raise CompileError,
           description: "nif option `return` must be a map or an atom, got: #{inspect(return)}",
-          file: opts[:file],
-          line: opts[:line]
+          file: module.file,
+          line: module.line
 
-      {:alias, alias} when is_atom(alias) ->
-        {alias, alias}
+      {:alias, ^name} ->
+        raise CompileError,
+          description: "nif option `alias` cannot be the same as the nif name",
+          file: module.file,
+          line: module.line
+
+      {:alias, a} when is_atom(a) ->
+        {:alias, a}
+
+      {:alias, a} ->
+        raise CompileError,
+          description: "nif option `alias` must be an atom, got: #{inspect(a)}",
+          file: module.file,
+          line: module.line
 
       {:doc, doc} when is_binary(doc) ->
         {doc, doc}
@@ -184,14 +197,14 @@ defmodule Zig.Nif do
       {:export, v} when not is_boolean(v) ->
         raise CompileError,
           description: "nif option `export` must be a boolean, got: #{inspect(v)}",
-          file: opts[:file],
-          line: opts[:line]
+          file: module.file,
+          line: module.line
 
       {:spec, v} when not is_boolean(v) ->
         raise CompileError,
           description: "nif option `spec` must be a boolean, got: #{inspect(v)}",
-          file: opts[:file],
-          line: opts[:line]
+          file: module.file,
+          line: module.line
 
       {:impl, v} when is_atom(v) ->
         {:impl, v}
@@ -199,8 +212,8 @@ defmodule Zig.Nif do
       {:impl, v} ->
         raise CompileError,
           description: "nif option `impl` must be a module or `true`, got: #{inspect(v)}",
-          file: opts[:file],
-          line: opts[:line]
+          file: module.file,
+          line: module.line
 
       :leak_check ->
         {:leak_check, true}
@@ -211,8 +224,8 @@ defmodule Zig.Nif do
       {:leak_check, v} ->
         raise CompileError,
           description: "nif option `leak_check` must be a boolean, got: #{inspect(v)}",
-          file: opts[:file],
-          line: opts[:line]
+          file: module.file,
+          line: module.line
 
       {:cleanup, v} when is_boolean(v) ->
         {:cleanup, v}
@@ -220,8 +233,8 @@ defmodule Zig.Nif do
       {:cleanup, v} ->
         raise CompileError,
           description: "nif option `cleanup` must be a boolean, got: #{inspect(v)}",
-          file: opts[:file],
-          line: opts[:line]
+          file: module.file,
+          line: module.line
 
       {atom, _} = kv when is_atom(atom) ->
         kv

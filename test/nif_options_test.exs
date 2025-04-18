@@ -25,7 +25,7 @@ defmodule ZiglerTest.OptionsTest do
     end
 
     test "rejects non-boolean" do
-      assert_raise CompileError, "nif option `export` must be a boolean, got: 1", fn ->
+      assert_raise CompileError, "test/nif_options_test.exs:9: nif option `export` must be a boolean, got: 1", fn ->
         make_nif(export: 1)
       end
     end
@@ -46,7 +46,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects invalid options" do
       assert_raise CompileError,
-                   "nif option `concurrency` must be one of `:dirty_cpu`, `:dirty_io`, `:synchronous`, `:threaded`, `:yielding`, got: `:invalid`",
+                   "test/nif_options_test.exs:9: nif option `concurrency` must be one of `:dirty_cpu`, `:dirty_io`, `:synchronous`, `:threaded`, `:yielding`, got: `:invalid`",
                    fn ->
                      make_nif(concurrency: :invalid)
                    end
@@ -67,8 +67,46 @@ defmodule ZiglerTest.OptionsTest do
     end
 
     test "rejects non-boolean" do
-      assert_raise CompileError, "nif option `spec` must be a boolean, got: 1", fn ->
+      assert_raise CompileError, "test/nif_options_test.exs:9: nif option `spec` must be a boolean, got: 1", fn ->
         make_nif(spec: 1)
+      end
+    end
+  end
+
+  describe "impl option" do
+    test "defaults to nil" do
+      assert %{impl: nil} = make_nif([])
+    end
+
+    test "accepts module name" do
+      assert %{impl: MyModule} = make_nif(impl: MyModule)
+    end
+
+    test "rejects on non-atom" do
+      assert_raise CompileError, "test/nif_options_test.exs:9: nif option `impl` must be a module or `true`, got: 1", fn ->
+        make_nif(impl: 1)
+      end
+    end
+  end
+
+  describe "alias option" do
+    test "defaults to nil" do
+      assert %{alias: nil} = make_nif([])
+    end
+
+    test "accepts an atom" do
+      assert %{alias: :bar} = make_nif(alias: :bar)
+    end
+
+    test "rejects on self" do
+      assert_raise CompileError, "test/nif_options_test.exs:9: nif option `alias` cannot be the same as the nif name", fn ->
+        make_nif(alias: :my_nif)
+      end
+    end
+
+    test "rejects on non-atom" do
+      assert_raise CompileError, "test/nif_options_test.exs:9: nif option `alias` must be an atom, got: 1", fn ->
+        make_nif(alias: 1)
       end
     end
   end
@@ -87,7 +125,7 @@ defmodule ZiglerTest.OptionsTest do
     end
 
     test "rejects non-boolean" do
-      assert_raise CompileError, "nif option `leak_check` must be a boolean, got: 1", fn ->
+      assert_raise CompileError, "test/nif_options_test.exs:9: nif option `leak_check` must be a boolean, got: 1", fn ->
         make_nif(leak_check: 1)
       end
     end
@@ -107,7 +145,7 @@ defmodule ZiglerTest.OptionsTest do
     end
 
     test "rejects non-boolean" do
-      assert_raise CompileError, "nif option `cleanup` must be a boolean, got: 1", fn ->
+      assert_raise CompileError, "test/nif_options_test.exs:9: nif option `cleanup` must be a boolean, got: 1", fn ->
         make_nif(cleanup: 1)
       end
     end
