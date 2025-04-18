@@ -367,13 +367,33 @@ defmodule ZiglerTest.OptionsTest do
   end
 
   describe "cleanup" do
-    @tag :skip
-    test "implement me"
+    test "cleanup gets placed in default nif opts" do
+      assert %{default_nif_opts: [cleanup: true]} =
+                make_module(otp_app: :zigler, cleanup: true)
+    end
+
+    test "cleanup must be a boolean" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `cleanup` must be a boolean, got: `:foo`",
+                   fn ->
+                     make_module(otp_app: :zigler, cleanup: :foo)
+                   end
+    end
   end
 
   describe "leak_check" do
-    @tag :skip
-    test "do it"
+    test "leak_check gets placed in default nif opts" do
+      assert %{default_nif_opts: [leak_check: true]} =
+                make_module(otp_app: :zigler, leak_check: true)
+    end
+
+    test "leak_check must be a boolean" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `leak_check` must be a boolean, got: `:foo`",
+                   fn ->
+                     make_module(otp_app: :zigler, leak_check: :foo)
+                   end
+    end
   end
 
   test "an invalid key" do

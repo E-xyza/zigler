@@ -382,6 +382,8 @@ defmodule Zig.Module do
     assert(this, :release_mode, &(&1 in @release_modes), "must be one of #{@modes_text}", context)
     assert(this, :ignore, &all_atoms?/1, "must be a list of atoms", context)
     assert(this, :resources, &all_atoms?/1, "must be a list of atoms", context)
+    assert(this[:default_nif_opts], :cleanup, &(is_nil(&1) or is_boolean(&1)), "must be a boolean", context)
+    assert(this[:default_nif_opts], :leak_check, &(is_nil(&1) or is_boolean(&1)), "must be a boolean", context)
 
     this
   end
