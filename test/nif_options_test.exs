@@ -213,25 +213,40 @@ defmodule ZiglerTest.OptionsTest do
                    end
 
       assert_raise CompileError,
-                    "test/nif_options_test.exs:9: nif option `as` is invalid, got: `:foo` @ [map(foo)]",
-                    fn ->
-                      make_nif(return: {:map, foo: :foo})
-                    end
+                   "test/nif_options_test.exs:9: nif option `as` is invalid, got: `:foo` @ [map(foo)]",
+                   fn ->
+                     make_nif(return: {:map, foo: :foo})
+                   end
 
       assert_raise CompileError,
-                    "test/nif_options_test.exs:9: nif option `as` is invalid, got: `:foo` @ [list > map(foo)]",
-                    fn ->
-                      make_nif(return: {:list, {:map, foo: :foo}})
-                    end
+                   "test/nif_options_test.exs:9: nif option `as` is invalid, got: `:foo` @ [list > map(foo)]",
+                   fn ->
+                     make_nif(return: {:list, {:map, foo: :foo}})
+                   end
     end
 
-    test "spec" do
+    test "in_out can be an atom" do
+      assert %{return: [cleanup: true, in_out: :foo]} = make_nif(return: [in_out: :foo])
     end
 
-    test "in_out" do
+    test "in_out is rejected if it's not an atom" do
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: nif option `in_out` must be an atom, got: `1`",
+                   fn ->
+                     make_nif(return: [in_out: 1])
+                   end
     end
 
-    test "error" do
+    test "error can be an atom" do
+      assert %{return: [cleanup: true, error: :foo]} = make_nif(return: [error: :foo])
+    end
+
+    test "error is rejected if it's not an atom" do
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: nif option `error` must be a module, got: `1`",
+                   fn ->
+                     make_nif(return: [error: 1])
+                   end
     end
 
     test "length can be integer" do

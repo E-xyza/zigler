@@ -24,7 +24,7 @@ defmodule Zig.Return do
           | :list
           | {:cleanup, boolean}
           | {:as, type}
-          | {:in_out, String.t()}
+          | {:in_out, atom()}
           | {:error, atom()}
           | {:length, non_neg_integer | {:arg, non_neg_integer()}}
         ]
@@ -77,21 +77,29 @@ defmodule Zig.Return do
       {:spec, spec} when is_atom(spec) or is_tuple(spec) or is_list(spec) ->
         {:spec, spec}
 
-      {:in_out, in_out} when is_binary(in_out) ->
-        {:in_out, in_out}
-
       {:in_out, in_out} when is_atom(in_out) ->
         {:in_out, in_out}
 
+      {:in_out, in_out} ->
+        raise CompileError,
+          description: "nif option `in_out` must be an atom, got: `#{inspect(in_out)}`",
+          file: module.file,
+          line: module.line
+
       {:error, error} when is_atom(error) ->
         {:error, error}
+
+      {:error, error} ->
+        raise CompileError,
+          description: "nif option `error` must be a module, got: `#{inspect(error)}`",
+          file: module.file,
+          line: module.line
     end)
     |> Keyword.put_new(:cleanup, cleanup)
   catch
     {:deep_typeerror, wrong, stack} ->
       raise CompileError,
-        description:
-          "nif option `as` is invalid, got: `#{inspect(wrong)}` @ [#{unwind(stack)}]",
+        description: "nif option `as` is invalid, got: `#{inspect(wrong)}` @ [#{unwind(stack)}]",
         file: module.file,
         line: module.line
   end
@@ -117,7 +125,7 @@ defmodule Zig.Return do
 
   defp unwind(list) do
     list
-    |> Enum.reverse
+    |> Enum.reverse()
     |> Enum.map_join(" > ", fn
       :list -> "list"
       {:map, key} -> "map(#{key})"
