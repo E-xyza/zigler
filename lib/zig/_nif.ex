@@ -22,12 +22,11 @@ defmodule Zig.Nif do
   alias Zig.Type.Error
   alias Zig.Type.Function
 
-  @enforce_keys ~w[name module file line module_code_path zig_code_path]a
+  @enforce_keys ~w[name module file line module_code_path zig_code_path cleanup]a
 
   defstruct @enforce_keys ++
               [
                 :params,
-                :return,
                 :allocator,
                 :impl,
                 :alias,
@@ -36,9 +35,10 @@ defmodule Zig.Nif do
                 :raw,
                 :doc,
                 # user-specified options with defaults
+                # note that `cleanup` default is set programatically since `return` depends on it.
+                return: [],
                 export: true,
                 concurrency: Synchronous,
-                cleanup: true,
                 spec: true,
                 leak_check: false
               ]
@@ -90,7 +90,6 @@ defmodule Zig.Nif do
           {:cleanup, boolean}
           | {:leak_check, boolean}
 
-  @typedoc false
   @type individual_opts ::
           {:export, boolean}
           | {:concurrency, Concurrency.t()}
@@ -136,7 +135,8 @@ defmodule Zig.Nif do
   end
 
   def normalize(opts, name, module) do
-    Enum.map(opts, fn
+    opts
+    |> Enum.map(fn
       defaultable when defaultable in @defaultable_opts ->
         {defaultable, true}
 
@@ -162,19 +162,7 @@ defmodule Zig.Nif do
           line: module.line
 
       {:params, params} when is_map(params) ->
-        {params, Enum.map(params, &Parameter.new(&1, opts))}
-
-      {:return, return} when is_map(return) ->
-        {return, Return.new(return)}
-
-      {:return, return} when is_atom(return) ->
-        {return, Return.new(type: return)}
-
-      {:return, return} ->
-        raise CompileError,
-          description: "nif option `return` must be a map or an atom, got: #{inspect(return)}",
-          file: module.file,
-          line: module.line
+        {:params, Enum.map(params, &Parameter.new(&1, opts))}
 
       {:alias, ^name} ->
         raise CompileError,
@@ -187,7 +175,7 @@ defmodule Zig.Nif do
 
       {:alias, a} ->
         raise CompileError,
-          description: "nif option `alias` must be an atom, got: #{inspect(a)}",
+          description: "nif option `alias` must be an atom, got: `#{inspect(a)}`",
           file: module.file,
           line: module.line
 
@@ -196,13 +184,13 @@ defmodule Zig.Nif do
 
       {:export, v} when not is_boolean(v) ->
         raise CompileError,
-          description: "nif option `export` must be a boolean, got: #{inspect(v)}",
+          description: "nif option `export` must be a boolean, got: `#{inspect(v)}`",
           file: module.file,
           line: module.line
 
       {:spec, v} when not is_boolean(v) ->
         raise CompileError,
-          description: "nif option `spec` must be a boolean, got: #{inspect(v)}",
+          description: "nif option `spec` must be a boolean, got: `#{inspect(v)}`",
           file: module.file,
           line: module.line
 
@@ -211,7 +199,7 @@ defmodule Zig.Nif do
 
       {:impl, v} ->
         raise CompileError,
-          description: "nif option `impl` must be a module or `true`, got: #{inspect(v)}",
+          description: "nif option `impl` must be a module or `true`, got: `#{inspect(v)}`",
           file: module.file,
           line: module.line
 
@@ -223,7 +211,7 @@ defmodule Zig.Nif do
 
       {:leak_check, v} ->
         raise CompileError,
-          description: "nif option `leak_check` must be a boolean, got: #{inspect(v)}",
+          description: "nif option `leak_check` must be a boolean, got: `#{inspect(v)}`",
           file: module.file,
           line: module.line
 
@@ -232,13 +220,35 @@ defmodule Zig.Nif do
 
       {:cleanup, v} ->
         raise CompileError,
-          description: "nif option `cleanup` must be a boolean, got: #{inspect(v)}",
+          description: "nif option `cleanup` must be a boolean, got: `#{inspect(v)}`",
+          file: module.file,
+          line: module.line
+
+      {:allocator, v} when is_atom(v) ->
+        {:allocator, v}
+
+      {:allocator, v} ->
+        raise CompileError,
+          description: "nif option `allocator` must be an atom, got: `#{inspect(v)}`",
           file: module.file,
           line: module.line
 
       {atom, _} = kv when is_atom(atom) ->
         kv
     end)
+    |> Keyword.put_new(:cleanup, true)
+    |> normalize_return(module)
+  end
+
+  defp normalize_return(opts, module) do
+    cleanup = Keyword.fetch!(opts, :cleanup)
+
+    Keyword.update(
+      opts,
+      :return,
+      [cleanup: cleanup],
+      &Return.normalize_options(&1, cleanup, module)
+    )
   end
 
   def arities(%{raw: nil, signature: %{arity: arity}}), do: [arity]

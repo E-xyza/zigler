@@ -287,7 +287,7 @@ defmodule Zig.Sema do
             line: nif.line
       end
 
-    %{nif | signature: sema, raw: t, params: arities, return: Return.new(t)}
+    %{nif | signature: sema, raw: t, params: arities, return: Return.new(:raw, t)}
   end
 
   defp apply_from_sema(%{params: nif_params!} = nif, sema, opts) do

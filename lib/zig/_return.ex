@@ -29,35 +29,99 @@ defmodule Zig.Return do
           | {:length, non_neg_integer | {:arg, non_neg_integer()}}
         ]
 
-  def new(raw) when raw in ~w[term erl_nif_term]a, do: %__MODULE__{type: raw, cleanup: false}
+  def new(:raw, raw) when raw in ~w[term erl_nif_term]a,
+    do: %__MODULE__{type: raw, cleanup: false}
 
   def new(type, options) do
-    struct!(__MODULE__, [type: type] ++ normalize_options(options))
+    struct!(__MODULE__, [type: type] ++ options)
   end
 
   @as ~w[binary list integer map]a
   @options ~w[as cleanup spec in_out error length]a
 
-  defp normalize_options(options) do
+  def normalize_options(options, cleanup, module) do
     options
     |> List.wrap()
     |> Enum.map(fn
       option when option in @as ->
         {:as, option}
 
+      {:as, type} ->
+        {:as, validate_type(type, [])}
+
       :noclean ->
         {:cleanup, false}
 
       {:list, _} = v ->
-        {:as, v}
+        {:as, validate_type(v, [])}
 
       {:map, _} = v ->
-        {:as, v}
+        {:as, validate_type(v, [])}
 
-      {k, _} = kv when k in @options ->
-        kv
+      {:length, int} when is_integer(int) and int >= 0 ->
+        {:length, int}
+
+      {:length, {:arg, arg}} when is_integer(arg) and arg >= 0 ->
+        {:length, {:arg, arg}}
+
+      {:length, v} ->
+        raise CompileError,
+          description:
+            "nif option `length` must be a non-negative integer or an argument spec, got: `#{inspect(v)}`",
+          file: module.file,
+          line: module.line
+
+      {:cleanup, cleanup} when is_boolean(cleanup) ->
+        {:cleanup, cleanup}
+
+      {:spec, spec} when is_atom(spec) or is_tuple(spec) or is_list(spec) ->
+        {:spec, spec}
+
+      {:in_out, in_out} when is_binary(in_out) ->
+        {:in_out, in_out}
+
+      {:in_out, in_out} when is_atom(in_out) ->
+        {:in_out, in_out}
+
+      {:error, error} when is_atom(error) ->
+        {:error, error}
     end)
-    |> Keyword.put_new(:cleanup, true)
+    |> Keyword.put_new(:cleanup, cleanup)
+  catch
+    {:deep_typeerror, wrong, stack} ->
+      raise CompileError,
+        description:
+          "nif option `as` is invalid, got: `#{inspect(wrong)}` @ [#{unwind(stack)}]",
+        file: module.file,
+        line: module.line
+  end
+
+  defp validate_type(type, _) when type in @as, do: type
+
+  defp validate_type({:list, type} = list, stack) do
+    validate_type(type, [:list | stack])
+    list
+  end
+
+  defp validate_type({:map, typemap} = map, stack) do
+    Enum.each(typemap, fn {key, value} ->
+      validate_type(value, [{:map, key} | stack])
+    end)
+
+    map
+  end
+
+  defp validate_type(wrong, stack) do
+    throw {:deep_typeerror, wrong, stack}
+  end
+
+  defp unwind(list) do
+    list
+    |> Enum.reverse
+    |> Enum.map_join(" > ", fn
+      :list -> "list"
+      {:map, key} -> "map(#{key})"
+    end)
   end
 
   def render_return(%{in_out: in_out_var, error: nil} = return) when is_binary(in_out_var) do
