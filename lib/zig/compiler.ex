@@ -25,9 +25,9 @@ defmodule Zig.Compiler do
       module
       |> Module.get_attribute(:zigler_opts)
       |> Keyword.put(:attributes, Attributes.from_module(module))
-      |> adjust_elixir_options
+      |> Keyword.update(opts, :nifs, [], &normalize_elixir_nif_spec/1)
       |> Zig.Module.new(__CALLER__)
-      
+
     code_dir =
       case {opts.dir, file} do
         {nil, nofile} when nofile in @nofile -> File.cwd!()
@@ -89,33 +89,35 @@ defmodule Zig.Compiler do
       end
 
     code
-    |> compile(code_dir, opts |> dbg(limit: 25))
+    |> compile(code_dir, opts)
     |> Zig.Macro.inspect(opts)
-  end
-
-  defp adjust_elixir_options(opts) do
-    Keyword.update!(opts, :nifs, &nif_substitution/1)
   end
 
   # if the elixir `nif` option contains `...` then this should be converted
   # into `{:auto, <other_options>}`.  Also, if the nif entry is just an atom,
   # converts that entry into `{nif, []}`
   #
-  # This function will reverse the list, but since order doesn't matter for this
+  # This function might reverse the list, but since order doesn't matter for this
   # option, it is okay.
-  defp nif_substitution(:auto), do: {:auto, []}
+  defp normalize_elixir_nif_spec(:auto), do: {:auto, []}
 
-  defp nif_substitution({:auto, list}), do: {:auto, Enum.map(list, &decode_params/1)}
+  defp normalize_elixir_nif_spec({:auto, list}) do
+    {:auto,
+     Enum.map(list, fn
+       nif_name when is_atom(nif_name) ->
+         {nif_name, []}
 
-  defp nif_substitution(opts) do
-    case Enum.reduce(opts, [], fn
-           {:..., _, _}, {:auto, _} = so_far -> so_far
-           {:..., _, _}, list -> {:auto, list}
-           other, so_far -> prepend_nif(so_far, other)
-         end) do
-      {:auto, list} -> {:auto, Enum.map(list, &decode_params/1)}
-      list -> Enum.map(list, &decode_params/1)
-    end
+       {_, _} = kv ->
+         kv
+     end)}
+  end
+
+  defp normalize_elixir_nif_spec(opts) do
+    Enum.reduce(opts, [], fn
+      {:..., _, _}, {:auto, _} = so_far -> so_far
+      {:..., _, _}, list -> {:auto, list}
+      other, so_far -> prepend_nif(so_far, other)
+    end)
   end
 
   defp prepend_nif({:auto, so_far}, nif_name) when is_atom(nif_name),
@@ -125,25 +127,10 @@ defmodule Zig.Compiler do
   defp prepend_nif({:auto, so_far}, nif_info), do: {:auto, [nif_info | so_far]}
   defp prepend_nif(so_far, nif_info), do: [nif_info | so_far]
 
-  defp decode_params({nif, opts}) do
-    {nif, decode_params(opts)}
-  end
-
-  defp decode_params([{:params, params_ast} | rest]) do
-    [{:params, maybe_from_ast(params_ast)} | rest]
-  end
-
-  defp decode_params([other | rest]), do: [other | decode_params(rest)]
-  defp decode_params([]), do: []
-
-  # adjust nif parameters if they came from elixir as an AST
-  defp maybe_from_ast({:%{}, _, ast}), do: Enum.into(ast, %{})
-  defp maybe_from_ast(other) when is_map(other), do: other
-
   def before_compile_erlang(module, {file, line}, opts) do
     opts
     |> Keyword.merge(language: :erlang)
-    |> Keyword.update(:nifs, {:auto, []}, &nif_substitution/1)
+    |> Keyword.update(:nifs, {:auto, []}, &normalize_elixir_nif_spec/1)
     |> Zig.Module.new(%{module: module, file: file, line: line})
   end
 
@@ -155,6 +142,8 @@ defmodule Zig.Compiler do
       code_dir
       |> Path.join(".#{opts.module}.zig")
       |> Path.expand()
+
+    opts.nifs |> dbg(limit: 25)
 
     opts
     |> Map.replace!(:zig_code_path, zig_code_path)

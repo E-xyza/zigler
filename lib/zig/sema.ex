@@ -180,7 +180,8 @@ defmodule Zig.Sema do
   # information.  Also strips "auto" from the nif information to provide a finalized
   # keyword list of functions with their options.
   def analyze_file!(%{sema: %{functions: sema_functions, types: _types}} = module) do
-    # `nifs` option could either be {:auto, keyword} which means that the full
+    module.nifs |> dbg(limit: 25)
+    # `nifs` option could either be {:auto, [nifs]} which means that the full
     # list of functions should be derived from the semantic analysis, determining
     # which functions have `pub` declaration, with certain functions optionally
     # having their specification overloaded.
@@ -217,6 +218,10 @@ defmodule Zig.Sema do
 
         specified_nifs when is_list(specified_nifs) ->
           Enum.map(specified_nifs, fn {name, nif_opts} ->
+            # TODO: remove
+            match?(%Nif{}, nif_opts) or
+              raise "nif option must be a nif struct (got: #{inspect(nif_opts)})"
+
             expected_name = Keyword.get(nif_opts, :alias, name)
 
             if sema_function = Enum.find(sema_functions, &(&1.name == expected_name)) do
@@ -260,16 +265,18 @@ defmodule Zig.Sema do
     |> Map.new()
   end
 
-  defp maybe_merge(nif, specified_nif, _module) do
-    dbg()
-    if to_merge = Enum.find(specified_nif, &functions_match?(&1, nif)) do
+  defp maybe_merge(nif, specified_nifs, _module) do
+    if to_merge = Enum.find(specified_nifs, &functions_match?(&1, nif)) do
       merge_nif(nif, to_merge)
     else
       nif
     end
   end
 
-  defp functions_match?(_, _), do: false
+  defp functions_match?(a, b) do
+    dbg()
+    raise "unimplemented"
+  end
 
   defp merge_nif(_, _) do
     raise "unimplemented"
