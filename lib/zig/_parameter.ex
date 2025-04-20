@@ -1,8 +1,8 @@
 defmodule Zig.Parameter do
   @moduledoc false
 
-  @enforce_keys ~w[type cleanup in_out]a
-  defstruct @enforce_keys
+  @enforce_keys ~w[cleanup in_out]a
+  defstruct @enforce_keys ++ [:type]
 
   alias Zig.Type
 
@@ -15,7 +15,8 @@ defmodule Zig.Parameter do
   @type opts :: :noclean | [:noclean | {:cleanup, boolean}]
 
   def new(type, options, module) do
-    struct!(__MODULE__, [type: type] ++ normalize_options(options, module))
+    type_opt = List.wrap(if type, do: {:type, type})
+    struct!(__MODULE__, type_opt ++ normalize_options(options, module))
   end
 
   @options ~w[cleanup in_out]a

@@ -395,7 +395,7 @@ defmodule Zig.Nif do
     raw_line =
       Enum.find_value(parsed.code, fn
         %{name: name, location: {line, _}} -> if name == expected_name, do: line
-      end)
+      end) || raise "raw line information not found for #{expected_name}"
 
     {file, line} = manifest_module.__resolve(%{file_name: nif.zig_code_path, line: raw_line})
 

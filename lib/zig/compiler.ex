@@ -24,10 +24,10 @@ defmodule Zig.Compiler do
     opts =
       module
       |> Module.get_attribute(:zigler_opts)
-      |> Zig.Module.new(__CALLER__)
-      |> Map.replace!(:attributes, Attributes.from_module(module))
+      |> Keyword.put(:attributes, Attributes.from_module(module))
       |> adjust_elixir_options
-
+      |> Zig.Module.new(__CALLER__)
+      
     code_dir =
       case {opts.dir, file} do
         {nil, nofile} when nofile in @nofile -> File.cwd!()
@@ -89,12 +89,12 @@ defmodule Zig.Compiler do
       end
 
     code
-    |> compile(code_dir, opts)
+    |> compile(code_dir, opts |> dbg(limit: 25))
     |> Zig.Macro.inspect(opts)
   end
 
   defp adjust_elixir_options(opts) do
-    Map.update!(opts, :nifs, &nif_substitution/1)
+    Keyword.update!(opts, :nifs, &nif_substitution/1)
   end
 
   # if the elixir `nif` option contains `...` then this should be converted
