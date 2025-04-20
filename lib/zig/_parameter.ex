@@ -14,19 +14,42 @@ defmodule Zig.Parameter do
 
   @type opts :: :noclean | [:noclean | {:cleanup, boolean}]
 
-  def new(type, options) do
-    struct!(__MODULE__, [type: type] ++ normalize_options(options))
+  def new(type, options, module) do
+    struct!(__MODULE__, [type: type] ++ normalize_options(options, module))
   end
 
-  @options ~w[cleanup]a
+  @options ~w[cleanup in_out]a
 
-  def normalize_options(options) do
+  def normalize_options(options, module) do
     options
     |> List.wrap()
     |> Enum.flat_map(fn
-      :noclean -> [cleanup: false]
-      :in_out -> [in_out: true, cleanup: false]
-      {k, _} = kv when k in @options -> [kv]
+      :noclean ->
+        [cleanup: false]
+
+      :in_out ->
+        [in_out: true, cleanup: false]
+
+      {k, v} when k in @options and is_boolean(v) ->
+        [{k, v}]
+
+      {k, v} when k in @options ->
+        raise CompileError,
+          description: "nif parameter option `#{k}` must be boolean, got: `#{inspect(v)}`",
+          file: module.file,
+          line: module.line
+
+      {k, _} ->
+        raise CompileError,
+          description: "nif parameter option key `#{k}` is invalid",
+          file: module.file,
+          line: module.line
+
+      other ->
+        raise CompileError,
+          description: "nif parameter option `#{inspect(other)}` is invalid",
+          file: module.file,
+          line: module.line
     end)
     |> then(&Keyword.merge([cleanup: true, in_out: false], &1))
   end

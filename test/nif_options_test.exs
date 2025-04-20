@@ -266,6 +266,87 @@ defmodule ZiglerTest.OptionsTest do
     end
   end
 
+  alias Zig.Parameter
+
   describe "params option" do
+    test "defaults to empty" do
+      assert %{params: %{}} = make_nif([])
+    end
+
+    test "you can set it to an integer" do
+      assert %{params: 1} = make_nif(params: 1)
+    end
+
+    test "you can set it to a params map" do
+      assert %{params: %{0 => %Parameter{cleanup: true, in_out: false}}} =
+               make_nif(params: %{0 => []})
+    end
+
+    test "cleanup adopts value from outer options" do
+      assert %{params: %{0 => %Parameter{cleanup: true}}} =
+               make_nif(params: %{0 => []}, cleanup: true)
+    end
+
+    test "you can't set it to anything else" do
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: nif option `params` must be a non-negative integer or a params map, got: `:foo`",
+                   fn ->
+                     make_nif(params: :foo)
+                   end
+    end
+
+    test "params map keys must be integers" do
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: nif option `params` map keys must be non-negative integers, got: `:foo`",
+                   fn ->
+                     make_nif(params: %{foo: []})
+                   end
+    end
+
+    test "params map can set cleanup with precedence over the nif default" do
+      assert %{params: %{0 => %Parameter{cleanup: false}}} =
+               make_nif(params: %{0 => [cleanup: false]}, cleanup: true)
+
+      assert %{params: %{0 => %Parameter{cleanup: false}}} =
+               make_nif(params: %{0 => [:noclean]}, cleanup: true)
+    end
+
+    test "non-boolean cleanup values are rejected" do
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: nif parameter option `cleanup` must be boolean, got: `1`",
+                   fn ->
+                     make_nif(params: %{0 => [cleanup: 1]})
+                   end
+    end
+
+    test "params map can set in_out" do
+      assert %{params: %{0 => %Parameter{in_out: true}}} =
+               make_nif(params: %{0 => [in_out: true]})
+
+      assert %{params: %{0 => %Parameter{in_out: true}}} =
+               make_nif(params: %{0 => [:in_out]})
+    end
+
+    test "non-boolean in_out values are rejected" do
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: nif parameter option `in_out` must be boolean, got: `1`",
+                   fn ->
+                     make_nif(params: %{0 => [in_out: 1]})
+                   end
+    end
+
+    test "other values in the list are rejected" do
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: nif parameter option `:foo` is invalid",
+                   fn ->
+                     make_nif(params: %{0 => [:foo]})
+                   end
+
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: nif parameter option key `foo` is invalid",
+                   fn ->
+                     make_nif(params: %{0 => [foo: :bar]})
+                   end
+    end
   end
 end

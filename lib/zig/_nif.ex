@@ -26,7 +26,6 @@ defmodule Zig.Nif do
 
   defstruct @enforce_keys ++
               [
-                :params,
                 :allocator,
                 :impl,
                 :alias,
@@ -36,6 +35,7 @@ defmodule Zig.Nif do
                 :doc,
                 # user-specified options with defaults
                 # note that `cleanup` default is set programatically since `return` depends on it.
+                params: %{},
                 return: [],
                 export: true,
                 concurrency: Synchronous,
@@ -55,7 +55,7 @@ defmodule Zig.Nif do
            spec: boolean(),
            signature: Function.t(),
            allocator: nil | atom,
-           params: integer,
+           params: integer | %{optional(integer) => Parameter.t()},
            return: Return.t(),
            leak_check: boolean(),
            alias: nil | atom,
@@ -161,8 +161,29 @@ defmodule Zig.Nif do
           file: module.file,
           line: module.line
 
+      {:params, params} when is_integer(params) and params >= 0 ->
+        {:params, params}
+
       {:params, params} when is_map(params) ->
-        {:params, Enum.map(params, &Parameter.new(&1, opts))}
+        {:params,
+         Map.new(params, fn
+           {index, opts} when is_integer(index) and index >= 0 ->
+             {index, Parameter.new(nil, opts, module)}
+
+           {other, _} ->
+             raise CompileError,
+               description:
+                 "nif option `params` map keys must be non-negative integers, got: `#{inspect(other)}`",
+               file: module.file,
+               line: module.line
+         end)}
+
+      {:params, error} ->
+        raise CompileError,
+          description:
+            "nif option `params` must be a non-negative integer or a params map, got: `#{inspect(error)}`",
+          file: module.file,
+          line: module.line
 
       {:alias, ^name} ->
         raise CompileError,
