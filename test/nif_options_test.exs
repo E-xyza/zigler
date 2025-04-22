@@ -349,4 +349,9 @@ defmodule ZiglerTest.OptionsTest do
                    end
     end
   end
+
+  describe "arity" do
+    @tag :skip
+    test "implement"
+  end
 end

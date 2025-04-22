@@ -29,6 +29,7 @@ defmodule Zig.Nif do
                 :allocator,
                 :impl,
                 :alias,
+                :arity,
                 # next three are determined internally as a part of parsing or sema.
                 :signature,
                 :raw,
@@ -60,7 +61,7 @@ defmodule Zig.Nif do
            leak_check: boolean(),
            alias: nil | atom,
            doc: nil | String.t(),
-           raw: :term | :erl_nif_term,
+           raw: nil | :term | :erl_nif_term,
            impl: boolean | module
          }
 
@@ -246,6 +247,15 @@ defmodule Zig.Nif do
           file: module.file,
           line: module.line
 
+      {:arity, arity} ->
+        arity
+        |> List.wrap()
+        |> Enum.flat_map(fn
+          n when is_integer(n) and n >= 0 -> [n]
+          a.._//1 = range when a >= 0 -> Enum.to_list(range)
+        end)
+        |> then(&{:arity, &1})
+
       {atom, _} = kv when is_atom(atom) ->
         kv
     end)
@@ -264,9 +274,6 @@ defmodule Zig.Nif do
       &Return.normalize_options(&1, cleanup, module)
     )
   end
-
-  def arities(%{raw: nil, signature: %{arity: arity}}), do: [arity]
-  def arities(%{raw: t, params: arities}) when not is_nil(t), do: arities
 
   def render_elixir(%{concurrency: concurrency} = nif) do
     doc =
@@ -296,7 +303,7 @@ defmodule Zig.Nif do
     end
   end
 
-  def render_elixir_spec(%{raw: t, params: arities} = nif) when not is_nil(t) do
+  def render_elixir_spec(%{raw: t, arity: arities} = nif) when not is_nil(t) do
     Enum.map(arities, fn arity ->
       param_spec =
         case arity do
@@ -418,7 +425,7 @@ defmodule Zig.Nif do
   def merge(sema_nif, spec_nif) do
     # these are the fields we are going to merge
 
-    merge_fields = ~w[name cleanup allocator impl alias export concurrency spec leak_check]a
+    merge_fields = ~w[name cleanup allocator impl alias export concurrency spec leak_check arity]a
 
     # params and return needs to be deep-merged.
     merge_fields
