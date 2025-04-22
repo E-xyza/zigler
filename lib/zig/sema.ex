@@ -187,7 +187,7 @@ defmodule Zig.Sema do
           sema_functions
           |> Enum.reduce(specified_nifs, fn 
             sema_function, so_far ->
-              if list_has?(so_far, sema_function.name) do
+              if Enum.any?(so_far, &(&1.name == sema_function.name)) do
                 so_far
               else
                 [make_nif(sema_function, module) | so_far]
@@ -202,14 +202,6 @@ defmodule Zig.Sema do
     Enum.each(nifs, &validate_nif!(&1))
 
     %{module | nifs: nifs}
-  end
-
-  defp list_has?(list, name) do
-    Enum.any?(list, fn 
-      ^name -> true
-      {^name, _} -> true
-      _ -> false
-    end)
   end
 
   defp build_from_specs(specified_nifs, sema_functions, module) do

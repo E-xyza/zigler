@@ -271,7 +271,11 @@ defmodule Zig.Nif do
       opts,
       :return,
       %Return{cleanup: cleanup},
-      &Return.normalize_options(&1, cleanup, module)
+      fn return_opts ->
+        return_opts
+        |> Return.normalize_options(cleanup, module)
+        |> Return.new()
+      end
     )
   end
 
@@ -425,16 +429,20 @@ defmodule Zig.Nif do
   def merge(sema_nif, spec_nif) do
     # these are the fields we are going to merge
 
-    merge_fields = ~w[name cleanup allocator impl alias export concurrency spec leak_check arity]a
+    merge_fields = ~w[name cleanup allocator impl alias export concurrency spec leak_check]a
 
     # params and return needs to be deep-merged.
     merge_fields
     |> Enum.reduce(sema_nif, fn field, so_far ->
       Map.replace!(so_far, field, Map.fetch!(spec_nif, field))
     end)
+    |> merge_arity(spec_nif)
     |> Map.update!(:return, &Return.merge(&1, spec_nif.return))
     |> Map.update!(:params, &deepmerge_params(&1, spec_nif.params))
   end
+
+  defp merge_arity(%{raw: nil} = sema_nif, _), do: sema_nif
+  defp merge_arity(sema_nif, %{arity: arity}), do: %{sema_nif | arity: arity}
 
   defp deepmerge_params(sema_params, spec_params) do
     Enum.reduce(spec_params, sema_params, fn
