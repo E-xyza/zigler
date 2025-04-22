@@ -82,4 +82,6 @@ defmodule Zig.Parameter do
         ".{.cleanup = false},"
     end
   end
+
+  def merge(dest, src), do: %{dest | cleanup: src.cleanup, in_out: src.in_out}
 end

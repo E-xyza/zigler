@@ -95,10 +95,7 @@ defmodule Zig.Sema do
         list -> list
       end
 
-    allocators =
-      nifs
-      |> Enum.flat_map(fn {_name, opts} -> List.wrap(opts[:allocator]) end)
-      |> Enum.map(&"#{&1}")
+    allocators = Enum.flat_map(nifs, &List.wrap(if allocator = &1.allocator, do: "#{allocator}"))
 
     Map.update!(json, "functions", fn
       functions ->
@@ -118,7 +115,7 @@ defmodule Zig.Sema do
     # then convert into a list of strings
     error_functions =
       nifs
-      |> Enum.flat_map(fn {_, opts} -> error_fun(opts) end)
+      |> Enum.flat_map(&error_fun/1)
       |> Enum.reject(&Keyword.has_key?(nifs, &1))
       |> Enum.map(&"#{&1}")
 
@@ -128,16 +125,7 @@ defmodule Zig.Sema do
     end)
   end
 
-  defp error_fun(opts) do
-    opts
-    |> Keyword.get(:return, [])
-    |> List.wrap()
-    |> Enum.find_value(fn
-      {:error, fun} -> fun
-      _ -> nil
-    end)
-    |> List.wrap()
-  end
+  defp error_fun(nif), do: List.wrap(nif.return.error)
 
   defp integrate_sema(
          %{
@@ -179,8 +167,7 @@ defmodule Zig.Sema do
   # updates the per-function options to include the semantically understood type
   # information.  Also strips "auto" from the nif information to provide a finalized
   # keyword list of functions with their options.
-  def analyze_file!(%{sema: %{functions: sema_functions, types: _types}} = module) do
-    module.nifs |> dbg(limit: 25)
+  def analyze_file!(%{sema: %{functions: sema_functions}} = module) do
     # `nifs` option could either be {:auto, [nifs]} which means that the full
     # list of functions should be derived from the semantic analysis, determining
     # which functions have `pub` declaration, with certain functions optionally
@@ -213,23 +200,20 @@ defmodule Zig.Sema do
           Enum.map(sema_functions, fn sema ->
             sema
             |> make_nif(module)
-            |> maybe_merge(specified_nifs, module)
+            |> maybe_merge(specified_nifs)
           end)
 
         specified_nifs when is_list(specified_nifs) ->
-          Enum.map(specified_nifs, fn {name, nif_opts} ->
-            # TODO: remove
-            match?(%Nif{}, nif_opts) or
-              raise "nif option must be a nif struct (got: #{inspect(nif_opts)})"
-
-            expected_name = Keyword.get(nif_opts, :alias, name)
+          specified_nifs |> dbg(limit: 25)
+          Enum.map(specified_nifs, fn nif ->
+            expected_name = nif.alias || nif.name
 
             if sema_function = Enum.find(sema_functions, &(&1.name == expected_name)) do
               sema_function
               |> make_nif(module)
-              |> maybe_merge(specified_nifs, module)
+              |> maybe_merge(specified_nifs)
             else
-              needed_msg = if nif_opts[:alias], do: " (needed by nif #{name})"
+              needed_msg = if nif.alias, do: " (needed by nif #{nif.name})"
 
               raise CompileError,
                 description:
@@ -246,13 +230,21 @@ defmodule Zig.Sema do
   end
 
   defp make_nif(sema_function, module) do
+    location_info = %{file: module.file, line: module.line}
+
+    nif_init =
+      Enum.map(
+        ~w[module file line module_code_path zig_code_path]a,
+        &{&1, Map.fetch!(module, &1)}
+      )
+
     sema_function.name
-    |> Nif.new(module, [])
+    |> Nif.new(nif_init, location_info)
     |> Nif.set_file_line(module.manifest_module, module.parsed)
     |> struct!(
       signature: sema_function,
       params: params_from_sema(sema_function, module),
-      return: Return.new(sema_function.return, cleanup: true)
+      return: Return.new(type: sema_function.return, cleanup: true)
     )
   end
 
@@ -265,7 +257,7 @@ defmodule Zig.Sema do
     |> Map.new()
   end
 
-  defp maybe_merge(nif, specified_nifs, _module) do
+  defp maybe_merge(nif, specified_nifs) do
     if to_merge = Enum.find(specified_nifs, &functions_match?(&1, nif)) do
       merge_nif(nif, to_merge)
     else
@@ -273,13 +265,27 @@ defmodule Zig.Sema do
     end
   end
 
-  defp functions_match?(a, b) do
-    dbg()
-    raise "unimplemented"
+  defp functions_match?(a, b), do: a.name == b.name
+
+  defp merge_nif(destination_nif, to_merge) do
+    # these are the fields we are going to merge
+
+    merge_fields = ~w[cleanup allocator impl alias signature export concurrency spec leak_check]a
+
+    # params and return needs to be deep-merged.
+    merge_fields
+    |> Enum.reduce(destination_nif, fn field, so_far ->
+      Map.replace!(so_far, field, Map.fetch!(to_merge, field))
+    end)
+    |> Map.update!(:return, &Return.merge(&1, to_merge.return))
+    |> Map.update!(:params, &deepmerge_params(&1, to_merge.params))
   end
 
-  defp merge_nif(_, _) do
-    raise "unimplemented"
+  defp deepmerge_params(destination_params, to_merge_params) do
+    Enum.reduce(to_merge_params, destination_params, fn
+      {index, parameter}, so_far ->
+        Map.update!(so_far, index, &Parameter.merge(&1, parameter))
+    end)
   end
 
   # converts a semantic analysis function struct into a nif struct.
@@ -313,7 +319,7 @@ defmodule Zig.Sema do
   #          line: nif.line
   #    end
   #
-  #  %{nif | signature: sema, raw: t, params: arities, return: Return.new(:raw, t)}
+  #  %{nif | signature: sema, raw: t, params: arities, return: Return.new({:raw, t})}
   # end
   #
   #  defp to_nif(%{params: nif_params!} = nif, sema, opts) do

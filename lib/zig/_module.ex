@@ -118,7 +118,7 @@ defmodule Zig.Module do
       file: caller.file,
       line: caller.line
     )
-    |> normalize_options()
+    |> normalize_options(caller)
     |> then(&struct!(__MODULE__, &1))
     |> validate(caller)
   rescue
@@ -129,7 +129,7 @@ defmodule Zig.Module do
         description: "`#{e.key}` is not a valid option"
   end
 
-  defp normalize_options(opts) do
+  defp normalize_options(opts, caller) do
     opts
     |> obtain_version
     |> Keyword.update(:c, %C{}, &C.new(&1, opts))
@@ -139,7 +139,21 @@ defmodule Zig.Module do
     |> Keyword.update(:zig_code_path, nil, &normalize_path(&1, :zig_code_path, opts))
     |> Keyword.update(:easy_c, nil, &normalize_path(&1, :easy_c, opts))
     |> Keyword.update(:packages, [], &normalize_packages(&1, opts))
-    |> Keyword.update(:nifs, {:auto, []}, )
+    |> then(&Keyword.update!(&1, :nifs, fn nifs -> normalize_nifs(nifs, &1, caller) end))
+  end
+
+  defp normalize_nifs({:auto, nifs}, full_opts, caller) do
+    {:auto, normalize_nifs(nifs, full_opts, caller)}
+  end
+
+  defp normalize_nifs(nifs, full_opts, caller) do
+    # at this point there MUST be a :nifs option, either provided by the user or
+    # supplied by the zigler codebase.  This is also guaranteed to be a keyword list.
+    passthru_opts = Keyword.take(full_opts, ~w[module file line module_code_path zig_code_path]a)
+
+    Enum.map(nifs, fn {name, spec} ->
+      Nif.new(name, passthru_opts ++ spec, caller)
+    end)
   end
 
   defp obtain_version(opts) do

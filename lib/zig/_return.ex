@@ -1,15 +1,15 @@
 defmodule Zig.Return do
   @moduledoc false
 
-  @enforce_keys ~w[type cleanup]a
-  defstruct @enforce_keys ++ [:in_out, :error, :length, spec: nil, as: :default]
+  @enforce_keys ~w[cleanup]a
+  defstruct @enforce_keys ++ ~w[type in_out error length spec]a ++ [as: :default]
 
   alias Zig.Type
 
   @type type :: :binary | :integer | :default | :list | {:list, type}
 
   @type t :: %__MODULE__{
-          type: Type.t(),
+          type: nil | Type.t(),
           cleanup: boolean,
           as: type,
           spec: Macro.t(),
@@ -29,15 +29,12 @@ defmodule Zig.Return do
           | {:length, non_neg_integer | {:arg, non_neg_integer()}}
         ]
 
-  def new(:raw, raw) when raw in ~w[term erl_nif_term]a,
+  def new({:raw, raw}) when raw in ~w[term erl_nif_term]a,
     do: %__MODULE__{type: raw, cleanup: false}
 
-  def new(type, options) do
-    struct!(__MODULE__, [type: type] ++ options)
-  end
+  def new(options), do: struct!(__MODULE__, options)
 
   @as ~w[binary list integer map]a
-  @options ~w[as cleanup spec in_out error length]a
 
   def normalize_options(options, cleanup, module) do
     options
@@ -130,6 +127,18 @@ defmodule Zig.Return do
       :list -> "list"
       {:map, key} -> "map(#{key})"
     end)
+  end
+
+  def merge(dest, src) do
+    %{
+      dest
+      | cleanup: src.cleanup,
+        in_out: src.in_out,
+        error: src.error,
+        length: src.length,
+        spec: src.spec,
+        as: src.as
+    }
   end
 
   def render_return(%{in_out: in_out_var, error: nil} = return) when is_binary(in_out_var) do

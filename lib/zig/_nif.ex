@@ -120,18 +120,11 @@ defmodule Zig.Nif do
   @doc """
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
-  def new(name, module, opts) do
+  def new(name, opts, caller) do
     opts
-    |> normalize(name, module)
-    |> Keyword.merge(
-      name: name,
-      file: module.file,
-      line: module.line,
-      module: module.module,
-      module_code_path: module.module_code_path,
-      zig_code_path: module.zig_code_path
-    )
-    |> then(&struct(__MODULE__, &1))
+    |> normalize(name, caller)
+    |> dbg(limit: 25)
+    |> then(&struct!(__MODULE__, &1))
   end
 
   def normalize(opts, name, module) do
@@ -258,6 +251,7 @@ defmodule Zig.Nif do
         kv
     end)
     |> Keyword.put_new(:cleanup, true)
+    |> Keyword.put(:name, name)
     |> normalize_return(module)
   end
 
@@ -267,7 +261,7 @@ defmodule Zig.Nif do
     Keyword.update(
       opts,
       :return,
-      [cleanup: cleanup],
+      %Return{cleanup: cleanup},
       &Return.normalize_options(&1, cleanup, module)
     )
   end

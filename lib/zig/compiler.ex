@@ -25,7 +25,7 @@ defmodule Zig.Compiler do
       module
       |> Module.get_attribute(:zigler_opts)
       |> Keyword.put(:attributes, Attributes.from_module(module))
-      |> Keyword.update(opts, :nifs, [], &normalize_elixir_nif_spec/1)
+      |> Keyword.update(:nifs, {:auto, []}, &normalize_elixir_nif_spec/1)
       |> Zig.Module.new(__CALLER__)
 
     code_dir =
@@ -130,7 +130,6 @@ defmodule Zig.Compiler do
   def before_compile_erlang(module, {file, line}, opts) do
     opts
     |> Keyword.merge(language: :erlang)
-    |> Keyword.update(:nifs, {:auto, []}, &normalize_elixir_nif_spec/1)
     |> Zig.Module.new(%{module: module, file: file, line: line})
   end
 
@@ -142,8 +141,6 @@ defmodule Zig.Compiler do
       code_dir
       |> Path.join(".#{opts.module}.zig")
       |> Path.expand()
-
-    opts.nifs |> dbg(limit: 25)
 
     opts
     |> Map.replace!(:zig_code_path, zig_code_path)
