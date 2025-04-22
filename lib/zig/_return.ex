@@ -129,15 +129,15 @@ defmodule Zig.Return do
     end)
   end
 
-  def merge(dest, src) do
+  def merge(sema, spec) do
     %{
-      dest
-      | cleanup: src.cleanup,
-        in_out: src.in_out,
-        error: src.error,
-        length: src.length,
-        spec: src.spec,
-        as: src.as
+      sema
+      | cleanup: spec.cleanup,
+        in_out: spec.in_out,
+        error: spec.error,
+        length: spec.length,
+        spec: spec.spec,
+        as: spec.as
     }
   end
 

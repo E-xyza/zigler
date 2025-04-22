@@ -123,7 +123,6 @@ defmodule Zig.Nif do
   def new(name, opts, caller) do
     opts
     |> normalize(name, caller)
-    |> dbg(limit: 25)
     |> then(&struct!(__MODULE__, &1))
   end
 
@@ -414,6 +413,27 @@ defmodule Zig.Nif do
 
   def binding_error(name, arity) do
     "nif for function #{name}/#{arity} not bound"
+  end
+
+  def merge(sema_nif, spec_nif) do
+    # these are the fields we are going to merge
+
+    merge_fields = ~w[name cleanup allocator impl alias export concurrency spec leak_check]a
+
+    # params and return needs to be deep-merged.
+    merge_fields
+    |> Enum.reduce(sema_nif, fn field, so_far ->
+      Map.replace!(so_far, field, Map.fetch!(spec_nif, field))
+    end)
+    |> Map.update!(:return, &Return.merge(&1, spec_nif.return))
+    |> Map.update!(:params, &deepmerge_params(&1, spec_nif.params))
+  end
+
+  defp deepmerge_params(sema_params, spec_params) do
+    Enum.reduce(spec_params, sema_params, fn
+      {index, parameter}, so_far ->
+        Map.update!(so_far, index, &Parameter.merge(&1, parameter))
+    end)
   end
 
   # Access behaviour guards

@@ -200,18 +200,17 @@ defmodule Zig.Sema do
           Enum.map(sema_functions, fn sema ->
             sema
             |> make_nif(module)
-            |> maybe_merge(specified_nifs)
+            |> Nif.merge(specified_nifs)
           end)
 
         specified_nifs when is_list(specified_nifs) ->
-          specified_nifs |> dbg(limit: 25)
           Enum.map(specified_nifs, fn nif ->
             expected_name = nif.alias || nif.name
 
             if sema_function = Enum.find(sema_functions, &(&1.name == expected_name)) do
               sema_function
               |> make_nif(module)
-              |> maybe_merge(specified_nifs)
+              |> Nif.merge(nif)
             else
               needed_msg = if nif.alias, do: " (needed by nif #{nif.name})"
 
@@ -255,37 +254,6 @@ defmodule Zig.Sema do
         {index, Parameter.new(param_type, [], module)}
     end)
     |> Map.new()
-  end
-
-  defp maybe_merge(nif, specified_nifs) do
-    if to_merge = Enum.find(specified_nifs, &functions_match?(&1, nif)) do
-      merge_nif(nif, to_merge)
-    else
-      nif
-    end
-  end
-
-  defp functions_match?(a, b), do: a.name == b.name
-
-  defp merge_nif(destination_nif, to_merge) do
-    # these are the fields we are going to merge
-
-    merge_fields = ~w[cleanup allocator impl alias signature export concurrency spec leak_check]a
-
-    # params and return needs to be deep-merged.
-    merge_fields
-    |> Enum.reduce(destination_nif, fn field, so_far ->
-      Map.replace!(so_far, field, Map.fetch!(to_merge, field))
-    end)
-    |> Map.update!(:return, &Return.merge(&1, to_merge.return))
-    |> Map.update!(:params, &deepmerge_params(&1, to_merge.params))
-  end
-
-  defp deepmerge_params(destination_params, to_merge_params) do
-    Enum.reduce(to_merge_params, destination_params, fn
-      {index, parameter}, so_far ->
-        Map.update!(so_far, index, &Parameter.merge(&1, parameter))
-    end)
   end
 
   # converts a semantic analysis function struct into a nif struct.

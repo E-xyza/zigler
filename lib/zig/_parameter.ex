@@ -83,5 +83,5 @@ defmodule Zig.Parameter do
     end
   end
 
-  def merge(dest, src), do: %{dest | cleanup: src.cleanup, in_out: src.in_out}
+  def merge(sema, spec), do: %{sema | cleanup: spec.cleanup, in_out: spec.in_out}
 end
