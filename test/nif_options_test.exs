@@ -1,14 +1,18 @@
-defmodule ZiglerTest.OptionsTest do
+defmodule ZiglerTest.NifOptionsTest do
   use ExUnit.Case, async: true
 
   alias Zig.Nif
 
-  defp make_nif(opts) do
-    Nif.new(
-      :my_nif,
-      %Zig.Module{otp_app: :zigler, module: __MODULE__, file: __ENV__.file, line: __ENV__.line},
-      opts
-    )
+  @default_opts [
+    module: __MODULE__,
+    file: __ENV__.file,
+    line: __ENV__.line,
+    module_code_path: "module.path",
+    zig_code_path: "zig.path"
+  ]
+
+  defp make_nif(opts) do 
+    Nif.new(:my_nif, opts ++ @default_opts, %{file: __ENV__.file, line: __ENV__.line})
   end
 
   test "empty is viable" do
@@ -26,7 +30,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects non-boolean" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `export` must be a boolean, got: `1`",
+                   "test/nif_options_test.exs:15: nif option `export` must be a boolean, got: `1`",
                    fn ->
                      make_nif(export: 1)
                    end
@@ -48,7 +52,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects invalid options" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `concurrency` must be one of `:dirty_cpu`, `:dirty_io`, `:synchronous`, `:threaded`, `:yielding`, got: `:invalid`",
+                   "test/nif_options_test.exs:15: nif option `concurrency` must be one of `:dirty_cpu`, `:dirty_io`, `:synchronous`, `:threaded`, `:yielding`, got: `:invalid`",
                    fn ->
                      make_nif(concurrency: :invalid)
                    end
@@ -70,7 +74,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects non-boolean" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `spec` must be a boolean, got: `1`",
+                   "test/nif_options_test.exs:15: nif option `spec` must be a boolean, got: `1`",
                    fn ->
                      make_nif(spec: 1)
                    end
@@ -88,7 +92,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects on non-atom" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `impl` must be a module or `true`, got: `1`",
+                   "test/nif_options_test.exs:15: nif option `impl` must be a module or `true`, got: `1`",
                    fn ->
                      make_nif(impl: 1)
                    end
@@ -106,7 +110,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects on self" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `alias` cannot be the same as the nif name",
+                   "test/nif_options_test.exs:15: nif option `alias` cannot be the same as the nif name",
                    fn ->
                      make_nif(alias: :my_nif)
                    end
@@ -114,7 +118,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects on non-atom" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `alias` must be an atom, got: `1`",
+                   "test/nif_options_test.exs:15: nif option `alias` must be an atom, got: `1`",
                    fn ->
                      make_nif(alias: 1)
                    end
@@ -132,7 +136,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects on non-atom" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `allocator` must be an atom, got: `1`",
+                   "test/nif_options_test.exs:15: nif option `allocator` must be an atom, got: `1`",
                    fn ->
                      make_nif(allocator: 1)
                    end
@@ -154,7 +158,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects non-boolean" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `leak_check` must be a boolean, got: `1`",
+                   "test/nif_options_test.exs:15: nif option `leak_check` must be a boolean, got: `1`",
                    fn ->
                      make_nif(leak_check: 1)
                    end
@@ -176,7 +180,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects non-boolean" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `cleanup` must be a boolean, got: `1`",
+                   "test/nif_options_test.exs:15: nif option `cleanup` must be a boolean, got: `1`",
                    fn ->
                      make_nif(cleanup: 1)
                    end
@@ -207,19 +211,19 @@ defmodule ZiglerTest.OptionsTest do
 
     test "nested details must be valid" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `as` is invalid, got: `:foo` @ [list]",
+                   "test/nif_options_test.exs:15: nif option `as` is invalid, got: `:foo` @ [list]",
                    fn ->
                      make_nif(return: {:list, :foo})
                    end
 
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `as` is invalid, got: `:foo` @ [map(foo)]",
+                   "test/nif_options_test.exs:15: nif option `as` is invalid, got: `:foo` @ [map(foo)]",
                    fn ->
                      make_nif(return: {:map, foo: :foo})
                    end
 
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `as` is invalid, got: `:foo` @ [list > map(foo)]",
+                   "test/nif_options_test.exs:15: nif option `as` is invalid, got: `:foo` @ [list > map(foo)]",
                    fn ->
                      make_nif(return: {:list, {:map, foo: :foo}})
                    end
@@ -231,7 +235,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "in_out is rejected if it's not an atom" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `in_out` must be an atom, got: `1`",
+                   "test/nif_options_test.exs:15: nif option `in_out` must be an atom, got: `1`",
                    fn ->
                      make_nif(return: [in_out: 1])
                    end
@@ -243,7 +247,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "error is rejected if it's not an atom" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `error` must be a module, got: `1`",
+                   "test/nif_options_test.exs:15: nif option `error` must be a module, got: `1`",
                    fn ->
                      make_nif(return: [error: 1])
                    end
@@ -259,7 +263,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "length can't be anything else" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `length` must be a non-negative integer or an argument spec, got: `:foo`",
+                   "test/nif_options_test.exs:15: nif option `length` must be a non-negative integer or an argument spec, got: `:foo`",
                    fn ->
                      make_nif(return: [length: :foo])
                    end
@@ -289,7 +293,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "you can't set it to anything else" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `params` must be a non-negative integer or a params map, got: `:foo`",
+                   "test/nif_options_test.exs:15: nif option `params` must be a non-negative integer or a params map, got: `:foo`",
                    fn ->
                      make_nif(params: :foo)
                    end
@@ -297,7 +301,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "params map keys must be integers" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `params` map keys must be non-negative integers, got: `:foo`",
+                   "test/nif_options_test.exs:15: nif option `params` map keys must be non-negative integers, got: `:foo`",
                    fn ->
                      make_nif(params: %{foo: []})
                    end
@@ -313,7 +317,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "non-boolean cleanup values are rejected" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif parameter option `cleanup` must be boolean, got: `1`",
+                   "test/nif_options_test.exs:15: nif parameter option `cleanup` must be boolean, got: `1`",
                    fn ->
                      make_nif(params: %{0 => [cleanup: 1]})
                    end
@@ -329,7 +333,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "non-boolean in_out values are rejected" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif parameter option `in_out` must be boolean, got: `1`",
+                   "test/nif_options_test.exs:15: nif parameter option `in_out` must be boolean, got: `1`",
                    fn ->
                      make_nif(params: %{0 => [in_out: 1]})
                    end
@@ -337,13 +341,13 @@ defmodule ZiglerTest.OptionsTest do
 
     test "other values in the list are rejected" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif parameter option `:foo` is invalid",
+                   "test/nif_options_test.exs:15: nif parameter option `:foo` is invalid",
                    fn ->
                      make_nif(params: %{0 => [:foo]})
                    end
 
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif parameter option key `foo` is invalid",
+                   "test/nif_options_test.exs:15: nif parameter option key `foo` is invalid",
                    fn ->
                      make_nif(params: %{0 => [foo: :bar]})
                    end

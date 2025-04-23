@@ -150,12 +150,17 @@ defmodule Zig.Module do
     # at this point there MUST be a :nifs option, either provided by the user or
     # supplied by the zigler codebase.  This is also guaranteed to be a keyword list.
 
-    passthru_opts = Keyword.take(full_opts, ~w[module file line module_code_path zig_code_path]a)
-    defaultable_opts = Keyword.fetch!(full_opts, :default_nif_opts) 
-    
-    Enum.map(nifs, fn {name, spec} ->
-      nif_opts = defaultable_opts ++ passthru_opts ++ spec 
-      Nif.new(name, nif_opts, caller)
+    common_opts =
+      full_opts
+      |> Keyword.take(~w[module file line module_code_path zig_code_path]a)
+      |> Keyword.merge(Keyword.fetch!(full_opts, :default_nif_opts))
+
+    Enum.map(nifs, fn
+      {name, spec} ->
+        Nif.new(name, common_opts ++ spec, caller)
+
+      name when is_atom(name) ->
+        Nif.new(name, common_opts, caller)
     end)
   end
 

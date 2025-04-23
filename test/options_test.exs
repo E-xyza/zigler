@@ -1,7 +1,7 @@
 defmodule ZiglerTest.OptionsTest do
   use ExUnit.Case, async: true
 
-  defp make_module(opts), do: Zig.Module.new(opts, __ENV__)
+  defp make_module(opts), do: Zig.Module.new(opts ++ [nifs: [:foo]], __ENV__)
 
   describe "for the module_code_path option" do
     test "string is ok" do
@@ -370,7 +370,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "cleanup must be a boolean" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `cleanup` must be a boolean, got: `:foo`",
+                   "test/options_test.exs:4: nif option `cleanup` must be a boolean, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, cleanup: :foo)
                    end
@@ -385,7 +385,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "leak_check must be a boolean" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `leak_check` must be a boolean, got: `:foo`",
+                   "test/options_test.exs:4: nif option `leak_check` must be a boolean, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, leak_check: :foo)
                    end
