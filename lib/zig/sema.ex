@@ -238,7 +238,7 @@ defmodule Zig.Sema do
     |> Nif.new(nif_init, location_info)
     |> Nif.set_file_line(module.manifest_module, module.parsed)
     |> struct!(
-      arity: [sema_function.arity],
+      arity: nil,
       signature: sema_function,
       raw: Function.raw(sema_function),
       params: params_from_sema(sema_function, module),

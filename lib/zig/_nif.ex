@@ -428,7 +428,6 @@ defmodule Zig.Nif do
 
   def merge(sema_nif, spec_nif) do
     # these are the fields we are going to merge
-
     merge_fields = ~w[name cleanup allocator impl alias export concurrency spec leak_check]a
 
     # params and return needs to be deep-merged.
@@ -441,8 +440,24 @@ defmodule Zig.Nif do
     |> Map.update!(:params, &deepmerge_params(&1, spec_nif.params))
   end
 
-  defp merge_arity(%{raw: nil} = sema_nif, _), do: sema_nif
-  defp merge_arity(sema_nif, %{arity: arity}), do: %{sema_nif | arity: arity}
+  defp merge_arity(%{raw: nil} = sema_nif, %{arity: nil}), do: %{sema_nif | arity: [sema_nif.signature.arity]}
+  defp merge_arity(%{raw: nil, arity: arity}, spec_nif) do
+    raise CompileError,
+      description:
+        "the non-raw function #{inspect(spec_nif.module)}.#{spec_nif.name}/#{arity} may not have an arity specified in the nif parameters",
+      file: spec_nif.file,
+      line: spec_nif.line
+  end
+
+  defp merge_arity(sema_nif, %{arity: arity}) when is_list(arity), do: %{sema_nif | arity: arity}
+
+  defp merge_arity(_, spec_nif) do
+    raise CompileError,
+      description:
+        "the raw function #{inspect(spec_nif.module)}.#{spec_nif.name}/? must have arities specified in zigler parameters",
+      file: spec_nif.file,
+      line: spec_nif.line
+  end
 
   defp deepmerge_params(sema_params, spec_params) do
     Enum.reduce(spec_params, sema_params, fn

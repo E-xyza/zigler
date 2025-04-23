@@ -11,7 +11,7 @@ defmodule ZiglerTest.NifOptionsTest do
     zig_code_path: "zig.path"
   ]
 
-  defp make_nif(opts) do 
+  defp make_nif(opts) do
     Nif.new(:my_nif, opts ++ @default_opts, %{file: __ENV__.file, line: __ENV__.line})
   end
 
@@ -189,23 +189,23 @@ defmodule ZiglerTest.NifOptionsTest do
 
   describe "return option" do
     test "defaults to empty, with cleanup based on nif parameters" do
-      assert %{return: [cleanup: true]} = make_nif([])
-      assert %{return: [cleanup: false]} = make_nif([:noclean])
+      assert %{return: %{cleanup: true}} = make_nif([])
+      assert %{return: %{cleanup: false}} = make_nif([:noclean])
     end
 
     @as ~w[binary list integer map]a
     test "accepts different forms for as" do
       Enum.each(@as, fn as ->
-        assert %{return: [cleanup: true, as: ^as]} = make_nif(return: as)
-        assert %{return: [cleanup: true, as: ^as]} = make_nif(return: [as])
-        assert %{return: [cleanup: true, as: ^as]} = make_nif(return: [as: as])
+        assert %{return: %{cleanup: true, as: ^as}} = make_nif(return: as)
+        assert %{return: %{cleanup: true, as: ^as}} = make_nif(return: [as])
+        assert %{return: %{cleanup: true, as: ^as}} = make_nif(return: [as: as])
       end)
     end
 
     test "list and map details are supported" do
-      assert %{return: [cleanup: true, as: {:list, :binary}]} = make_nif(return: {:list, :binary})
+      assert %{return: %{cleanup: true, as: {:list, :binary}}} = make_nif(return: {:list, :binary})
 
-      assert %{return: [cleanup: true, as: {:map, foo: :binary}]} =
+      assert %{return: %{cleanup: true, as: {:map, foo: :binary}}} =
                make_nif(return: {:map, foo: :binary})
     end
 
@@ -230,7 +230,7 @@ defmodule ZiglerTest.NifOptionsTest do
     end
 
     test "in_out can be an atom" do
-      assert %{return: [cleanup: true, in_out: :foo]} = make_nif(return: [in_out: :foo])
+      assert %{return: %{cleanup: true, in_out: :foo}} = make_nif(return: [in_out: :foo])
     end
 
     test "in_out is rejected if it's not an atom" do
@@ -242,7 +242,7 @@ defmodule ZiglerTest.NifOptionsTest do
     end
 
     test "error can be an atom" do
-      assert %{return: [cleanup: true, error: :foo]} = make_nif(return: [error: :foo])
+      assert %{return: %{cleanup: true, error: :foo}} = make_nif(return: [error: :foo])
     end
 
     test "error is rejected if it's not an atom" do
@@ -254,11 +254,11 @@ defmodule ZiglerTest.NifOptionsTest do
     end
 
     test "length can be integer" do
-      assert %{return: [cleanup: true, length: 10]} = make_nif(return: [length: 10])
+      assert %{return: %{cleanup: true, length: 10}} = make_nif(return: [length: 10])
     end
 
     test "length can be argument spec" do
-      assert %{return: [cleanup: true, length: {:arg, 0}]} = make_nif(return: [length: {:arg, 0}])
+      assert %{return: %{cleanup: true, length: {:arg, 0}}} = make_nif(return: [length: {:arg, 0}])
     end
 
     test "length can't be anything else" do
