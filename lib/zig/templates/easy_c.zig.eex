@@ -3,8 +3,8 @@ const easy_c = @cImport({
     <% # TODO: cDefines %>
 });
 
-<%= for {name, opts} <- @nifs do %>
-  <%= unless opts[:alias] do %>
-pub const <%= name %> = easy_c.<%= name %>;
+<%= for nif <- @nifs  do %>
+  <%= unless nif.alias do %>
+pub const <%= nif.name %> = easy_c.<%= nif.name %>;
   <% end %>
 <% end %>

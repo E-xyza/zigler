@@ -149,10 +149,13 @@ defmodule Zig.Module do
   defp normalize_nifs(nifs, full_opts, caller) do
     # at this point there MUST be a :nifs option, either provided by the user or
     # supplied by the zigler codebase.  This is also guaranteed to be a keyword list.
-    passthru_opts = Keyword.take(full_opts, ~w[module file line module_code_path zig_code_path]a)
 
+    passthru_opts = Keyword.take(full_opts, ~w[module file line module_code_path zig_code_path]a)
+    defaultable_opts = Keyword.fetch!(full_opts, :default_nif_opts) 
+    
     Enum.map(nifs, fn {name, spec} ->
-      Nif.new(name, passthru_opts ++ spec, caller)
+      nif_opts = defaultable_opts ++ passthru_opts ++ spec 
+      Nif.new(name, nif_opts, caller)
     end)
   end
 

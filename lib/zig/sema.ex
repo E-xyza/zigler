@@ -185,12 +185,12 @@ defmodule Zig.Sema do
           # if they aren't there yet.
 
           sema_functions
-          |> Enum.reduce(specified_nifs, fn 
+          |> Enum.reduce(specified_nifs, fn
             sema_function, so_far ->
               if Enum.any?(so_far, &(&1.name == sema_function.name)) do
                 so_far
               else
-                [make_nif(sema_function, module) | so_far]
+                [make_default_nif(sema_function, module) | so_far]
               end
           end)
           |> build_from_specs(sema_functions, module)
@@ -210,7 +210,7 @@ defmodule Zig.Sema do
 
       if sema_function = Enum.find(sema_functions, &(&1.name == expected_name)) do
         sema_function
-        |> make_nif(module)
+        |> make_default_nif(module)
         |> Nif.merge(nif)
       else
         needed_msg = if nif.alias, do: " (needed by nif #{nif.name})"
@@ -224,14 +224,14 @@ defmodule Zig.Sema do
     end)
   end
 
-  defp make_nif(sema_function, module) do
+  @module_settings ~w[module file line module_code_path zig_code_path]a
+ 
+  defp make_default_nif(sema_function, module) do
     location_info = %{file: module.file, line: module.line}
 
-    nif_init =
-      Enum.map(
-        ~w[module file line module_code_path zig_code_path]a,
-        &{&1, Map.fetch!(module, &1)}
-      )
+    nif_init = @module_settings
+    |> Enum.map(&{&1, Map.fetch!(module, &1)})
+    |> Keyword.merge(module.default_nif_opts)
 
     sema_function.name
     |> Nif.new(nif_init, location_info)
