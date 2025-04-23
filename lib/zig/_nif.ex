@@ -440,7 +440,9 @@ defmodule Zig.Nif do
     |> Map.update!(:params, &deepmerge_params(&1, spec_nif.params))
   end
 
-  defp merge_arity(%{raw: nil} = sema_nif, %{arity: nil}), do: %{sema_nif | arity: [sema_nif.signature.arity]}
+  defp merge_arity(%{raw: nil} = sema_nif, %{arity: nil}),
+    do: %{sema_nif | arity: [sema_nif.signature.arity]}
+
   defp merge_arity(%{raw: nil, arity: arity}, spec_nif) do
     raise CompileError,
       description:

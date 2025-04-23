@@ -93,14 +93,14 @@ defmodule Zig.Module do
 
   def new(opts, caller) do
     # make sure that the caller has declared otp_app here.
-    case {Keyword.fetch(opts, :language), Keyword.fetch(opts, :otp_app)} do
-      {{:ok, :elixir}, :error} ->
+    case {Keyword.fetch!(opts, :language), Keyword.fetch(opts, :otp_app)} do
+      {Elixir, :error} ->
         raise CompileError,
           description:
             "(module #{inspect(caller.module)}) you must supply an `otp_app` option to `use Zig`",
           file: caller.file
 
-      {{:ok, :erlang}, :error} ->
+      {:erlang, :error} ->
         raise CompileError,
           description:
             "(module #{inspect(caller.module)}) you must supply an `otp_app` option to `zig_opts()`",

@@ -1,7 +1,7 @@
 defmodule ZiglerTest.OptionsTest do
   use ExUnit.Case, async: true
 
-  defp make_module(opts), do: Zig.Module.new(opts ++ [nifs: [:foo]], __ENV__)
+  defp make_module(opts), do: Zig.Module.new(opts ++ [nifs: [:foo], language: :elixir], __ENV__)
 
   describe "for the module_code_path option" do
     test "string is ok" do

@@ -28,6 +28,7 @@ defmodule Zig.Compiler do
       |> Keyword.update(:nifs, {:auto, []}, &normalize_elixir_nif_spec/1)
       |> Zig.Module.new(__CALLER__)
 
+    # TODO: move this into a common location for erlang and elixir?
     code_dir =
       case {opts.dir, file} do
         {nil, nofile} when nofile in @nofile -> File.cwd!()
@@ -126,12 +127,6 @@ defmodule Zig.Compiler do
   defp prepend_nif(so_far, nif_name) when is_atom(nif_name), do: [{nif_name, []} | so_far]
   defp prepend_nif({:auto, so_far}, nif_info), do: {:auto, [nif_info | so_far]}
   defp prepend_nif(so_far, nif_info), do: [nif_info | so_far]
-
-  def before_compile_erlang(module, {file, line}, opts) do
-    opts
-    |> Keyword.merge(language: :erlang)
-    |> Zig.Module.new(%{module: module, file: file, line: line})
-  end
 
   # note that this function is made public so that it can be both accessed
   # from the :zigler entrypoint for erlang parse transforms, as well as the

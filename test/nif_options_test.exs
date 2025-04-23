@@ -203,7 +203,8 @@ defmodule ZiglerTest.NifOptionsTest do
     end
 
     test "list and map details are supported" do
-      assert %{return: %{cleanup: true, as: {:list, :binary}}} = make_nif(return: {:list, :binary})
+      assert %{return: %{cleanup: true, as: {:list, :binary}}} =
+               make_nif(return: {:list, :binary})
 
       assert %{return: %{cleanup: true, as: {:map, foo: :binary}}} =
                make_nif(return: {:map, foo: :binary})
@@ -258,7 +259,8 @@ defmodule ZiglerTest.NifOptionsTest do
     end
 
     test "length can be argument spec" do
-      assert %{return: %{cleanup: true, length: {:arg, 0}}} = make_nif(return: [length: {:arg, 0}])
+      assert %{return: %{cleanup: true, length: {:arg, 0}}} =
+               make_nif(return: [length: {:arg, 0}])
     end
 
     test "length can't be anything else" do
