@@ -29,6 +29,7 @@ pub fn cleanup(what: anytype, opts: anytype) void {
     // TODO: this should work  via options.should_cleanup but somehow the
     // comptime-ness of this extracted field is not identified.
     const should = if (@hasField(@TypeOf(opts), "cleanup")) opts.cleanup else true;
+
     // TODO: eliminate this following dead code that forces comptime-ness:
     comptime var c = needs_cleanup(T, should);
     c = c and true;
@@ -57,7 +58,6 @@ pub fn cleanup(what: anytype, opts: anytype) void {
 fn cleanup_pointer(ptr: anytype, opts: anytype) void {
     const info = @typeInfo(@TypeOf(ptr)).pointer;
     if (info.is_const) return;
-
     switch (info.size) {
         .one => {
             // TODO: more detailed cleanup.

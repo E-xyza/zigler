@@ -9,12 +9,13 @@ defmodule Zig.Type.Cpointer do
 
   import Type, only: :macros
 
-  defstruct [:child]
+  @enforce_keys ~w[child const]a
+  defstruct @enforce_keys
 
   @type t :: %__MODULE__{child: Type.t()}
 
-  def from_json(%{"child" => child}, module) do
-    %__MODULE__{child: Type.from_json(child, module)}
+  def from_json(%{"child" => child} = ptr, module) do
+    %__MODULE__{child: Type.from_json(child, module), const: ptr["is_const"]}
   end
 
   @impl true
@@ -179,5 +180,5 @@ defmodule Zig.Type.Cpointer do
 
   defp binary_form(_), do: nil
 
-  def of(child), do: %__MODULE__{child: child}
+  def of(child), do: %__MODULE__{child: child, const: false}
 end

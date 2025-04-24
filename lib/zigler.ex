@@ -133,13 +133,16 @@ defmodule :zigler do
 
   defp normalize_erlang_nif_spec(spec) do
     spec
-    |> Keyword.update(:c, nil, &update_c/1)
-    |> Keyword.update(:easy_c, nil, &stringify/1)
+    |> Keyword.update(:c, [], &update_c/1)
+    |> Keyword.put_new(:nifs, {:auto, []})
+    |> update_if(:easy_c, &stringify/1)
   end
 
-  defp update_c(c_opts) do
-    Enum.map(c_opts, fn
-      {:link_lib, value} -> {:link_lib, stringify(value)}
+  defp update_c(c_opts), do: update_if(c_opts, :easy_c, &stringify/1)
+
+  defp update_if(keyword, key, fun) do
+    Enum.map(keyword, fn
+      {^key, value} -> {key, fun.(value)}
       other -> other
     end)
   end

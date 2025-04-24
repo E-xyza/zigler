@@ -28,7 +28,6 @@ defmodule Zig.Compiler do
       |> Keyword.update(:nifs, {:auto, []}, &normalize_elixir_nif_spec/1)
       |> Zig.Module.new(__CALLER__)
 
-    # TODO: move this into a common location for erlang and elixir?
     code_dir =
       case {opts.dir, file} do
         {nil, nofile} when nofile in @nofile -> File.cwd!()

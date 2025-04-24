@@ -6,17 +6,22 @@ defmodule Zig.Type.Pointer do
 
   use Type
 
-  defstruct [:child, optional: false]
+  @enforce_keys ~w[child const]a
+  defstruct @enforce_keys ++ [optional: false]
 
   @type t :: %__MODULE__{
           optional: boolean(),
+          const: boolean(),
           child: Type.t()
         }
 
   @mutable_types ~w(array struct)
 
   # special case: pointer represents that the data are mutable.
-  def from_json(%{"type" => "pointer", "child" => %{"type" => mutable} = child}, module)
+  def from_json(
+        %{"type" => "pointer", "child" => %{"type" => mutable} = child, "is_const" => false},
+        module
+      )
       when mutable in @mutable_types do
     child
     |> Type.from_json(module)
@@ -27,7 +32,8 @@ defmodule Zig.Type.Pointer do
   def from_json(
         %{
           "type" => "optional",
-          "child" => %{"type" => "pointer", "child" => %{"type" => mutable} = child}
+          "child" => %{"type" => "pointer", "child" => %{"type" => mutable} = child},
+          "is_const" => false
         },
         module
       )
@@ -38,18 +44,21 @@ defmodule Zig.Type.Pointer do
     |> then(&%Optional{child: &1})
   end
 
-  def from_json(%{"type" => "optional", "child" => pointer}, module) do
+  def from_json(%{"type" => "optional", "child" => pointer} = type, module) do
     pointer
     |> from_json(module)
     |> Map.replace!(:optional, true)
   end
 
-  def from_json(%{"type" => "pointer", "child" => %{"type" => "unusable:anyopaque"}}, _module) do
-    %__MODULE__{child: :anyopaque}
+  def from_json(
+        %{"type" => "pointer", "child" => %{"type" => "unusable:anyopaque"}, "is_const" => const},
+        _module
+      ) do
+    %__MODULE__{child: :anyopaque, const: const}
   end
 
-  def from_json(%{"child" => child}, module) do
-    %__MODULE__{child: Type.from_json(child, module)}
+  def from_json(%{"child" => child, "is_const" => const}, module) do
+    %__MODULE__{child: Type.from_json(child, module), const: const}
   end
 
   @impl true

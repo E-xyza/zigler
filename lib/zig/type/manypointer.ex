@@ -10,7 +10,8 @@ defmodule Zig.Type.Manypointer do
 
   import Type, only: :macros
 
-  defstruct [:child, :repr, has_sentinel?: false]
+  @enforce_keys ~w[child repr const]a 
+  defstruct @enforce_keys ++ [has_sentinel?: false]
 
   @type t :: %__MODULE__{
           child: Type.t(),
@@ -19,11 +20,12 @@ defmodule Zig.Type.Manypointer do
         }
 
   def from_json(
-        %{"child" => child, "has_sentinel" => has_sentinel?, "repr" => repr},
+        %{"child" => child, "has_sentinel" => has_sentinel?, "repr" => repr, "is_const" => const},
         module
       ) do
     %__MODULE__{
       child: Type.from_json(child, module),
+      const: const,
       has_sentinel?: has_sentinel?,
       repr: repr
     }
