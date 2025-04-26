@@ -17,6 +17,13 @@ defmodule Zig.Options do
     end)
   end
 
+  def normalize_path(opts, key) do
+    Keyword.update(opts, key, nil, &IO.iodata_to_binary/1)
+  rescue
+    _ in ArgumentError ->
+      raise_with("`#{key}` option must be a path", opts[key], opts)
+  end
+
   def raise_with(message, content \\ nil, opts) do
     message = if content, do: "#{message}, got: `#{inspect(content)}`", else: message
 

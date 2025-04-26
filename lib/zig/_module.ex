@@ -139,10 +139,10 @@ defmodule Zig.Module do
       &normalize_callback(&1, opts),
       "callback specifications"
     )
-    |> Keyword.update(:dir, nil, &normalize_path(&1, :dir, opts))
-    |> Keyword.update(:module_code_path, nil, &normalize_path(&1, :module_code_path, opts))
-    |> Keyword.update(:zig_code_path, nil, &normalize_path(&1, :zig_code_path, opts))
-    |> Keyword.update(:easy_c, nil, &normalize_path(&1, :easy_c, opts))
+    |> Options.normalize_path(:dir)
+    |> Options.normalize_path(:module_code_path)
+    |> Options.normalize_path(:zig_code_path)
+    |> Options.normalize_path(:easy_c)
     |> Keyword.update(:packages, [], &normalize_packages(&1, opts))
     |> then(&Keyword.update!(&1, :nifs, fn nifs -> normalize_nifs(nifs, &1, caller) end))
   end
@@ -206,16 +206,6 @@ defmodule Zig.Module do
         other,
         opts
       )
-
-  defp normalize_path(path, tag, opts) do
-    IO.iodata_to_binary(path)
-  rescue
-    _ in ArgumentError ->
-      raise CompileError,
-        description: "option `#{tag}` must be a path, got: `#{inspect(path)}`",
-        file: opts[:file],
-        line: opts[:line]
-  end
 
   defp normalize_packages(packages, opts) do
     Enum.map(packages, &normalize_package_spec(&1, opts))
