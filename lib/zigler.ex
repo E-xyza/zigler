@@ -42,7 +42,7 @@ defmodule :zigler do
   `Zig` module documentation.
 
   Note that the `...` for the `nifs` option is not representable in erlang AST.
-  Instead, use the atom `auto`.
+  Instead, use the tuple `{auto, [<nifs options...>]}`
 
   > ### Note {: .warning }
   >

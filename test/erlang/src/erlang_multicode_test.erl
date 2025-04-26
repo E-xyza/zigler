@@ -8,7 +8,7 @@ pub fn part1() i32 {
 }
 ").
 
--zig_opts([{otp_app, zigler}, {nifs, auto}]).
+-zig_opts([{otp_app, zigler}]).
 
 -zig_code("
 pub fn part2() i32 {
