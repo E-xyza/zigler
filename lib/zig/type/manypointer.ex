@@ -10,7 +10,7 @@ defmodule Zig.Type.Manypointer do
 
   import Type, only: :macros
 
-  @enforce_keys ~w[child repr const]a 
+  @enforce_keys ~w[child repr const]a
   defstruct @enforce_keys ++ [has_sentinel?: false]
 
   @type t :: %__MODULE__{

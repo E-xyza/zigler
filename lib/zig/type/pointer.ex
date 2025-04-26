@@ -2,7 +2,9 @@ defmodule Zig.Type.Pointer do
   @moduledoc false
 
   alias Zig.Type
+  alias Zig.Type.Array
   alias Zig.Type.Optional
+  alias Zig.Type.Struct
 
   use Type
 
@@ -25,26 +27,29 @@ defmodule Zig.Type.Pointer do
       when mutable in @mutable_types do
     child
     |> Type.from_json(module)
-    |> Map.replace!(:mutable, true)
+    |> struct!(mutable: true)
   end
 
   # special case: pointer represents that the data are mutable AND optional.
   def from_json(
         %{
           "type" => "optional",
-          "child" => %{"type" => "pointer", "child" => %{"type" => mutable} = child},
-          "is_const" => false
+          "child" => %{
+            "type" => "pointer",
+            "child" => %{"type" => mutable} = child,
+            "is_const" => false
+          }
         },
         module
       )
       when mutable in @mutable_types do
     child
     |> Type.from_json(module)
-    |> Map.replace!(:mutable, true)
+    |> struct!(mutable: true)
     |> then(&%Optional{child: &1})
   end
 
-  def from_json(%{"type" => "optional", "child" => pointer} = type, module) do
+  def from_json(%{"type" => "optional", "child" => %{"type" => "pointer"} = pointer}, module) do
     pointer
     |> from_json(module)
     |> Map.replace!(:optional, true)
@@ -73,6 +78,8 @@ defmodule Zig.Type.Pointer do
   def get_allowed?(_), do: false
 
   @impl true
+  def make_allowed?(%{child: %Array{} = array}), do: Type.make_allowed?(array)
+  def make_allowed?(%{child: %Struct{} = struct}), do: Type.make_allowed?(struct)
   def make_allowed?(_), do: false
 
   @impl true

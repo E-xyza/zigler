@@ -289,8 +289,6 @@ defmodule Zig do
   - `ZIG_FMT`: if set to `false`, disables zig formatting steps.
   """
 
-  alias Zig.Options
-
   @spec __using__(keyword) :: Macro.t()
   defmacro __using__(opts) do
     module = __CALLER__.module
