@@ -143,7 +143,7 @@ defmodule Zig.Module do
     |> Options.normalize_path(:module_code_path)
     |> Options.normalize_path(:zig_code_path)
     |> Options.normalize_path(:easy_c)
-    |> Keyword.update(:packages, [], &normalize_packages(&1, opts))
+    |> Options.normalize_list(:packages, &normalize_package(&1, opts), "package specifications")
     |> then(&Keyword.update!(&1, :nifs, fn nifs -> normalize_nifs(nifs, &1, caller) end))
   end
 
@@ -194,7 +194,9 @@ defmodule Zig.Module do
   @callbacks ~w[on_load on_upgrade on_unload]a
 
   defp normalize_callback(callback, _opts) when callback in @callbacks, do: {callback, callback}
-  defp normalize_callback({callback, fun}, _opts) when callback in @callbacks and is_atom(fun), do: {callback, fun}
+
+  defp normalize_callback({callback, fun}, _opts) when callback in @callbacks and is_atom(fun),
+    do: {callback, fun}
 
   defp normalize_callback({callback, invalid}, opts) when callback in @callbacks,
     do: Options.raise_with("`callbacks` option `#{callback}` must be an atom", invalid, opts)
@@ -207,52 +209,85 @@ defmodule Zig.Module do
         opts
       )
 
-  defp normalize_packages(packages, opts) do
-    Enum.map(packages, &normalize_package_spec(&1, opts))
-  rescue
-    e in CompileError ->
-      raise e
-
-    _ ->
-      raise CompileError,
-        description:
-          "option `packages` must be a keyword list of package specs, got: `#{inspect(packages)}`",
-        file: opts[:file],
-        line: opts[:line]
-  end
-
-  defp normalize_package_spec({k, {path, deps}}, opts) when is_atom(k) do
-    try do
-      Enum.each(deps, fn dep when is_atom(dep) -> :ok end)
-    rescue
-      _ ->
-        raise CompileError,
-          description:
-            "option `packages` spec for `#{k}` must have a list of atoms for deps, got: `#{inspect(deps)}`",
-          file: opts[:file],
-          line: opts[:line]
-    end
+  defp normalize_package({k, {path, deps}}, opts) when is_atom(k) and is_list(deps) do
+    Enum.each(deps, fn dep ->
+      if not is_atom(dep),
+        do:
+          Options.raise_with(
+            "`packages` spec for `#{k}` must have a list of atoms for deps",
+            dep,
+            opts
+          )
+    end)
 
     try do
       {k, {IO.iodata_to_binary(path), deps}}
     rescue
       _ ->
-        raise CompileError,
-          description:
-            "option `packages` spec for `#{k}` must be a tuple of the form `{path, [deps...]}`, got: `#{inspect(path)}` for path",
-          file: opts[:file],
-          line: opts[:line]
+        Options.raise_with(
+          "`packages` spec for `#{k}` must be a tuple of the form `{path, [deps...]}`",
+          {:tag, "path", path},
+          opts
+        )
     end
   end
 
-  defp normalize_package_spec({k, malformed}, opts) when is_atom(k) do
-    raise CompileError,
-      description:
-        "option `packages` spec for `foo` must be a tuple of the form `{path, [deps...]}`, got: `#{inspect(malformed)}`",
-      file: opts[:file],
-      line: opts[:line]
+  defp normalize_package({k, {_, malformed}}, opts) when is_atom(k),
+    do:
+      Options.raise_with(
+        "`packages` spec for `#{k}` must have a list of atoms for deps",
+        malformed,
+        opts
+      )
+
+  defp normalize_package({k, malformed}, opts) when is_atom(k) do
+    Options.raise_with(
+      "`packages` spec for `#{k}` must be a tuple of the form `{path, [deps...]}`",
+      malformed,
+      opts
+    )
   end
 
+  defp normalize_package(other, opts) do
+    Options.raise_with(
+      "`packages` option must be a list of package specifications",
+      other,
+      opts
+    )
+  end
+
+  # defp normalize_package_spec({k, {path, deps}}, opts) when is_atom(k) do
+  #  try do
+  #    Enum.each(deps, fn dep when is_atom(dep) -> :ok end)
+  #  rescue
+  #    _ ->
+  #      raise CompileError,
+  #        description:
+  #          "option `packages` spec for `#{k}` must have a list of atoms for deps, got: `#{inspect(deps)}`",
+  #        file: opts[:file],
+  #        line: opts[:line]
+  #  end
+  #
+  #  try do
+  #    {k, {IO.iodata_to_binary(path), deps}}
+  #  rescue
+  #    _ ->
+  #      raise CompileError,
+  #        description:
+  #          "option `packages` spec for `#{k}` must be a tuple of the form `{path, [deps...]}`, got: `#{inspect(path)}` for path",
+  #        file: opts[:file],
+  #        line: opts[:line]
+  #  end
+  # end
+  #
+  # defp normalize_package_spec({k, malformed}, opts) when is_atom(k) do
+  #  raise CompileError,
+  #    description:
+  #      "option `packages` spec for `foo` must be a tuple of the form `{path, [deps...]}`, got: `#{inspect(malformed)}`",
+  #    file: opts[:file],
+  #    line: opts[:line]
+  # end
+  #
   # internal helpers
   defp table_entries(nifs) when is_list(nifs) do
     nifs

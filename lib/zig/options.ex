@@ -24,8 +24,15 @@ defmodule Zig.Options do
       raise_with("`#{key}` option must be a path", opts[key], opts)
   end
 
-  def raise_with(message, content \\ nil, opts) do
-    message = if content, do: "#{message}, got: `#{inspect(content)}`", else: message
+  def raise_with(message, content, opts) do
+    message =
+      case content do
+        {:tag, label, content} ->
+          "#{message}, got: `#{inspect(content)}` for #{label}"
+
+        content ->
+          "#{message}, got: `#{inspect(content)}`"
+      end
 
     raise CompileError,
       description: message,

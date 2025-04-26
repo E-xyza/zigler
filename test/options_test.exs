@@ -246,7 +246,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "path must be a string" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `packages` spec for `foo` must be a tuple of the form `{path, [deps...]}`, got: `:bar` for path",
+                   "test/options_test.exs:4: `packages` spec for `foo` must be a tuple of the form `{path, [deps...]}`, got: `:bar` for path",
                    fn ->
                      make_module(otp_app: :zigler, packages: [foo: {:bar, [:baz, :quux]}])
                    end
@@ -254,7 +254,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "deps must be a list of atoms" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `packages` spec for `foo` must have a list of atoms for deps, got: `\"baz\"`",
+                   "test/options_test.exs:4: `packages` spec for `foo` must have a list of atoms for deps, got: `\"baz\"`",
                    fn ->
                      make_module(otp_app: :zigler, packages: [foo: {"bar", "baz"}])
                    end
@@ -262,15 +262,21 @@ defmodule ZiglerTest.OptionsTest do
 
     test "must be a keyword list" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `packages` must be a keyword list of package specs, got: `\"foo\"`",
+                   "test/options_test.exs:4: `packages` option must be a list of package specifications, got: `\"foo\"`",
                    fn ->
                      make_module(otp_app: :zigler, packages: "foo")
+                   end
+
+      assert_raise CompileError,
+                   "test/options_test.exs:4: `packages` option must be a list of package specifications, got: `\"bar\"`",
+                   fn ->
+                     make_module(otp_app: :zigler, packages: ["bar"])
                    end
     end
 
     test "payload must be a tuple" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `packages` spec for `foo` must be a tuple of the form `{path, [deps...]}`, got: `\"bar\"`",
+                   "test/options_test.exs:4: `packages` spec for `foo` must be a tuple of the form `{path, [deps...]}`, got: `\"bar\"`",
                    fn ->
                      make_module(otp_app: :zigler, packages: [foo: "bar"])
                    end
