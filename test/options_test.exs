@@ -355,7 +355,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "anything else is not allowed" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `callbacks` option must be a keyword list of callbacks, got: `:foo`",
+                   "test/options_test.exs:4: `callbacks` option must be a list of callback specifications, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, callbacks: :foo)
                    end

@@ -5,6 +5,7 @@ defmodule Zig.Module do
 
   alias Zig.C
   alias Zig.Nif
+  alias Zig.Options
   alias Zig.Resources
   alias Zig.Type.Error
 
@@ -132,8 +133,12 @@ defmodule Zig.Module do
   defp normalize_options(opts, caller) do
     opts
     |> obtain_version
-    |> Keyword.update(:c, %C{}, &C.new(&1, opts))
-    |> Keyword.update(:callbacks, [], &normalize_callbacks(&1, opts))
+    |> Options.normalize_as_struct(:c, C)
+    |> Options.normalize_list(
+      :callbacks,
+      &normalize_callback(&1, opts),
+      "callback specifications"
+    )
     |> Keyword.update(:dir, nil, &normalize_path(&1, :dir, opts))
     |> Keyword.update(:module_code_path, nil, &normalize_path(&1, :module_code_path, opts))
     |> Keyword.update(:zig_code_path, nil, &normalize_path(&1, :zig_code_path, opts))
@@ -188,37 +193,19 @@ defmodule Zig.Module do
 
   @callbacks ~w[on_load on_upgrade on_unload]a
 
-  defp normalize_callbacks(callbacks, opts) do
-    if not is_list(callbacks) do
-      raise CompileError,
-        description:
-          "`callbacks` option must be a keyword list of callbacks, got: `#{inspect(callbacks)}`",
-        file: opts[:file],
-        line: opts[:line]
-    end
+  defp normalize_callback(callback, _opts) when callback in @callbacks, do: {callback, callback}
+  defp normalize_callback({callback, fun}, _opts) when callback in @callbacks and is_atom(fun), do: {callback, fun}
 
-    Enum.map(callbacks, fn
-      callback when callback in @callbacks ->
-        {callback, callback}
+  defp normalize_callback({callback, invalid}, opts) when callback in @callbacks,
+    do: Options.raise_with("`callbacks` option `#{callback}` must be an atom", invalid, opts)
 
-      {callback, fun} = option when callback in @callbacks ->
-        if is_atom(fun) do
-          option
-        else
-          raise CompileError,
-            description:
-              "`callbacks` option `#{callback}` must be an atom, got: `#{inspect(fun)}`",
-            file: opts[:file],
-            line: opts[:line]
-        end
-
-      other ->
-        raise CompileError,
-          description: "invalid option for callbacks: #{inspect(other)}",
-          file: opts[:file],
-          line: opts[:line]
-    end)
-  end
+  defp normalize_callback(other, opts),
+    do:
+      Options.raise_with(
+        "`callbacks` option must be a keyword list of callback specs",
+        other,
+        opts
+      )
 
   defp normalize_path(path, tag, opts) do
     IO.iodata_to_binary(path)
