@@ -92,6 +92,8 @@ defmodule Zig.Module do
 
   @defaultable_nif_opts ~w[cleanup leak_check]a
 
+  # this function builds and verifies the module options and turns it into the struct.
+
   def new(opts, caller) do
     # make sure that the caller has declared otp_app here.
     case {Keyword.fetch!(opts, :language), Keyword.fetch(opts, :otp_app)} do
@@ -121,14 +123,12 @@ defmodule Zig.Module do
     )
     |> normalize_options(caller)
     |> then(&struct!(__MODULE__, &1))
-    |> validate(caller)
   rescue
     e in KeyError ->
-      raise CompileError,
-        file: caller.file,
-        line: caller.line,
-        description: "`#{e.key}` is not a valid option"
+      Options.raise_with("`#{e.key}` is not a valid option", Map.take(caller, ~w[file line]a))
   end
+
+  @release_modes ~w[debug safe fast small env]a
 
   defp normalize_options(opts, caller) do
     opts
@@ -144,29 +144,12 @@ defmodule Zig.Module do
     |> Options.normalize_path(:zig_code_path)
     |> Options.normalize_path(:easy_c)
     |> Options.normalize_list(:packages, &normalize_package(&1, opts), "package specifications")
+    |> Options.normalize_atom_or_atomlist(:ignore)
+    |> Options.normalize_atom_or_atomlist(:resources)
+    |> Options.validate(:release_mode, @release_modes)
+    |> Options.validate(~w[default_nif_opts cleanup]a, :boolean)
+    |> Options.validate(~w[default_nif_opts leak_check]a, :boolean)
     |> then(&Keyword.update!(&1, :nifs, fn nifs -> normalize_nifs(nifs, &1, caller) end))
-  end
-
-  defp normalize_nifs({:auto, nifs}, full_opts, caller) do
-    {:auto, normalize_nifs(nifs, full_opts, caller)}
-  end
-
-  defp normalize_nifs(nifs, full_opts, caller) do
-    # at this point there MUST be a :nifs option, either provided by the user or
-    # supplied by the zigler codebase.  This is also guaranteed to be a keyword list.
-
-    common_opts =
-      full_opts
-      |> Keyword.take(~w[module file line module_code_path zig_code_path]a)
-      |> Keyword.merge(Keyword.fetch!(full_opts, :default_nif_opts))
-
-    Enum.map(nifs, fn
-      {name, spec} ->
-        Nif.new(name, common_opts ++ spec, caller)
-
-      name when is_atom(name) ->
-        Nif.new(name, common_opts, caller)
-    end)
   end
 
   defp obtain_version(opts) do
@@ -256,39 +239,47 @@ defmodule Zig.Module do
     )
   end
 
-  # defp normalize_package_spec({k, {path, deps}}, opts) when is_atom(k) do
-  #  try do
-  #    Enum.each(deps, fn dep when is_atom(dep) -> :ok end)
-  #  rescue
-  #    _ ->
-  #      raise CompileError,
-  #        description:
-  #          "option `packages` spec for `#{k}` must have a list of atoms for deps, got: `#{inspect(deps)}`",
-  #        file: opts[:file],
-  #        line: opts[:line]
-  #  end
-  #
-  #  try do
-  #    {k, {IO.iodata_to_binary(path), deps}}
-  #  rescue
-  #    _ ->
-  #      raise CompileError,
-  #        description:
-  #          "option `packages` spec for `#{k}` must be a tuple of the form `{path, [deps...]}`, got: `#{inspect(path)}` for path",
-  #        file: opts[:file],
-  #        line: opts[:line]
-  #  end
-  # end
-  #
-  # defp normalize_package_spec({k, malformed}, opts) when is_atom(k) do
-  #  raise CompileError,
-  #    description:
-  #      "option `packages` spec for `foo` must be a tuple of the form `{path, [deps...]}`, got: `#{inspect(malformed)}`",
-  #    file: opts[:file],
-  #    line: opts[:line]
-  # end
-  #
-  # internal helpers
+  defp normalize_nifs({:auto, nifs}, full_opts, caller) do
+    {:auto, normalize_nifs(nifs, full_opts, caller)}
+  end
+
+  defp normalize_nifs(nifs, full_opts, caller) do
+    # at this point there MUST be a :nifs option, either provided by the user or
+    # supplied by the zigler codebase.  This is also guaranteed to be a keyword list.
+
+    common_opts =
+      full_opts
+      |> Keyword.take(~w[module file line module_code_path zig_code_path]a)
+      |> Keyword.merge(Keyword.fetch!(full_opts, :default_nif_opts))
+
+    Enum.map(nifs, fn
+      {name, spec} ->
+        Nif.new(name, common_opts ++ spec, caller)
+
+      name when is_atom(name) ->
+        Nif.new(name, common_opts, caller)
+    end)
+  end
+
+  # CODE RENDERING
+
+  # zig file rendering
+
+  require EEx
+
+  nif = Path.join(__DIR__, "templates/module.zig.eex")
+  EEx.function_from_file(:def, :render_zig, nif, [:assigns])
+
+  on_load = Path.join(__DIR__, "templates/on_load.zig.eex")
+  EEx.function_from_file(:def, :render_on_load, on_load, [:assigns])
+
+  on_upgrade = Path.join(__DIR__, "templates/on_upgrade.zig.eex")
+  EEx.function_from_file(:def, :render_on_upgrade, on_upgrade, [:assigns])
+
+  on_unload = Path.join(__DIR__, "templates/on_unload.zig.eex")
+  EEx.function_from_file(:def, :render_on_unload, on_unload, [:assigns])
+
+  # internal helpers for rendering the c
   defp table_entries(nifs) when is_list(nifs) do
     nifs
     |> Enum.flat_map(&Nif.table_entries/1)
@@ -305,21 +296,7 @@ defmodule Zig.Module do
     |> Enum.at(@index_of[at])
   end
 
-  # CODE RENDERING
-
-  require EEx
-
-  nif = Path.join(__DIR__, "templates/module.zig.eex")
-  EEx.function_from_file(:def, :render_zig, nif, [:assigns])
-
-  on_load = Path.join(__DIR__, "templates/on_load.zig.eex")
-  EEx.function_from_file(:def, :render_on_load, on_load, [:assigns])
-
-  on_upgrade = Path.join(__DIR__, "templates/on_upgrade.zig.eex")
-  EEx.function_from_file(:def, :render_on_upgrade, on_upgrade, [:assigns])
-
-  on_unload = Path.join(__DIR__, "templates/on_unload.zig.eex")
-  EEx.function_from_file(:def, :render_on_unload, on_unload, [:assigns])
+  # ast rendering
 
   def render_elixir(module, zig_code) do
     module_name = "#{module.module}"
@@ -367,7 +344,6 @@ defmodule Zig.Module do
 
     function_code = Enum.map(module.nifs, &Nif.render_elixir/1)
 
-    # TODO: there might be a smarter way of getting this.
     manifest_code =
       if Enum.any?(module.nifs, &match?(%Error{}, &1.return.type)) do
         quote do
@@ -408,46 +384,6 @@ defmodule Zig.Module do
     function_code = Enum.map(module.nifs, &Nif.render_erlang/1)
 
     Enum.flat_map(function_code, & &1) ++ init_function
-  end
-
-  @release_modes ~w[debug safe fast small env]a
-  @modes_text Enum.map_join(@release_modes, ", ", &"`#{inspect(&1)}`")
-
-  defp validate(this, context) do
-    assert(this, :release_mode, &(&1 in @release_modes), "must be one of #{@modes_text}", context)
-    assert(this, :ignore, &all_atoms?/1, "must be a list of atoms", context)
-    assert(this, :resources, &all_atoms?/1, "must be a list of atoms", context)
-
-    assert(
-      this[:default_nif_opts],
-      :cleanup,
-      &(is_nil(&1) or is_boolean(&1)),
-      "must be a boolean",
-      context
-    )
-
-    assert(
-      this[:default_nif_opts],
-      :leak_check,
-      &(is_nil(&1) or is_boolean(&1)),
-      "must be a boolean",
-      context
-    )
-
-    this
-  end
-
-  defp all_atoms?(list), do: is_list(list) and Enum.all?(list, &is_atom/1)
-
-  defp assert(this, field, condition, message, context) do
-    value = this[field]
-
-    if not condition.(value) do
-      raise CompileError,
-        description: "option `#{field}` #{message}, got: `#{inspect(value)}`",
-        file: context.file,
-        line: context.line
-    end
   end
 
   # Access behaviour guards

@@ -22,7 +22,7 @@ defmodule Zig.Get.MixProject do
         maintainers: ["Isaac Yonemoto"],
         licenses: ["MIT"],
         links: %{"GitHub" => @scm_url},
-        files: ~w(mix.tasks mix.exs README.md)
+        files: ~w[mix.tasks mix.exs README.md]
       ],
       preferred_cli_env: [docs: :docs],
       source_url: @scm_url,
@@ -47,7 +47,7 @@ defmodule Zig.Get.MixProject do
     ]
   end
 
-  defp elixirc_paths, do: ~w(mix.tasks)
+  defp elixirc_paths, do: ~w[mix.tasks]
 
   defp docs do
     [

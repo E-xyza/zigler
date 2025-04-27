@@ -223,15 +223,14 @@ defmodule ZiglerTest.OptionsTest do
                make_module(otp_app: :zigler, ignore: [:foo, :bar])
     end
 
+    test "is ok with a single atom" do
+      assert %{ignore: [:foo]} =
+               make_module(otp_app: :zigler, ignore: :foo)
+    end
+
     test "is not ok with something else" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `ignore` must be a list of atoms, got: `:foo`",
-                   fn ->
-                     make_module(otp_app: :zigler, ignore: :foo)
-                   end
-
-      assert_raise CompileError,
-                   "test/options_test.exs:4: option `ignore` must be a list of atoms, got: `[\"foo\"]`",
+                   "test/options_test.exs:4: option `ignore` must be a list of atoms, got: `\"foo\"`",
                    fn ->
                      make_module(otp_app: :zigler, ignore: ["foo"])
                    end
@@ -289,15 +288,14 @@ defmodule ZiglerTest.OptionsTest do
                make_module(otp_app: :zigler, resources: [:foo, :bar])
     end
 
+    test "is ok with a single atom" do
+      assert %{resources: [:foo]} =
+               make_module(otp_app: :zigler, resources: :foo)
+    end
+
     test "is not ok with something else" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `resources` must be a list of atoms, got: `:foo`",
-                   fn ->
-                     make_module(otp_app: :zigler, resources: :foo)
-                   end
-
-      assert_raise CompileError,
-                   "test/options_test.exs:4: option `resources` must be a list of atoms, got: `[\"foo\"]`",
+                   "test/options_test.exs:4: option `resources` must be a list of atoms, got: `\"foo\"`",
                    fn ->
                      make_module(otp_app: :zigler, resources: ["foo"])
                    end
@@ -376,7 +374,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "cleanup must be a boolean" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: nif option `cleanup` must be a boolean, got: `:foo`",
+                   "test/options_test.exs:4: option `default_nif_opts > cleanup` must be a boolean, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, cleanup: :foo)
                    end
@@ -391,7 +389,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "leak_check must be a boolean" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: nif option `leak_check` must be a boolean, got: `:foo`",
+                   "test/options_test.exs:4: option `default_nif_opts > leak_check` must be a boolean, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, leak_check: :foo)
                    end

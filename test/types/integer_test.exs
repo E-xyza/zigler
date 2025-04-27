@@ -157,7 +157,7 @@ defmodule ZiglerTest.Types.IntegerTest do
       @unsupported [:c_ulong]
     end
 
-    @ctypes ~w(c_short c_ushort c_int c_uint c_long c_ulong c_longlong c_ulonglong)a --
+    @ctypes ~w[c_short c_ushort c_int c_uint c_long c_ulong c_longlong c_ulonglong]a --
               @unsupported
 
     for type <- @ctypes do

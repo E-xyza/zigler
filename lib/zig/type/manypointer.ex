@@ -97,7 +97,7 @@ defmodule Zig.Type.Manypointer do
       :list ->
         [Type.render_elixir_spec(~t(u8), context)]
 
-      type when type in ~w(default binary)a ->
+      type when type in ~w[default binary]a ->
         quote do
           binary()
         end

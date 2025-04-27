@@ -56,7 +56,7 @@ defmodule Mix.Tasks.Zig.Get do
     it's possible that the manifest at `https://ziglang.org/download/index.json`
   """
 
-  defstruct ~w(version path arch os url file verify hash force)a
+  defstruct ~w[version path arch os url file verify hash force]a
 
   def run(app_opts) do
     # Elixir 1.14 cannot take a list of applications for this function
@@ -224,7 +224,7 @@ defmodule Mix.Tasks.Zig.Get do
 
   def extract(bin, opts) do
     {:spawn_executable, System.fetch_env!("TAR_COMMAND")}
-    |> Port.open(args: ~w(-xJf -), cd: opts[:cwd])
+    |> Port.open(args: ~w[-xJf -], cd: opts[:cwd])
     |> Port.command(bin)
 
     {:ok, []}
@@ -279,7 +279,7 @@ defmodule Mix.Tasks.Zig.Get do
     body
   end
 
-  @spinners ~w(| / - \\)
+  @spinners ~w[| / - \\]
   defp spinner, do: spinner(@spinners)
 
   defp spinner([head | tail]) do

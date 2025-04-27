@@ -97,12 +97,12 @@ defmodule Zig.Type.Cpointer do
           [0..255]
         end
 
-      %{length: length, as: type} when is_integer(length) and type in ~w(default binary)a ->
+      %{length: length, as: type} when is_integer(length) and type in ~w[default binary]a ->
         quote context: Elixir do
           <<_::unquote(length * 8)>>
         end
 
-      %{as: type} when type in ~w(default binary)a ->
+      %{as: type} when type in ~w[default binary]a ->
         quote do
           binary() | nil
         end

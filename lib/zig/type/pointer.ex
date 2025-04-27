@@ -17,7 +17,7 @@ defmodule Zig.Type.Pointer do
           child: Type.t()
         }
 
-  @mutable_types ~w(array struct)
+  @mutable_types ~w[array struct]
 
   # special case: pointer represents that the data are mutable.
   def from_json(
