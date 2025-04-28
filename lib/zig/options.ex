@@ -24,6 +24,17 @@ defmodule Zig.Options do
       raise_with("`#{key}` option must be a path", opts[key], opts)
   end
 
+  def normalize_module(opts, [key | _] = keystack, or_true \\ nil) do
+    Keyword.update(opts, key, nil, fn
+      module when is_atom(module) ->
+        module
+
+      other ->
+        or_true_msg = if or_true == :or_true, do: " or `true`"
+        raise_with(make_message(keystack, "must be a module#{or_true_msg}"), other, opts)
+    end)
+  end
+
   def normalize_atom_or_atomlist(opts, key) do
     Keyword.update(opts, key, [], fn atom_or_atomlist ->
       atom_or_atomlist
@@ -32,29 +43,70 @@ defmodule Zig.Options do
     end)
   end
 
+  def normalize_boolean(opts, [key | _] = keystack, overrides \\ []) do
+    Enum.map(opts, fn
+      {^key, value} when is_boolean(value) ->
+        {key, value}
+
+      {^key, other} ->
+        raise_with(make_message(keystack, "must be a boolean"), other, opts)
+
+      maybe_override when is_atom(maybe_override) ->
+        case Keyword.fetch(overrides, maybe_override) do
+          {:ok, value} when is_boolean(value) ->
+            {key, value}
+
+          _ ->
+            maybe_override
+        end
+
+      other ->
+        other
+    end)
+  end
+
+  def normalize_lookup(opts, [key | _] = keystack, lookup) do
+    Enum.map(opts, fn 
+      {^key, value} when is_map_key(lookup, value) ->
+        {key, lookup[value]}
+      {^key, other} ->
+        raise_with(make_message(keystack, "must be one of #{list_of(Map.keys(lookup))}"), other, opts)
+      maybe_override when is_atom(maybe_override) ->
+        case Keyword.fetch(lookup, maybe_override) do
+          {:ok, value} ->
+            {key, value}
+
+          _ ->
+            maybe_override
+        end
+      other ->
+        other
+    end)
+  end
+
   defp atom_or_raise(atom, _opts, _key) when is_atom(atom), do: atom
 
   defp atom_or_raise(other, opts, key),
     do: raise_with("option `#{key}` must be a list of atoms", other, opts)
 
-  def validate(opts, keypath, members) when is_list(members) do
+  def validate(opts, keystack, members) when is_list(members) do
     do_validate(
       opts,
-      keypath,
+      keystack,
       &(&1 in members),
-      make_message(keypath, "must be one of #{list_of(members)}")
+      make_message(keystack, "must be one of #{list_of(members)}")
     )
 
     opts
   end
 
-  def validate(opts, keypath, :boolean) do
-    do_validate(opts, keypath, &is_boolean/1, make_message(keypath, "must be a boolean"))
+  def validate(opts, keystack, :boolean) do
+    do_validate(opts, keystack, &is_boolean/1, make_message(keystack, "must be a boolean"))
     opts
   end
 
-  defp do_validate(opts, keypath, fun, message),
-    do: do_validate(opts, opts, List.wrap(keypath), fun, message)
+  defp do_validate(opts, keystack, fun, message),
+    do: do_validate(opts, opts, List.wrap(keystack), fun, message)
 
   defp do_validate(parent_opts, opts, [head | rest], fun, message) do
     case Keyword.fetch(opts, head) do
@@ -97,13 +149,14 @@ defmodule Zig.Options do
       line: opts[:line]
   end
 
-  defp make_message(keypath, stem) do
-    keypath_str =
-      keypath
+  defp make_message(keystack, stem) do
+    keystack_str =
+      keystack
       |> List.wrap()
+      |> Enum.reverse()
       |> Enum.map_join(" > ", &to_string/1)
 
-    "option `#{keypath_str}` #{stem}"
+    "option `#{keystack_str}` #{stem}"
   end
 
   defp list_of(members) do

@@ -16,6 +16,7 @@ defmodule Zig.Nif do
   alias Zig.Nif.Synchronous
   alias Zig.Nif.Threaded
   alias Zig.Nif.Yielding
+  alias Zig.Options
   alias Zig.Parameter
   alias Zig.Return
   alias Zig.Type
@@ -104,148 +105,81 @@ defmodule Zig.Nif do
   @impl true
   defdelegate fetch(function, key), to: Map
 
-  @concurrency_modules %{
-    :synchronous => Synchronous,
-    :threaded => Threaded,
-    :yielding => Yielding,
-    :dirty_cpu => DirtyCpu,
-    :dirty_io => DirtyIo
-  }
-  @concurrency_opts Map.keys(@concurrency_modules)
-  @defaults %{
-    :cleanup => true,
-    :leak_check => false
-  }
-  @defaultable_opts Map.keys(@defaults)
-
   @doc """
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
-  def new(name, opts, caller) do
+  def new(name, opts) do
+    keystack = [name, :nifs]
+
     opts
-    |> normalize(name, caller)
+    |> Options.normalize_boolean([:cleanup | keystack], noclean: false)
+    |> Options.normalize_boolean([:spec | keystack], nospec: false)
+    |> Options.normalize_boolean([:leak_check | keystack], leak_check: true)
+    |> Options.normalize_module([:impl | keystack], :or_true)
+    |> Options.normalize_lookup([:concurrency | keystack], %{synchronous: Synchronous, threaded: Threaded, yielding: Yielding, dirty_cpu: DirtyCpu, dirty_io: DirtyIo})
+    |> normalize(name)
     |> then(&struct!(__MODULE__, &1))
   end
 
-  def normalize(opts, name, module) do
+  def normalize(opts, name) do
     opts
     |> Enum.map(fn
-      defaultable when defaultable in @defaultable_opts ->
-        {defaultable, true}
-
-      :noclean ->
-        {:cleanup, false}
-
-      :nospec ->
-        {:spec, false}
-
-      concurrency when concurrency in @concurrency_opts ->
-        {:concurrency, Map.fetch!(@concurrency_modules, concurrency)}
-
-      {:concurrency, concurrency} when concurrency in @concurrency_opts ->
-        {:concurrency, Map.fetch!(@concurrency_modules, concurrency)}
-
-      {:concurrency, concurrency} ->
-        text = Enum.map_join(@concurrency_opts, ", ", &"`#{inspect(&1)}`")
-
-        raise CompileError,
-          description:
-            "nif option `concurrency` must be one of #{text}, got: `#{inspect(concurrency)}`",
-          file: module.file,
-          line: module.line
-
       {:params, params} when is_integer(params) and params >= 0 ->
         {:params, params}
 
       {:params, params} when is_map(params) ->
         {:params,
          Map.new(params, fn
-           {index, opts} when is_integer(index) and index >= 0 ->
-             {index, Parameter.new(nil, opts, module)}
+           {index, param_opts} when is_integer(index) and index >= 0 ->
+            # super janky.  Fix this later.
+             {index, Parameter.new(nil, param_opts, %{file: opts[:file], line: opts[:line]})}
 
            {other, _} ->
-             raise CompileError,
-               description:
-                 "nif option `params` map keys must be non-negative integers, got: `#{inspect(other)}`",
-               file: module.file,
-               line: module.line
+             Options.raise_with("`params` map keys must be non-negative integers", other, opts)
          end)}
 
       {:params, error} ->
-        raise CompileError,
-          description:
-            "nif option `params` must be a non-negative integer or a params map, got: `#{inspect(error)}`",
-          file: module.file,
-          line: module.line
+        Options.raise_with(
+          "nif option `params` must be a non-negative integer or a params map",
+          error,
+          opts
+        )
 
       {:alias, ^name} ->
-        raise CompileError,
-          description: "nif option `alias` cannot be the same as the nif name",
-          file: module.file,
-          line: module.line
+        Options.raise_with(
+          "nif option `alias` cannot be the same as the nif name",
+          opts
+        )
 
       {:alias, a} when is_atom(a) ->
         {:alias, a}
 
       {:alias, a} ->
-        raise CompileError,
-          description: "nif option `alias` must be an atom, got: `#{inspect(a)}`",
-          file: module.file,
-          line: module.line
+        Options.raise_with(
+          "nif option `alias` must be an atom",
+          a,
+          opts
+        )
 
       {:doc, doc} when is_binary(doc) ->
         {doc, doc}
 
       {:export, v} when not is_boolean(v) ->
-        raise CompileError,
-          description: "nif option `export` must be a boolean, got: `#{inspect(v)}`",
-          file: module.file,
-          line: module.line
-
-      {:spec, v} when not is_boolean(v) ->
-        raise CompileError,
-          description: "nif option `spec` must be a boolean, got: `#{inspect(v)}`",
-          file: module.file,
-          line: module.line
-
-      {:impl, v} when is_atom(v) ->
-        {:impl, v}
-
-      {:impl, v} ->
-        raise CompileError,
-          description: "nif option `impl` must be a module or `true`, got: `#{inspect(v)}`",
-          file: module.file,
-          line: module.line
-
-      :leak_check ->
-        {:leak_check, true}
-
-      {:leak_check, v} when is_boolean(v) ->
-        {:leak_check, v}
-
-      {:leak_check, v} ->
-        raise CompileError,
-          description: "nif option `leak_check` must be a boolean, got: `#{inspect(v)}`",
-          file: module.file,
-          line: module.line
-
-      {:cleanup, v} when is_boolean(v) ->
-        {:cleanup, v}
-
-      {:cleanup, v} ->
-        raise CompileError,
-          description: "nif option `cleanup` must be a boolean, got: `#{inspect(v)}`",
-          file: module.file,
-          line: module.line
+        Options.raise_with(
+          "nif option `export` must be a boolean",
+          v,
+          opts
+        )
 
       {:allocator, v} when is_atom(v) ->
         {:allocator, v}
 
       {:allocator, v} ->
-        raise CompileError,
-          description: "nif option `allocator` must be an atom, got: `#{inspect(v)}`",
-          file: module.file,
-          line: module.line
+        Options.raise_with(
+          "nif option `allocator` must be an atom",
+          v,
+          opts
+        )
 
       {:arity, arity} ->
         arity
@@ -261,10 +195,10 @@ defmodule Zig.Nif do
     end)
     |> Keyword.put_new(:cleanup, true)
     |> Keyword.put(:name, name)
-    |> normalize_return(module)
+    |> normalize_return()
   end
 
-  defp normalize_return(opts, module) do
+  defp normalize_return(opts) do
     cleanup = Keyword.fetch!(opts, :cleanup)
 
     Keyword.update(
@@ -273,7 +207,7 @@ defmodule Zig.Nif do
       %Return{cleanup: cleanup},
       fn return_opts ->
         return_opts
-        |> Return.normalize_options(cleanup, module)
+        |> Return.normalize_options(cleanup, opts)
         |> Return.new()
       end
     )

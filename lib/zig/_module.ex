@@ -147,9 +147,9 @@ defmodule Zig.Module do
     |> Options.normalize_atom_or_atomlist(:ignore)
     |> Options.normalize_atom_or_atomlist(:resources)
     |> Options.validate(:release_mode, @release_modes)
-    |> Options.validate(~w[default_nif_opts cleanup]a, :boolean)
-    |> Options.validate(~w[default_nif_opts leak_check]a, :boolean)
-    |> then(&Keyword.update!(&1, :nifs, fn nifs -> normalize_nifs(nifs, &1, caller) end))
+    |> Options.validate(~w[cleanup default_nif_opts]a, :boolean)
+    |> Options.validate(~w[leak_check default_nif_opts]a, :boolean)
+    |> then(&Keyword.update!(&1, :nifs, fn nifs -> normalize_nifs(nifs, &1) end))
   end
 
   defp obtain_version(opts) do
@@ -239,11 +239,11 @@ defmodule Zig.Module do
     )
   end
 
-  defp normalize_nifs({:auto, nifs}, full_opts, caller) do
-    {:auto, normalize_nifs(nifs, full_opts, caller)}
+  defp normalize_nifs({:auto, nifs}, full_opts) do
+    {:auto, normalize_nifs(nifs, full_opts)}
   end
 
-  defp normalize_nifs(nifs, full_opts, caller) do
+  defp normalize_nifs(nifs, full_opts) do
     # at this point there MUST be a :nifs option, either provided by the user or
     # supplied by the zigler codebase.  This is also guaranteed to be a keyword list.
 
@@ -254,10 +254,10 @@ defmodule Zig.Module do
 
     Enum.map(nifs, fn
       {name, spec} ->
-        Nif.new(name, common_opts ++ spec, caller)
+        Nif.new(name, common_opts ++ spec)
 
       name when is_atom(name) ->
-        Nif.new(name, common_opts, caller)
+        Nif.new(name, common_opts)
     end)
   end
 
