@@ -72,7 +72,7 @@ defmodule Zig.Options do
       {^key, other} ->
         raise_with(make_message(keystack, "must be one of #{list_of(Map.keys(lookup))}"), other, opts)
       maybe_override when is_atom(maybe_override) ->
-        case Keyword.fetch(lookup, maybe_override) do
+        case Map.fetch(lookup, maybe_override) do
           {:ok, value} ->
             {key, value}
 

@@ -227,15 +227,13 @@ defmodule Zig.Sema do
   @module_settings ~w[module file line module_code_path zig_code_path]a
 
   defp make_default_nif(sema_function, module) do
-    location_info = %{file: module.file, line: module.line}
-
     nif_init =
       @module_settings
       |> Enum.map(&{&1, Map.fetch!(module, &1)})
       |> Keyword.merge(module.default_nif_opts)
 
     sema_function.name
-    |> Nif.new(nif_init, location_info)
+    |> Nif.new(nif_init)
     |> Nif.set_file_line(module.manifest_module, module.parsed)
     |> struct!(
       arity: nil,

@@ -42,6 +42,8 @@ defmodule ZiglerTest.NifOptionsTest do
       assert %{concurrency: Zig.Nif.Synchronous} = make_nif([])
     end
 
+    test "accepts single atoms"
+
     test "accepts valid options" do
       assert %{concurrency: Zig.Nif.Synchronous} = make_nif(concurrency: :synchronous)
       assert %{concurrency: Zig.Nif.Threaded} = make_nif(concurrency: :threaded)
@@ -295,7 +297,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "you can't set it to anything else" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `params` must be a non-negative integer or a params map, got: `:foo`",
+                   "test/nif_options_test.exs:9: nif option `params` must be a params map, got: `:foo`",
                    fn ->
                      make_nif(params: :foo)
                    end

@@ -111,12 +111,13 @@ defmodule Zig.Nif do
   def new(name, opts) do
     keystack = [name, :nifs]
 
+    # all options which can take atoms must be normalized first.
     opts
     |> Options.normalize_boolean([:cleanup | keystack], noclean: false)
     |> Options.normalize_boolean([:spec | keystack], nospec: false)
     |> Options.normalize_boolean([:leak_check | keystack], leak_check: true)
-    |> Options.normalize_module([:impl | keystack], :or_true)
     |> Options.normalize_lookup([:concurrency | keystack], %{synchronous: Synchronous, threaded: Threaded, yielding: Yielding, dirty_cpu: DirtyCpu, dirty_io: DirtyIo})
+    |> Options.normalize_module([:impl | keystack], :or_true)
     |> normalize(name)
     |> then(&struct!(__MODULE__, &1))
   end
@@ -124,9 +125,6 @@ defmodule Zig.Nif do
   def normalize(opts, name) do
     opts
     |> Enum.map(fn
-      {:params, params} when is_integer(params) and params >= 0 ->
-        {:params, params}
-
       {:params, params} when is_map(params) ->
         {:params,
          Map.new(params, fn
@@ -140,7 +138,7 @@ defmodule Zig.Nif do
 
       {:params, error} ->
         Options.raise_with(
-          "nif option `params` must be a non-negative integer or a params map",
+          "nif option `params` must be a params map",
           error,
           opts
         )
