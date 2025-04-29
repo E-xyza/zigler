@@ -245,7 +245,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "path must be a string" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `packages` spec for `foo` must be a tuple of the form `{path, [deps...]}`, got: `:bar` for path",
+                   "test/options_test.exs:4: option `packages > foo` must be a tuple of the form `{path, [deps...]}`, got: `:bar` for path",
                    fn ->
                      make_module(otp_app: :zigler, packages: [foo: {:bar, [:baz, :quux]}])
                    end
@@ -253,7 +253,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "deps must be a list of atoms" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `packages` spec for `foo` must have a list of atoms for deps, got: `\"baz\"`",
+                   "test/options_test.exs:4: option `packages > foo` must have a list of atoms for deps, got: `\"baz\"`",
                    fn ->
                      make_module(otp_app: :zigler, packages: [foo: {"bar", "baz"}])
                    end
@@ -261,13 +261,13 @@ defmodule ZiglerTest.OptionsTest do
 
     test "must be a keyword list" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `packages` option must be a list of package specifications, got: `\"foo\"`",
+                   "test/options_test.exs:4: option `packages` must be a list of package specifications, got: `\"foo\"`",
                    fn ->
                      make_module(otp_app: :zigler, packages: "foo")
                    end
 
       assert_raise CompileError,
-                   "test/options_test.exs:4: `packages` option must be a list of package specifications, got: `\"bar\"`",
+                   "test/options_test.exs:4: option `packages` must be a list of package specifications, got: `\"bar\"`",
                    fn ->
                      make_module(otp_app: :zigler, packages: ["bar"])
                    end
@@ -275,7 +275,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "payload must be a tuple" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `packages` spec for `foo` must be a tuple of the form `{path, [deps...]}`, got: `\"bar\"`",
+                   "test/options_test.exs:4: option `packages > foo` must be a tuple of the form `{path, [deps...]}`, got: `\"bar\"`",
                    fn ->
                      make_module(otp_app: :zigler, packages: [foo: "bar"])
                    end
@@ -315,7 +315,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "on_load rejects anything else" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `callbacks` option `on_load` must be an atom, got: `[\"foo\"]`",
+                   "test/options_test.exs:4: option `callbacks > on_load` must be an atom, got: `[\"foo\"]`",
                    fn ->
                      make_module(otp_app: :zigler, callbacks: [on_load: ["foo"]])
                    end
@@ -333,7 +333,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "on_upgrade rejects anything else" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `callbacks` option `on_upgrade` must be an atom, got: `[\"foo\"]`",
+                   "test/options_test.exs:4: option `callbacks > on_upgrade` must be an atom, got: `[\"foo\"]`",
                    fn ->
                      make_module(otp_app: :zigler, callbacks: [on_upgrade: ["foo"]])
                    end
@@ -351,7 +351,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "on_unload rejects anything else" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `callbacks` option `on_unload` must be an atom, got: `[\"foo\"]`",
+                   "test/options_test.exs:4: option `callbacks > on_unload` must be an atom, got: `[\"foo\"]`",
                    fn ->
                      make_module(otp_app: :zigler, callbacks: [on_unload: ["foo"]])
                    end
@@ -359,7 +359,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "anything else is not allowed" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `callbacks` option must be a list of callback specifications, got: `:foo`",
+                   "test/options_test.exs:4: option `callbacks` must be a list of callback specifications, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, callbacks: :foo)
                    end
@@ -374,7 +374,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "cleanup must be a boolean" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `default_nif_opts > cleanup` must be a boolean, got: `:foo`",
+                   "test/options_test.exs:4: option `cleanup` must be a boolean, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, cleanup: :foo)
                    end
@@ -389,7 +389,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "leak_check must be a boolean" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `default_nif_opts > leak_check` must be a boolean, got: `:foo`",
+                   "test/options_test.exs:4: option `leak_check` must be a boolean, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, leak_check: :foo)
                    end

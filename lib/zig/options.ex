@@ -3,40 +3,63 @@ defmodule Zig.Options do
 
   # this module provides common mechanisms for parsing options.
 
-  def normalize_as_struct(opts, key, {:int_map, module}, keystack) do
+  @type context :: %{
+          module: module(),
+          file: Path.t(),
+          line: pos_integer(),
+          keystack: [atom()],
+          cleanup: bool
+        }
+
+  def initialize_context(caller) do
+    caller
+    |> Map.take(~w[module file line]a)
+    |> Map.merge(%{keystack: [], cleanup: true})
+  end
+
+  def push_key(context, key) when is_atom(key), do: Map.update!(context, :keystack, &[key | &1])
+
+  def push_key(context, keys) when is_list(keys),
+    do: Map.update!(context, :keystack, &Enum.reverse(keys, &1))
+
+  def normalize_as_struct(opts, key, {:int_map, module}, context) do
     Keyword.update(opts, key, %{}, fn
       map when is_map(map) ->
-        Map.new(map, fn 
-          {k, v} when is_integer(k) and k >= 0 ->
-            {k, module.new(v, opts)}
+        Map.new(map, fn
+          {index, v} when is_integer(index) and index >= 0 ->
+            {index, module.new(v, push_key(context, [index, key]))}
+
           {k, _} ->
-            raise_with(make_message([key | keystack], "must be a map with non-negative integer keys"), k, opts)
+            raise_with("must be a map with non-negative integer keys", k, push_key(context, key))
         end)
 
       other ->
-        raise_with(make_message([key | keystack], "must be a map"), other, opts)
+        raise_with("must be a map", other, push_key(context, key))
     end)
   end
 
-  def normalize_as_struct(opts, key, module) do
-    Keyword.update(opts, key, module.new([], opts), &module.new(&1, opts))
+  def normalize_as_struct(opts, key, module, context) do
+    context = push_key(context, key)
+    Keyword.update(opts, key, module.new([], context), &module.new(&1, context))
   end
 
-  def normalize_list(opts, key, callback, type) when is_function(callback, 1) do
+  def normalize_list(opts, key, callback, type_str, context) when is_function(callback, 2) do
+    context = push_key(context, key)
+
     Keyword.update(opts, key, [], fn
       list when is_list(list) ->
-        Enum.map(list, callback)
+        Enum.map(list, &callback.(&1, context))
 
       other ->
-        raise_with("`#{key}` option must be a list of #{type}", other, opts)
+        raise_with("must be a list of #{type_str}", other, context)
     end)
   end
 
-  def normalize_path(opts, key) do
+  def normalize_path(opts, key, context) do
     Keyword.update(opts, key, nil, &IO.iodata_to_binary/1)
   rescue
     _ in ArgumentError ->
-      raise_with("`#{key}` option must be a path", opts[key], opts)
+      raise_with("`#{key}` option must be a path", opts[key], context)
   end
 
   def normalize_module(opts, key, keystack \\ [], or_true \\ nil) do
@@ -50,18 +73,18 @@ defmodule Zig.Options do
     end)
   end
 
-  def normalize_atom_or_atomlist(opts, key) do
+  def normalize_atom_or_atomlist(opts, key, context) do
     Keyword.update(opts, key, [], fn atom_or_atomlist ->
       atom_or_atomlist
       |> List.wrap()
-      |> Enum.map(&atom_or_raise(&1, opts, key))
+      |> Enum.map(&atom_or_raise(&1, push_key(context, key)))
     end)
   end
 
-  defp atom_or_raise(atom, _opts, _key) when is_atom(atom), do: atom
+  defp atom_or_raise(atom, _context) when is_atom(atom), do: atom
 
-  defp atom_or_raise(other, opts, key),
-    do: raise_with("option `#{key}` must be a list of atoms", other, opts)
+  defp atom_or_raise(other, context),
+    do: raise_with("must be a list of atoms", other, context)
 
   def normalize_atom(opts, key, keystack) do
     Keyword.update(opts, key, nil, fn
@@ -77,12 +100,23 @@ defmodule Zig.Options do
     Keyword.update(opts, key, [], fn arity ->
       arity
       |> List.wrap()
-      |> Enum.flat_map(fn 
-        n when is_integer(n) and n >= 0 -> [n]
-        a.._//1 = range when a >= 0 -> Enum.to_list(range)
+      |> Enum.flat_map(fn
+        n when is_integer(n) and n >= 0 ->
+          [n]
+
+        a.._//1 = range when a >= 0 ->
+          Enum.to_list(range)
+
         other ->
-          raise_with(make_message([key | keystack], "must be a non-negative integer or range or a list of those"), other, opts)
-        end)
+          raise_with(
+            make_message(
+              [key | keystack],
+              "must be a non-negative integer or range or a list of those"
+            ),
+            other,
+            opts
+          )
+      end)
     end)
   end
 
@@ -109,11 +143,17 @@ defmodule Zig.Options do
   end
 
   def normalize_lookup(opts, key, keystack \\ [], lookup) do
-    Enum.map(opts, fn 
+    Enum.map(opts, fn
       {^key, value} when is_map_key(lookup, value) ->
         {key, lookup[value]}
+
       {^key, other} ->
-        raise_with(make_message([key | keystack], "must be one of #{list_of(Map.keys(lookup))}"), other, opts)
+        raise_with(
+          make_message([key | keystack], "must be one of #{list_of(Map.keys(lookup))}"),
+          other,
+          opts
+        )
+
       maybe_override when is_atom(maybe_override) ->
         case Map.fetch(lookup, maybe_override) do
           {:ok, value} ->
@@ -122,65 +162,76 @@ defmodule Zig.Options do
           _ ->
             maybe_override
         end
+
       other ->
         other
     end)
   end
 
-  def scrub_non_keyword(opts, keystack) do
-    Enum.map(opts, fn 
-      {key, _} = kv when is_atom(key) -> kv
+  def scrub_non_keyword(opts, context) do
+    Enum.map(opts, fn
+      {key, _} = kv when is_atom(key) ->
+        kv
+
       other ->
-        raise_with(make_message(keystack, "found an invalid term in the options list"), other, opts)
+        raise_with(
+          "found an invalid term in the options list",
+          other,
+          context
+        )
     end)
   end
 
-  def validate(opts, keypath, keystack \\ [], validation)
+  def validate(opts, key, validation, context)
 
-  def validate(opts, keypath, keystack, members) when is_list(members) do
-    do_validate(opts, keypath, keystack, &(&1 in members), "must be one of #{list_of(members)}" )
+  def validate(opts, key, members, context) when is_list(members) do
+    do_validate(opts, key, &(&1 in members), "must be one of #{list_of(members)}", context)
   end
 
-  def validate(opts, keypath, keystack, :boolean) do
-    do_validate(opts, keypath, keystack, &is_boolean/1, "must be a boolean")
+  def validate(opts, key, :boolean, context) do
+    do_validate(opts, key, &is_boolean/1, "must be a boolean", context)
   end
 
-  def validate(opts, keypath, keystack, :atom) do
-    do_validate(opts, keypath, keystack, &is_atom/1, "must be an atom")
+  def validate(opts, key, :atom, context) do
+    do_validate(opts, key, &is_atom/1, "must be an atom", context)
   end
 
-  def validate(opts, keypath, keystack, fun) when is_function(fun, 1) do
-    do_validate(opts, keypath, keystack, fun, "")
+  def validate(opts, key, fun, context) when is_function(fun, 1) do
+    do_validate(opts, key, fun, "", context)
   end
 
-  defp do_validate(opts, keypath, keystack, fun, message) do
-    keypath = List.wrap(keypath)
-    case do_validation(opts, keypath, fun, message) do
+  defp do_validate(opts, key, fun, message, context) do
+    context = push_key(context, key)
+
+    case fetch_and_run(opts, key, fun) do
       true ->
         opts
+
       false ->
-        raise_with(make_message(Enum.reverse(keypath, keystack), message), get_in(opts, keypath), opts)
+        raise_with(message, opts[key], context)
+
       :ok ->
         opts
+
       {:error, substitute_message} ->
-        raise_with(make_message(Enum.reverse(keypath, keystack), substitute_message), opts)
+        raise_with(substitute_message, context)
+
       {:error, substitute_message, content} ->
-        raise_with(make_message(Enum.reverse(keypath, keystack), substitute_message), content, opts)
+        raise_with(substitute_message, content, context)
     end
   end
 
-  defp do_validation(opts, [head | rest], fun, message) do
-    case Keyword.fetch(opts, head) do
+  def fetch_and_run(opts, key, fun) do
+    case Keyword.fetch(opts, key) do
       {:ok, value} ->
-         do_validation(value, rest, fun, message)
+        fun.(value)
 
-      :error -> :ok
+      :error ->
+        :ok
     end
   end
 
-  defp do_validation(value, [], fun, _), do: fun.(value)
-
-  def raise_with(message, content \\ nil, opts) do
+  def raise_with(message, content \\ nil, context) do
     message =
       case content do
         {:tag, label, content} ->
@@ -194,10 +245,12 @@ defmodule Zig.Options do
       end
 
     raise CompileError,
-      description: message,
-      file: opts[:file],
-      line: opts[:line]
+      description: make_message(context.keystack, message),
+      file: context.file,
+      line: context.line
   end
+
+  defp make_message([], stem), do: stem
 
   defp make_message(keystack, stem) do
     keystack_str =

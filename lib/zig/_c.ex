@@ -10,6 +10,8 @@ defmodule Zig.C do
             link_lib: [],
             link_libcpp: false
 
+  alias Zig.Options
+
   @type t :: %__MODULE__{
           include_dirs: [String.t() | {:system, String.t()}],
           library_dirs: [String.t() | {:system, String.t()}],
@@ -30,51 +32,57 @@ defmodule Zig.C do
           src: srcspec()
         ]
 
-  @valid_keys ~w[include_dirs library_dirs src link_lib link_libcpp]a
-
-  def new(opts, module_opts) do
-    module_dir =
-      cond do
-        dir = module_opts[:dir] -> dir
-        file = module_opts[:file] -> Path.dirname(file)
-      end
-
-    otp_app = Keyword.fetch!(module_opts, :otp_app)
-
-    Enum.each(opts, fn
-      {key, _} ->
-        if key not in @valid_keys do
-          raise CompileError,
-            file: module_opts[:file],
-            line: module_opts[:line],
-            description: "`c` option had invalid key `#{key}`"
-        end
-    end)
-
-    __MODULE__
-    |> struct!(
-      include_dirs: normalize_filelist(opts, :include_dirs, module_dir, otp_app),
-      library_dirs: normalize_filelist(opts, :library_dirs, module_dir, otp_app),
-      link_lib: normalize_filelist(opts, :link_lib, module_dir, otp_app),
-      link_libcpp: Keyword.get(opts, :link_libcpp, false),
-      src: normalized_srclist(opts, module_dir, otp_app)
-    )
-    |> validate(module_opts)
-  catch
-    {:dirspec_error, key, value} ->
-      raise CompileError,
-        file: module_opts[:file],
-        line: module_opts[:line],
-        description:
-          "`c` option `#{key}` must be a string, `{:priv, string}`, `{:system, string}`, or a list of those, got: `#{inspect(value)}`"
-
-    {:src_error, value} ->
-      raise CompileError,
-        file: module_opts[:file],
-        line: module_opts[:line],
-        description:
-          "`c` option `src` must be a string, `{string, [string]}`, `{:priv, string}`, `{:priv, string, [string]}`, `{:system, string}`, `{:system, string, [string]}`, or a list of those, got: `#{inspect(value)}`"
+  def new(opts, _context) do
+    struct!(__MODULE__, opts)
+  rescue
+    e in KeyError ->
+      Options.raise_with("blahblah", e.key, opts)
   end
+
+  # module_dir =
+  #  cond do
+  #    dir = module_opts[:dir] -> dir
+  #    file = module_opts[:file] -> Path.dirname(file)
+  #  end
+  #
+  # otp_app = Keyword.fetch!(module_opts, :otp_app)
+  #
+  # Enum.each(opts, fn
+  #  {key, _} ->
+  #    if key not in @valid_keys do
+  #      raise CompileError,
+  #        file: module_opts[:file],
+  #        line: module_opts[:line],
+  #        description: "`c` option had invalid key `#{key}`"
+  #    end
+  # end)
+  #
+  # __MODULE__
+  # |> struct!(
+  #  include_dirs: normalize_filelist(opts, :include_dirs, module_dir, otp_app),
+  #  library_dirs: normalize_filelist(opts, :library_dirs, module_dir, otp_app),
+  #  link_lib: normalize_filelist(opts, :link_lib, module_dir, otp_app),
+  #  link_libcpp: Keyword.get(opts, :link_libcpp, false),
+  #  src: normalized_srclist(opts, module_dir, otp_app)
+  # )
+  # |> validate(module_opts)
+  #  catch
+  #    {:dirspec_error, key, value} ->
+  #      :foo
+  #      #raise CompileError,
+  #      #  file: module_opts[:file],
+  #      #  line: module_opts[:line],
+  #      #  description:
+  #      #    "`c` option `#{key}` must be a string, `{:priv, string}`, `{:system, string}`, or a list of those, got: `#{inspect(value)}`"
+  ##
+  #    {:src_error, value} ->
+  #      :foo
+  #      #raise CompileError,
+  #      #  file: module_opts[:file],
+  #      #  line: module_opts[:line],
+  #      #  description:
+  #      #    "`c` option `src` must be a string, `{string, [string]}`, `{:priv, string}`, `{:priv, string, [string]}`, `{:system, string}`, `{:system, string, [string]}`, or a list of those, got: `#{inspect(value)}`"
+  #  end
 
   defp normalize_filelist(opts, key, module_dir, otp_app) do
     opts

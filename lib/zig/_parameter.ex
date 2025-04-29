@@ -15,45 +15,19 @@ defmodule Zig.Parameter do
 
   @type opts :: :noclean | [:noclean | {:cleanup, boolean}]
 
-  def new(options, module) do
-    struct!(__MODULE__, normalize_options(options, module))
-  end
-
-  @options ~w[cleanup in_out]a
-
-  def normalize_options(options, module) do
+  @spec new(opts, Options.context()) :: t
+  def new(options, context) do
     options
     |> List.wrap()
-    |> Enum.flat_map(fn
-      :noclean ->
-        [cleanup: false]
+    |> Options.normalize_boolean(:cleanup, context.keystack, noclean: false)
+    |> Options.normalize_boolean(:in_out, context.keystack, in_out: true)
+    |> Options.scrub_non_keyword(context.keystack)
+    |> force_in_out_no_cleanup()
+    |> then(&struct!(__MODULE__, &1))
+  end
 
-      :in_out ->
-        [in_out: true, cleanup: false]
-
-      {k, v} when k in @options and is_boolean(v) ->
-        [{k, v}]
-
-      {k, v} when k in @options ->
-        Options.raise_with(
-          "nif parameter option `#{k}` must be boolean",
-          v,
-          module
-        )
-
-      {k, _} ->
-        Options.raise_with(
-          "nif parameter option key `#{k}` is invalid",
-          module
-        )
-
-      other ->
-        Options.raise_with(
-          "nif parameter option `#{inspect(other)}` is invalid",
-          module
-        )
-    end)
-    |> then(&Keyword.merge([cleanup: true, in_out: false], &1))
+  def force_in_out_no_cleanup(options) do
+    if options[:in_out], do: Keyword.put(options, :cleanup, false), else: options
   end
 
   def render_accessory_variables(parameter, index) do

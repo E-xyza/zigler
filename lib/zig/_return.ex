@@ -29,10 +29,10 @@ defmodule Zig.Return do
           | {:length, non_neg_integer | {:arg, non_neg_integer()}}
         ]
 
-  #def new({:raw, raw}) when raw in ~w[term erl_nif_term]a,
+  # def new({:raw, raw}) when raw in ~w[term erl_nif_term]a,
   #  do: %__MODULE__{type: raw, cleanup: false}
-#
-  #def new(options), do: struct!(__MODULE__, options)
+  #
+  # def new(options), do: struct!(__MODULE__, options)
 
   def new(opts, module_info) do
     opts

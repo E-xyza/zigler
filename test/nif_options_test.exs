@@ -12,7 +12,10 @@ defmodule ZiglerTest.NifOptionsTest do
   ]
 
   defp make_nif(opts) do
-    Nif.new(:my_nif, opts ++ @default_opts)
+    Nif.new(
+      {:my_nif, opts ++ @default_opts},
+      Map.new(@default_opts ++ [keystack: [:my_nif, :nifs]])
+    )
   end
 
   test "empty is viable" do
@@ -362,7 +365,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
   describe "invalid options" do
     test "atom wonky" do
-      assert_raise CompileError, 
+      assert_raise CompileError,
                    "test/nif_options_test.exs:9: option `nifs > my_nif` found an invalid term in the options list, got: `:foobar`",
                    fn ->
                      make_nif([:foobar])
@@ -380,19 +383,19 @@ defmodule ZiglerTest.NifOptionsTest do
     end
 
     test "naked range" do
-      assert %{arity: [1,2,3]} = make_nif(arity: 1..3)
+      assert %{arity: [1, 2, 3]} = make_nif(arity: 1..3)
     end
 
     test "list of number and range" do
-      assert %{arity: [1,2,3,5,6]} = make_nif(arity: [1, 2..3, 5..6])
+      assert %{arity: [1, 2, 3, 5, 6]} = make_nif(arity: [1, 2..3, 5..6])
     end
 
     test "unacceptable content" do
-      assert_raise CompileError, 
-                    "test/nif_options_test.exs:9: option `nifs > my_nif > arity` must be a non-negative integer or range or a list of those, got: `:foo`",
-                    fn ->
-                      make_nif(arity: [1, 2..3, 5..6, :foo])
-                    end
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > arity` must be a non-negative integer or range or a list of those, got: `:foo`",
+                   fn ->
+                     make_nif(arity: [1, 2..3, 5..6, :foo])
+                   end
     end
   end
 end

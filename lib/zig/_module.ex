@@ -91,6 +91,7 @@ defmodule Zig.Module do
   @type callback_opts() :: [on_load: atom(), on_upgrade: atom(), on_unload: atom()]
 
   @defaultable_nif_opts ~w[cleanup leak_check]a
+  @release_modes ~w[debug safe fast small env]a
 
   # this function builds and verifies the module options and turns it into the struct.
 
@@ -113,7 +114,28 @@ defmodule Zig.Module do
         :ok
     end
 
+    context = Options.initialize_context(caller)
+
     opts
+    |> obtain_version
+    |> Options.normalize_as_struct(:c, C, context)
+    |> Options.normalize_list(
+      :callbacks,
+      &normalize_callback/2,
+      "callback specifications",
+      context
+    )
+    |> Options.normalize_path(:dir, context)
+    |> Options.normalize_path(:module_code_path, context)
+    |> Options.normalize_path(:zig_code_path, context)
+    |> Options.normalize_path(:easy_c, context)
+    |> Options.normalize_list(:packages, &normalize_package/2, "package specifications", context)
+    |> Options.normalize_atom_or_atomlist(:ignore, context)
+    |> Options.normalize_atom_or_atomlist(:resources, context)
+    |> Options.validate(:release_mode, @release_modes, context)
+    |> Options.validate(:cleanup, :boolean, context)
+    |> Options.validate(:leak_check, :boolean, context)
+    # TODO: make transferring defaultable_nif_opts one step.
     |> Keyword.drop(@defaultable_nif_opts)
     |> Keyword.merge(
       default_nif_opts: Keyword.take(opts, @defaultable_nif_opts),
@@ -121,35 +143,12 @@ defmodule Zig.Module do
       file: caller.file,
       line: caller.line
     )
-    |> normalize_options()
+    # |> then(&Keyword.update!(&1, :nifs, fn nifs -> normalize_nifs(nifs, &1, context) end))
     |> then(&struct!(__MODULE__, &1))
   rescue
     e in KeyError ->
-      Options.raise_with("`#{e.key}` is not a valid option", Map.take(caller, ~w[file line]a))
-  end
-
-  @release_modes ~w[debug safe fast small env]a
-
-  defp normalize_options(opts) do
-    opts
-    |> obtain_version
-    |> Options.normalize_as_struct(:c, C)
-    |> Options.normalize_list(
-      :callbacks,
-      &normalize_callback(&1, opts),
-      "callback specifications"
-    )
-    |> Options.normalize_path(:dir)
-    |> Options.normalize_path(:module_code_path)
-    |> Options.normalize_path(:zig_code_path)
-    |> Options.normalize_path(:easy_c)
-    |> Options.normalize_list(:packages, &normalize_package(&1, opts), "package specifications")
-    |> Options.normalize_atom_or_atomlist(:ignore)
-    |> Options.normalize_atom_or_atomlist(:resources)
-    |> Options.validate(:release_mode, @release_modes)
-    |> Options.validate(~w[cleanup default_nif_opts]a, :boolean)
-    |> Options.validate(~w[leak_check default_nif_opts]a, :boolean)
-    |> then(&Keyword.update!(&1, :nifs, fn nifs -> normalize_nifs(nifs, &1) end))
+      context = Options.initialize_context(caller)
+      Options.raise_with("`#{e.key}` is not a valid option", context)
   end
 
   defp obtain_version(opts) do
@@ -176,30 +175,31 @@ defmodule Zig.Module do
 
   @callbacks ~w[on_load on_upgrade on_unload]a
 
-  defp normalize_callback(callback, _opts) when callback in @callbacks, do: {callback, callback}
+  defp normalize_callback(callback, _context) when callback in @callbacks,
+    do: {callback, callback}
 
-  defp normalize_callback({callback, fun}, _opts) when callback in @callbacks and is_atom(fun),
+  defp normalize_callback({callback, fun}, _context) when callback in @callbacks and is_atom(fun),
     do: {callback, fun}
 
-  defp normalize_callback({callback, invalid}, opts) when callback in @callbacks,
-    do: Options.raise_with("`callbacks` option `#{callback}` must be an atom", invalid, opts)
+  defp normalize_callback({callback, invalid}, context) when callback in @callbacks,
+    do: Options.raise_with("must be an atom", invalid, Options.push_key(context, callback))
 
-  defp normalize_callback(other, opts),
+  defp normalize_callback(other, context),
     do:
       Options.raise_with(
-        "`callbacks` option must be a keyword list of callback specs",
+        "must be a keyword list of callback specs",
         other,
-        opts
+        context
       )
 
-  defp normalize_package({k, {path, deps}}, opts) when is_atom(k) and is_list(deps) do
+  defp normalize_package({k, {path, deps}}, context) when is_atom(k) and is_list(deps) do
     Enum.each(deps, fn dep ->
       if not is_atom(dep),
         do:
           Options.raise_with(
-            "`packages` spec for `#{k}` must have a list of atoms for deps",
+            "must have a list of atoms for deps",
             dep,
-            opts
+            Options.push_key(context, k)
           )
     end)
 
@@ -208,42 +208,42 @@ defmodule Zig.Module do
     rescue
       _ ->
         Options.raise_with(
-          "`packages` spec for `#{k}` must be a tuple of the form `{path, [deps...]}`",
+          "must be a tuple of the form `{path, [deps...]}`",
           {:tag, "path", path},
-          opts
+          Options.push_key(context, k)
         )
     end
   end
 
-  defp normalize_package({k, {_, malformed}}, opts) when is_atom(k),
+  defp normalize_package({k, {_, malformed}}, context) when is_atom(k),
     do:
       Options.raise_with(
-        "`packages` spec for `#{k}` must have a list of atoms for deps",
+        "must have a list of atoms for deps",
         malformed,
-        opts
+        Options.push_key(context, k)
       )
 
-  defp normalize_package({k, malformed}, opts) when is_atom(k) do
+  defp normalize_package({k, malformed}, context) when is_atom(k) do
     Options.raise_with(
-      "`packages` spec for `#{k}` must be a tuple of the form `{path, [deps...]}`",
+      "must be a tuple of the form `{path, [deps...]}`",
       malformed,
-      opts
+      Options.push_key(context, k)
     )
   end
 
   defp normalize_package(other, opts) do
     Options.raise_with(
-      "`packages` option must be a list of package specifications",
+      "must be a list of package specifications",
       other,
       opts
     )
   end
 
-  defp normalize_nifs({:auto, nifs}, full_opts) do
-    {:auto, normalize_nifs(nifs, full_opts)}
+  defp normalize_nifs({:auto, nifs}, full_opts, context) do
+    {:auto, normalize_nifs(nifs, full_opts, context)}
   end
 
-  defp normalize_nifs(nifs, full_opts) do
+  defp normalize_nifs(nifs, full_opts, context) do
     # at this point there MUST be a :nifs option, either provided by the user or
     # supplied by the zigler codebase.  This is also guaranteed to be a keyword list.
 
@@ -254,10 +254,10 @@ defmodule Zig.Module do
 
     Enum.map(nifs, fn
       {name, spec} ->
-        Nif.new(name, common_opts ++ spec)
+        Nif.new({name, common_opts ++ spec}, context)
 
       name when is_atom(name) ->
-        Nif.new(name, common_opts)
+        Nif.new({name, common_opts}, context)
     end)
   end
 

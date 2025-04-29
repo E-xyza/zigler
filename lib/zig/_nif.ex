@@ -108,32 +108,38 @@ defmodule Zig.Nif do
   @doc """
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
-  def new(name, opts) do
-    keystack = [name, :nifs]
+  def new({name, opts}, context) do
+    context = Options.push_key(context, name)
 
     # all options which can take atoms must be normalized first.
     opts
-    |> Options.normalize_boolean(:cleanup, keystack, noclean: false)
-    |> Options.normalize_boolean(:spec, keystack, nospec: false)
-    |> Options.normalize_boolean(:leak_check, keystack, leak_check: true)
-    |> Options.normalize_lookup(:concurrency, keystack, %{synchronous: Synchronous, threaded: Threaded, yielding: Yielding, dirty_cpu: DirtyCpu, dirty_io: DirtyIo})
-    |> Options.scrub_non_keyword(keystack)
+    |> Options.normalize_boolean(:cleanup, context, noclean: false)
+    |> Options.normalize_boolean(:spec, context, nospec: false)
+    |> Options.normalize_boolean(:leak_check, context, leak_check: true)
+    |> Options.normalize_lookup(:concurrency, context, %{
+      synchronous: Synchronous,
+      threaded: Threaded,
+      yielding: Yielding,
+      dirty_cpu: DirtyCpu,
+      dirty_io: DirtyIo
+    })
+    |> Options.scrub_non_keyword(context)
     |> Keyword.put_new(:cleanup, true)
     |> Keyword.put(:name, name)
-    |> Options.normalize_module(:impl, keystack, :or_true)
-    |> Options.normalize_as_struct(:params, {:int_map, Parameter}, keystack)
-    |> Options.validate(:alias, keystack, &validate_alias(&1, name))
-    |> Options.validate(:export, keystack, :boolean)
-    |> Options.validate(:allocator, keystack, :atom)
-    |> Options.normalize_arity(:arity, keystack)
-    |> Options.normalize_as_struct(:return, Return)
+    |> Options.normalize_module(:impl, context, :or_true)
+    |> Options.normalize_as_struct(:params, {:int_map, Parameter}, context)
+    |> Options.validate(:alias, context, &validate_alias(&1, name))
+    |> Options.validate(:export, context, :boolean)
+    |> Options.validate(:allocator, context, :atom)
+    |> Options.normalize_arity(:arity, context)
+    |> Options.normalize_as_struct(:return, Return, context)
     |> then(&struct!(__MODULE__, &1))
   end
 
   defp validate_alias(name, name), do: {:error, "may not be the same as the nif name `#{name}`"}
 
   defp validate_alias(alias_name, name) when is_atom(alias_name), do: :ok
-  
+
   defp validate_alias(other, _name), do: {:error, "must be an atom", other}
 
   def render_elixir(%{concurrency: concurrency} = nif) do
