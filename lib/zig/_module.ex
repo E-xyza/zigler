@@ -121,7 +121,7 @@ defmodule Zig.Module do
       file: caller.file,
       line: caller.line
     )
-    |> normalize_options(caller)
+    |> normalize_options()
     |> then(&struct!(__MODULE__, &1))
   rescue
     e in KeyError ->
@@ -130,7 +130,7 @@ defmodule Zig.Module do
 
   @release_modes ~w[debug safe fast small env]a
 
-  defp normalize_options(opts, caller) do
+  defp normalize_options(opts) do
     opts
     |> obtain_version
     |> Options.normalize_as_struct(:c, C)

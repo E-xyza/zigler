@@ -117,8 +117,13 @@ defmodule Zig.Nif do
     |> Options.normalize_boolean(:spec, keystack, nospec: false)
     |> Options.normalize_boolean(:leak_check, keystack, leak_check: true)
     |> Options.normalize_lookup(:concurrency, keystack, %{synchronous: Synchronous, threaded: Threaded, yielding: Yielding, dirty_cpu: DirtyCpu, dirty_io: DirtyIo})
+    |> Options.scrub_non_keyword(keystack)
     |> Options.normalize_module(:impl, keystack, :or_true)
+    |> Options.normalize_as_struct(:params, {:int_map, Parameter}, keystack)
     |> Options.validate(:alias, keystack, &validate_alias(&1, name))
+    |> Options.validate(:export, keystack, :boolean)
+    |> Options.validate(:allocator, keystack, :atom)
+    |> Options.normalize_arity(:arity, keystack)
     |> normalize(name)
     |> then(&struct!(__MODULE__, &1))
   end
@@ -131,73 +136,6 @@ defmodule Zig.Nif do
 
   def normalize(opts, name) do
     opts
-    |> Enum.map(fn
-      {:params, params} when is_map(params) ->
-        {:params,
-         Map.new(params, fn
-           {index, param_opts} when is_integer(index) and index >= 0 ->
-            # super janky.  Fix this later.
-             {index, Parameter.new(nil, param_opts, %{file: opts[:file], line: opts[:line]})}
-
-           {other, _} ->
-             Options.raise_with("`params` map keys must be non-negative integers", other, opts)
-         end)}
-
-      {:params, error} ->
-        Options.raise_with(
-          "nif option `params` must be a params map",
-          error,
-          opts
-        )
-
-      {:alias, ^name} ->
-        Options.raise_with(
-          "nif option `alias` cannot be the same as the nif name",
-          opts
-        )
-
-      {:alias, a} when is_atom(a) ->
-        {:alias, a}
-
-      {:alias, a} ->
-        Options.raise_with(
-          "nif option `alias` must be an atom",
-          a,
-          opts
-        )
-
-      {:doc, doc} when is_binary(doc) ->
-        {doc, doc}
-
-      {:export, v} when not is_boolean(v) ->
-        Options.raise_with(
-          "nif option `export` must be a boolean",
-          v,
-          opts
-        )
-
-      {:allocator, v} when is_atom(v) ->
-        {:allocator, v}
-
-      {:allocator, v} ->
-        Options.raise_with(
-          "nif option `allocator` must be an atom",
-          v,
-          opts
-        )
-
-      {:arity, arity} ->
-        arity
-        |> List.wrap()
-        |> Enum.flat_map(fn
-          n when is_integer(n) and n >= 0 -> [n]
-          a.._//1 = range when a >= 0 -> Enum.to_list(range)
-        end)
-        |> then(&{:arity, &1})
-
-      {atom, _} = kv when is_atom(atom) ->
-        kv
-    end)
     |> Keyword.put_new(:cleanup, true)
     |> Keyword.put(:name, name)
     |> normalize_return()

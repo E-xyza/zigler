@@ -4,6 +4,7 @@ defmodule Zig.Parameter do
   @enforce_keys ~w[cleanup in_out]a
   defstruct @enforce_keys ++ [:type]
 
+  alias Zig.Options
   alias Zig.Type
 
   @type t :: %__MODULE__{
@@ -14,9 +15,8 @@ defmodule Zig.Parameter do
 
   @type opts :: :noclean | [:noclean | {:cleanup, boolean}]
 
-  def new(type, options, module) do
-    type_opt = List.wrap(if type, do: {:type, type})
-    struct!(__MODULE__, type_opt ++ normalize_options(options, module))
+  def new(options, module) do
+    struct!(__MODULE__, normalize_options(options, module))
   end
 
   @options ~w[cleanup in_out]a
@@ -35,22 +35,23 @@ defmodule Zig.Parameter do
         [{k, v}]
 
       {k, v} when k in @options ->
-        raise CompileError,
-          description: "nif parameter option `#{k}` must be boolean, got: `#{inspect(v)}`",
-          file: module.file,
-          line: module.line
+        Options.raise_with(
+          "nif parameter option `#{k}` must be boolean",
+          v,
+          module
+        )
 
       {k, _} ->
-        raise CompileError,
-          description: "nif parameter option key `#{k}` is invalid",
-          file: module.file,
-          line: module.line
+        Options.raise_with(
+          "nif parameter option key `#{k}` is invalid",
+          module
+        )
 
       other ->
-        raise CompileError,
-          description: "nif parameter option `#{inspect(other)}` is invalid",
-          file: module.file,
-          line: module.line
+        Options.raise_with(
+          "nif parameter option `#{inspect(other)}` is invalid",
+          module
+        )
     end)
     |> then(&Keyword.merge([cleanup: true, in_out: false], &1))
   end

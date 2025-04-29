@@ -30,7 +30,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "rejects non-boolean" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `export` must be a boolean, got: `1`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > export` must be a boolean, got: `1`",
                    fn ->
                      make_nif(export: 1)
                    end
@@ -144,7 +144,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "rejects on non-atom" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `allocator` must be an atom, got: `1`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > allocator` must be an atom, got: `1`",
                    fn ->
                      make_nif(allocator: 1)
                    end
@@ -299,7 +299,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "you can't set it to anything else" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `params` must be a params map, got: `:foo`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > params` must be a map, got: `:foo`",
                    fn ->
                      make_nif(params: :foo)
                    end
@@ -307,7 +307,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "params map keys must be integers" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: `params` map keys must be non-negative integers, got: `:foo`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > params` must be a map with non-negative integer keys, got: `:foo`",
                    fn ->
                      make_nif(params: %{foo: []})
                    end
@@ -360,8 +360,39 @@ defmodule ZiglerTest.NifOptionsTest do
     end
   end
 
+  describe "invalid options" do
+    test "atom wonky" do
+      assert_raise CompileError, 
+                   "test/nif_options_test.exs:9: option `nifs > my_nif` found an invalid term in the options list, got: `:foobar`",
+                   fn ->
+                     make_nif([:foobar])
+                   end
+    end
+  end
+
   describe "arity" do
-    @tag :skip
-    test "implement"
+    test "single number" do
+      assert %{arity: [1]} = make_nif(arity: 1)
+    end
+
+    test "list of numbers" do
+      assert %{arity: [1, 3]} = make_nif(arity: [1, 3])
+    end
+
+    test "naked range" do
+      assert %{arity: [1,2,3]} = make_nif(arity: 1..3)
+    end
+
+    test "list of number and range" do
+      assert %{arity: [1,2,3,5,6]} = make_nif(arity: [1, 2..3, 5..6])
+    end
+
+    test "unacceptable content" do
+      assert_raise CompileError, 
+                    "test/nif_options_test.exs:9: option `nifs > my_nif > arity` must be a non-negative integer or range or a list of those, got: `:foo`",
+                    fn ->
+                      make_nif(arity: [1, 2..3, 5..6, :foo])
+                    end
+    end
   end
 end

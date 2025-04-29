@@ -3,6 +3,21 @@ defmodule Zig.Options do
 
   # this module provides common mechanisms for parsing options.
 
+  def normalize_as_struct(opts, key, {:int_map, module}, keystack) do
+    Keyword.update(opts, key, %{}, fn
+      map when is_map(map) ->
+        Map.new(map, fn 
+          {k, v} when is_integer(k) and k >= 0 ->
+            {k, module.new(v, opts)}
+          {k, _} ->
+            raise_with(make_message([key | keystack], "must be a map with non-negative integer keys"), k, opts)
+        end)
+
+      other ->
+        raise_with(make_message([key | keystack], "must be a map"), other, opts)
+    end)
+  end
+
   def normalize_as_struct(opts, key, module) do
     Keyword.update(opts, key, module.new([], opts), &module.new(&1, opts))
   end
@@ -40,6 +55,34 @@ defmodule Zig.Options do
       atom_or_atomlist
       |> List.wrap()
       |> Enum.map(&atom_or_raise(&1, opts, key))
+    end)
+  end
+
+  defp atom_or_raise(atom, _opts, _key) when is_atom(atom), do: atom
+
+  defp atom_or_raise(other, opts, key),
+    do: raise_with("option `#{key}` must be a list of atoms", other, opts)
+
+  def normalize_atom(opts, key, keystack) do
+    Keyword.update(opts, key, nil, fn
+      atom when is_atom(atom) ->
+        atom
+
+      other ->
+        raise_with(make_message([key | keystack], "must be an atom"), other, opts)
+    end)
+  end
+
+  def normalize_arity(opts, key, keystack) do
+    Keyword.update(opts, key, [], fn arity ->
+      arity
+      |> List.wrap()
+      |> Enum.flat_map(fn 
+        n when is_integer(n) and n >= 0 -> [n]
+        a.._//1 = range when a >= 0 -> Enum.to_list(range)
+        other ->
+          raise_with(make_message([key | keystack], "must be a non-negative integer or range or a list of those"), other, opts)
+        end)
     end)
   end
 
@@ -84,10 +127,13 @@ defmodule Zig.Options do
     end)
   end
 
-  defp atom_or_raise(atom, _opts, _key) when is_atom(atom), do: atom
-
-  defp atom_or_raise(other, opts, key),
-    do: raise_with("option `#{key}` must be a list of atoms", other, opts)
+  def scrub_non_keyword(opts, keystack) do
+    Enum.map(opts, fn 
+      {key, _} = kv when is_atom(key) -> kv
+      other ->
+        raise_with(make_message(keystack, "found an invalid term in the options list"), other, opts)
+    end)
+  end
 
   def validate(opts, keypath, keystack \\ [], validation)
 
@@ -97,6 +143,10 @@ defmodule Zig.Options do
 
   def validate(opts, keypath, keystack, :boolean) do
     do_validate(opts, keypath, keystack, &is_boolean/1, "must be a boolean")
+  end
+
+  def validate(opts, keypath, keystack, :atom) do
+    do_validate(opts, keypath, keystack, &is_atom/1, "must be an atom")
   end
 
   def validate(opts, keypath, keystack, fun) when is_function(fun, 1) do
@@ -109,7 +159,7 @@ defmodule Zig.Options do
       true ->
         opts
       false ->
-        raise_with(make_message(Enum.reverse(keypath, keystack), message), opts)
+        raise_with(make_message(Enum.reverse(keypath, keystack), message), get_in(opts, keypath), opts)
       :ok ->
         opts
       {:error, substitute_message} ->
