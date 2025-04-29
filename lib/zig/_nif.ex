@@ -113,14 +113,21 @@ defmodule Zig.Nif do
 
     # all options which can take atoms must be normalized first.
     opts
-    |> Options.normalize_boolean([:cleanup | keystack], noclean: false)
-    |> Options.normalize_boolean([:spec | keystack], nospec: false)
-    |> Options.normalize_boolean([:leak_check | keystack], leak_check: true)
-    |> Options.normalize_lookup([:concurrency | keystack], %{synchronous: Synchronous, threaded: Threaded, yielding: Yielding, dirty_cpu: DirtyCpu, dirty_io: DirtyIo})
-    |> Options.normalize_module([:impl | keystack], :or_true)
+    |> Options.normalize_boolean(:cleanup, keystack, noclean: false)
+    |> Options.normalize_boolean(:spec, keystack, nospec: false)
+    |> Options.normalize_boolean(:leak_check, keystack, leak_check: true)
+    |> Options.normalize_lookup(:concurrency, keystack, %{synchronous: Synchronous, threaded: Threaded, yielding: Yielding, dirty_cpu: DirtyCpu, dirty_io: DirtyIo})
+    |> Options.normalize_module(:impl, keystack, :or_true)
+    |> Options.validate(:alias, keystack, &validate_alias(&1, name))
     |> normalize(name)
     |> then(&struct!(__MODULE__, &1))
   end
+
+  defp validate_alias(name, name), do: {:error, "may not be the same as the nif name `#{name}`"}
+
+  defp validate_alias(alias_name, name) when is_atom(alias_name), do: :ok
+  
+  defp validate_alias(other, _name), do: {:error, "must be an atom", other}
 
   def normalize(opts, name) do
     opts

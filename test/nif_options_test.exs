@@ -42,7 +42,13 @@ defmodule ZiglerTest.NifOptionsTest do
       assert %{concurrency: Zig.Nif.Synchronous} = make_nif([])
     end
 
-    test "accepts single atoms"
+    test "accepts single atoms" do
+      assert %{concurrency: Zig.Nif.Synchronous} = make_nif([:synchronous])
+      assert %{concurrency: Zig.Nif.Threaded} = make_nif([:threaded])
+      assert %{concurrency: Zig.Nif.Yielding} = make_nif([:yielding])
+      assert %{concurrency: Zig.Nif.DirtyCpu} = make_nif([:dirty_cpu])
+      assert %{concurrency: Zig.Nif.DirtyIo} = make_nif([:dirty_io])
+    end
 
     test "accepts valid options" do
       assert %{concurrency: Zig.Nif.Synchronous} = make_nif(concurrency: :synchronous)
@@ -112,7 +118,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "rejects on self" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `alias` cannot be the same as the nif name",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > alias` may not be the same as the nif name `my_nif`",
                    fn ->
                      make_nif(alias: :my_nif)
                    end
@@ -120,7 +126,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "rejects on non-atom" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `alias` must be an atom, got: `1`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > alias` must be an atom, got: `1`",
                    fn ->
                      make_nif(alias: 1)
                    end
@@ -279,10 +285,6 @@ defmodule ZiglerTest.NifOptionsTest do
   describe "params option" do
     test "defaults to empty" do
       assert %{params: %{}} = make_nif([])
-    end
-
-    test "you can set it to an integer" do
-      assert %{params: 1} = make_nif(params: 1)
     end
 
     test "you can set it to a params map" do

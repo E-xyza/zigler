@@ -24,14 +24,14 @@ defmodule Zig.Options do
       raise_with("`#{key}` option must be a path", opts[key], opts)
   end
 
-  def normalize_module(opts, [key | _] = keystack, or_true \\ nil) do
+  def normalize_module(opts, key, keystack \\ [], or_true \\ nil) do
     Keyword.update(opts, key, nil, fn
       module when is_atom(module) ->
         module
 
       other ->
         or_true_msg = if or_true == :or_true, do: " or `true`"
-        raise_with(make_message(keystack, "must be a module#{or_true_msg}"), other, opts)
+        raise_with(make_message([key | keystack], "must be a module#{or_true_msg}"), other, opts)
     end)
   end
 
@@ -43,13 +43,13 @@ defmodule Zig.Options do
     end)
   end
 
-  def normalize_boolean(opts, [key | _] = keystack, overrides \\ []) do
+  def normalize_boolean(opts, key, keystack \\ [], overrides \\ []) do
     Enum.map(opts, fn
       {^key, value} when is_boolean(value) ->
         {key, value}
 
       {^key, other} ->
-        raise_with(make_message(keystack, "must be a boolean"), other, opts)
+        raise_with(make_message([key | keystack], "must be a boolean"), other, opts)
 
       maybe_override when is_atom(maybe_override) ->
         case Keyword.fetch(overrides, maybe_override) do
@@ -65,12 +65,12 @@ defmodule Zig.Options do
     end)
   end
 
-  def normalize_lookup(opts, [key | _] = keystack, lookup) do
+  def normalize_lookup(opts, key, keystack \\ [], lookup) do
     Enum.map(opts, fn 
       {^key, value} when is_map_key(lookup, value) ->
         {key, lookup[value]}
       {^key, other} ->
-        raise_with(make_message(keystack, "must be one of #{list_of(Map.keys(lookup))}"), other, opts)
+        raise_with(make_message([key | keystack], "must be one of #{list_of(Map.keys(lookup))}"), other, opts)
       maybe_override when is_atom(maybe_override) ->
         case Map.fetch(lookup, maybe_override) do
           {:ok, value} ->
@@ -89,46 +89,46 @@ defmodule Zig.Options do
   defp atom_or_raise(other, opts, key),
     do: raise_with("option `#{key}` must be a list of atoms", other, opts)
 
-  def validate(opts, keystack, members) when is_list(members) do
-    do_validate(
-      opts,
-      keystack,
-      &(&1 in members),
-      make_message(keystack, "must be one of #{list_of(members)}")
-    )
+  def validate(opts, keypath, keystack \\ [], validation)
 
-    opts
+  def validate(opts, keypath, keystack, members) when is_list(members) do
+    do_validate(opts, keypath, keystack, &(&1 in members), "must be one of #{list_of(members)}" )
   end
 
-  def validate(opts, keystack, :boolean) do
-    do_validate(opts, keystack, &is_boolean/1, make_message(keystack, "must be a boolean"))
-    opts
+  def validate(opts, keypath, keystack, :boolean) do
+    do_validate(opts, keypath, keystack, &is_boolean/1, "must be a boolean")
   end
 
-  defp do_validate(opts, keystack, fun, message),
-    do: do_validate(opts, opts, List.wrap(keystack), fun, message)
+  def validate(opts, keypath, keystack, fun) when is_function(fun, 1) do
+    do_validate(opts, keypath, keystack, fun, "")
+  end
 
-  defp do_validate(parent_opts, opts, [head | rest], fun, message) do
+  defp do_validate(opts, keypath, keystack, fun, message) do
+    keypath = List.wrap(keypath)
+    case do_validation(opts, keypath, fun, message) do
+      true ->
+        opts
+      false ->
+        raise_with(make_message(Enum.reverse(keypath, keystack), message), opts)
+      :ok ->
+        opts
+      {:error, substitute_message} ->
+        raise_with(make_message(Enum.reverse(keypath, keystack), substitute_message), opts)
+      {:error, substitute_message, content} ->
+        raise_with(make_message(Enum.reverse(keypath, keystack), substitute_message), content, opts)
+    end
+  end
+
+  defp do_validation(opts, [head | rest], fun, message) do
     case Keyword.fetch(opts, head) do
       {:ok, value} ->
-        do_validate(parent_opts, value, rest, fun, message)
+         do_validation(value, rest, fun, message)
 
-      :error ->
-        :ok
+      :error -> :ok
     end
   end
 
-  defp do_validate(parent_opts, value, [], fun, message) do
-    if fun.(value) do
-      :ok
-    else
-      raise_with(message, value, parent_opts)
-    end
-  end
-
-  defp do_validate(parent_opts, value, key, fun, message) when is_atom(key) do
-    do_validate(parent_opts, value, [key], fun, message)
-  end
+  defp do_validation(value, [], fun, _), do: fun.(value)
 
   def raise_with(message, content \\ nil, opts) do
     message =
