@@ -29,14 +29,20 @@ defmodule Zig.Return do
           | {:length, non_neg_integer | {:arg, non_neg_integer()}}
         ]
 
-  def new({:raw, raw}) when raw in ~w[term erl_nif_term]a,
-    do: %__MODULE__{type: raw, cleanup: false}
+  #def new({:raw, raw}) when raw in ~w[term erl_nif_term]a,
+  #  do: %__MODULE__{type: raw, cleanup: false}
+#
+  #def new(options), do: struct!(__MODULE__, options)
 
-  def new(options), do: struct!(__MODULE__, options)
+  def new(opts, module_info) do
+    opts
+    |> normalize_options(module_info)
+    |> then(&struct!(__MODULE__, &1))
+  end
 
   @as ~w[binary list integer map]a
 
-  def normalize_options(options, cleanup, module) do
+  def normalize_options(options, module_info) do
     options
     |> List.wrap()
     |> Enum.map(fn
@@ -65,8 +71,8 @@ defmodule Zig.Return do
         raise CompileError,
           description:
             "nif option `length` must be a non-negative integer or an argument spec, got: `#{inspect(v)}`",
-          file: module[:file],
-          line: module[:line]
+          file: module_info[:file],
+          line: module_info[:line]
 
       {:cleanup, cleanup} when is_boolean(cleanup) ->
         {:cleanup, cleanup}
@@ -80,8 +86,8 @@ defmodule Zig.Return do
       {:in_out, in_out} ->
         raise CompileError,
           description: "nif option `in_out` must be an atom, got: `#{inspect(in_out)}`",
-          file: module[:file],
-          line: module[:line]
+          file: module_info[:file],
+          line: module_info[:line]
 
       {:error, error} when is_atom(error) ->
         {:error, error}
@@ -89,16 +95,16 @@ defmodule Zig.Return do
       {:error, error} ->
         raise CompileError,
           description: "nif option `error` must be a module, got: `#{inspect(error)}`",
-          file: module[:file],
-          line: module[:line]
+          file: module_info[:file],
+          line: module_info[:line]
     end)
-    |> Keyword.put_new(:cleanup, cleanup)
+    |> Keyword.put(:cleanup, true)
   catch
     {:deep_typeerror, wrong, stack} ->
       raise CompileError,
         description: "nif option `as` is invalid, got: `#{inspect(wrong)}` @ [#{unwind(stack)}]",
-        file: module[:file],
-        line: module[:line]
+        file: module_info[:file],
+        line: module_info[:line]
   end
 
   defp validate_type(type, _) when type in @as, do: type

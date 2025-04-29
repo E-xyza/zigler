@@ -118,13 +118,15 @@ defmodule Zig.Nif do
     |> Options.normalize_boolean(:leak_check, keystack, leak_check: true)
     |> Options.normalize_lookup(:concurrency, keystack, %{synchronous: Synchronous, threaded: Threaded, yielding: Yielding, dirty_cpu: DirtyCpu, dirty_io: DirtyIo})
     |> Options.scrub_non_keyword(keystack)
+    |> Keyword.put_new(:cleanup, true)
+    |> Keyword.put(:name, name)
     |> Options.normalize_module(:impl, keystack, :or_true)
     |> Options.normalize_as_struct(:params, {:int_map, Parameter}, keystack)
     |> Options.validate(:alias, keystack, &validate_alias(&1, name))
     |> Options.validate(:export, keystack, :boolean)
     |> Options.validate(:allocator, keystack, :atom)
     |> Options.normalize_arity(:arity, keystack)
-    |> normalize(name)
+    |> Options.normalize_as_struct(:return, Return)
     |> then(&struct!(__MODULE__, &1))
   end
 
@@ -133,28 +135,6 @@ defmodule Zig.Nif do
   defp validate_alias(alias_name, name) when is_atom(alias_name), do: :ok
   
   defp validate_alias(other, _name), do: {:error, "must be an atom", other}
-
-  def normalize(opts, name) do
-    opts
-    |> Keyword.put_new(:cleanup, true)
-    |> Keyword.put(:name, name)
-    |> normalize_return()
-  end
-
-  defp normalize_return(opts) do
-    cleanup = Keyword.fetch!(opts, :cleanup)
-
-    Keyword.update(
-      opts,
-      :return,
-      %Return{cleanup: cleanup},
-      fn return_opts ->
-        return_opts
-        |> Return.normalize_options(cleanup, opts)
-        |> Return.new()
-      end
-    )
-  end
 
   def render_elixir(%{concurrency: concurrency} = nif) do
     doc =
