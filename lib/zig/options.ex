@@ -8,16 +8,18 @@ defmodule Zig.Options do
           file: Path.t(),
           line: pos_integer(),
           keystack: [atom()],
-          cleanup: bool
+          cleanup: bool,
+          otp_app: atom
         }
 
-  def initialize_context(caller) do
+  def initialize_context(caller, otp_app) do
     caller
     |> Map.take(~w[module file line]a)
-    |> Map.merge(%{keystack: [], cleanup: true})
+    |> Map.merge(%{keystack: [], cleanup: true, otp_app: otp_app})
   end
 
-  def push_key(context, key) when is_atom(key), do: Map.update!(context, :keystack, &[key | &1])
+  def push_key(context, key) when is_atom(key) or is_binary(key),
+    do: Map.update!(context, :keystack, &[key | &1])
 
   def push_key(context, keys) when is_list(keys),
     do: Map.update!(context, :keystack, &Enum.reverse(keys, &1))
@@ -166,6 +168,124 @@ defmodule Zig.Options do
       other ->
         other
     end)
+  end
+
+  def normalize_pathlist(opts, key, context) do
+    Keyword.update(opts, key, [], fn
+      [n | _] = charlist when is_integer(n) ->
+        [resolve_path("#{charlist}", push_key(context, key))]
+
+      path_or_paths ->
+        path_or_paths
+        |> List.wrap()
+        |> Enum.map(&resolve_path(&1, push_key(context, key)))
+    end)
+  end
+
+  defp resolve_path({:system, path}, context) do
+    {:system, IO.iodata_to_binary(path)}
+  rescue
+    _ in ArgumentError ->
+      raise_with("system path must be iodata", path, context)
+  end
+
+  defp resolve_path({:priv, path}, context) do
+    path
+    |> IO.iodata_to_binary()
+    |> Path.expand(:code.priv_dir(context.otp_app))
+  rescue
+    _ in ArgumentError ->
+      raise_with("priv path must be iodata", path, context)
+  end
+
+  defp resolve_path(path, context) do
+    path
+    |> IO.iodata_to_binary()
+    |> Path.expand(Path.dirname(context.file))
+  rescue
+    _ in ArgumentError ->
+      raise_with(
+        "must be path, `{:priv, path}`, `{:system, path}`, or a list of those",
+        path,
+        context
+      )
+  end
+
+  def normalize_c_src(opts, key, context) do
+    Keyword.update(opts, key, [], fn
+      [n | _] = charlist when is_integer(n) ->
+        [{resolve_path("#{charlist}", push_key(context, key)), []}]
+
+      src_or_srcs ->
+        src_or_srcs
+        |> List.wrap()
+        |> Enum.flat_map(fn src_def ->
+          src_def
+          |> resolve_src(push_key(context, key))
+          |> expand_wildcards()
+        end)
+    end)
+  end
+
+  defp resolve_src({tag, _} = path, context) when tag in ~w[priv system]a do
+    path
+    |> resolve_path(context)
+    |> normalize_src_options([], context)
+  end
+
+  defp resolve_src({tag, path, options}, context) when tag in ~w[priv system]a do
+    {tag, path}
+    |> resolve_path(context)
+    |> normalize_src_options(options, context)
+  end
+
+  defp resolve_src({path, options}, context) do
+    path
+    |> IO.iodata_to_binary()
+    |> Path.expand(Path.dirname(context.file))
+    |> normalize_src_options(options, context)
+  rescue
+    _ in ArgumentError ->
+      raise_with("source files must be iodata", path, context)
+  end
+
+  defp resolve_src(path, context) do
+    path
+    |> IO.iodata_to_binary()
+    |> Path.expand(Path.dirname(context.file))
+    |> normalize_src_options([], context)
+  rescue
+    _ in ArgumentError ->
+      raise_with(
+        "must be path, `{path, [opts]}`, `{:priv, path}`, `{:priv, path, [opts]}`, `{:system, path}`, `{:system, path, [opts]}`, or a list of those",
+        path,
+        context
+      )
+  end
+
+  defp normalize_src_options(path, opts, context) when is_list(opts) do
+    {path, Enum.map(opts, &IO.iodata_to_binary/1)}
+  rescue
+    _ in ArgumentError ->
+      raise_with("must be a list of iodata", opts, push_key(context, inspect(path)))
+  end
+
+  defp expand_wildcards({{:system, path}, opts} = spec) do
+    {path, opts}
+    |> expand_wildcards()
+    |> Enum.map(fn {path, opts} -> {{:system, path}, opts} end)
+  end
+
+  defp expand_wildcards({path, opts} = spec) do
+    if String.ends_with?(path, "/*") do
+      dir = Path.dirname(path)
+
+      dir
+      |> File.ls!()
+      |> Enum.map(&{Path.join(dir, &1), opts})
+    else
+      [spec]
+    end
   end
 
   def scrub_non_keyword(opts, context) do

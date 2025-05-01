@@ -1,7 +1,7 @@
 defmodule ZiglerTest.OptionsTest do
   use ExUnit.Case, async: true
 
-  defp make_module(opts), do: Zig.Module.new(opts ++ [nifs: [:foo], language: :elixir], __ENV__)
+  defp make_module(opts), do: Zig.Module.new(opts ++ [nifs: [:foo], language: Elixir], __ENV__)
 
   describe "for the module_code_path option" do
     test "string is ok" do
@@ -42,7 +42,7 @@ defmodule ZiglerTest.OptionsTest do
   describe "for c option" do
     test "invalid subkey" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `c` option had invalid key `foo`",
+                   "test/options_test.exs:4: option `c` was supplied the invalid option `foo`",
                    fn ->
                      make_module(otp_app: :zigler, c: [foo: :bar])
                    end
@@ -53,6 +53,9 @@ defmodule ZiglerTest.OptionsTest do
 
       assert %{c: %{include_dirs: [^local_dir]}} =
                make_module(otp_app: :zigler, c: [include_dirs: "my_dir"])
+
+      assert %{c: %{include_dirs: [^local_dir]}} =
+               make_module(otp_app: :zigler, c: [include_dirs: ~c'my_dir'])
 
       priv_dir = Path.join(:code.priv_dir(:zigler), "my_dir")
 
@@ -69,14 +72,26 @@ defmodule ZiglerTest.OptionsTest do
                )
     end
 
-    @valid_type_phrase "a string, `{:priv, string}`, `{:system, string}`, or a list of those"
+    @valid_type_phrase "path, `{:priv, path}`, `{:system, path}`, or a list of those"
 
     test "include_dirs not a string list" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `c` option `include_dirs` must be #{@valid_type_phrase}, got: `:moop`",
+                   "test/options_test.exs:4: option `c > include_dirs` must be #{@valid_type_phrase}, got: `:moop`",
                    fn ->
                      make_module(otp_app: :zigler, c: [include_dirs: :moop])
                    end
+    end
+
+    test "include_dirs priv not iodata" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `c > include_dirs` priv path must be iodata, got: `:foo`",
+                   fn -> make_module(otp_app: :zigler, c: [include_dirs: [priv: :foo]]) end
+    end
+
+    test "include_dirs system not a string" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `c > include_dirs` system path must be iodata, got: `:foo`",
+                   fn -> make_module(otp_app: :zigler, c: [include_dirs: [system: :foo]]) end
     end
 
     test "library_dirs accepts various forms" do
@@ -102,7 +117,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "library_dirs not a string list" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `c` option `library_dirs` must be #{@valid_type_phrase}, got: `:moop`",
+                   "test/options_test.exs:4: option `c > library_dirs` must be #{@valid_type_phrase}, got: `:moop`",
                    fn ->
                      make_module(otp_app: :zigler, c: [library_dirs: :moop])
                    end
@@ -131,7 +146,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "link_lib not a string list" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `c` option `link_lib` must be #{@valid_type_phrase}, got: `:moop`",
+                   "test/options_test.exs:4: option `c > link_lib` must be #{@valid_type_phrase}, got: `:moop`",
                    fn ->
                      make_module(otp_app: :zigler, c: [link_lib: :moop])
                    end
@@ -139,7 +154,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "link_libcpp not a boolean" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `c` option `link_libcpp` must be a boolean, got: `:moop`",
+                   "test/options_test.exs:4: option `c > link_libcpp` must be a boolean, got: `:moop`",
                    fn ->
                      make_module(otp_app: :zigler, c: [link_libcpp: :moop])
                    end
@@ -151,10 +166,8 @@ defmodule ZiglerTest.OptionsTest do
       assert %{c: %{src: [{^local_file, []}]}} =
                make_module(otp_app: :zigler, c: [src: "my_file.c"])
 
-      priv_file = Path.join(:code.priv_dir(:zigler), "my_file.c")
-
-      assert %{c: %{src: [{^priv_file, []}]}} =
-               make_module(otp_app: :zigler, c: [src: {:priv, "my_file.c"}])
+      assert %{c: %{src: [{^local_file, []}]}} =
+               make_module(otp_app: :zigler, c: [src: ~c'my_file.c'])
     end
 
     test "src accepts string with string options" do
@@ -164,12 +177,25 @@ defmodule ZiglerTest.OptionsTest do
                make_module(otp_app: :zigler, c: [src: {"my_dir", ["foo", "bar"]}])
     end
 
-    test "src not a string list" do
+    test "src not a src opts list" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `c` option `src` must be a string, `{string, [string]}`, `{:priv, string}`, `{:priv, string, [string]}`, `{:system, string}`, `{:system, string, [string]}`, or a list of those, got: `:moop`",
+                   "test/options_test.exs:4: option `c > src` must be path, `{path, [opts]}`, `{:priv, path}`, `{:priv, path, [opts]}`, `{:system, path}`, `{:system, path, [opts]}`, or a list of those, got: `:moop`",
                    fn ->
                      make_module(otp_app: :zigler, c: [src: :moop])
                    end
+    end
+
+    test "path spec in src not a path" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `c > src` source files must be iodata, got: `:foo`",
+                   fn -> make_module(otp_app: :zigler, c: [src: [{:foo, ["bar"]}]]) end
+    end
+
+    test "options in src not a string" do
+      local_file = Path.join(__DIR__, "foo")
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `c > src > \"#{local_file}\"` must be a list of iodata, got: `[:bar]`",
+                   fn -> make_module(otp_app: :zigler, c: [src: [{"foo", [:bar]}]]) end
     end
   end
 
@@ -398,7 +424,7 @@ defmodule ZiglerTest.OptionsTest do
 
   test "an invalid key" do
     assert_raise CompileError,
-                 "test/options_test.exs:4: `foo` is not a valid option",
+                 "test/options_test.exs:4: `use Zig` was supplied the invalid option `foo`",
                  fn ->
                    make_module(otp_app: :zigler, foo: :bar)
                  end

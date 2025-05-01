@@ -93,28 +93,26 @@ defmodule Zig.Module do
   @defaultable_nif_opts ~w[cleanup leak_check]a
   @release_modes ~w[debug safe fast small env]a
 
+  @affix %{"Elixir": "`use Zig`", erlang: "`zig_opts(...)`"}
+
   # this function builds and verifies the module options and turns it into the struct.
 
   def new(opts, caller) do
     # make sure that the caller has declared otp_app here.
-    case {Keyword.fetch!(opts, :language), Keyword.fetch(opts, :otp_app)} do
-      {Elixir, :error} ->
-        raise CompileError,
-          description:
-            "(module #{inspect(caller.module)}) you must supply an `otp_app` option to `use Zig`",
-          file: caller.file
+    context =
+      case Keyword.fetch(opts, :otp_app) do
+        :error ->
+          lang = Keyword.fetch!(opts, :language)
 
-      {:erlang, :error} ->
-        raise CompileError,
-          description:
-            "(module #{inspect(caller.module)}) you must supply an `otp_app` option to `zig_opts()`",
-          file: caller.file
+          raise CompileError,
+            description:
+              "(module #{inspect(caller.module)}) you must supply an `otp_app` option to #{@affix[lang]}",
+            file: caller.file,
+            line: caller.line
 
-      _ ->
-        :ok
-    end
-
-    context = Options.initialize_context(caller)
+        {:ok, otp_app} ->
+          Options.initialize_context(caller, otp_app)
+      end
 
     opts
     |> obtain_version
@@ -147,8 +145,9 @@ defmodule Zig.Module do
     |> then(&struct!(__MODULE__, &1))
   rescue
     e in KeyError ->
-      context = Options.initialize_context(caller)
-      Options.raise_with("`#{e.key}` is not a valid option", context)
+      context = Options.initialize_context(caller, nil)
+      lang = Keyword.fetch!(opts, :language)
+      Options.raise_with("#{@affix[lang]} was supplied the invalid option `#{e.key}`", context)
   end
 
   defp obtain_version(opts) do
