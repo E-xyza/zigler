@@ -34,9 +34,10 @@ defmodule Zig.Return do
   #
   # def new(options), do: struct!(__MODULE__, options)
 
-  def new(opts, module_info) do
+  def new(opts, context) do
     opts
-    |> normalize_options(module_info)
+    |> normalize_options(context)
+    |> Keyword.put_new(:cleanup, context.cleanup)
     |> then(&struct!(__MODULE__, &1))
   end
 
@@ -98,7 +99,6 @@ defmodule Zig.Return do
           file: module_info[:file],
           line: module_info[:line]
     end)
-    |> Keyword.put(:cleanup, true)
   catch
     {:deep_typeerror, wrong, stack} ->
       raise CompileError,

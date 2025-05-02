@@ -193,6 +193,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "options in src not a string" do
       local_file = Path.join(__DIR__, "foo")
+
       assert_raise CompileError,
                    "test/options_test.exs:4: option `c > src > \"#{local_file}\"` must be a list of iodata, got: `[:bar]`",
                    fn -> make_module(otp_app: :zigler, c: [src: [{"foo", [:bar]}]]) end

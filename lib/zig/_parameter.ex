@@ -19,15 +19,20 @@ defmodule Zig.Parameter do
   def new(options, context) do
     options
     |> List.wrap()
-    |> Options.normalize_boolean(:cleanup, context.keystack, noclean: false)
-    |> Options.normalize_boolean(:in_out, context.keystack, in_out: true)
-    |> Options.scrub_non_keyword(context.keystack)
+    |> Options.normalize_boolean(:cleanup, context, noclean: false)
+    |> Options.normalize_boolean(:in_out, context, in_out: true)
+    |> Options.scrub_non_keyword(context)
     |> force_in_out_no_cleanup()
+    |> Keyword.put_new(:cleanup, true)
     |> then(&struct!(__MODULE__, &1))
   end
 
   def force_in_out_no_cleanup(options) do
-    if options[:in_out], do: Keyword.put(options, :cleanup, false), else: options
+    if options[:in_out] do
+      Keyword.put(options, :cleanup, false)
+    else
+      Keyword.put(options, :in_out, false)
+    end
   end
 
   def render_accessory_variables(parameter, index) do

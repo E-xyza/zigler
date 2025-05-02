@@ -109,36 +109,50 @@ defmodule Zig.Nif do
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
   def new({name, opts}, context) do
-    context = Options.push_key(context, name)
-
     # all options which can take atoms must be normalized first.
+    {opts, context} =
+      opts
+      |> Options.normalize_boolean(:cleanup, context, noclean: false)
+      |> pull_clean(context)
+
     opts
-    |> Options.normalize_boolean(:cleanup, context, noclean: false)
-    |> Options.normalize_boolean(:spec, context, nospec: false)
     |> Options.normalize_boolean(:leak_check, context, leak_check: true)
-    |> Options.normalize_lookup(:concurrency, context, %{
-      synchronous: Synchronous,
-      threaded: Threaded,
-      yielding: Yielding,
-      dirty_cpu: DirtyCpu,
-      dirty_io: DirtyIo
-    })
+    |> Options.normalize_boolean(:spec, context, nospec: false)
+    |> Options.normalize_lookup(
+      :concurrency,
+      %{
+        synchronous: Synchronous,
+        threaded: Threaded,
+        yielding: Yielding,
+        dirty_cpu: DirtyCpu,
+        dirty_io: DirtyIo
+      },
+      context
+    )
     |> Options.scrub_non_keyword(context)
-    |> Keyword.put_new(:cleanup, true)
     |> Keyword.put(:name, name)
     |> Options.normalize_module(:impl, context, :or_true)
     |> Options.normalize_as_struct(:params, {:int_map, Parameter}, context)
-    |> Options.validate(:alias, context, &validate_alias(&1, name))
-    |> Options.validate(:export, context, :boolean)
-    |> Options.validate(:allocator, context, :atom)
+    |> Options.validate(:alias, &validate_alias(&1, name), context)
+    |> Options.validate(:export, :boolean, context)
+    |> Options.validate(:allocator, :atom, context)
     |> Options.normalize_arity(:arity, context)
     |> Options.normalize_as_struct(:return, Return, context)
     |> then(&struct!(__MODULE__, &1))
+  rescue
+    e in KeyError ->
+      Options.raise_with("was supplied the invalid option `#{e.key}`", context)
   end
+
+  defp pull_clean(opts, context), do: pull_clean(opts, opts, context)
+
+  defp pull_clean([{:cleanup, value} | _], opts, context), do: {opts, %{context | cleanup: value}}
+  defp pull_clean([_ | rest], opts, context), do: pull_clean(rest, opts, context)
+  defp pull_clean([], opts, context), do: {[{:cleanup, context.cleanup} | opts], context}
 
   defp validate_alias(name, name), do: {:error, "may not be the same as the nif name `#{name}`"}
 
-  defp validate_alias(alias_name, name) when is_atom(alias_name), do: :ok
+  defp validate_alias(alias_name, _name) when is_atom(alias_name), do: :ok
 
   defp validate_alias(other, _name), do: {:error, "must be an atom", other}
 

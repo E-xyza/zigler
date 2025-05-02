@@ -14,7 +14,7 @@ defmodule ZiglerTest.NifOptionsTest do
   defp make_nif(opts) do
     Nif.new(
       {:my_nif, opts ++ @default_opts},
-      Map.new(@default_opts ++ [keystack: [:my_nif, :nifs]])
+      Map.new(@default_opts ++ [keystack: [:my_nif, :nifs], cleanup: true])
     )
   end
 
@@ -85,7 +85,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "rejects non-boolean" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: option `nifs > my_nif > spec` must be a boolean, got: `1`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > spec` must be boolean, got: `1`",
                    fn ->
                      make_nif(spec: 1)
                    end
@@ -169,7 +169,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "rejects non-boolean" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: option `nifs > my_nif > leak_check` must be a boolean, got: `1`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > leak_check` must be boolean, got: `1`",
                    fn ->
                      make_nif(leak_check: 1)
                    end
@@ -191,7 +191,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "rejects non-boolean" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: option `nifs > my_nif > cleanup` must be a boolean, got: `1`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > cleanup` must be boolean, got: `1`",
                    fn ->
                      make_nif(cleanup: 1)
                    end
@@ -201,6 +201,7 @@ defmodule ZiglerTest.NifOptionsTest do
   describe "return option" do
     test "defaults to empty, with cleanup based on nif parameters" do
       assert %{return: %{cleanup: true}} = make_nif([])
+      assert %{return: %{cleanup: false}} = make_nif(cleanup: false)
       assert %{return: %{cleanup: false}} = make_nif([:noclean])
     end
 
@@ -326,7 +327,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "non-boolean cleanup values are rejected" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif parameter option `cleanup` must be boolean, got: `1`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > 0 > params > cleanup` must be boolean, got: `1`",
                    fn ->
                      make_nif(params: %{0 => [cleanup: 1]})
                    end
@@ -342,7 +343,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "non-boolean in_out values are rejected" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif parameter option `in_out` must be boolean, got: `1`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > 0 > params > in_out` must be boolean, got: `1`",
                    fn ->
                      make_nif(params: %{0 => [in_out: 1]})
                    end
@@ -350,13 +351,13 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "other values in the list are rejected" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif parameter option `:foo` is invalid",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > 0 > params` found an invalid term in the options list, got: `:foo`",
                    fn ->
                      make_nif(params: %{0 => [:foo]})
                    end
 
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif parameter option key `foo` is invalid",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif` was supplied the invalid option `foo`",
                    fn ->
                      make_nif(params: %{0 => [foo: :bar]})
                    end
@@ -392,7 +393,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "unacceptable content" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: option `nifs > my_nif > arity` must be a non-negative integer or range or a list of those, got: `:foo`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > arity` must be a non-negative integer, range or a list of those, got: `:foo`",
                    fn ->
                      make_nif(arity: [1, 2..3, 5..6, :foo])
                    end

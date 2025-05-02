@@ -64,14 +64,14 @@ defmodule Zig.Options do
       raise_with("`#{key}` option must be a path", opts[key], context)
   end
 
-  def normalize_module(opts, key, keystack \\ [], or_true \\ nil) do
+  def normalize_module(opts, key, context, or_true \\ nil) do
     Keyword.update(opts, key, nil, fn
       module when is_atom(module) ->
         module
 
       other ->
         or_true_msg = if or_true == :or_true, do: " or `true`"
-        raise_with(make_message([key | keystack], "must be a module#{or_true_msg}"), other, opts)
+        raise_with("must be a module#{or_true_msg}", other, push_key(context, key))
     end)
   end
 
@@ -98,7 +98,7 @@ defmodule Zig.Options do
     end)
   end
 
-  def normalize_arity(opts, key, keystack) do
+  def normalize_arity(opts, key, context) do
     Keyword.update(opts, key, [], fn arity ->
       arity
       |> List.wrap()
@@ -111,24 +111,21 @@ defmodule Zig.Options do
 
         other ->
           raise_with(
-            make_message(
-              [key | keystack],
-              "must be a non-negative integer or range or a list of those"
-            ),
+            "must be a non-negative integer, range or a list of those",
             other,
-            opts
+            push_key(context, key)
           )
       end)
     end)
   end
 
-  def normalize_boolean(opts, key, keystack \\ [], overrides \\ []) do
+  def normalize_boolean(opts, key, context, overrides \\ []) do
     Enum.map(opts, fn
       {^key, value} when is_boolean(value) ->
         {key, value}
 
       {^key, other} ->
-        raise_with(make_message([key | keystack], "must be a boolean"), other, opts)
+        raise_with("must be boolean", other, push_key(context, key))
 
       maybe_override when is_atom(maybe_override) ->
         case Keyword.fetch(overrides, maybe_override) do
@@ -144,16 +141,16 @@ defmodule Zig.Options do
     end)
   end
 
-  def normalize_lookup(opts, key, keystack \\ [], lookup) do
+  def normalize_lookup(opts, key, lookup, context) do
     Enum.map(opts, fn
       {^key, value} when is_map_key(lookup, value) ->
         {key, lookup[value]}
 
       {^key, other} ->
         raise_with(
-          make_message([key | keystack], "must be one of #{list_of(Map.keys(lookup))}"),
+          "must be one of #{list_of(Map.keys(lookup))}",
           other,
-          opts
+          push_key(context, key)
         )
 
       maybe_override when is_atom(maybe_override) ->

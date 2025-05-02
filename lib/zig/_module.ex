@@ -238,28 +238,6 @@ defmodule Zig.Module do
     )
   end
 
-  defp normalize_nifs({:auto, nifs}, full_opts, context) do
-    {:auto, normalize_nifs(nifs, full_opts, context)}
-  end
-
-  defp normalize_nifs(nifs, full_opts, context) do
-    # at this point there MUST be a :nifs option, either provided by the user or
-    # supplied by the zigler codebase.  This is also guaranteed to be a keyword list.
-
-    common_opts =
-      full_opts
-      |> Keyword.take(~w[module file line module_code_path zig_code_path]a)
-      |> Keyword.merge(Keyword.fetch!(full_opts, :default_nif_opts))
-
-    Enum.map(nifs, fn
-      {name, spec} ->
-        Nif.new({name, common_opts ++ spec}, context)
-
-      name when is_atom(name) ->
-        Nif.new({name, common_opts}, context)
-    end)
-  end
-
   # CODE RENDERING
 
   # zig file rendering
