@@ -214,6 +214,14 @@ defmodule ZiglerTest.NifOptionsTest do
       assert %{return: %{cleanup: true}} = make_nif([:noclean, return: [cleanup: true]])
     end
 
+    test "fails if cleanup is not set to boolean" do
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > return > cleanup` must be boolean, got: `1`",
+                   fn ->
+                     make_nif(return: [cleanup: 1])
+                   end
+    end
+
     @as ~w[binary list integer map]a
     test "accepts different forms for as" do
       Enum.each(@as, fn as ->
@@ -277,7 +285,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "in_out is rejected if it's not an atom" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `in_out` must be an atom, got: `1`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > return > in_out` must be an atom, got: `1`",
                    fn ->
                      make_nif(return: [in_out: 1])
                    end
@@ -289,7 +297,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "error is rejected if it's not an atom" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `error` must be a module, got: `1`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > return > error` must be a module, got: `1`",
                    fn ->
                      make_nif(return: [error: 1])
                    end
@@ -306,7 +314,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "length can't be anything else" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `length` must be a non-negative integer or an argument spec, got: `:foo`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > return > length` must be a non-negative integer or `{:arg, argument index}`, got: `:foo`",
                    fn ->
                      make_nif(return: [length: :foo])
                    end

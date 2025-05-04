@@ -30,17 +30,14 @@ defmodule Zig.Return do
           | {:length, non_neg_integer | {:arg, non_neg_integer()}}
         ]
 
-  # def new({:raw, raw}) when raw in ~w[term erl_nif_term]a,
-  #  do: %__MODULE__{type: raw, cleanup: false}
-  #
-  # def new(options), do: struct!(__MODULE__, options)
-
   def new(opts, context) do
     opts
     |> List.wrap()
     |> Options.normalize_boolean(:cleanup, context, noclean: false)
     |> normalize_as(context)
-    |> normalize_options(context)
+    |> Options.validate(:length, &normalize_length/1, context)
+    |> Options.validate(:in_out, :atom, context)
+    |> Options.validate(:error, {:atom, "a module"}, context)
     |> Keyword.put_new(:cleanup, context.cleanup)
     |> then(&struct!(__MODULE__, &1))
   end
@@ -69,50 +66,11 @@ defmodule Zig.Return do
     end)
   end
 
-  def normalize_options(options, module_info) do
-    options
-    |> List.wrap()
-    |> Enum.map(fn
-      {:length, int} when is_integer(int) and int >= 0 ->
-        {:length, int}
+  defp normalize_length(length) when is_integer(length) and length >= 0, do: :ok
+  defp normalize_length({:arg, length} = arg) when is_integer(length) and length >= 0, do: :ok
 
-      {:length, {:arg, arg}} when is_integer(arg) and arg >= 0 ->
-        {:length, {:arg, arg}}
-
-      {:length, v} ->
-        raise CompileError,
-          description:
-            "nif option `length` must be a non-negative integer or an argument spec, got: `#{inspect(v)}`",
-          file: module_info[:file],
-          line: module_info[:line]
-
-      {:cleanup, cleanup} when is_boolean(cleanup) ->
-        {:cleanup, cleanup}
-
-      {:spec, spec} when is_atom(spec) or is_tuple(spec) or is_list(spec) ->
-        {:spec, spec}
-
-      {:in_out, in_out} when is_atom(in_out) ->
-        {:in_out, in_out}
-
-      {:in_out, in_out} ->
-        raise CompileError,
-          description: "nif option `in_out` must be an atom, got: `#{inspect(in_out)}`",
-          file: module_info[:file],
-          line: module_info[:line]
-
-      {:error, error} when is_atom(error) ->
-        {:error, error}
-
-      {:error, error} ->
-        raise CompileError,
-          description: "nif option `error` must be a module, got: `#{inspect(error)}`",
-          file: module_info[:file],
-          line: module_info[:line]
-
-      other ->
-        other
-    end)
+  defp normalize_length(wrong) do
+    {:error, "must be a non-negative integer or `{:arg, argument index}`", wrong}
   end
 
   defp validate_type(type, _context) when type in @as, do: type

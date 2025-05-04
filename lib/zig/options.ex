@@ -313,6 +313,10 @@ defmodule Zig.Options do
     do_validate(opts, key, &is_atom/1, "must be an atom", context)
   end
 
+  def validate(opts, key, {:atom, substitute}, context) do
+    do_validate(opts, key, &is_atom/1, "must be #{substitute}", context)
+  end
+
   def validate(opts, key, fun, context) when is_function(fun, 1) do
     do_validate(opts, key, fun, "", context)
   end
