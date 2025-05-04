@@ -205,6 +205,15 @@ defmodule ZiglerTest.NifOptionsTest do
       assert %{return: %{cleanup: false}} = make_nif([:noclean])
     end
 
+    test "noclean or cleanup: false overrides cleanup" do
+      assert %{return: %{cleanup: false}} = make_nif(return: [:noclean])
+      assert %{return: %{cleanup: false}} = make_nif(return: [cleanup: false])
+    end
+
+    test "cleanup: true can override noclean" do
+      assert %{return: %{cleanup: true}} = make_nif([:noclean, return: [cleanup: true]])
+    end
+
     @as ~w[binary list integer map]a
     test "accepts different forms for as" do
       Enum.each(@as, fn as ->
@@ -212,6 +221,14 @@ defmodule ZiglerTest.NifOptionsTest do
         assert %{return: %{cleanup: true, as: ^as}} = make_nif(return: [as])
         assert %{return: %{cleanup: true, as: ^as}} = make_nif(return: [as: as])
       end)
+    end
+
+    test "rejects invalid as option" do
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > return > as` has an invalid type specification (must be `:binary`, `:list`, `:map`, or `{:list, type}`, `{:map, key: type}`), got: `:foo`",
+                   fn ->
+                     make_nif(return: [as: :foo])
+                   end
     end
 
     test "list and map details are supported" do
@@ -224,19 +241,31 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "nested details must be valid" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `as` is invalid, got: `:foo` @ [list]",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > return > list` has an invalid type specification (must be `:binary`, `:list`, `:map`, or `{:list, type}`, `{:map, key: type}`), got: `:foo`",
                    fn ->
                      make_nif(return: {:list, :foo})
                    end
 
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `as` is invalid, got: `:foo` @ [map(foo)]",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > return > map > foo` has an invalid type specification (must be `:binary`, `:list`, `:map`, or `{:list, type}`, `{:map, key: type}`), got: `:foo`",
                    fn ->
                      make_nif(return: {:map, foo: :foo})
                    end
 
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: nif option `as` is invalid, got: `:foo` @ [list > map(foo)]",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > return > map` has an invalid map type specification (map parameter must be a keyword list of atoms as keys and types as values), got: `:foo`",
+                   fn ->
+                     make_nif(return: {:map, :foo})
+                   end
+
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > return > map` has an invalid map type specification (map parameter must be a keyword list of atoms as keys and types as values), got: `[1, 2, 3]`",
+                   fn ->
+                     make_nif(return: {:map, [1, 2, 3]})
+                   end
+
+      assert_raise CompileError,
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > return > list > map > foo` has an invalid type specification (must be `:binary`, `:list`, `:map`, or `{:list, type}`, `{:map, key: type}`), got: `:foo`",
                    fn ->
                      make_nif(return: {:list, {:map, foo: :foo}})
                    end

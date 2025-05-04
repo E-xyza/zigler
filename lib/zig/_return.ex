@@ -4,6 +4,7 @@ defmodule Zig.Return do
   @enforce_keys ~w[cleanup]a
   defstruct @enforce_keys ++ ~w[type in_out error length spec]a ++ [as: :default]
 
+  alias Zig.Options
   alias Zig.Type
 
   @type type :: :binary | :integer | :default | :list | {:list, type}
@@ -36,6 +37,9 @@ defmodule Zig.Return do
 
   def new(opts, context) do
     opts
+    |> List.wrap()
+    |> Options.normalize_boolean(:cleanup, context, noclean: false)
+    |> normalize_as(context)
     |> normalize_options(context)
     |> Keyword.put_new(:cleanup, context.cleanup)
     |> then(&struct!(__MODULE__, &1))
@@ -43,25 +47,32 @@ defmodule Zig.Return do
 
   @as ~w[binary list integer map]a
 
+  def normalize_as(options, context) do
+    Enum.map(options, fn
+      option when option in @as ->
+        {:as, option}
+
+      {:as, type} = deeptype ->
+        validate_type(type, Options.push_key(context, :as))
+        deeptype
+
+      {:list, type} = deeptype ->
+        validate_type(type, Options.push_key(context, :list))
+        {:as, deeptype}
+
+      {:map, type} = deeptype ->
+        validate_map_type(type, Options.push_key(context, :map))
+        {:as, deeptype}
+
+      other ->
+        other
+    end)
+  end
+
   def normalize_options(options, module_info) do
     options
     |> List.wrap()
     |> Enum.map(fn
-      option when option in @as ->
-        {:as, option}
-
-      {:as, type} ->
-        {:as, validate_type(type, [])}
-
-      :noclean ->
-        {:cleanup, false}
-
-      {:list, _} = v ->
-        {:as, validate_type(v, [])}
-
-      {:map, _} = v ->
-        {:as, validate_type(v, [])}
-
       {:length, int} when is_integer(int) and int >= 0 ->
         {:length, int}
 
@@ -98,41 +109,48 @@ defmodule Zig.Return do
           description: "nif option `error` must be a module, got: `#{inspect(error)}`",
           file: module_info[:file],
           line: module_info[:line]
+
+      other ->
+        other
     end)
-  catch
-    {:deep_typeerror, wrong, stack} ->
-      raise CompileError,
-        description: "nif option `as` is invalid, got: `#{inspect(wrong)}` @ [#{unwind(stack)}]",
-        file: module_info[:file],
-        line: module_info[:line]
   end
 
-  defp validate_type(type, _) when type in @as, do: type
+  defp validate_type(type, _context) when type in @as, do: type
 
-  defp validate_type({:list, type} = list, stack) do
-    validate_type(type, [:list | stack])
-    list
+  defp validate_type({:list, type}, context),
+    do: validate_type(type, Options.push_key(context, :list))
+
+  defp validate_type({:map, list}, context),
+    do: validate_map_type(list, Options.push_key(context, :map))
+
+  defp validate_type(wrong, context) do
+    Options.raise_with(
+      "has an invalid type specification (must be `:binary`, `:list`, `:map`, or `{:list, type}`, `{:map, key: type}`)",
+      wrong,
+      context
+    )
   end
 
-  defp validate_type({:map, typemap} = map, stack) do
-    Enum.each(typemap, fn {key, value} ->
-      validate_type(value, [{:map, key} | stack])
+  defp validate_map_type(list, context) when is_list(list) do
+    Enum.each(list, fn
+      {key, type} when is_atom(key) ->
+        validate_type(type, Options.push_key(context, key))
+
+      _ ->
+        Options.raise_with(
+          "has an invalid map type specification (map parameter must be a keyword list of atoms as keys and types as values)",
+          list,
+          context
+        )
     end)
-
-    map
   end
 
-  defp validate_type(wrong, stack) do
-    throw {:deep_typeerror, wrong, stack}
-  end
-
-  defp unwind(list) do
-    list
-    |> Enum.reverse()
-    |> Enum.map_join(" > ", fn
-      :list -> "list"
-      {:map, key} -> "map(#{key})"
-    end)
+  defp validate_map_type(wrong, context) do
+    Options.raise_with(
+      "has an invalid map type specification (map parameter must be a keyword list of atoms as keys and types as values)",
+      wrong,
+      context
+    )
   end
 
   def merge(sema, spec) do
