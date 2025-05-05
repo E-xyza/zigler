@@ -34,8 +34,9 @@ defmodule Zig.Return do
     opts
     |> List.wrap()
     |> Options.normalize(:cleanup, Options.boolean_normalizer(noclean: false), context)
-    |> normalize_as(context)
-    |> Options.validate(:length, &normalize_length/1, context)
+    |> Options.normalize(:as, &normalize_type/2, context)
+    |> normalize_map_list(context)
+    |> Options.validate(:length, &validate_length/1, context)
     |> Options.validate(:in_out, :atom, context)
     |> Options.validate(:error, {:atom, "a module"}, context)
     |> Keyword.put_new(:cleanup, context.cleanup)
@@ -43,33 +44,32 @@ defmodule Zig.Return do
   end
 
   @as ~w[binary list integer map]a
+  @deep ~w[list map]a
 
-  def normalize_as(options, context) do
-    Enum.map(options, fn
-      option when option in @as ->
-        {:as, option}
-
-      {:as, type} = deeptype ->
-        validate_type(type, Options.push_key(context, :as))
-        deeptype
-
-      {:list, type} = deeptype ->
-        validate_type(type, Options.push_key(context, :list))
-        {:as, deeptype}
-
-      {:map, type} = deeptype ->
-        validate_map_type(type, Options.push_key(context, :map))
-        {:as, deeptype}
-
-      other ->
-        other
+  def normalize_type({type}, _context) when type in @as, do: {:ok, type}
+  def normalize_type({_}, _context), do: :error
+  def normalize_type(type, _context) when type in @as, do: type
+  def normalize_type({t, _} = type, context) when t in @deep do
+    validate_type(type, context)
+    type
+  end
+  def normalize_type(other, context) do
+    Options.raise_with("has an invalid type specification (must be `:binary`, `:list`, `:map`, or `{:list, type}`, `{:map, key: type}`)", other, context)
+  end
+    
+  def normalize_map_list(opts, context) do
+    Enum.map(opts, fn 
+      {t, _} = type when t in @deep ->
+        validate_type(type, context)
+        {:as, type}
+      other -> other
     end)
   end
 
-  defp normalize_length(length) when is_integer(length) and length >= 0, do: :ok
-  defp normalize_length({:arg, length} = arg) when is_integer(length) and length >= 0, do: :ok
+  defp validate_length(length) when is_integer(length) and length >= 0, do: :ok
+  defp validate_length({:arg, length}) when is_integer(length) and length >= 0, do: :ok
 
-  defp normalize_length(wrong) do
+  defp validate_length(wrong) do
     {:error, "must be a non-negative integer or `{:arg, argument index}`", wrong}
   end
 
