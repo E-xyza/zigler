@@ -123,8 +123,8 @@ defmodule Zig.Module do
     |> Options.normalize_path(:module_code_path, context)
     |> Options.normalize_path(:zig_code_path, context)
     |> Options.normalize_path(:easy_c, context)
-    |> Options.normalize_atom_or_atomlist(:ignore, context)
-    |> Options.normalize_atom_or_atomlist(:resources, context)
+    |> Options.normalize(:ignore, &atom_or_atomlist/2, context)
+    |> Options.normalize(:resources, &atom_or_atomlist/2, context)
     |> Options.validate(:release_mode, @release_modes, context)
     |> Options.validate(:cleanup, :boolean, context)
     |> Options.validate(:leak_check, :boolean, context)
@@ -167,25 +167,27 @@ defmodule Zig.Module do
     end)
   end
 
-  defp list_normalizer(callback, error_msg), do: fn 
-    list, context when is_list(list) ->
-      try do
-        Enum.map(list, &callback.(&1, context))
-      rescue
-        _ in FunctionClauseError ->
-          Options.raise_with(
-            "must be a list of #{error_msg} specifications",
-            list,
-            context
-          )
-      end
-    other, context ->
-      Options.raise_with(
-        "must be a list of #{error_msg} specifications",
-        other,
-        context
-      )
-  end
+  defp list_normalizer(callback, error_msg),
+    do: fn
+      list, context when is_list(list) ->
+        try do
+          Enum.map(list, &callback.(&1, context))
+        rescue
+          _ in FunctionClauseError ->
+            Options.raise_with(
+              "must be a list of #{error_msg} specifications",
+              list,
+              context
+            )
+        end
+
+      other, context ->
+        Options.raise_with(
+          "must be a list of #{error_msg} specifications",
+          other,
+          context
+        )
+    end
 
   @callbacks ~w[on_load on_upgrade on_unload]a
 
@@ -252,6 +254,32 @@ defmodule Zig.Module do
       opts
     )
   end
+
+  defp atom_or_atomlist(atom, _context) when is_atom(atom), do: [atom]
+
+  defp atom_or_atomlist(list, context) when is_list(list) do
+    Enum.each(list, fn
+      item ->
+        is_atom(item) or Options.raise_with("must be a list of atoms", item, context)
+    end)
+
+    list
+  rescue
+    _ in FunctionClauseError ->
+      Options.raise_with(
+        "must be a list of atoms",
+        list,
+        context
+      )
+  end
+
+  defp atom_or_atomlist(other, context),
+    do:
+      Options.raise_with(
+        "must be a list of atoms",
+        other,
+        context
+      )
 
   # CODE RENDERING
 

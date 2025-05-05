@@ -69,20 +69,6 @@ defmodule Zig.Options do
   end
 
   # TODO: delete this function
-  def normalize_atom_or_atomlist(opts, key, context) do
-    Keyword.update(opts, key, [], fn atom_or_atomlist ->
-      atom_or_atomlist
-      |> List.wrap()
-      |> Enum.map(&atom_or_raise(&1, push_key(context, key)))
-    end)
-  end
-
-  defp atom_or_raise(atom, _context) when is_atom(atom), do: atom
-
-  defp atom_or_raise(other, context),
-    do: raise_with("must be a list of atoms", other, context)
-
-  # TODO: delete this function
   def normalize_arity(opts, key, context) do
     Keyword.update(opts, key, [], fn arity ->
       arity
