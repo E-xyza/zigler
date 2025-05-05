@@ -45,16 +45,8 @@ defmodule Zig.Options do
     Keyword.update(opts, key, module.new([], context), &module.new(&1, context))
   end
 
-  def normalize_list(opts, key, callback, type_str, context) when is_function(callback, 2) do
-    context = push_key(context, key)
-
-    Keyword.update(opts, key, [], fn
-      list when is_list(list) ->
-        Enum.map(list, &callback.(&1, context))
-
-      other ->
-        raise_with("must be a list of #{type_str}", other, context)
-    end)
+  def normalize(opts, key, default \\ nil, callback, context) do
+    Keyword.update(opts, key, default, &callback.(&1, push_key(context, key)))
   end
 
   def normalize_path(opts, key, context) do
@@ -64,6 +56,7 @@ defmodule Zig.Options do
       raise_with("`#{key}` option must be a path", opts[key], context)
   end
 
+  # TODO: delete this function
   def normalize_module(opts, key, context, or_true \\ nil) do
     Keyword.update(opts, key, nil, fn
       module when is_atom(module) ->
@@ -75,6 +68,7 @@ defmodule Zig.Options do
     end)
   end
 
+  # TODO: delete this function
   def normalize_atom_or_atomlist(opts, key, context) do
     Keyword.update(opts, key, [], fn atom_or_atomlist ->
       atom_or_atomlist
@@ -88,16 +82,7 @@ defmodule Zig.Options do
   defp atom_or_raise(other, context),
     do: raise_with("must be a list of atoms", other, context)
 
-  def normalize_atom(opts, key, keystack) do
-    Keyword.update(opts, key, nil, fn
-      atom when is_atom(atom) ->
-        atom
-
-      other ->
-        raise_with(make_message([key | keystack], "must be an atom"), other, opts)
-    end)
-  end
-
+  # TODO: delete this function
   def normalize_arity(opts, key, context) do
     Keyword.update(opts, key, [], fn arity ->
       arity
@@ -141,6 +126,7 @@ defmodule Zig.Options do
     end)
   end
 
+  # TODO: delete this function
   def normalize_lookup(opts, key, lookup, context) do
     Enum.map(opts, fn
       {^key, value} when is_map_key(lookup, value) ->
@@ -167,6 +153,7 @@ defmodule Zig.Options do
     end)
   end
 
+  # TODO: delete this function
   def normalize_pathlist(opts, key, context) do
     Keyword.update(opts, key, [], fn
       [n | _] = charlist when is_integer(n) ->
@@ -207,6 +194,8 @@ defmodule Zig.Options do
         context
       )
   end
+
+  # TODO: delete this function
 
   def normalize_c_src(opts, key, context) do
     Keyword.update(opts, key, [], fn

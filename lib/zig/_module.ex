@@ -117,17 +117,12 @@ defmodule Zig.Module do
     opts
     |> obtain_version
     |> Options.normalize_as_struct(:c, C, context)
-    |> Options.normalize_list(
-      :callbacks,
-      &normalize_callback/2,
-      "callback specifications",
-      context
-    )
+    |> Options.normalize(:callbacks, list_normalizer(&normalize_callback/2, "callback"), context)
+    |> Options.normalize(:packages, list_normalizer(&normalize_package/2, "package"), context)
     |> Options.normalize_path(:dir, context)
     |> Options.normalize_path(:module_code_path, context)
     |> Options.normalize_path(:zig_code_path, context)
     |> Options.normalize_path(:easy_c, context)
-    |> Options.normalize_list(:packages, &normalize_package/2, "package specifications", context)
     |> Options.normalize_atom_or_atomlist(:ignore, context)
     |> Options.normalize_atom_or_atomlist(:resources, context)
     |> Options.validate(:release_mode, @release_modes, context)
@@ -170,6 +165,26 @@ defmodule Zig.Module do
           Version.parse!("0.0.0")
       end
     end)
+  end
+
+  defp list_normalizer(callback, error_msg), do: fn 
+    list, context when is_list(list) ->
+      try do
+        Enum.map(list, &callback.(&1, context))
+      rescue
+        _ in FunctionClauseError ->
+          Options.raise_with(
+            "must be a list of #{error_msg} specifications",
+            list,
+            context
+          )
+      end
+    other, context ->
+      Options.raise_with(
+        "must be a list of #{error_msg} specifications",
+        other,
+        context
+      )
   end
 
   @callbacks ~w[on_load on_upgrade on_unload]a
