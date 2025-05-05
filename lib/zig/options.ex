@@ -60,27 +60,20 @@ defmodule Zig.Options do
       raise_with("`#{key}` option must be a path", opts[key], context)
   end
 
-  def normalize_boolean(opts, key, context, overrides \\ []) do
-    Enum.map(opts, fn
-      {^key, value} when is_boolean(value) ->
-        {key, value}
+  def boolean_normalizer([{key, value}]) when is_atom(key) and is_boolean(value),
+    do: fn
+      {^key}, _context ->
+        {:ok, value}
 
-      {^key, other} ->
-        raise_with("must be boolean", other, push_key(context, key))
+      {_}, _context ->
+        :error
 
-      maybe_override when is_atom(maybe_override) ->
-        case Keyword.fetch(overrides, maybe_override) do
-          {:ok, value} when is_boolean(value) ->
-            {key, value}
+      value, _context when is_boolean(value) ->
+        value
 
-          _ ->
-            maybe_override
-        end
-
-      other ->
-        other
-    end)
-  end
+      other, context ->
+        raise_with("must be boolean", other, context)
+    end
 
   def normalize(opts, key, fun, context) do
     Enum.map(opts, fn

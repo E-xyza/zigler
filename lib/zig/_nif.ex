@@ -112,12 +112,12 @@ defmodule Zig.Nif do
     # all options which can take atoms must be normalized first.
     {opts, context} =
       opts
-      |> Options.normalize_boolean(:cleanup, context, noclean: false)
+      |> Options.normalize(:cleanup, Options.boolean_normalizer(noclean: false), context)
       |> pull_clean(context)
 
     opts
-    |> Options.normalize_boolean(:leak_check, context, leak_check: true)
-    |> Options.normalize_boolean(:spec, context, nospec: false)
+    |> Options.normalize(:leak_check, Options.boolean_normalizer(leak_check: true), context)
+    |> Options.normalize(:spec, Options.boolean_normalizer(nospec: false), context)
     |> Options.normalize(:concurrency, &normalize_concurrency/2, context)
     |> Options.scrub_non_keyword(context)
     |> Keyword.put(:name, name)

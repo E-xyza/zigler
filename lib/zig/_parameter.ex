@@ -19,8 +19,8 @@ defmodule Zig.Parameter do
   def new(options, context) do
     options
     |> List.wrap()
-    |> Options.normalize_boolean(:cleanup, context, noclean: false)
-    |> Options.normalize_boolean(:in_out, context, in_out: true)
+    |> Options.normalize(:cleanup, Options.boolean_normalizer(noclean: false), context)
+    |> Options.normalize(:in_out, Options.boolean_normalizer(in_out: true), context)
     |> Options.scrub_non_keyword(context)
     |> force_in_out_no_cleanup()
     |> Keyword.put_new(:cleanup, true)

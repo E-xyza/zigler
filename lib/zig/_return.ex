@@ -33,7 +33,7 @@ defmodule Zig.Return do
   def new(opts, context) do
     opts
     |> List.wrap()
-    |> Options.normalize_boolean(:cleanup, context, noclean: false)
+    |> Options.normalize(:cleanup, Options.boolean_normalizer(noclean: false), context)
     |> normalize_as(context)
     |> Options.validate(:length, &normalize_length/1, context)
     |> Options.validate(:in_out, :atom, context)
