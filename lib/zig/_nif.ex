@@ -131,13 +131,13 @@ defmodule Zig.Nif do
     )
     |> Options.scrub_non_keyword(context)
     |> Keyword.put(:name, name)
-    |> Options.normalize_module(:impl, context, :or_true)
+    |> Options.normalize_arity(:arity, context)
     |> Options.normalize_as_struct(:params, {:int_map, Parameter}, context)
+    |> Options.normalize_as_struct(:return, Return, context)
+    |> Options.validate(:impl, {:atom, "a module or `true`"}, context)
     |> Options.validate(:alias, &validate_alias(&1, name), context)
     |> Options.validate(:export, :boolean, context)
     |> Options.validate(:allocator, :atom, context)
-    |> Options.normalize_arity(:arity, context)
-    |> Options.normalize_as_struct(:return, Return, context)
     |> then(&struct!(__MODULE__, &1))
   rescue
     e in KeyError ->

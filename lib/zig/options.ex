@@ -57,18 +57,6 @@ defmodule Zig.Options do
   end
 
   # TODO: delete this function
-  def normalize_module(opts, key, context, or_true \\ nil) do
-    Keyword.update(opts, key, nil, fn
-      module when is_atom(module) ->
-        module
-
-      other ->
-        or_true_msg = if or_true == :or_true, do: " or `true`"
-        raise_with("must be a module#{or_true_msg}", other, push_key(context, key))
-    end)
-  end
-
-  # TODO: delete this function
   def normalize_arity(opts, key, context) do
     Keyword.update(opts, key, [], fn arity ->
       arity
@@ -273,8 +261,6 @@ defmodule Zig.Options do
         )
     end)
   end
-
-  def validate(opts, key, validation, context)
 
   def validate(opts, key, members, context) when is_list(members) do
     do_validate(opts, key, &(&1 in members), "must be one of #{list_of(members)}", context)
