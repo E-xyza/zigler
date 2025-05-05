@@ -131,9 +131,9 @@ defmodule Zig.Nif do
     )
     |> Options.scrub_non_keyword(context)
     |> Keyword.put(:name, name)
-    |> Options.normalize_arity(:arity, context)
     |> Options.normalize_as_struct(:params, {:int_map, Parameter}, context)
     |> Options.normalize_as_struct(:return, Return, context)
+    |> Options.normalize(:arity, &normalize_arity/2, context)
     |> Options.validate(:impl, {:atom, "a module or `true`"}, context)
     |> Options.validate(:alias, &validate_alias(&1, name), context)
     |> Options.validate(:export, :boolean, context)
@@ -149,6 +149,25 @@ defmodule Zig.Nif do
   defp pull_clean([{:cleanup, value} | _], opts, context), do: {opts, %{context | cleanup: value}}
   defp pull_clean([_ | rest], opts, context), do: pull_clean(rest, opts, context)
   defp pull_clean([], opts, context), do: {[{:cleanup, context.cleanup} | opts], context}
+
+  defp normalize_arity(arity, context) do
+    arity
+    |> List.wrap()
+    |> Enum.flat_map(fn
+      n when is_integer(n) and n >= 0 ->
+        [n]
+
+      a.._//1 = range when a >= 0 ->
+        Enum.to_list(range)
+
+      other ->
+        Options.raise_with(
+          "must be a non-negative integer, range or a list of those",
+          other,
+          context
+        )
+    end)
+  end
 
   defp validate_alias(name, name), do: {:error, "may not be the same as the nif name `#{name}`"}
 

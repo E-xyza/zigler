@@ -56,28 +56,6 @@ defmodule Zig.Options do
       raise_with("`#{key}` option must be a path", opts[key], context)
   end
 
-  # TODO: delete this function
-  def normalize_arity(opts, key, context) do
-    Keyword.update(opts, key, [], fn arity ->
-      arity
-      |> List.wrap()
-      |> Enum.flat_map(fn
-        n when is_integer(n) and n >= 0 ->
-          [n]
-
-        a.._//1 = range when a >= 0 ->
-          Enum.to_list(range)
-
-        other ->
-          raise_with(
-            "must be a non-negative integer, range or a list of those",
-            other,
-            push_key(context, key)
-          )
-      end)
-    end)
-  end
-
   def normalize_boolean(opts, key, context, overrides \\ []) do
     Enum.map(opts, fn
       {^key, value} when is_boolean(value) ->
