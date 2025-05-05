@@ -36,6 +36,7 @@ defmodule Zig.Return do
     |> Options.normalize(:cleanup, Options.boolean_normalizer(noclean: false), context)
     |> Options.normalize(:as, &normalize_type/2, context)
     |> normalize_map_list(context)
+    |> Options.scrub_non_keyword(context)
     |> Options.validate(:length, &validate_length/1, context)
     |> Options.validate(:in_out, :atom, context)
     |> Options.validate(:error, {:atom, "a module"}, context)
@@ -54,7 +55,6 @@ defmodule Zig.Return do
     type
   end
   def normalize_type(other, context) do
-    Options.raise_with("has an invalid type specification (must be `:binary`, `:list`, `:map`, or `{:list, type}`, `{:map, key: type}`)", other, context)
   end
     
   def normalize_map_list(opts, context) do

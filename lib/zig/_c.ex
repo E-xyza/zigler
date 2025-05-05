@@ -34,6 +34,7 @@ defmodule Zig.C do
 
   def new(opts, context) do
     opts
+    |> Options.scrub_non_keyword(context)
     |> Options.normalize_kw(:include_dirs, [], &normalize_pathlist/2, context)
     |> Options.normalize_kw(:library_dirs, [], &normalize_pathlist/2, context)
     |> Options.normalize_kw(:link_lib, [], &normalize_pathlist/2, context)
