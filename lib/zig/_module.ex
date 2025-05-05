@@ -117,14 +117,18 @@ defmodule Zig.Module do
     opts
     |> obtain_version
     |> Options.normalize_as_struct(:c, C, context)
-    |> Options.normalize(:callbacks, list_normalizer(&normalize_callback/2, "callback"), context)
-    |> Options.normalize(:packages, list_normalizer(&normalize_package/2, "package"), context)
+    |> Options.normalize_kw(
+      :callbacks,
+      list_normalizer(&normalize_callback/2, "callback"),
+      context
+    )
+    |> Options.normalize_kw(:packages, list_normalizer(&normalize_package/2, "package"), context)
     |> Options.normalize_path(:dir, context)
     |> Options.normalize_path(:module_code_path, context)
     |> Options.normalize_path(:zig_code_path, context)
     |> Options.normalize_path(:easy_c, context)
-    |> Options.normalize(:ignore, &normalize_atom_or_atomlist/2, context)
-    |> Options.normalize(:resources, &normalize_atom_or_atomlist/2, context)
+    |> Options.normalize_kw(:ignore, &normalize_atom_or_atomlist/2, context)
+    |> Options.normalize_kw(:resources, &normalize_atom_or_atomlist/2, context)
     |> Options.validate(:release_mode, @release_modes, context)
     |> Options.validate(:cleanup, :boolean, context)
     |> Options.validate(:leak_check, :boolean, context)

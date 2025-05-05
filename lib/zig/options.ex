@@ -12,6 +12,8 @@ defmodule Zig.Options do
           otp_app: atom
         }
 
+  # context operations
+
   def initialize_context(caller, otp_app) do
     caller
     |> Map.take(~w[module file line]a)
@@ -23,6 +25,8 @@ defmodule Zig.Options do
 
   def push_key(context, keys) when is_list(keys),
     do: Map.update!(context, :keystack, &Enum.reverse(keys, &1))
+
+  # normalization and validation
 
   def normalize_as_struct(opts, key, {:int_map, module}, context) do
     Keyword.update(opts, key, %{}, fn
@@ -45,7 +49,7 @@ defmodule Zig.Options do
     Keyword.update(opts, key, module.new([], context), &module.new(&1, context))
   end
 
-  def normalize(opts, key, default \\ nil, callback, context) do
+  def normalize_kw(opts, key, default \\ nil, callback, context) do
     Keyword.update(opts, key, default, &callback.(&1, push_key(context, key)))
   end
 
@@ -78,31 +82,23 @@ defmodule Zig.Options do
     end)
   end
 
-  # TODO: delete this function
-  def normalize_lookup(opts, key, lookup, context) do
+  def normalize(opts, key, fun, context) do
     Enum.map(opts, fn
-      {^key, value} when is_map_key(lookup, value) ->
-        {key, lookup[value]}
+      {^key, value} ->
+        {key, fun.(value, push_key(context, key))}
 
-      {^key, other} ->
-        raise_with(
-          "must be one of #{list_of(Map.keys(lookup))}",
-          other,
-          push_key(context, key)
-        )
+      {_other, _} = kv ->
+        kv
 
-      maybe_override when is_atom(maybe_override) ->
-        case Map.fetch(lookup, maybe_override) do
-          {:ok, value} ->
-            {key, value}
-
-          _ ->
-            maybe_override
+      atom when is_atom(atom) ->
+        case fun.({atom}, push_key(context, key)) do
+          {:ok, value} -> {key, value}
+          :error -> atom
         end
-
-      other ->
-        other
     end)
+  rescue
+    _ in FunctionClauseError ->
+      raise_with("must be a list of `{atom, term}` or `atom`", opts, context)
   end
 
   def scrub_non_keyword(opts, context) do
@@ -201,7 +197,7 @@ defmodule Zig.Options do
     "option `#{keystack_str}` #{stem}"
   end
 
-  defp list_of(members) do
-    Enum.map_join(members, ", ", &"`:#{&1}`")
+  def list_of(members) do
+    Enum.map_join(members, ", ", &"`#{inspect(&1)}`")
   end
 end

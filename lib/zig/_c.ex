@@ -34,10 +34,10 @@ defmodule Zig.C do
 
   def new(opts, context) do
     opts
-    |> Options.normalize(:include_dirs, [], &normalize_pathlist/2, context)
-    |> Options.normalize(:library_dirs, [], &normalize_pathlist/2, context)
-    |> Options.normalize(:link_lib, [], &normalize_pathlist/2, context)
-    |> Options.normalize(:src, [], &normalize_c_src/2, context)
+    |> Options.normalize_kw(:include_dirs, [], &normalize_pathlist/2, context)
+    |> Options.normalize_kw(:library_dirs, [], &normalize_pathlist/2, context)
+    |> Options.normalize_kw(:link_lib, [], &normalize_pathlist/2, context)
+    |> Options.normalize_kw(:src, [], &normalize_c_src/2, context)
     |> Options.validate(:link_libcpp, :boolean, context)
     |> then(&struct!(__MODULE__, &1))
   rescue
@@ -136,7 +136,11 @@ defmodule Zig.C do
     {path, Enum.map(opts, &IO.iodata_to_binary/1)}
   rescue
     _ in ArgumentError ->
-      Options.raise_with("must be a list of iodata", opts, Options.push_key(context, inspect(path)))
+      Options.raise_with(
+        "must be a list of iodata",
+        opts,
+        Options.push_key(context, inspect(path))
+      )
   end
 
   defp expand_wildcards({{:system, path}, opts}) do

@@ -118,22 +118,12 @@ defmodule Zig.Nif do
     opts
     |> Options.normalize_boolean(:leak_check, context, leak_check: true)
     |> Options.normalize_boolean(:spec, context, nospec: false)
-    |> Options.normalize_lookup(
-      :concurrency,
-      %{
-        synchronous: Synchronous,
-        threaded: Threaded,
-        yielding: Yielding,
-        dirty_cpu: DirtyCpu,
-        dirty_io: DirtyIo
-      },
-      context
-    )
+    |> Options.normalize(:concurrency, &normalize_concurrency/2, context)
     |> Options.scrub_non_keyword(context)
     |> Keyword.put(:name, name)
     |> Options.normalize_as_struct(:params, {:int_map, Parameter}, context)
     |> Options.normalize_as_struct(:return, Return, context)
-    |> Options.normalize(:arity, &normalize_arity/2, context)
+    |> Options.normalize_kw(:arity, &normalize_arity/2, context)
     |> Options.validate(:impl, {:atom, "a module or `true`"}, context)
     |> Options.validate(:alias, &validate_alias(&1, name), context)
     |> Options.validate(:export, :boolean, context)
@@ -149,6 +139,31 @@ defmodule Zig.Nif do
   defp pull_clean([{:cleanup, value} | _], opts, context), do: {opts, %{context | cleanup: value}}
   defp pull_clean([_ | rest], opts, context), do: pull_clean(rest, opts, context)
   defp pull_clean([], opts, context), do: {[{:cleanup, context.cleanup} | opts], context}
+
+  @concurrency_map %{
+    synchronous: Synchronous,
+    threaded: Threaded,
+    yielding: Yielding,
+    dirty_cpu: DirtyCpu,
+    dirty_io: DirtyIo
+  }
+
+  defp normalize_concurrency({atom}, _context), do: Map.fetch(@concurrency_map, atom)
+
+  defp normalize_concurrency(value, context) do
+    case Map.fetch(@concurrency_map, value) do
+      {:ok, module} ->
+        module
+
+      :error ->
+        valid_options =
+          @concurrency_map
+          |> Map.keys()
+          |> Options.list_of()
+
+        Options.raise_with("must be one of #{valid_options}", value, context)
+    end
+  end
 
   defp normalize_arity(arity, context) do
     arity
