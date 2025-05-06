@@ -142,7 +142,6 @@ defmodule Zig.Module do
     |> Options.validate(:release_mode, @release_modes, context)
     |> Options.validate(:cleanup, :boolean, context)
     |> Options.validate(:leak_check, :boolean, context)
-    # TODO: make transferring defaultable_nif_opts one step.
     |> Keyword.drop(@defaultable_nif_opts)
     |> Keyword.merge(common_values)
     |> normalize_nifs(context)
@@ -217,15 +216,13 @@ defmodule Zig.Module do
         context
       )
 
+  @dependencies_atom_error "must be a list of atoms representing dependencies"
+  @package_tuple_error "must be a tuple of the form `{path, [deps...]}`"
+
   defp normalize_package({k, {path, deps}}, context) when is_atom(k) and is_list(deps) do
     Enum.each(deps, fn dep ->
-      if not is_atom(dep),
-        do:
-          Options.raise_with(
-            "must have a list of atoms for deps",
-            dep,
-            Options.push_key(context, k)
-          )
+      is_atom(dep) or
+        Options.raise_with(@dependencies_atom_error, dep, Options.push_key(context, k))
     end)
 
     try do
@@ -233,7 +230,7 @@ defmodule Zig.Module do
     rescue
       _ ->
         Options.raise_with(
-          "must be a tuple of the form `{path, [deps...]}`",
+          @package_tuple_error,
           {:tag, "path", path},
           Options.push_key(context, k)
         )
@@ -241,58 +238,52 @@ defmodule Zig.Module do
   end
 
   defp normalize_package({k, {_, malformed}}, context) when is_atom(k),
+    do: Options.raise_with(@dependencies_atom_error, malformed, Options.push_key(context, k))
+
+  defp normalize_package({k, malformed}, context) when is_atom(k),
+    do: Options.raise_with(@package_tuple_error, malformed, Options.push_key(context, k))
+
+  defp normalize_package(other, opts),
     do:
       Options.raise_with(
-        "must have a list of atoms for deps",
-        malformed,
-        Options.push_key(context, k)
+        "must be a list of package specifications",
+        other,
+        opts
       )
 
-  defp normalize_package({k, malformed}, context) when is_atom(k) do
-    Options.raise_with(
-      "must be a tuple of the form `{path, [deps...]}`",
-      malformed,
-      Options.push_key(context, k)
-    )
-  end
-
-  defp normalize_package(other, opts) do
-    Options.raise_with(
-      "must be a list of package specifications",
-      other,
-      opts
-    )
-  end
+  @atom_or_atomlist_error "must be an atom or a list of atoms"
 
   defp normalize_atom_or_atomlist(atom, _context) when is_atom(atom), do: [atom]
 
   defp normalize_atom_or_atomlist(list, context) when is_list(list) do
     Enum.each(list, fn
       item ->
-        is_atom(item) or Options.raise_with("must be a list of atoms", item, context)
+        is_atom(item) or Options.raise_with(@atom_or_atomlist_error, item, context)
     end)
 
     list
   rescue
-    _ in FunctionClauseError ->
-      Options.raise_with(
-        "must be a list of atoms",
-        list,
-        context
-      )
+    _ in FunctionClauseError -> Options.raise_with(@atom_or_atomlist_error, list, context)
   end
 
   defp normalize_atom_or_atomlist(other, context),
     do:
       Options.raise_with(
-        "must be a list of atoms",
+        @atom_or_atomlist_error,
         other,
         context
       )
 
   defp normalize_nifs(opts, context) do
     common_values = Keyword.take(opts, ~w[module file line module_code_path zig_code_path]a)
-    Options.normalize_kw(opts, :nifs, {:auto, []}, &normalize_nifs(&1, common_values, &2), context)
+
+    Options.normalize_kw(
+      opts,
+      :nifs,
+      {:auto, []},
+      &normalize_nifs(&1, common_values, &2),
+      context
+    )
   end
 
   defp normalize_nifs(nifs, common_values, context) when is_list(nifs) do

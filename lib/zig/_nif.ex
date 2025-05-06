@@ -180,6 +180,8 @@ defmodule Zig.Nif do
 
   defp normalize_params(other, context), do: Options.raise_with(@params_msg, other, context)
 
+  @arity_error "must be a non-negative integer, range or a list of those"
+
   defp normalize_arity(arity, context) do
     arity
     |> List.wrap()
@@ -191,11 +193,7 @@ defmodule Zig.Nif do
         Enum.to_list(range)
 
       other ->
-        Options.raise_with(
-          "must be a non-negative integer, range or a list of those",
-          other,
-          context
-        )
+        Options.raise_with(@arity_error, other, context)
     end)
   end
 

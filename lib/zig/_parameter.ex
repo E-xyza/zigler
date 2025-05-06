@@ -35,9 +35,8 @@ defmodule Zig.Parameter do
     end
   end
 
-  def render_accessory_variables(parameter, index) do
-    Type.render_accessory_variables(parameter.type, parameter, "arg#{index}")
-  end
+  def render_accessory_variables(parameter, index),
+    do: Type.render_accessory_variables(parameter.type, parameter, "arg#{index}")
 
   def render_payload_options(parameter, index) do
     parameter.type

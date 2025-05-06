@@ -49,7 +49,7 @@ defmodule Zig.Return do
       Options.raise_with("was supplied the invalid option `#{e.key}`", context)
   end
 
-  @as ~w[binary list integer map]a
+  @as ~w[binary list integer map default]a
   @deep ~w[list map]a
 
   def normalize_type({type}, _context) when type in @as, do: {:ok, type}
@@ -61,9 +61,11 @@ defmodule Zig.Return do
     type
   end
 
+  @invalid_type_error "has an invalid type specification (must be `:binary`, `:list`, `:map`, `:default`, or `{:list, type}`, `{:map, key: type}`)"
+
   def normalize_type(other, context) do
     Options.raise_with(
-      "has an invalid type specification (must be `:binary`, `:list`, `:map`, or `{:list, type}`, `{:map, key: type}`)",
+      @invalid_type_error,
       other,
       context
     )
@@ -80,12 +82,10 @@ defmodule Zig.Return do
     end)
   end
 
+  @length_error "must be a non-negative integer or `{:arg, argument index}`"
   defp validate_length(length) when is_integer(length) and length >= 0, do: :ok
   defp validate_length({:arg, length}) when is_integer(length) and length >= 0, do: :ok
-
-  defp validate_length(wrong) do
-    {:error, "must be a non-negative integer or `{:arg, argument index}`", wrong}
-  end
+  defp validate_length(wrong), do: {:error, @length_error, wrong}
 
   defp validate_type(type, _context) when type in @as, do: type
 
@@ -95,13 +95,9 @@ defmodule Zig.Return do
   defp validate_type({:map, list}, context),
     do: validate_map_type(list, Options.push_key(context, :map))
 
-  defp validate_type(wrong, context) do
-    Options.raise_with(
-      "has an invalid type specification (must be `:binary`, `:list`, `:map`, or `{:list, type}`, `{:map, key: type}`)",
-      wrong,
-      context
-    )
-  end
+  defp validate_type(wrong, context), do: Options.raise_with(@invalid_type_error, wrong, context)
+
+  @invalid_map_type_error "has an invalid map type specification (map parameter must be a keyword list of atoms as keys and type specifications as values)"
 
   defp validate_map_type(list, context) when is_list(list) do
     Enum.each(list, fn
@@ -109,21 +105,12 @@ defmodule Zig.Return do
         validate_type(type, Options.push_key(context, key))
 
       _ ->
-        Options.raise_with(
-          "has an invalid map type specification (map parameter must be a keyword list of atoms as keys and types as values)",
-          list,
-          context
-        )
+        Options.raise_with(@invalid_map_type_error, list, context)
     end)
   end
 
-  defp validate_map_type(wrong, context) do
-    Options.raise_with(
-      "has an invalid map type specification (map parameter must be a keyword list of atoms as keys and types as values)",
-      wrong,
-      context
-    )
-  end
+  defp validate_map_type(wrong, context),
+    do: Options.raise_with(@invalid_map_type_error, wrong, context)
 
   def merge(sema, spec) do
     %{

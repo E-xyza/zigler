@@ -257,7 +257,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "is not ok with something else" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `ignore` must be a list of atoms, got: `\"foo\"`",
+                   "test/options_test.exs:4: option `ignore` must be an atom or a list of atoms, got: `\"foo\"`",
                    fn ->
                      make_module(otp_app: :zigler, ignore: ["foo"])
                    end
@@ -280,7 +280,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "deps must be a list of atoms" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `packages > foo` must have a list of atoms for deps, got: `\"baz\"`",
+                   "test/options_test.exs:4: option `packages > foo` must be a list of atoms representing dependencies, got: `\"baz\"`",
                    fn ->
                      make_module(otp_app: :zigler, packages: [foo: {"bar", "baz"}])
                    end
@@ -322,7 +322,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "is not ok with something else" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `resources` must be a list of atoms, got: `\"foo\"`",
+                   "test/options_test.exs:4: option `resources` must be an atom or a list of atoms, got: `\"foo\"`",
                    fn ->
                      make_module(otp_app: :zigler, resources: ["foo"])
                    end
