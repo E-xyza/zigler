@@ -113,7 +113,7 @@ defmodule Zig.Nif do
     {opts, context} =
       opts
       |> Options.normalize(:cleanup, Options.boolean_normalizer(noclean: false), context)
-      |> pull_clean(context)
+      |> pull_cleanup(context)
 
     opts
     |> Options.normalize(:leak_check, Options.boolean_normalizer(leak_check: true), context)
@@ -121,8 +121,8 @@ defmodule Zig.Nif do
     |> Options.normalize(:concurrency, &normalize_concurrency/2, context)
     |> Options.scrub_non_keyword(context)
     |> Keyword.put(:name, name)
-    |> Options.normalize_as_struct(:params, {:int_map, Parameter}, context)
-    |> Options.normalize_as_struct(:return, Return, context)
+    |> Options.normalize_kw(:params, %{}, &normalize_params/2, context)
+    |> Options.normalize_kw(:return, Return.new(), Options.struct_normalizer(Return), context)
     |> Options.normalize_kw(:arity, &normalize_arity/2, context)
     |> Options.validate(:impl, {:atom, "a module or `true`"}, context)
     |> Options.validate(:alias, &validate_alias(&1, name), context)
@@ -134,11 +134,13 @@ defmodule Zig.Nif do
       Options.raise_with("was supplied the invalid option `#{e.key}`", context)
   end
 
-  defp pull_clean(opts, context), do: pull_clean(opts, opts, context)
+  defp pull_cleanup(opts, context), do: pull_cleanup(opts, opts, context)
 
-  defp pull_clean([{:cleanup, value} | _], opts, context), do: {opts, %{context | cleanup: value}}
-  defp pull_clean([_ | rest], opts, context), do: pull_clean(rest, opts, context)
-  defp pull_clean([], opts, context), do: {[{:cleanup, context.cleanup} | opts], context}
+  defp pull_cleanup([{:cleanup, value} | _], opts, context),
+    do: {opts, %{context | cleanup: value}}
+
+  defp pull_cleanup([_ | rest], opts, context), do: pull_cleanup(rest, opts, context)
+  defp pull_cleanup([], opts, context), do: {[{:cleanup, context.cleanup} | opts], context}
 
   @concurrency_map %{
     synchronous: Synchronous,
@@ -164,6 +166,19 @@ defmodule Zig.Nif do
         Options.raise_with("must be one of #{valid_options}", value, context)
     end
   end
+
+  @params_msg "must be a map with non-negative integer keys"
+  defp normalize_params(params, context) when is_map(params) do
+    Map.new(params, fn
+      {index, v} when is_integer(index) and index >= 0 ->
+        {index, Parameter.new(v, Options.push_key(context, index))}
+
+      {k, _} ->
+        Options.raise_with(@params_msg, k, context)
+    end)
+  end
+
+  defp normalize_params(other, context), do: Options.raise_with(@params_msg, other, context)
 
   defp normalize_arity(arity, context) do
     arity

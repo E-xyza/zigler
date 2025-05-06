@@ -114,9 +114,19 @@ defmodule Zig.Module do
           Options.initialize_context(caller, otp_app)
       end
 
+    default_nif_opts = Keyword.take(opts, @defaultable_nif_opts)
+
+    common_values =
+      [
+        module: caller.module,
+        file: caller.file,
+        line: caller.line,
+        default_nif_opts: default_nif_opts
+      ]
+
     opts
     |> obtain_version
-    |> Options.normalize_as_struct(:c, C, context)
+    |> Options.normalize_kw(:c, %C{}, Options.struct_normalizer(C), context)
     |> Options.normalize_kw(
       :callbacks,
       list_normalizer(&normalize_callback/2, "callback"),
@@ -134,13 +144,8 @@ defmodule Zig.Module do
     |> Options.validate(:leak_check, :boolean, context)
     # TODO: make transferring defaultable_nif_opts one step.
     |> Keyword.drop(@defaultable_nif_opts)
-    |> Keyword.merge(
-      default_nif_opts: Keyword.take(opts, @defaultable_nif_opts),
-      module: caller.module,
-      file: caller.file,
-      line: caller.line
-    )
-    # |> then(&Keyword.update!(&1, :nifs, fn nifs -> normalize_nifs(nifs, &1, context) end))
+    |> Keyword.merge(common_values)
+    |> normalize_nifs(context)
     |> then(&struct!(__MODULE__, &1))
   rescue
     e in KeyError ->
@@ -284,6 +289,28 @@ defmodule Zig.Module do
         other,
         context
       )
+
+  defp normalize_nifs(opts, context) do
+    common_values = Keyword.take(opts, ~w[module file line module_code_path zig_code_path]a)
+    Options.normalize_kw(opts, :nifs, {:auto, []}, &normalize_nifs(&1, common_values, &2), context)
+  end
+
+  defp normalize_nifs(nifs, common_values, context) when is_list(nifs) do
+    Enum.map(nifs, fn
+      {atom, opts} when is_atom(atom) and is_list(opts) ->
+        Nif.new({atom, common_values ++ opts}, context)
+
+      atom when is_atom(atom) ->
+        Nif.new({atom, common_values}, context)
+
+      other ->
+        Options.raise_with("", other, context)
+    end)
+  end
+
+  defp normalize_nifs({:auto, nifs}, common_values, context) do
+    {:auto, normalize_nifs(nifs, common_values, context)}
+  end
 
   # CODE RENDERING
 

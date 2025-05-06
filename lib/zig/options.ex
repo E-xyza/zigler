@@ -20,34 +20,10 @@ defmodule Zig.Options do
     |> Map.merge(%{keystack: [], cleanup: true, otp_app: otp_app})
   end
 
-  def push_key(context, key) when is_atom(key) or is_binary(key),
+  def push_key(context, key) when is_atom(key) or is_binary(key) or is_integer(key),
     do: Map.update!(context, :keystack, &[key | &1])
 
-  def push_key(context, keys) when is_list(keys),
-    do: Map.update!(context, :keystack, &Enum.reverse(keys, &1))
-
   # normalization and validation
-
-  def normalize_as_struct(opts, key, {:int_map, module}, context) do
-    Keyword.update(opts, key, %{}, fn
-      map when is_map(map) ->
-        Map.new(map, fn
-          {index, v} when is_integer(index) and index >= 0 ->
-            {index, module.new(v, push_key(context, [index, key]))}
-
-          {k, _} ->
-            raise_with("must be a map with non-negative integer keys", k, push_key(context, key))
-        end)
-
-      other ->
-        raise_with("must be a map", other, push_key(context, key))
-    end)
-  end
-
-  def normalize_as_struct(opts, key, module, context) do
-    context = push_key(context, key)
-    Keyword.update(opts, key, module.new([], context), &module.new(&1, context))
-  end
 
   def normalize_kw(opts, key, default \\ nil, callback, context) do
     Keyword.update(opts, key, default, &callback.(&1, push_key(context, key)))
@@ -74,6 +50,8 @@ defmodule Zig.Options do
       other, context ->
         raise_with("must be boolean", other, context)
     end
+
+  def struct_normalizer(module), do: &module.new/2
 
   def normalize(opts, key, fun, context) do
     Enum.map(opts, fn
@@ -129,23 +107,21 @@ defmodule Zig.Options do
   end
 
   defp do_validate(opts, key, fun, message, context) do
-    context = push_key(context, key)
-
     case fetch_and_run(opts, key, fun) do
       true ->
         opts
 
       false ->
-        raise_with(message, opts[key], context)
+        raise_with(message, opts[key], push_key(context, key))
 
       :ok ->
         opts
 
       {:error, substitute_message} ->
-        raise_with(substitute_message, context)
+        raise_with(substitute_message, push_key(context, key))
 
       {:error, substitute_message, content} ->
-        raise_with(substitute_message, content, context)
+        raise_with(substitute_message, content, push_key(context, key))
     end
   end
 

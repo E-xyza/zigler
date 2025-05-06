@@ -340,7 +340,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "you can't set it to anything else" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: option `nifs > my_nif > params` must be a map, got: `:foo`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > params` must be a map with non-negative integer keys, got: `:foo`",
                    fn ->
                      make_nif(params: :foo)
                    end
@@ -364,7 +364,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "non-boolean cleanup values are rejected" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: option `nifs > my_nif > 0 > params > cleanup` must be boolean, got: `1`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > params > 0 > cleanup` must be boolean, got: `1`",
                    fn ->
                      make_nif(params: %{0 => [cleanup: 1]})
                    end
@@ -380,7 +380,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "non-boolean in_out values are rejected" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: option `nifs > my_nif > 0 > params > in_out` must be boolean, got: `1`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > params > 0 > in_out` must be boolean, got: `1`",
                    fn ->
                      make_nif(params: %{0 => [in_out: 1]})
                    end
@@ -388,7 +388,7 @@ defmodule ZiglerTest.NifOptionsTest do
 
     test "other values in the list are rejected" do
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: option `nifs > my_nif > 0 > params` found an invalid term in the options list, got: `:foo`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > params > 0` found an invalid term in the options list, got: `:foo`",
                    fn ->
                      make_nif(params: %{0 => [:foo]})
                    end

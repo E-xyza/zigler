@@ -30,6 +30,8 @@ defmodule Zig.Return do
           | {:length, non_neg_integer | {:arg, non_neg_integer()}}
         ]
 
+  def new, do: new([], Options.initialize_context(%{}, nil))
+
   def new(opts, context) do
     opts
     |> List.wrap()
@@ -42,6 +44,9 @@ defmodule Zig.Return do
     |> Options.validate(:error, {:atom, "a module"}, context)
     |> Keyword.put_new(:cleanup, context.cleanup)
     |> then(&struct!(__MODULE__, &1))
+  rescue
+    e in KeyError ->
+      Options.raise_with("was supplied the invalid option `#{e.key}`", context)
   end
 
   @as ~w[binary list integer map]a
@@ -50,19 +55,28 @@ defmodule Zig.Return do
   def normalize_type({type}, _context) when type in @as, do: {:ok, type}
   def normalize_type({_}, _context), do: :error
   def normalize_type(type, _context) when type in @as, do: type
+
   def normalize_type({t, _} = type, context) when t in @deep do
     validate_type(type, context)
     type
   end
+
   def normalize_type(other, context) do
+    Options.raise_with(
+      "has an invalid type specification (must be `:binary`, `:list`, `:map`, or `{:list, type}`, `{:map, key: type}`)",
+      other,
+      context
+    )
   end
-    
+
   def normalize_map_list(opts, context) do
-    Enum.map(opts, fn 
+    Enum.map(opts, fn
       {t, _} = type when t in @deep ->
         validate_type(type, context)
         {:as, type}
-      other -> other
+
+      other ->
+        other
     end)
   end
 
