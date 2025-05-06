@@ -4,6 +4,7 @@ defmodule Zig.Sema do
   alias Zig.Attributes
   alias Zig.Module
   alias Zig.Nif
+  alias Zig.Options
   alias Zig.Parameter
   alias Zig.Return
   alias Zig.Type
@@ -227,28 +228,28 @@ defmodule Zig.Sema do
   @module_settings ~w[module file line module_code_path zig_code_path]a
 
   defp make_default_nif(sema_function, module) do
-    nif_init =
-      @module_settings
-      |> Enum.map(&{&1, Map.fetch!(module, &1)})
-      |> Keyword.merge(module.default_nif_opts)
+    context = Options.initialize_context(module, module.otp_app)
 
-    sema_function.name
-    |> Nif.new(nif_init)
+    @module_settings
+    |> Enum.map(&{&1, Map.fetch!(module, &1)})
+    |> Keyword.merge(module.default_nif_opts)
+    |> then(&{sema_function.name, &1})
+    |> Nif.new(context)
     |> Nif.set_file_line(module.manifest_module, module.parsed)
     |> struct!(
       arity: nil,
       signature: sema_function,
       raw: Function.raw(sema_function),
-      params: params_from_sema(sema_function, module),
-      return: Return.new(type: sema_function.return, cleanup: true)
+      params: params_from_sema(sema_function, context),
+      return: Return.new([type: sema_function.return, cleanup: true], context)
     )
   end
 
-  defp params_from_sema(sema_function, module) do
+  defp params_from_sema(sema_function, context) do
     sema_function.params
     |> Enum.with_index(fn
       param_type, index ->
-        {index, Parameter.new(param_type, [], module)}
+        {index, Parameter.new([type: param_type], context)}
     end)
     |> Map.new()
   end
