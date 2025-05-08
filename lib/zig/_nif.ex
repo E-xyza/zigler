@@ -122,7 +122,12 @@ defmodule Zig.Nif do
     |> Options.scrub_non_keyword(context)
     |> Keyword.put(:name, name)
     |> Options.normalize_kw(:params, %{}, &normalize_params/2, context)
-    |> Options.normalize_kw(:return, Return.new(), Options.struct_normalizer(Return), context)
+    |> Options.normalize_kw(
+      :return,
+      Return.new(context),
+      Options.struct_normalizer(Return),
+      context
+    )
     |> Options.normalize_kw(:arity, &normalize_arity/2, context)
     |> Options.validate(:impl, {:atom, "a module or `true`"}, context)
     |> Options.validate(:alias, &validate_alias(&1, name), context)
@@ -161,6 +166,7 @@ defmodule Zig.Nif do
         valid_options =
           @concurrency_map
           |> Map.keys()
+          |> Enum.sort()
           |> Options.list_of()
 
         Options.raise_with("must be one of #{valid_options}", value, context)

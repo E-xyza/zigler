@@ -30,7 +30,7 @@ defmodule Zig.Return do
           | {:length, non_neg_integer | {:arg, non_neg_integer()}}
         ]
 
-  def new, do: new([], Options.initialize_context(%{}, nil))
+  def new(context), do: new([], context)
 
   def new(opts, context) do
     opts
