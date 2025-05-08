@@ -128,6 +128,7 @@ defmodule Zig.Nif do
       Options.struct_normalizer(Return),
       context
     )
+    |> set_return_in_out(context)
     |> Options.normalize_kw(:arity, &normalize_arity/2, context)
     |> Options.validate(:impl, {:atom, "a module or `true`"}, context)
     |> Options.validate(:alias, &validate_alias(&1, name), context)
@@ -201,6 +202,27 @@ defmodule Zig.Nif do
       other ->
         Options.raise_with(@arity_error, other, context)
     end)
+  end
+
+  defp set_return_in_out(opts, context) do
+    opts
+    |> Keyword.fetch!(:params)
+    |> Enum.flat_map(fn {index, param} ->
+      List.wrap(if param.in_out, do: "arg#{index}")
+    end)
+    |> case do
+      [] ->
+        opts
+
+      [arg] ->
+        Keyword.update!(opts, :return, &%{&1 | in_out: arg})
+
+      [_ | _] ->
+        Options.raise_with(
+          "may only have one parameter with `:in_out`",
+          Options.push_key(context, :return)
+        )
+    end
   end
 
   defp validate_alias(name, name), do: {:error, "may not be the same as the nif name `#{name}`"}

@@ -40,7 +40,6 @@ defmodule Zig.Return do
     |> normalize_map_list(context)
     |> Options.scrub_non_keyword(context)
     |> Options.validate(:length, &validate_length/1, context)
-    |> Options.validate(:in_out, :atom, context)
     |> Options.validate(:error, {:atom, "a module"}, context)
     |> Keyword.put_new(:cleanup, context.cleanup)
     |> then(&struct!(__MODULE__, &1))

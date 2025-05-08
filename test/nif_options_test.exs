@@ -279,18 +279,6 @@ defmodule ZiglerTest.NifOptionsTest do
                    end
     end
 
-    test "in_out can be an atom" do
-      assert %{return: %{cleanup: true, in_out: :foo}} = make_nif(return: [in_out: :foo])
-    end
-
-    test "in_out is rejected if it's not an atom" do
-      assert_raise CompileError,
-                   "test/nif_options_test.exs:9: option `nifs > my_nif > return > in_out` must be an atom, got: `1`",
-                   fn ->
-                     make_nif(return: [in_out: 1])
-                   end
-    end
-
     test "error can be an atom" do
       assert %{return: %{cleanup: true, error: :foo}} = make_nif(return: [error: :foo])
     end
