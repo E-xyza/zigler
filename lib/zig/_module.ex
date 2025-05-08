@@ -78,17 +78,11 @@ defmodule Zig.Module do
           dump: boolean,
           dump_sema: boolean,
           dump_build_zig: boolean | :stdout | :stderr | Path.t(),
-          precompiled: nil | precompiledspec(),
-          callbacks: callback_opts(),
+          precompiled: nil,
+          callbacks: [callback_option],
           default_nif_opts: [Nif.defaultable_opts()],
           attributes: keyword
         }
-
-  @type release_modes :: :debug | :safe | :fast | :small
-  @type packagespec() :: {name :: atom(), {path :: Path.t(), deps :: [atom]}}
-  # NB: this is going to become more complex for security reasons.
-  @type precompiledspec() :: Path.t()
-  @type callback_opts() :: [on_load: atom(), on_upgrade: atom(), on_unload: atom()]
 
   @defaultable_nif_opts ~w[cleanup leak_check]a
   @release_modes ~w[debug safe fast small env]a

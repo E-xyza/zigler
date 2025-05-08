@@ -289,8 +289,8 @@ defmodule Zig do
   - `ZIG_FMT`: if set to `false`, disables zig formatting steps.
   """
 
-  @spec __using__(keyword) :: Macro.t()
-  defmacro __using__(opts) do
+  @spec __using__(keyword) :: Macro.t
+  defmacro __using__(opts) 
     module = __CALLER__.module
 
     if :loaded == :code.module_status(module) do
@@ -324,6 +324,74 @@ defmodule Zig do
 
     Zig.Macro.inspect(code, opts)
   end
+
+  @type options :: [
+          otp_app: atom,
+          c: c_options,
+          release_mode: :debug | :safe | :fast | :small,
+          easy_c: Path.t,
+          nifs: {:auto, keyword(nif_options)} | keyword(nif_options),
+          ignore: [atom],
+          packages: [{name :: atom, {path :: Path.t, deps :: [atom]}}],
+          resources: [atom],
+          dump: boolean,
+          dump_sema: boolean,
+          dump_build_zig: boolean | :stdout | :stderr | Path.t,
+          callbacks: [callback_option]
+        ]
+
+  @type c_options :: [
+          include_dirs: c_path | [c_path],
+          library_dirs: c_path | [c_path],
+          link_lib: c_path | [c_path],
+          link_libcpp: boolean,
+          src: [c_path | {c_path, [compiler_options :: String.t]}]
+        ]
+
+  @type c_path :: Path.t | {:priv, Path.t} | {:system, Path.t}
+
+  @type nif_options :: [
+          export: boolean,
+          concurrency: :dirty_cpu | :dirty_io | :synchronous | :threaded,
+          spec: boolean,
+          allocator: nil | atom,
+          params: integer | %{optional(integer) => param_options},
+          return: as_type | return_options,
+          leak_check: boolean,
+          alias: nil | atom,
+          impl: boolean | module
+        ]
+
+  @type param_options :: [
+          :noclean | :in_out | {:cleanup, boolean} | {:in_out, boolean}
+        ]
+
+  @type return_options :: [
+          as_type
+          | :noclean
+          | {:cleanup, boolean}
+          | {:as, as_type}
+          | {:error, atom}
+          | {:length, non_neg_integer | {:arg, non_neg_integer}}
+        ]
+
+  @type as_type ::
+          :binary
+          | :integer
+          | :default
+          | :list
+          | :map
+          | {:list, as_type}
+          | {:map, [{atom, as_type}]}
+
+  @type callback_option() :: [
+          :on_load
+          | :on_upgrade
+          | :on_unload
+          | {:on_load, atom}
+          | {:on_upgrade, atom}
+          | {:on_unload, atom}
+        ]
 
   @doc """
   declares a string block to be included in the module's .zig source file.

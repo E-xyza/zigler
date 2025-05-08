@@ -14,21 +14,13 @@ defmodule Zig.Return do
           cleanup: boolean,
           as: type,
           spec: Macro.t(),
-          in_out: nil | String.t(),
           error: atom(),
-          length: non_neg_integer | {:arg, non_neg_integer()}
+          length: non_neg_integer | {:arg, non_neg_integer()},
+          # note: in_out is set by the compiler
+          in_out: nil | String.t()
         }
 
-  @type opts :: [
-          :noclean
-          | :binary
-          | :list
-          | {:cleanup, boolean}
-          | {:as, type}
-          | {:in_out, atom()}
-          | {:error, atom()}
-          | {:length, non_neg_integer | {:arg, non_neg_integer()}}
-        ]
+  @spec new(Zig.return_options(), Options.context()) :: t()
 
   def new(context), do: new([], context)
 
