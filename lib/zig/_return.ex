@@ -1,26 +1,39 @@
 defmodule Zig.Return do
   @moduledoc false
 
-  @enforce_keys ~w[cleanup]a
-  defstruct @enforce_keys ++ ~w[type in_out error length spec]a ++ [as: :default]
+  defstruct ~w[cleanup type in_out error length spec]a ++ [as: :default]
 
   alias Zig.Options
   alias Zig.Type
 
   @type type :: :binary | :integer | :default | :list | {:list, type}
 
-  @type t :: %__MODULE__{
-          type: nil | Type.t(),
+  # information supplied by the user. 
+  @type specified :: %__MODULE__{
           cleanup: boolean,
-          as: type,
-          spec: Macro.t(),
-          error: atom(),
-          length: non_neg_integer | {:arg, non_neg_integer()},
-          # note: in_out is set by the compiler
+          error: atom,
+          length: nil | non_neg_integer | {:arg, non_neg_integer()},
+          spec: nil | Macro.t(),
           in_out: nil | String.t()
         }
 
-  @spec new(Zig.return_options(), Options.context()) :: t()
+  # information obtained by semantic analysis.  Cleanup must be present
+  # as the cleanup clause is inherited by the module rules cleanup.
+  @type sema :: %__MODULE__{
+          type: Type.t(),
+        }
+
+  # type as merged after semantic analysis.
+  @type t :: %__MODULE__{
+          type: Type.t(),
+          cleanup: boolean,
+          error: atom,
+          length: nil | non_neg_integer | {:arg, non_neg_integer()},
+          spec: nil | Macro.t(),
+          in_out: nil | String.t()
+        }
+
+  @spec new(Zig.return_options(), Options.context()) :: specified()
 
   def new(context), do: new([], context)
 

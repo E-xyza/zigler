@@ -229,6 +229,7 @@ defmodule Zig.Sema do
 
   defp make_default_nif(sema_function, module) do
     context = Options.initialize_context(module, module.otp_app)
+    cleanup =  Keyword.get(module.default_nif_opts, :cleanup, true)
 
     @module_settings
     |> Enum.map(&{&1, Map.fetch!(module, &1)})
@@ -240,14 +241,12 @@ defmodule Zig.Sema do
       arity: nil,
       signature: sema_function,
       raw: Function.raw(sema_function),
-      params: params_from_sema(sema_function, module),
-      return: Return.new([type: sema_function.return, cleanup: true], context)
+      params: params_from_sema(sema_function, cleanup),
+      return: %Return{type: sema_function.return}
     )
   end
 
-  defp params_from_sema(sema_function, module) do
-    cleanup = Keyword.get(module.default_nif_opts, :cleanup, true)
-
+  defp params_from_sema(sema_function, cleanup) do
     sema_function.params
     |> Enum.with_index(&{&2, %Parameter{type: &1, cleanup: cleanup}})
     |> Map.new()
