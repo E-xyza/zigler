@@ -240,17 +240,16 @@ defmodule Zig.Sema do
       arity: nil,
       signature: sema_function,
       raw: Function.raw(sema_function),
-      params: params_from_sema(sema_function, context),
+      params: params_from_sema(sema_function, module),
       return: Return.new([type: sema_function.return, cleanup: true], context)
     )
   end
 
-  defp params_from_sema(sema_function, context) do
+  defp params_from_sema(sema_function, module) do
+    cleanup = Keyword.get(module.default_nif_opts, :cleanup, true)
+
     sema_function.params
-    |> Enum.with_index(fn
-      param_type, index ->
-        {index, Parameter.new([type: param_type], context)}
-    end)
+    |> Enum.with_index(&{&2, %Parameter{type: &1, cleanup: cleanup}})
     |> Map.new()
   end
 

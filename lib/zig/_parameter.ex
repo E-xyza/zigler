@@ -1,21 +1,33 @@
 defmodule Zig.Parameter do
   @moduledoc false
 
-  @enforce_keys ~w[cleanup in_out]a
-  defstruct @enforce_keys ++ [:type]
+  @enforce_keys [:cleanup]
+  defstruct @enforce_keys ++ ~w[in_out type]a
 
   alias Zig.Options
   alias Zig.Type
 
+  # information supplied by the user. 
+  @type specified :: %__MODULE__{
+          cleanup: boolean,
+          in_out: boolean
+        }
+
+  # information obtained by semantic analysis.  Cleanup must be present
+  # as the cleanup clause is inherited by the module rules cleanup.
+  @type sema :: %__MODULE__{
+          cleanup: boolean,
+          type: Type.t()
+        }
+
+  # type as merged after semantic analysis.
   @type t :: %__MODULE__{
           type: Type.t(),
           cleanup: boolean,
           in_out: boolean
         }
 
-  @type opts :: :noclean | [:noclean | {:cleanup, boolean}]
-
-  @spec new(opts, Options.context()) :: t
+  @spec new(Zig.parameter_options(), Options.context()) :: specified
   def new(options, context) do
     options
     |> List.wrap()
@@ -34,6 +46,15 @@ defmodule Zig.Parameter do
       Keyword.put(options, :in_out, false)
     end
   end
+
+  # merging semantic analysis with specified options
+
+  @spec merge(sema, specified) :: t
+  def merge(sema, specified) do
+    %{sema | cleanup: specified.cleanup, in_out: specified.in_out}
+  end
+
+  # code rendering
 
   def render_accessory_variables(parameter, index),
     do: Type.render_accessory_variables(parameter.type, parameter, "arg#{index}")
@@ -61,6 +82,4 @@ defmodule Zig.Parameter do
         ".{.cleanup = false},"
     end
   end
-
-  def merge(sema, spec), do: %{sema | cleanup: spec.cleanup, in_out: spec.in_out}
 end

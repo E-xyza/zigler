@@ -54,36 +54,36 @@ defmodule Zig.Module do
                 dump_build_zig: false
               ]
 
-  @type t :: %__MODULE__{
-          otp_app: atom(),
-          module: module(),
-          file: Path.t(),
-          line: non_neg_integer(),
-          module_code_path: nil | Path.t(),
-          zig_code_path: nil | Path.t(),
-          manifest: nil | Manifest.t(),
-          manifest_module: nil | module(),
-          sema: Sema.t(),
-          parsed: Parser.t(),
-          version: String.t(),
-          c: C.opts() | C.t(),
-          dir: Path.t(),
-          easy_c: Path.t(),
-          release_mode: release_modes(),
-          language: Elixir | :erlang,
-          nifs: {:auto, Nif.opts()} | Nif.opts() | [Nif.t()],
-          ignore: [atom()],
-          packages: [packagespec()],
-          resources: [atom()],
-          dump: boolean,
-          dump_sema: boolean,
-          dump_build_zig: boolean | :stdout | :stderr | Path.t(),
-          precompiled: nil,
-          callbacks: [callback_option],
-          default_nif_opts: [Nif.defaultable_opts()],
-          attributes: keyword
-        }
-
+  #  @type t :: %__MODULE__{
+  #          otp_app: atom(),
+  #          module: module(),
+  #          file: Path.t(),
+  #          line: non_neg_integer(),
+  #          module_code_path: nil | Path.t(),
+  #          zig_code_path: nil | Path.t(),
+  #          manifest: nil | Manifest.t(),
+  #          manifest_module: nil | module(),
+  #          sema: Sema.t(),
+  #          parsed: Parser.t(),
+  #          version: String.t(),
+  #          c: C.opts() | C.t(),
+  #          dir: Path.t(),
+  #          easy_c: Path.t(),
+  #          release_mode: release_modes(),
+  #          language: Elixir | :erlang,
+  #          nifs: {:auto, Nif.opts()} | Nif.opts() | [Nif.t()],
+  #          ignore: [atom()],
+  #          packages: [packagespec()],
+  #          resources: [atom()],
+  #          dump: boolean,
+  #          dump_sema: boolean,
+  #          dump_build_zig: boolean | :stdout | :stderr | Path.t(),
+  #          precompiled: nil,
+  #          callbacks: [callback_option],
+  #          default_nif_opts: [Nif.defaultable_opts()],
+  #          attributes: keyword
+  #        }
+  #
   @defaultable_nif_opts ~w[cleanup leak_check]a
   @release_modes ~w[debug safe fast small env]a
 
