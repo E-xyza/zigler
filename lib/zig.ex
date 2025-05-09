@@ -352,15 +352,18 @@ defmodule Zig do
 
   @type nif_options :: [
           export: boolean,
-          concurrency: :dirty_cpu | :dirty_io | :synchronous | :threaded,
+          concurrency: concurrency,
           spec: boolean,
           allocator: nil | atom,
           params: integer | %{optional(integer) => param_options},
           return: as_type | return_options,
           leak_check: boolean,
           alias: nil | atom,
+          arity: arity | Range.t(arity, arity) | [arity | Range.t(arity, arity)],
           impl: boolean | module
         ]
+
+  @type concurrency :: :dirty_cpu | :dirty_io | :synchronous | :threaded | :yielding
 
   @type param_options :: [
           :noclean | :in_out | {:cleanup, boolean} | {:in_out, boolean}

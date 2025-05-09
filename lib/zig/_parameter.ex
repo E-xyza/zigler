@@ -8,7 +8,7 @@ defmodule Zig.Parameter do
   alias Zig.Type
 
   # information supplied by the user. 
-  @type specified :: %__MODULE__{
+  @type unmerged :: %__MODULE__{
           cleanup: boolean,
           in_out: boolean
         }
@@ -27,7 +27,7 @@ defmodule Zig.Parameter do
           in_out: boolean
         }
 
-  @spec new(Zig.parameter_options(), Options.context()) :: specified
+  @spec new(Zig.parameter_options(), Options.context()) :: unmerged
   def new(options, context) do
     options
     |> List.wrap()
@@ -47,9 +47,9 @@ defmodule Zig.Parameter do
     end
   end
 
-  # merging semantic analysis with specified options
+  # merging semantic analysis with unmerged options
 
-  @spec merge(sema, specified) :: t
+  @spec merge(sema, unmerged) :: t
   def merge(sema, specified) do
     %{sema | cleanup: specified.cleanup, in_out: specified.in_out}
   end

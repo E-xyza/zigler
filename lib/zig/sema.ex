@@ -35,7 +35,7 @@ defmodule Zig.Sema do
     module.zig_code_path
     |> Zig.Command.run_sema!(attribs_file: Attributes.code_path(module), c: module.c)
     |> Jason.decode!()
-    |> tap(&maybe_dump(&1, module))
+    |> maybe_dump(module)
     |> reject_ignored(module)
     |> reject_allocators(module)
     |> reject_error_interpreters(module)
@@ -161,6 +161,8 @@ defmodule Zig.Sema do
       sema_json_pretty = Jason.encode!(sema_json, pretty: true)
       IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
     end
+
+    sema_json
   end
 
   @spec analyze_file!(Module.t()) :: Module.t()
@@ -229,7 +231,7 @@ defmodule Zig.Sema do
 
   defp make_default_nif(sema_function, module) do
     context = Options.initialize_context(module, module.otp_app)
-    cleanup =  Keyword.get(module.default_nif_opts, :cleanup, true)
+    cleanup = Keyword.get(module.default_nif_opts, :cleanup, true)
 
     @module_settings
     |> Enum.map(&{&1, Map.fetch!(module, &1)})

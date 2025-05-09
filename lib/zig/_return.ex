@@ -9,7 +9,7 @@ defmodule Zig.Return do
   @type type :: :binary | :integer | :default | :list | {:list, type}
 
   # information supplied by the user. 
-  @type specified :: %__MODULE__{
+  @type unmerged :: %__MODULE__{
           cleanup: boolean,
           error: atom,
           length: nil | non_neg_integer | {:arg, non_neg_integer()},
@@ -20,7 +20,7 @@ defmodule Zig.Return do
   # information obtained by semantic analysis.  Cleanup must be present
   # as the cleanup clause is inherited by the module rules cleanup.
   @type sema :: %__MODULE__{
-          type: Type.t(),
+          type: Type.t()
         }
 
   # type as merged after semantic analysis.
@@ -33,7 +33,7 @@ defmodule Zig.Return do
           in_out: nil | String.t()
         }
 
-  @spec new(Zig.return_options(), Options.context()) :: specified()
+  @spec new(Zig.return_options(), Options.context()) :: unmerged
 
   def new(context), do: new([], context)
 
@@ -116,6 +116,7 @@ defmodule Zig.Return do
   defp validate_map_type(wrong, context),
     do: Options.raise_with(@invalid_map_type_error, wrong, context)
 
+  @spec merge(sema, unmerged) :: t
   def merge(sema, spec) do
     %{
       sema

@@ -35,72 +35,98 @@ defmodule Zig.Nif do
                 :signature,
                 :raw,
                 :doc,
-                # user-specified options with defaults
+                # user-unmerged options with defaults
                 # note that `cleanup` default is set programatically since `return` depends on it.
+                :return,
                 params: %{},
-                return: [],
                 export: true,
                 concurrency: Synchronous,
                 spec: true,
                 leak_check: false
               ]
 
+  @typep unmerged :: %__MODULE__{
+           name: atom,
+           module: atom,
+           file: Path.t(),
+           line: pos_integer,
+           module_code_path: Path.t(),
+           zig_code_path: Path.t(),
+           cleanup: boolean,
+           # user-specified options
+           allocator: atom,
+           impl: nil | boolean | module,
+           alias: atom,
+           export: boolean,
+           concurrency: Zig.concurrency(),
+           arity: [arity | Range.t(arity, arity)],
+           params: %{optional(integer) => Parameter.unmerged()},
+           return: Return.unmerged(),
+           spec: boolean,
+           leak_check: boolean,
+           # the following are set after user-specified options.
+           signature: nil | Function.t(),
+           doc: nil | String.t()
+         }
+
+  @typep sema_raw :: %__MODULE__{
+           signature: Function.t(),
+           raw: :term | :erl_nif_term,
+           return: Return.sema()
+         }
+
+  @typep sema_typed :: %__MODULE__{
+           signature: Function.t(),
+           raw: nil,
+           params: %{optional(integer) => Parameter.sema()},
+           return: Return.sema()
+         }
+
   @typep raw :: %__MODULE__{
            name: atom,
-           export: boolean,
            module: module,
-           concurrency: Concurrency.t(),
-           line: integer,
            file: Path.t(),
+           line: pos_integer,
            module_code_path: Path.t(),
            zig_code_path: Path.t(),
-           spec: boolean(),
-           signature: Function.t(),
-           allocator: nil | atom,
-           params: integer | %{optional(integer) => Parameter.t()},
+           cleanup: false,
+           # user-specified options
+           allocator: nil,
+           impl: nil | boolean | module,
+           alias: atom,
+           export: boolean,
+           concurrency: :synchronous,
+           arity: [arity | Range.t(arity, arity)],
            return: Return.t(),
-           leak_check: boolean(),
-           alias: nil | atom,
-           doc: nil | String.t(),
-           raw: nil | :term | :erl_nif_term,
-           impl: boolean | module
+           spec: boolean,
+           leak_check: false,
+           signature: Function.t(),
+           doc: nil | String.t()
          }
 
-  @typep specified :: %__MODULE__{
+  @typep typed :: %__MODULE__{
            name: atom,
-           export: boolean,
-           concurrency: Concurrency.t(),
            module: module,
-           line: integer,
            file: Path.t(),
+           line: pos_integer,
            module_code_path: Path.t(),
            zig_code_path: Path.t(),
-           spec: boolean(),
-           signature: Function.t(),
+           cleanup: boolean,
+           # user-specified options
+           allocator: atom,
+           impl: nil | boolean | module,
+           alias: atom,
+           export: boolean,
+           concurrency: Zig.concurrency(),
            params: %{optional(integer) => Parameter.t()},
            return: Return.t(),
-           leak_check: boolean(),
-           alias: nil | atom,
-           doc: nil | String.t(),
-           raw: nil,
-           impl: boolean | module
+           spec: boolean,
+           leak_check: boolean,
+           signature: Function.t(),
+           doc: nil | String.t()
          }
 
-  @type t :: raw | specified
-
-  @type defaultable_opts ::
-          {:cleanup, boolean}
-          | {:leak_check, boolean}
-
-  @type individual_opts ::
-          {:export, boolean}
-          | {:concurrency, Concurrency.t()}
-          | {:params, %{optional(integer) => Parameter.opts()}}
-          | {:return, Return.opts()}
-          | {:alias, atom()}
-          | {:doc, String.t()}
-
-  @type opts() :: [defaultable_opts | individual_opts]
+  @type t :: raw | typed
 
   @impl true
   defdelegate fetch(function, key), to: Map
@@ -108,6 +134,7 @@ defmodule Zig.Nif do
   @doc """
   based on nif options for this function keyword at (opts :: nifs :: function_name)
   """
+  @spec new(Zig.nif_options(), Options.context()) :: unmerged
   def new({name, opts}, context) do
     # all options which can take atoms must be normalized first.
     {opts, context} =
@@ -230,6 +257,54 @@ defmodule Zig.Nif do
   defp validate_alias(alias_name, _name) when is_atom(alias_name), do: :ok
 
   defp validate_alias(other, _name), do: {:error, "must be an atom", other}
+
+  # merging user-specified options with semantic analysis
+
+  @spec merge(sema_raw, unmerged) :: raw
+  @spec merge(sema_typed, unmerged) :: typed
+  def merge(sema_nif, spec_nif) do
+    # these are the fields we are going to merge
+    merge_fields = ~w[name cleanup allocator impl alias export concurrency spec leak_check]a
+
+    # params and return needs to be deep-merged.
+    merge_fields
+    |> Enum.reduce(sema_nif, fn field, so_far ->
+      Map.replace!(so_far, field, Map.fetch!(spec_nif, field))
+    end)
+    |> merge_arity(spec_nif)
+    |> Map.update!(:return, &Return.merge(&1, spec_nif.return))
+    |> Map.update!(:params, &deepmerge_params(&1, spec_nif.params))
+  end
+
+  defp merge_arity(%{raw: nil} = sema_nif, %{arity: nil}),
+    do: %{sema_nif | arity: [sema_nif.signature.arity]}
+
+  defp merge_arity(%{raw: nil, arity: arity}, spec_nif) do
+    raise CompileError,
+      description:
+        "the non-raw function #{inspect(spec_nif.module)}.#{spec_nif.name}/#{arity} may not have an arity specified in the nif parameters",
+      file: spec_nif.file,
+      line: spec_nif.line
+  end
+
+  defp merge_arity(sema_nif, %{arity: arity}) when is_list(arity), do: %{sema_nif | arity: arity}
+
+  defp merge_arity(_, spec_nif) do
+    raise CompileError,
+      description:
+        "the raw function #{inspect(spec_nif.module)}.#{spec_nif.name}/? must have arities specified in zigler parameters",
+      file: spec_nif.file,
+      line: spec_nif.line
+  end
+
+  defp deepmerge_params(sema_params, spec_params) do
+    Enum.reduce(spec_params, sema_params, fn
+      {index, parameter}, so_far ->
+        Map.update!(so_far, index, &Parameter.merge(&1, parameter))
+    end)
+  end
+
+  # rendering functions
 
   def render_elixir(%{concurrency: concurrency} = nif) do
     doc =
@@ -376,48 +451,6 @@ defmodule Zig.Nif do
 
   def binding_error(name, arity) do
     "nif for function #{name}/#{arity} not bound"
-  end
-
-  def merge(sema_nif, spec_nif) do
-    # these are the fields we are going to merge
-    merge_fields = ~w[name cleanup allocator impl alias export concurrency spec leak_check]a
-
-    # params and return needs to be deep-merged.
-    merge_fields
-    |> Enum.reduce(sema_nif, fn field, so_far ->
-      Map.replace!(so_far, field, Map.fetch!(spec_nif, field))
-    end)
-    |> merge_arity(spec_nif)
-    |> Map.update!(:return, &Return.merge(&1, spec_nif.return))
-    |> Map.update!(:params, &deepmerge_params(&1, spec_nif.params))
-  end
-
-  defp merge_arity(%{raw: nil} = sema_nif, %{arity: nil}),
-    do: %{sema_nif | arity: [sema_nif.signature.arity]}
-
-  defp merge_arity(%{raw: nil, arity: arity}, spec_nif) do
-    raise CompileError,
-      description:
-        "the non-raw function #{inspect(spec_nif.module)}.#{spec_nif.name}/#{arity} may not have an arity specified in the nif parameters",
-      file: spec_nif.file,
-      line: spec_nif.line
-  end
-
-  defp merge_arity(sema_nif, %{arity: arity}) when is_list(arity), do: %{sema_nif | arity: arity}
-
-  defp merge_arity(_, spec_nif) do
-    raise CompileError,
-      description:
-        "the raw function #{inspect(spec_nif.module)}.#{spec_nif.name}/? must have arities specified in zigler parameters",
-      file: spec_nif.file,
-      line: spec_nif.line
-  end
-
-  defp deepmerge_params(sema_params, spec_params) do
-    Enum.reduce(spec_params, sema_params, fn
-      {index, parameter}, so_far ->
-        Map.update!(so_far, index, &Parameter.merge(&1, parameter))
-    end)
   end
 
   # Access behaviour guards

@@ -20,18 +20,7 @@ defmodule Zig.C do
           src: [{String.t(), [String.t()]}]
         }
 
-  @type dirpath :: String.t() | {:priv, String.t()} | {:system, String.t()}
-  @type dirspec :: dirpath() | [dirpath()]
-  @type srcspec :: String.t() | {String.t(), [String.t()]}
-
-  @type opts :: [
-          include_dirs: dirspec(),
-          library_dirs: dirspec(),
-          link_lib: dirspec(),
-          link_libcpp: boolean,
-          src: srcspec()
-        ]
-
+  @spec new(Zig.c_options(), Options.context()) :: t
   def new(opts, context) do
     opts
     |> Options.scrub_non_keyword(context)
