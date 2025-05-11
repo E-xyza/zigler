@@ -8,7 +8,7 @@ if {:unix, :linux} == :os.type() do
 
     @compile {:no_warn_undefined, :erlang_easy_c_test}
 
-    @moduletag [erlang: true, no_ci: true]
+    @moduletag :erlang
     @test_file to_charlist(Path.join(__DIR__, "src/erlang_easy_c_test"))
 
     test "doing it with erlang works" do

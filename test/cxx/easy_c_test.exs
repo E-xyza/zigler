@@ -3,9 +3,6 @@
 if {:unix, :linux} == :os.type() do
   defmodule ZiglerTest.CXX.EasyCTest do
     use ZiglerTest.IntegrationCase, async: true
-
-    @moduletag :no_ci
-
     use Zig,
       otp_app: :zigler,
       easy_c: "cblas.h",
