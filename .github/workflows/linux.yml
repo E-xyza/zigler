@@ -33,7 +33,7 @@ jobs:
         key: ${{ runner.os }}-mix-${{ matrix.pair.otp-version }}-${{ matrix.pair.elixir-version }}-${{ hashFiles('/mix.lock') }}-${{ hashfiles('installer/**/*') }}
 
     - name: Install ZIGLER_TEST_BLAS
-      run: sudo apt install -y libgslcblas0
+      run: sudo apt install -y libopenblas-dev
 
     - name: Install dependencies
       run: mix deps.get

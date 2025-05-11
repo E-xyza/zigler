@@ -237,7 +237,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects other" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `release_mode` must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env`, got: `:foo`",
+                   "test/options_test.exs:4: option `release_mode` must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env` or `{:env, mode}`, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, release_mode: :foo)
                    end

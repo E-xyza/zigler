@@ -37,7 +37,7 @@ defmodule Zig.Module do
                 :manifest_module,
                 :sema,
                 # defaulted options
-                release_mode: :debug,
+                release_mode: {:env, :debug},
                 ignore: [],
                 packages: [],
                 resources: [],
@@ -89,7 +89,6 @@ defmodule Zig.Module do
         }
 
   @defaultable_nif_opts ~w[cleanup leak_check]a
-  @release_modes ~w[debug safe fast small env]a
 
   @affix %{"Elixir": "`use Zig`", erlang: "`zig_opts(...)`"}
 
@@ -143,7 +142,7 @@ defmodule Zig.Module do
     |> Options.normalize_path(:easy_c, context)
     |> Options.normalize_kw(:ignore, [], &normalize_atom_or_atomlist/2, context)
     |> Options.normalize_kw(:resources, [], &normalize_atom_or_atomlist/2, context)
-    |> Options.validate(:release_mode, @release_modes, context)
+    |> Options.validate(:release_mode, &validate_release_modes/1, context)
     |> Options.validate(:cleanup, :boolean, context)
     |> Options.validate(:leak_check, :boolean, context)
     |> Keyword.drop(@defaultable_nif_opts)
@@ -305,6 +304,14 @@ defmodule Zig.Module do
 
   defp normalize_nifs({:auto, nifs}, common_values, context) do
     {:auto, normalize_nifs(nifs, common_values, context)}
+  end
+
+  defp validate_release_modes(mode) when mode in ~w[debug safe fast small env]a, do: :ok
+  defp validate_release_modes({:env, mode}) when mode in ~w[debug safe fast small]a, do: :ok
+
+  defp validate_release_modes(other) do
+    {:error, "must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env` or `{:env, mode}`",
+     other}
   end
 
   # CODE RENDERING

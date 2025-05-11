@@ -169,6 +169,16 @@ defmodule Zig.Command do
     System.fetch_env!("ZIGLER_RELEASE_MODE")
   end
 
+  def release_mode(%{release_mode: {:env, mode}}) do
+    case System.get_env("ZIGLER_RELEASE_MODE") do
+      env when env in ["", nil] ->
+        Map.fetch!(@release_modes, mode)
+
+      supplied ->
+        supplied
+    end
+  end
+
   def release_mode(module) do
     Map.fetch!(@release_modes, module.release_mode)
   end

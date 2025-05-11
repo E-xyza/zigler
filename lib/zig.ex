@@ -336,6 +336,8 @@ defmodule Zig do
     - `:safe` builds your shared object in zig's `ReleaseSafe` build mode.
     - `:fast` builds your shared object in zig's `ReleaseFast` build mode.
     - `:small` builds your shared object in zig's `ReleaseSmall` build mode.
+    - `:env` reads `ZIGLER_RELEASE_MODE` environment variable to determine the release mode.
+    - `{:env, mode}` reads `ZIGLER_RELEASE_MODE` environment variable with fallback to the specified mode.
   - `easy_c`: path to a header file that will be used to generate a C wrapper.
     if this is set, you must specify `:nifs` without the `:auto` (or `...`) specifier.
     you may provide code using either the `c` > `link_lib` option or `c` > `src`. You 
@@ -367,7 +369,7 @@ defmodule Zig do
   @type options :: [
           otp_app: atom,
           c: [c_options],
-          release_mode: :debug | :safe | :fast | :small,
+          release_mode: release_mode | :env | {:env, release_mode},
           easy_c: Path.t(),
           nifs: {:auto, keyword(nif_options)} | keyword(nif_options),
           ignore: [atom],
@@ -380,6 +382,8 @@ defmodule Zig do
           dump_sema: boolean,
           dump_build_zig: boolean | :stdout | :stderr | Path.t()
         ]
+
+  @type release_mode :: :debug | :safe | :fast | :small
 
   @typedoc """
   options for compiling C code.  See `t:c_path/0` for details on how to specify paths.

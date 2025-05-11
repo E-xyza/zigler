@@ -86,10 +86,6 @@ defmodule Zig.Options do
     end)
   end
 
-  def validate(opts, key, members, context) when is_list(members) do
-    do_validate(opts, key, &(&1 in members), "must be one of #{list_of(members)}", context)
-  end
-
   def validate(opts, key, :boolean, context) do
     do_validate(opts, key, &is_boolean/1, "must be a boolean", context)
   end
