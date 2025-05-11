@@ -3,11 +3,12 @@
 if {:unix, :linux} == :os.type() do
   defmodule ZiglerTest.Erlang.EasyCTest do
     use ZiglerTest.IntegrationCase, async: true
+
     alias ZiglerTest.Compiler
 
     @compile {:no_warn_undefined, :erlang_easy_c_test}
 
-    @moduletag :erlang
+    @moduletag [erlang: true, no_ci: true]
     @test_file to_charlist(Path.join(__DIR__, "src/erlang_easy_c_test"))
 
     test "doing it with erlang works" do

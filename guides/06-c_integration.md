@@ -73,6 +73,8 @@ C files.
 if Application.fetch_env!(:zigler, :test_blas) do
   defmodule LibraryTest do
     use ExUnit.Case, async: true
+    @moduletag :no_ci
+
     use Zig, 
       otp_app: :zigler,
       c: [link_lib: {:system, "blas"}]
@@ -130,6 +132,8 @@ It then calculates the linear transformation `ax + y` using these vectors.
 ```elixir
   defmodule EasyCTest do
     use ExUnit.Case, async: true
+    @moduletag :no_ci
+
     use Zig, 
       otp_app: :zigler,
       easy_c: "cblas.h",
