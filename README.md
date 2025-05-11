@@ -11,7 +11,11 @@ Library test status:
 
 ### Obtaining Zig dependency
 
-Run `mix zig.get`
+Run `mix zig.get` after `mix deps.get`.  This will provide a zig installation
+in the directory pointed to by `:filename.basedir(:user_cache, "zigler")`.
+
+You may also use a local installation of zig by specifying the environment variable
+`ZIG_ARCHIVE_PATH`.
 
 ### Main Installation
 
@@ -102,7 +106,7 @@ defmodule ZigCollections do
     }
     return sum;
   }
-  """
+  """:nt}
 end
 
 test "type marshalling" do
