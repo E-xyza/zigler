@@ -103,6 +103,12 @@ defmodule AliasTest do
 end
 ```
 
+> ### Aliasing does not shadow {: .warning}
+>
+> If you alias a nif and use autopopulate via `...` or `{:auto, _}`, zigler will still include the
+> aliased nif in the list of nifs. If you do wish to have the alias fully shadow the implementation,
+> use the `:ignore` option.
+
 ## Args options
 
 Arguments can also take options, using `args: [...]`
@@ -211,15 +217,16 @@ end
 
 ## Disable documentation
 
-Documentation can be disabled with the `docs: false` option.
+Documentation can be disabled with the `doc: false` option.
 
 ```elixir
 defmodule DisableDoc do
   use Zig, 
     otp_app: :zigler,
-    nifs: [nodocs: [docs: false]]
+    nifs: [nodocs: [doc: false]]
 
   ~Z"""
+  /// these docs will not appear in elixir docs
   pub fn nodocs() void {}
   """
 end

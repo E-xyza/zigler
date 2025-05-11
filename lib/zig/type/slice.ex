@@ -6,7 +6,8 @@ defmodule Zig.Type.Slice do
   alias Zig.Type
   use Type
 
-  defstruct [:child, :repr, has_sentinel?: false]
+  @enforce_keys ~w[child repr const]a
+  defstruct @enforce_keys ++ [has_sentinel?: false]
 
   import Type, only: :macros
 
@@ -17,12 +18,13 @@ defmodule Zig.Type.Slice do
         }
 
   def from_json(
-        %{"child" => child, "has_sentinel" => has_sentinel?, "repr" => repr},
+        %{"child" => child, "has_sentinel" => has_sentinel?, "repr" => repr, "is_const" => const},
         module
       ) do
     %__MODULE__{
       child: Type.from_json(child, module),
       has_sentinel?: has_sentinel?,
+      const: const,
       repr: repr
     }
   end

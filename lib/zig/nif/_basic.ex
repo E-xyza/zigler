@@ -44,7 +44,7 @@ defmodule Zig.Nif.Basic do
   end
 
   def render_elixir(%{raw: raw} = nif) when not is_nil(raw) do
-    Enum.map(nif.params, fn arity ->
+    Enum.map(nif.arity, fn arity ->
       unused_params = Nif.elixir_parameters(arity, false)
 
       quote do

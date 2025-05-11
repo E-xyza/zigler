@@ -9,12 +9,13 @@ defmodule Zig.Type.Cpointer do
 
   import Type, only: :macros
 
-  defstruct [:child]
+  @enforce_keys ~w[child const]a
+  defstruct @enforce_keys
 
   @type t :: %__MODULE__{child: Type.t()}
 
-  def from_json(%{"child" => child}, module) do
-    %__MODULE__{child: Type.from_json(child, module)}
+  def from_json(%{"child" => child} = ptr, module) do
+    %__MODULE__{child: Type.from_json(child, module), const: ptr["is_const"]}
   end
 
   @impl true
@@ -96,12 +97,12 @@ defmodule Zig.Type.Cpointer do
           [0..255]
         end
 
-      %{length: length, as: type} when is_integer(length) and type in ~w(default binary)a ->
+      %{length: length, as: type} when is_integer(length) and type in ~w[default binary]a ->
         quote context: Elixir do
           <<_::unquote(length * 8)>>
         end
 
-      %{as: type} when type in ~w(default binary)a ->
+      %{as: type} when type in ~w[default binary]a ->
         quote do
           binary() | nil
         end
@@ -179,5 +180,5 @@ defmodule Zig.Type.Cpointer do
 
   defp binary_form(_), do: nil
 
-  def of(child), do: %__MODULE__{child: child}
+  def of(child), do: %__MODULE__{child: child, const: false}
 end

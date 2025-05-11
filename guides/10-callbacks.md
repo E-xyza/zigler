@@ -18,12 +18,12 @@ same name, e.g: `callbacks: [:on_load]` is shorthand for `callbacks: [on_load: :
 
 > ### Context in callbacks {: .info}
 >
-> For all callbacks, the context is set as follows:
+> For all callbacks, the context is set with the following fields:
 
 - `env`: the `e.ErlNifEnv` value passed to the callback function;
-- `mode`: `.callback`;
-- ## `allocator`: `beam.allocator`;--
--
+- `mode`: `.callback`
+- `allocator`: `beam.allocator`
+
 > Thus you should be able to use `beam.get`, `beam.make`, or `beam.send` with the appropriate context
 >   set without extra options.
 

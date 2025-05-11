@@ -1,39 +1,63 @@
 defmodule Zig.Parameter do
   @moduledoc false
 
-  @enforce_keys ~w[type cleanup in_out]a
-  defstruct @enforce_keys
+  @enforce_keys [:cleanup]
+  defstruct @enforce_keys ++ ~w[in_out type]a
 
+  alias Zig.Options
   alias Zig.Type
 
+  # information supplied by the user. 
+  @type unmerged :: %__MODULE__{
+          cleanup: boolean,
+          in_out: boolean
+        }
+
+  # information obtained by semantic analysis.  Cleanup must be present
+  # as the cleanup clause is inherited by the module rules cleanup.
+  @type sema :: %__MODULE__{
+          cleanup: boolean,
+          type: Type.t()
+        }
+
+  # type as merged after semantic analysis.
   @type t :: %__MODULE__{
           type: Type.t(),
           cleanup: boolean,
           in_out: boolean
         }
 
-  @type opts :: :noclean | [:noclean | {:cleanup, boolean}]
-
-  def new(type, options) do
-    struct!(__MODULE__, [type: type] ++ normalize_options(options))
-  end
-
-  @options ~w[cleanup]a
-
-  def normalize_options(options) do
+  @spec new(Zig.parameter_options(), Options.context()) :: unmerged
+  def new(options, context) do
     options
     |> List.wrap()
-    |> Enum.flat_map(fn
-      :noclean -> [cleanup: false]
-      :in_out -> [in_out: true, cleanup: false]
-      {k, _} = kv when k in @options -> [kv]
-    end)
-    |> then(&Keyword.merge([cleanup: true, in_out: false], &1))
+    |> Options.normalize(:cleanup, Options.boolean_normalizer(noclean: false), context)
+    |> Options.normalize(:in_out, Options.boolean_normalizer(in_out: true), context)
+    |> Options.scrub_non_keyword(context)
+    |> force_in_out_no_cleanup()
+    |> Keyword.put_new(:cleanup, true)
+    |> then(&struct!(__MODULE__, &1))
   end
 
-  def render_accessory_variables(parameter, index) do
-    Type.render_accessory_variables(parameter.type, parameter, "arg#{index}")
+  def force_in_out_no_cleanup(options) do
+    if options[:in_out] do
+      Keyword.put(options, :cleanup, false)
+    else
+      Keyword.put(options, :in_out, false)
+    end
   end
+
+  # merging semantic analysis with unmerged options
+
+  @spec merge(sema, unmerged) :: t
+  def merge(sema, specified) do
+    %{sema | cleanup: specified.cleanup, in_out: specified.in_out}
+  end
+
+  # code rendering
+
+  def render_accessory_variables(parameter, index),
+    do: Type.render_accessory_variables(parameter.type, parameter, "arg#{index}")
 
   def render_payload_options(parameter, index) do
     parameter.type

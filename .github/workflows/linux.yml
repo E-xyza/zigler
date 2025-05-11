@@ -4,7 +4,7 @@ on: push
 
 jobs:
   ubuntu:
-    runs-on: ubuntu-20.04
+    runs-on: ubuntu-24.04
     name: Linux OTP ${{matrix.pair.otp-version}} / Elixir ${{matrix.pair.elixir-version}}
     strategy:
       matrix:
@@ -31,6 +31,9 @@ jobs:
       with:
         path: deps
         key: ${{ runner.os }}-mix-${{ matrix.pair.otp-version }}-${{ matrix.pair.elixir-version }}-${{ hashFiles('/mix.lock') }}-${{ hashfiles('installer/**/*') }}
+
+    - name: Install ZIGLER_TEST_BLAS
+      run: sudo apt install -y libopenblas-dev
 
     - name: Install dependencies
       run: mix deps.get

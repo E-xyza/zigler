@@ -4,13 +4,13 @@ defmodule Zig.Sema do
   alias Zig.Attributes
   alias Zig.Module
   alias Zig.Nif
+  alias Zig.Options
   alias Zig.Parameter
   alias Zig.Return
   alias Zig.Type
   alias Zig.Type.Error
   alias Zig.Type.Function
   alias Zig.Type.Integer
-  alias Zig.Type.Manypointer
   alias Zig.Type.Pointer
 
   require Logger
@@ -29,13 +29,13 @@ defmodule Zig.Sema do
 
   @spec run_sema!(Module.t()) :: Module.t()
   # performs the first stage of semantic analysis:
-  # actually executing the zig command to obtain the semantic analysis of the
+  # actually executing the zig command to obtaitest/mark_as_impl_test.exsn the semantic analysis of the
   # desired file.
   def run_sema!(module) do
     module.zig_code_path
     |> Zig.Command.run_sema!(attribs_file: Attributes.code_path(module), c: module.c)
     |> Jason.decode!()
-    |> tap(&maybe_dump(&1, module))
+    |> maybe_dump(module)
     |> reject_ignored(module)
     |> reject_allocators(module)
     |> reject_error_interpreters(module)
@@ -95,10 +95,7 @@ defmodule Zig.Sema do
         list -> list
       end
 
-    allocators =
-      nifs
-      |> Enum.flat_map(fn {_name, opts} -> List.wrap(opts[:allocator]) end)
-      |> Enum.map(&"#{&1}")
+    allocators = Enum.flat_map(nifs, &List.wrap(if allocator = &1.allocator, do: "#{allocator}"))
 
     Map.update!(json, "functions", fn
       functions ->
@@ -118,7 +115,7 @@ defmodule Zig.Sema do
     # then convert into a list of strings
     error_functions =
       nifs
-      |> Enum.flat_map(fn {_, opts} -> error_fun(opts) end)
+      |> Enum.flat_map(&error_fun/1)
       |> Enum.reject(&Keyword.has_key?(nifs, &1))
       |> Enum.map(&"#{&1}")
 
@@ -128,16 +125,7 @@ defmodule Zig.Sema do
     end)
   end
 
-  defp error_fun(opts) do
-    opts
-    |> Keyword.get(:return, [])
-    |> List.wrap()
-    |> Enum.find_value(fn
-      {:error, fun} -> fun
-      _ -> nil
-    end)
-    |> List.wrap()
-  end
+  defp error_fun(nif), do: List.wrap(nif.return.error)
 
   defp integrate_sema(
          %{
@@ -173,14 +161,16 @@ defmodule Zig.Sema do
       sema_json_pretty = Jason.encode!(sema_json, pretty: true)
       IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
     end
+
+    sema_json
   end
 
   @spec analyze_file!(Module.t()) :: Module.t()
   # updates the per-function options to include the semantically understood type
   # information.  Also strips "auto" from the nif information to provide a finalized
   # keyword list of functions with their options.
-  def analyze_file!(%{sema: %{functions: functions, types: _types}} = module) do
-    # `nifs` option could either be {:auto, keyword} which means that the full
+  def analyze_file!(%{sema: %{functions: sema_functions}} = module) do
+    # `nifs` option could either be {:auto, [nifs]} which means that the full
     # list of functions should be derived from the semantic analysis, determining
     # which functions have `pub` declaration, with certain functions optionally
     # having their specification overloaded.
@@ -193,64 +183,23 @@ defmodule Zig.Sema do
 
     nifs =
       case module.nifs do
-        {:auto, specified_fns} ->
-          # make sure that all of the specified functions exist in sema.
-          Enum.each(specified_fns, fn {name, nif_opts} ->
-            expected_name = Keyword.get(nif_opts, :alias, name)
+        {:auto, specified_nifs} ->
+          # go through the list of sema_functions and add them to the specified nifs list
+          # if they aren't there yet.
 
-            unless Enum.any?(functions, &(&1.name == expected_name)) do
-              needed_msg = if nif_opts[:alias], do: " (needed by nif #{name})"
-
-              raise CompileError,
-                description:
-                  "public function named `#{expected_name}`#{needed_msg} not found in semantic analysis of module.",
-                file: module.file,
-                line: module.line
-            end
+          sema_functions
+          |> Enum.reduce(specified_nifs, fn
+            sema_function, so_far ->
+              if Enum.any?(so_far, &(&1.name == sema_function.name)) do
+                so_far
+              else
+                [make_default_nif(sema_function, module) | so_far]
+              end
           end)
+          |> build_from_specs(sema_functions, module)
 
-          Enum.map(functions, fn function ->
-            nif_opts = Keyword.get(specified_fns, function.name, module.default_nif_opts)
-
-            function.name
-            |> Nif.new(module, nif_opts)
-            |> Nif.set_file_line(module.manifest_module, module.parsed)
-            |> apply_from_sema(function, nif_opts)
-          end) ++
-            Enum.flat_map(specified_fns, fn {name, nif_opts} ->
-              List.wrap(
-                if expected_name = Keyword.get(nif_opts, :alias) do
-                  function = Enum.find(functions, &(&1.name == expected_name))
-
-                  # TODO: abstract this with below
-                  name
-                  |> Nif.new(module, nif_opts)
-                  |> Nif.set_file_line(module.manifest_module, module.parsed)
-                  |> apply_from_sema(function, nif_opts)
-                end
-              )
-            end)
-
-        selected_fns when is_list(selected_fns) ->
-          Enum.map(selected_fns, fn {name, nif_opts} ->
-            expected_name = Keyword.get(nif_opts, :alias, name)
-
-            if function = Enum.find(functions, &(&1.name == expected_name)) do
-              # TODO: abstract this with above
-              name
-              |> Nif.new(module, nif_opts)
-              |> Nif.set_file_line(module.manifest_module, module.parsed)
-              |> apply_from_sema(function, nif_opts)
-            else
-              needed_msg = if nif_opts[:alias], do: " (needed by nif #{name})"
-
-              raise CompileError,
-                description:
-                  "public function named `#{expected_name}`#{needed_msg} not found in semantic analysis of module.",
-                file: module.file,
-                line: module.line
-            end
-          end)
+        specified_nifs when is_list(specified_nifs) ->
+          build_from_specs(specified_nifs, sema_functions, module)
       end
 
     Enum.each(nifs, &validate_nif!(&1))
@@ -258,98 +207,51 @@ defmodule Zig.Sema do
     %{module | nifs: nifs}
   end
 
-  defp apply_from_sema(
-         nif,
-         %Function{
-           arity: 3,
-           params: [:env, %Integer{}, %Manypointer{child: t}],
-           return: t
-         } = sema,
-         opts
-       )
-       when t in ~w[term erl_nif_term]a do
-    arities =
-      case Keyword.fetch(opts, :arity) do
-        {:ok, arity} when arity in 0..63 ->
-          arities(arity)
+  defp build_from_specs(specified_nifs, sema_functions, module) do
+    Enum.map(specified_nifs, fn nif ->
+      expected_name = nif.alias || nif.name
 
-        {:ok, {:.., _, _} = range} ->
-          arities(range)
-
-        {:ok, list} when is_list(list) ->
-          Enum.flat_map(list, &arities/1)
-
-        :error ->
-          raise CompileError,
-            description:
-              "the raw function #{inspect(nif.module)}.#{nif.name}/? must have arities specified in zigler parameters",
-            file: nif.file,
-            line: nif.line
-      end
-
-    %{nif | signature: sema, raw: t, params: arities, return: Return.new(t)}
-  end
-
-  defp apply_from_sema(%{params: nif_params!} = nif, sema, opts) do
-    nif_params! = nif_params! || %{}
-
-    Enum.each(nif_params!, fn
-      {index, _} ->
-        if index >= sema.arity do
-          raise CompileError,
-            description:
-              "nif function `#{nif.name}` has an arity of #{sema.arity}, but parameter #{index} was specified",
-            file: nif.file,
-            line: nif.line
-        end
-    end)
-
-    %{
-      nif
-      | signature: sema,
-        params: params_from_sema(sema, nif_params!),
-        return: return_from_sema(sema, opts)
-    }
-  end
-
-  defp arities(integer) when is_integer(integer), do: [integer]
-  defp arities({:.., _, [start, finish]}), do: Enum.to_list(start..finish)
-
-  defp params_from_sema(%{params: params}, opts) do
-    params
-    |> Enum.with_index()
-    |> Enum.reduce(%{}, fn {param, index}, so_far ->
-      Map.put(so_far, index, Parameter.new(param, List.wrap(opts[index])))
-    end)
-  end
-
-  defp return_from_sema(%{return: return}, opts) do
-    opts
-    |> Keyword.get(:return, [])
-    |> add_in_out_param(opts[:params] || %{})
-    |> then(&Return.new(return, &1))
-  end
-
-  @in_out_styles [:in_out, in_out: true]
-  defp add_in_out_param(return_opts, params) do
-    params
-    |> Enum.flat_map(fn {index, param_opts} ->
-      if Enum.any?(List.wrap(param_opts), &(&1 in @in_out_styles)) do
-        [index]
+      if sema_function = Enum.find(sema_functions, &(&1.name == expected_name)) do
+        sema_function
+        |> make_default_nif(module)
+        |> Nif.merge(nif)
       else
-        []
+        needed_msg = if nif.alias, do: " (needed by nif #{nif.name})"
+
+        raise CompileError,
+          description:
+            "public function named `#{expected_name}`#{needed_msg} not found in semantic analysis of module.",
+          file: module.file,
+          line: module.line
       end
     end)
-    |> case do
-      [] ->
-        return_opts
+  end
 
-      [int] ->
-        Keyword.put(return_opts, :in_out, "arg#{int}")
+  @module_settings ~w[module file line module_code_path zig_code_path]a
 
-      [_ | _] ->
-        raise CompileError, "can't have more than one in-out parameter"
-    end
+  defp make_default_nif(sema_function, module) do
+    context = Options.initialize_context(module, module.otp_app)
+    cleanup = Keyword.get(module.default_nif_opts, :cleanup, true)
+
+    @module_settings
+    |> Enum.map(&{&1, Map.fetch!(module, &1)})
+    |> Keyword.merge(module.default_nif_opts)
+    |> then(&{sema_function.name, &1})
+    |> Nif.new(context)
+    |> Nif.set_file_line(module.manifest_module, module.parsed)
+    |> struct!(
+      arity: nil,
+      signature: sema_function,
+      raw: Function.raw(sema_function),
+      params: params_from_sema(sema_function, cleanup),
+      return: %Return{type: sema_function.return}
+    )
+  end
+
+  defp params_from_sema(sema_function, cleanup) do
+    sema_function.params
+    |> Enum.with_index(&{&2, %Parameter{type: &1, cleanup: cleanup}})
+    |> Map.new()
   end
 
   defp validate_nif!(%{raw: nil} = nif) do
