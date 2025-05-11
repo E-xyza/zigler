@@ -10,7 +10,6 @@ defmodule Zig.Nif do
   # This module gets an access behaviour so that it can be easily used in EEx files.
   @behaviour Access
 
-  alias Zig.Nif.Concurrency
   alias Zig.Nif.DirtyCpu
   alias Zig.Nif.DirtyIo
   alias Zig.Nif.Synchronous

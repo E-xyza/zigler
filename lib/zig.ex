@@ -325,21 +325,74 @@ defmodule Zig do
     Zig.Macro.inspect(code, opts)
   end
 
+  @typedoc """
+  user options for the `use Zig` macro, or for the `zig_opts(...)` attribute in erlang.
+
+  - `otp_app`: required.  Default location where the shared libraries will be installed depends
+    on this value.
+  - `c`: see `t:c_options/0` for details.
+  - `release_mode`: the release mode to use when building the shared object.
+    - `:debug` (default) builds your shared object in zig's `Debug` build mode.
+    - `:safe` builds your shared object in zig's `ReleaseSafe` build mode.
+    - `:fast` builds your shared object in zig's `ReleaseFast` build mode.
+    - `:small` builds your shared object in zig's `ReleaseSmall` build mode.
+  - `easy_c`: path to a header file that will be used to generate a C wrapper.
+    if this is set, you must specify `:nifs` without the `:auto` (or `...`) specifier.
+    you may provide code using either the `c` > `link_lib` option or `c` > `src`. You 
+    may also NOT provide any `~Z` blocks in your module.
+  - `nifs`: a list of nifs to be generated.  If you specify as `{:auto, nifs}`, zigler 
+    will search the target zig code for `pub` functions and generate the default nifs for
+    those that do not appear in the nifs list.  If you specify as a list of nifs, only 
+    the nifs in the list will be used.  In Elixir, using `...` in your nifs list 
+    converts it to `{:auto, nifs}`.  The nifs list should be a keyword list with the
+    keys being the function names.  See `t:nif_options/0` for details on the options.
+  - `ignore`: any functions found in the `ignore` list will not be generated as nifs if
+    you are autodetecting nifs.
+  - `packages`: a list of packages to be included in the build.  Each package is a tuple
+    of the form `{name, {path, deps}}` where `name` is the name of the package, `path` is
+    the path to the package, and `deps` is a list of dependencies for that package.  Those
+    dependencies must alse be in the `packages` list.
+  - `resources`: a list of types in the zig code that are to be treated as resources.
+  - `callbacks`: see `t:callback_option/0` for details.
+  - `cleanup`: (default `true`) can be used to shut down cleanup for allocated datatypes
+    module-wide.
+  - `leak_check`: (default `false`) if set to `true`, by default all nifs will use the
+    debug_allocator, and check for memory leaks at the end of each nif call.
+  - `dump`: if set to `true`, the generated zig code will be dumped to the console.
+  - `dump_sema`: if set to `true`, the semantic analysis of the generated zig code will be dumped to the console.
+  - `dump_build_zig`: if set to `true`, the generated zig code will be dumped to the console.
+    If set to `:stdout`, or `:stderr` it will be sent to the respective stdio channels. If set 
+    to a path, the generated zig code will be written to a file at that path.
+  """
   @type options :: [
           otp_app: atom,
-          c: c_options,
+          c: [c_options],
           release_mode: :debug | :safe | :fast | :small,
           easy_c: Path.t(),
           nifs: {:auto, keyword(nif_options)} | keyword(nif_options),
           ignore: [atom],
           packages: [{name :: atom, {path :: Path.t(), deps :: [atom]}}],
           resources: [atom],
+          callbacks: [callback_option],
+          cleanup: boolean,
+          leak_check: boolean,
           dump: boolean,
           dump_sema: boolean,
-          dump_build_zig: boolean | :stdout | :stderr | Path.t(),
-          callbacks: [callback_option]
+          dump_build_zig: boolean | :stdout | :stderr | Path.t()
         ]
 
+  @typedoc """
+  options for compiling C code.  See `t:c_path/0` for details on how to specify paths.
+
+  - `include_dirs`: a path or list of paths to search for C header files.
+  - `library_dirs`: a path or list of paths to search for C libraries.
+  - `link_lib`: a path or list of libraries to link against.
+  - `link_libcpp`: if set to `true`, the C++ standard library will be linked.
+  - `src`: a list of C source files to compile.  Each source file can be a tuple
+    of the form `{path, options}` where `path` is the path to the source file and
+    `options` is a list of compiler options to pass to the compiler when building
+    the source file.  If no options are provided, the default options will be used.
+  """
   @type c_options :: [
           include_dirs: c_path | [c_path],
           library_dirs: c_path | [c_path],
@@ -348,36 +401,116 @@ defmodule Zig do
           src: [c_path | {c_path, [compiler_options :: String.t()]}]
         ]
 
+  @typedoc """
+  Path specification for various C compilation options.  This may be:
+
+  - a `t:Path.t/0` which is a relative path to the module file.
+  - `{:priv, path}` which is a relative path to the `priv` directory of `otp_app`.
+  - `{:system, path}` which is an absolute path to the file.
+    > ### System paths {: .warning}
+    >
+    > You should not use `{:system, path}` if you expect someone else to be building
+    > the code.
+  """
   @type c_path :: Path.t() | {:priv, Path.t()} | {:system, Path.t()}
 
+  @typedoc """
+  user options for individual nifs.
+
+  - `export`: (default `true`) if `false`, the function will be private.
+  - `concurrency`: the concurrency model to use.  See `t:concurrency/0` for options
+    and [Nifs](https://www.erlang.org/doc/apps/erts/erl_nif.html) for details
+    on their meanings.
+
+    > ### Yielding {: .warning}
+    >
+    > Yielding nifs are not currently supported in Zigler but may return when
+    > Async functions are again supported in Zig.
+
+  - `spec`: (default `true`) if `false`, zigler will not generate a typespec
+    for the function.  If used in conjuction with `@spec` you may provide a
+    custom typespec for the function.
+  - `allocator`: (default: `nil`) the allocator type to use for this function.
+    if unset, the default allocator `beam.allocator` will be used.
+    see [Allocators](03-allocators.html) for details on how to use allocators.
+  - `params`: a map of parameter indices to lists of parameter options.  See 
+    `t:param_option/0` for details on the options.  Skipping paramater indices
+    is allowed.
+  - `return`: options for the return value of the function.  See `t:return_option/0`
+    for details on the options.
+  - `leak_check`: (default `false`) if set to `true`, the default allocator
+    will be set to `std.heap.DebugAllocator` and the leak check method will
+    be run at the end of the function.
+  - `alias`: if set, the nif name will be the name of BEAM function in the 
+    module, but the zig function called will be the alias name.
+  - `arity`: (only available for raw functions) the arities of the function
+    that are accepted.
+  - `impl`: sets the `@impl` attribute for the function.
+  """
   @type nif_options :: [
           export: boolean,
           concurrency: concurrency,
           spec: boolean,
           allocator: nil | atom,
-          params: integer | %{optional(integer) => param_options},
-          return: as_type | return_options,
+          params: integer | %{optional(integer) => [param_option]},
+          return: as_type | [return_option],
           leak_check: boolean,
-          alias: nil | atom,
+          alias: atom,
           arity: arity | Range.t(arity, arity) | [arity | Range.t(arity, arity)],
           impl: boolean | module
         ]
 
   @type concurrency :: :dirty_cpu | :dirty_io | :synchronous | :threaded | :yielding
 
-  @type param_options :: [
-          :noclean | :in_out | {:cleanup, boolean} | {:in_out, boolean}
-        ]
+  @typedoc """
+  user options for nif parameters.
 
-  @type return_options :: [
+  - :noclean (same as `{:cleanup, false}`) will force the parameter to
+    not be cleaned up after a function call.
+  - :in_out (same as `{:in_out, true}`) will force the parameter to be
+    an in-out parameter; the return value of the function will derive
+    from this parameter's type instead of the return type.
+
+    Only one parameter may be marked as `:in_out` in a function.
+  """
+  @type param_option ::
+          :noclean | :in_out | {:cleanup, boolean} | {:in_out, boolean}
+
+  @typedoc """
+  user options for nif return values.
+
+  - `:noclean` (same as `{:cleanup, false}`) will force the return value
+    to not be cleaned up after a function call.
+  - `:binary` same as `{:as, :binary}`
+  - `:integer` same as `{:as, :integer}`
+  - `:list` same as `{:as, :list}`
+  - `:map` same as `{:as, :map}`
+  - `:default` same as `{:as, :default}`
+  - `{:error, atom}` (only for functions with in-out parameters) will
+    convert the return value of the function to an error, by calling
+    the function name.  Note this function must be `pub`.
+  - `{:length, length}` specifies the length of the return value
+    if it is a `[*]T`, or `[*c]T` type.  The length may be an integer
+    or `{:arg, index}` if you would like the length to be specified
+    by one of the parameters.
+  """
+  @type return_option ::
           as_type
           | :noclean
           | {:cleanup, boolean}
           | {:as, as_type}
           | {:error, atom}
           | {:length, non_neg_integer | {:arg, non_neg_integer}}
-        ]
 
+  @typedoc """
+  sets the return type of the function, if it's ambiguous.  For example,
+  a `[]u8` can be forced to return a list instead of the default binary.
+
+  For collections, you can specify deep typing.  For example`{:list, :list}` 
+  can be forced to return a list of lists for `[][]u8`.  Map fields can
+  be set using a keyword list, for example `{:map, [foo: :list]}` will
+  force a struct to return a map with the field `foo` typed as a list.
+  """
   @type as_type ::
           :binary
           | :integer
@@ -385,16 +518,21 @@ defmodule Zig do
           | :list
           | :map
           | {:list, as_type}
-          | {:map, [{atom, as_type}]}
+          | {:map, keyword(as_type)}
 
-  @type callback_option() :: [
+  @typedoc """
+  options for assigning hook functions to module management events.
+
+  see [Module Callbacks](10-callbacks.html) for details on what function signatures are allowed
+  for these callbacks.
+  """
+  @type callback_option ::
           :on_load
           | :on_upgrade
           | :on_unload
           | {:on_load, atom}
           | {:on_upgrade, atom}
           | {:on_unload, atom}
-        ]
 
   @doc """
   declares a string block to be included in the module's .zig source file.
