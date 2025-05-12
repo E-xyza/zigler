@@ -126,7 +126,7 @@ inline fn genericGetInt(comptime T: type, src: beam.term, result_ptr: anytype, o
     errdefer error_expected(T, opts);
     errdefer error_got(src, opts);
 
-    if (src.term_type(options.env(opts)) != .integer) {
+    if (src.term_type(opts) != .integer) {
         return GetError.argument_error;
     }
 
@@ -168,7 +168,7 @@ pub fn get_enum(comptime T: type, src: beam.term, opts: anytype) !T {
     error_expected(T, opts);
 
     // prefer the integer form, fallback to string searches.
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .integer => {
             errdefer error_line(.{ "note: not an integer value for ", .{ .typename, @typeName(T) }, " (should be one of `", .{ .inspect, int_values }, "`)" }, opts);
 
@@ -199,7 +199,7 @@ pub fn get_float(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_expected(T, opts);
     errdefer error_got(src, opts);
 
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .float => {
             var float: f64 = undefined;
 
@@ -260,7 +260,7 @@ pub fn get_resource(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_got(src, opts);
 
     // make sure it's a reference type
-    if (src.term_type(options.env(opts)) != .ref) {
+    if (src.term_type(opts) != .ref) {
         return GetError.argument_error;
     }
 
@@ -286,7 +286,7 @@ fn get_tuple_to_buf(src: beam.term, buf: anytype, opts: anytype) !void {
     const child_type_info = @typeInfo(type_info.pointer.child);
     // compile-time type checking on the buf variable
 
-    if (src.term_type(options.env(opts)) != .tuple) return GetError.argument_error;
+    if (src.term_type(opts) != .tuple) return GetError.argument_error;
 
     var arity: c_int = undefined;
     var src_array: [*c]const e.ErlNifTerm = undefined;
@@ -305,7 +305,7 @@ pub fn get_bool(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_expected(T, opts);
     errdefer error_got(src, opts);
 
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .atom => {
             var buf: [256]u8 = undefined;
             const atom = try get_atom(src, &buf, opts);
@@ -356,7 +356,7 @@ pub fn get_optional(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_got(src, opts);
 
     const Child = @typeInfo(T).optional.child;
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .atom => return try null_or_atom(T, src, opts),
         else => return try get(Child, src, opts),
     }
@@ -382,7 +382,7 @@ pub fn get_slice(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_expected(T, opts);
     errdefer error_got(src, opts);
 
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .bitstring => return get_slice_binary(T, src, opts),
         .list => return get_slice_list(T, src, opts),
         else => return GetError.argument_error,
@@ -489,7 +489,7 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
 
     const Child = @typeInfo(T).pointer.child;
     // scan on the type of the source.
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .atom => return try null_or_atom(T, src, opts),
         .map => if (@typeInfo(Child) != .@"struct") {
             return GetError.argument_error;
@@ -554,7 +554,7 @@ fn fill(comptime T: type, result: *T, src: beam.term, opts: anytype) GetError!vo
 fn fill_array(comptime T: type, result: *T, src: beam.term, opts: anytype) GetError!void {
     const array_info = @typeInfo(T).array;
     const Child = array_info.child;
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .list => {
             // try to fill the array, if the lengths mismatch, then throw an error.
             // however, don't call enif_get_list_length because that incurs a second
@@ -605,7 +605,7 @@ fn fill_array(comptime T: type, result: *T, src: beam.term, opts: anytype) GetEr
 
 fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !void {
     const struct_info = @typeInfo(T).@"struct";
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .map => {
             var failed: bool = false;
             // look for each of the fields:

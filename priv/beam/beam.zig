@@ -92,14 +92,15 @@ pub const TermType = enum(e.ErlNifTermType) { atom = e.ERL_NIF_TERM_TYPE_ATOM, b
 ///
 pub const term = if (e.is_sema) struct {
     v: e.ErlNifTerm,
-    pub fn term_type(_: *const @This(), _: env) TermType {
+    pub fn term_type(_: *const @This(), _: anytype) TermType {
         return .atom;
     }
 } else packed struct {
     v: e.ErlNifTerm,
 
     /// equivalent of e.enif_term_type
-    pub fn term_type(this: *const @This(), environment: env) TermType {
+    pub fn term_type(this: *const @This(), opts: anytype) TermType {
+        const environment = options.env(opts);
         return @enumFromInt(e.enif_term_type(environment, this.v));
     }
 };
