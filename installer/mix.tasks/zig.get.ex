@@ -167,11 +167,19 @@ defmodule Mix.Tasks.Zig.Get do
     end
   end
 
+  case Code.ensure_loaded(:json) do
+    {:module, :json} ->
+      defp json_decode!(string), do: :json.decode(string)
+
+    _ ->
+      defp json_decode!(string), do: Jason.decode!(string)
+  end
+
   defp get_meta(opts) do
     meta =
       "https://ziglang.org/download/index.json"
       |> http_get!()
-      |> Jason.decode!()
+      |> json_decode!()
       |> Map.fetch!(opts.version)
       |> Map.fetch!("#{opts.arch}-#{opts.os}")
 
