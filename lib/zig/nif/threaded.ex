@@ -43,11 +43,7 @@ defmodule Zig.Nif.Threaded do
         end
       )
 
-    error_prongs =
-      case {argument_error_prong, error_return_prong} do
-        {[], []} -> []
-        _ -> [catch: argument_error_prong ++ error_return_prong]
-      end
+    error_prongs = [catch: argument_error_prong ++ error_return_prong]
 
     function_block = function_code ++ error_prongs
 
