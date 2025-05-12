@@ -340,8 +340,14 @@ defmodule Zig do
     - `{:env, mode}` reads `ZIGLER_RELEASE_MODE` environment variable with fallback to the specified mode.
   - `easy_c`: path to a header file that will be used to generate a C wrapper.
     if this is set, you must specify `:nifs` without the `:auto` (or `...`) specifier.
-    you may provide code using either the `c` > `link_lib` option or `c` > `src`. You 
-    may also NOT provide any `~Z` blocks in your module.
+    A path beginning with `./` will be treated as a relative to cwd (usually the project root), 
+    otherwise the path will be treated as relative to the module file.
+    You may provide code using either the `c` > `link_lib` option or `c` > `src`. You 
+    may also NOT provide any `~Z` blocks in your module.  
+  - `zig_code_path`: path to a zig file that will be used to as a target.  A path beginning
+    with `./` will be treated as relative to cwd (usually the project root), otherwise the
+    path will be relative to the module file.  If you specify this option, you may NOT
+    provide any `~Z` blocks in your module.
   - `nifs`: a list of nifs to be generated.  If you specify as `{:auto, nifs}`, zigler 
     will search the target zig code for `pub` functions and generate the default nifs for
     those that do not appear in the nifs list.  If you specify as a list of nifs, only 
@@ -408,7 +414,8 @@ defmodule Zig do
   @typedoc """
   Path specification for various C compilation options.  This may be:
 
-  - a `t:Path.t/0` which is a relative path to the module file.
+  - a `t:Path.t/0` which is a relative path to the module file.  If the path begins
+    with `./` it will be treated as a relative path to the current working directory.
   - `{:priv, path}` which is a relative path to the `priv` directory of `otp_app`.
   - `{:system, path}` which is an absolute path to the file.
     > ### System paths {: .warning}

@@ -30,7 +30,14 @@ defmodule Zig.Options do
   end
 
   def normalize_path(opts, key, context) do
-    Keyword.update(opts, key, nil, &IO.iodata_to_binary/1)
+    Keyword.update(opts, key, nil, fn path_iodata ->
+      case IO.iodata_to_binary(path_iodata) do
+        "./" <> rest ->
+          Path.join(File.cwd!(), rest)
+        path -> 
+          path
+      end
+    end)
   rescue
     _ in ArgumentError ->
       raise_with("`#{key}` option must be a path", opts[key], context)
