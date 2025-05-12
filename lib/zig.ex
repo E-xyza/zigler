@@ -408,7 +408,8 @@ defmodule Zig do
   @typedoc """
   Path specification for various C compilation options.  This may be:
 
-  - a `t:Path.t/0` which is a relative path to the module file.
+  - a `t:Path.t/0` which is a relative path to the module file.  If the path begins
+    with `./` it will be treated as a relative path to the current working directory.
   - `{:priv, path}` which is a relative path to the `priv` directory of `otp_app`.
   - `{:system, path}` which is an absolute path to the file.
     > ### System paths {: .warning}
