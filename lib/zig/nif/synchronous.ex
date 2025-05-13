@@ -6,7 +6,7 @@ defmodule Zig.Nif.Synchronous do
   alias Zig.Nif.Basic
 
   @impl true
-  defdelegate render_elixir(nif), to: Basic
+  defdelegate render_elixir(nif, overrides), to: Basic
 
   @impl true
   defdelegate render_erlang(nif), to: Basic

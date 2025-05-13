@@ -59,8 +59,8 @@ this function call will be passed to the `on_load`
 > ### on_load and resources {: .info}
 >
 > The beam nif guide says that resources must be initialized in the `load` callback. The `on_load`
-> callback must NOT initialize resources. This is performed in a function that will wrap your
-> `on_load` callback.
+> callback must NOT initialize resources. Resource initialization is performed in a function that 
+> will wrap your `on_load` callback.
 
 #### Example
 
