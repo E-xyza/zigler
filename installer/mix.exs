@@ -46,7 +46,7 @@ defmodule Zig.Get.MixProject do
         []
 
       _ ->
-        [{:jason, "~> 1.4", only: :dev, runtime: false}]
+        [{:jason, "~> 1.4", runtime: false}]
     end
   end
 
