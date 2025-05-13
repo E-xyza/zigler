@@ -64,7 +64,8 @@ defmodule Zig.C do
     case IO.iodata_to_binary(path) do
       "./" <> rest ->
         {:system, Path.join(File.cwd!(), rest)}
-      path -> 
+
+      path ->
         Path.expand(path, Path.dirname(context.file))
     end
   rescue

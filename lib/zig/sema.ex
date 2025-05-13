@@ -25,6 +25,16 @@ defmodule Zig.Sema do
           callbacks: [Function.t()]
         }
 
+  case Code.ensure_loaded(:json) do
+    {:module, :json} ->
+      defp json_decode!(string), do: :json.decode(string)
+      defp json_encode!(json, _), do: :json.encode(json)
+
+    _ ->
+      defp json_decode!(string), do: Jason.decode!(string)
+      defp json_encode!(json, opts), do: Jason.encode!(json, opts)
+  end
+
   # PHASE 1:  SEMA EXECUTION
 
   @spec run_sema!(Module.t()) :: Module.t()
@@ -34,7 +44,7 @@ defmodule Zig.Sema do
   def run_sema!(module) do
     module.zig_code_path
     |> Zig.Command.run_sema!(attribs_file: Attributes.code_path(module), c: module.c)
-    |> Jason.decode!()
+    |> json_decode!()
     |> maybe_dump(module)
     |> reject_ignored(module)
     |> reject_allocators(module)
@@ -51,7 +61,7 @@ defmodule Zig.Sema do
   def run_sema_doc(file) do
     file
     |> Zig.Command.run_sema_doc!()
-    |> Jason.decode!()
+    |> json_decode!()
     |> integrate_sema(%{module: nil})
   end
 
@@ -158,7 +168,7 @@ defmodule Zig.Sema do
 
   defp maybe_dump(sema_json, module) do
     if module.dump_sema do
-      sema_json_pretty = Jason.encode!(sema_json, pretty: true)
+      sema_json_pretty = json_encode!(sema_json, pretty: true)
       IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
     end
 

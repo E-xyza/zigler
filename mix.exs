@@ -64,11 +64,9 @@ defmodule Zigler.MixProject do
   def deps do
     [
       # credo
-      {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
+      # {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       # dialyzer
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
-      # to parse the zig JSON
-      {:jason, "~> 1.4"},
       # zig parser is pinned to a version of zig parser because versions of zig parser
       # are pinned to zig versions
       {:zig_parser, "~> 0.4.0"},
@@ -78,7 +76,17 @@ defmodule Zigler.MixProject do
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
       {:zig_doc, "~> 0.4.0", only: :dev, runtime: false}
-    ]
+    ] ++ json()
+  end
+
+  defp json do
+    case Code.ensure_loaded(:json) do
+      {:module, :json} ->
+        []
+
+      _ ->
+        [{:jason, "~> 1.4", runtime: false}]
+    end
   end
 
   defp zig_get() do

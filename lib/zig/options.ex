@@ -34,7 +34,8 @@ defmodule Zig.Options do
       case IO.iodata_to_binary(path_iodata) do
         "./" <> rest ->
           Path.join(File.cwd!(), rest)
-        path -> 
+
+        path ->
           path
       end
     end)

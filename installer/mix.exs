@@ -40,11 +40,20 @@ defmodule Zig.Get.MixProject do
     ]
   end
 
+  defp json do
+    case Code.ensure_loaded(:json) do
+      {:module, :json} ->
+        []
+
+      _ ->
+        [{:jason, "~> 1.4", runtime: false}]
+    end
+  end
+
   def deps do
     [
-      {:ex_doc, "~> 0.24", only: :dev},
-      {:jason, "~> 1.4"}
-    ]
+      {:ex_doc, "~> 0.24", only: :dev}
+    ] ++ json()
   end
 
   defp elixirc_paths, do: ~w[mix.tasks]
