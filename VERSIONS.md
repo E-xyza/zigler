@@ -144,14 +144,18 @@ Thanks to Dave Cottlehuber @dch for testing.
 ## 0.14.0
 - Breaking changes:
   - deprecation of General Purpose Allocator in favor of DebugAllocator
+  - beam.term_type now uses an options tuple with `env` field.
 - Windows support:
   - Experimental windows support added.
   - Error return traces not supported.
   - on_upgrade hooks not supported pending module .so versioning changes.
 - Features:
   - adds ZIG_EXECUTABLE_PATH environment variable
+  - path resolution from CWD when a path is specified as `./`
 - Outstanding issues:
   - c_ulonglong doesn't work on windows; c_long doesn't work on other platforms.
+- Etc:
+  - uses system `:json` module, if available.
 
 ## Upcoming
 - `precompiled` mode that will let you obtain packages with precompiled assets.
