@@ -43,33 +43,21 @@ defmodule Zig.Nif.Basic do
     if needs_marshal?(nif), do: marshal_name(nif), else: nif.name
   end
 
-  def render_elixir(%{raw: raw} = nif) when not is_nil(raw) do
+  def render_elixir(%{raw: raw} = nif, overrides) when not is_nil(raw) do
     Enum.map(nif.arity, fn arity ->
-      unused_params = Nif.elixir_parameters(arity, false)
-
-      quote do
-        unquote(Nif.style(nif))(unquote(nif.name)(unquote_splicing(unused_params))) do
-          :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
-        end
-      end
+      basic_function_quoted(nif, arity, arity in overrides)
     end)
   end
 
-  def render_elixir(%{signature: %{arity: arity}} = nif) do
+  def render_elixir(%{signature: %{arity: arity}} = nif, overrides) do
     if needs_marshal?(nif) do
-      render_elixir_marshalled(nif)
+      render_elixir_marshalled(nif, overrides)
     else
-      unused_params = Nif.elixir_parameters(arity, false)
-
-      quote context: Elixir do
-        unquote(Nif.style(nif))(unquote(nif.name)(unquote_splicing(unused_params))) do
-          :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
-        end
-      end
+      basic_function_quoted(nif, arity, arity in overrides)
     end
   end
 
-  defp render_elixir_marshalled(%{signature: %{arity: arity}} = nif) do
+  defp render_elixir_marshalled(%{signature: %{arity: arity}} = nif, overrides) do
     used_params_ast = Nif.elixir_parameters(arity, true)
     unused_params_ast = Nif.elixir_parameters(arity, false)
 
@@ -116,18 +104,57 @@ defmodule Zig.Nif.Basic do
         end
       )
 
-    error_prongs = [catch: argument_error_prong ++ error_return_prong]
+    override_error_prong =
+      List.wrap(
+        if arity in overrides do
+          quote do
+            :__nif_binding_error__ ->
+              super(unquote_splicing(used_params_ast))
+          end
+        end
+      )
+
+    error_prongs = [catch: argument_error_prong ++ error_return_prong ++ override_error_prong]
 
     function_block = function_code ++ error_prongs
 
-    quote context: Elixir do
-      unquote(Nif.style(nif))(
-        unquote(nif.name)(unquote_splicing(used_params_ast)),
-        unquote(function_block)
-      )
+    if arity in overrides do
+      quote context: Elixir do
+        defoverridable [{unquote(nif.name), unquote(arity)}]
 
-      defp unquote(marshal_name)(unquote_splicing(unused_params_ast)) do
-        :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
+        unquote(Nif.style(nif))(
+          unquote(nif.name)(unquote_splicing(used_params_ast)),
+          unquote(function_block)
+        )
+
+        defp unquote(marshal_name)(unquote_splicing(unused_params_ast)) do
+          throw :__nif_binding_error__
+        end
+      end
+    else
+      quote context: Elixir do
+        unquote(Nif.style(nif))(
+          unquote(nif.name)(unquote_splicing(used_params_ast)),
+          unquote(function_block)
+        )
+
+        defp unquote(marshal_name)(unquote_splicing(unused_params_ast)) do
+          :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
+        end
+      end
+    end
+  end
+
+  defp basic_function_quoted(nif, arity, override) do
+    if override do
+      []
+    else
+      unused_params = Nif.elixir_parameters(arity, false)
+
+      quote context: Elixir do
+        unquote(Nif.style(nif))(unquote(nif.name)(unquote_splicing(unused_params))) do
+          :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
+        end
       end
     end
   end

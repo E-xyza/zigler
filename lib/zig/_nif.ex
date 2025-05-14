@@ -303,8 +303,11 @@ defmodule Zig.Nif do
     end)
   end
 
-  # rendering functions
+  defp symbol(nif) do
+    if nif.export, do: :def, else: :defp
+  end
 
+  # rendering functions
   def render_elixir(%{concurrency: concurrency} = nif) do
     doc =
       if nif_doc = nif.doc do
@@ -313,7 +316,13 @@ defmodule Zig.Nif do
         end
       end
 
-    functions = concurrency.render_elixir(nif)
+    override_arities =
+      Enum.flat_map(
+        nif.arity,
+        &List.wrap(if Module.defines?(nif.module, {nif.name, &1}, symbol(nif)), do: &1)
+      )
+
+    functions = concurrency.render_elixir(nif, override_arities)
     specs = if nif.spec, do: render_elixir_spec(nif)
 
     impl =

@@ -11,7 +11,7 @@ defmodule Zig.Nif.Concurrency do
   alias Zig.Nif.Threaded
   alias Zig.Nif.Yielding
 
-  @callback render_elixir(Nif.t()) :: Macro.t()
+  @callback render_elixir(Nif.t(), [arity]) :: Macro.t()
   @callback render_erlang(Nif.t()) :: term
   @callback render_zig(Nif.t()) :: iodata
 

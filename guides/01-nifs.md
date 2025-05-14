@@ -226,3 +226,11 @@ end
   documentation.
 - zigler will translate the hoisted marshalling failures into detailed BEAM exceptions of type
   `ArgumentError`.
+
+## Overriding the default fallback function (elixir-only)
+
+If the module's .so file fails to load, you might want to override the default fallback function
+with a pure elixir function.  To do so, simply write the function body in elixir elsewhere in the
+module.  This will be overwritten with the NIF only if the NIF successfully loads.  You might 
+use this, for example, to detect CPU features in `on_load`, and fallback to a 'slower' elixir code if CPU
+features required for performance are not present.

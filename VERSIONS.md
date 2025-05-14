@@ -152,6 +152,7 @@ Thanks to Dave Cottlehuber @dch for testing.
 - Features:
   - adds ZIG_EXECUTABLE_PATH environment variable
   - path resolution from CWD when a path is specified as `./`
+  - adds the ability to override the default fallback function (elixir only)
 - Outstanding issues:
   - c_ulonglong doesn't work on windows; c_long doesn't work on other platforms.
 - Etc:
