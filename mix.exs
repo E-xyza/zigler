@@ -85,7 +85,7 @@ defmodule Zigler.MixProject do
         []
 
       _ ->
-        [{:jason, "~> 1.4", runtime: false}]
+        [{:jason, "~> 1.4", runtime: Mix.env() == :test}]
     end
   end
 
