@@ -175,10 +175,18 @@ defmodule :zigler do
     |> :code.add_path()
   end
 
+  case Code.ensure_loaded(:json) do
+    {:module, :json} ->
+      @libs [:zig_parser]
+
+    _ ->
+      @libs ~w[jason zig_parser]a
+  end
+
   defp ensure_libs do
     # we can't put this dependency into rebar.config because it has resolution issues
     # since jason decimal requirement is 1.0.0 or 2.0.0
-    Enum.each(~w[jason zig_parser]a, fn lib ->
+    Enum.each(@libs, fn lib ->
       lib
       |> path_relative_to(:zigler)
       |> String.to_charlist()
