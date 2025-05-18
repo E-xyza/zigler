@@ -10,6 +10,6 @@ default_locals = [
     installer/**/*.{ex,exs}
     guides/*.md
   ],
-  locals_without_parens: default_locals
-  # plugins: [Zig.Formatter, MarkdownFormatter]
+  locals_without_parens: default_locals,
+  plugins: [Zig.Formatter, MarkdownFormatter]
 ]

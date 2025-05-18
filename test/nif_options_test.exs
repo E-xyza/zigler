@@ -362,8 +362,7 @@ defmodule ZiglerTest.NifOptionsTest do
       assert %{params: %{0 => %Parameter{in_out: true}}} =
                make_nif(params: %{0 => [in_out: true]})
 
-      assert %{params: %{0 => %Parameter{in_out: true}}} =
-               make_nif(params: %{0 => [:in_out]})
+      assert %{params: %{0 => %Parameter{in_out: true}}} = make_nif(params: %{0 => [:in_out]})
     end
 
     test "non-boolean in_out values are rejected" do

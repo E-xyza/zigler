@@ -37,6 +37,9 @@ defmodule Zig.Parameter do
     |> force_in_out_no_cleanup()
     |> Keyword.put_new(:cleanup, true)
     |> then(&struct!(__MODULE__, &1))
+  rescue
+    e in KeyError ->
+      Options.raise_with("was supplied the invalid option `#{e.key}`", context)
   end
 
   def force_in_out_no_cleanup(options) do
