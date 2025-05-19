@@ -507,6 +507,8 @@ defmodule Zig do
     if it is a `[*]T`, or `[*c]T` type.  The length may be an integer
     or `{:arg, index}` if you would like the length to be specified
     by one of the parameters.
+  - `{:struct, module}` coerces the return value to a struct of the
+    given module.  This is only available for functions with struct returns.
   """
   @type return_option ::
           as_type
@@ -515,6 +517,7 @@ defmodule Zig do
           | {:as, as_type}
           | {:error, atom}
           | {:length, non_neg_integer | {:arg, non_neg_integer}}
+          | {:struct, module}
 
   @typedoc """
   sets the return type of the function, if it's ambiguous.  For example,

@@ -42,7 +42,7 @@ pub inline fn sentinel_ptr(T: type, opts: anytype) ?*const T {
     } else return null;
 }
 
-pub const OutputType = enum { default, list, binary, integer, map, elixir_struct };
+pub const OutputType = enum { default, list, binary, integer, map };
 
 pub inline fn output(opts: anytype) OutputType {
     comptime { // NB: it's not entirely obvious why this has to be forced into the comptime scope!
@@ -56,7 +56,7 @@ pub inline fn output(opts: anytype) OutputType {
                 if (std.mem.eql(u8, tag, "binary")) return .binary;
                 if (std.mem.eql(u8, tag, "integer")) return .integer;
                 if (std.mem.eql(u8, tag, "map")) return .map;
-                return .elixir_struct; // maps are allowed to have struct module name as a tag
+                @compileError("invalid `as` type, must be default list, binary, integer, or map");
             },
             .@"struct" => |S| {
                 for (S.fields) |field| {

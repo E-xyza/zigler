@@ -859,18 +859,7 @@ pub const get = get_.get;
 ///   It's legal to omit a field from this specification, in which case the encoding
 ///   will be `.default`.
 /// - supports anonymous structs
-/// - supports direct output as elixir structs using the `as` option
-///   > #### Elixir structs {: .info }
-///   >
-///   > - non-elixir alias-style structs are not currently supported, but will be
-///   >   in a future release
-///   > - nested output formatting is not currently supported, but will be in a
-///   >   future release.
-///   > - if you need to output a struct that is a multilevel alias, use `@` syntax
-///   >   e.g. `.{.as = .@"Foo.Bar.Baz"}`
-///   >
-///   > the fields and types on the fields are not checked at compile time or
-///   > runtime, so use with caution.
+/// - supports direct output as elixir structs using the `struct` option
 ///
 /// #### Examples
 ///
@@ -881,7 +870,7 @@ pub const get = get_.get;
 /// }
 ///
 /// pub fn make_elixir_struct_example() beam.term {
-///   return beam.make(.{.first = 1, .last = 10, .step = 1}, .{.as = .Range});
+///   return beam.make(.{.first = 1, .last = 10, .step = 1}, .{.@"struct" = .@"Elixir.Range"});
 /// }
 ///
 /// const MakePacked = packed struct { value: u32 };

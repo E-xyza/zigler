@@ -2,7 +2,10 @@ defmodule ZiglerTest.Types.StructTest do
   use ZiglerTest.IntegrationCase, async: true
 
   use Zig,
-    otp_app: :zigler
+    otp_app: :zigler,
+    nifs: [..., as_struct_test: [alias: :struct_test, return: [struct: __MODULE__]]]
+
+  defstruct value: nil
 
   ~Z"""
   pub const TestStruct = struct { value: u64 };
@@ -97,6 +100,16 @@ defmodule ZiglerTest.Types.StructTest do
       assert_raise ArgumentError,
                    "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: map | keyword (for `default_struct`)\n     got: `[value: \"foo\"]`\n     in field `:value`:\n     | expected: integer (for `u64`)\n     | got: `\"foo\"`\n",
                    fn -> default_struct_test(value: "foo") end
+    end
+  end
+
+  describe "an elixir struct" do
+    test "can be passed in" do
+      assert %{value: 48} == struct_test(%__MODULE__{value: 47})
+    end
+
+    test "can be returned out" do
+      assert %__MODULE__{value: 48} == as_struct_test(%{value: 47})
     end
   end
 

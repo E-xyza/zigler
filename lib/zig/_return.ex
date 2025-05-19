@@ -1,12 +1,10 @@
 defmodule Zig.Return do
   @moduledoc false
 
-  defstruct ~w[cleanup type in_out error length spec]a ++ [as: :default]
+  defstruct ~w[cleanup type in_out error length spec struct]a ++ [as: :default]
 
   alias Zig.Options
   alias Zig.Type
-
-  @type type :: :binary | :integer | :default | :list | {:list, type}
 
   # information supplied by the user. 
   @type unmerged :: %__MODULE__{
@@ -14,6 +12,8 @@ defmodule Zig.Return do
           error: atom,
           length: nil | non_neg_integer | {:arg, non_neg_integer()},
           spec: nil | Macro.t(),
+          struct: nil | module,
+          as: Zig.as_type(),
           in_out: nil | String.t()
         }
 
@@ -30,6 +30,8 @@ defmodule Zig.Return do
           error: atom,
           length: nil | non_neg_integer | {:arg, non_neg_integer()},
           spec: nil | Macro.t(),
+          struct: nil | module,
+          as: Zig.as_type(),
           in_out: nil | String.t()
         }
 
@@ -46,6 +48,7 @@ defmodule Zig.Return do
     |> Options.scrub_non_keyword(context)
     |> Options.validate(:length, &validate_length/1, context)
     |> Options.validate(:error, {:atom, "a module"}, context)
+    |> Options.validate(:struct, :atom, context)
     |> Keyword.put_new(:cleanup, context.cleanup)
     |> then(&struct!(__MODULE__, &1))
   rescue
@@ -118,15 +121,9 @@ defmodule Zig.Return do
 
   @spec merge(sema, unmerged) :: t
   def merge(sema, spec) do
-    %{
-      sema
-      | cleanup: spec.cleanup,
-        in_out: spec.in_out,
-        error: spec.error,
-        length: spec.length,
-        spec: spec.spec,
-        as: spec.as
-    }
+    Enum.reduce(~w[cleanup in_out error length spec as struct]a, sema, fn key, sema ->
+      Map.put(sema, key, Map.fetch!(spec, key))
+    end)
   end
 
   def render_return(%{in_out: in_out_var, error: nil} = return) when is_binary(in_out_var) do
@@ -150,7 +147,7 @@ defmodule Zig.Return do
     do: "break :execution_block beam.make(result, .{#{return_opts(return)}}).v;"
 
   defp return_opts(return) do
-    [&return_as/1, &return_length/1]
+    [&return_as/1, &return_length/1, &return_struct/1]
     |> Enum.flat_map(&List.wrap(&1.(return)))
     |> Enum.join(",")
   end
@@ -176,4 +173,8 @@ defmodule Zig.Return do
   end
 
   defp return_length(_), do: nil
+
+  defp return_struct(%{struct: module}) do
+    if module, do: ~s(.@"struct" = .@"#{module}")
+  end
 end
