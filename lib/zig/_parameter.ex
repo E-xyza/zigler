@@ -2,10 +2,13 @@ defmodule Zig.Parameter do
   @moduledoc false
 
   @enforce_keys [:cleanup]
-  defstruct @enforce_keys ++ ~w[in_out type]a
+  defstruct @enforce_keys ++ ~w[in_out type sentinel]a
 
   alias Zig.Options
   alias Zig.Type
+  alias Zig.Type.Cpointer
+
+  import Type, only: [sigil_t: 2]
 
   # information supplied by the user. 
   @type unmerged :: %__MODULE__{
@@ -24,7 +27,8 @@ defmodule Zig.Parameter do
   @type t :: %__MODULE__{
           type: Type.t(),
           cleanup: boolean,
-          in_out: boolean
+          in_out: boolean,
+          sentinel: boolean
         }
 
   @spec new(Zig.parameter_options(), Options.context()) :: unmerged
@@ -33,10 +37,14 @@ defmodule Zig.Parameter do
     |> List.wrap()
     |> Options.normalize(:cleanup, Options.boolean_normalizer(noclean: false), context)
     |> Options.normalize(:in_out, Options.boolean_normalizer(in_out: true), context)
+    |> Options.normalize(:sentinel, Options.boolean_normalizer(sentinel: true), context)
     |> Options.scrub_non_keyword(context)
     |> force_in_out_no_cleanup()
     |> Keyword.put_new(:cleanup, true)
     |> then(&struct!(__MODULE__, &1))
+  rescue
+    e in KeyError ->
+      Options.raise_with("was supplied the invalid option `#{e.key}`", context)
   end
 
   def force_in_out_no_cleanup(options) do
@@ -51,7 +59,30 @@ defmodule Zig.Parameter do
 
   @spec merge(sema, unmerged) :: t
   def merge(sema, specified) do
-    %{sema | cleanup: specified.cleanup, in_out: specified.in_out}
+    %{merge_sentinel(sema, specified) | cleanup: specified.cleanup, in_out: specified.in_out}
+  end
+
+  defp merge_sentinel(sema, %{sentinel: nil}), do: sema
+
+  defp merge_sentinel(sema, %{sentinel: sentinel}) do
+    %{sema | type: set_sentinel(sema.type, sentinel)}
+  end
+
+  defp set_sentinel(type, sentinel) do
+    case {type, sentinel} do
+      {%Cpointer{child: ~t[u8]}, true} ->
+        %{type | sentinel: 0}
+
+      {%Cpointer{child: %Cpointer{}}, true} ->
+        %{type | sentinel: :null}
+
+      {type, false} ->
+        type
+
+      {type, sentinel} ->
+        raise CompileError,
+          description: "sentinel #{sentinel} not supported for type `#{Type.render_zig(type)}`"
+    end
   end
 
   # code rendering
