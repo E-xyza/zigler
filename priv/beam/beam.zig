@@ -22,7 +22,6 @@
 
 const e = @import("erl_nif");
 const std = @import("std");
-const BeamMutex = @import("mutex.zig").BeamMutex;
 const options = @import("options.zig");
 
 /// <!-- ignore -->
@@ -1926,7 +1925,7 @@ pub fn raise_with_error_return(err: anytype, maybe_return_trace: ?*std.builtin.S
         raise_exception(.{ .@"error", err }, opts);
 }
 
-// unignore this on 0.11, if this is validated
+// unignore this on 0.15, if this is validated
 
 /// <!-- ignore -->
 pub const Mutex = @import("mutex.zig").Mutex;
