@@ -483,9 +483,9 @@ defmodule Zig do
     from this parameter's type instead of the return type.
 
     Only one parameter may be marked as `:in_out` in a function.
-  - :sentinel (default `nil`) if a [*c] type parameter, if a sentinel should be attached when
-    allocating space for the parameter.  This option is disallowed if the parameter is not a
-    [*c] type.
+  - :sentinel (same as `{:sentinel, true}`) if the parameter is a `[*c]` type parameter, 
+    a sentinel should be attached when allocating space for the parameter.  This option is 
+    disallowed if the parameter is not a `[*c]`.
   """
   @type param_option ::
           :noclean | :in_out | {:cleanup, boolean} | {:in_out, boolean} | {:sentinel, boolean}
