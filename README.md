@@ -106,7 +106,7 @@ defmodule ZigCollections do
     }
     return sum;
   }
-  """:nt}
+  """
 end
 
 test "type marshalling" do

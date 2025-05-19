@@ -104,9 +104,9 @@ end
 
 ## Release Mode
 
-Zig has several release modes, and you can specify which release mode to build your program 
-under using the `release_mode` option.  Importantly, it is possible to set a release mode
-that depends on mix environment.
+Zig has several release modes, and you can specify which release mode to build your program under
+using the `release_mode` option. Importantly, it is possible to set a release mode that depends on
+mix environment.
 
 ```elixir
 defmodule ReleaseMode do
