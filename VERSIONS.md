@@ -145,6 +145,7 @@ Thanks to Dave Cottlehuber @dch for testing.
 - Breaking changes:
   - deprecation of General Purpose Allocator in favor of DebugAllocator
   - beam.term_type now uses an options tuple with `env` field.
+  - struct module names are now assigned using the `struct` option instead of using `as`.
 - Windows support:
   - Experimental windows support added.
   - Error return traces not supported.
@@ -157,6 +158,7 @@ Thanks to Dave Cottlehuber @dch for testing.
   - c_ulonglong doesn't work on windows; c_long doesn't work on other platforms.
 - Etc:
   - uses system `:json` module, if available.
+  - Experimental FreeBSD support added.
 
 ## Upcoming
 - `precompiled` mode that will let you obtain packages with precompiled assets.
