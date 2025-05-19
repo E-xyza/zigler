@@ -1175,7 +1175,7 @@ pub const make_ref = make_.make_ref;
 /// [
 ///   %{
 ///     source_location: %{
-///        file_name: "/path/to/project/lib/my_app/.Elixir.MyApp.MyModule.zig", 
+///        file_name: "/path/to/project/lib/my_app/.Elixir.MyApp.MyModule.zig",
 ///        line: 15,
 ///        column: 5
 ///     },
@@ -1459,7 +1459,7 @@ const zigler_options = @import("zigler_options");
 /// <!-- ignore -->
 pub const allocator_ = @import("allocator.zig");
 
-/// directly wraps the allocator functions into the `std.mem.Allocator` 
+/// directly wraps the allocator functions into the `std.mem.Allocator`
 /// interface.  This will only allocate memory at the machine word alignment.
 /// if you need greater alignment, use `beam.allocator`
 pub const raw_allocator = allocator_.raw_beam_allocator;
@@ -1926,15 +1926,15 @@ pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: 
 /// error and append the zig error return trace to the existing stacktrace.
 pub fn raise_with_error_return(err: anytype, maybe_return_trace: ?*std.builtin.StackTrace, opts: anytype) term {
 
-    // stacktrace not supported in windows    
+    // stacktrace not supported in windows
     if (@import("builtin").os.tag == .windows) {
-        return raise_exception(.{ .@"error", err}, opts);
+        return raise_exception(.{ .@"error", err }, opts);
     }
 
-    return if (maybe_return_trace) |return_trace| 
+    return if (maybe_return_trace) |return_trace|
         raise_exception(.{ .@"error", err, return_trace }, opts)
-    else 
-        raise_exception(.{ .@"error", err }, opts);   
+    else
+        raise_exception(.{ .@"error", err }, opts);
 }
 
 // unignore this on 0.11, if this is validated

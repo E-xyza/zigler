@@ -411,22 +411,20 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
     if (slice_info.is_const) {
         return result_ptr[0..item_count];
     } else {
+        const sentinel_ptr: ?*const Child = if (slice_info.sentinel_ptr) |sentinel| @ptrCast(@alignCast(sentinel)) else options.sentinel_ptr(Child, opts);
+
         const alloc = options.allocator(opts);
-        const alloc_count = if (slice_info.sentinel_ptr) |_| item_count + 1 else item_count;
+        const alloc_count = if (sentinel_ptr) |_| item_count + 1 else item_count;
 
         const result = alloc.alloc(Child, alloc_count) catch |err| {
             return err;
         };
 
-        if (slice_info.sentinel_ptr) |_| {
+        if (sentinel_ptr) |sentinel| {
             @memcpy(result[0..item_count], result_ptr[0..item_count]);
-            result[alloc_count - 1] = @as(*const Child, @ptrCast(@alignCast(slice_info.sentinel_ptr))).*;
+            result[alloc_count - 1] = sentinel.*;
         } else {
             @memcpy(result, result_ptr[0..item_count]);
-        }
-
-        if (slice_info.sentinel_ptr) |sentinel| {
-            result[item_count] = @as(*const Child, @ptrCast(@alignCast(sentinel))).*;
         }
 
         return @as(T, @ptrCast(result));
@@ -439,8 +437,10 @@ pub fn get_slice_list(comptime T: type, src: beam.term, opts: anytype) !T {
     var length: c_uint = undefined;
     const alloc = options.allocator(opts);
 
+    const sentinel_ptr: ?*const Child = if (slice_info.sentinel_ptr) |sentinel| @ptrCast(@alignCast(sentinel)) else options.sentinel_ptr(Child, opts);
+
     if (e.enif_get_list_length(options.env(opts), src.v, &length) == 0) return GetError.unreachable_error;
-    const alloc_length = if (slice_info.sentinel_ptr) |_| length + 1 else length;
+    const alloc_length = if (sentinel_ptr) |_| length + 1 else length;
 
     const result = try alloc.alloc(Child, alloc_length);
     errdefer alloc.free(result);
@@ -459,8 +459,8 @@ pub fn get_slice_list(comptime T: type, src: beam.term, opts: anytype) !T {
 
     if (e.enif_is_empty_list(options.env(opts), list) == 0) return GetError.unreachable_error;
 
-    if (slice_info.sentinel_ptr) |sentinel| {
-        result[length] = @as(*const Child, @ptrCast(@alignCast(sentinel))).*;
+    if (sentinel_ptr) |sentinel| {
+        result[length] = sentinel.*;
     }
 
     return @as(T, @ptrCast(result));
@@ -525,6 +525,7 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
         },
         .bitstring => {
             const result_slice = try get_slice_binary([]Child, src, opts);
+
             if (@hasField(@TypeOf(opts), "size")) {
                 opts.size.* = result_slice.len;
             }

@@ -15,12 +15,7 @@ pub const MAX_ALIGN = 8;
 
 /// namespace for BEAM allocator that has access to alignment
 const BeamAllocator = struct {
-    fn alloc(
-        _: *anyopaque,
-        len: usize,
-        alignment: std.mem.Alignment,
-        return_address: usize
-    ) ?[*]u8 {
+    fn alloc(_: *anyopaque, len: usize, alignment: std.mem.Alignment, return_address: usize) ?[*]u8 {
         _ = return_address;
         assert(len > 0);
         return aligned_alloc(len, alignment);
@@ -39,23 +34,12 @@ const BeamAllocator = struct {
         return new_len < buf.len;
     }
 
-    fn remap(
-        context: *anyopaque,
-        memory: []u8,
-        alignment: std.mem.Alignment,
-        new_len: usize,
-        return_address: usize
-    ) ?[*]u8 {
+    fn remap(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, return_address: usize) ?[*]u8 {
         // can't use realloc directly because it might not respect alignment.
         return if (resize(context, memory, alignment, new_len, return_address)) memory.ptr else null;
     }
 
-    fn free(
-        _: *anyopaque,
-        memory: []u8,
-        alignment: std.mem.Alignment,
-        return_address: usize
-    ) void {
+    fn free(_: *anyopaque, memory: []u8, alignment: std.mem.Alignment, return_address: usize) void {
         _ = alignment;
         _ = return_address;
         aligned_free(memory.ptr);
@@ -91,7 +75,7 @@ const BeamAllocator = struct {
     };
 };
 
-pub const beam_allocator: std.mem.Allocator = .{.ptr = undefined, .vtable = &BeamAllocator.vtable};
+pub const beam_allocator: std.mem.Allocator = .{ .ptr = undefined, .vtable = &BeamAllocator.vtable };
 
 /////////////////////////////////////////////////////////////////////////////
 // Raw allocator
@@ -109,12 +93,7 @@ const raw_beam_allocator_vtable = std.mem.Allocator.VTable{
     .free = raw_free,
 };
 
-fn raw_alloc(
-    context: *anyopaque,
-    len: usize,
-    alignment: std.mem.Alignment,
-    return_address: usize
-) ?[*]u8 {
+fn raw_alloc(context: *anyopaque, len: usize, alignment: std.mem.Alignment, return_address: usize) ?[*]u8 {
     _ = context;
     _ = return_address;
     assert(alignment.compare(.lte, comptime .fromByteUnits(MAX_ALIGN)));
@@ -122,13 +101,7 @@ fn raw_alloc(
     return @ptrCast(e.enif_alloc(len));
 }
 
-fn raw_resize(
-    context: *anyopaque,
-    buf: []u8,
-    alignment: std.mem.Alignment,
-    new_len: usize,
-    return_address: usize
-) bool {
+fn raw_resize(context: *anyopaque, buf: []u8, alignment: std.mem.Alignment, new_len: usize, return_address: usize) bool {
     _ = context;
     _ = alignment;
     _ = buf;
@@ -137,25 +110,14 @@ fn raw_resize(
     return false;
 }
 
-fn raw_remap(
-    context: *anyopaque,
-    memory: []u8,
-    alignment: std.mem.Alignment,
-    new_len: usize,
-    return_address: usize
-) ?[*]u8 {
+fn raw_remap(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, new_len: usize, return_address: usize) ?[*]u8 {
     _ = context;
     _ = alignment;
     _ = return_address;
     return @ptrCast(e.enif_realloc(memory.ptr, new_len)); // can't remap with raw allocator
 }
 
-fn raw_free(
-    context: *anyopaque,
-    memory: []u8,
-    alignment: std.mem.Alignment,
-    return_address: usize
-) void {
+fn raw_free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, return_address: usize) void {
     _ = context;
     _ = alignment;
     _ = return_address;
