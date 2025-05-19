@@ -36,6 +36,12 @@ pub inline fn length(opts: anytype) ?usize {
     } else return null;
 }
 
+pub inline fn sentinel_ptr(T: type, opts: anytype) ?*const T {
+    if (@hasField(@TypeOf(opts), "sentinel")) {
+        return @as(?*const T, &opts.sentinel);
+    } else return null;
+}
+
 pub const OutputType = enum { default, list, binary, integer, map, elixir_struct };
 
 pub inline fn output(opts: anytype) OutputType {

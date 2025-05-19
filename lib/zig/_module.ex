@@ -113,13 +113,12 @@ defmodule Zig.Module do
 
     default_nif_opts = Keyword.take(opts, @defaultable_nif_opts)
 
-    common_values =
-      [
-        module: caller.module,
-        file: caller.file,
-        line: caller.line,
-        default_nif_opts: default_nif_opts
-      ]
+    common_values = [
+      module: caller.module,
+      file: caller.file,
+      line: caller.line,
+      default_nif_opts: default_nif_opts
+    ]
 
     opts
     |> obtain_version

@@ -362,8 +362,7 @@ defmodule ZiglerTest.NifOptionsTest do
       assert %{params: %{0 => %Parameter{in_out: true}}} =
                make_nif(params: %{0 => [in_out: true]})
 
-      assert %{params: %{0 => %Parameter{in_out: true}}} =
-               make_nif(params: %{0 => [:in_out]})
+      assert %{params: %{0 => %Parameter{in_out: true}}} = make_nif(params: %{0 => [:in_out]})
     end
 
     test "non-boolean in_out values are rejected" do
@@ -382,7 +381,7 @@ defmodule ZiglerTest.NifOptionsTest do
                    end
 
       assert_raise CompileError,
-                   "test/nif_options_test.exs:9: option `nifs > my_nif` was supplied the invalid option `foo`",
+                   "test/nif_options_test.exs:9: option `nifs > my_nif > params > 0` was supplied the invalid option `foo`",
                    fn ->
                      make_nif(params: %{0 => [foo: :bar]})
                    end

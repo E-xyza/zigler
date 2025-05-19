@@ -10,7 +10,9 @@ defmodule ZiglerTest.CornerCases.FallbackFunctionsTest do
         return 42;
     }
 
-    pub fn not_loaded() void { unreachable; }
+    pub fn not_loaded() void {
+        unreachable;
+    }
     """
   end
 
@@ -29,7 +31,9 @@ defmodule ZiglerTest.CornerCases.FallbackFunctionsTest do
         return 42;
     }
 
-    pub fn not_loaded() void { unreachable; }
+    pub fn not_loaded() void {
+        unreachable;
+    }
     """
 
     def not_loaded, do: :error
@@ -43,7 +47,7 @@ defmodule ZiglerTest.CornerCases.FallbackFunctionsTest do
     use Zig, otp_app: :zigler
 
     ~Z"""
-    pub fn not_loaded() void { }
+    pub fn not_loaded() void {}
     """
 
     def not_loaded, do: :error
@@ -63,7 +67,9 @@ defmodule ZiglerTest.CornerCases.FallbackFunctionsTest do
     }
 
     // forces marshalling by using a very large integer type
-    pub fn not_loaded(_: u128) void { unreachable; }
+    pub fn not_loaded(_: u128) void {
+        unreachable;
+    }
     """
 
     def not_loaded(_), do: :error
@@ -78,7 +84,7 @@ defmodule ZiglerTest.CornerCases.FallbackFunctionsTest do
 
     ~Z"""
     // forces marshalling by using a very large integer type
-    pub fn not_loaded(_: u128) void { }
+    pub fn not_loaded(_: u128) void {}
     """
 
     def not_loaded(_), do: :error
@@ -97,7 +103,9 @@ defmodule ZiglerTest.CornerCases.FallbackFunctionsTest do
         return 42;
     }
 
-    pub fn not_loaded() void { unreachable; }
+    pub fn not_loaded() void {
+        unreachable;
+    }
     """
 
     def not_loaded, do: :error
@@ -111,7 +119,7 @@ defmodule ZiglerTest.CornerCases.FallbackFunctionsTest do
     use Zig, otp_app: :zigler, nifs: [not_loaded: [:threaded]]
 
     ~Z"""
-    pub fn not_loaded() void { }
+    pub fn not_loaded() void {}
     """
 
     def not_loaded, do: :error

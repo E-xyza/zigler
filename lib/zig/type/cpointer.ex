@@ -10,9 +10,13 @@ defmodule Zig.Type.Cpointer do
   import Type, only: :macros
 
   @enforce_keys ~w[child const]a
-  defstruct @enforce_keys
+  defstruct @enforce_keys ++ [:sentinel]
 
-  @type t :: %__MODULE__{child: Type.t()}
+  @type t :: %__MODULE__{
+          child: Type.t(),
+          const: boolean,
+          sentinel: nil | 0 | :null
+        }
 
   def from_json(%{"child" => child} = ptr, module) do
     %__MODULE__{child: Type.from_json(child, module), const: ptr["is_const"]}
@@ -54,8 +58,13 @@ defmodule Zig.Type.Cpointer do
   end
 
   @impl true
-  def payload_options(_, prefix) do
-    [error_info: "&error_info", size: ~s(&@"#{prefix}-size")]
+  def payload_options(type, prefix) do
+    [error_info: "&error_info", size: ~s(&@"#{prefix}-size")] ++
+      List.wrap(
+        if sentinel = type.sentinel do
+          {:sentinel, "@as(#{Type.render_zig(type.child)}, #{sentinel})"}
+        end
+      )
   end
 
   @impl true

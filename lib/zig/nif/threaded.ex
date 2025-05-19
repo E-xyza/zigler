@@ -137,8 +137,7 @@ defmodule Zig.Nif.Threaded do
     launch = entrypoint(nif, :launch)
     join = entrypoint(nif, :join)
 
-    launch_entries =
-      Enum.flat_map(nif.arity, &[{launch, &1, :"@\"#{launch}\"", :synchronous}])
+    launch_entries = Enum.flat_map(nif.arity, &[{launch, &1, :"@\"#{launch}\"", :synchronous}])
 
     [{join, 1, :"@\"#{join}\"", :synchronous} | launch_entries]
   end

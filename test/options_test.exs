@@ -246,13 +246,11 @@ defmodule ZiglerTest.OptionsTest do
 
   describe "ignore" do
     test "is ok with a list of atoms" do
-      assert %{ignore: [:foo, :bar]} =
-               make_module(otp_app: :zigler, ignore: [:foo, :bar])
+      assert %{ignore: [:foo, :bar]} = make_module(otp_app: :zigler, ignore: [:foo, :bar])
     end
 
     test "is ok with a single atom" do
-      assert %{ignore: [:foo]} =
-               make_module(otp_app: :zigler, ignore: :foo)
+      assert %{ignore: [:foo]} = make_module(otp_app: :zigler, ignore: :foo)
     end
 
     test "is not ok with something else" do
@@ -311,13 +309,11 @@ defmodule ZiglerTest.OptionsTest do
 
   describe "resources" do
     test "is ok with a list of atoms" do
-      assert %{resources: [:foo, :bar]} =
-               make_module(otp_app: :zigler, resources: [:foo, :bar])
+      assert %{resources: [:foo, :bar]} = make_module(otp_app: :zigler, resources: [:foo, :bar])
     end
 
     test "is ok with a single atom" do
-      assert %{resources: [:foo]} =
-               make_module(otp_app: :zigler, resources: :foo)
+      assert %{resources: [:foo]} = make_module(otp_app: :zigler, resources: :foo)
     end
 
     test "is not ok with something else" do
@@ -395,8 +391,7 @@ defmodule ZiglerTest.OptionsTest do
 
   describe "cleanup" do
     test "cleanup gets placed in default nif opts" do
-      assert %{default_nif_opts: [cleanup: true]} =
-               make_module(otp_app: :zigler, cleanup: true)
+      assert %{default_nif_opts: [cleanup: true]} = make_module(otp_app: :zigler, cleanup: true)
     end
 
     test "cleanup must be a boolean" do
