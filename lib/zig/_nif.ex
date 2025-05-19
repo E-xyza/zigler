@@ -262,6 +262,8 @@ defmodule Zig.Nif do
   @spec merge(sema_raw, unmerged) :: raw
   @spec merge(sema_typed, unmerged) :: typed
   def merge(sema_nif, spec_nif) do
+    verify_raw_concurrency(sema_nif, spec_nif)
+
     # these are the fields we are going to merge
     merge_fields = ~w[name cleanup allocator impl alias export concurrency spec leak_check]a
 
@@ -273,6 +275,16 @@ defmodule Zig.Nif do
     |> merge_arity(spec_nif)
     |> Map.update!(:return, &Return.merge(&1, spec_nif.return))
     |> Map.update!(:params, &deepmerge_params(&1, spec_nif.params))
+  end
+
+  defp verify_raw_concurrency(%{raw: nil}, _), do: :ok
+  defp verify_raw_concurrency(_, %{concurrency: concurrency}) when concurrency in [Synchronous, DirtyCpu, DirtyIo], do: :ok
+  defp verify_raw_concurrency(sema, spec) do
+    raise CompileError,
+      description:
+        "the raw function `#{sema.name}` may only be used with `:synchronous`, `:dirty_cpu` or `:dirty_io` concurrency",
+      file: spec.file,
+      line: spec.line
   end
 
   defp merge_arity(%{raw: nil} = sema_nif, %{arity: nil}),
