@@ -4,6 +4,7 @@ defmodule ZiglerTest.CompilerError.TransitiveErrorTest do
   describe "when a transitive error exists" do
     test "it raises a compiler error with the correct filename" do
       file = Path.expand("_transitive_error.zig", __DIR__)
+
       try do
         Code.compile_file("_transitive_error.exs", __DIR__)
       rescue
