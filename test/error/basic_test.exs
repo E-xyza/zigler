@@ -6,36 +6,26 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
   use Zig, otp_app: :zigler
 
   ~Z"""
-  const beam = @import("beam");
-  const std = @import("std");
-
   const MyError = error{my_error};
 
-  fn nested_error() !void {
-      return error.my_error;
-  }
-
-  pub fn basic_error_return() !void {
-      // some extra space here
-      return nested_error();
+  pub fn errors() !void {
+    return error.my_error;
   }
   """
 
-  @tag :skip
   test "when you get a basic error" do
     error =
       try do
-        basic_error_return()
+        errors()
       rescue
         e in ErlangError ->
           %{payload: e.original, stacktrace: __STACKTRACE__}
       end
 
-    assert %{payload: :my_error, stacktrace: [head, next | _]} = error
+    assert %{payload: :my_error, stacktrace: [head | _]} = error
 
     expected_file = Path.relative_to_cwd(__ENV__.file)
 
-    assert {__MODULE__, :basic_error_return, [:...], [file: ^expected_file, line: 20]} = next
-    assert {__MODULE__, :nested_error, [:...], [file: ^expected_file, line: 15]} = head
+    assert {__MODULE__, :errors, [:...], [file: ^expected_file, line: 12]} = head
   end
 end

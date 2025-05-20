@@ -278,7 +278,11 @@ defmodule Zig.Nif do
   end
 
   defp verify_raw_concurrency(%{raw: nil}, _), do: :ok
-  defp verify_raw_concurrency(_, %{concurrency: concurrency}) when concurrency in [Synchronous, DirtyCpu, DirtyIo], do: :ok
+
+  defp verify_raw_concurrency(_, %{concurrency: concurrency})
+       when concurrency in [Synchronous, DirtyCpu, DirtyIo],
+       do: :ok
+
   defp verify_raw_concurrency(sema, spec) do
     raise CompileError,
       description:
