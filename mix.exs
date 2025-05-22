@@ -69,13 +69,13 @@ defmodule Zigler.MixProject do
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       # zig parser is pinned to a version of zig parser because versions of zig parser
       # are pinned to zig versions
-      {:zig_parser, "~> 0.4.0"},
+      {:zig_parser, "~> 0.5"},
       # utility to help manage type protocols
       {:protoss, "~> 0.2"},
       zig_get(),
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
-      {:zig_doc, "~> 0.4.0", only: :dev, runtime: false}
+      {:zig_doc, "~> 0.5", only: :dev, runtime: false}
     ] ++ json()
   end
 
