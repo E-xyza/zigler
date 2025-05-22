@@ -80,3 +80,7 @@ end
 > Note that you MUST supply `.{.env = env}` in the options to beam.make or beam.get calls in raw nifs,
 > or functions called by raw nifs. The threadlocal `beam.context` variable which normally stores the
 > environment is not set when you make a raw call.
+
+> ### beam.send {: .warning}
+>
+> Do NOT use `beam.send` from raw nifs unless you have set up an independent context using `beam.independent_context`.
