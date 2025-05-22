@@ -19,7 +19,7 @@ jobs:
       id: deps-cache
       with:
         path: deps
-        key: mix-${{ hashFiles('/mix.lock') }}
+        key: mix-${{ hashFiles('mix.lock') }}
 
     - name: get deps
       run: mix deps.get
