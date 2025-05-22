@@ -2,9 +2,6 @@ defmodule :zigler do
   @moduledoc """
   Parse transform module for using Zigler with erlang.
 
-  For the canonical example, see:
-  https://www.erlang.org/doc/man/erl_id_trans.html
-
   ## Prerequisites
 
   In order to use Zigler in an erlang project, you must have the Elixir
@@ -28,7 +25,7 @@ defmodule :zigler do
 
   -zig_code("
   pub fn hello_world() [] const u8 {
-    return "Hello, world!";
+    return \\"Hello, world!\\";
   }
   ")
 
@@ -46,7 +43,7 @@ defmodule :zigler do
 
   > ### Note {: .warning }
   >
-  > Erlang integration is highly experimental and the interface
+  > Erlang integration is experimental and the interface
   > may be changed in the future.
   """
 

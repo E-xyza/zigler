@@ -3,6 +3,8 @@ defmodule Zig do
 
   Inline NIF support for [Zig](https://ziglang.org)
 
+  For erlang support see documentation for [:zigler]
+
   ### Motivation
 
   > Zig is a general-purpose programming language designed for robustness,
