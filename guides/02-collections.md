@@ -269,13 +269,13 @@ end
 >
 > Be careful about the endianness of packed and extern structs!
 
-> #### Wide datatype slices .{: warning }
+> #### Wide datatype slices {: .warning}
 >
-> Note:  Currently if your serializable datatype requires an alignment greater than 1 
-> (if it's bigger than a byte), the system could segfault if you pass a binary that is 
-> a sub-binary.  If this is a concern, always perform `:binary.copy/1` before passing
-> into a function that accepts slices.  This will be fixed in a future release.
- 
+> Note: Currently if your serializable datatype requires an alignment greater than 1 (if it's bigger
+> than a byte), the system could segfault if you pass a binary that is a sub-binary. If this is a
+> concern, always perform `:binary.copy/1` before passing into a function that accepts slices. This
+> will be fixed in a future release.
+
 ### Pointers to structs.
 
 Pointers to structs can also be used to marshal data in and out. This is enabled under the

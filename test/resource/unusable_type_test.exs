@@ -1,7 +1,6 @@
 defmodule ZiglerTest.Resource.UnusableTypeTest do
   # verifies that resources can carry "unusable types"
 
-
   use ZiglerTest.IntegrationCase, async: true
 
   use Zig, otp_app: :zigler, resources: [:AnyOpaqueResource, :StructResource]

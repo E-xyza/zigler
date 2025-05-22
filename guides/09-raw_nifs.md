@@ -83,4 +83,5 @@ end
 
 > ### beam.send {: .warning}
 >
-> Do NOT use `beam.send` from raw nifs unless you have set up an independent context using `beam.independent_context`.
+> Do NOT use `beam.send` from raw nifs unless you have set up an independent context using
+> `beam.independent_context`.
