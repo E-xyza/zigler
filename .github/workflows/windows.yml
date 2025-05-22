@@ -53,4 +53,4 @@ jobs:
       - name: Run Tests
         env:
           RUNNING_CI: "TRUE"
-        run: mix test --exclude no_ci --exclude on_upgrade --exclude skip_windows --trace
+        run: mix test --exclude no_ci --exclude on_upgrade --exclude skip_windows

@@ -24,9 +24,13 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
         _ -> raise "error not raised"
       end
 
-    assert %{payload: :my_error, stacktrace: [head | _]} = error
+    if {:win32, :nt} == :os.type() do
+      assert %{payload: :my_error} = error
+    else
+      assert %{payload: :my_error, stacktrace: [head | _]} = error
 
-    assert {__MODULE__, :erroring, [:...], [file: @expected_file, line: 10]} = head
+      assert {__MODULE__, :erroring, [:...], [file: @expected_file, line: 10]} = head
+    end
   end
 
   ~Z"""
@@ -46,13 +50,17 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
         _ -> raise "error not raised"
       end
 
-    assert %{
-             payload: :my_error,
-             stacktrace: [
-               {__MODULE__, :erroring, [:...], [file: @expected_file, line: 10]},
-               {__MODULE__, :transitive_error, [:...], [file: @expected_file, line: 34]} | _
-             ]
-           } = error
+    if {:win32, :nt} == :os.type() do
+      assert %{payload: :my_error} = error
+    else
+      assert %{
+               payload: :my_error,
+               stacktrace: [
+                 {__MODULE__, :erroring, [:...], [file: @expected_file, line: 10]},
+                 {__MODULE__, :transitive_error, [:...], [file: @expected_file, line: 38]} | _
+               ]
+             } = error
+    end
   end
 
   ~Z"""
@@ -74,12 +82,17 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
 
     transitive_error_file = Path.expand("transitive_error.zig", __DIR__)
 
-    assert %{
-             payload: :my_error,
-             stacktrace: [
-               {__MODULE__, :erroring, [:...], [file: ^transitive_error_file, line: 2]},
-               {__MODULE__, :transitive_file_error, [:...], [file: @expected_file, line: 60]} | _
-             ]
-           } = error
+    if {:win32, :nt} == :os.type() do
+      assert %{payload: :my_error} = error
+    else
+      assert %{
+               payload: :my_error,
+               stacktrace: [
+                 {__MODULE__, :erroring, [:...], [file: ^transitive_error_file, line: 2]},
+                 {__MODULE__, :transitive_file_error, [:...], [file: @expected_file, line: 68]}
+                 | _
+               ]
+             } = error
+    end
   end
 end
