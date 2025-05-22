@@ -25,7 +25,7 @@ by adding `zigler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:zigler, "~> 0.13.2", runtime: false}
+    {:zigler, "~> 0.14.0", runtime: false}
   ]
 end
 ```
@@ -49,7 +49,7 @@ have difficulty.
 ```erlang
 {plugins, [rebar_mix]}.
 
-{deps, [{zigler, "0.13"}]}.
+{deps, [{zigler, "0.14"}]}.
 
 ```
 
