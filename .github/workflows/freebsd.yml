@@ -54,7 +54,7 @@ jobs:
 
         run: |
           cd zig
-          mkdir build
+          mkdir -p build
 
           cd build
           cmake .. -G Ninja -DZIG_STATIC_LLVM=ON -DCMAKE_PREFIX_PATH="/usr/local/llvm19;/usr/local;/usr/local/lib" -DCMAKE_EXE_LINKER_FLAGS="-L/usr/local/lib" -DCMAKE_BUILD_TYPE=ReleaseSafe
