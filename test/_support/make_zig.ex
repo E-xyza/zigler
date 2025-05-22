@@ -1,12 +1,14 @@
 defmodule ZiglerTest.MakeZig do
   defstruct elixir: [], zig: %{}
 
+  alias Zig.Command
+
   def go do
     # Read the readme document
     content =
       "lib/zig.ex"
       |> File.read!()
-      |> String.split("\n")
+      |> Command.split_on_newline()
       |> Enum.map(&String.trim/1)
       # deescape escaped quotes
       |> Enum.map(&String.replace(&1, ~S(\"), ~S(")))

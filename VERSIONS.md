@@ -137,13 +137,31 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 ## 0.13.0
 - updated to zig 0.13.0
+- Breaking changes:
+  - threadlocal `context` in function calls, optional passing `beam.env` into your functions
+  - makes `beam.get/make` functions `context`-aware, with all context-dependent things overridable.
+
+## 0.14.0
+- Breaking changes:
+  - deprecation of General Purpose Allocator in favor of DebugAllocator
+  - beam.term_type now uses an options tuple with `env` field.
+  - struct module names are now assigned using the `struct` option instead of using `as`.
+- Windows support:
+  - Experimental windows support added.
+  - Error return traces not supported.
+  - on_upgrade hooks not supported pending module .so versioning changes.
+- Features:
+  - adds ZIG_EXECUTABLE_PATH environment variable
+  - path resolution from CWD when a path is specified as `./`
+  - adds the ability to override the default fallback function (elixir only)
+- Outstanding issues:
+  - c_ulonglong doesn't work on windows; c_long doesn't work on other platforms.
+- Etc:
+  - uses system `:json` module, if available.
+  - Experimental FreeBSD support added.
 
 ## Upcoming
 - `precompiled` mode that will let you obtain packages with precompiled assets.
-- Breaking changes:
-  - threadlocal `context` in function calls, elimination of passing `beam.env` into your functions
-  - makes `beam.get/make` functions `context`-aware, with all context-dependent things overridable.
 
 ## Possible
-- `beam.call` which lets you call back a beam function.
 - `struct` which lets you declare a struct inside your zig code as the module's struct

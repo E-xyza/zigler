@@ -9,12 +9,17 @@ defmodule Zig.Type.Cpointer do
 
   import Type, only: :macros
 
-  defstruct [:child]
+  @enforce_keys ~w[child const]a
+  defstruct @enforce_keys ++ [:sentinel]
 
-  @type t :: %__MODULE__{child: Type.t()}
+  @type t :: %__MODULE__{
+          child: Type.t(),
+          const: boolean,
+          sentinel: nil | 0 | :null
+        }
 
-  def from_json(%{"child" => child}, module) do
-    %__MODULE__{child: Type.from_json(child, module)}
+  def from_json(%{"child" => child} = ptr, module) do
+    %__MODULE__{child: Type.from_json(child, module), const: ptr["is_const"]}
   end
 
   @impl true
@@ -53,8 +58,13 @@ defmodule Zig.Type.Cpointer do
   end
 
   @impl true
-  def payload_options(_, prefix) do
-    [error_info: "&error_info", size: ~s(&@"#{prefix}-size")]
+  def payload_options(type, prefix) do
+    [error_info: "&error_info", size: ~s(&@"#{prefix}-size")] ++
+      List.wrap(
+        if sentinel = type.sentinel do
+          {:sentinel, "@as(#{Type.render_zig(type.child)}, #{sentinel})"}
+        end
+      )
   end
 
   @impl true
@@ -96,14 +106,14 @@ defmodule Zig.Type.Cpointer do
           [0..255]
         end
 
-      %{length: length, as: type} when is_integer(length) and type in ~w(default binary)a ->
+      %{length: length, as: type} when is_integer(length) and type in ~w[default binary]a ->
         quote context: Elixir do
           <<_::unquote(length * 8)>>
         end
 
-      %{as: type} when type in ~w(default binary)a ->
+      %{as: type} when type in ~w[default binary]a ->
         quote do
-          binary()
+          binary() | nil
         end
     end
   end
@@ -179,5 +189,5 @@ defmodule Zig.Type.Cpointer do
 
   defp binary_form(_), do: nil
 
-  def of(child), do: %__MODULE__{child: child}
+  def of(child), do: %__MODULE__{child: child, const: false}
 end

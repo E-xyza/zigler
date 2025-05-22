@@ -6,6 +6,8 @@ defmodule Zig.Type.Function do
   defstruct [:name, :arity, :params, :return]
 
   alias Zig.Type
+  alias Zig.Type.Integer
+  alias Zig.Type.Manypointer
 
   @type t :: %__MODULE__{
           name: atom(),
@@ -24,4 +26,15 @@ defmodule Zig.Type.Function do
       return: Type.from_json(return, module)
     }
   end
+
+  @spec raw(Function.t()) :: nil | :term | :erl_nif_term
+
+  @u32 %Integer{signedness: :signed, bits: 32}
+  @term ~w[term erl_nif_term]a
+
+  def raw(%{arity: 3, params: [:env, @u32, %Manypointer{child: child, has_sentinel?: false}]})
+      when child in @term,
+      do: child
+
+  def raw(_), do: nil
 end

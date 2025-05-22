@@ -37,7 +37,7 @@ fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: t
     try stream.endObject();
 }
 
-fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) WriteError!void {
+fn streamFloat(stream: anytype, comptime f: std.builtin.Type.float) WriteError!void {
     try typeHeader(stream, "float");
     try stream.objectField("bits");
     try stream.write(f.bits);
@@ -69,7 +69,7 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S
         try stream.objectField("type");
         try streamType(stream, field.type);
         try stream.objectField("required");
-        if (field.default_value) |default_value| {
+        if (field.default_value_ptr) |default_value| {
             _ = default_value;
             try stream.write(false);
         } else {
@@ -96,24 +96,24 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
 
 fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) WriteError!void {
     switch (p.size) {
-        .One => {
+        .one => {
             try typeHeader(stream, "pointer");
         },
-        .Many => {
+        .many => {
             try typeHeader(stream, "manypointer");
             try stream.objectField("has_sentinel");
-            try stream.write(if (p.sentinel) |_| true else false);
+            try stream.write(if (p.sentinel_ptr) |_| true else false);
             try stream.objectField("repr");
             try stream.write(repr);
         },
-        .Slice => {
+        .slice => {
             try typeHeader(stream, "slice");
             try stream.objectField("has_sentinel");
-            try stream.write(if (p.sentinel) |_| true else false);
+            try stream.write(if (p.sentinel_ptr) |_| true else false);
             try stream.objectField("repr");
             try stream.write(repr);
         },
-        .C => {
+        .c => {
             try typeHeader(stream, "cpointer");
         },
     }
@@ -170,16 +170,16 @@ fn streamType(stream: anytype, comptime T: type) WriteError!void {
         },
         else => {
             switch (@typeInfo(T)) {
-                .Int => |i| try streamInt(stream, i),
-                .Enum => |en| try streamEnum(stream, en, T),
-                .Float => |f| try streamFloat(stream, f),
-                .Struct => |s| try streamStruct(stream, s, T),
-                .Array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
-                .Pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
-                .Optional => |o| try streamOptional(stream, o),
-                .Bool => try typeHeader(stream, "bool"),
-                .Void => try typeHeader(stream, "void"),
-                .ErrorUnion => |eu| {
+                .int => |i| try streamInt(stream, i),
+                .@"enum" => |en| try streamEnum(stream, en, T),
+                .float => |f| try streamFloat(stream, f),
+                .@"struct" => |s| try streamStruct(stream, s, T),
+                .array => |a| try streamArray(stream, a, std.fmt.comptimePrint("{}", .{T})),
+                .pointer => |p| try streamPointer(stream, p, std.fmt.comptimePrint("{}", .{T})),
+                .optional => |o| try streamOptional(stream, o),
+                .bool => try typeHeader(stream, "bool"),
+                .void => try typeHeader(stream, "void"),
+                .error_union => |eu| {
                     try typeHeader(stream, "error");
                     try stream.objectField("child");
                     try streamType(stream, eu.payload);
@@ -223,7 +223,7 @@ pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.buil
 }
 
 pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
-    const mod_info = @typeInfo(Mod).Struct;
+    const mod_info = @typeInfo(Mod).@"struct";
     try stream.beginObject();
     try stream.objectField("functions");
     try stream.beginArray();
@@ -240,8 +240,8 @@ pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
             }
         }
 
-        if (!is_stubbed and .Fn == decl_info) {
-            try streamFun(stream, decl.name, decl_info.Fn);
+        if (!is_stubbed and .@"fn" == decl_info) {
+            try streamFun(stream, decl.name, decl_info.@"fn");
         }
     }
 
@@ -252,7 +252,7 @@ pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
     // types are found in decls
     inline for (mod_info.decls) |decl| {
         switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
-            .Type => {
+            .type => {
                 const T = @field(Mod, decl.name);
                 try stream.beginObject();
                 try stream.objectField("name");
@@ -270,8 +270,8 @@ pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
     try stream.beginArray();
     inline for (mod_info.decls) |decl| {
         switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
-            .Type => {},
-            .Fn => {},
+            .type => {},
+            .@"fn" => {},
             else => {
                 try stream.beginObject();
                 try stream.objectField("name");

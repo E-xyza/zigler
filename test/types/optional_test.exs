@@ -67,7 +67,7 @@ defmodule ZiglerTest.Types.OptionalTest do
   end
 
   test "argument error if something wrong is sent" do
-    # note that integers are wrongly typed.  You must explicitly send an integor or nil.
+    # note that integers are wrongly typed.  You must explicitly send an integer or nil.
     assert_raise ArgumentError,
                  "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: nil | integer (for `?u64`)\n     got: `:foo`\n     note: ?u64 can take the atom `nil` but no other atom\n",
                  fn -> nullable_integer_test(:foo) end

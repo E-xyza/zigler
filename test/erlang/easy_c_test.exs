@@ -3,6 +3,7 @@
 if {:unix, :linux} == :os.type() do
   defmodule ZiglerTest.Erlang.EasyCTest do
     use ZiglerTest.IntegrationCase, async: true
+
     alias ZiglerTest.Compiler
 
     @compile {:no_warn_undefined, :erlang_easy_c_test}

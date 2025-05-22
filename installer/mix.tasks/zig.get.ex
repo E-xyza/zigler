@@ -10,7 +10,13 @@ defmodule Zig.Get do
   end
 
   defp decode_os_info([arch, "apple" | _]), do: {"macos", arch}
+
+  defp decode_os_info([_, "freebsd" | _]) do
+    Mix.raise("FreeBSD is not supported by the installer: please install Zig manually")
+  end
+
   defp decode_os_info([arch, _vendor, os | _]), do: {os, arch}
+  defp decode_os_info(["win32"]), do: {"windows", "x86_64"}
 end
 
 defmodule Mix.Tasks.Zig.Get do
@@ -18,14 +24,16 @@ defmodule Mix.Tasks.Zig.Get do
 
   @shortdoc "Obtains the Zig compiler toolchain"
 
+  @default_version "0.14.0"
+
   @moduledoc """
   obtains the Zig compiler toolchain
 
-      $ mix zig.get [--version VERSION] [--from FROM] [--os OS] [--arch ARCH]
+      $ mix zig.get [--version VERSION] [--from FROM] [--os OS] [--arch ARCH] [other options]
 
   the zigler compiler will be downloaded to ZIG_ARCHIVE_PATH/VERSION
 
-  if unspecified, VERSION defaults to the major/minor version of zig.get
+  if unspecified, VERSION defaults to #{@default_version}.
 
   if FROM is specified, will use the FROM file instead of getting from the internet.
 
@@ -39,12 +47,16 @@ defmodule Mix.Tasks.Zig.Get do
 
   - `TAR_COMMAND`: path to a tar executable that is equivalent to gnu tar.
     only useful for non-windows architectures.
-  - `NO_VERIFY`: disable signature verification of the downloaded file.
-    Not recommended.
   - `ZIG_ARCHIVE_PATH`: path to desired directory to achive the zig compiler toolchain.
+
+  ### other options
+
+  - `--force` overwrites the existing installation if it exists.
+  - `--disable-verify` disables the hash verification of the downloaded file.
+    it's possible that the manifest at `https://ziglang.org/download/index.json`
   """
 
-  defstruct ~w(version path arch os url file verify hash force)a
+  defstruct ~w[version path arch os url file verify hash force]a
 
   def run(app_opts) do
     # Elixir 1.14 cannot take a list of applications for this function
@@ -96,8 +108,6 @@ defmodule Mix.Tasks.Zig.Get do
       path -> %{opts | path: to_charlist(Path.expand(path))}
     end
   end
-
-  @default_version "0.13.0"
 
   defp defaults do
     {os, arch} = Zig.Get.os_info()
@@ -157,11 +167,19 @@ defmodule Mix.Tasks.Zig.Get do
     end
   end
 
+  case Code.ensure_loaded(:json) do
+    {:module, :json} ->
+      defp json_decode!(string), do: :json.decode(string)
+
+    _ ->
+      defp json_decode!(string), do: Jason.decode!(string)
+  end
+
   defp get_meta(opts) do
     meta =
       "https://ziglang.org/download/index.json"
       |> http_get!()
-      |> Jason.decode!()
+      |> json_decode!()
       |> Map.fetch!(opts.version)
       |> Map.fetch!("#{opts.arch}-#{opts.os}")
 
@@ -200,7 +218,8 @@ defmodule Mix.Tasks.Zig.Get do
 
   defp do_extract({bin, opts}) do
     spin_with("Extracting Zig compiler toolchain to #{opts.path} ", fn ->
-      extract_mod(opts).extract({:binary, bin}, extract_opts(opts))
+      {:ok, list} = extract_mod(opts).extract(bin, extract_opts(opts))
+      if !is_list(list), do: raise("extraction failed")
     end)
   end
 
@@ -211,12 +230,12 @@ defmodule Mix.Tasks.Zig.Get do
     [cwd: path]
   end
 
-  def extract({:binary, bin}, opts) do
+  def extract(bin, opts) do
     {:spawn_executable, System.fetch_env!("TAR_COMMAND")}
-    |> Port.open(args: ~w(-xJf -), cd: opts[:cwd])
+    |> Port.open(args: ~w[-xJf -], cd: opts[:cwd])
     |> Port.command(bin)
 
-    :ok
+    {:ok, []}
   end
 
   defp spin_with(message, fun) do
@@ -225,7 +244,7 @@ defmodule Mix.Tasks.Zig.Get do
 
     result = fun.()
 
-    IO.write("\n")
+    IO.write(newline())
     Process.exit(spinner, :normal)
     result
   end
@@ -268,7 +287,7 @@ defmodule Mix.Tasks.Zig.Get do
     body
   end
 
-  @spinners ~w(| / - \\)
+  @spinners ~w[| / - \\]
   defp spinner, do: spinner(@spinners)
 
   defp spinner([head | tail]) do
@@ -278,4 +297,11 @@ defmodule Mix.Tasks.Zig.Get do
   end
 
   defp spinner([]), do: spinner(@spinners)
+
+  defp newline do
+    case :os.type() do
+      {_, :nt} -> "\r\n"
+      _ -> "\n"
+    end
+  end
 end

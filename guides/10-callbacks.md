@@ -18,11 +18,12 @@ same name, e.g: `callbacks: [:on_load]` is shorthand for `callbacks: [on_load: :
 
 > ### Context in callbacks {: .info}
 >
-> For all callbacks, the context is set as follows:
+> For all callbacks, the context is set with the following fields:
+
 - `env`: the `e.ErlNifEnv` value passed to the callback function;
-- `mode`: `.callback`;
-- `allocator`: `beam.allocator`;
->
+- `mode`: `.callback`
+- `allocator`: `beam.allocator`
+
 > Thus you should be able to use `beam.get`, `beam.make`, or `beam.send` with the appropriate context
 > set without extra options.
 
@@ -32,7 +33,7 @@ The on_load callback may have one of the following function signatures:
 
 - `fn (?*?*T, U) void`: if the on_load function can never fail.
 - `fn (?*?*T, U) !void`: if the on_load function can fail with an error. The module load integer will
-  reflect the integer value of the error.
+  reflect the integer value of the error.--------------------
 -
 > #### Zig error integers {: .warning}
 >
@@ -58,8 +59,8 @@ this function call will be passed to the `on_load`
 > ### on_load and resources {: .info}
 >
 > The beam nif guide says that resources must be initialized in the `load` callback. The `on_load`
-> callback must NOT initialize resources. This is performed in a function that will wrap your
-> `on_load` callback.
+> callback must NOT initialize resources. Resource initialization is performed in a function that will
+> wrap your `on_load` callback.
 
 #### Example
 
@@ -100,7 +101,7 @@ The on_upgrade callback may have one of the following function signatures:
 
 - `fn (?*?*T, ?*?*U, V) void`: if the on_load function can never fail.
 - `fn (?*?*T, ?*?*U, V) !void`: if the on_load function can fail with an error. The module load
-  integer will reflect the integer value of the error.
+  integer will reflect the integer value of the error.--------------------
 -
 > #### Zig error integers {: .warning}
 >

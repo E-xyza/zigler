@@ -1,63 +1,129 @@
 defmodule Zig.Return do
   @moduledoc false
 
-  @enforce_keys ~w[type cleanup]a
-  defstruct @enforce_keys ++ [:in_out, :error, :length, spec: nil, as: :default]
+  defstruct ~w[cleanup type in_out error length spec struct]a ++ [as: :default]
 
+  alias Zig.Options
   alias Zig.Type
 
-  @type type :: :binary | :integer | :default | :list | {:list, type}
+  # information supplied by the user. 
+  @type unmerged :: %__MODULE__{
+          cleanup: boolean,
+          error: atom,
+          length: nil | non_neg_integer | {:arg, non_neg_integer()},
+          spec: nil | Macro.t(),
+          struct: nil | module,
+          as: Zig.as_type(),
+          in_out: nil | String.t()
+        }
 
+  # information obtained by semantic analysis.  Cleanup must be present
+  # as the cleanup clause is inherited by the module rules cleanup.
+  @type sema :: %__MODULE__{
+          type: Type.t()
+        }
+
+  # type as merged after semantic analysis.
   @type t :: %__MODULE__{
           type: Type.t(),
           cleanup: boolean,
-          as: type,
-          spec: Macro.t(),
-          in_out: nil | String.t(),
-          error: atom(),
-          length: non_neg_integer | {:arg, non_neg_integer()}
+          error: atom,
+          length: nil | non_neg_integer | {:arg, non_neg_integer()},
+          spec: nil | Macro.t(),
+          struct: nil | module,
+          as: Zig.as_type(),
+          in_out: nil | String.t()
         }
 
-  @type opts :: [
-          :noclean
-          | :binary
-          | :list
-          | {:cleanup, boolean}
-          | {:as, type}
-          | {:in_out, String.t()}
-          | {:error, atom()}
-          | {:length, non_neg_integer | {:arg, non_neg_integer()}}
-        ]
+  @spec new(Zig.return_options(), Options.context()) :: unmerged
 
-  def new(raw) when raw in ~w[term erl_nif_term]a, do: %__MODULE__{type: raw, cleanup: false}
+  def new(context), do: new([], context)
 
-  def new(type, options) do
-    struct!(__MODULE__, [type: type] ++ normalize_options(options))
+  def new(opts, context) do
+    opts
+    |> List.wrap()
+    |> Options.normalize(:cleanup, Options.boolean_normalizer(noclean: false), context)
+    |> Options.normalize(:as, &normalize_type/2, context)
+    |> normalize_map_list(context)
+    |> Options.scrub_non_keyword(context)
+    |> Options.validate(:length, &validate_length/1, context)
+    |> Options.validate(:error, {:atom, "a module"}, context)
+    |> Options.validate(:struct, :atom, context)
+    |> Keyword.put_new(:cleanup, context.cleanup)
+    |> then(&struct!(__MODULE__, &1))
+  rescue
+    e in KeyError ->
+      Options.raise_with("was supplied the invalid option `#{e.key}`", context)
   end
 
-  @as ~w[binary list integer map]a
-  @options ~w[as cleanup spec in_out error length]a
+  @as ~w[binary list integer map default]a
+  @deep ~w[list map]a
 
-  defp normalize_options(options) do
-    options
-    |> List.wrap()
-    |> Enum.map(fn
-      option when option in @as ->
-        {:as, option}
+  def normalize_type({type}, _context) when type in @as, do: {:ok, type}
+  def normalize_type({_}, _context), do: :error
+  def normalize_type(type, _context) when type in @as, do: type
 
-      :noclean ->
-        {:cleanup, false}
+  def normalize_type({t, _} = type, context) when t in @deep do
+    validate_type(type, context)
+    type
+  end
 
-      {:list, _} = v ->
-        {:as, v}
+  @invalid_type_error "has an invalid type specification (must be `:binary`, `:list`, `:map`, `:default`, or `{:list, type}`, `{:map, key: type}`)"
 
-      {:map, _} = v ->
-        {:as, v}
+  def normalize_type(other, context) do
+    Options.raise_with(
+      @invalid_type_error,
+      other,
+      context
+    )
+  end
 
-      {k, _} = kv when k in @options ->
-        kv
+  def normalize_map_list(opts, context) do
+    Enum.map(opts, fn
+      {t, _} = type when t in @deep ->
+        validate_type(type, context)
+        {:as, type}
+
+      other ->
+        other
     end)
-    |> Keyword.put_new(:cleanup, true)
+  end
+
+  @length_error "must be a non-negative integer or `{:arg, argument index}`"
+  defp validate_length(length) when is_integer(length) and length >= 0, do: :ok
+  defp validate_length({:arg, length}) when is_integer(length) and length >= 0, do: :ok
+  defp validate_length(wrong), do: {:error, @length_error, wrong}
+
+  defp validate_type(type, _context) when type in @as, do: type
+
+  defp validate_type({:list, type}, context),
+    do: validate_type(type, Options.push_key(context, :list))
+
+  defp validate_type({:map, list}, context),
+    do: validate_map_type(list, Options.push_key(context, :map))
+
+  defp validate_type(wrong, context), do: Options.raise_with(@invalid_type_error, wrong, context)
+
+  @invalid_map_type_error "has an invalid map type specification (map parameter must be a keyword list of atoms as keys and type specifications as values)"
+
+  defp validate_map_type(list, context) when is_list(list) do
+    Enum.each(list, fn
+      {key, type} when is_atom(key) ->
+        validate_type(type, Options.push_key(context, key))
+
+      _ ->
+        Options.raise_with(@invalid_map_type_error, list, context)
+    end)
+  end
+
+  defp validate_map_type(wrong, context),
+    do: Options.raise_with(@invalid_map_type_error, wrong, context)
+
+  @spec merge(sema, unmerged) :: t
+  def merge(sema, spec) do
+    Enum.reduce(~w[cleanup in_out error length spec as struct]a, sema, fn key, sema ->
+      Map.put(sema, key, Map.fetch!(spec, key))
+    end)
   end
 
   def render_return(%{in_out: in_out_var, error: nil} = return) when is_binary(in_out_var) do
@@ -81,7 +147,7 @@ defmodule Zig.Return do
     do: "break :execution_block beam.make(result, .{#{return_opts(return)}}).v;"
 
   defp return_opts(return) do
-    [&return_as/1, &return_length/1]
+    [&return_as/1, &return_length/1, &return_struct/1]
     |> Enum.flat_map(&List.wrap(&1.(return)))
     |> Enum.join(",")
   end
@@ -107,4 +173,8 @@ defmodule Zig.Return do
   end
 
   defp return_length(_), do: nil
+
+  defp return_struct(%{struct: module}) do
+    if module, do: ~s(.@"struct" = .@"#{module}")
+  end
 end

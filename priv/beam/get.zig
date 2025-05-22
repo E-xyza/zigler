@@ -16,14 +16,14 @@ pub fn get(comptime T: type, src: beam.term, opts: anytype) !T {
     if (T == e.ErlNifTerm) return src.v;
 
     switch (@typeInfo(T)) {
-        .Int => return get_int(T, src, opts),
-        .Enum => return get_enum(T, src, opts),
-        .Float => return get_float(T, src, opts),
-        .Struct => return get_struct(T, src, opts),
-        .Bool => return get_bool(T, src, opts),
-        .Array => return get_array(T, src, opts),
-        .Pointer => return get_pointer(T, src, opts),
-        .Optional => return get_optional(T, src, opts),
+        .int => return get_int(T, src, opts),
+        .@"enum" => return get_enum(T, src, opts),
+        .float => return get_float(T, src, opts),
+        .@"struct" => return get_struct(T, src, opts),
+        .bool => return get_bool(T, src, opts),
+        .array => return get_array(T, src, opts),
+        .pointer => return get_pointer(T, src, opts),
+        .optional => return get_optional(T, src, opts),
         else => @compileError("unhandlable type encountered in get"),
     }
 }
@@ -52,7 +52,7 @@ const minInt = std.math.minInt;
 const maxInt = std.math.maxInt;
 
 pub fn get_int(comptime T: type, src: beam.term, opts: anytype) GetError!T {
-    const int = @typeInfo(T).Int;
+    const int = @typeInfo(T).int;
     switch (int.signedness) {
         .signed => switch (int.bits) {
             0...32 => {
@@ -126,7 +126,7 @@ inline fn genericGetInt(comptime T: type, src: beam.term, result_ptr: anytype, o
     errdefer error_expected(T, opts);
     errdefer error_got(src, opts);
 
-    if (src.term_type(options.env(opts)) != .integer) {
+    if (src.term_type(opts) != .integer) {
         return GetError.argument_error;
     }
 
@@ -141,7 +141,7 @@ inline fn lowerInt(comptime T: type, src: beam.term, result: anytype, opts: anyt
     errdefer error_got(src, opts);
     errdefer error_line(.{ "note: out of bounds (", .{ .inspect, minInt(T) }, "..", .{ .inspect, maxInt(T) }, ")" }, opts);
 
-    const int = @typeInfo(T).Int;
+    const int = @typeInfo(T).int;
     if (int.signedness == .signed) {
         if (result < std.math.minInt(T)) {
             return GetError.argument_error;
@@ -156,7 +156,7 @@ inline fn lowerInt(comptime T: type, src: beam.term, result: anytype, opts: anyt
 }
 
 pub fn get_enum(comptime T: type, src: beam.term, opts: anytype) !T {
-    const enum_info = @typeInfo(T).Enum;
+    const enum_info = @typeInfo(T).@"enum";
     const IntType = enum_info.tag_type;
     comptime var int_values: [enum_info.fields.len]IntType = undefined;
     comptime for (&int_values, 0..) |*value, index| {
@@ -168,7 +168,7 @@ pub fn get_enum(comptime T: type, src: beam.term, opts: anytype) !T {
     error_expected(T, opts);
 
     // prefer the integer form, fallback to string searches.
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .integer => {
             errdefer error_line(.{ "note: not an integer value for ", .{ .typename, @typeName(T) }, " (should be one of `", .{ .inspect, int_values }, "`)" }, opts);
 
@@ -199,7 +199,7 @@ pub fn get_float(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_expected(T, opts);
     errdefer error_got(src, opts);
 
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .float => {
             var float: f64 = undefined;
 
@@ -239,7 +239,7 @@ pub fn get_atom(src: beam.term, buf: *[256]u8, opts: anytype) ![]u8 {
 
 pub fn get_struct(comptime T: type, src: beam.term, opts: anytype) !T {
     const struct_info = switch (@typeInfo(T)) {
-        .Struct => |s| s,
+        .@"struct" => |s| s,
         else => unreachable,
     };
 
@@ -260,7 +260,7 @@ pub fn get_resource(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_got(src, opts);
 
     // make sure it's a reference type
-    if (src.term_type(options.env(opts)) != .ref) {
+    if (src.term_type(opts) != .ref) {
         return GetError.argument_error;
     }
 
@@ -283,18 +283,18 @@ pub fn get_resource(comptime T: type, src: beam.term, opts: anytype) !T {
 fn get_tuple_to_buf(src: beam.term, buf: anytype, opts: anytype) !void {
     // compile-time type checking on the buf variable
     const type_info = @typeInfo(@TypeOf(buf));
-    const child_type_info = @typeInfo(type_info.Pointer.child);
+    const child_type_info = @typeInfo(type_info.pointer.child);
     // compile-time type checking on the buf variable
 
-    if (src.term_type(options.env(opts)) != .tuple) return GetError.argument_error;
+    if (src.term_type(opts) != .tuple) return GetError.argument_error;
 
     var arity: c_int = undefined;
-    var src_array: [*c]e.ErlNifTerm = undefined;
+    var src_array: [*c]const e.ErlNifTerm = undefined;
 
-    const result = e.enif_get_tuple(options.env(opts), src.v, &arity, &src_array);
+    const result = e.enif_get_tuple(options.env(opts), src.v, &arity, @ptrCast(&src_array));
 
     if (result == 0) return GetError.argument_error;
-    if (arity != child_type_info.Array.len) return GetError.argument_error;
+    if (arity != child_type_info.array.len) return GetError.argument_error;
 
     for (buf, 0..) |*slot, index| {
         slot.* = .{ .v = src_array[index] };
@@ -305,7 +305,7 @@ pub fn get_bool(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_expected(T, opts);
     errdefer error_got(src, opts);
 
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .atom => {
             var buf: [256]u8 = undefined;
             const atom = try get_atom(src, &buf, opts);
@@ -334,18 +334,18 @@ pub fn get_array(comptime T: type, src: beam.term, opts: anytype) !T {
 }
 
 pub fn get_pointer(comptime T: type, src: beam.term, opts: anytype) !T {
-    const pointer_info = @typeInfo(T).Pointer;
+    const pointer_info = @typeInfo(T).pointer;
     switch (pointer_info.size) {
-        .One => {
+        .one => {
             return get_onepointer(T, src, opts);
         },
-        .Slice => {
+        .slice => {
             return get_slice(T, src, opts);
         },
-        .Many => {
+        .many => {
             return get_manypointer(T, src, opts);
         },
-        .C => {
+        .c => {
             return get_cpointer(T, src, opts);
         },
     }
@@ -355,15 +355,15 @@ pub fn get_optional(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_expected(T, opts);
     errdefer error_got(src, opts);
 
-    const Child = @typeInfo(T).Optional.child;
-    switch (src.term_type(options.env(opts))) {
+    const Child = @typeInfo(T).optional.child;
+    switch (src.term_type(opts)) {
         .atom => return try null_or_atom(T, src, opts),
         else => return try get(Child, src, opts),
     }
 }
 
 pub fn get_onepointer(comptime T: type, src: beam.term, opts: anytype) !T {
-    const Child = @typeInfo(T).Pointer.child;
+    const Child = @typeInfo(T).pointer.child;
     if (@hasField(@TypeOf(opts), "in_out")) {
         // space was provided on the stack.
         opts.in_out.* = try get(Child, src, opts);
@@ -382,7 +382,7 @@ pub fn get_slice(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_expected(T, opts);
     errdefer error_got(src, opts);
 
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .bitstring => return get_slice_binary(T, src, opts),
         .list => return get_slice_list(T, src, opts),
         else => return GetError.argument_error,
@@ -390,7 +390,7 @@ pub fn get_slice(comptime T: type, src: beam.term, opts: anytype) !T {
 }
 
 pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
-    const slice_info = @typeInfo(T).Pointer;
+    const slice_info = @typeInfo(T).pointer;
     const Child = slice_info.child;
 
     const byte_size_condition = get_byte_size(T) orelse return GetError.argument_error;
@@ -411,17 +411,20 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
     if (slice_info.is_const) {
         return result_ptr[0..item_count];
     } else {
+        const sentinel_ptr: ?*const Child = if (slice_info.sentinel_ptr) |sentinel| @ptrCast(@alignCast(sentinel)) else options.sentinel_ptr(Child, opts);
+
         const alloc = options.allocator(opts);
-        const alloc_count = if (slice_info.sentinel) |_| item_count + 1 else item_count;
+        const alloc_count = if (sentinel_ptr) |_| item_count + 1 else item_count;
 
         const result = alloc.alloc(Child, alloc_count) catch |err| {
             return err;
         };
 
-        @memcpy(result, result_ptr[0..item_count]);
-
-        if (slice_info.sentinel) |sentinel| {
-            result[item_count] = @as(*const Child, @ptrCast(@alignCast(sentinel))).*;
+        if (sentinel_ptr) |sentinel| {
+            @memcpy(result[0..item_count], result_ptr[0..item_count]);
+            result[alloc_count - 1] = sentinel.*;
+        } else {
+            @memcpy(result, result_ptr[0..item_count]);
         }
 
         return @as(T, @ptrCast(result));
@@ -429,13 +432,15 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
 }
 
 pub fn get_slice_list(comptime T: type, src: beam.term, opts: anytype) !T {
-    const slice_info = @typeInfo(T).Pointer;
+    const slice_info = @typeInfo(T).pointer;
     const Child = slice_info.child;
     var length: c_uint = undefined;
     const alloc = options.allocator(opts);
 
+    const sentinel_ptr: ?*const Child = if (slice_info.sentinel_ptr) |sentinel| @ptrCast(@alignCast(sentinel)) else options.sentinel_ptr(Child, opts);
+
     if (e.enif_get_list_length(options.env(opts), src.v, &length) == 0) return GetError.unreachable_error;
-    const alloc_length = if (slice_info.sentinel) |_| length + 1 else length;
+    const alloc_length = if (sentinel_ptr) |_| length + 1 else length;
 
     const result = try alloc.alloc(Child, alloc_length);
     errdefer alloc.free(result);
@@ -454,8 +459,8 @@ pub fn get_slice_list(comptime T: type, src: beam.term, opts: anytype) !T {
 
     if (e.enif_is_empty_list(options.env(opts), list) == 0) return GetError.unreachable_error;
 
-    if (slice_info.sentinel) |sentinel| {
-        result[length] = @as(*const Child, @ptrCast(@alignCast(sentinel))).*;
+    if (sentinel_ptr) |sentinel| {
+        result[length] = sentinel.*;
     }
 
     return @as(T, @ptrCast(result));
@@ -463,11 +468,11 @@ pub fn get_slice_list(comptime T: type, src: beam.term, opts: anytype) !T {
 
 pub fn get_manypointer(comptime T: type, src: beam.term, opts: anytype) !T {
     // this is equivalent to creating a slice and then discarding the length term
-    const Child = @typeInfo(T).Pointer.child;
+    const Child = @typeInfo(T).pointer.child;
     const slice = try get_slice([]Child, src, opts);
     const result = @as(T, @ptrCast(slice.ptr));
-    if (@typeInfo(T).Pointer.sentinel) |sentinel_ptr| {
-        result[slice.len] = @as(*const Child, @ptrCast(@alignCast(sentinel_ptr))).*;
+    if (@typeInfo(T).pointer.sentinel_ptr) |sentinel| {
+        result[slice.len] = @as(*const Child, @ptrCast(@alignCast(sentinel))).*;
     }
     if (@hasField(@TypeOf(opts), "size")) {
         opts.size.* = slice.len;
@@ -482,11 +487,11 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
     errdefer error_expected(T, opts);
     errdefer error_got(src, opts);
 
-    const Child = @typeInfo(T).Pointer.child;
+    const Child = @typeInfo(T).pointer.child;
     // scan on the type of the source.
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .atom => return try null_or_atom(T, src, opts),
-        .map => if (@typeInfo(Child) != .Struct) {
+        .map => if (@typeInfo(Child) != .@"struct") {
             return GetError.argument_error;
         } else {
             // we have to allocate this as a slice, so that it can be safely cleaned later.
@@ -520,6 +525,7 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
         },
         .bitstring => {
             const result_slice = try get_slice_binary([]Child, src, opts);
+
             if (@hasField(@TypeOf(opts), "size")) {
                 opts.size.* = result_slice.len;
             }
@@ -537,8 +543,8 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
 // fill functions
 fn fill(comptime T: type, result: *T, src: beam.term, opts: anytype) GetError!void {
     switch (@typeInfo(T)) {
-        .Array => try fill_array(T, result, src, opts),
-        .Struct => try fill_struct(T, result, src, opts),
+        .array => try fill_array(T, result, src, opts),
+        .@"struct" => try fill_struct(T, result, src, opts),
         else => {
             @compileLog(T);
             @compileError("unhandlable type encountered in fill");
@@ -547,9 +553,9 @@ fn fill(comptime T: type, result: *T, src: beam.term, opts: anytype) GetError!vo
 }
 
 fn fill_array(comptime T: type, result: *T, src: beam.term, opts: anytype) GetError!void {
-    const array_info = @typeInfo(T).Array;
+    const array_info = @typeInfo(T).array;
     const Child = array_info.child;
-    switch (src.term_type(options.env(opts))) {
+    switch (src.term_type(opts)) {
         .list => {
             // try to fill the array, if the lengths mismatch, then throw an error.
             // however, don't call enif_get_list_length because that incurs a second
@@ -599,8 +605,8 @@ fn fill_array(comptime T: type, result: *T, src: beam.term, opts: anytype) GetEr
 }
 
 fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !void {
-    const struct_info = @typeInfo(T).Struct;
-    switch (src.term_type(options.env(opts))) {
+    const struct_info = @typeInfo(T).@"struct";
+    switch (src.term_type(opts)) {
         .map => {
             var failed: bool = false;
             // look for each of the fields:
@@ -617,7 +623,7 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
                     };
                 } else {
                     // note that this is a comptime if.
-                    if (field.default_value) |default_value| {
+                    if (field.default_value_ptr) |default_value| {
                         @field(result.*, field.name) = @as(*const F, @ptrCast(@alignCast(default_value))).*;
                     } else {
                         // can't return this directly due to compilation error.
@@ -666,7 +672,7 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
                 // skip anything that was defined in the last section.
                 if (!@field(registry, field.name)) {
                     const Tf = field.type;
-                    if (field.default_value) |defaultptr| {
+                    if (field.default_value_ptr) |defaultptr| {
                         @field(result.*, field.name) = @as(*const Tf, @ptrCast(@alignCast(defaultptr))).*;
                     } else {
                         error_line(.{ "note: ", .{ .typename, @typeName(T) }, " requires the field `:", field.name, "`, which is missing.)" }, opts);
@@ -691,14 +697,14 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
 
 pub fn StructRegistry(comptime SourceStruct: type) type {
     const source_info = @typeInfo(SourceStruct);
-    if (source_info != .Struct) @compileError("StructRegistry may only be called with a struct type");
-    const source_fields = source_info.Struct.fields;
+    if (source_info != .@"struct") @compileError("StructRegistry may only be called with a struct type");
+    const source_fields = source_info.@"struct".fields;
     const default = false;
 
     var fields: [source_fields.len]std.builtin.Type.StructField = undefined;
 
     for (source_fields, 0..) |source_field, index| {
-        fields[index] = .{ .name = source_field.name, .type = bool, .default_value = &default, .is_comptime = false, .alignment = @alignOf(*bool) };
+        fields[index] = .{ .name = source_field.name, .type = bool, .default_value_ptr = &default, .is_comptime = false, .alignment = @alignOf(*bool) };
     }
 
     const decls = [0]std.builtin.Type.Declaration{};
@@ -709,17 +715,7 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
         .is_tuple = false,
     };
 
-    return @Type(.{ .Struct = constructed_struct });
-}
-
-fn bytesFor(comptime T: type) comptime_int {
-    const bitsize = @bitSizeOf(T);
-    return bitsize / 8 + if (bitsize % 8 == 0) 0 else 1;
-}
-
-// there's probably a std function for this.
-fn IntFor(comptime bits: comptime_int) type {
-    return @Type(.{ .Int = .{ .signedness = .unsigned, .bits = bits } });
+    return @Type(.{ .@"struct" = constructed_struct });
 }
 
 fn null_or_atom(comptime T: type, src: beam.term, opts: anytype) !T {
@@ -728,9 +724,9 @@ fn null_or_atom(comptime T: type, src: beam.term, opts: anytype) !T {
     if (std.mem.eql(u8, "nil", atom)) return null;
 
     switch (@typeInfo(T)) {
-        .Optional => |o| switch (@typeInfo(o.child)) {
-            .Enum => return try get_enum(o.child, src, opts),
-            .Bool => return try get_bool(o.child, src, opts),
+        .optional => |o| switch (@typeInfo(o.child)) {
+            .@"enum" => return try get_enum(o.child, src, opts),
+            .bool => return try get_bool(o.child, src, opts),
             else => {},
         },
         else => {},
@@ -752,7 +748,7 @@ inline fn error_line(msg: anytype, opts: anytype) void {
 
     if (!@hasField(@TypeOf(opts), "error_info")) return;
 
-    inline for (@typeInfo(@TypeOf(opts)).Struct.fields) |field| {
+    inline for (@typeInfo(@TypeOf(opts)).@"struct".fields) |field| {
         if (std.mem.eql(u8, "error_info", field.name)) {
             const field_type = @TypeOf(opts.error_info);
             if (field_type != *beam.term) {
@@ -792,8 +788,8 @@ inline fn error_enter(msg: anytype, opts: anytype) void {
 
 fn typespec_for(comptime T: type) []const u8 {
     return switch (@typeInfo(T)) {
-        .Int => "integer",
-        .Enum => |en| make_enum: {
+        .int => "integer",
+        .@"enum" => |en| make_enum: {
             comptime {
                 var typespec: []const u8 = "";
                 var should_pipe = false;
@@ -813,19 +809,19 @@ fn typespec_for(comptime T: type) []const u8 {
                 break :make_enum typespec;
             }
         },
-        .Float => "float | :infinity | :neg_infinity | :NaN",
+        .float => "float | :infinity | :neg_infinity | :NaN",
         // a struct might be a reosurce.  If it's not, then it could be map/keyword, or maybe a binary (if packed or extern).
-        .Struct => |s| if (resource.MaybeUnwrap(s)) |_| "reference" else "map | keyword" ++ binary_spec(T),
-        .Bool => "boolean",
-        .Array => |a| "list(" ++ typespec_for(a.child) ++ ")" ++ binary_spec(T),
-        .Pointer => |p| switch (p.size) {
+        .@"struct" => |s| if (resource.MaybeUnwrap(s)) |_| "reference" else "map | keyword" ++ binary_spec(T),
+        .bool => "boolean",
+        .array => |a| "list(" ++ typespec_for(a.child) ++ ")" ++ binary_spec(T),
+        .pointer => |p| switch (p.size) {
             // pointer to one can only be a map or keyword.
-            .One => "map | keyword",
-            .Slice => "list(" ++ typespec_for(p.child) ++ ")" ++ binary_spec(T),
-            .Many => "list(" ++ typespec_for(p.child) ++ ")" ++ binary_spec(T),
-            .C => (if (@typeInfo(p.child) == .Struct) "map | list(" ++ typespec_for(p.child) ++ ")" else "") ++ binary_spec(T),
+            .one => "map | keyword",
+            .slice => "list(" ++ typespec_for(p.child) ++ ")" ++ binary_spec(T),
+            .many => "list(" ++ typespec_for(p.child) ++ ")" ++ binary_spec(T),
+            .c => (if (@typeInfo(p.child) == .@"struct") "map | list(" ++ typespec_for(p.child) ++ ")" else "") ++ binary_spec(T),
         },
-        .Optional => |o| comptime make_optional: {
+        .optional => |o| comptime make_optional: {
             break :make_optional "nil | " ++ typespec_for(o.child);
         },
         else => @compileError("unreachable"),
@@ -834,15 +830,15 @@ fn typespec_for(comptime T: type) []const u8 {
 
 fn typename_for(comptime T: type) []const u8 {
     return switch (@typeInfo(T)) {
-        .Struct => |s| if (resource.MaybeUnwrap(s)) |_| refname_for(T) else @typeName(T),
+        .@"struct" => |s| if (resource.MaybeUnwrap(s)) |_| refname_for(T) else @typeName(T),
         else => @typeName(T),
     };
 }
 
 fn refname_for(comptime T: type) []const u8 {
-    inline for (@typeInfo(T).Struct.fields) |field| {
+    inline for (@typeInfo(T).@"struct".fields) |field| {
         if (std.mem.eql(u8, field.name, "__payload")) {
-            return "beam.Resource(" ++ @typeName(@typeInfo(field.type).Pointer.child) ++ ", @import(\"root\"), .{...})";
+            return "beam.Resource(" ++ @typeName(@typeInfo(field.type).pointer.child) ++ ", @import(\"root\"), .{...})";
         }
     }
     unreachable;
@@ -869,11 +865,11 @@ fn get_byte_size(comptime T: type) ?BinarySize {
     // fixed byte size specification
     const info = @typeInfo(T);
     switch (info) {
-        .Array => |a| {
+        .array => |a| {
             // arrays can only be binary if the associated child size is integer, float, or fixed, and the
             // size is fixed.
             switch (@typeInfo(a.child)) {
-                .Int, .Float => return .{ .fixed = @sizeOf(a.child) * a.len },
+                .int, .float => return .{ .fixed = @sizeOf(a.child) * a.len },
                 else => {},
             }
             if (get_byte_size(a.child)) |bsc| {
@@ -883,13 +879,13 @@ fn get_byte_size(comptime T: type) ?BinarySize {
             }
             return null;
         },
-        .Pointer => |p| {
+        .pointer => |p| {
             switch (p.size) {
-                .Slice, .Many, .C => {
+                .slice, .many, .c => {
                     // pointers can only be binary if the associated child size is integer, float, or fixed, but
                     // the result is variable.
                     switch (@typeInfo(p.child)) {
-                        .Int, .Float => return .{ .variable = @sizeOf(p.child) },
+                        .int, .float => return .{ .variable = @sizeOf(p.child) },
                         else => {},
                     }
                     if (get_byte_size(p.child)) |bsc| {
@@ -899,10 +895,10 @@ fn get_byte_size(comptime T: type) ?BinarySize {
                     }
                     return null;
                 },
-                .One => return null,
+                .one => return null,
             }
         },
-        .Struct => |s| {
+        .@"struct" => |s| {
             // structs can be binary, if the struct is either packed or extern.
             switch (s.layout) {
                 .@"packed" => return .{ .fixed = @sizeOf(s.backing_integer.?) },

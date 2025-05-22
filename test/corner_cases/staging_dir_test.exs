@@ -3,6 +3,7 @@ defmodule ZiglerTest.CornerCases.StagingDirTest do
   # as an environment variable
   use ExUnit.Case
 
+  @moduletag :skip_windows
   @staging_dir Path.join(System.tmp_dir!(), "zigler_staging")
 
   require ZiglerTest.Compiler
@@ -23,6 +24,7 @@ defmodule ZiglerTest.CornerCases.StagingDirTest do
     File.rm_rf!(@staging_dir)
   end
 
+  @tag :skip_freebsd
   test "an invalid staging dir yields a usable error" do
     System.put_env("ZIGLER_STAGING_ROOT", "/this/is/not/a/usable/path")
 

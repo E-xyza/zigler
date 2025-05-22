@@ -40,7 +40,7 @@ defmodule Zig.Resources do
     "#{beam_type(resource)} = #{call_for(resource)}.init(\"#{module}\", .{.env = env});"
   end
 
-  @builtins ~w(isize usize c_short c_ushort c_int c_uint c_long c_ulong c_longlong c_ulonglong c_longdouble f16 f32 f64 f80 f128 bool)
+  @builtins ~w[isize usize c_short c_ushort c_int c_uint c_long c_ulong c_longlong c_ulonglong c_longdouble f16 f32 f64 f80 f128 bool]
 
   defp call_for(resource) do
     case Atom.to_string(resource) do

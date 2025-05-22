@@ -100,7 +100,37 @@ defmodule PackageFile do
     assert 47 = extra_value()
   end
 end
-#module
+```
+
+## Release Mode
+
+Zig has several release modes, and you can specify which release mode to build your program under
+using the `release_mode` option. Importantly, it is possible to set a release mode that depends on
+mix environment.
+
+```elixir
+defmodule ReleaseMode do
+  use ExUnit.Case, async: true
+  mode = case MyApp.env() do
+    :prod -> :safe
+    _ -> :debug
+  end
+
+  use Zig, otp_app: :zigler, release_mode: mode
+
+  ~Z"""
+  const beam = @import("beam");
+  pub fn get_mode() beam.term {
+      return beam.make(@import("builtin").mode, .{});
+  }
+  """
+
+  test "release mode" do
+    assert :Debug == get_mode()
+  end
+end
+
+# module
 ```
 
 ## dump options

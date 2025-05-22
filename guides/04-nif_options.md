@@ -103,6 +103,12 @@ defmodule AliasTest do
 end
 ```
 
+> ### Aliasing does not shadow {: .warning}
+>
+> If you alias a nif and use autopopulate via `...` or `{:auto, _}`, zigler will still include the
+> aliased nif in the list of nifs. If you do wish to have the alias fully shadow the implementation,
+> use the `:ignore` option.
+
 ## Args options
 
 Arguments can also take options, using `args: [...]`
@@ -119,10 +125,12 @@ This flag can be stacked with previous options, for example: `return: [:noclean,
 ## Leak Check
 
 It's possible to wrap each function call in its own instance of
-[`beam.general_purpose_allocator`](beam.html#general_purpose_allocator) bound into the
+[`beam.debug_allocator`](beam.html#debug_allocator) bound into the
 [`beam.allocator`](beam.html#allocator) threadlocal variable. If you tag your nif as `leak_check`,
 it will check that `beam.allocator` has cleared all of its contents at the end of the function call,
 and if that hasn't happened, it raises.
+
+Note that this is currently not supported in windows builds.
 
 ```elixir
 defmodule LeakCheckTest do
@@ -139,6 +147,7 @@ defmodule LeakCheckTest do
   }
   """
 
+  @tag [erroring: true, skip_windows: true]
   test "leak check" do
     require Logger
     Logger.warning("====== the following leak message is expected: =========== START")
@@ -168,6 +177,7 @@ defmodule LeakCheckAllTest do
   }
   """
 
+  @tag [erroring: true, skip_windows: true]
   test "leak check" do
     require Logger
     Logger.warning("====== the following leak message is expected: =========== START")
@@ -207,15 +217,16 @@ end
 
 ## Disable documentation
 
-Documentation can be disabled with the `docs: false` option.
+Documentation can be disabled with the `doc: false` option.
 
 ```elixir
 defmodule DisableDoc do
   use Zig, 
     otp_app: :zigler,
-    nifs: [nodocs: [docs: false]]
+    nifs: [nodocs: [doc: false]]
 
   ~Z"""
+  /// these docs will not appear in elixir docs
   pub fn nodocs() void {}
   """
 end

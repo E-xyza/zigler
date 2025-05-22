@@ -4,12 +4,18 @@ Library test status:
 
 - ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI%20-%20Linux/badge.svg)
 - ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI%20-%20MacOS/badge.svg)
+- ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI%20-%20Windows/badge.svg)
+- ![](https://github.com/ityonemo/zigler/workflows/Elixir%20CI%20-%20FreeBSD/badge.svg)
 
 ## Installation: Elixir
 
 ### Obtaining Zig dependency
 
-Run `mix zig.get`
+Run `mix zig.get` after `mix deps.get`.  This will provide a zig installation
+in the directory pointed to by `:filename.basedir(:user_cache, "zigler")`.
+
+You may also use a local installation of zig by specifying the environment variable
+`ZIG_ARCHIVE_PATH`.
 
 ### Main Installation
 
@@ -30,7 +36,7 @@ end
 
 TBD.
 
-`~/.cache/zigler/zig-linux-<arch>-0.13.0`
+`~/.cache/zigler/zig-linux-<arch>-0.14.0`
 
 ### Main Installation
 

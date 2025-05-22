@@ -10,79 +10,148 @@ defmodule Zig.C do
             link_lib: [],
             link_libcpp: false
 
+  alias Zig.Options
+
   @type t :: %__MODULE__{
-          include_dirs: [Path.t()],
-          library_dirs: [Path.t()],
-          link_lib: [Path.t()],
+          include_dirs: [String.t() | {:system, String.t()}],
+          library_dirs: [String.t() | {:system, String.t()}],
+          link_lib: [String.t() | {:system, String.t()}],
           link_libcpp: boolean,
-          src: src_opts()
+          src: [{String.t(), [String.t()]}]
         }
 
-  @type opts :: [
-          include_dirs: Path.t() | [Path.t()],
-          library_dirs: Path.t() | [Path.t()],
-          link_lib: Path.t() | [Path.t()],
-          link_libcpp: boolean,
-          src: src_opts()
-        ]
+  @spec new(Zig.c_options(), Options.context()) :: t
+  def new(opts, context) do
+    opts
+    |> Options.scrub_non_keyword(context)
+    |> Options.normalize_kw(:include_dirs, [], &normalize_pathlist/2, context)
+    |> Options.normalize_kw(:library_dirs, [], &normalize_pathlist/2, context)
+    |> Options.normalize_kw(:link_lib, [], &normalize_pathlist/2, context)
+    |> Options.normalize_kw(:src, [], &normalize_c_src/2, context)
+    |> Options.validate(:link_libcpp, :boolean, context)
+    |> then(&struct!(__MODULE__, &1))
+  rescue
+    e in KeyError ->
+      Options.raise_with("was supplied the invalid option `#{e.key}`", context)
+  end
 
-  @type src_opts :: term
+  def normalize_pathlist([n | _] = charlist, context) when is_integer(n),
+    do: [resolve_path("#{charlist}", context)]
 
-  def new(opts, module_opts) do
-    module_dir = cond do
-      dir = module_opts[:dir] -> dir
-      file = module_opts[:file] -> Path.dirname(file)
+  def normalize_pathlist(path_or_paths, context) do
+    path_or_paths
+    |> List.wrap()
+    |> Enum.map(&resolve_path(&1, context))
+  end
+
+  defp resolve_path({:system, path}, context) do
+    {:system, IO.iodata_to_binary(path)}
+  rescue
+    _ in ArgumentError ->
+      Options.raise_with("system path must be iodata", path, context)
+  end
+
+  defp resolve_path({:priv, path}, context) do
+    path
+    |> IO.iodata_to_binary()
+    |> Path.expand(:code.priv_dir(context.otp_app))
+  rescue
+    _ in ArgumentError ->
+      Options.raise_with("priv path must be iodata", path, context)
+  end
+
+  defp resolve_path(path, context) do
+    case IO.iodata_to_binary(path) do
+      "./" <> rest ->
+        {:system, Path.join(File.cwd!(), rest)}
+
+      path ->
+        Path.expand(path, Path.dirname(context.file))
     end
-
-    struct!(__MODULE__,
-      include_dirs: normalize_filelist(opts, :include_dirs, module_dir),
-      library_dirs: normalize_filelist(opts, :library_dirs, module_dir),
-      link_lib: normalize_filelist(opts, :link_lib, module_dir),
-      link_libcpp: Keyword.get(opts, :link_libcpp, false),
-      src: normalized_srclist(opts, module_dir)
-    )
+  rescue
+    _ in ArgumentError ->
+      Options.raise_with(
+        "must be path, `{:priv, path}`, `{:system, path}`, or a list of those",
+        path,
+        context
+      )
   end
 
-  defp normalize_filelist(opts, key, module_dir) do
-    opts
-    |> Keyword.get(key)
+  def normalize_c_src([n | _] = charlist, context) when is_integer(n),
+    do: [{resolve_path("#{charlist}", context), []}]
+
+  def normalize_c_src(src_or_srcs, context) do
+    src_or_srcs
     |> List.wrap()
-    |> Enum.map(&solve_relative(&1, module_dir))
+    |> Enum.flat_map(fn src_def ->
+      src_def
+      |> resolve_src(context)
+      |> expand_wildcards()
+    end)
   end
 
-  defp normalized_srclist(opts, module_dir) do
-    opts
-    |> Keyword.get(:src)
-    |> List.wrap()
-    |> Enum.flat_map(&normalize_src(&1, module_dir))
+  defp resolve_src({tag, _} = path, context) when tag in ~w[priv system]a do
+    path
+    |> resolve_path(context)
+    |> normalize_src_options([], context)
   end
 
-  defp solve_relative({:system, _} = system, _), do: system
-
-  defp solve_relative(file, module_dir) do
-    Path.expand(file, module_dir)
+  defp resolve_src({tag, path, options}, context) when tag in ~w[priv system]a do
+    {tag, path}
+    |> resolve_path(context)
+    |> normalize_src_options(options, context)
   end
 
-  defp normalize_src(file, module_dir) when is_binary(file) do
-    maybe_with_wildcard(file, module_dir, [])
+  defp resolve_src({path, options}, context) do
+    path
+    |> IO.iodata_to_binary()
+    |> Path.expand(Path.dirname(context.file))
+    |> normalize_src_options(options, context)
+  rescue
+    _ in ArgumentError ->
+      Options.raise_with("source files must be iodata", path, context)
   end
 
-  defp normalize_src({file, opts}, module_dir) do
-    maybe_with_wildcard(file, module_dir, opts)
+  defp resolve_src(path, context) do
+    path
+    |> IO.iodata_to_binary()
+    |> Path.expand(Path.dirname(context.file))
+    |> normalize_src_options([], context)
+  rescue
+    _ in ArgumentError ->
+      Options.raise_with(
+        "must be path, `{path, [opts]}`, `{:priv, path}`, `{:priv, path, [opts]}`, `{:system, path}`, `{:system, path, [opts]}`, or a list of those",
+        path,
+        context
+      )
   end
 
-  defp maybe_with_wildcard(file, module_dir, opts) do
-    if String.ends_with?(file, "/*") do
-      file
-      |> Path.dirname()
-      |> solve_relative(module_dir)
-      |> then(fn wildcard_dir ->
-        wildcard_dir
-        |> File.ls!()
-        |> Enum.map(&{Path.join(wildcard_dir, &1), opts})
-      end)
+  defp normalize_src_options(path, opts, context) when is_list(opts) do
+    {path, Enum.map(opts, &IO.iodata_to_binary/1)}
+  rescue
+    _ in ArgumentError ->
+      Options.raise_with(
+        "must be a list of iodata",
+        opts,
+        Options.push_key(context, inspect(path))
+      )
+  end
+
+  defp expand_wildcards({{:system, path}, opts}) do
+    {path, opts}
+    |> expand_wildcards()
+    |> Enum.map(fn {path, opts} -> {{:system, path}, opts} end)
+  end
+
+  defp expand_wildcards({path, opts} = spec) do
+    if String.ends_with?(path, "/*") do
+      dir = Path.dirname(path)
+
+      dir
+      |> File.ls!()
+      |> Enum.map(&{Path.join(dir, &1), opts})
     else
-      [{solve_relative(file, module_dir), opts}]
+      [spec]
     end
   end
 end

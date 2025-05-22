@@ -2,9 +2,6 @@ defmodule :zigler do
   @moduledoc """
   Parse transform module for using Zigler with erlang.
 
-  For the canonical example, see:
-  https://www.erlang.org/doc/man/erl_id_trans.html
-
   ## Prerequisites
 
   In order to use Zigler in an erlang project, you must have the Elixir
@@ -28,7 +25,7 @@ defmodule :zigler do
 
   -zig_code("
   pub fn hello_world() [] const u8 {
-    return "Hello, world!";
+    return \\"Hello, world!\\";
   }
   ")
 
@@ -42,63 +39,47 @@ defmodule :zigler do
   `Zig` module documentation.
 
   Note that the `...` for the `nifs` option is not representable in erlang AST.
-  Instead, use the atom `auto`.
+  Instead, use the tuple `{auto, [<nifs options...>]}`
 
   > ### Note {: .warning }
   >
-  > Erlang integration is highly experimental and the interface
+  > Erlang integration is experimental and the interface
   > may be changed in the future.
   """
-
-  @typedoc "foobarbaz"
-  @type foo :: term
 
   alias Zig.Compiler
   alias Zig.EasyC
 
   @doc """
   performs a parse transformation on the AST for an erlang module,
-  converting public functions in the
+  converting public functions in the zig code into erlang functions.
   """
   def parse_transform(ast, _opts) do
     Application.ensure_all_started(:logger)
+    {_, module} = get_attribute(ast, :module)
+    {_, {file, _}} = get_attribute(ast, :file)
+    {line, opts} = get_attribute(ast, :zig_opts) || raise "No zig opts found"
 
-    {line, opts} =
-      case Enum.find(ast, &match?({:attribute, _, :zig_opts, _}, &1)) do
-        nil ->
-          raise "No zig opts found"
+    opts =
+      opts
+      |> Keyword.put(:language, :erlang)
+      |> normalize_erlang_nif_spec()
+      |> Zig.Module.new(%{file: file, line: line, module: module})
 
-        {:attribute, {line, _}, :zig_opts, opts} ->
-          {line, opts}
-      end
-
-    otp_app =
-      case Keyword.fetch(opts, :otp_app) do
-        {:ok, otp_app} -> otp_app
-        _ -> raise "No otp_app found in zig opts"
+    code_dir =
+      case {opts.dir, file} do
+        {nil, file} -> Path.dirname(file)
+        {dir, _} -> dir
       end
 
     # utility functions:  Make sure certain apps are running
     # and make sure certain libraries are loaded.
     ensure_eex()
     ensure_libs()
-    ensure_priv_dir(otp_app)
-
-    {:attribute, _, :file, {file, _}} = Enum.find(ast, &match?({:attribute, _, :file, _}, &1))
-
-    module_dir =
-      file
-      |> Path.dirname()
-      |> Path.absname()
-
-    module =
-      case Enum.find(ast, &match?({:attribute, _, :module, _}, &1)) do
-        nil -> raise "No module definition found"
-        {:attribute, _, :module, module} -> module
-      end
+    ensure_priv_dir(opts.otp_app)
 
     code =
-      if opts[:easy_c] do
+      if opts.easy_c do
         EasyC.build_from(opts)
       else
         ast
@@ -112,20 +93,7 @@ defmodule :zigler do
         |> IO.iodata_to_binary()
       end
 
-    code_dir =
-      case Keyword.fetch(opts, :code_dir) do
-        {:ok, code_dir = "/" <> _} ->
-          code_dir
-
-        {:ok, code_dir} ->
-          Path.join(module_dir, code_dir)
-
-        _ ->
-          module_dir
-      end
-
-    module_struct = Compiler.before_compile_erlang(module, {file, line}, opts)
-    rendered = Compiler.compile(code, code_dir, module_struct)
+    rendered = Compiler.compile(code, code_dir, opts)
 
     ast =
       ast
@@ -135,7 +103,7 @@ defmodule :zigler do
       |> Kernel.++(rendered)
       |> Enum.sort(__MODULE__)
 
-    if opts[:dump] do
+    if opts.dump do
       dump(ast)
     else
       ast
@@ -148,6 +116,35 @@ defmodule :zigler do
         "Error compiling Zigler: #{Exception.message(e)}\n\n#{Exception.format_stacktrace(__STACKTRACE__)}"
       )
   end
+
+  @spec get_attribute(list, atom) :: {non_neg_integer, term} | nil
+  defp get_attribute(ast, attribute) do
+    Enum.find_value(ast, fn
+      {:attribute, {line, _}, ^attribute, payload} -> {line, payload}
+      _ -> nil
+    end)
+  end
+
+  defp normalize_erlang_nif_spec(spec) do
+    spec
+    |> Keyword.update(:c, [], &update_c/1)
+    |> Keyword.put_new(:nifs, {:auto, []})
+    |> update_if(:easy_c, &stringify/1)
+  end
+
+  defp update_c(c_opts), do: update_if(c_opts, :easy_c, &stringify/1)
+
+  defp update_if(keyword, key, fun) do
+    Enum.map(keyword, fn
+      {^key, value} -> {key, fun.(value)}
+      other -> other
+    end)
+  end
+
+  defp stringify(charlist) when is_list(charlist), do: IO.iodata_to_binary(charlist)
+  defp stringify({:priv, payload}), do: {:priv, stringify(payload)}
+  defp stringify({:system, payload}), do: {:system, stringify(payload)}
+  defp stringify(other), do: other
 
   defp append_attrib(ast, key, value), do: ast ++ [{:attribute, {1, 1}, key, value}]
 
@@ -175,10 +172,18 @@ defmodule :zigler do
     |> :code.add_path()
   end
 
+  case Code.ensure_loaded(:json) do
+    {:module, :json} ->
+      @libs [:zig_parser]
+
+    _ ->
+      @libs ~w[jason zig_parser]a
+  end
+
   defp ensure_libs do
     # we can't put this dependency into rebar.config because it has resolution issues
     # since jason decimal requirement is 1.0.0 or 2.0.0
-    Enum.each(~w[jason zig_parser]a, fn lib ->
+    Enum.each(@libs, fn lib ->
       lib
       |> path_relative_to(:zigler)
       |> String.to_charlist()

@@ -26,13 +26,13 @@ defmodule ZiglerTest.CXX.InOutParamsTest do
     assert 48 = in_out_int(47)
   end
 
-  # test "fails in the error case" do
-  #  assert_raise ErlangError, "Erlang error: :badnumber", fn ->
-  #    in_out_int(42)
-  #  end
-  # end
-  #
-  # test "make_error is ignored" do
-  #  refute function_exported?(__MODULE__, :make_error, 1)
-  # end
+  test "fails in the error case" do
+    assert_raise ErlangError, "Erlang error: :badnumber", fn ->
+      in_out_int(42)
+    end
+  end
+
+  test "make_error is ignored" do
+    refute function_exported?(__MODULE__, :make_error, 1)
+  end
 end

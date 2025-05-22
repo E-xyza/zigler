@@ -302,10 +302,10 @@ defimpl Zig.Type, for: Atom do
   alias Zig.Type
 
   @impl true
-  def get_allowed?(type), do: type in ~w(term erl_nif_term pid)a
+  def get_allowed?(type), do: type in ~w[term erl_nif_term pid]a
 
   @impl true
-  def make_allowed?(type), do: type in ~w(term erl_nif_term pid void)a
+  def make_allowed?(type), do: type in ~w[term erl_nif_term pid void]a
 
   @impl true
   def in_out_allowed?(_), do: false
@@ -347,7 +347,7 @@ defimpl Zig.Type, for: Atom do
   end
 
   @impl true
-  def render_elixir_spec(term, _) when term in ~w(term erl_nif_term)a do
+  def render_elixir_spec(term, _) when term in ~w[term erl_nif_term]a do
     quote do
       term()
     end

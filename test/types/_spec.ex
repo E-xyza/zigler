@@ -101,7 +101,9 @@ defmodule ZiglerTest.Types.Spec do
       return data;
   }
 
-  //pub fn cpointer_fn(data: [*c:0]u8) [*c:0]
+  pub fn cpointer_fn(data: [*c]u8) [*c]u8 {
+      return data;
+  }
 
   pub fn manypointer_u8_fn(data: [*]u8) u8 {
       return data[0];

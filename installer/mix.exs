@@ -6,7 +6,7 @@ end
 defmodule Zig.Get.MixProject do
   use Mix.Project
 
-  @version "0.13.1"
+  @version "0.14.1"
   @scm_url "https://github.com/e-xyza/zigler"
 
   @elixir_requirement "~> 1.14"
@@ -22,7 +22,7 @@ defmodule Zig.Get.MixProject do
         maintainers: ["Isaac Yonemoto"],
         licenses: ["MIT"],
         links: %{"GitHub" => @scm_url},
-        files: ~w(mix.tasks mix.exs README.md)
+        files: ~w[mix.tasks mix.exs README.md]
       ],
       preferred_cli_env: [docs: :docs],
       source_url: @scm_url,
@@ -40,14 +40,23 @@ defmodule Zig.Get.MixProject do
     ]
   end
 
-  def deps do
-    [
-      {:ex_doc, "~> 0.24", only: :dev},
-      {:jason, "~> 1.4"}
-    ]
+  defp json do
+    case Code.ensure_loaded(:json) do
+      {:module, :json} ->
+        []
+
+      _ ->
+        [{:jason, "~> 1.4", runtime: Mix.env() == :test}]
+    end
   end
 
-  defp elixirc_paths, do: ~w(mix.tasks)
+  def deps do
+    [
+      {:ex_doc, "~> 0.24", only: :dev}
+    ] ++ json()
+  end
+
+  defp elixirc_paths, do: ~w[mix.tasks]
 
   defp docs do
     [

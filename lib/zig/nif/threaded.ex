@@ -13,7 +13,7 @@ defmodule Zig.Nif.Threaded do
   import Zig.QuoteErl
 
   @impl true
-  def render_elixir(%{signature: %{arity: arity}} = nif) do
+  def render_elixir(%{signature: %{arity: arity}} = nif, overrides) do
     used_params_ast = Nif.elixir_parameters(arity, true)
     unused_params_ast = Nif.elixir_parameters(arity, false)
 
@@ -36,6 +36,16 @@ defmodule Zig.Nif.Threaded do
 
     argument_error_prong = ErrorProng.argument_error_prong(:elixir, nif.file, nif.line)
 
+    override_error_prong =
+      List.wrap(
+        if arity in overrides do
+          quote do
+            :__nif_binding_error__ ->
+              super(unquote_splicing(used_params_ast))
+          end
+        end
+      )
+
     error_return_prong =
       List.wrap(
         if match?(%Zig.Type.Error{}, nif.signature.return) do
@@ -43,27 +53,38 @@ defmodule Zig.Nif.Threaded do
         end
       )
 
-    error_prongs =
-      case {argument_error_prong, error_return_prong} do
-        {[], []} -> []
-        _ -> [catch: argument_error_prong ++ error_return_prong]
-      end
+    error_prongs = [catch: argument_error_prong ++ error_return_prong ++ override_error_prong]
 
     function_block = function_code ++ error_prongs
 
-    quote context: Elixir do
-      unquote(Nif.style(nif))(
-        unquote(nif.name)(unquote_splicing(used_params_ast)),
-        unquote(function_block)
-      )
+    launch_fn =
+      if arity in overrides do
+        quote do
+          defoverridable [unquote({nif.name, arity})]
 
-      defp unquote(entrypoint(nif, :launch))(unquote_splicing(unused_params_ast)) do
-        :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
+          defp unquote(entrypoint(nif, :launch))(unquote_splicing(unused_params_ast)) do
+            throw :__nif_binding_error__
+          end
+        end
+      else
+        quote do
+          defp unquote(entrypoint(nif, :launch))(unquote_splicing(unused_params_ast)) do
+            :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
+          end
+        end
       end
+
+    quote context: Elixir do
+      unquote(launch_fn)
 
       defp unquote(entrypoint(nif, :join))(_ref) do
         :erlang.nif_error(unquote(Nif.binding_error(nif.name, arity)))
       end
+
+      unquote(Nif.style(nif))(
+        unquote(nif.name)(unquote_splicing(used_params_ast)),
+        unquote(function_block)
+      )
     end
   end
 
@@ -116,10 +137,7 @@ defmodule Zig.Nif.Threaded do
     launch = entrypoint(nif, :launch)
     join = entrypoint(nif, :join)
 
-    launch_entries =
-      nif
-      |> Nif.arities()
-      |> Enum.flat_map(&[{launch, &1, :"@\"#{launch}\"", :synchronous}])
+    launch_entries = Enum.flat_map(nif.arity, &[{launch, &1, :"@\"#{launch}\"", :synchronous}])
 
     [{join, 1, :"@\"#{join}\"", :synchronous} | launch_entries]
   end

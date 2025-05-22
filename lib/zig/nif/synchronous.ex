@@ -3,11 +3,10 @@ defmodule Zig.Nif.Synchronous do
 
   @behaviour Zig.Nif.Concurrency
 
-  alias Zig.Nif
   alias Zig.Nif.Basic
 
   @impl true
-  defdelegate render_elixir(nif), to: Basic
+  defdelegate render_elixir(nif, overrides), to: Basic
 
   @impl true
   defdelegate render_erlang(nif), to: Basic
@@ -17,9 +16,7 @@ defmodule Zig.Nif.Synchronous do
 
   @impl true
   def table_entries(nif) do
-    nif
-    |> Nif.arities()
-    |> Enum.map(&{Basic.entrypoint(nif), &1, nif.name, :synchronous})
+    Enum.map(nif.arity, &{Basic.entrypoint(nif), &1, nif.name, :synchronous})
   end
 
   @impl true
