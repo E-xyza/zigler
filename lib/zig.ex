@@ -3,7 +3,7 @@ defmodule Zig do
 
   Inline NIF support for [Zig](https://ziglang.org)
 
-  For erlang support see documentation for [:zigler]
+  For erlang support see documentation for the [:zigler](:zigler.html) module.
 
   ### Motivation
 
