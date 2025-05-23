@@ -33,7 +33,7 @@ The on_load callback may have one of the following function signatures:
 
 - `fn (?*?*T, U) void`: if the on_load function can never fail.
 - `fn (?*?*T, U) !void`: if the on_load function can fail with an error. The module load integer will
-  reflect the integer value of the error.-----------------------
+  reflect the integer value of the error.------------------------
 -
 > #### Zig error integers {: .warning}
 >
@@ -101,7 +101,7 @@ The on_upgrade callback may have one of the following function signatures:
 
 - `fn (?*?*T, ?*?*U, V) void`: if the on_load function can never fail.
 - `fn (?*?*T, ?*?*U, V) !void`: if the on_load function can fail with an error. The module load
-  integer will reflect the integer value of the error.-----------------------
+  integer will reflect the integer value of the error.------------------------
 -
 > #### Zig error integers {: .warning}
 >
