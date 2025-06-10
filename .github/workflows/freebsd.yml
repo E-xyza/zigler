@@ -33,7 +33,7 @@ jobs:
     - name: get zig
       run: |
         if [ ! -d zig ]; then
-          git clone -b 0.14.0 https://github.com/ziglang/zig.git
+          git clone -b 0.14.1 https://github.com/ziglang/zig.git
         fi 
 
     - name: Test in FreeBSD
