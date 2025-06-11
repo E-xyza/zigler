@@ -30,7 +30,7 @@ jobs:
       id: deps-cache
       with:
         path: deps
-        key: ${{ runner.os }}-mix-${{ matrix.pair.otp-version }}-${{ matrix.pair.elixir-version }}-${{ hashFiles('mix.lock') }}-${{ hashfiles('installer/**/*') }}
+        key: ${{ runner.os }}-mix-${{ matrix.pair.otp-version }}-${{ matrix.pair.elixir-version }}-${{ hashFiles('mix.lock') }}-${{ hashFiles('installer/**/*') }}
 
     - name: Install ZIGLER_TEST_BLAS
       run: sudo apt install -y libopenblas-dev
