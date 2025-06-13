@@ -233,7 +233,7 @@ defmodule Zig.Command do
   defp versioned_path(path) do
     {os, arch} = Zig.Get.os_info()
 
-    zig_executable = Path.join(path, "zig-#{os}-#{arch}-#{@default_version}/#{zig_cmd_name()}")
+    zig_executable = Path.join(path, "zig-#{arch}-#{os}-#{@default_version}/#{zig_cmd_name()}")
 
     Logger.info("searching for zig in #{zig_executable}")
 

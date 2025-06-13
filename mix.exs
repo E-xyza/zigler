@@ -1,7 +1,7 @@
 defmodule Zigler.MixProject do
   use Mix.Project
 
-  def zig_version, do: "0.14.0"
+  def zig_version, do: "0.14.1"
 
   def project do
     env = Mix.env()

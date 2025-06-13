@@ -160,6 +160,10 @@ Thanks to Dave Cottlehuber @dch for testing.
   - uses system `:json` module, if available.
   - Experimental FreeBSD support added.
 
+## 0.14.1
+
+- no changes.
+
 ## Upcoming
 - `precompiled` mode that will let you obtain packages with precompiled assets.
 
