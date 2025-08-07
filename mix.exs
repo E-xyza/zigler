@@ -46,11 +46,16 @@ defmodule Zigler.MixProject do
   end
 
   defp guides(:dev) do
-    "guides"
-    |> File.ls!()
-    |> Enum.sort()
-    |> Enum.filter(&String.ends_with?(&1, ".md"))
-    |> Enum.map(&Path.join("guides", &1))
+    case File.ls("guides") do
+      {:ok, files} ->
+        files
+        |> Enum.sort()
+        |> Enum.filter(&String.ends_with?(&1, ".md"))
+        |> Enum.map(&Path.join("guides", &1))
+
+      {:error, _} ->
+        []
+    end
   end
 
   defp guides(_), do: []
