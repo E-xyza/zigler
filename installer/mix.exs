@@ -6,7 +6,7 @@ end
 defmodule Zig.Get.MixProject do
   use Mix.Project
 
-  @version "0.14.2"
+  @version "0.15.1"
   @scm_url "https://github.com/e-xyza/zigler"
 
   @elixir_requirement "~> 1.14"

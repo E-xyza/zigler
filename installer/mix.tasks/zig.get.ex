@@ -24,7 +24,7 @@ defmodule Mix.Tasks.Zig.Get do
 
   @shortdoc "Obtains the Zig compiler toolchain"
 
-  @default_version "0.14.1"
+  @default_version "0.15.1"
 
   @moduledoc """
   obtains the Zig compiler toolchain

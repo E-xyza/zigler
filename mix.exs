@@ -8,7 +8,7 @@ defmodule Zigler.MixProject do
 
     [
       app: :zigler,
-      version: "0.14.1",
+      version: "0.15.1",
       elixir: "~> 1.14",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
@@ -68,16 +68,14 @@ defmodule Zigler.MixProject do
 
   def deps do
     [
-      # credo
-      # {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
       # dialyzer
       {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       # zig parser is pinned to a version of zig parser because versions of zig parser
       # are pinned to zig versions
-      {:zig_parser, "~> 0.5"},
+      {:zig_parser, "~> 0.6"},
       # utility to help manage type protocols
       {:protoss, "~> 0.2"},
-      {:zig_get, "~> 0.14.2"},
+      {:zig_get, path: "installer/"}, #"~> 0.14.2"},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
       {:zig_doc, "~> 0.5", only: :dev, runtime: false}
