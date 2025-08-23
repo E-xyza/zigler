@@ -288,8 +288,9 @@ pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
 }
 
 pub fn main() WriteError!void {
-    const stdout = std.io.getStdOut().writer();
-    var stream = json.writeStream(stdout, .{});
+    var bw = std.io.bufferedWriter(std.fs.File.stdout().writer());
+    var stream = json.writeStream(bw, .{});
 
     try streamModule(&stream, analyte);
+    try bw.flush();
 }

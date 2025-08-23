@@ -164,6 +164,8 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 - no changes.
 
+## 0.15.1
+
 ## Upcoming
 - `precompiled` mode that will let you obtain packages with precompiled assets.
 
