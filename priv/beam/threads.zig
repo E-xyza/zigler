@@ -3,7 +3,7 @@ const beam = @import("beam.zig");
 const e = @import("erl_nif");
 const options = @import("options.zig");
 
-const BeamThreadFn = *const fn (?*anyopaque) callconv(.C) ?*anyopaque;
+const BeamThreadFn = *const fn (?*anyopaque) callconv(.c) ?*anyopaque;
 
 pub const ThreadError = error{ threaderror, threadtooktoolong, processnotjoined, processterminated };
 
@@ -140,7 +140,7 @@ pub fn Thread(comptime function: anytype) type {
         }
 
         // this is a wrapped function designed explicitly to be called by e.enif_thread_create.
-        fn wrapped(void_thread: ?*anyopaque) callconv(.C) ?*anyopaque {
+        fn wrapped(void_thread: ?*anyopaque) callconv(.c) ?*anyopaque {
             const thread = @as(*This, @ptrCast(@alignCast(void_thread.?)));
             // set critical threadlocal variables
             local_join_started = &thread.join_started;

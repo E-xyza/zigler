@@ -33,10 +33,10 @@ pub const ErlNifTSDKey = extern struct {};
 pub const SysIOVec = extern struct {};
 
 // dependent function types.
-pub const ErlNifResourceDtor = fn (env, ?*anyopaque) callconv(.C) void;
-pub const ErlNifResourceDown = fn (env, ?*anyopaque, pid, mon) callconv(.C) void;
-pub const ErlNifResourceStop = fn (env, ?*anyopaque, event, c_int) callconv(.C) void;
-pub const ErlNifResourceDynCall = fn (env, ?*anyopaque, ?*anyopaque) callconv(.C) void;
+pub const ErlNifResourceDtor = fn (env, ?*anyopaque) callconv(.c) void;
+pub const ErlNifResourceDown = fn (env, ?*anyopaque, pid, mon) callconv(.c) void;
+pub const ErlNifResourceStop = fn (env, ?*anyopaque, event, c_int) callconv(.c) void;
+pub const ErlNifResourceDynCall = fn (env, ?*anyopaque, ?*anyopaque) callconv(.c) void;
 
 const dtor = ErlNifResourceDtor;
 const down = ErlNifResourceDown;
@@ -95,7 +95,7 @@ const event = ErlNifEvent;
 const ttyp = ErlNifTermType;
 const tsdk = ErlNifTSDKey;
 
-const reentry = fn (env, c_int, [*c]const term) callconv(.C) term;
+const reentry = fn (env, c_int, [*c]const term) callconv(.c) term;
 
 pub fn enif_alloc(_: usize) ?*anyopaque {
     return null;
@@ -519,7 +519,7 @@ pub fn enif_term_to_binary(_: env, _: term, _: bin) c_int {
 pub fn enif_term_type(_: env, _: term) ttyp {
     return 0;
 }
-pub fn enif_thread_create(_: [*c]u8, _: ?*tid_, _: *const fn (?*anyopaque) callconv(.C) ?*anyopaque, _: ?*anyopaque, _: top) c_int {
+pub fn enif_thread_create(_: [*c]u8, _: ?*tid_, _: *const fn (?*anyopaque) callconv(.c) ?*anyopaque, _: ?*anyopaque, _: top) c_int {
     return 0;
 }
 pub fn enif_thread_exit(_: ?*anyopaque) void {}

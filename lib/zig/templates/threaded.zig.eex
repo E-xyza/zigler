@@ -5,14 +5,14 @@ pub const @"ThreadResource-<%= @name %>" = beam.Resource(*@"Thread-<%= @name %>"
 
 <% needs_make? = @params |> Map.values |> Enum.any?(&Type.needs_make?(&1.type)) %>
 
-fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
+fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.c) e.ErlNifTerm {
 
     <%= cond do %>
     <% allocator = @allocator -> %>
     const allocator = nif.<%= allocator %>();
     <% @leak_check -> %>
     var gpa = beam.make_debug_allocator_instance();
-    const allocator = gpa.allocator(); 
+    const allocator = gpa.allocator();
     <% :else -> %>
     const allocator = beam.allocator;
     <% end %>
@@ -26,7 +26,7 @@ fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifT
     };
 
     <%= if needs_make? do %>
-    var error_info = beam.make_empty_list(.{}); 
+    var error_info = beam.make_empty_list(.{});
     <% end %>
 
     const payload_opts = .{
@@ -44,7 +44,7 @@ fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifT
     return result.v;
 }
 
-fn @"<%= @name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.C) e.ErlNifTerm {
+fn @"<%= @name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.c) e.ErlNifTerm {
     // argc must be 1.
     _ = argc;
 
@@ -59,7 +59,7 @@ fn @"<%= @name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTer
         .mode = .threaded,
         .allocator = beam.allocator, //thread.allocator
     };
-    
+
     const result = thread.join() catch {
         // TODO: fix this
         @panic("error joining thread");

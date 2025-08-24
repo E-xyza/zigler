@@ -13,7 +13,7 @@ const threads = beam.threads;
 <%= Resources.render(resources: @resources, module: @module) %>
 
 // this will be filled out later.
-fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.C) c_int {
+fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.c) c_int {
     defer load_resources(env);
     <%= if @callbacks[:on_load] do %>
       <%= render_on_load(assigns) %>
@@ -26,7 +26,7 @@ fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) call
 
 var exported_nifs = [_]e.ErlNifFunc{<%= table_entries(@nifs) %>};
 
-fn upgrade(env: beam.env, priv_data: [*c]?*anyopaque, old_priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.C) c_int {
+fn upgrade(env: beam.env, priv_data: [*c]?*anyopaque, old_priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.c) c_int {
     defer load_resources(env);
     <%= if @callbacks[:on_upgrade] do %>
       <%= render_on_upgrade(@sema.callbacks) %>
@@ -48,8 +48,8 @@ const entry = e.ErlNifEntry{
     .funcs = &exported_nifs,
     .load = load,
     .reload = null,   // never supported as of OTP 20
-    .upgrade = <%= if @callbacks[:on_upgrade] do %> upgrade <% else %> beam.loader.blank_upgrade <% end %>, 
-    .unload = <%= if @callbacks[:on_unload] do %> unload <% else %> beam.loader.blank_unload <% end %>,  
+    .upgrade = <%= if @callbacks[:on_upgrade] do %> upgrade <% else %> beam.loader.blank_upgrade <% end %>,
+    .unload = <%= if @callbacks[:on_unload] do %> unload <% else %> beam.loader.blank_unload <% end %>,
     .vm_variant = "beam.vanilla",
     .options = 1,
     .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),

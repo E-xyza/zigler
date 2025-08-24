@@ -99,14 +99,17 @@ pub fn build(b: *std.Build) void {
     nif.addCSourceFile(.{.file = .{.cwd_relative = "<%= src %>"}, .flags = &[_][]const u8{<%= ccompileparams %>}});
     <% end %>
 
-    const lib = b.addSharedLibrary(.{
+    const lib = b.addLibrary(.{
         .name = "<%= @module %>",
-        .root_source_file = .{ .src_path = .{ .owner = b, .sub_path = "module.zig"} },
+        .linkage = .dynamic,
         .version = .{.major = <%= @version.major %>,
                      .minor = <%= @version.minor %>,
                      .patch = <%= @version.patch %>},
-        .target = target,
-        .optimize = optimize,
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("module.zig"),
+            .target = target,
+            .optimize = optimize,
+        }),
     });
 
     lib.linkLibC();
