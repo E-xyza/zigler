@@ -28,7 +28,11 @@ defmodule Zigler.MixProject do
       preferred_cli_env: [dialyzer: :dev],
       source_url: "https://github.com/E-xyza/zigler/",
       docs: docs(),
-      aliases: [docs: "zig_doc"],
+      aliases: [
+        docs: "zig_doc",
+        tidewave:
+          "run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4000) end)'"
+      ],
       test_elixirc_options: [
         debug_info: true,
         docs: true
@@ -74,12 +78,15 @@ defmodule Zigler.MixProject do
       # are pinned to zig versions
       {:zig_parser, "~> 0.6"},
       # utility to help manage type protocols
-      {:protoss, "~> 0.2"},
+      {:protoss, "~> 1.0"},
       # "~> 0.14.2"},
       {:zig_get, path: "installer/"},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
-      {:zig_doc, "~> 0.5", only: :dev, runtime: false}
+      {:zig_doc, "~> 0.5", only: :dev, runtime: false},
+      # MCP TOOLS
+      {:tidewave, "~> 0.4", only: :dev},
+      {:bandit, "~> 1.0", only: :dev}
     ] ++ json()
   end
 

@@ -6,9 +6,17 @@ defmodule Zig.C do
 
   defstruct include_dirs: [],
             library_dirs: [],
-            src: [],
             link_lib: [],
+            src: [],
+            link_libc: false,
             link_libcpp: false
+
+  use Zig.Sema
+
+  require EEx
+  render_sema = Path.join(__DIR__, "templates/c_sema.eex")
+  @impl Zig.Sema
+  EEx.function_from_file(:def, :render_sema, render_sema, [:assigns])
 
   alias Zig.Options
 
@@ -16,6 +24,7 @@ defmodule Zig.C do
           include_dirs: [String.t() | {:system, String.t()}],
           library_dirs: [String.t() | {:system, String.t()}],
           link_lib: [String.t() | {:system, String.t()}],
+          link_libc: boolean,
           link_libcpp: boolean,
           src: [{String.t(), [String.t()]}]
         }

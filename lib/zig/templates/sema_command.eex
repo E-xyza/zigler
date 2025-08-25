@@ -1,15 +1,20 @@
 run
 -lc
---dep analyte
--Mmain=<%= @sema %>
-<%= for {modname, mod_opts} <- @mods do %>
-  <%= for depname <- List.wrap(mod_opts[:deps]) do %>
-    --dep <%= depname %>
+<%= for mod <- @mods do %>
+  <%= for dep <- mod.deps do %>
+    --dep <%= dep %>
   <% end %>
-  -M<%= modname %>=<%= mod_opts.path %>
-<% end %>
-<%= if @c do %>
-<%= for dir <- @c.include_dirs do %>
--I <%= dir %>
-<% end %>
+
+  <%= if c = mod.c do %>
+    <%= Sema.render_sema(c) %>
+  <% end %>
+  -M<%= mod.name %>=<%= mod.path %>
+  <%= if c = mod.c do %>
+    <%= for {file, opts} <- c.src do %>
+      <%= if opts != [] do %>
+        -cflags <%= for opt <- opts, do: opt %> --
+      <% end %>
+    <%= file %>
+    <% end %>
+  <% end %>
 <% end %>

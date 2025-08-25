@@ -1,4 +1,15 @@
-defmodule Zig.Sema do
+use Protoss
+
+defprotocol Zig.Sema do
+  @spec render_sema(t) :: iodata
+  def render_sema(attribs)
+after
+  defmacro __using__(_) do
+    quote do
+      defdelegate fetch(struct, key), to: Map
+    end
+  end
+
   @moduledoc false
   require EEx
   alias Zig.Attributes
@@ -18,7 +29,7 @@ defmodule Zig.Sema do
   @enforce_keys [:functions, :types, :decls, :callbacks]
   defstruct @enforce_keys
 
-  @type t :: %__MODULE__{
+  @type info :: %__MODULE__{
           functions: [Function.t()],
           types: keyword(Type.t()),
           decls: keyword(Type.t()),
@@ -42,8 +53,8 @@ defmodule Zig.Sema do
   # actually executing the zig command to obtaitest/mark_as_impl_test.exsn the semantic analysis of the
   # desired file.
   def run_sema!(module) do
-    module.zig_code_path
-    |> Zig.Command.run_sema!(attribs_file: Attributes.code_path(module), c: module.c)
+    module
+    |> Zig.Command.run_sema!()
     |> json_decode!()
     |> maybe_dump(module)
     |> reject_ignored(module)
@@ -56,13 +67,6 @@ defmodule Zig.Sema do
     e in Zig.CompileError ->
       Logger.error("sema error: #{Exception.message(e)}")
       reraise Zig.CompileError.resolve(e, module), __STACKTRACE__
-  end
-
-  def run_sema_doc(file) do
-    file
-    |> Zig.Command.run_sema_doc!()
-    |> json_decode!()
-    |> integrate_sema(%{module: nil})
   end
 
   defp assign_callbacks(sema, module) do

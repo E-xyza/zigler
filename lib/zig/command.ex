@@ -7,7 +7,9 @@ defmodule Zig.Command do
   # `Zig.Builder` module.
 
   alias Zig.Builder
+  alias Zig.CompilationModule
   alias Zig.Target
+  alias Zig.Sema
 
   require Logger
   require Zig
@@ -35,70 +37,15 @@ defmodule Zig.Command do
   sema_command = Path.join(__DIR__, "templates/sema_command.eex")
   EEx.function_from_file(:defp, :sema_command, sema_command, [:assigns])
 
-  def run_sema!(file, opts) do
-    # TODO: add availability of further options here.
-    priv_dir = :code.priv_dir(:zigler)
-    sema_file = Path.join(priv_dir, "beam/sema.zig")
-    beam_file = Path.join(priv_dir, "beam/beam.zig")
-    erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
-    attribs_file = opts[:attribs_file]
-    c = maybe_add_windows_shim(opts[:c])
+  def run_sema!(module) do
+    # c = maybe_add_windows_shim(opts[:c])
 
     # nerves will put in a `CC` command that we need to bypass because it misidentifies
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    analyte_deps =
-      [:erl_nif, :beam] ++
-        List.wrap(if attribs_file, do: [:attributes])
-
-    mods =
-      [erl_nif: %{path: erl_nif_file}, beam: %{deps: [:erl_nif], path: beam_file}] ++
-        List.wrap(if attribs_file, do: [attributes: %{path: attribs_file}]) ++
-        [analyte: %{deps: analyte_deps, path: file}]
-
-    sema_command(
-      sema: sema_file,
-      mods: mods,
-      c: c
-    )
-    |> IO.iodata_to_binary()
-    |> String.split()
-    |> Enum.join(" ")
-    |> run_zig(stderr_to_stdout: true)
-  end
-
-  defp maybe_add_windows_shim(c) do
-    # TODO: replace this with Target info
-    case :os.type() do
-      {_, :nt} ->
-        :zigler
-        |> :code.priv_dir()
-        |> Path.join("erl_nif_win")
-        |> then(&%{c | include_dirs: [&1 | c.include_dirs]})
-
-      _ ->
-        c
-    end
-  end
-
-  # documentation requires a separate pathway because otherwise compilation
-  # doesn't go that well.
-
-  # TODO: unify this with the normal sema function using options.
-  def run_sema_doc!(file) do
-    priv_dir = :code.priv_dir(:zigler)
-    sema_file = Path.join(priv_dir, "beam/sema_doc.zig")
-    erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
-
-    analyte_deps = [:erl_nif]
-
-    mods = [erl_nif: %{path: erl_nif_file}, analyte: %{deps: analyte_deps, path: file}]
-
-    sema_command(
-      sema: sema_file,
-      mods: mods
-    )
+    %{mods: CompilationModule.build_sema(module)}
+    |> sema_command()
     |> IO.iodata_to_binary()
     |> String.split()
     |> Enum.join(" ")

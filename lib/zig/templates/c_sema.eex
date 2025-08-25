@@ -1,0 +1,18 @@
+<%= for dir <- @include_dirs do %>
+  -I <%= dir %>
+<% end %>
+<%= for dir <- @library_dirs do %>
+  -L <%= dir %>
+<% end %>
+<%= for lib <- @link_lib do %>
+  <%= case lib do %>
+    <% {:system, name} -> %>
+      -l<%= name %>
+    <% path -> %>
+      -L <%= Path.dirname(path) %>
+      -l <%= Path.basename(path) %>
+  <% end %>
+  -l<%= lib %>
+<% end %>
+<%= if @link_libc, do: "-lc" %>
+<%= if @link_libcpp, do: "-lc++" %>
