@@ -1,9 +1,9 @@
-#file_in_priv =
+# file_in_priv =
 #  File.cwd!()
 #  |> Path.join("priv/lib/libblas.so")
 #  |> File.exists?()
 #
-#if {:unix, :linux} == :os.type() and file_in_priv do
+# if {:unix, :linux} == :os.type() and file_in_priv do
 #  defmodule ZiglerTest.CXX.LocalLibTest do
 #    use ZiglerTest.IntegrationCase, async: true
 #
@@ -20,4 +20,4 @@
 #               dasum(3, <<1.0::float-native, 2.0::float-native, 3.0::float-native>>, 1)
 #    end
 #  end
-#end
+# end

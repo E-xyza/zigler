@@ -1,6 +1,6 @@
 ## don't test this unless the system has the cblas libray
 ## for now we can only guarantee that for linux.
-#if {:unix, :linux} == :os.type() do
+# if {:unix, :linux} == :os.type() do
 #  defmodule ZiglerTest.CXX.EasyCTest do
 #    use ZiglerTest.IntegrationCase, async: true
 #
@@ -62,5 +62,5 @@
 #      end
 #    end
 #  end
-#end
+# end
 #

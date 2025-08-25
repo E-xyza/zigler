@@ -4,7 +4,6 @@ defmodule ZiglerTest.Callbacks.OnLoadErroringEnumTest do
   use ZiglerTest.IntegrationCase, async: true
 
   @moduletag [on_load: true, callbacks: true]
-  @moduletag :skip
 
   import ExUnit.CaptureLog
 
@@ -35,4 +34,3 @@ defmodule ZiglerTest.Callbacks.OnLoadErroringEnumTest do
     assert log =~ "(42)"
   end
 end
-

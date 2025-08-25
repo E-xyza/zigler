@@ -9,4 +9,3 @@ defmodule ZiglerTest.MarkAsImplTest do
            end) =~ "@impl"
   end
 end
-

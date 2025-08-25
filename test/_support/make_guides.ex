@@ -7,31 +7,37 @@ defmodule ZiglerTest.MakeGuides do
     "guides"
     |> File.ls!()
     |> Enum.each(fn
-      "03-allocators.md" -> :ok
-      "06-c_integration.md" -> :ok
-      "07-concurrency.md" -> :ok
+      "03-allocators.md" ->
+        :ok
+
+      "06-c_integration.md" ->
+        :ok
+
+      "07-concurrency.md" ->
+        :ok
+
       filename ->
-      if String.ends_with?(filename, ".md") do
-        basename =
-          filename
-          |> Path.basename(".md")
-          |> String.split("-")
-          |> Enum.at(1)
+        if String.ends_with?(filename, ".md") do
+          basename =
+            filename
+            |> Path.basename(".md")
+            |> String.split("-")
+            |> Enum.at(1)
 
-        dest_filename = String.replace_suffix(basename, "", "_test.exs")
+          dest_filename = String.replace_suffix(basename, "", "_test.exs")
 
-        dest_stream =
-          "test/guides"
-          |> Path.join(dest_filename)
-          |> File.stream!([])
+          dest_stream =
+            "test/guides"
+            |> Path.join(dest_filename)
+            |> File.stream!([])
 
-        "guides"
-        |> Path.join(filename)
-        |> File.stream!([], :line)
-        |> Enum.reduce(%__MODULE__{needs_module: module(basename)}, &collect_sections/2)
-        |> prepare
-        |> Enum.into(dest_stream)
-      end
+          "guides"
+          |> Path.join(filename)
+          |> File.stream!([], :line)
+          |> Enum.reduce(%__MODULE__{needs_module: module(basename)}, &collect_sections/2)
+          |> prepare
+          |> Enum.into(dest_stream)
+        end
     end)
   end
 

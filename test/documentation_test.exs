@@ -25,4 +25,3 @@ defmodule ZiglerTest.DocumentationTest do
     assert IO.iodata_to_binary(doc) =~ "This is a function that does something."
   end
 end
-

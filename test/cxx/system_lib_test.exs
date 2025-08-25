@@ -1,4 +1,4 @@
-#if {:unix, :linux} == :os.type() do
+# if {:unix, :linux} == :os.type() do
 #  defmodule ZiglerTest.CXX.SystemLibTest do
 #    use ZiglerTest.IntegrationCase, async: true
 #    use Zig, otp_app: :zigler, c: [link_lib: {:system, "blas"}]
@@ -14,4 +14,4 @@
 #               dasum(3, <<1.0::float-native, 2.0::float-native, 3.0::float-native>>, 1)
 #    end
 #  end
-#end
+# end

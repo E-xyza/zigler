@@ -10,4 +10,3 @@ defmodule ZiglerTest.Raw.ErrorRawMustHaveArityTest do
                  end
   end
 end
-

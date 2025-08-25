@@ -30,7 +30,7 @@ try do
 
         // no-op if parsing errors
         if (tree.errors.len == 0) {
-            const formatted = try tree.render(beam.allocator);
+            const formatted = try tree.renderAlloc(beam.allocator);
             defer beam.allocator.free(formatted);
 
             return beam.make(formatted, .{});
@@ -41,8 +41,8 @@ try do
     """
   end
 rescue
-  _ ->
+  error ->
     IO.warn(
-      "Zig.Formatter not active.  If you need Formatter function, Please run `mix zig.get` to install it."
+      "Zig.Formatter not active (#{inspect(error)}).  If you need Formatter function, and zig is not available, Please run `mix zig.get` to install it."
     )
 end

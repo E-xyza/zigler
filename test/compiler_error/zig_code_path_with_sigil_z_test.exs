@@ -1,6 +1,5 @@
 defmodule ZiglerTest.CompilerError.ZigCodePathWithSigilZTest do
   use ExUnit.Case, async: true
-  @moduletag :skip
 
   describe "when a use Zig has zig code path and sigil_z" do
     test "it raises a compiler error" do

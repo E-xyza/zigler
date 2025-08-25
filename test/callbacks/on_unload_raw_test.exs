@@ -1,9 +1,7 @@
-
 defmodule ZiglerTest.Callbacks.OnUnloadRawTest do
   use ZiglerTest.IntegrationCase, async: true
 
   @moduletag [on_unload: true, callbacks: true]
-  @moduletag :skip
 
   def build_module do
     Code.compile_quoted(

@@ -1,10 +1,10 @@
-#is_blas_in_priv =
+# is_blas_in_priv =
 #  :zigler
 #  |> :code.priv_dir()
 #  |> Path.join("lib/libblas.so")
 #  |> File.exists?()
 #
-#if {:unix, :linux} == :os.type() and is_blas_in_priv do
+# if {:unix, :linux} == :os.type() and is_blas_in_priv do
 #  defmodule ZiglerTest.CXX.PrivLibTest do
 #    use ZiglerTest.IntegrationCase, async: true
 #
@@ -21,4 +21,4 @@
 #               dasum(3, <<1.0::float-native, 2.0::float-native, 3.0::float-native>>, 1)
 #    end
 #  end
-#end
+# end

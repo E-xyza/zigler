@@ -22,4 +22,3 @@ defmodule ZiglerTest.Erlang.ThreadedTest do
     assert_receive :killed, 500
   end
 end
-

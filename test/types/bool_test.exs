@@ -3,6 +3,7 @@ defmodule ZiglerTest.Types.BoolTest do
 
   use Zig,
     otp_app: :zigler
+
   ~Z"""
   pub fn bool_test(b: bool) bool {
       return !b;
