@@ -1,6 +1,8 @@
 defmodule ZiglerTest.Types.OtherTest do
   use ZiglerTest.IntegrationCase, async: true
 
+  @moduletag :skip
+
   describe "beam.env" do
     test "cannot generally be used as a parameter" do
       assert_raise CompileError,

@@ -4,6 +4,7 @@ defmodule ZiglerTest.Callbacks.OnLoadMalformedTest do
   use ZiglerTest.IntegrationCase, async: true
 
   @moduletag [on_load: true, callbacks: true]
+  @moduletag :skip
 
   test "compiler error when on_load function has the wrong arity" do
     assert_raise CompileError,

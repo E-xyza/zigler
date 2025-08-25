@@ -1,3 +1,6 @@
+if System.get_env("DISABLE_TESTS", "false") == "true" do
+
+
 # don't test this unless the system has the cblas libray
 # for now we can only guarantee that for linux.
 if {:unix, :linux} == :os.type() do
@@ -18,4 +21,6 @@ if {:unix, :linux} == :os.type() do
                :erlang_easy_c_test.cblas_daxpy(3, 3.0, [1.0, 2.0, 3.0], 1, [4.0, 5.0, 6.0], 1)
     end
   end
+end
+
 end

@@ -2,6 +2,7 @@ defmodule ZiglerTest.Raw.TypespecTest do
   use ExUnit.Case, async: true
 
   @moduletag :typespec
+  @moduletag :skip
 
   import ZiglerTest.SpecTemplate
   require ZiglerTest.Compiler

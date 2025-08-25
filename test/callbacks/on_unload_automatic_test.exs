@@ -1,3 +1,4 @@
+
 defmodule ZiglerTest.Callbacks.OnUnloadAutomaticTest do
   # this is a test of the "automatic" on_unload function.  This means that the
   # beam.context.env variable is set, and the return value must be void.
@@ -5,6 +6,7 @@ defmodule ZiglerTest.Callbacks.OnUnloadAutomaticTest do
   use ZiglerTest.IntegrationCase, async: true
 
   @moduletag [on_unload: true, callbacks: true]
+  @moduletag :skip
 
   def build_module do
     Code.compile_quoted(

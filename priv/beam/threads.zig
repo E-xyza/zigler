@@ -30,7 +30,7 @@ pub const ThreadState = enum {
 
     pub fn wait_while(self: *This, state: ThreadState) void {
         while (self.get() == state) {
-            std.time.sleep(1000);
+            std.Thread.sleep(1000);
         }
     }
 
@@ -54,7 +54,7 @@ pub const ThreadState = enum {
 
         while (!check_against(self.get(), state_or_states)) : (so_far += 1) {
             if (so_far > cycles) return error.threadtooktoolong;
-            std.time.sleep(1000);
+            std.Thread.sleep(1000);
         }
     }
 };

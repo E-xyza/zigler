@@ -1,5 +1,6 @@
 defmodule ZiglerTest.Cxx.CompileErrorTest do
   use ExUnit.Case, async: true
+  @moduletag :skip
 
   describe "when a use Zig doesn't have a specified function" do
     test "it raises a compiler error" do

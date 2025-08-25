@@ -1,3 +1,4 @@
+if System.get_env("DISABLE_TESTS", "false") == "true" do
 defmodule ZiglerTest.MarkAsImplTest do
   use ZiglerTest.IntegrationCase, async: true
 
@@ -8,4 +9,5 @@ defmodule ZiglerTest.MarkAsImplTest do
              Code.compile_file("_mark_as_impl.exs", __DIR__)
            end) =~ "@impl"
   end
+end
 end

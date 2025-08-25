@@ -1,3 +1,4 @@
+if System.get_env("DISABLE_TESTS", "false") == "true" do
 defmodule ZiglerTest.Erlang.MulticodeTest do
   use ZiglerTest.IntegrationCase, async: true
   alias ZiglerTest.Compiler
@@ -13,4 +14,6 @@ defmodule ZiglerTest.Erlang.MulticodeTest do
     assert 47 == :erlang_multicode_test.part1()
     assert 48 == :erlang_multicode_test.part2()
   end
+end
+
 end

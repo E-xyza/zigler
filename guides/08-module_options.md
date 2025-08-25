@@ -109,6 +109,10 @@ using the `release_mode` option. Importantly, it is possible to set a release mo
 mix environment.
 
 ```elixir
+defmodule MyApp do
+  def env, do: :prod
+end
+
 defmodule ReleaseMode do
   use ExUnit.Case, async: true
   mode = case MyApp.env() do
@@ -126,7 +130,7 @@ defmodule ReleaseMode do
   """
 
   test "release mode" do
-    assert :Debug == get_mode()
+    assert :ReleaseSafe == get_mode()
   end
 end
 

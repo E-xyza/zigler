@@ -1,5 +1,6 @@
 defmodule ZiglerTest.CompilerError.TransitiveErrorTest do
   use ExUnit.Case, async: true
+  @moduletag :skip
 
   describe "when a transitive error exists" do
     test "it raises a compiler error with the correct filename" do

@@ -1,6 +1,6 @@
 <% needs_make? = @params |> Map.values |> Enum.any?(&Type.needs_make?(&1.type)) %>
 
-fn <%= @name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.c) e.ErlNifTerm {
+fn <%=@name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.c) e.ErlNifTerm {
     <%= cond do %>
     <% allocator = @allocator -> %>
     const allocator = nif.<%= allocator %>();

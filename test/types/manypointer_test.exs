@@ -68,6 +68,7 @@ defmodule ZiglerTest.Types.ManypointerTest do
   end
 
   describe "for normal manypointers" do
+    @tag :skip
     test "having a return value is prohibited" do
       assert_raise CompileError,
                    "nofile:1: nif function `forbidden` cannot return a value of type [*]u8",

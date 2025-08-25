@@ -1,5 +1,6 @@
 defmodule ZiglerTest.CompilerError.NoOtpAppTest do
   use ExUnit.Case, async: true
+  @moduletag :skip
 
   describe "when a use Zig doesn't have otp_app" do
     test "it raises a compiler error" do

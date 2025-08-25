@@ -1772,7 +1772,7 @@ const yield_ = @import("yield.zig");
 ///     defer beam.free_env(env);
 ///
 ///     while (true) {
-///        std.time.sleep(100000);
+///        std.Thread.sleep(100000);
 ///        beam.yield() catch {
 ///           try beam.send(pid, .died, .{.env = env});
 ///           return;

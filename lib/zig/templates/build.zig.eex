@@ -120,5 +120,8 @@ pub fn build(b: *std.Build) void {
     lib.root_module.addImport("beam", beam);
     lib.root_module.addImport("nif", nif);
 
+    // the native backend still causes segfaults, so we must disable it for now.
+    lib.use_llvm = true;
+
     b.installArtifact(lib);
 }

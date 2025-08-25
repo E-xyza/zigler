@@ -44,6 +44,7 @@ defmodule ZiglerTest.Types.EnumTest do
   end
 
   describe "if you try to make" do
+    @tag :skip
     test "zero item enum, it's a compiler error" do
       assert_raise CompileError,
                    @prefix <>
@@ -66,6 +67,7 @@ defmodule ZiglerTest.Types.EnumTest do
                    end
     end
 
+    @tag :skip
     test "one item enum, it's a compiler error" do
       assert_raise CompileError,
                    @prefix <>

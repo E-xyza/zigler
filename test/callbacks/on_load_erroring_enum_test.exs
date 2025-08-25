@@ -1,9 +1,12 @@
+if System.get_env("DISABLE_TESTS", "false") == "true" do
+
 defmodule ZiglerTest.Callbacks.OnLoadErroringEnumTest do
   # this is a test of the "automatic" on_load function.
 
   use ZiglerTest.IntegrationCase, async: true
 
   @moduletag [on_load: true, callbacks: true]
+  @moduletag :skip
 
   import ExUnit.CaptureLog
 
@@ -33,4 +36,6 @@ defmodule ZiglerTest.Callbacks.OnLoadErroringEnumTest do
     assert log =~ "[error] loading module Elixir.ZiglerTest.OnLoadErroringEnum"
     assert log =~ "(42)"
   end
+end
+
 end

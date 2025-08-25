@@ -53,5 +53,8 @@ zigler-*.tar
 # other compiled files
 *.a
 
+# local development files
+.envrc
+
 /test/code
 /test/corner_cases/staging
