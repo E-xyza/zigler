@@ -94,8 +94,6 @@ defmodule ZiglerTest.OptionsTest do
                    fn -> make_module(otp_app: :zigler, c: [include_dirs: [system: :foo]]) end
     end
 
-    if System.get_env("DISABLE_TESTS", "false") == "true" do
-
     test "library_dirs accepts various forms" do
       local_dir = Path.join(__DIR__, "my_dir")
 
@@ -116,7 +114,6 @@ defmodule ZiglerTest.OptionsTest do
                  c: [library_dirs: ["my_dir", priv: "my_dir", system: "system"]]
                )
     end
-  end
 
     test "library_dirs not a string list" do
       assert_raise CompileError,

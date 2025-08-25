@@ -1,5 +1,3 @@
-if System.get_env("DISABLE_TESTS", "false") == "true" do
-
 defmodule ZiglerTest.Callbacks.OnLoadErroringEnumTest do
   # this is a test of the "automatic" on_load function.
 
@@ -38,4 +36,3 @@ defmodule ZiglerTest.Callbacks.OnLoadErroringEnumTest do
   end
 end
 
-end

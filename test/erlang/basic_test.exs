@@ -1,5 +1,3 @@
-if System.get_env("DISABLE_TESTS", "false") == "true" do
-
 defmodule ZiglerTest.Erlang.BasicTest do
   use ZiglerTest.IntegrationCase, async: true
   alias ZiglerTest.Compiler
@@ -15,6 +13,4 @@ defmodule ZiglerTest.Erlang.BasicTest do
     assert 47 == :erlang_basic_test.foo()
     assert 48 == :erlang_basic_test.foo(1)
   end
-end
-
 end

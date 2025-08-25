@@ -1,5 +1,3 @@
-if System.get_env("DISABLE_TESTS", "false") == "true" do
-
 defmodule ZiglerTest.Raw.ErrorRawMustHaveArityTest do
   use ExUnit.Case, async: true
   require ZiglerTest.Compiler
@@ -13,4 +11,3 @@ defmodule ZiglerTest.Raw.ErrorRawMustHaveArityTest do
   end
 end
 
-end

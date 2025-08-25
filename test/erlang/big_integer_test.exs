@@ -1,4 +1,3 @@
-if System.get_env("DISABLE_TESTS", "false") == "true" do
 defmodule ZiglerTest.Erlang.BigIntegerTest do
   use ZiglerTest.IntegrationCase, async: true
   alias ZiglerTest.Compiler
@@ -16,4 +15,4 @@ defmodule ZiglerTest.Erlang.BigIntegerTest do
              :erlang_big_integer_test.add_one(0xFFFF_FFFF_FFFF_FFFF_FFFF)
   end
 end
-end
+

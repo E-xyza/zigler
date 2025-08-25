@@ -1,5 +1,3 @@
-if System.get_env("DISABLE_TESTS", "false") == "true" do
-
 defmodule ZiglerTest.Erlang.ThreadedTest do
   use ZiglerTest.IntegrationCase, async: true
   alias ZiglerTest.Compiler
@@ -25,4 +23,3 @@ defmodule ZiglerTest.Erlang.ThreadedTest do
   end
 end
 
-end

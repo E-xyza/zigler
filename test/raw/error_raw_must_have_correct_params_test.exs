@@ -1,5 +1,3 @@
-if System.get_env("DISABLE_TESTS", "false") == "true" do
-
 defmodule ZiglerTest.Raw.ErrorRawMustHaveCorrectParamsTest do
   use ExUnit.Case, async: true
   require ZiglerTest.Compiler
@@ -11,6 +9,4 @@ defmodule ZiglerTest.Raw.ErrorRawMustHaveCorrectParamsTest do
                    ZiglerTest.Compiler.compile("error_raw_must_have_correct_params.ex")
                  end
   end
-end
-
 end
