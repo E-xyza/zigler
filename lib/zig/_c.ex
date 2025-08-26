@@ -11,12 +11,7 @@ defmodule Zig.C do
             link_libc: false,
             link_libcpp: false
 
-  use Zig.Sema
-
-  require EEx
-  render_sema = Path.join(__DIR__, "templates/c_sema.eex")
-  @impl Zig.Sema
-  EEx.function_from_file(:def, :render_sema, render_sema, [:assigns])
+  use Zig.Sema, template: "templates/sema_c.eex"
 
   alias Zig.Options
 

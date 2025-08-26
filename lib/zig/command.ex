@@ -33,10 +33,6 @@ defmodule Zig.Command do
     end
   end
 
-  require EEx
-  sema_command = Path.join(__DIR__, "templates/sema_command.eex")
-  EEx.function_from_file(:defp, :sema_command, sema_command, [:assigns])
-
   def run_sema!(module) do
     # c = maybe_add_windows_shim(opts[:c])
 
@@ -44,8 +40,8 @@ defmodule Zig.Command do
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    %{mods: CompilationModule.build_sema(module)}
-    |> sema_command()
+    module
+    |> Sema.render_sema()
     |> IO.iodata_to_binary()
     |> String.split()
     |> Enum.join(" ")

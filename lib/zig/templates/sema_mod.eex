@@ -1,0 +1,3 @@
+run
+-lc
+<%= for mod <- @mods, do: Sema.render_sema(mod) %>
