@@ -7,15 +7,6 @@ defmodule ZiglerTest.MakeGuides do
     "guides"
     |> File.ls!()
     |> Enum.each(fn
-      "03-allocators.md" ->
-        :ok
-
-      "06-c_integration.md" ->
-        :ok
-
-      "07-concurrency.md" ->
-        :ok
-
       filename ->
         if String.ends_with?(filename, ".md") do
           basename =
