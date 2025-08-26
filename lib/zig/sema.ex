@@ -6,6 +6,7 @@ defprotocol Zig.Sema do
 after
   defmacro __using__(opts) do
     template = Keyword.fetch!(opts, :template)
+
     quote do
       defdelegate fetch(struct, key), to: Map
 

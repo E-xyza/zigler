@@ -106,8 +106,11 @@ higher alignment than the maximum alignment for builtin types.
 
 ```elixir
 ~Z"""
+const std = @import("std");
+
 pub fn allocate_large_aligned(count: usize) !usize {
-    const page = try beam.allocator.allocWithOptions(u8, count, 4096, null);
+    const alignment = comptime std.mem.Alignment.fromByteUnits(4096);
+    const page = try beam.allocator.alignedAlloc(u8, alignment, count);
     defer beam.allocator.free(page);
 
     return @intFromPtr(page.ptr);
