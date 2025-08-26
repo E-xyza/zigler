@@ -12,7 +12,6 @@
       -L <%= Path.dirname(path) %>
       -l <%= Path.basename(path) %>
   <% end %>
-  -l<%= lib %>
 <% end %>
 <%= if @link_libc, do: "-lc" %>
 <%= if @link_libcpp, do: "-lc++" %>
