@@ -175,8 +175,6 @@ package, passing any one of the beam allocators into place.
 ```elixir
 ~Z"""
 pub fn with_arena() !beam.term {
-    const std = @import("std");
-
     var arena = std.heap.ArenaAllocator.init(beam.allocator);
     defer arena.deinit();
 
