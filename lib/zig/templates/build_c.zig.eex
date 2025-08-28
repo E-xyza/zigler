@@ -8,11 +8,11 @@
 <% end %>
 
 <%= for dir <- @library_dirs do %>
-<% name %>.addLibraryPath(b.path("<%= dir %>"));
+<%= name %>.addLibraryPath(b.path("<%= dir %>"));
 <% end %>
 
 <%= for {c_src, flags} <- @src do %>
-<% name %>.addCSource(.{
+<%= name %>.addCSource(.{
   .root = b.path("."),
   .files = &.{"<%= c_src %>"},
   .flags = &.{

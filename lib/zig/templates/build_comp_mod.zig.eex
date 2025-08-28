@@ -1,3 +1,4 @@
+<% _ = opts %>
 const <%= @name %> = b.createModule(
     .{
         .root_source_file = .{.cwd_relative = "<%= @path %>"},
@@ -21,4 +22,4 @@ const <%= @name %> = b.createModule(
 
 <%= if @c do %>
 <%= Builder.render(@c, name: @name) %>
-<%= end %>
+<% end %>

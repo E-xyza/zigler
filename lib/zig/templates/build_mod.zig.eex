@@ -1,3 +1,4 @@
+<% _ = opts %>
 const std = @import("std");
 
 const BuildMode = enum{ nif_lib, sema };

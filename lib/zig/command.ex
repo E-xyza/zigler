@@ -7,9 +7,7 @@ defmodule Zig.Command do
   # `Zig.Builder` module.
 
   alias Zig.Builder
-  alias Zig.CompilationModule
   alias Zig.Target
-  alias Zig.Sema
 
   require Logger
   require Zig
@@ -40,7 +38,10 @@ defmodule Zig.Command do
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    run_zig("build -Dzigler-mode=sema sema", cd: Path.dirname(module.module_code_path), stderr_to_stdout: true)
+    run_zig("build -Dzigler-mode=sema sema",
+      cd: Path.dirname(module.module_code_path),
+      stderr_to_stdout: true
+    )
   end
 
   def fmt(file) do

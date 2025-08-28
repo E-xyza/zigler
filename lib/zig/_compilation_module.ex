@@ -18,14 +18,16 @@ defmodule Zig.CompilationModule do
     %__MODULE__{
       name: :nif,
       path: assigns.zig_code_path,
-      deps: [:erl_nif, :beam, :attributes] ++ Enum.map(assigns.modules, & &1.name),
+      deps: [:erl_nif, :beam, :attributes] ++ Enum.map(assigns.modules, & &1.name)
     }
   end
 
   # default modules
 
   def erl_nif do
-    system_include_path = Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
+    system_include_path =
+      Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
+
     %__MODULE__{
       name: :erl_nif,
       path: Builder.beam_file("erl_nif.zig"),

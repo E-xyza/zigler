@@ -3,7 +3,6 @@ defmodule Zig.Module do
   # abstraction representing multiple zig nif functions bound into a single
   # module
 
-  alias Zig.Attributes
   alias Zig.Builder
   alias Zig.C
   alias Zig.CompilationModule
@@ -438,11 +437,4 @@ defmodule Zig.Module do
 
     Enum.flat_map(function_code, & &1) ++ init_function
   end
-
-  # Access behaviour guards
-  @impl true
-  def get_and_update(_, _, _), do: raise("you should not update a module")
-
-  @impl true
-  def pop(_, _), do: raise("you should not pop a module")
 end
