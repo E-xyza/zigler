@@ -55,11 +55,11 @@ This example shows you how to link in a system library (which can be `.a`, `.so`
 `.dll`). Zig will resolve the extension based on the operating system native rules. To use the
 functions in the library, there must also be an associated `.h` file with `extern` functions.
 
-If you wish to package a `.so` file with the project, you have two options:
+If you wish to distribute a `.so` file with the project, you have two options:
 
-1. package the file in the `priv` directory and use `{:priv, "path/to/lib.so"}`. Note that in this
+1. distribute the file in the `priv` directory and use `{:priv, "path/to/lib.so"}`. Note that in this
   case, you must provide `lib` prefix and `.so` or `.dylib` or `.dll` extensions, if applicable.
-1. package the file using an absolute or relative path (relative the code file location). use
+1. distribute the file using an absolute or relative path (relative the code file location). use
   `"path/to/lib.so"`. You must provide `lib` and `.so` or `.dylib` or `.dll` extension.
 
 In this example we'll use the `cblas_dasum` function, which takes a length, an pointer to

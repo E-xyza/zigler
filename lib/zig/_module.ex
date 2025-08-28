@@ -4,6 +4,7 @@ defmodule Zig.Module do
   # module
 
   alias Zig.Attributes
+  alias Zig.Builder
   alias Zig.C
   alias Zig.CompilationModule
   alias Zig.Nif
@@ -36,6 +37,7 @@ defmodule Zig.Module do
                 # defaulted options
                 release_mode: {:env, :debug},
                 ignore: [],
+                modules: [],
                 packages: [],
                 resources: [],
                 callbacks: [],
@@ -72,7 +74,8 @@ defmodule Zig.Module do
           manifest_module: nil | module,
           release_mode: Zig.release_mode(),
           ignore: [atom],
-          packages: [Zig.package_spec()],
+          modules: [Zig.module_spec()],
+          packages: list(),
           resources: [atom],
           callbacks: [on_load: atom, on_upgrade: atom, on_unload: atom],
           default_nif_opts: [cleanup: boolean, leak_check: boolean],
@@ -87,6 +90,7 @@ defmodule Zig.Module do
   @defaultable_nif_opts ~w[cleanup leak_check]a
 
   use Zig.Sema, template: "templates/sema_mod.eex"
+  use Zig.Builder, template: "templates/build_mod.zig.eex"
 
   @affix %{"Elixir": "`use Zig`", erlang: "`zig_opts(...)`"}
 
@@ -128,9 +132,9 @@ defmodule Zig.Module do
       context
     )
     |> Options.normalize_kw(
-      :packages,
+      :modules,
       [],
-      list_normalizer(&normalize_package/2, "package"),
+      list_normalizer(&normalize_module/2, "modules"),
       context
     )
     |> Options.normalize_path(:dir, context)
@@ -217,9 +221,9 @@ defmodule Zig.Module do
       )
 
   @dependencies_atom_error "must be a list of atoms representing dependencies"
-  @package_tuple_error "must be a tuple of the form `{path, [deps...]}`"
+  @module_tuple_error "must be a tuple of the form `{path, [deps...]}`"
 
-  defp normalize_package({k, {path, deps}}, context) when is_atom(k) and is_list(deps) do
+  defp normalize_module({k, {path, deps}}, context) when is_atom(k) and is_list(deps) do
     Enum.each(deps, fn dep ->
       is_atom(dep) or
         Options.raise_with(@dependencies_atom_error, dep, Options.push_key(context, k))
@@ -230,20 +234,20 @@ defmodule Zig.Module do
     rescue
       _ ->
         Options.raise_with(
-          @package_tuple_error,
+          @module_tuple_error,
           {:tag, "path", path},
           Options.push_key(context, k)
         )
     end
   end
 
-  defp normalize_package({k, {_, malformed}}, context) when is_atom(k),
+  defp normalize_module({k, {_, malformed}}, context) when is_atom(k),
     do: Options.raise_with(@dependencies_atom_error, malformed, Options.push_key(context, k))
 
-  defp normalize_package({k, malformed}, context) when is_atom(k),
-    do: Options.raise_with(@package_tuple_error, malformed, Options.push_key(context, k))
+  defp normalize_module({k, malformed}, context) when is_atom(k),
+    do: Options.raise_with(@module_tuple_error, malformed, Options.push_key(context, k))
 
-  defp normalize_package(other, opts),
+  defp normalize_module(other, opts),
     do:
       Options.raise_with(
         "must be a list of package specifications",

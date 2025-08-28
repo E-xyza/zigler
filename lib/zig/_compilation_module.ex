@@ -7,10 +7,74 @@ defmodule Zig.CompilationModule do
 
   @enforce_keys [:name, :path]
 
-  defstruct @enforce_keys ++ [deps: [], c: nil]
+  defstruct @enforce_keys ++ [deps: [], c: nil, root?: false]
 
-  alias Zig.Attributes
+  alias Zig.Builder
+  alias Zig.C
   alias Zig.Sema
 
   use Sema, template: "templates/sema_comp_mod.eex"
+  use Builder, template: "templates/build_comp_mod.zig.eex"
+
+  def from_beam_module(assigns) do
+    %__MODULE__{
+      name: :nif,
+      path: assigns.zig_code_path,
+      deps: [:erl_nif, :beam, :attributes] ++ Enum.map(assigns.modules, & &1.name),
+    }
+  end
+
+  # default modules
+
+  def erl_nif do
+    system_include_path = Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
+    %__MODULE__{
+      name: :erl_nif,
+      path: Builder.beam_file("erl_nif.zig"),
+      c: %C{
+        include_dirs: [system: system_include_path],
+        link_libc: true
+      }
+    }
+  end
+
+  def stub_erl_nif do
+    %__MODULE__{
+      name: :erl_nif,
+      path: Builder.beam_file("stub_erl_nif.zig")
+    }
+  end
+
+  def beam do
+    %__MODULE__{
+      name: :beam,
+      path: Builder.beam_file("beam.zig"),
+      deps: [:erl_nif]
+    }
+  end
+
+  def attributes do
+    %__MODULE__{
+      name: :attributes,
+      path: "attributes.zig"
+    }
+  end
+
+  def sema do
+    %__MODULE__{
+      name: :sema,
+      path: Builder.beam_file("sema.zig"),
+      deps: [:nif],
+      root?: true
+    }
+  end
+
+  def nif_shim do
+    %__MODULE__{
+      name: :nif_shim,
+      path: "module.zig",
+      deps: [:beam, :erl_nif, :nif],
+      root?: true
+    }
+  end
 end

@@ -1,8 +1,12 @@
 const std = @import("std");
 
+const BuildMode = enum{ nif_lib, sema };
+
 pub fn build(b: *std.Build) void {
-    const target = b.standardTargetOptions(<%=Zig.Target.for_builder()%>);
+    const resolved_target = b.standardTargetOptions(<%=Zig.Target.for_builder()%>);
     const optimize = b.standardOptimizeOption(.{});
+
+    const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
 
     const erl_nif = b.createModule(
         .{
@@ -51,7 +55,7 @@ pub fn build(b: *std.Build) void {
         });
     <% end %>
 
-    <% module_list = Enum.map(@packages, fn {name, _, _} -> "#{name}" end) %>
+    <% module_list = Enum.map(@modules, fn {name, _, _} -> "#{name}" end) %>
 
     const nif = b.createModule(.{
         .root_source_file = .{.cwd_relative = "<%= @zig_code_path %>"},
@@ -72,7 +76,7 @@ pub fn build(b: *std.Build) void {
         }
         <% end %>
         },
-        .target = target
+        .target = resolved_target
     });
 
     <%= if @c do %>
@@ -99,29 +103,44 @@ pub fn build(b: *std.Build) void {
     nif.addCSourceFile(.{.file = .{.cwd_relative = "<%= src %>"}, .flags = &[_][]const u8{<%= ccompileparams %>}});
     <% end %>
 
-    const lib = b.addLibrary(.{
-        .name = "<%= @module %>",
-        .linkage = .dynamic,
-        .version = .{.major = <%= @version.major %>,
-                     .minor = <%= @version.minor %>,
-                     .patch = <%= @version.patch %>},
-        .root_module = b.createModule(.{
-            .root_source_file = b.path("module.zig"),
-            .target = target,
-            .optimize = optimize,
-        }),
-    });
+    switch (mode) {
+        .nif_lib => {
+            const lib = b.addLibrary(.{
+                .name = "<%= @module %>",
+                .linkage = .dynamic,
+                .version = .{.major = <%= @version.major %>,
+                             .minor = <%= @version.minor %>,
+                             .patch = <%= @version.patch %>},
+                .root_module = b.createModule(.{
+                    .root_source_file = b.path("module.zig"),
+                    .target = resolved_target,
+                    .optimize = optimize,
+                }),
+            });
 
-    lib.linkLibC();
+            lib.linkLibC();
 
-    lib.linker_allow_shlib_undefined = true;
+            lib.linker_allow_shlib_undefined = true;
 
-    lib.root_module.addImport("erl_nif", erl_nif);
-    lib.root_module.addImport("beam", beam);
-    lib.root_module.addImport("nif", nif);
+            lib.root_module.addImport("erl_nif", erl_nif);
+            lib.root_module.addImport("beam", beam);
+            lib.root_module.addImport("nif", nif);
 
-    // the native backend still causes segfaults, so we must disable it for now.
-    lib.use_llvm = true;
+            // the native backend still causes segfaults, so we must disable it for now.
+            lib.use_llvm = true;
 
-    b.installArtifact(lib);
+            b.installArtifact(lib);
+        },
+        .sema => {
+            const sema = b.addExecutable(.{
+                .name = "sema",
+                .root_module = b.createModule(.{
+                    .root_source_file = b.path("sema.zig"),
+                    .target = resolved_target,
+                    .optimize = optimize,
+                }),
+            });
+            b.installArtifact(sema);
+        }
+    }
 }

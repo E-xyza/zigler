@@ -166,8 +166,11 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 ## 0.15.1
 
+- rename "packages" option to "modules"
+- add "dependency" option for zig dependencies
+
 ## Upcoming
-- `precompiled` mode that will let you obtain packages with precompiled assets.
+- `precompiled` mode that will let you use precompiled library assets.
 
 ## Possible
 - `struct` which lets you declare a struct inside your zig code as the module's struct

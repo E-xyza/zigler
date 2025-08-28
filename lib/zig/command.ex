@@ -17,10 +17,10 @@ defmodule Zig.Command do
   #############################################################################
   ## API
 
-  defp run_zig(command, module) do
+  defp run_zig(command, opts) do
     args = String.split(command)
 
-    base_opts = Keyword.take(module, [:cd, :stderr_to_stdout])
+    base_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
     zig_cmd = executable_path()
     Logger.debug("running command: #{zig_cmd} #{command}")
 
@@ -40,12 +40,7 @@ defmodule Zig.Command do
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    module
-    |> Sema.render_sema()
-    |> IO.iodata_to_binary()
-    |> String.split()
-    |> Enum.join(" ")
-    |> run_zig(stderr_to_stdout: true)
+    run_zig("build -Dzigler-mode=sema sema", cd: Path.dirname(module.module_code_path), stderr_to_stdout: true)
   end
 
   def fmt(file) do

@@ -169,8 +169,8 @@ end
 ## Building composable allocators backed by zig's beam allocator
 
 Because zigler's beam allocators conform to zig's allocator interface, you may use use any
-composable allocator in the standard library or any composable allocator from an imported zig
-package, passing any one of the beam allocators into place. 
+composable allocator in the standard library or any composable allocator from an imported module,
+passing any one of the beam allocators into place. 
 
 ```elixir
 ~Z"""

@@ -1,5 +1,5 @@
 const std = @import("std");
-const analyte = @import("analyte");
+const nif = @import("nif");
 const json = std.json;
 
 fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
@@ -279,6 +279,6 @@ pub fn main() !void {
     var stdout_writer = stdout.writer(&buffer);
     var stream: json.Stringify = .{.writer = &stdout_writer.interface};
 
-    try streamModule(&stream, analyte);
+    try streamModule(&stream, nif);
     try stdout_writer.interface.flush();
 }

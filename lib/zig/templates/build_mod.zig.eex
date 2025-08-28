@@ -1,0 +1,56 @@
+const std = @import("std");
+
+const BuildMode = enum{ nif_lib, sema };
+
+pub fn build(b: *std.Build) void {
+    const resolved_target = b.standardTargetOptions(<%=Zig.Target.for_builder()%>);
+    const optimize = b.standardOptimizeOption(.{});
+
+    const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
+
+    switch (mode) {
+        .nif_lib => {
+            <%= Builder.render(CompilationModule.erl_nif()) %>
+            <%= Builder.render(CompilationModule.beam()) %>
+            <%= Builder.render(CompilationModule.attributes()) %>
+            <%= for compilation_module <- @modules, do: Builder.render(compilation_module)%>
+            <%= Builder.render(CompilationModule.from_beam_module(assigns)) %>
+            <%= Builder.render(CompilationModule.nif_shim()) %>
+
+            const lib = b.addLibrary(.{
+                .name = "<%= @module %>",
+                .linkage = .dynamic,
+                .version = .{.major = <%= @version.major %>,
+                             .minor = <%= @version.minor %>,
+                             .patch = <%= @version.patch %>},
+                .root_module = nif_shim
+            });
+
+            lib.linker_allow_shlib_undefined = true;
+
+            // the native backend still causes segfaults, so we must disable it for now.
+            lib.use_llvm = true;
+
+            b.installArtifact(lib);
+        },
+        .sema => {
+            <%= Builder.render(CompilationModule.stub_erl_nif()) %>
+            <%= Builder.render(CompilationModule.beam()) %>
+            <%= Builder.render(CompilationModule.attributes()) %>
+            <%= for compilation_module <- @modules, do: Builder.render(compilation_module)%>
+            <%= Builder.render(CompilationModule.from_beam_module(assigns)) %>
+            <%= Builder.render(CompilationModule.sema()) %>
+
+            const sema_exe = b.addExecutable(.{
+                .name = "sema",
+                .root_module = sema
+            });
+            b.installArtifact(sema_exe);
+
+            const sema_run_cmd = b.addRunArtifact(sema_exe);
+            if (b.args) |args| sema_run_cmd.addArgs(args);
+            const sema_step = b.step("sema", "Run sema");
+            sema_step.dependOn(&sema_run_cmd.step);
+        }
+    }
+}

@@ -342,26 +342,26 @@ defmodule Zig do
     - `{:env, mode}` reads `ZIGLER_RELEASE_MODE` environment variable with fallback to the specified mode.
   - `easy_c`: path to a header file that will be used to generate a C wrapper.
     if this is set, you must specify `:nifs` without the `:auto` (or `...`) specifier.
-    A path beginning with `./` will be treated as a relative to cwd (usually the project root), 
+    A path beginning with `./` will be treated as a relative to cwd (usually the project root),
     otherwise the path will be treated as relative to the module file.
-    You may provide code using either the `c` > `link_lib` option or `c` > `src`. You 
-    may also NOT provide any `~Z` blocks in your module.  
+    You may provide code using either the `c` > `link_lib` option or `c` > `src`. You
+    may also NOT provide any `~Z` blocks in your module.
   - `zig_code_path`: path to a zig file that will be used to as a target.  A path beginning
     with `./` will be treated as relative to cwd (usually the project root), otherwise the
     path will be relative to the module file.  If you specify this option, you may NOT
     provide any `~Z` blocks in your module.
-  - `nifs`: a list of nifs to be generated.  If you specify as `{:auto, nifs}`, zigler 
+  - `nifs`: a list of nifs to be generated.  If you specify as `{:auto, nifs}`, zigler
     will search the target zig code for `pub` functions and generate the default nifs for
-    those that do not appear in the nifs list.  If you specify as a list of nifs, only 
-    the nifs in the list will be used.  In Elixir, using `...` in your nifs list 
+    those that do not appear in the nifs list.  If you specify as a list of nifs, only
+    the nifs in the list will be used.  In Elixir, using `...` in your nifs list
     converts it to `{:auto, nifs}`.  The nifs list should be a keyword list with the
     keys being the function names.  See `t:nif_options/0` for details on the options.
   - `ignore`: any functions found in the `ignore` list will not be generated as nifs if
     you are autodetecting nifs.
-  - `packages`: a list of packages to be included in the build.  Each package is a tuple
-    of the form `{name, {path, deps}}` where `name` is the name of the package, `path` is
-    the path to the package, and `deps` is a list of dependencies for that package.  Those
-    dependencies must alse be in the `packages` list.
+  - `modules`: a list of modules to be included in the build.  Each module is declared
+    with a tuple of the form `{name, {path, deps}}` where `name` is the name of the module
+    (as an atom), `path` is the path to the module, and `deps` is a list of transitive
+    dependencies for that module.  Those dependencies must also be in the `modules` list.
   - `resources`: a list of types in the zig code that are to be treated as resources.
   - `callbacks`: see `t:callback_option/0` for details.
   - `cleanup`: (default `true`) can be used to shut down cleanup for allocated datatypes
@@ -371,7 +371,7 @@ defmodule Zig do
   - `dump`: if set to `true`, the generated zig code will be dumped to the console.
   - `dump_sema`: if set to `true`, the semantic analysis of the generated zig code will be dumped to the console.
   - `dump_build_zig`: if set to `true`, the generated zig code will be dumped to the console.
-    If set to `:stdout`, or `:stderr` it will be sent to the respective stdio channels. If set 
+    If set to `:stdout`, or `:stderr` it will be sent to the respective stdio channels. If set
     to a path, the generated zig code will be written to a file at that path.
   """
   @type options :: [
@@ -381,7 +381,7 @@ defmodule Zig do
           easy_c: Path.t(),
           nifs: {:auto, keyword(nif_options)} | keyword(nif_options),
           ignore: [atom],
-          packages: [{name :: atom, {path :: Path.t(), deps :: [atom]}}],
+          module: [{name :: atom, {path :: Path.t(), deps :: [atom]}}],
           resources: [atom],
           callbacks: [callback_option],
           cleanup: boolean,
@@ -446,7 +446,7 @@ defmodule Zig do
   - `allocator`: (default: `nil`) the allocator type to use for this function.
     if unset, the default allocator `beam.allocator` will be used.
     see [Allocators](03-allocators.html) for details on how to use allocators.
-  - `params`: a map of parameter indices to lists of parameter options.  See 
+  - `params`: a map of parameter indices to lists of parameter options.  See
     `t:param_option/0` for details on the options.  Skipping paramater indices
     is allowed.
   - `return`: options for the return value of the function.  See `t:return_option/0`
@@ -454,7 +454,7 @@ defmodule Zig do
   - `leak_check`: (default `false`) if set to `true`, the default allocator
     will be set to `std.heap.DebugAllocator` and the leak check method will
     be run at the end of the function.
-  - `alias`: if set, the nif name will be the name of BEAM function in the 
+  - `alias`: if set, the nif name will be the name of BEAM function in the
     module, but the zig function called will be the alias name.
   - `arity`: (only available for raw functions) the arities of the function
     that are accepted.
@@ -485,8 +485,8 @@ defmodule Zig do
     from this parameter's type instead of the return type.
 
     Only one parameter may be marked as `:in_out` in a function.
-  - :sentinel (same as `{:sentinel, true}`) if the parameter is a `[*c]` type parameter, 
-    a sentinel should be attached when allocating space for the parameter.  This option is 
+  - :sentinel (same as `{:sentinel, true}`) if the parameter is a `[*c]` type parameter,
+    a sentinel should be attached when allocating space for the parameter.  This option is
     disallowed if the parameter is not a `[*c]`.
   """
   @type param_option ::
@@ -525,7 +525,7 @@ defmodule Zig do
   sets the return type of the function, if it's ambiguous.  For example,
   a `[]u8` can be forced to return a list instead of the default binary.
 
-  For collections, you can specify deep typing.  For example`{:list, :list}` 
+  For collections, you can specify deep typing.  For example`{:list, :list}`
   can be forced to return a list of lists for `[][]u8`.  Map fields can
   be set using a keyword list, for example `{:map, [foo: :list]}` will
   force a struct to return a map with the field `foo` typed as a list.

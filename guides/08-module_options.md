@@ -69,15 +69,15 @@ defmodule Attribute do
 end
 ```
 
-## adding packages
+## adding modules
 
-It's possible to add zig files as packages using the `packages` keyword option. The name of the
-package is the key, and the value is a tuple of the path to the zig file that acts as the package
-and a list of dependencies for the package. 
+It's possible to add zig files as modules using the `modules` keyword option. The name of the
+module is the key, and the value is a tuple of the path to the zig file that acts as the module
+and a list of transitive module dependencies. 
 
 ### Example extra.zig
 
-```zig
+````zig
 pub const value = 47;
 ```
 
@@ -86,7 +86,7 @@ defmodule PackageFile do
   use ExUnit.Case, async: true
   use Zig, 
     otp_app: :zigler,
-    packages: [extra: {"test/_support/package/extra.zig", [:beam]}]
+    modules: [extra: {"test/_support/module/extra.zig", [:beam]}]
 
   ~Z"""
   const extra = @import("extra");
@@ -96,7 +96,7 @@ defmodule PackageFile do
   }
   """
 
-  test "package file" do
+  test "module file" do
     assert 47 = extra_value()
   end
 end
