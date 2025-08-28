@@ -1,25 +1,5 @@
-use Protoss
-
-defprotocol Zig.Sema do
-  @spec render_sema(t) :: iodata
-  def render_sema(attribs)
-after
-  defmacro __using__(opts) do
-    template = Keyword.fetch!(opts, :template)
-
-    quote do
-      defdelegate fetch(struct, key), to: Map
-
-      require EEx
-      render_sema = Path.join(__DIR__, unquote(template))
-      EEx.function_from_file(:def, :render_sema, render_sema, [:assigns])
-      defoverridable render_sema: 1
-    end
-  end
-
+defmodule Zig.Sema do
   @moduledoc false
-  require EEx
-  alias Zig.Attributes
   alias Zig.Module
   alias Zig.Nif
   alias Zig.Options

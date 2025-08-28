@@ -89,7 +89,6 @@ defmodule Zig.Module do
 
   @defaultable_nif_opts ~w[cleanup leak_check]a
 
-  use Zig.Sema, template: "templates/sema_mod.eex"
   use Zig.Builder, template: "templates/build_mod.zig.eex"
 
   @affix %{"Elixir": "`use Zig`", erlang: "`zig_opts(...)`"}
@@ -438,56 +437,6 @@ defmodule Zig.Module do
     function_code = Enum.map(module.nifs, &Nif.render_erlang/1)
 
     Enum.flat_map(function_code, & &1) ++ init_function
-  end
-
-  def render_sema(module) do
-    priv_dir = :code.priv_dir(:zigler)
-
-    # main: semantic analysis file.
-    main = %CompilationModule{
-      name: :main,
-      deps: [:analyte],
-      path: Path.join(priv_dir, "beam/sema.zig")
-    }
-
-    # analyte: the code for the zigler module.
-
-    analyte_deps = [:beam, :erl_nif, :attributes]
-
-    analyte = %CompilationModule{
-      name: :analyte,
-      path: module.zig_code_path,
-      deps: analyte_deps,
-      c: module.c
-    }
-
-    # beam: zigler-specific beam helpers
-
-    beam = %CompilationModule{
-      name: :beam,
-      deps: [:erl_nif],
-      path: Path.join(priv_dir, "beam/beam.zig")
-    }
-
-    # erl_nif: stubbed erlang nif content.
-
-    erl_nif = %CompilationModule{
-      name: :erl_nif,
-      path: Path.join(priv_dir, "beam/stub_erl_nif.zig")
-    }
-
-    # if the attributes were to be passed.
-
-    attributes = %CompilationModule{
-      name: :attributes,
-      path: Attributes.code_path(module)
-    }
-
-    # for now.  We'll change this in a moment.
-    deps = []
-
-    mods = [main, analyte, beam, erl_nif, attributes] ++ deps
-    super(mods: mods)
   end
 
   # Access behaviour guards

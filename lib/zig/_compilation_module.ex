@@ -11,9 +11,7 @@ defmodule Zig.CompilationModule do
 
   alias Zig.Builder
   alias Zig.C
-  alias Zig.Sema
 
-  use Sema, template: "templates/sema_comp_mod.eex"
   use Builder, template: "templates/build_comp_mod.zig.eex"
 
   def from_beam_module(assigns) do

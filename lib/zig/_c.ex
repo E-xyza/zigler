@@ -11,7 +11,6 @@ defmodule Zig.C do
             link_libc: false,
             link_libcpp: false
 
-  use Zig.Sema, template: "templates/sema_c.eex"
   use Zig.Builder, template: "templates/build_c.zig.eex"
 
   alias Zig.Options
