@@ -228,7 +228,7 @@ defmodule Zig.Module do
     end)
 
     try do
-      {k, {IO.iodata_to_binary(path), deps}}
+      %CompilationModule{name: k, path: Path.join(File.cwd!(), path), deps: deps}
     rescue
       _ ->
         Options.raise_with(
@@ -437,4 +437,29 @@ defmodule Zig.Module do
 
     Enum.flat_map(function_code, & &1) ++ init_function
   end
+
+  def render_c(nil, _), do: ""
+  def render_c(c, mode) do
+    link_libs = Enum.map(c.link_lib, fn
+      {:system, libname} ->
+        "#{mode}.linkSystemLibrary(\"#{libname}\");"
+      path ->
+        "#{mode}.addObjectFile(.{.cwd_relative = \"#{path}\"});"
+    end)
+
+    c_srcs = Enum.map(c.src, fn
+      {c_src, flags} ->
+        """
+        #{mode}.addCSourceFiles(.{
+          .root = .{.cwd_relative = "#{Path.dirname(c_src)}"},
+          .files = &.{"#{Path.basename(c_src)}"},
+          .flags = &.{ #{render_flags(flags)}},
+        });
+        """
+    end)
+
+    link_libs ++ c_srcs
+  end
+
+  defp render_flags(flags), do: Enum.map_join(flags, ", ", &~s("#{&1}\"))
 end

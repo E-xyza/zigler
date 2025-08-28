@@ -1,11 +1,11 @@
-defmodule ZiglerTest.PackagesTest do
+defmodule ZiglerTest.ModulesTest do
   use ZiglerTest.IntegrationCase
 
   require Logger
 
   use Zig,
     otp_app: :zigler,
-    packages: [extra: {"test/_support/package/extra.zig", [:beam]}]
+    modules: [extra: {"test/_support/module/extra.zig", [:beam]}]
 
   ~Z"""
   const extra = @import("extra");

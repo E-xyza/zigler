@@ -27,6 +27,9 @@ pub fn build(b: *std.Build) void {
                 .root_module = nif_shim
             });
 
+            <%= render_c(@c, :lib) %>
+            <%= for compilation_module <- @modules, do: render_c(compilation_module.c, :lib) %>
+
             lib.linker_allow_shlib_undefined = true;
 
             // the native backend still causes segfaults, so we must disable it for now.
@@ -46,6 +49,10 @@ pub fn build(b: *std.Build) void {
                 .name = "sema",
                 .root_module = sema
             });
+
+            <%= render_c(@c, :sema_exe) %>
+            <%= for compilation_module <- @modules, do: render_c(compilation_module.c, :sema_exe) %>
+
             b.installArtifact(sema_exe);
 
             const sema_run_cmd = b.addRunArtifact(sema_exe);

@@ -8,7 +8,7 @@ defmodule Zig.C do
             library_dirs: [],
             link_lib: [],
             src: [],
-            link_libc: false,
+            link_libc: true,
             link_libcpp: false
 
   use Zig.Builder, template: "templates/build_c.zig.eex"
