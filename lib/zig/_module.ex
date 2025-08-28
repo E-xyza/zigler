@@ -132,7 +132,7 @@ defmodule Zig.Module do
     |> Options.normalize_kw(
       :modules,
       [],
-      list_normalizer(&normalize_module/2, "modules"),
+      list_normalizer(&normalize_module/2, "module"),
       context
     )
     |> Options.normalize_path(:dir, context)
@@ -248,7 +248,7 @@ defmodule Zig.Module do
   defp normalize_module(other, opts),
     do:
       Options.raise_with(
-        "must be a list of package specifications",
+        "must be a list of module specifications",
         other,
         opts
       )
