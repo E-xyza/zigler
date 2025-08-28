@@ -5,7 +5,7 @@ defmodule ZiglerTest.ModulesTest do
 
   use Zig,
     otp_app: :zigler,
-    modules: [extra: {"test/_support/module/extra.zig", [:beam]}]
+    extra_modules: [extra: {"test/_support/module/extra.zig", [:beam]}]
 
   ~Z"""
   const extra = @import("extra");

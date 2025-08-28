@@ -36,7 +36,7 @@ defmodule Zig.Module do
                 # defaulted options
                 release_mode: {:env, :debug},
                 ignore: [],
-                modules: [],
+                extra_modules: [],
                 packages: [],
                 resources: [],
                 callbacks: [],
@@ -73,7 +73,7 @@ defmodule Zig.Module do
           manifest_module: nil | module,
           release_mode: Zig.release_mode(),
           ignore: [atom],
-          modules: [Zig.module_spec()],
+          extra_modules: [CompilationModule.t()],
           packages: list(),
           resources: [atom],
           callbacks: [on_load: atom, on_upgrade: atom, on_unload: atom],
@@ -130,9 +130,9 @@ defmodule Zig.Module do
       context
     )
     |> Options.normalize_kw(
-      :modules,
+      :extra_modules,
       [],
-      list_normalizer(&normalize_module/2, "module"),
+      list_normalizer(&normalize_extra_modules/2, "module"),
       context
     )
     |> Options.normalize_path(:dir, context)
@@ -221,7 +221,7 @@ defmodule Zig.Module do
   @dependencies_atom_error "must be a list of atoms representing dependencies"
   @module_tuple_error "must be a tuple of the form `{path, [deps...]}`"
 
-  defp normalize_module({k, {path, deps}}, context) when is_atom(k) and is_list(deps) do
+  defp normalize_extra_modules({k, {path, deps}}, context) when is_atom(k) and is_list(deps) do
     Enum.each(deps, fn dep ->
       is_atom(dep) or
         Options.raise_with(@dependencies_atom_error, dep, Options.push_key(context, k))
@@ -239,13 +239,13 @@ defmodule Zig.Module do
     end
   end
 
-  defp normalize_module({k, {_, malformed}}, context) when is_atom(k),
+  defp normalize_extra_modules({k, {_, malformed}}, context) when is_atom(k),
     do: Options.raise_with(@dependencies_atom_error, malformed, Options.push_key(context, k))
 
-  defp normalize_module({k, malformed}, context) when is_atom(k),
+  defp normalize_extra_modules({k, malformed}, context) when is_atom(k),
     do: Options.raise_with(@module_tuple_error, malformed, Options.push_key(context, k))
 
-  defp normalize_module(other, opts),
+  defp normalize_extra_modules(other, opts),
     do:
       Options.raise_with(
         "must be a list of module specifications",

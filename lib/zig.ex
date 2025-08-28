@@ -358,10 +358,10 @@ defmodule Zig do
     keys being the function names.  See `t:nif_options/0` for details on the options.
   - `ignore`: any functions found in the `ignore` list will not be generated as nifs if
     you are autodetecting nifs.
-  - `modules`: a list of modules to be included in the build.  Each module is declared
+  - `extra_modules`: a list of zig modules to be included in the build.  Each module is declared
     with a tuple of the form `{name, {path, deps}}` where `name` is the name of the module
     (as an atom), `path` is the path to the module, and `deps` is a list of transitive
-    dependencies for that module.  Those dependencies must also be in the `modules` list.
+    dependencies for that module.  Those dependencies must also be in the `extra_modules` list.
   - `resources`: a list of types in the zig code that are to be treated as resources.
   - `callbacks`: see `t:callback_option/0` for details.
   - `cleanup`: (default `true`) can be used to shut down cleanup for allocated datatypes

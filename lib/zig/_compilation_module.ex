@@ -18,7 +18,7 @@ defmodule Zig.CompilationModule do
     %__MODULE__{
       name: :nif,
       path: assigns.zig_code_path,
-      deps: [:erl_nif, :beam, :attributes] ++ Enum.map(assigns.modules, & &1.name),
+      deps: [:erl_nif, :beam, :attributes] ++ Enum.map(assigns.extra_modules, & &1.name),
       c: assigns.c
     }
   end

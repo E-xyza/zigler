@@ -71,7 +71,7 @@ end
 
 ## adding modules
 
-It's possible to add zig files as modules using the `modules` keyword option. The name of the
+It's possible to add zig files as modules using the `extra_modules` keyword option. The name of the
 module is the key, and the value is a tuple of the path to the zig file that acts as the module
 and a list of transitive module dependencies. 
 
@@ -86,7 +86,7 @@ defmodule PackageFile do
   use ExUnit.Case, async: true
   use Zig, 
     otp_app: :zigler,
-    modules: [extra: {"test/_support/module/extra.zig", [:beam]}]
+    extra_modules: [extra: {"test/_support/module/extra.zig", [:beam]}]
 
   ~Z"""
   const extra = @import("extra");

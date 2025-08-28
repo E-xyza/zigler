@@ -166,7 +166,7 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 ## 0.15.1
 
-- rename "packages" option to "modules"
+- rename "packages" option to "extra_modules"
 - add "dependency" option for zig dependencies
 
 ## Upcoming

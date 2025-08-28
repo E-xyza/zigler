@@ -54,31 +54,6 @@ after
       File.mkdir_p!(staging_directory)
     end
 
-    # assigns = %{
-    #  module: module.module,
-    #  version: module.version,
-    #  beam_dir: Path.join(:code.priv_dir(:zigler), "beam"),
-    #  c: module.c,
-    #  packages: make_modules(module),
-    #  zig_code_path: module.zig_code_path,
-    #  modules: []
-    # }
-    #
-    # assigns =
-    #  case :os.type() do
-    #    {_, :nt} ->
-    #      :zigler
-    #      |> :code.priv_dir()
-    #      |> Path.join("erl_nif_win")
-    #      |> then(&Map.put(assigns, :windows_shim_dir, &1))
-    #
-    #    _ ->
-    #      assigns
-    #  end
-    #
-    # build_file = build_zig(assigns)
-    #
-
     # TODO: move to Attributes module.
     attribs_path = Path.join(staging_directory, "attributes.zig")
     File.write!(attribs_path, Enum.map(module.attributes, &Attributes.render_zig/1))
