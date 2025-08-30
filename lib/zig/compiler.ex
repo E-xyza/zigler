@@ -137,6 +137,7 @@ defmodule Zig.Compiler do
       |> Path.expand()
 
     opts
+    |> add_fingerprint(zig_code)
     |> Map.replace!(:zig_code_path, zig_code_path)
     |> tap(&write_code!(&1, zig_code))
     |> Builder.stage()
@@ -259,4 +260,10 @@ defmodule Zig.Compiler do
   end
 
   defp elixir_save_zigler_opts(opts), do: opts
+
+  defp add_fingerprint(opts, code) do
+    import Bitwise
+    fingerprint = :erlang.crc32("#{opts.otp_app}") <<< 32 ||| :erlang.crc32(code)
+    %{opts | fingerprint: "0x#{Integer.to_string(fingerprint, 16)}"}
+  end
 end

@@ -67,7 +67,7 @@ defmodule Zig.C do
   defp resolve_path(path, context) do
     case IO.iodata_to_binary(path) do
       "./" <> rest ->
-        {:system, Path.join(File.cwd!(), rest)}
+        {:system, Path.expand(rest)}
 
       path ->
         Path.expand(path, Path.dirname(context.file))

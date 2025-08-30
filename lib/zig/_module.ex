@@ -5,7 +5,8 @@ defmodule Zig.Module do
 
   alias Zig.Builder
   alias Zig.C
-  alias Zig.CompilationModule
+  alias Zig.DepsModule
+  alias Zig.ExtraModule
   alias Zig.Nif
   alias Zig.Options
   alias Zig.Resources
@@ -25,6 +26,7 @@ defmodule Zig.Module do
                 :zig_code_path,
                 :version,
                 :easy_c,
+                :fingerprint,
                 :dir,
                 :c,
                 :nifs,
@@ -37,7 +39,7 @@ defmodule Zig.Module do
                 release_mode: {:env, :debug},
                 ignore: [],
                 extra_modules: [],
-                packages: [],
+                dependencies: [],
                 resources: [],
                 callbacks: [],
                 # assembled from collected `opts` fields
@@ -73,8 +75,8 @@ defmodule Zig.Module do
           manifest_module: nil | module,
           release_mode: Zig.release_mode(),
           ignore: [atom],
-          extra_modules: [CompilationModule.t()],
-          packages: list(),
+          extra_modules: [ExtraModule.t()],
+          dependencies: keyword(),
           resources: [atom],
           callbacks: [on_load: atom, on_upgrade: atom, on_unload: atom],
           default_nif_opts: [cleanup: boolean, leak_check: boolean],
@@ -135,6 +137,13 @@ defmodule Zig.Module do
       list_normalizer(&normalize_extra_modules/2, "module"),
       context
     )
+    |> Options.normalize_kw(
+      :dependencies,
+      [],
+      list_normalizer(&normalize_dependency/2, "dependency"),
+      context
+    )
+    |> validate_dependency_modules!(context)
     |> Options.normalize_path(:dir, context)
     |> Options.normalize_path(:module_code_path, context)
     |> Options.normalize_path(:zig_code_path, context)
@@ -181,7 +190,7 @@ defmodule Zig.Module do
     do: fn
       list, context when is_list(list) ->
         try do
-          Enum.map(list, &callback.(&1, context))
+          Enum.flat_map(list, &List.wrap(if d = callback.(&1, context), do: d))
         rescue
           _ in FunctionClauseError ->
             Options.raise_with(
@@ -228,7 +237,7 @@ defmodule Zig.Module do
     end)
 
     try do
-      %CompilationModule{name: k, path: Path.join(File.cwd!(), path), deps: deps}
+      %ExtraModule{name: k, path: Path.expand(path), deps: deps}
     rescue
       _ ->
         Options.raise_with(
@@ -237,6 +246,11 @@ defmodule Zig.Module do
           Options.push_key(context, k)
         )
     end
+  end
+
+  defp normalize_extra_modules({k, {dep, module}}, _context)
+       when is_atom(dep) and is_atom(module) do
+    %DepsModule{dep: dep, src_mod: module, dst_mod: k}
   end
 
   defp normalize_extra_modules({k, {_, malformed}}, context) when is_atom(k),
@@ -252,6 +266,32 @@ defmodule Zig.Module do
         other,
         opts
       )
+
+  defp normalize_dependency({dep_name, path}, context) do
+    case path do
+      "./" <> rest ->
+        {dep_name, Path.expand(rest)}
+      bare ->
+        context.file
+        |> Path.dirname()
+        |> then(&Path.expand(bare, &1))
+        |> then(&{dep_name, &1})
+    end
+  end
+
+  defp validate_dependency_modules!(opts, context) do
+    dependencies = Keyword.get(opts, :dependencies, [])
+    for %DepsModule{dep: dep, dst_mod: dst_mod} <- Keyword.get(opts, :extra_modules, []) do
+      if not Keyword.has_key?(dependencies, dep) do
+        context = context
+        |> Options.push_key(:extra_modules)
+        |> Options.push_key(dst_mod)
+
+        Options.raise_with("requires the `#{dep}` dependency", dependencies, context)
+      end
+    end
+    opts
+  end
 
   @atom_or_atomlist_error "must be an atom or a list of atoms"
 
@@ -439,24 +479,30 @@ defmodule Zig.Module do
   end
 
   def render_c(nil, _), do: ""
-  def render_c(c, mode) do
-    link_libs = Enum.map(c.link_lib, fn
-      {:system, libname} ->
-        "#{mode}.linkSystemLibrary(\"#{libname}\");"
-      path ->
-        "#{mode}.addObjectFile(.{.cwd_relative = \"#{path}\"});"
-    end)
+  def render_c(%DepsModule{}, _), do: ""
+  def render_c(%ExtraModule{} = m, mode), do: render_c(m.c, mode)
 
-    c_srcs = Enum.map(c.src, fn
-      {c_src, flags} ->
-        """
-        #{mode}.addCSourceFiles(.{
-          .root = .{.cwd_relative = "#{Path.dirname(c_src)}"},
-          .files = &.{"#{Path.basename(c_src)}"},
-          .flags = &.{ #{render_flags(flags)}},
-        });
-        """
-    end)
+  def render_c(%C{} = c, mode) do
+    link_libs =
+      Enum.map(c.link_lib, fn
+        {:system, libname} ->
+          "#{mode}.linkSystemLibrary(\"#{libname}\");"
+
+        path ->
+          "#{mode}.addObjectFile(.{.cwd_relative = \"#{path}\"});"
+      end)
+
+    c_srcs =
+      Enum.map(c.src, fn
+        {c_src, flags} ->
+          """
+          #{mode}.addCSourceFiles(.{
+            .root = .{.cwd_relative = "#{Path.dirname(c_src)}"},
+            .files = &.{"#{Path.basename(c_src)}"},
+            .flags = &.{ #{render_flags(flags)}},
+          });
+          """
+      end)
 
     link_libs ++ c_srcs
   end

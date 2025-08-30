@@ -39,6 +39,8 @@ after
     Path.join(staging_root, to_string(module))
   end
 
+  EEx.function_from_file(:def, :build_zig_zon, Path.join(__DIR__, "templates/build.zig.zon.eex"), [:assigns])
+
   def beam_file(path) do
     :zigler
     |> :code.priv_dir()
@@ -62,6 +64,9 @@ after
 
     File.write!(build_zig_path, render(module))
     Command.fmt(build_zig_path)
+
+    build_zig_zon_path = Path.join(staging_directory, "build.zig.zon")
+    File.write!(build_zig_zon_path, build_zig_zon(module))
 
     Logger.debug("wrote build.zig to #{build_zig_path}")
 

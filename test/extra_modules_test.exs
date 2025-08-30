@@ -1,4 +1,4 @@
-defmodule ZiglerTest.ModulesTest do
+defmodule ZiglerTest.ExtraModulesTest do
   use ZiglerTest.IntegrationCase
 
   require Logger

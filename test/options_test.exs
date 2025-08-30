@@ -266,7 +266,21 @@ defmodule ZiglerTest.OptionsTest do
     test "accepts name-path-deps" do
       assert %{extra_modules: [%{name: :foo, path: path, deps: [:baz, :quux]}]} =
                make_module(otp_app: :zigler, extra_modules: [foo: {"bar", [:baz, :quux]}])
-      assert path == Path.join(File.cwd!(), "bar")
+
+      assert path == Path.expand("bar")
+    end
+
+    test "accepts dep-mod" do
+      assert %{extra_modules: [%{dep: :dep, dst_mod: :foo, src_mod: :mymod}]} =
+               make_module(otp_app: :zigler, dependencies: [dep: "path/to/dep"], extra_modules: [foo: {:dep, :mymod}])
+    end
+
+    test "dependency used in extra modules must be in dependencies" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `extra_modules > foo` requires the `dep` dependency, got: `[]`",
+                   fn ->
+                     make_module(otp_app: :zigler, extra_modules: [foo: {:dep, :mymod}])
+                   end
     end
 
     test "path must be a string" do

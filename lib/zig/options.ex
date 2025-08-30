@@ -33,7 +33,7 @@ defmodule Zig.Options do
     Keyword.update(opts, key, nil, fn path_iodata ->
       case IO.iodata_to_binary(path_iodata) do
         "./" <> rest ->
-          Path.join(File.cwd!(), rest)
+          Path.expand(rest)
 
         path ->
           path

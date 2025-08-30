@@ -1,8 +1,8 @@
-defmodule Zig.CompilationModule do
+defmodule Zig.ExtraModule do
   @moduledoc false
 
-  # this module encapulates a struct which carries attributes of zig compilation
-  # modules.  The fields of the struct are subject to change as the capabilites of
+  # this module encapulates a struct which carries attributes of extra zig modules
+  # to be added.  The fields of the struct are subject to change as the capabilites of
   # zigler are increased, or new features are added in zig.
 
   @enforce_keys [:name, :path]
@@ -12,16 +12,19 @@ defmodule Zig.CompilationModule do
   alias Zig.Builder
   alias Zig.C
 
-  use Builder, template: "templates/build_comp_mod.zig.eex"
+  use Builder, template: "templates/build_extra_mod.zig.eex"
 
   def from_beam_module(assigns) do
     %__MODULE__{
       name: :nif,
       path: assigns.zig_code_path,
-      deps: [:erl_nif, :beam, :attributes] ++ Enum.map(assigns.extra_modules, & &1.name),
+      deps: [:erl_nif, :beam, :attributes] ++ Enum.map(assigns.extra_modules, &module_spec/1),
       c: assigns.c
     }
   end
+
+  defp module_spec(%{name: name}), do: name
+  defp module_spec(%{dep: dep, src_mod: src_mod, dst_mod: dst_mod}), do: {dep, {src_mod, dst_mod}}
 
   # default modules
 
