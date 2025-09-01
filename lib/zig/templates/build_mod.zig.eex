@@ -18,12 +18,12 @@ pub fn build(b: *std.Build) void {
 
     switch (mode) {
         .nif_lib => {
-            <%= Builder.render(ExtraModule.erl_nif()) %>
-            <%= Builder.render(ExtraModule.beam()) %>
-            <%= Builder.render(ExtraModule.attributes()) %>
-            <%= for extra_module <- @extra_modules, do: Builder.render(extra_module)%>
-            <%= Builder.render(ExtraModule.from_beam_module(assigns)) %>
-            <%= Builder.render(ExtraModule.nif_shim()) %>
+            <%= Builder.render_build(ExtraModule.erl_nif()) %>
+            <%= Builder.render_build(ExtraModule.beam()) %>
+            <%= Builder.render_build(ExtraModule.attributes()) %>
+            <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
+            <%= Builder.render_build(ExtraModule.from_beam_module(assigns)) %>
+            <%= Builder.render_build(ExtraModule.nif_shim()) %>
 
             const lib = b.addLibrary(.{
                 .name = "<%= @module %>",
@@ -45,12 +45,12 @@ pub fn build(b: *std.Build) void {
             b.installArtifact(lib);
         },
         .sema => {
-            <%= Builder.render(ExtraModule.stub_erl_nif()) %>
-            <%= Builder.render(ExtraModule.beam()) %>
-            <%= Builder.render(ExtraModule.attributes()) %>
-            <%= for extra_module <- @extra_modules, do: Builder.render(extra_module)%>
-            <%= Builder.render(ExtraModule.from_beam_module(assigns)) %>
-            <%= Builder.render(ExtraModule.sema()) %>
+            <%= Builder.render_build(ExtraModule.stub_erl_nif()) %>
+            <%= Builder.render_build(ExtraModule.beam()) %>
+            <%= Builder.render_build(ExtraModule.attributes()) %>
+            <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
+            <%= Builder.render_build(ExtraModule.from_beam_module(assigns)) %>
+            <%= Builder.render_build(ExtraModule.sema()) %>
 
             const sema_exe = b.addExecutable(.{
                 .name = "sema",

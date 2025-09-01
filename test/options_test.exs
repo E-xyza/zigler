@@ -14,7 +14,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "non-path raises" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `module_code_path` option must be a path, got: `:foo`",
+                   "test/options_test.exs:4: option `module_code_path` must be a path, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, module_code_path: :foo)
                    end
@@ -32,7 +32,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "non-path raises" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `zig_code_path` option must be a path, got: `:foo`",
+                   "test/options_test.exs:4: option `zig_code_path` must be a path, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, zig_code_path: :foo)
                    end
@@ -202,12 +202,13 @@ defmodule ZiglerTest.OptionsTest do
 
   describe "the dir option" do
     test "accepts iodata" do
-      assert %{dir: "foo/bar"} = make_module(otp_app: :zigler, dir: ["foo", "/" | "bar"])
+      local_path = Path.join(__DIR__, "foo/bar")
+      assert %{dir: ^local_path} = make_module(otp_app: :zigler, dir: ["foo", "/" | "bar"])
     end
 
     test "rejects non-iodata" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `dir` option must be a path, got: `:foo`",
+                   "test/options_test.exs:4: option `dir` must be a path, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, dir: :foo)
                    end
@@ -221,7 +222,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects non-iodata" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `easy_c` option must be a path, got: `:foo`",
+                   "test/options_test.exs:4: option `easy_c` must be a path, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, easy_c: :foo)
                    end
@@ -267,7 +268,7 @@ defmodule ZiglerTest.OptionsTest do
       assert %{extra_modules: [%{name: :foo, path: path, deps: [:baz, :quux]}]} =
                make_module(otp_app: :zigler, extra_modules: [foo: {"bar", [:baz, :quux]}])
 
-      assert path == Path.expand("bar")
+      assert path == Path.expand("test/bar")
     end
 
     test "accepts dep-mod" do

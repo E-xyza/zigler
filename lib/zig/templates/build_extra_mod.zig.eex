@@ -25,5 +25,5 @@ const <%= @name %> = b.createModule(
 <% end %>
 
 <%= if @c do %>
-<%= Builder.render(@c, name: @name) %>
+<%= Builder.render_build(@c, name: @name) %>
 <% end %>

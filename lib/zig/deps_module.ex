@@ -6,6 +6,6 @@ defmodule Zig.DepsModule do
   defstruct @enforce_keys
 
   defimpl Zig.Builder do
-    def render(_, _), do: ""
+    def render_build(_, _), do: ""
   end
 end

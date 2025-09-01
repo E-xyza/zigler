@@ -52,8 +52,9 @@ defmodule Zig.Sema do
     |> then(&Map.replace!(module, :sema, &1))
   rescue
     e in Zig.CompileError ->
-      Logger.error("sema error: #{Exception.message(e)}")
-      reraise Zig.CompileError.resolve(e, module), __STACKTRACE__
+      resolved = Zig.CompileError.resolve(e, module)
+      Logger.error("sema error: #{Exception.message(resolved)}")
+      reraise resolved, __STACKTRACE__
   end
 
   defp assign_callbacks(sema, module) do

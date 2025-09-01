@@ -631,6 +631,21 @@ defmodule Zig do
 
   # UTILITIES
 
+  @doc false
+  # implements the common path normalization scheme for files in the `use Zig`
+  # directory:  "./<file>" maps to "project-relative, "/<file>" maps to "absolute"
+  # and "<file>" maps to elixir module-relative.
+  def _normalize_path(path, relative_dir) do
+    case path do
+      "./" <> rest ->
+        Path.expand(rest)
+      "/" <> _ ->
+        path
+      _ ->
+        Path.expand(path, relative_dir)
+    end
+  end
+
   # converts `use Zig` options AST to a form that can be stored into a module
   # attribute.  Two `use Zig` features cannot be directly evaluated inside the
   # module.  First one is the `...` used to indicate to autodetect nifs.  Second

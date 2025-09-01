@@ -6,8 +6,8 @@ defprotocol Zig.Builder do
   # Code for interfacing with `std.build.Builder`, the interface for programmatically invoking
   # build code with the `zig build` command.
 
-  @spec render(t) :: iodata()
-  def render(assigns, opts)
+  @spec render_build(t) :: iodata()
+  def render_build(assigns, opts)
 after
   require EEx
   require Logger
@@ -21,13 +21,13 @@ after
       defdelegate fetch(struct, key), to: Map
 
       require EEx
-      render = Path.join(__DIR__, unquote(template))
-      EEx.function_from_file(:def, :render, render, [:assigns, :opts])
-      defoverridable render: 2
+      render_template = Path.join(__DIR__, unquote(template))
+      EEx.function_from_file(:def, :render_build, render_template, [:assigns, :opts])
+      defoverridable render_build: 2
     end
   end
 
-  def render(assigns), do: render(assigns, [])
+  def render_build(assigns), do: render_build(assigns, [])
 
   def staging_directory(module) do
     staging_root =
@@ -61,12 +61,24 @@ after
     File.write!(attribs_path, Enum.map(module.attributes, &Attributes.render_zig/1))
 
     build_zig_path = Path.join(staging_directory, "build.zig")
-
-    File.write!(build_zig_path, render(module))
-    Command.fmt(build_zig_path)
-
     build_zig_zon_path = Path.join(staging_directory, "build.zig.zon")
-    File.write!(build_zig_zon_path, build_zig_zon(module))
+
+    if dir = module.build_files_dir do
+      dir
+      |> Zig._normalize_path(Path.dirname(module.file))
+      |> Path.join("build.zig")
+      |> File.cp!(build_zig_path)
+
+      dir
+      |> Zig._normalize_path(Path.dirname(module.file))
+      |> Path.join("build.zig.zon")
+      |> File.cp!(build_zig_zon_path)
+    else
+      File.write!(build_zig_path, render_build(module))
+      Command.fmt(build_zig_path)
+
+      File.write!(build_zig_zon_path, build_zig_zon(module))
+    end
 
     Logger.debug("wrote build.zig to #{build_zig_path}")
 

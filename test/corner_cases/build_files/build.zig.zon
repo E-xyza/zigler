@@ -1,0 +1,11 @@
+.{
+  .name = .zigler,
+  .version = "0.15.1",
+  .fingerprint = 0xCEE4E83417818C1B,
+  .paths = .{
+    "build.zig",
+    "build.zig.zon"
+  },
+  .dependencies = .{
+  }
+}

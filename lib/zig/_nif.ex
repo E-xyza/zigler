@@ -458,7 +458,7 @@ defmodule Zig.Nif do
   end
 
   # COMMON TOOLS
-  # generates AST for parameters.  
+  # generates AST for parameters.
   @spec elixir_parameters(arity, used :: boolean) :: [Macro.t()]
   def elixir_parameters(0, _), do: []
   def elixir_parameters(arity, true), do: Enum.map(1..arity, &{:"arg#{&1}", [], Elixir})

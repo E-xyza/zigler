@@ -59,9 +59,7 @@ defmodule Zig.Compiler do
 
           path =
             if is_binary(path) do
-              env.file
-              |> Path.dirname()
-              |> Path.join(path)
+              path
             else
               # This allows for using module attributes and
               # other non-literal constructs for the file path

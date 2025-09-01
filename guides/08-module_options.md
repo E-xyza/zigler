@@ -86,7 +86,7 @@ defmodule PackageFile do
   use ExUnit.Case, async: true
   use Zig, 
     otp_app: :zigler,
-    extra_modules: [extra: {"test/_support/module/extra.zig", [:beam]}]
+    extra_modules: [extra: {"./test/_support/module/extra.zig", [:beam]}]
 
   ~Z"""
   const extra = @import("extra");

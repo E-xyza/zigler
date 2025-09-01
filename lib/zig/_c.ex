@@ -65,13 +65,9 @@ defmodule Zig.C do
   end
 
   defp resolve_path(path, context) do
-    case IO.iodata_to_binary(path) do
-      "./" <> rest ->
-        {:system, Path.expand(rest)}
-
-      path ->
-        Path.expand(path, Path.dirname(context.file))
-    end
+    path
+    |> IO.iodata_to_binary()
+    |> Zig._normalize_path(Path.dirname(context.file))
   rescue
     _ in ArgumentError ->
       Options.raise_with(
