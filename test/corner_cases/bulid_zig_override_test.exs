@@ -6,7 +6,7 @@ defmodule ZiglerTest.CornerCases.BuildZigOverrideTest do
   # completely taken care of by the build_files_dir.  This is not necessarily
   # the best use case for build_files_dir, but is good at exercising the
   # relevant functionality.
-  
+
   use Zig, otp_app: :zigler, build_files_dir: "build_files"
 
   ~Z"""

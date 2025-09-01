@@ -273,7 +273,11 @@ defmodule ZiglerTest.OptionsTest do
 
     test "accepts dep-mod" do
       assert %{extra_modules: [%{dep: :dep, dst_mod: :foo, src_mod: :mymod}]} =
-               make_module(otp_app: :zigler, dependencies: [dep: "path/to/dep"], extra_modules: [foo: {:dep, :mymod}])
+               make_module(
+                 otp_app: :zigler,
+                 dependencies: [dep: "path/to/dep"],
+                 extra_modules: [foo: {:dep, :mymod}]
+               )
     end
 
     test "dependency used in extra modules must be in dependencies" do

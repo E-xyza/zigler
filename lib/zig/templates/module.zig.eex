@@ -73,3 +73,5 @@ export fn nif_init() *const e.ErlNifEntry {
     return &entry;
 }
 <% end %>
+
+export const sema: [<%= byte_size(@sema_json) %>:0] u8 linksection(".sema") = "<%= escape(@sema_json) %>".*;

@@ -39,7 +39,12 @@ after
     Path.join(staging_root, to_string(module))
   end
 
-  EEx.function_from_file(:def, :build_zig_zon, Path.join(__DIR__, "templates/build.zig.zon.eex"), [:assigns])
+  EEx.function_from_file(
+    :def,
+    :build_zig_zon,
+    Path.join(__DIR__, "templates/build.zig.zon.eex"),
+    [:assigns]
+  )
 
   def beam_file(path) do
     :zigler

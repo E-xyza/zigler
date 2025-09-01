@@ -36,6 +36,7 @@ defmodule Zig.Module do
                 :manifest,
                 :manifest_module,
                 :sema,
+                :sema_json,
                 # defaulted options
                 release_mode: {:env, :debug},
                 ignore: [],
@@ -239,7 +240,11 @@ defmodule Zig.Module do
     end)
 
     try do
-      %ExtraModule{name: k, path: Zig._normalize_path(path, Path.dirname(context.file)), deps: deps}
+      %ExtraModule{
+        name: k,
+        path: Zig._normalize_path(path, Path.dirname(context.file)),
+        deps: deps
+      }
     rescue
       _ ->
         Options.raise_with(
@@ -277,15 +282,18 @@ defmodule Zig.Module do
 
   defp validate_dependency_modules!(opts, context) do
     dependencies = Keyword.get(opts, :dependencies, [])
+
     for %DepsModule{dep: dep, dst_mod: dst_mod} <- Keyword.get(opts, :extra_modules, []) do
       if not Keyword.has_key?(dependencies, dep) do
-        context = context
-        |> Options.push_key(:extra_modules)
-        |> Options.push_key(dst_mod)
+        context =
+          context
+          |> Options.push_key(:extra_modules)
+          |> Options.push_key(dst_mod)
 
         Options.raise_with("requires the `#{dep}` dependency", dependencies, context)
       end
     end
+
     opts
   end
 
@@ -517,4 +525,8 @@ defmodule Zig.Module do
   end
 
   defp render_flags(flags), do: Enum.map_join(flags, ", ", &~s("#{&1}\"))
+
+  defp escape(string) do
+    String.replace(string, "\"", "\\\"")
+  end
 end

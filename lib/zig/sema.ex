@@ -40,16 +40,21 @@ defmodule Zig.Sema do
   # actually executing the zig command to obtaitest/mark_as_impl_test.exsn the semantic analysis of the
   # desired file.
   def run_sema!(module) do
-    module
-    |> Zig.Command.run_sema!()
-    |> json_decode!()
-    |> maybe_dump(module)
-    |> reject_ignored(module)
-    |> reject_allocators(module)
-    |> reject_error_interpreters(module)
-    |> assign_callbacks(module)
-    |> integrate_sema(module)
-    |> then(&Map.replace!(module, :sema, &1))
+    json_map =
+      module
+      |> Zig.Command.run_sema!()
+      |> json_decode!()
+      |> maybe_dump(module)
+      |> reject_ignored(module)
+      |> reject_allocators(module)
+      |> reject_error_interpreters(module)
+
+    sema =
+      json_map
+      |> assign_callbacks(module)
+      |> integrate_sema(module)
+
+    %{module | sema: sema, sema_json: JSON.encode!(json_map)}
   rescue
     e in Zig.CompileError ->
       resolved = Zig.CompileError.resolve(e, module)
@@ -134,10 +139,10 @@ defmodule Zig.Sema do
            "functions" => functions,
            "types" => types,
            "decls" => decls
-         } = sema,
+         } = sema_json,
          module
        ) do
-    callbacks = List.wrap(sema["callbacks"])
+    callbacks = List.wrap(sema_json["callbacks"])
 
     %__MODULE__{
       functions: Enum.map(functions, &Function.from_json(&1, module.module)),

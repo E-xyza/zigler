@@ -639,8 +639,10 @@ defmodule Zig do
     case path do
       "./" <> rest ->
         Path.expand(rest)
+
       "/" <> _ ->
         path
+
       _ ->
         Path.expand(path, relative_dir)
     end
