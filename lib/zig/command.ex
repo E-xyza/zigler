@@ -38,7 +38,7 @@ defmodule Zig.Command do
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    run_zig("build -Dzigler-mode=sema sema",
+    run_zig("build -Dzigler-mode=sema sema --summary none",
       cd: Path.dirname(module.module_code_path),
       stderr_to_stdout: true
     )
