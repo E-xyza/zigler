@@ -38,10 +38,17 @@ defmodule Zig.Command do
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    run_zig("build -Dzigler-mode=sema sema --summary none",
-      cd: Path.dirname(module.module_code_path),
-      stderr_to_stdout: true
-    )
+    staging_dir = Path.dirname(module.module_code_path)
+
+    run_zig("build -Dzigler-mode=sema", cd: staging_dir, stderr_to_stdout: true)
+
+    staging_dir
+    |> Path.join("zig-out/bin/sema")
+    |> System.cmd([])
+    |> case do
+      {res, 0} -> res
+      {error, code} -> raise Zig.CompileError, command: "sema", code: code, error: error
+    end
   end
 
   def fmt(file) do
