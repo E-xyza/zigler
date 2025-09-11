@@ -15,7 +15,7 @@ defmodule ZiglerTest.PrecompiledTest do
 
   require ZiglerTest.Compiled
 
-  use Zig, otp_app: :zigler, precompiled: "./priv/lib/Eixir.ZiglerTest.Compiled.so"
+  use Zig, otp_app: :zigler, precompiled: "./priv/lib/Elixir.ZiglerTest.Compiled.so"
 
   ~Z"""
   pub fn add_one(x: u32) u32 {

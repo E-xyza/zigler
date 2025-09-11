@@ -52,7 +52,7 @@ after
     |> Path.join("beam/#{path}")
   end
 
-  def stage(module) do
+  def stage(module = %{precompiled: nil}) do
     staging_directory = staging_directory(module.module)
 
     unless File.dir?(staging_directory) do
@@ -93,4 +93,7 @@ after
       new_action = "#{e.action}, consider setting ZIGLER_STAGING_ROOT environment variable\n"
       reraise %{e | action: new_action}, __STACKTRACE__
   end
+
+  # if precompiled file is specified, do nothing.
+  def stage(module), do: module
 end

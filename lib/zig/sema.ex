@@ -40,7 +40,11 @@ defmodule Zig.Sema do
   # actually executing the zig command to obtaitest/mark_as_impl_test.exsn the semantic analysis of the
   # desired file.
   def run_sema!(module) do
-    json_map =
+    json_map = if library = module.precompiled do
+      library
+      |> obtain_precompiled_sema_json()
+      |> json_decode!()
+    else
       module
       |> Zig.Command.run_sema!()
       |> json_decode!()
@@ -48,6 +52,7 @@ defmodule Zig.Sema do
       |> reject_ignored(module)
       |> reject_allocators(module)
       |> reject_error_interpreters(module)
+    end
 
     sema =
       json_map
@@ -111,7 +116,7 @@ defmodule Zig.Sema do
   end
 
   defp reject_error_interpreters(json, module) do
-    nifs =
+    nifs = #{f
       case module.nifs do
         {:auto, list} -> list
         list -> list
@@ -597,5 +602,15 @@ defmodule Zig.Sema do
       description: if(error2, do: error2.(print_name), else: error1.(print_name)),
       file: module.file,
       line: module.line
+  end
+
+  case :os.type() do
+    {:unix, :linux} ->
+      defp obtain_precompiled_sema_json(file) do
+        case System.cmd("objcopy", ["--dump-section", ".sema=/dev/stdout", file]) do
+          {json, 0} -> String.trim_trailing(json, <<0>>)
+          {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
+        end
+      end
   end
 end
