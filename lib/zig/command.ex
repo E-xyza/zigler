@@ -15,7 +15,7 @@ defmodule Zig.Command do
   #############################################################################
   ## API
 
-  defp run_zig(command, opts) do
+  def run_zig(command, opts) do
     args = String.split(command)
 
     base_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
@@ -57,7 +57,7 @@ defmodule Zig.Command do
     end
   end
 
-  def compile!(module) do
+  def compile!(module = %{precompiled: nil}) do
     staging_directory = Builder.staging_directory(module.module)
 
     so_dir = :code.priv_dir(module.otp_app)
@@ -98,6 +98,22 @@ defmodule Zig.Command do
   rescue
     e in Zig.CompileError ->
       reraise Zig.CompileError.resolve(e, module), __STACKTRACE__
+  end
+
+  def compile!(module) do
+    Logger.debug("skipping compile step for precompiled module #{module.module}")
+
+    so_dir = :code.priv_dir(module.otp_app)
+    lib_dir = Path.join(so_dir, "lib")
+
+    dst_lib_path = Path.join(lib_dir, dst_lib_name(module.module))
+
+    # on MacOS, we must delete the old library because otherwise library
+    # integrity checker will kill the process
+    File.rm(dst_lib_path)
+    File.cp!(module.precompiled, dst_lib_path)
+
+    module
   end
 
   def targets do

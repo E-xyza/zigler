@@ -40,19 +40,20 @@ defmodule Zig.Sema do
   # actually executing the zig command to obtaitest/mark_as_impl_test.exsn the semantic analysis of the
   # desired file.
   def run_sema!(module) do
-    json_map = if library = module.precompiled do
-      library
-      |> obtain_precompiled_sema_json()
-      |> json_decode!()
-    else
-      module
-      |> Zig.Command.run_sema!()
-      |> json_decode!()
-      |> maybe_dump(module)
-      |> reject_ignored(module)
-      |> reject_allocators(module)
-      |> reject_error_interpreters(module)
-    end
+    json_map =
+      if library = module.precompiled do
+        library
+        |> obtain_precompiled_sema_json()
+        |> json_decode!()
+      else
+        module
+        |> Zig.Command.run_sema!()
+        |> json_decode!()
+        |> maybe_dump(module)
+        |> reject_ignored(module)
+        |> reject_allocators(module)
+        |> reject_error_interpreters(module)
+      end
 
     sema =
       json_map
@@ -116,7 +117,8 @@ defmodule Zig.Sema do
   end
 
   defp reject_error_interpreters(json, module) do
-    nifs = #{f
+    # {f
+    nifs =
       case module.nifs do
         {:auto, list} -> list
         list -> list

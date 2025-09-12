@@ -177,7 +177,7 @@ defmodule Zig.Compiler do
     %{module | parsed: parsed, external_resources: external_resources}
   end
 
-  defp precompile(module) do
+  defp precompile(%{precompiled: nil} = module) do
     path =
       module.module
       |> Builder.staging_directory()
@@ -188,6 +188,8 @@ defmodule Zig.Compiler do
 
     Logger.debug("wrote module code to #{path}")
   end
+
+  defp precompile(_), do: :ok
 
   defp recursive_resource_search(parsed, path, so_far) do
     Enum.reduce(parsed.dependencies, so_far, fn dep, so_far ->
