@@ -101,17 +101,22 @@ defmodule Zig.Command do
   end
 
   def compile!(module) do
+    # `precompiled` contains the path to a precompiled library.
     Logger.debug("skipping compile step for precompiled module #{module.module}")
 
     so_dir = :code.priv_dir(module.otp_app)
     lib_dir = Path.join(so_dir, "lib")
 
     dst_lib_path = Path.join(lib_dir, dst_lib_name(module.module))
+    force_recompile = System.get_env("ZIGLER_PRECOMPILED_FORCE_RELOAD", "false") == "true"
+    lib_exists = File.exists?(dst_lib_path)
 
-    # on MacOS, we must delete the old library because otherwise library
-    # integrity checker will kill the process
-    File.rm(dst_lib_path)
-    File.cp!(module.precompiled, dst_lib_path)
+    if force_recompile or lib_exists do
+      # on MacOS, we must delete the old library because otherwise library
+      # integrity checker will kill the process
+      File.rm(dst_lib_path)
+      File.cp!(module.precompiled, dst_lib_path)
+    end
 
     module
   end

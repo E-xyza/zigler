@@ -149,6 +149,7 @@ defmodule Zig.Module do
       context
     )
     |> validate_dependency_modules!(context)
+    |> Options.normalize(:precompiled, &normalize_precompiled/2, context)
     |> Options.normalize_path(:dir, context)
     |> Options.normalize_path(:module_code_path, context)
     |> Options.normalize_path(:zig_code_path, context)
@@ -297,6 +298,25 @@ defmodule Zig.Module do
     end
 
     opts
+  end
+
+  defp normalize_precompiled(file, context) when is_binary(file) do
+    File.exists?(file) or Options.raise_with("file #{file} does not exist", Options.push_key(context, :precompiled))
+    if System.get_env("ZIGLER_PRECOMPILE_FORCE_RECOMPILE", "true") != "true", do: file
+  end
+
+  defp normalize_precompiled({:web, url, shasum} = web, context) do
+    if not is_binary(url), do: Options.raise_with("url must be a binary", Options.push_key(context, :precompiled))
+    if not is_binary(shasum), do: Options.raise_with("shasum must be a binary", Options.push_key(context, :precompiled))
+    case Base.decode16(shasum, case: :mixed) do
+      {:ok, _} ->
+        if System.get_env("ZIGLER_PRECOMPILE_FORCE_RECOMPILE", "true") != "true", do: web
+      :error -> Options.raise_with("shasum must be base-16 encoded", Options.push_key(context, :precompiled))
+    end
+  end
+
+  defp normalize_precompiled(_, context) do
+    Options.raise_with("must be a path or `{:web, url, shasum}` tuple", Options.push_key(context, :precompiled))
   end
 
   defp normalize_easy_c(opts, context) do

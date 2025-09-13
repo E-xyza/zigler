@@ -31,6 +31,9 @@ end
 
 File.rm("priv/lib/Elixir.ZiglerTest.LocalPrecompiledTest.so")
 File.rm("priv/lib/Elixir.ZiglerTest.WebPrecompiledTest.so")
+if :os.type() == {:unix, :linux} do
+  File.rm_rf("/tmp/Elixir.ZiglerTest.WebPrecompiledTest")
+end
 
 Process.sleep(100)
 defmodule ZiglerTest.LocalPrecompiledTest do
