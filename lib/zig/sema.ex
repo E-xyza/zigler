@@ -40,11 +40,11 @@ defmodule Zig.Sema do
   # actually executing the zig command to obtaitest/mark_as_impl_test.exsn the semantic analysis of the
   # desired file.
   def run_sema!(module) do
+    {module, json} = obtain_precompiled_sema_json(module)
+
     json_map =
-      if library = module.precompiled do
-        library
-        |> obtain_precompiled_sema_json()
-        |> json_decode!()
+      if module.precompiled do
+        json_decode!(json)
       else
         module
         |> Zig.Command.run_sema!()
@@ -606,13 +606,72 @@ defmodule Zig.Sema do
       line: module.line
   end
 
+  defp obtain_precompiled_sema_json(%{precompiled: nil} = module), do: {module, nil}
+
+  defp obtain_precompiled_sema_json(%{precompiled: {:web, address, shasum}} = module) do
+    file = http_get!(address)
+
+    found_hash = :sha256
+    |> :crypto.hash(file)
+    |> Base.encode16(case: :lower)
+
+    found_hash == String.downcase(shasum) || raise "hash mismatch: expected #{shasum}, got #{found_hash}"
+
+    staging_dir = Zig.Builder.staging_directory(module.module)
+    staging_path = Path.join(staging_dir, Path.basename(address))
+
+    File.mkdir_p!(staging_dir)
+    File.write!(staging_path, file)
+
+    obtain_precompiled_sema_json(%{module | precompiled: staging_path})
+  end
+
   case :os.type() do
     {:unix, :linux} ->
-      defp obtain_precompiled_sema_json(file) do
+      defp obtain_precompiled_sema_json(%{precompiled: file} = module) do
         case System.cmd("objcopy", ["--dump-section", ".sema=/dev/stdout", file]) do
-          {json, 0} -> String.trim_trailing(json, <<0>>)
+          {json, 0} -> {module, String.trim_trailing(json, <<0>>)}
           {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
         end
       end
   end
+
+  @otp_version :otp_release
+               |> :erlang.system_info()
+               |> List.to_integer()
+
+  if @otp_version >= 25 do
+    defp ssl_opts do
+      [
+        verify: :verify_peer,
+        cacerts: :public_key.cacerts_get()
+      ]
+    end
+  else
+    defp ssl_opts do
+      # unfortunately in otp 24 there is not a clean way of obtaining cacerts
+      []
+    end
+  end
+
+  defp http_get!(url) do
+    {:ok, {{_, 200, _}, _headers, body}} =
+      :httpc.request(
+        :get,
+        {url, []},
+        [
+          ssl:
+            [
+              depth: 100,
+              customize_hostname_check: [
+                match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+              ]
+            ] ++ ssl_opts()
+        ],
+        body_format: :binary
+      )
+
+    body
+  end
+
 end

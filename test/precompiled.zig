@@ -15,7 +15,7 @@ var exported_nifs = [_]e.ErlNifFunc{.{ .name = "marshalled-add_one", .arity = 1,
 const entry = e.ErlNifEntry{
     .major = 2,
     .minor = 17,
-    .name = "Elixir.ZiglerTest.PrecompiledTest",
+    .name = "Elixir.ZiglerTest.LocalPrecompiledTest",
     .num_of_funcs = exported_nifs.len,
     .funcs = &exported_nifs,
     .load = null,
