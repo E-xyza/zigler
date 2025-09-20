@@ -5,6 +5,7 @@ const Allocator = @import("std").mem.Allocator;
 const Resource = beam.Resource;
 const root = @This();
 const threads = beam.threads;
+const builtin = @import("builtin");
 
 <%= for nif <- @nifs do %>
 <%= Nif.render_zig(nif) %>
@@ -74,4 +75,11 @@ export fn nif_init() *const e.ErlNifEntry {
 }
 <% end %>
 
-export const sema: [<%= byte_size(@sema_json) %>:0] u8 linksection(".sema") = "<%= escape(@sema_json) %>".*;
+fn sectionName() []const u8 {
+    return switch (builtin.target.ofmt) {
+        .macho => "__DATA,__sema", // Mach-O requires SEGMENT,SECTION
+        else => ".sema",           // ELF/COFF-style single name
+    };
+}
+
+export const sema: [<%= byte_size(@sema_json) %>:0] u8 linksection(sectionName()) = "<%= escape(@sema_json) %>".*;

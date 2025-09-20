@@ -301,22 +301,50 @@ defmodule Zig.Module do
   end
 
   defp normalize_precompiled(file, context) when is_binary(file) do
-    File.exists?(file) or Options.raise_with("file #{file} does not exist", Options.push_key(context, :precompiled))
-    if System.get_env("ZIGLER_PRECOMPILE_FORCE_RECOMPILE", "true") != "true", do: file
+    File.exists?(file) or
+      Options.raise_with("file #{file} does not exist", Options.push_key(context, :precompiled))
+
+    if System.get_env("ZIGLER_PRECOMPILE_FORCE_RECOMPILE", "false") != "true", do: file
   end
 
-  defp normalize_precompiled({:web, url, shasum} = web, context) do
-    if not is_binary(url), do: Options.raise_with("url must be a binary", Options.push_key(context, :precompiled))
-    if not is_binary(shasum), do: Options.raise_with("shasum must be a binary", Options.push_key(context, :precompiled))
-    case Base.decode16(shasum, case: :mixed) do
-      {:ok, _} ->
-        if System.get_env("ZIGLER_PRECOMPILE_FORCE_RECOMPILE", "true") != "true", do: web
-      :error -> Options.raise_with("shasum must be base-16 encoded", Options.push_key(context, :precompiled))
+  defp normalize_precompiled({:web, url, shasum}, context) do
+    if not is_binary(url),
+      do: Options.raise_with("url must be a binary", Options.push_key(context, :precompiled))
+
+    if not (is_binary(shasum) or is_list(shasum)),
+      do:
+        Options.raise_with(
+          "shasum must be a binary or keyword list",
+          Options.push_key(context, :precompiled)
+        )
+
+    if shasum = normalize_shasum(shasum) do
+      case Base.decode16(shasum, case: :mixed) do
+        {:ok, _} ->
+          if System.get_env("ZIGLER_PRECOMPILE_FORCE_RECOMPILE", "false") != "true",
+            do: {:web, substitute_url(url, context), shasum}
+
+        :error ->
+          Options.raise_with(
+            "shasum must be base-16 encoded",
+            Options.push_key(context, :precompiled)
+          )
+      end
     end
   end
 
   defp normalize_precompiled(_, context) do
-    Options.raise_with("must be a path or `{:web, url, shasum}` tuple", Options.push_key(context, :precompiled))
+    Options.raise_with(
+      "must be a path or `{:web, url, shasum}` tuple",
+      Options.push_key(context, :precompiled)
+    )
+  end
+
+  defp substitute_url(url, context) do
+    url
+    |> String.replace("#VERSION", "#{Application.spec(context.otp_app, :vsn)}")
+    |> String.replace("#TRIPLE", "#{sysarch_to_key()}")
+    |> String.replace("#EXT", if(match?({:win32, _}, :os.type()), do: "dll", else: "so"))
   end
 
   defp normalize_easy_c(opts, context) do
@@ -380,6 +408,12 @@ defmodule Zig.Module do
 
   defp normalize_nifs({:auto, nifs}, common_values, context) do
     {:auto, normalize_nifs(nifs, common_values, context)}
+  end
+
+  defp normalize_shasum(shasum) when is_binary(shasum), do: shasum
+
+  defp normalize_shasum(kwl) do
+    Keyword.get(kwl, sysarch_to_key())
   end
 
   defp validate_release_modes(mode) when mode in ~w[debug safe fast small env]a, do: :ok
@@ -546,9 +580,25 @@ defmodule Zig.Module do
     link_libs ++ c_srcs
   end
 
-  defp render_flags(flags), do: Enum.map_join(flags, ", ", &~s("#{&1}\"))
+  defp render_flags(flags) do
+    Enum.map_join(flags, ", ", &~s("#{&1}\"))
+  end
 
   defp escape(string) do
     String.replace(string, "\"", "\\\"")
+  end
+
+  defp sysarch_to_key do
+    :system_architecture
+    |> :erlang.system_info()
+    |> IO.iodata_to_binary()
+    |> String.split("-")
+    |> case do
+      [arch, "apple" | _] -> :"#{arch}-macos-none"
+      [arch, _, "freebsd" | _] -> :"#{arch}-freebsd-none"
+      ["i386", _vendor, os, abi] -> :"x86-#{os}-#{abi}"
+      ["i686", _, os, abi] -> :"x86-#{os}-#{abi}"
+      [arch, _vendor, os, abi] -> :"#{arch}-#{os}-#{abi}"
+    end
   end
 end

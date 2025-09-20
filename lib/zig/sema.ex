@@ -610,12 +610,14 @@ defmodule Zig.Sema do
 
   defp obtain_precompiled_sema_json(%{precompiled: {:web, address, shasum}} = module) do
     file = http_get!(address)
+    
+    found_hash =
+      :sha256
+      |> :crypto.hash(file)
+      |> Base.encode16(case: :lower)
 
-    found_hash = :sha256
-    |> :crypto.hash(file)
-    |> Base.encode16(case: :lower)
-
-    found_hash == String.downcase(shasum) || raise "hash mismatch: expected #{shasum}, got #{found_hash}"
+    found_hash == String.downcase(shasum) ||
+      raise "hash mismatch: expected #{shasum}, got #{found_hash}"
 
     staging_dir = Zig.Builder.staging_directory(module.module)
     staging_path = Path.join(staging_dir, Path.basename(address))
@@ -673,5 +675,4 @@ defmodule Zig.Sema do
 
     body
   end
-
 end

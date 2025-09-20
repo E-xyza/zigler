@@ -131,6 +131,7 @@ defmodule Zig.Options do
     end
   end
 
+  @spec raise_with(String.t(), term, term) :: no_return
   def raise_with(message, content \\ nil, context) do
     message =
       case content do

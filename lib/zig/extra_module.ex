@@ -32,11 +32,16 @@ defmodule Zig.ExtraModule do
     system_include_path =
       Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
 
+    erl_nif_win_path =
+      :zigler
+      |> :code.priv_dir()
+      |> Path.join("erl_nif_win")
+
     %__MODULE__{
       name: :erl_nif,
       path: Builder.beam_file("erl_nif.zig"),
       c: %C{
-        include_dirs: [system: system_include_path],
+        include_dirs: [system: system_include_path, system: erl_nif_win_path],
         link_libc: true
       }
     }

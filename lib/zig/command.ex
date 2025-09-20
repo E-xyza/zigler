@@ -59,40 +59,49 @@ defmodule Zig.Command do
 
   def compile!(module = %{precompiled: nil}) do
     staging_directory = Builder.staging_directory(module.module)
+    precompiler_settings = precompile_meta()
 
-    so_dir = :code.priv_dir(module.otp_app)
+    so_dir =
+      if precompiler_settings do
+        Path.dirname(module.file)
+      else
+        :code.priv_dir(module.otp_app)
+      end
 
     lib_dir = Path.join(so_dir, "lib")
+    dst_lib_path = Path.join(lib_dir, dst_lib_name(module))
 
-    run_zig("build -Doptimize=#{release_mode(module)} --prefix #{so_dir}",
+    target = precompile_name("-Dtarget=")
+
+    run_zig("build -Doptimize=#{release_mode(module)} #{target} --prefix #{so_dir}",
       cd: staging_directory,
       stderr_to_stdout: true
     )
 
-    case :os.type() do
-      {_, :nt} ->
+    Logger.debug("compiled lib at: #{so_dir}")
+
+    src_lib_path =
+      if windows?() do
         # windows dlls wind up in the bin directory instead of the lib directory.
-        bin_dir = Path.join(so_dir, "bin")
-        src_lib_path = Path.join(bin_dir, src_lib_name(module.module))
-        dst_lib_path = Path.join(lib_dir, dst_lib_name(module.module))
+        so_dir
+        |> Path.join("bin")
+        |> Path.join(src_lib_name(module.module))
+      else
+        Path.join(lib_dir, src_lib_name(module.module))
+      end
 
-        # on Windows, not deleting this causes a file permissions error.
-        File.rm(dst_lib_path)
-        File.cp!(src_lib_path, dst_lib_path)
+    # on Windows, not deleting this causes a file permissions error.
+    # on MacOS, we must delete the old library because otherwise library
+    # integrity checker will kill the process
+    #
+    # as this is required by two different build systems, we might as well
+    # remove on all.
+    File.rm(dst_lib_path)
+    File.cp!(src_lib_path, dst_lib_path)
 
-        Logger.debug("built library at #{dst_lib_path}")
+    precompile_callback(dst_lib_path)
 
-      _ ->
-        src_lib_path = Path.join(lib_dir, src_lib_name(module.module))
-        dst_lib_path = Path.join(lib_dir, dst_lib_name(module.module))
-
-        # on MacOS, we must delete the old library because otherwise library
-        # integrity checker will kill the process
-        File.rm(dst_lib_path)
-        File.cp!(src_lib_path, dst_lib_path)
-
-        Logger.debug("built library at #{dst_lib_path}")
-    end
+    Logger.debug("moved library to #{dst_lib_path}")
 
     module
   rescue
@@ -102,16 +111,19 @@ defmodule Zig.Command do
 
   def compile!(module) do
     # `precompiled` contains the path to a precompiled library.
-    Logger.debug("skipping compile step for precompiled module #{module.module}")
+    Logger.debug("skipping compile step for precompiled module #{module.module}, at #{module.precompiled}")
 
     so_dir = :code.priv_dir(module.otp_app)
     lib_dir = Path.join(so_dir, "lib")
 
-    dst_lib_path = Path.join(lib_dir, dst_lib_name(module.module))
+    dst_lib_path = Path.join(lib_dir, dst_lib_name(module))
+    Logger.debug("destination library path: #{dst_lib_path}")
+
     force_recompile = System.get_env("ZIGLER_PRECOMPILED_FORCE_RELOAD", "false") == "true"
     lib_exists = File.exists?(dst_lib_path)
 
-    if force_recompile or lib_exists do
+    if not (force_recompile or lib_exists) do
+      Logger.debug("transferring cached library from #{module.precompiled} to #{dst_lib_path}")
       # on MacOS, we must delete the old library because otherwise library
       # integrity checker will kill the process
       File.rm(dst_lib_path)
@@ -207,29 +219,36 @@ defmodule Zig.Command do
     if File.exists?(zig_executable), do: zig_executable
   end
 
-  defp src_lib_name(module) do
-    case {Target.resolve(), :os.type()} do
-      {nil, {:unix, :darwin}} ->
-        "lib#{module}.dylib"
+  defp precompile_name(prefix) do
+    if triple = precompile_meta() do
+      triple
+      |> Tuple.to_list()
+      |> Enum.take(3)
+      |> Enum.join("-")
+      |> String.replace_prefix("", prefix)
+    end
+  end
 
-      {nil, {_, :nt}} ->
+  defp src_lib_name(module) do
+    cond do
+      windows?() ->
         "#{module}.dll"
 
-      _ ->
+      macos?() ->
+        "lib#{module}.dylib"
+
+      true ->
         "lib#{module}.so"
     end
   end
 
   defp dst_lib_name(module) do
-    case {Target.resolve(), :os.type()} do
-      {nil, {:unix, :darwin}} ->
-        "#{module}.so"
+    affix = precompile_name(".#{module.version}.")
 
-      {nil, {_, :nt}} ->
-        "#{module}.dll"
-
-      _ ->
-        "#{module}.so"
+    if windows?() do
+      "#{module.module}#{affix}.dll"
+    else
+      "#{module.module}#{affix}.so"
     end
   end
 
@@ -252,6 +271,36 @@ defmodule Zig.Command do
     case :os.type() do
       {_, :nt} -> "\r\n"
       _ -> "\n"
+    end
+  end
+
+  defp macos? do
+    case {Target.resolve(), :os.type(), precompile_meta()} do
+      {_, _, {_, :macos, _, _}} -> true
+      {_, _, {_, _, _, _}} -> false
+      {nil, {:unix, :darwin}, nil} -> true
+      _ -> false
+    end
+  end
+
+  defp windows? do
+    case {Target.resolve(), :os.type(), precompile_meta()} do
+      {_, _, {_, :windows, _, _}} -> true
+      {_, _, {_, _, _, _}} -> false
+      {nil, {_, :nt}, nil} -> true
+      _ -> false
+    end
+  end
+
+  defp precompile_meta, do: Application.get_env(:zigler, :precompiling)
+
+  defp precompile_callback(filename) do
+    case precompile_meta() do
+      {_, _, _, callback} ->
+        callback.(filename)
+
+      _ ->
+        :ok
     end
   end
 end

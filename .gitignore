@@ -58,3 +58,7 @@ zigler-*.tar
 
 /test/code
 /test/corner_cases/staging
+
+# precompilation test module
+/precompiled/bin
+/precompiled/lib

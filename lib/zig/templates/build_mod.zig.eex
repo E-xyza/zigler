@@ -42,6 +42,11 @@ pub fn build(b: *std.Build) void {
             // the native backend still causes segfaults, so we must disable it for now.
             lib.use_llvm = true;
 
+            // Only for 32-bit x86 targets
+            if (resolved_target.result.cpu.arch == .x86) {
+                lib.link_z_notext = true; // passes -z notext to the linker
+            }
+
             b.installArtifact(lib);
         },
         .sema => {
