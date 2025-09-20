@@ -170,8 +170,6 @@ Thanks to Dave Cottlehuber @dch for testing.
 - add "dependency" option for zig dependencies
 - enable build.zig override
 - unification of path scheme ("./" is project-rooted)
-
-## Upcoming
 - `precompiled` mode that will let you use precompiled library assets.
 
 ## Possible

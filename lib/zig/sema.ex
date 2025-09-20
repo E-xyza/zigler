@@ -610,7 +610,7 @@ defmodule Zig.Sema do
 
   defp obtain_precompiled_sema_json(%{precompiled: {:web, address, shasum}} = module) do
     file = http_get!(address)
-    
+
     found_hash =
       :sha256
       |> :crypto.hash(file)

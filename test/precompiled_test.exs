@@ -126,8 +126,8 @@ defmodule ZiglerTest.MultiplatformPrecompiledTest do
 
   test "staging directory only contains the so file" do
     assert [
-      "Elixir.ZiglerTest.MultiplatformPrecompiledTest.0.15.1" <> _
-    ] = File.ls!(Zig.Builder.staging_directory(__MODULE__))
+             "Elixir.ZiglerTest.MultiplatformPrecompiledTest.0.15.1" <> _
+           ] = File.ls!(Zig.Builder.staging_directory(__MODULE__))
   end
 
   test "function works" do
