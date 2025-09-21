@@ -73,7 +73,7 @@ defmodule Zig.Command do
 
     target = precompile_name("-Dtarget=")
 
-    run_zig("build -Doptimize=#{release_mode(module)} #{target} --prefix #{so_dir}",
+    run_zig("build #{target} --prefix #{so_dir}",
       cd: staging_directory,
       stderr_to_stdout: true
     )
@@ -137,31 +137,6 @@ defmodule Zig.Command do
 
   def targets do
     run_zig("targets", [])
-  end
-
-  @release_modes %{
-    debug: "Debug",
-    fast: "ReleaseFast",
-    small: "ReleaseSmall",
-    safe: "ReleaseSafe"
-  }
-
-  def release_mode(%{release_mode: :env}) do
-    System.fetch_env!("ZIGLER_RELEASE_MODE")
-  end
-
-  def release_mode(%{release_mode: {:env, mode}}) do
-    case System.get_env("ZIGLER_RELEASE_MODE") do
-      env when env in ["", nil] ->
-        Map.fetch!(@release_modes, mode)
-
-      supplied ->
-        supplied
-    end
-  end
-
-  def release_mode(module) do
-    Map.fetch!(@release_modes, module.release_mode)
   end
 
   def executable_path do

@@ -166,11 +166,17 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 ## 0.15.1
 
-- rename "packages" option to "extra_modules"
-- add "dependency" option for zig dependencies
-- enable build.zig override
-- unification of path scheme ("./" is project-rooted)
-- `precompiled` mode that will let you use precompiled library assets.
+- Breaking changes:
+  - rename "packages" option to "extra_modules"
+  - unification of path scheme ("./" is project-rooted)
+  - renamed `release_mode` to `optimize`.  Also note the new optimize policy defaults
+    to `ReleaseSafe` in non-dev, non-test modes and defaults to `Debug` in test and dev.
+- Policy changes:
+  - error return traces by default in ReleaseSafe builds
+- Features:
+  - add "dependency" option for zig dependencies
+  - enable build.zig override
+  - `precompiled` option that will let you use precompiled library assets.
 
-## Possible
+## Possible Future Changes
 - `struct` which lets you declare a struct inside your zig code as the module's struct

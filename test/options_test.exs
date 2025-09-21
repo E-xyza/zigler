@@ -229,18 +229,18 @@ defmodule ZiglerTest.OptionsTest do
     end
   end
 
-  describe "release_mode" do
-    test "is ok with fast, small, safe, debug, env" do
-      Enum.each(~w[fast small safe debug env]a, fn mode ->
-        assert %{release_mode: ^mode} = make_module(otp_app: :zigler, release_mode: mode)
+  describe "optimize" do
+    test "is ok with fast, small, safe, debug" do
+      Enum.each(~w[fast small safe debug]a, fn mode ->
+        assert %{optimize: ^mode} = make_module(otp_app: :zigler, optimize: mode)
       end)
     end
 
     test "rejects other" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `release_mode` must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env` or `{:env, mode}`, got: `:foo`",
+                   "test/options_test.exs:4: option `optimize` must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env` or `{:env, mode}`, got: `:foo`",
                    fn ->
-                     make_module(otp_app: :zigler, release_mode: :foo)
+                     make_module(otp_app: :zigler, optimize: :foo)
                    end
     end
   end

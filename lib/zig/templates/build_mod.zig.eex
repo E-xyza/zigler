@@ -5,7 +5,8 @@ const BuildMode = enum{ nif_lib, sema };
 
 pub fn build(b: *std.Build) void {
     const resolved_target = b.standardTargetOptions(<%=Zig.Target.for_builder()%>);
-    const optimize = b.standardOptimizeOption(.{});
+    const optimize: std.builtin.OptimizeMode = <%= render_optimize_mode(assigns) %>;
+    const error_tracing = <%= @error_tracing %>;
 
     const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
 

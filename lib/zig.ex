@@ -333,7 +333,7 @@ defmodule Zig do
   - `otp_app`: required.  Default location where the shared libraries will be installed depends
     on this value.
   - `c`: see `t:c_options/0` for details.
-  - `release_mode`: the release mode to use when building the shared object.
+  - `optimize`: the release mode to use when building the shared object.
     - `:debug` (default) builds your shared object in zig's `Debug` build mode.
     - `:safe` builds your shared object in zig's `ReleaseSafe` build mode.
     - `:fast` builds your shared object in zig's `ReleaseFast` build mode.
@@ -377,7 +377,7 @@ defmodule Zig do
   @type options :: [
           otp_app: atom,
           c: [c_options],
-          release_mode: release_mode | :env | {:env, release_mode},
+          optimize: optimize | :env | {:env, optimize},
           easy_c: Path.t(),
           nifs: {:auto, keyword(nif_options)} | keyword(nif_options),
           ignore: [atom],
@@ -391,7 +391,7 @@ defmodule Zig do
           dump_build_zig: boolean | :stdout | :stderr | Path.t()
         ]
 
-  @type release_mode :: :debug | :safe | :fast | :small
+  @type optimize :: :debug | :safe | :fast | :small
 
   @typedoc """
   options for compiling C code.  See `t:c_path/0` for details on how to specify paths.

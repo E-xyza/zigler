@@ -16,7 +16,8 @@ const <%= @name %> = b.createModule(
         <% end %>
         <%= if @root? do %>
         .target = resolved_target,
-        .optimize = optimize
+        .optimize = optimize,
+        .error_tracing = error_tracing,
         <% end %>
     });
 

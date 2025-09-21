@@ -7,6 +7,9 @@ defmodule ZiglerTest.MakeGuides do
     "guides"
     |> File.ls!()
     |> Enum.each(fn
+      "11-precompiled.md" ->
+        :ok
+
       filename ->
         if String.ends_with?(filename, ".md") do
           basename =

@@ -216,6 +216,16 @@ test "erroring" do
 end
 ```
 
+> ### Error Return Trace Availability {: .info}
+>
+> errorReturnTrace is enabled by default in Debug and ReleaseSafe builds, and disabled in ReleaseFast
+> and ReleaseSmall builds. This differs from the zig default. 
+>
+> Note that the erlang compiler has a --no-debug-info parameter that might be set; if this flag is
+> set, then errorReturnTrace will be disabled in ReleaseSafe builds.
+>
+> To override this policy, set the `:error_tracing` option.
+
 ### A few notes on the above code.
 
 - to marshal a value out of a `beam.term` and into a zig static type, use [`beam.get`](beam.html#get).

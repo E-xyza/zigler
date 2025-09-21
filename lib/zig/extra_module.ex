@@ -7,19 +7,25 @@ defmodule Zig.ExtraModule do
 
   @enforce_keys [:name, :path]
 
-  defstruct @enforce_keys ++ [deps: [], c: nil, root?: false]
+  defstruct @enforce_keys ++
+              [
+                :c,
+                deps: [],
+                root?: false,
+                error_tracing: nil
+              ]
 
   alias Zig.Builder
   alias Zig.C
 
   use Builder, template: "templates/build_extra_mod.zig.eex"
 
-  def from_beam_module(assigns) do
+  def from_beam_module(build) do
     %__MODULE__{
       name: :nif,
-      path: assigns.zig_code_path,
-      deps: [:erl_nif, :beam, :attributes] ++ Enum.map(assigns.extra_modules, &module_spec/1),
-      c: assigns.c
+      path: build.zig_code_path,
+      deps: [:erl_nif, :beam, :attributes] ++ Enum.map(build.extra_modules, &module_spec/1),
+      c: build.c
     }
   end
 

@@ -16,7 +16,7 @@ defmodule Zig.Module do
   # you'll never see me ever import any other module.
   import Zig.QuoteErl
 
-  @enforce_keys [:otp_app, :module, :file, :line]
+  @enforce_keys [:otp_app, :module, :file, :line, :optimize, :error_tracing]
 
   defstruct @enforce_keys ++
               [
@@ -38,7 +38,6 @@ defmodule Zig.Module do
                 :sema,
                 :sema_json,
                 # defaulted options
-                release_mode: {:env, :debug},
                 ignore: [],
                 extra_modules: [],
                 dependencies: [],
@@ -78,7 +77,8 @@ defmodule Zig.Module do
           manifest_module: nil | module,
           sema: Sema.info(),
           sema_json: String.t(),
-          release_mode: Zig.release_mode(),
+          optimize: Zig.optimize(),
+          error_tracing: boolean,
           ignore: [atom],
           extra_modules: [ExtraModule.t()],
           dependencies: keyword(),
@@ -150,18 +150,21 @@ defmodule Zig.Module do
     )
     |> validate_dependency_modules!(context)
     |> Options.normalize(:precompiled, &normalize_precompiled/2, context)
+    |> Options.normalize(:optimize, &normalize_optimize/2, context)
     |> Options.normalize_path(:dir, context)
     |> Options.normalize_path(:module_code_path, context)
     |> Options.normalize_path(:zig_code_path, context)
     |> normalize_easy_c(context)
     |> Options.normalize_kw(:ignore, [], &normalize_atom_or_atomlist/2, context)
     |> Options.normalize_kw(:resources, [], &normalize_atom_or_atomlist/2, context)
-    |> Options.validate(:release_mode, &validate_release_modes/1, context)
     |> Options.validate(:cleanup, :boolean, context)
     |> Options.validate(:leak_check, :boolean, context)
+    |> Options.validate(:error_tracing, :boolean, context)
     |> Keyword.drop(@defaultable_nif_opts)
     |> Keyword.merge(common_values)
     |> normalize_nifs(context)
+    |> set_default_optimize()
+    |> set_error_tracing()
     |> then(&struct!(__MODULE__, &1))
   rescue
     e in KeyError ->
@@ -416,13 +419,33 @@ defmodule Zig.Module do
     Keyword.get(kwl, sysarch_to_key())
   end
 
-  defp validate_release_modes(mode) when mode in ~w[debug safe fast small env]a, do: :ok
-  defp validate_release_modes({:env, mode}) when mode in ~w[debug safe fast small]a, do: :ok
+  @modes ~w[debug safe fast small]a
+  @modes_str Enum.map(@modes, &"#{&1}")
 
-  defp validate_release_modes(other) do
-    {:error, "must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env` or `{:env, mode}`",
-     other}
+  defguardp is_env_mode(mode)
+            when mode == :env or
+                   (is_tuple(mode) and tuple_size(mode) == 2 and elem(mode, 0) == :env)
+
+  defp normalize_optimize(mode, _context) when mode in @modes, do: mode
+
+  defp normalize_optimize(other, context) when is_env_mode(other) do
+    case System.get_env("ZIGLER_RELEASE_MODE") do
+      mode when mode in @modes_str -> String.to_existing_atom(mode)
+      null when null in [nil, ""] -> default_optimize(other)
+      other -> Options.raise_with("must be one of #{inspect(@modes)}", other, context)
+    end
   end
+
+  defp normalize_optimize(other, context) do
+    Options.raise_with(
+      "must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env` or `{:env, mode}`",
+      other,
+      context
+    )
+  end
+
+  defp default_optimize(:env), do: nil
+  defp default_optimize({:env, mode}), do: mode
 
   # CODE RENDERING
 
@@ -550,6 +573,14 @@ defmodule Zig.Module do
   end
 
   # EEX Helper functions
+  defp render_optimize_mode(build) do
+    case build.optimize do
+      :debug -> ".Debug"
+      :safe -> ".ReleaseSafe"
+      :fast -> ".ReleaseFast"
+      :small -> ".ReleaseSmall"
+    end
+  end
 
   def render_c(nil, _), do: ""
   def render_c(%DepsModule{}, _), do: ""
@@ -599,6 +630,32 @@ defmodule Zig.Module do
       ["i386", _vendor, os, abi] -> :"x86-#{os}-#{abi}"
       ["i686", _, os, abi] -> :"x86-#{os}-#{abi}"
       [arch, _vendor, os, abi] -> :"#{arch}-#{os}-#{abi}"
+    end
+  end
+
+  defp set_default_optimize(opts) do
+    if opts[:optimize] do
+      opts
+    else
+      Keyword.put(opts, :optimize, default_optimize())
+    end
+  end
+
+  defp default_optimize do
+    if function_exported?(Mix, :env, 0) and Mix.env() in ~w[dev test]a, do: :debug, else: :safe
+  end
+
+  defp set_error_tracing(opts) do
+    cond do
+      !Code.compiler_options()[:debug_info] ->
+        Keyword.put(opts, :error_tracing, false)
+
+      Keyword.has_key?(opts, :error_tracing) ->
+        opts
+
+      :else ->
+        should_trace = Keyword.fetch!(opts, :optimize) in ~w[debug safe]a
+        Keyword.put(opts, :error_tracing, should_trace)
     end
   end
 end

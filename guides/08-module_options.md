@@ -105,22 +105,16 @@ end
 ## Release Mode
 
 Zig has several release modes, and you can specify which release mode to build your program under
-using the `release_mode` option. Importantly, it is possible to set a release mode that depends on
-mix environment.
+using the `optimize` option.  This option defaults to `:debug` if you are in `:dev` or `:test`
+and `:safe` otherwise (or if the `Mix` module is not available).  You may also specify `:env` which
+reades the `ZIGLER_RELEASE_MODE` environment variable, or `{:env, default}` which lets you specify
+a different default mode if `ZIGLER_RELEASE_MODE` is not set.
 
 ```elixir
-defmodule MyApp do
-  def env, do: :prod
-end
-
 defmodule ReleaseMode do
   use ExUnit.Case, async: true
-  mode = case MyApp.env() do
-    :prod -> :safe
-    _ -> :debug
-  end
 
-  use Zig, otp_app: :zigler, release_mode: mode
+  use Zig, otp_app: :zigler, optimize: :fast
 
   ~Z"""
   const beam = @import("beam");
@@ -130,7 +124,40 @@ defmodule ReleaseMode do
   """
 
   test "release mode" do
-    assert :ReleaseSafe == get_mode()
+    assert :ReleaseFast == get_mode()
+  end
+end
+```
+
+## Error Traces
+
+By default, zigler will provide error traces in Debug and ReleaseSafe modes.  You may
+override this in ReleaseSafe by supplying the `error_tracing` option
+
+```elixir
+defmodule ErrorTraces do
+  use ExUnit.Case, async: true
+
+  use Zig, otp_app: :zigler, error_tracing: false, optimize: :safe
+
+  ~Z"""
+  pub fn add_one(x: u32) !u32 {
+      if (x == 42) return error.BadNumber;
+      return x + 1;
+  }
+  """
+
+  test "error traces can be overridden" do
+    assert 48 == add_one(47)
+
+    stacktrace = try do
+      add_one(42)
+    rescue
+      _ ->
+        __STACKTRACE__
+    end
+
+    assert [] = stacktrace
   end
 end
 
