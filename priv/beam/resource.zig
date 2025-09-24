@@ -19,6 +19,8 @@ const ResourceError = error{incorrect_resource_type};
 
 pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOpts) type {
     return struct {
+        pub const __is_zigler_resource = true;
+        
         __payload: *T,
 
         // indicates if the resource, in context of this nif call, should be released at the end

@@ -437,11 +437,7 @@ defmodule Zig.Module do
   end
 
   defp normalize_optimize(other, context) do
-    Options.raise_with(
-      "must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env` or `{:env, mode}`",
-      other,
-      context
-    )
+    Options.raise_with("must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env`, or `{:env, mode}`", other, context)
   end
 
   defp default_optimize(:env), do: nil

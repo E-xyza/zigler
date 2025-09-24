@@ -238,7 +238,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects other" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `optimize` must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env` or `{:env, mode}`, got: `:foo`",
+                   "test/options_test.exs:4: option `optimize` must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env`, or `{:env, mode}`, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, optimize: :foo)
                    end

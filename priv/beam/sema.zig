@@ -39,41 +39,46 @@ fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) !void {
 
 fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S: type) !void {
     const name = @typeName(S);
-
-    try typeHeader(stream, "struct");
-    try stream.objectField("name");
-    try stream.write(name);
-    switch (s.layout) {
-        .@"packed" => {
-            try stream.objectField("packed_size");
-            try stream.write(@bitSizeOf(S));
-        },
-        .@"extern" => {
-            try stream.objectField("extern_size");
-            try stream.write(@bitSizeOf(S));
-        },
-        .auto => {},
-    }
-    try stream.objectField("fields");
-    try stream.beginArray();
-    inline for (s.fields) |field| {
-        try stream.beginObject();
+    if (@hasDecl(S, "__is_zigler_resource")) {
+        try typeHeader(stream, "resource");
         try stream.objectField("name");
-        try stream.write(field.name);
-        try stream.objectField("type");
-        try streamType(stream, field.type);
-        try stream.objectField("required");
-        if (field.default_value_ptr) |default_value| {
-            _ = default_value;
-            try stream.write(false);
-        } else {
-            try stream.write(true);
+        try stream.write(name);
+    } else {
+        try typeHeader(stream, "struct");
+        try stream.objectField("name");
+        try stream.write(name);
+        switch (s.layout) {
+            .@"packed" => {
+                try stream.objectField("packed_size");
+                try stream.write(@bitSizeOf(S));
+            },
+            .@"extern" => {
+                try stream.objectField("extern_size");
+                try stream.write(@bitSizeOf(S));
+            },
+            .auto => {},
         }
-        try stream.objectField("alignment");
-        try stream.write(field.alignment);
-        try stream.endObject();
+        try stream.objectField("fields");
+        try stream.beginArray();
+        inline for (s.fields) |field| {
+            try stream.beginObject();
+            try stream.objectField("name");
+            try stream.write(field.name);
+            try stream.objectField("type");
+            try streamType(stream, field.type);
+            try stream.objectField("required");
+            if (field.default_value_ptr) |default_value| {
+                _ = default_value;
+                try stream.write(false);
+            } else {
+                try stream.write(true);
+            }
+            try stream.objectField("alignment");
+            try stream.write(field.alignment);
+            try stream.endObject();
+        }
+        try stream.endArray();
     }
-    try stream.endArray();
 }
 
 fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) !void {
@@ -277,7 +282,7 @@ pub fn main() !void {
     const stdout = std.fs.File.stdout();
     var buffer: [256]u8 = undefined;
     var stdout_writer = stdout.writer(&buffer);
-    var stream: json.Stringify = .{.writer = &stdout_writer.interface};
+    var stream: json.Stringify = .{ .writer = &stdout_writer.interface };
 
     try streamModule(&stream, nif);
     try stdout_writer.interface.flush();

@@ -12,9 +12,9 @@ defmodule Zig.Type.Resource do
           name: atom
         }
 
-  def from_json(_, _) do
+  def from_json(%{"name" => name}, _) do
     # name must be assigned from the outer calling context
-    %__MODULE__{}
+    %__MODULE__{name: String.to_atom(name)}
   end
 
   def render_elixir_spec(_resource, %Return{as: :binary}) do

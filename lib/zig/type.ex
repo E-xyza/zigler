@@ -211,10 +211,7 @@ after
       %{"type" => "float"} ->
         Float.from_json(json)
 
-      %{
-        "type" => "struct",
-        "fields" => [%{"name" => "__payload"}, %{"name" => "__should_release"}]
-      } ->
+      %{"type" => "resource"} ->
         Resource.from_json(json, module)
 
       %{"type" => "struct", "name" => "beam.term"} ->
