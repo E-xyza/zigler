@@ -909,3 +909,15 @@ fn get_byte_size(comptime T: type) ?BinarySize {
         else => return null,
     }
 }
+
+// special getters
+
+pub fn get_list_cell(list: beam.term, opts: anytype) !struct{ beam.term, beam.term } {
+    const env = options.env(opts);
+    var head: e.ErlNifTerm = undefined;
+    var tail: e.ErlNifTerm = undefined;
+
+    if (e.enif_get_list_cell(env, list.v, &head, &tail) == 0) return error.badarg;
+
+    return .{.{ .v = head }, .{ .v = tail }};
+}

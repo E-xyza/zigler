@@ -1033,6 +1033,31 @@ pub const get = get_.get;
 /// ```
 pub const make = make_.make;
 
+// special getters
+
+
+/// <!-- topic: Term Management; args: source_list, options -->
+/// 
+/// This is a thin wrapper over [`e.enif_get_list_cell`](https://www.erlang.org/doc/man/erl_nif.html#enif_get_list_cell).
+///
+/// See also [`make_list_cell`](#make_list_cell) for the reverse operation.
+///
+/// #### Example
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn get_list_cell_example(term: beam.term) !i32 {
+///     const x, const y = try beam.get_list_cell(term, .{});
+///     return try beam.get(i32, x, .{}) + try beam.get(i32, y, .{});
+/// }
+/// """
+///
+/// test "get list_cell " do
+///   assert 47 = get_list_cell_example([40 | 7])
+/// end
+
+pub const get_list_cell = get_.get_list_cell;
+
 // special makers
 
 /// <!-- topic: Term Management; args: string -->
