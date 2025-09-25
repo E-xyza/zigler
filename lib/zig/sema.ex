@@ -60,7 +60,7 @@ defmodule Zig.Sema do
       |> assign_callbacks(module)
       |> integrate_sema(module)
 
-    %{module | sema: sema, sema_json: JSON.encode!(json_map)}
+    %{module | sema: sema, sema_json: Zig.json_encode!(json_map)}
   rescue
     e in Zig.CompileError ->
       resolved = Zig.CompileError.resolve(e, module)

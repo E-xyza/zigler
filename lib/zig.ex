@@ -697,6 +697,16 @@ defmodule Zig do
       other -> other
     end)
   end
+
+  case Code.ensure_loaded(:json) do
+    {:module, :json} ->
+      def json_decode!(string), do: :json.decode(string)
+      def json_encode!(term), do: :json.encode(term)
+
+    _ ->
+      def json_decode!(string), do: Jason.decode!(string)
+      def json_encode!(term), do: Jason.encode!(term)
+  end
 end
 
 # check that the otp_version is 24 or greater.

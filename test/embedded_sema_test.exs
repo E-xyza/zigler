@@ -10,6 +10,8 @@ defmodule ZiglerTest.EmbeddedSemaTest do
   }
   """
 
+
+
   test "linksection" do
     file =
       :zigler
@@ -22,6 +24,6 @@ defmodule ZiglerTest.EmbeddedSemaTest do
     assert %{"functions" => [%{"name" => "add_one"}]} =
              sema
              |> String.trim(<<0>>)
-             |> JSON.decode!()
+             |> Zig.json_decode!()
   end
 end
