@@ -5,6 +5,8 @@ on: push
 jobs:
   test:
     runs-on: windows-latest
+    env:
+        ImageOS: win22 
 
     steps:
       - name: Checkout repository
