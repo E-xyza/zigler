@@ -13,8 +13,8 @@ jobs:
       - name: Setup Elixir
         uses: erlef/setup-beam@v1
         with:
-          elixir-version: '1.18.3'  # adjust as needed
-          otp-version: '27.3'       # adjust as needed
+          elixir-version: '1.18.4'  # adjust as needed
+          otp-version: '28.1'       # adjust as needed
 
       - uses: actions/cache@v3
         id: deps-cache
@@ -38,7 +38,7 @@ jobs:
         id: zig-version
         shell: bash
         run: | 
-          VERSION=$(mix eval "IO.puts(Zig.version())" | tail -n 1)
+          VERSION=$(mix run --no-compile --no-start -e "IO.puts(Zig.version())" | tail -n 1)
           echo "zig_version=$VERSION" >> $GITHUB_OUTPUT
   
       - uses: actions/cache@v3

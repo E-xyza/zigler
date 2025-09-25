@@ -43,7 +43,7 @@ jobs:
   
       - name: Get Zig version
         id: zig-version
-        run: mix eval "IO.puts(Zig.version())"
+        run: mix run --no-compile --no-start -e "IO.puts(Zig.version())"
 
       - uses: actions/cache@v3
         id: zig-cache
