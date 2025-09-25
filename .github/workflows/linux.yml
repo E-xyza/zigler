@@ -9,8 +9,8 @@ jobs:
     strategy:
       matrix:
         pair:
-          - otp-version: '27.3'
-            elixir-version: '1.18.3'
+          - otp-version: '28.1'
+            elixir-version: '1.18.4'
           - otp-version: '27.3'
             elixir-version: '1.17.3'
           - otp-version: '26.2'
@@ -49,7 +49,7 @@ jobs:
 
     - name: Get Zig version
       id: zig-version
-      run: echo "version=$(mix eval 'IO.puts(Zig.version())')" >> $GITHUB_OUTPUT
+      run: echo "version=$(mix run --no-compile --no-start -e 'IO.puts(Zig.version())')" >> $GITHUB_OUTPUT
 
     - uses: actions/cache@v3
       id: zig-cache
