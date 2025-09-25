@@ -177,6 +177,7 @@ Thanks to Dave Cottlehuber @dch for testing.
   - add "dependency" option for zig dependencies
   - enable build.zig override
   - `precompiled` option that will let you use precompiled library assets.
+  - adds `beam.get_list_cell`
 
 ## Possible Future Changes
 - `struct` which lets you declare a struct inside your zig code as the module's struct

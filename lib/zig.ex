@@ -42,6 +42,7 @@ defmodule Zig do
   - [Global module options](08-module_options.html)
   - [Raw calling](09-raw_nifs.html)
   - [Module callbacks](10-callbacks.html)
+  - [Precompiled packages](11-precompiled.html)]
 
   > ### Zig version support {: .warning }
   >
@@ -54,6 +55,12 @@ defmodule Zig do
   Nerves is supported out of the box, and Zigler will be able to seamlessly
   detect the cross-compilation information (os, architecture, runtime) and
   build correctly for that target.
+
+  > ### Nerves warnings {: .warning }
+  >
+  > Note that when compiling for nerves, you may encounter warnings about modules
+  > being unable to be loaded.  This is because the system is cross-compiling the
+  > module for a different target architecture and this is normal behavior.
 
   ### Basic NIFs
 

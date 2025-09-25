@@ -3,6 +3,12 @@
 Zigler provides a way to precompile modules. This is useful for packaging libraries providing nifs,
 without requiring the user to install the zig compiler.
 
+> ## Precompiled is experimental {: .warning }
+>
+> Precompiled modules are still an experimental feature and the semantics and best practices here
+> are likely to change in the future.
+
+
 ## Local assets
 
 To use a locally precompiled library to load NIF code, supply the `:precompiled` option to `use
