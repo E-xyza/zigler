@@ -79,7 +79,6 @@ defmodule Zigler.MixProject do
       {:zig_parser, "~> 0.6"},
       # utility to help manage type protocols
       {:protoss, "~> 1.0"},
-      # "~> 0.14.2"},
       {:zig_get, path: "installer/"},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},

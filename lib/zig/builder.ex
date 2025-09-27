@@ -39,6 +39,28 @@ after
     Path.join(staging_root, to_string(module))
   end
 
+  # this is required because Elixir version < 1.16 doesn't support Path.relative_to/3
+  def staging_directory(module, from) do
+    case {staging_directory(module), from} do
+      {("/" <> mod_rest), "/" <> from_rest} ->
+        from_rest
+        |> String.split("/")
+        |> force_relative(String.split(mod_rest, "/"))
+      {dir_mod, _} ->
+        Path.relative_to(from, dir_mod)
+    end
+  end
+
+  defp force_relative([same | rest_left], [same | rest_right]), do: force_relative(rest_left, rest_right)
+  defp force_relative([], []), do: "."
+  defp force_relative(left, others) do
+    others
+    |> length()
+    |> then(&List.duplicate("..", &1))
+    |> Path.join()
+    |> Path.join(Path.join(left))
+  end
+
   EEx.function_from_file(
     :def,
     :build_zig_zon,
