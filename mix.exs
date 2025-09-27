@@ -84,9 +84,6 @@ defmodule Zigler.MixProject do
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
       {:zig_doc, "~> 0.5", only: :dev, runtime: false},
-      # MCP TOOLS
-      {:tidewave, "~> 0.4", only: :dev},
-      {:bandit, "~> 1.0", only: :dev}
     ] ++ json()
   end
 
