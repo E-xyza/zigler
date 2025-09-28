@@ -60,9 +60,10 @@ defmodule Zig.Sema do
       |> assign_callbacks(module)
       |> integrate_sema(module)
 
-    sema_json = json_map
-    |> Zig.json_encode!
-    |> IO.iodata_to_binary()
+    sema_json =
+      json_map
+      |> Zig.json_encode!()
+      |> IO.iodata_to_binary()
 
     %{module | sema: sema, sema_json: sema_json}
   rescue

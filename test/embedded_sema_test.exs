@@ -10,8 +10,6 @@ defmodule ZiglerTest.EmbeddedSemaTest do
   }
   """
 
-
-
   test "linksection" do
     file =
       :zigler

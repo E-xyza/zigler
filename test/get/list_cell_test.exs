@@ -19,11 +19,12 @@ defmodule ZiglerTest.Get.ListCellTest do
 
   test "raises on other than list" do
     Enum.each(
-      [0, 0.0, :foo, "foo", %{}, {}, make_ref(), self()], fn
+      [0, 0.0, :foo, "foo", %{}, {}, make_ref(), self()],
+      fn
         term ->
-          assert_raise ArgumentError, (fn ->
+          assert_raise ArgumentError, fn ->
             add_improper_list(term)
-          end)
+          end
       end
     )
   end
