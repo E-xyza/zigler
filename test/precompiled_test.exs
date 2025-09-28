@@ -15,6 +15,7 @@ if not File.exists?(lib_path) do
     """
     build-lib
       -dynamic
+      -fallow-shlib-undefined
       -fPIC
       -O ReleaseSafe
       --dep erl_nif

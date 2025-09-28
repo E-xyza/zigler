@@ -1,6 +1,8 @@
 defmodule ZiglerTest.EmbeddedSemaTest do
   require Logger
 
+  alias Zig.Sema
+
   use ExUnit.Case, async: true
   use Zig, otp_app: :zigler
 
@@ -15,13 +17,9 @@ defmodule ZiglerTest.EmbeddedSemaTest do
       :zigler
       |> :code.priv_dir()
       |> Path.join("lib")
-      |> Path.join("lib#{__MODULE__}.so")
+      |> Path.join("#{__MODULE__}.so")
 
-    {sema, 0} = System.cmd("objcopy", ["--dump-section", ".sema=/dev/stdout", file])
-
-    assert %{"functions" => [%{"name" => "add_one"}]} =
-             sema
-             |> String.trim(<<0>>)
-             |> Zig.json_decode!()
+    {_, sema_text} = Sema._obtain_precompiled_sema_json(%{precompiled: file})
+    assert %{"functions" => [%{"name" => "add_one"}]} = JSON.decode!(sema_text)
   end
 end

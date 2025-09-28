@@ -13,6 +13,7 @@ defmodule Zig.Manifest do
       # note that this resolver has to be rebuilt here, so that zigler can be compile-time only.
 
       unquote(def_or_defp)(__resolve(%{file_name: file, line: line}), do: __resolve(file, line))
+      unquote(def_or_defp)(__resolve(nil), do: {unquote(file), 0})
 
       defp __resolve(unquote(file), line), do: __resolve(@__zig_manifest, [], line)
 

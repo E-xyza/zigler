@@ -32,4 +32,11 @@ export fn nif_init() *const e.ErlNifEntry {
     return &entry;
 }
 
-export const sema: [182:0]u8 linksection(".sema") = "{\"decls\":[],\"functions\":[{\"name\":\"add_one\",\"params\":[{\"bits\":32,\"signedness\":\"unsigned\",\"type\":\"integer\"}],\"return\":{\"bits\":32,\"signedness\":\"unsigned\",\"type\":\"integer\"}}],\"types\":[]}".*;
+fn sectionName() []const u8 {
+    return switch (@import("builtin").target.ofmt) {
+        .macho => "__DATA,__sema", // Mach-O requires SEGMENT,SECTION
+        else => ".sema", // ELF/COFF-style single name
+    };
+}
+
+export const sema: [182:0]u8 linksection(sectionName()) = "{\"decls\":[],\"functions\":[{\"name\":\"add_one\",\"params\":[{\"bits\":32,\"signedness\":\"unsigned\",\"type\":\"integer\"}],\"return\":{\"bits\":32,\"signedness\":\"unsigned\",\"type\":\"integer\"}}],\"types\":[]}".*;

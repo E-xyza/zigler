@@ -40,7 +40,7 @@ defmodule Zig.Sema do
   # actually executing the zig command to obtaitest/mark_as_impl_test.exsn the semantic analysis of the
   # desired file.
   def run_sema!(module) do
-    {module, json} = obtain_precompiled_sema_json(module)
+    {module, json} = _obtain_precompiled_sema_json(module)
 
     json_map =
       if module.precompiled do
@@ -611,9 +611,9 @@ defmodule Zig.Sema do
       line: module.line
   end
 
-  defp obtain_precompiled_sema_json(%{precompiled: nil} = module), do: {module, nil}
+  def _obtain_precompiled_sema_json(%{precompiled: nil} = module), do: {module, nil}
 
-  defp obtain_precompiled_sema_json(%{precompiled: {:web, address, shasum}} = module) do
+  def _obtain_precompiled_sema_json(%{precompiled: {:web, address, shasum}} = module) do
     file = http_get!(address)
 
     found_hash =
@@ -630,16 +630,49 @@ defmodule Zig.Sema do
     File.mkdir_p!(staging_dir)
     File.write!(staging_path, file)
 
-    obtain_precompiled_sema_json(%{module | precompiled: staging_path})
+    _obtain_precompiled_sema_json(%{module | precompiled: staging_path})
   end
 
   case :os.type() do
     {:unix, :linux} ->
-      defp obtain_precompiled_sema_json(%{precompiled: file} = module) do
+      def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
         case System.cmd("objcopy", ["--dump-section", ".sema=/dev/stdout", file]) do
           {json, 0} -> {module, String.trim_trailing(json, <<0>>)}
           {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
         end
+      end
+
+    {:unix, :darwin} ->
+      def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
+        case System.cmd("otool", ["-s", "__DATA", "__sema", file]) do
+          {out, 0} -> {module, parse_otool_sema(out)}
+          {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
+        end
+      end
+
+      defp parse_otool_sema(otool_output) do
+        otool_output
+        |> String.split("\n")
+        |> Enum.drop(2)
+        |> Enum.map(&parse_otool_line/1)
+        |> IO.iodata_to_binary()
+        |> Base.decode16!(case: :mixed)
+        |> String.trim(<<0>>)
+      end
+
+      defp parse_otool_line(line) do
+        line
+        |> String.trim()
+        |> String.split()
+        |> Enum.drop(1)
+        |> Enum.map(&endian_reverse/1)
+      end
+
+      defp endian_reverse(str) do
+        str
+        |> String.to_charlist()
+        |> Enum.chunk_every(2)
+        |> Enum.reverse()
       end
   end
 
