@@ -40,6 +40,10 @@ if :os.type() == {:unix, :linux} do
   File.rm_rf!("/tmp/Elixir.ZiglerTest.WebPrecompiledTest")
 end
 
+ZiglerTest.LocalPrecompiledTest
+|> Zig.Builder.staging_directory()
+|> File.rm_rf!()
+
 ZiglerTest.MultiplatformPrecompiledTest
 |> Zig.Builder.staging_directory()
 |> File.rm_rf!()
