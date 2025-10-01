@@ -45,7 +45,7 @@ jobs:
         prepare: |
           pkg install -y erlang-runtime27
           pkg install -y elixir-devel
-          pkg install -y llvm19
+          pkg install -y llvm20
           pkg install -y ca_root_nss
 
           pkg install -y cmake zstd libxml2 lzma ninja

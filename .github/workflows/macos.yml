@@ -58,4 +58,4 @@ jobs:
         env:
           RUNNING_CI: "TRUE"
           CI_LOG_LEVEL: warning
-        run: mix test --exclude no_ci --trace
+        run: mix test --exclude no_ci
