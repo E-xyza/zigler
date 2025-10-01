@@ -19,7 +19,7 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
       # see: https://github.com/ziglang/zig/issues/25157
       @error_disabled true
     _ ->
-      false
+      @error_disabled false
   end
 
   test "when you call an erroring function" do
@@ -47,7 +47,7 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
   }
   """
 
-  test "when you call a transtively erroring function" do
+  test "when you call a transitively erroring function" do
     error =
       try do
         transitive_error()
@@ -65,7 +65,7 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
                payload: :my_error,
                stacktrace: [
                  {__MODULE__, :erroring, [:...], [file: @expected_file, line: 10]},
-                 {__MODULE__, :transitive_error, [:...], [file: @expected_file, line: 37]} | _
+                 {__MODULE__, :transitive_error, [:...], [file: @expected_file, line: 46]} | _
                ]
              } = error
     end
@@ -97,7 +97,7 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
                payload: :my_error,
                stacktrace: [
                  {__MODULE__, :erroring, [:...], [file: ^transitive_error_file, line: 2]},
-                 {__MODULE__, :transitive_file_error, [:...], [file: @expected_file, line: 67]}
+                 {__MODULE__, :transitive_file_error, [:...], [file: @expected_file, line: 76]}
                  | _
                ]
              } = error

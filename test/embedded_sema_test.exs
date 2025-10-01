@@ -15,18 +15,20 @@ defmodule ZiglerTest.EmbeddedSemaTest do
 
   use ExUnit.Case, async: true
 
-  test "linksection" do
-    # this must be purged otherwise if a memory-mapped, dlloaded so file is read
-    # by different mechanism a linux gets really upset and causes a segfault.
-    :code.purge(ZiglerTest.EmbeddedSema)
+  @filename "Elixir.ZiglerTest.EmbeddedSema.so"
 
+  test "linksection" do
     file =
       :zigler
       |> :code.priv_dir()
       |> Path.join("lib")
-      |> Path.join("ZiglerTest.EmbeddedSema.so")
+      |> Path.join(@filename)
 
-    {_, sema_text} = Sema._obtain_precompiled_sema_json(%{precompiled: file})
+    tmp_file = Path.join(System.tmp_dir!(), @filename)
+
+    File.cp!(file, tmp_file)
+
+    {_, sema_text} = Sema._obtain_precompiled_sema_json(%{precompiled: tmp_file})
     assert %{"functions" => [%{"name" => "add_one"}]} = JSON.decode!(sema_text)
   end
 end
