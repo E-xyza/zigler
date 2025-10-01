@@ -642,6 +642,14 @@ defmodule Zig.Sema do
         end
       end
 
+    {:win32, :nt} ->
+      def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
+        case System.cmd("dumpbin", ["/EXPORTS", file]) do
+          {out, 0} -> {module, parse_dumpbin_sema(out)}
+          {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
+        end
+      end
+
     {:unix, :darwin} ->
       def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
         case System.cmd("otool", ["-s", "__DATA", "__sema", file]) do
