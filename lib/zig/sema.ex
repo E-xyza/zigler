@@ -23,16 +23,6 @@ defmodule Zig.Sema do
           callbacks: [Function.t()]
         }
 
-  case Code.ensure_loaded(:json) do
-    {:module, :json} ->
-      defp json_decode!(string), do: :json.decode(string)
-      defp json_encode!(json, _), do: :json.encode(json)
-
-    _ ->
-      defp json_decode!(string), do: Jason.decode!(string)
-      defp json_encode!(json, opts), do: Jason.encode!(json, opts)
-  end
-
   # PHASE 1:  SEMA EXECUTION
 
   @spec run_sema!(Module.t()) :: Module.t()
@@ -44,11 +34,11 @@ defmodule Zig.Sema do
 
     json_map =
       if module.precompiled do
-        json_decode!(json)
+        Zig.json_decode!(json)
       else
         module
         |> Zig.Command.run_sema!()
-        |> json_decode!()
+        |> Zig.json_decode!()
         |> maybe_dump(module)
         |> reject_ignored(module)
         |> reject_allocators(module)
@@ -177,7 +167,7 @@ defmodule Zig.Sema do
 
   defp maybe_dump(sema_json, module) do
     if module.dump_sema do
-      sema_json_pretty = json_encode!(sema_json, pretty: true)
+      sema_json_pretty = Zig.json_encode!(sema_json, pretty: true)
       IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
     end
 

@@ -29,6 +29,6 @@ defmodule ZiglerTest.EmbeddedSemaTest do
     File.cp!(file, tmp_file)
 
     {_, sema_text} = Sema._obtain_precompiled_sema_json(%{precompiled: tmp_file})
-    assert %{"functions" => [%{"name" => "add_one"}]} = JSON.decode!(sema_text)
+    assert %{"functions" => [%{"name" => "add_one"}]} = Zig.json_decode!(sema_text)
   end
 end

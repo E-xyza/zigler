@@ -698,14 +698,22 @@ defmodule Zig do
     end)
   end
 
-  case Code.ensure_loaded(:json) do
-    {:module, :json} ->
-      def json_decode!(string), do: :json.decode(string)
-      def json_encode!(term), do: :json.encode(term)
+  case Code.ensure_loaded(JSON) do
+    {:module, JSON} ->
+      def json_decode!(string), do: JSON.decode!(string)
+      def json_encode!(term, opts \\ []) do
+        if Keyword.get(opts, :pretty, false) do
+          term
+          |> JSON.encode!()
+          |> :json.format(%{indent: "  ", line_separator: "\n", after_colon: " "})
+        else
+          JSON.encode!(term)
+        end
+      end
 
     _ ->
       def json_decode!(string), do: Jason.decode!(string)
-      def json_encode!(term), do: Jason.encode!(term)
+      def json_encode!(term, opts \\ []), do: Jason.encode!(term, opts)
   end
 end
 

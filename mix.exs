@@ -87,8 +87,8 @@ defmodule Zigler.MixProject do
   end
 
   defp json do
-    case Code.ensure_loaded(:json) do
-      {:module, :json} ->
+    case Code.ensure_loaded(JSON) do
+      {:module, JSON} ->
         []
 
       _ ->
