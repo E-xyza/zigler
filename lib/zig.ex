@@ -701,6 +701,7 @@ defmodule Zig do
   case Code.ensure_loaded(JSON) do
     {:module, JSON} ->
       def json_decode!(string), do: JSON.decode!(string)
+
       def json_encode!(term, opts \\ []) do
         if Keyword.get(opts, :pretty, false) do
           term

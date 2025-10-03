@@ -18,6 +18,7 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
     {{:unix, :darwin}, true} ->
       # see: https://github.com/ziglang/zig/issues/25157
       @error_disabled true
+
     _ ->
       @error_disabled false
   end
@@ -65,7 +66,7 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
                payload: :my_error,
                stacktrace: [
                  {__MODULE__, :erroring, [:...], [file: @expected_file, line: 10]},
-                 {__MODULE__, :transitive_error, [:...], [file: @expected_file, line: 46]} | _
+                 {__MODULE__, :transitive_error, [:...], [file: @expected_file, line: 47]} | _
                ]
              } = error
     end
@@ -97,7 +98,7 @@ defmodule ZiglerTest.ErrorReturn.BasicTest do
                payload: :my_error,
                stacktrace: [
                  {__MODULE__, :erroring, [:...], [file: ^transitive_error_file, line: 2]},
-                 {__MODULE__, :transitive_file_error, [:...], [file: @expected_file, line: 76]}
+                 {__MODULE__, :transitive_file_error, [:...], [file: @expected_file, line: 77]}
                  | _
                ]
              } = error
