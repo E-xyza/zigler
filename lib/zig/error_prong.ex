@@ -71,7 +71,7 @@ defmodule Zig.ErrorProng do
     ]
   end
 
-  def return_error_prong(:elixir, ignored) do
+  def return_error_prong(:elixir, ignored, function_name, line_number) do
     stacktrace_prep =
       case ignored do
         [] ->
@@ -89,6 +89,18 @@ defmodule Zig.ErrorProng do
       end
 
     quote do
+      :error, {:error, type, nil} ->
+        fun_name = unquote(function_name)
+
+        case unquote(stacktrace_prep) do
+          [{__MODULE__, ^fun_name, arity, opts} | rest] ->
+            new_opts = Keyword.replace_lazy(opts, :line, fn _ -> unquote(line_number) end)
+            :erlang.raise(:error, type, [{__MODULE__, fun_name, arity, new_opts} | rest])
+
+          other ->
+            :erlang.raise(:error, type, other)
+        end
+
       :error, {:error, type, extra_stacktrace} ->
         stacktrace = unquote(stacktrace_prep)
 
@@ -105,13 +117,10 @@ defmodule Zig.ErrorProng do
           |> Enum.reverse(stacktrace)
 
         :erlang.raise(:error, type, new_stacktrace)
-
-      :error, {:error, type} ->
-        :erlang.raise(:error, type, [])
     end
   end
 
-  def return_error_prong(:erlang, _) do
+  def return_error_prong(:erlang, _, _, _) do
     ["error:{error, Type, _ExtraStacktrace}:Stacktrace -> erlang:raise(error, Type, Stacktrace)"]
   end
 end

@@ -347,7 +347,7 @@ defmodule Zig.Module do
     url
     |> String.replace("#VERSION", "#{Application.spec(context.otp_app, :vsn)}")
     |> String.replace("#TRIPLE", "#{sysarch_to_key()}")
-    |> String.replace("#EXT", if(match?({:win32, _}, :os.type()), do: "dll", else: "so"))
+    |> String.replace("#EXT", if(match?({_, :nt}, :os.type()), do: "dll", else: "so"))
   end
 
   defp normalize_easy_c(opts, context) do
@@ -647,6 +647,9 @@ defmodule Zig.Module do
 
   defp set_error_tracing(opts) do
     cond do
+      !Zig._errors_available?() ->
+        Keyword.put(opts, :error_tracing, false)
+
       !Code.compiler_options()[:debug_info] ->
         Keyword.put(opts, :error_tracing, false)
 

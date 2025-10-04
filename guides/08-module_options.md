@@ -157,7 +157,7 @@ defmodule ErrorTraces do
         __STACKTRACE__
     end
 
-    assert [] = stacktrace
+    assert [{__MODULE__, :add_one, 1, _} | _] = stacktrace
   end
 end
 

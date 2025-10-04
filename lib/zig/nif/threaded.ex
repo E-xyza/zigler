@@ -49,7 +49,7 @@ defmodule Zig.Nif.Threaded do
     error_return_prong =
       List.wrap(
         if match?(%Zig.Type.Error{}, nif.signature.return) do
-          ErrorProng.return_error_prong(:elixir, [entrypoint(nif, :join)])
+          ErrorProng.return_error_prong(:elixir, [entrypoint(nif, :join)], nif.name, nif.line)
         end
       )
 

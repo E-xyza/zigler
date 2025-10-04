@@ -1947,7 +1947,7 @@ pub fn raise_with_error_return(err: anytype, maybe_return_trace: ?*std.builtin.S
     return if (maybe_return_trace) |return_trace|
         raise_exception(.{ .@"error", err, return_trace }, opts)
     else
-        raise_exception(.{ .@"error", err }, opts);
+        raise_exception(.{ .@"error", err, null }, opts);
 }
 
 // unignore this on 0.15, if this is validated
