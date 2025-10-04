@@ -624,14 +624,6 @@ defmodule Zig.Sema do
   end
 
   case :os.type() do
-    {:unix, :linux} ->
-      def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
-        case System.cmd("objcopy", ["--dump-section", ".sema=/dev/stdout", file]) do
-          {json, 0} -> {module, String.trim_trailing(json, <<0>>)}
-          {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
-        end
-      end
-
     {:unix, :darwin} ->
       def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
         case System.cmd("otool", ["-s", "__DATA", "__sema", file]) do
@@ -663,6 +655,23 @@ defmodule Zig.Sema do
         |> String.to_charlist()
         |> Enum.chunk_every(2)
         |> Enum.reverse()
+      end
+
+    {:unix, _} ->
+      # linux, freebsd
+      def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
+        case System.cmd("objcopy", ["--dump-section", ".sema=/dev/stdout", file]) do
+          {json, 0} -> {module, String.trim_trailing(json, <<0>>)}
+          {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
+        end
+      end
+
+    {_, :nt} ->
+      def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
+        case System.cmd("objcopy", ["--dump-section", ".sema=-", file]) do
+          {json, 0} -> {module, String.trim_trailing(json, <<0>>)}
+          {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
+        end
       end
   end
 
