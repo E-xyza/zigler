@@ -700,9 +700,11 @@ defmodule Zig do
 
   case Code.ensure_loaded(JSON) do
     {:module, JSON} ->
-      def json_decode!(string), do: JSON.decode!(string)
+      @doc false
+      def _json_decode!(string), do: JSON.decode!(string)
 
-      def json_encode!(term, opts \\ []) do
+      @doc false
+      def _json_encode!(term, opts \\ []) do
         if Keyword.get(opts, :pretty, false) do
           term
           |> JSON.encode!()
@@ -713,8 +715,24 @@ defmodule Zig do
       end
 
     _ ->
-      def json_decode!(string), do: Jason.decode!(string)
-      def json_encode!(term, opts \\ []), do: Jason.encode!(term, opts)
+      @doc false
+      def _json_decode!(string), do: Jason.decode!(string)
+      @doc false
+      def _json_encode!(term, opts \\ []), do: Jason.encode!(term, opts)
+  end
+
+  @doc false
+  # true if error return traces are available on this platform
+  def _errors_available? do
+    case :os.type() do
+      {:unix, :darwin} ->
+        # MacOS in general: https://github.com/ziglang/zig/issues/25433
+        # x86, see: https://github.com/ziglang/zig/issues/25157
+        false
+
+      _ ->
+        true
+    end
   end
 end
 

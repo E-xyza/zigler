@@ -34,11 +34,11 @@ defmodule Zig.Sema do
 
     json_map =
       if module.precompiled do
-        Zig.json_decode!(json)
+        Zig._json_decode!(json)
       else
         module
         |> Zig.Command.run_sema!()
-        |> Zig.json_decode!()
+        |> Zig._json_decode!()
         |> maybe_dump(module)
         |> reject_ignored(module)
         |> reject_allocators(module)
@@ -52,7 +52,7 @@ defmodule Zig.Sema do
 
     sema_json =
       json_map
-      |> Zig.json_encode!()
+      |> Zig._json_encode!()
       |> IO.iodata_to_binary()
 
     %{module | sema: sema, sema_json: sema_json}
@@ -167,7 +167,7 @@ defmodule Zig.Sema do
 
   defp maybe_dump(sema_json, module) do
     if module.dump_sema do
-      sema_json_pretty = Zig.json_encode!(sema_json, pretty: true)
+      sema_json_pretty = Zig._json_encode!(sema_json, pretty: true)
       IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
     end
 
