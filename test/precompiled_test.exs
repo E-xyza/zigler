@@ -20,6 +20,8 @@ if Version.match?(this_version, ">= 16.1.0") do
     system_include_path =
       Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
 
+    windows_system_include_path = if :os.type() == {:win32, :nt}, do: "-I#{:code.priv_dir(:zigler)}/erl_nif_win"
+
     Zig.Command.run_zig(
       """
       build-lib
@@ -32,6 +34,7 @@ if Version.match?(this_version, ">= 16.1.0") do
         -Mroot=#{zig_path}
         -lc
         -I#{system_include_path}
+        #{windows_system_include_path}
         -Merl_nif=#{erl_nif_path}
         --dep erl_nif
         -Mbeam=#{beam_path}
