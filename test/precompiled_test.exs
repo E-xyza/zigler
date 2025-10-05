@@ -8,9 +8,14 @@ this_version =
     [major, minor, patch | _] -> "#{major}.#{minor}.#{patch}"
   end
 
+windows? = :os.type() == {:win32, :nt}
+
 if Version.match?(this_version, ">= 16.1.0") do
   priv_dir = :code.priv_dir(:zigler)
-  lib_path = Path.join(priv_dir, "lib/precompiled.so")
+
+  suffix = if windows?, do: "dll", else: "so"
+
+  lib_path = Path.join(priv_dir, "lib/precompiled.#{suffix}")
 
   if not File.exists?(lib_path) do
     zig_path = Path.join(__DIR__, "precompiled.zig")
@@ -20,7 +25,7 @@ if Version.match?(this_version, ">= 16.1.0") do
     system_include_path =
       Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
 
-    windows_system_include_path = if :os.type() == {:win32, :nt}, do: "-I#{:code.priv_dir(:zigler)}/erl_nif_win"
+    windows_system_include_path = if windows?, do: "-I#{:code.priv_dir(:zigler)}/erl_nif_win"
 
     Zig.Command.run_zig(
       """
@@ -44,9 +49,9 @@ if Version.match?(this_version, ">= 16.1.0") do
     )
   end
 
-  File.rm("priv/lib/Elixir.ZiglerTest.LocalPrecompiledTest.so")
-  File.rm("priv/lib/Elixir.ZiglerTest.WebPrecompiledTest.so")
-  File.rm("priv/lib/Elixir.ZiglerTest.MultiplatformPrecompiledTest.so")
+  File.rm("priv/lib/Elixir.ZiglerTest.LocalPrecompiledTest.#{suffix}")
+  File.rm("priv/lib/Elixir.ZiglerTest.WebPrecompiledTest.#{suffix}")
+  File.rm("priv/lib/Elixir.ZiglerTest.MultiplatformPrecompiledTest.#{suffix}")
 
   if :os.type() == {:unix, :linux} do
     File.rm_rf!("/tmp/Elixir.ZiglerTest.WebPrecompiledTest")
@@ -67,7 +72,7 @@ if Version.match?(this_version, ">= 16.1.0") do
   defmodule ZiglerTest.LocalPrecompiledTest do
     use ExUnit.Case, async: true
 
-    use Zig, otp_app: :zigler, precompiled: "./priv/lib/precompiled.so"
+    use Zig, otp_app: :zigler, precompiled: "./priv/lib/precompiled.#{suffix}"
 
     ~Z"""
     pub fn add_one(x: u32) u32 {
