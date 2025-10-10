@@ -179,7 +179,6 @@ Thanks to Dave Cottlehuber @dch for testing.
   - c_ulonglong doesn't work on windows; c_long doesn't work on other platforms.
 - Features:
   - add "dependency" option for zig dependencies
-  - enable build.zig override
   - `precompiled` option that will let you use precompiled library assets.  NOTE: this feature is highly
     experimental and functions might need to be compiled for different erts versions.  This will likely 
     be changed in the future.

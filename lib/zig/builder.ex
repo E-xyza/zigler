@@ -131,6 +131,7 @@ after
       staging_directory
       |> Path.join("libc.txt")
       |> File.write!(libc())
+
       "libc.txt"
     end
   end

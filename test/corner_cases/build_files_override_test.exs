@@ -1,10 +1,10 @@
-## doesn't work, for now.
+# TODO: re-enable this in 0.16
 
-# defmodule ZiglerTest.CornerCases.BuildZigOverrideTest do
+# defmodule ZiglerTest.CornerCases.BuildFilesOverrideTest do
 #   # uses the "build.zig" from `direct_file_test`
 #   use ExUnit.Case, async: true
 #
-#   # note that the import statement here is missing the module import, which is
+#   # note that the import statement here is missing the module import info, which is
 #   # completely taken care of by the build_files_dir.  This is not necessarily
 #   # the best use case for build_files_dir, but is good at exercising the
 #   # relevant functionality.
