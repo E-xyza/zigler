@@ -19,6 +19,7 @@ pub fn build(b: *std.Build) void {
 
     switch (mode) {
         .nif_lib => {
+
             <%= Builder.render_build(ExtraModule.erl_nif()) %>
             <%= Builder.render_build(ExtraModule.beam()) %>
             <%= Builder.render_build(ExtraModule.attributes()) %>
@@ -48,6 +49,10 @@ pub fn build(b: *std.Build) void {
                 lib.link_z_notext = true; // passes -z notext to the linker
             }
 
+            <%= if @libc_txt do %>
+            lib.setLibCFile(b.path("<%= @libc_txt %>"));
+            <% end %>
+
             b.installArtifact(lib);
         },
         .sema => {
@@ -74,4 +79,8 @@ pub fn build(b: *std.Build) void {
             sema_step.dependOn(&sema_run_cmd.step);
         }
     }
+}
+
+fn getenvAlloc(alloc: std.mem.Allocator, name: []const u8) ?[]u8 {
+    return std.process.getEnvVarOwned(alloc, name) catch null;
 }

@@ -32,8 +32,6 @@ defmodule Zig.Command do
   end
 
   def run_sema!(module) do
-    # c = maybe_add_windows_shim(opts[:c])
-
     # nerves will put in a `CC` command that we need to bypass because it misidentifies
     # libc locations for statically linking it.
     System.delete_env("CC")

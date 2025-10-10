@@ -87,6 +87,8 @@ after
       File.mkdir_p!(staging_directory)
     end
 
+    libc_txt = build_libc_file(staging_directory)
+
     # TODO: move to Attributes module.
     attribs_path = Path.join(staging_directory, "attributes.zig")
     File.write!(attribs_path, Enum.map(module.attributes, &Attributes.render_zig/1))
@@ -105,7 +107,7 @@ after
       |> Path.join("build.zig.zon")
       |> File.cp!(build_zig_zon_path)
     else
-      File.write!(build_zig_path, render_build(module))
+      File.write!(build_zig_path, render_build(%{module | libc_txt: libc_txt}))
       Command.fmt(build_zig_path)
 
       File.write!(build_zig_zon_path, build_zig_zon(module))
@@ -122,4 +124,41 @@ after
 
   # if precompiled file is specified, do nothing.
   def stage(module), do: module
+
+  defp build_libc_file(staging_directory) do
+    # build a libc file for windows-msvc target
+    if match?({_, :windows, :msvc, _}, Application.get_env(:zigler, :precompiling)) do
+      staging_directory
+      |> Path.join("libc.txt")
+      |> File.write!(libc())
+      "libc.txt"
+    end
+  end
+
+  defp libc do
+    Regex.replace(
+      ~r/\$\{([A-Z0-9_]+)\}/,
+      """
+      # The directory that contains `stdlib.h` (UCRT headers from the Windows SDK)
+      include_dir=${WINSDK_ROOT}/Include/${WINSDK_VER}/ucrt
+
+      # The system-specific include directory (MSVC headers; contains vcruntime.h)
+      sys_include_dir=${MSVC_ROOT}/include
+
+      # For Windows, point this to the UCRT library directory in the SDK
+      # (Zig uses this field for the CRT libraries on Windows)
+      crt_dir=${WINSDK_ROOT}/Lib/${WINSDK_VER}/ucrt/x64
+
+      # MSVC libraries (contains vcruntime.lib, etc.)
+      msvc_lib_dir=${MSVC_ROOT}/lib/x64
+
+      # Windows SDK "um" libraries (contains kernel32.lib, user32.lib, etc.)
+      kernel32_lib_dir=${WINSDK_ROOT}/Lib/${WINSDK_VER}/um/x64
+
+      # Not used on Windows
+      gcc_dir=
+      """,
+      fn _, var -> System.fetch_env!(var) end
+    )
+  end
 end

@@ -37,6 +37,7 @@ defmodule Zig.Module do
                 :manifest_module,
                 :sema,
                 :sema_json,
+                :libc_txt,
                 # defaulted options
                 ignore: [],
                 extra_modules: [],
@@ -77,6 +78,7 @@ defmodule Zig.Module do
           manifest_module: nil | module,
           sema: Sema.info(),
           sema_json: String.t(),
+          libc_txt: nil | Path.t(),
           optimize: Zig.optimize(),
           error_tracing: boolean,
           ignore: [atom],

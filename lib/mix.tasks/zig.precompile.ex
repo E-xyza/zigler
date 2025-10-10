@@ -1,12 +1,39 @@
 defmodule Mix.Tasks.Zig.Precompile do
   use Mix.Task
 
+  require Logger
+
+  @moduledoc """
+  precompiles a group of zig modules for all supported platforms.
+
+  In order to cross-compile windows-msvc, you will need to have the following environment
+  variables set:
+
+  - `MSVC_ROOT`: path to the root of a Visual Studio installation
+  - `WINSDK_ROOT`: path to the root of a Windows SDK installation
+  - `WINSDK_VERSION`: version of the Windows SDK to use, e.g. `
+
+  TODO: add a way to specify subsets of platforms.
+  """
+
   @shortdoc "precompiles a zig module"
+
+  @msvc_dir System.get_env("MSVC_ROOT", "")
+  @winsdk_dir System.get_env("WINSDK_ROOT", "")
+  @winsdk_version System.get_env("WINSDK_VER", "")
+
+  if match?({_, :nt}, :os.type()) or
+       Enum.all?([@msvc_dir, @winsdk_dir, @winsdk_version], &(&1 != "")) do
+    @windows [:msvc, :gnu]
+  else
+    Logger.warning("not cross-compiling windows-msvc")
+    @windows [:gnu]
+  end
 
   @triples [
     aarch64: [freebsd: :none, linux: [:gnu, :musl], macos: :none],
     arm: [linux: [:gnueabi, :gnueabihf, :musleabi, :musleabihf]],
-    x86_64: [freebsd: :none, linux: [:gnu, :musl], macos: :none, windows: :gnu],
+    x86_64: [freebsd: :none, linux: [:gnu, :musl], macos: :none, windows: @windows],
     x86: [linux: [:gnu, :musl], windows: :gnu]
   ]
 

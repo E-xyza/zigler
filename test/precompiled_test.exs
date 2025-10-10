@@ -133,6 +133,7 @@ if Version.match?(this_version, ">= 16.1.0") do
       "x86_64-linux-musl": "857b0ed35c78b588fa43dc4a5c4e3dd9143d9102c559a67812b0af6185eae117",
       "x86_64-macos-none": "e5ff347c2d11b463b5e6f0097687d578c800e7fbb725aa33a2e802d3f473371c",
       "x86_64-windows-gnu": "3ee18aec252eca92f19d920f6de143e59700e0f038916fb3717aa9869b2c5102",
+      "x86_64-windows-msvc": "9facf75d545b6cf45d2367f42c8a4b0bbea5b57bea72eac83f9a694aa4370e7d",
       "x86-linux-gnu": "9ef68f25143827e6cbea13fa264f0002d7d1f2fc2ad7c07febe5be5fbc4f75c6",
       "x86-linux-musl": "227afab8c4a20b4dc88ae0efeb0f6a93952c9ad54aa3165d166cebd66ae5d158",
       "x86-windows-gnu": "4602d68145becb66d4f357ab163a5cb8a7f5466a4004cd6419f998c241b52d2b"
