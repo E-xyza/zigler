@@ -657,8 +657,24 @@ defmodule Zig.Sema do
         |> Enum.reverse()
       end
 
+    {:unix, :freebsd} ->
+      # freebsd
+      def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
+        tmp_path = 16
+        |> :crypto.strong_rand_bytes
+        |> Base.encode16(case: :lower)
+        |> then(&Path.join(System.tmp_dir!(), &1))
+
+        File.touch!(tmp_path)
+
+        case System.cmd("objcopy", ["-O", "binary", "-j", ".sema", file, tmp_path]) do
+          {_, 0} -> {module, File.read!(tmp_path)}
+          {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
+        end
+      end
+
     {:unix, _} ->
-      # linux, freebsd
+      # linux
       def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
         case System.cmd("objcopy", ["--dump-section", ".sema=/dev/stdout", file]) do
           {json, 0} -> {module, String.trim_trailing(json, <<0>>)}
