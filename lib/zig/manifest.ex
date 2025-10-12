@@ -7,6 +7,15 @@ defmodule Zig.Manifest do
   @type t :: [{pos_integer(), {Path.t(), pos_integer()}}]
 
   defmacro resolver(manifest, file, def_or_defp) do
+    windows_file =
+      case String.replace(file, "/", "\\") do
+        <<drive_letter, ":", rest::binary>> when drive_letter in ?a..?z ->
+          <<drive_letter - 32, ":", rest::binary>>
+
+        other ->
+          other
+      end
+
     quote do
       @__zig_manifest unquote(manifest)
 
@@ -16,6 +25,11 @@ defmodule Zig.Manifest do
       unquote(def_or_defp)(__resolve(nil), do: {unquote(file), 0})
 
       defp __resolve(unquote(file), line), do: __resolve(@__zig_manifest, [], line)
+
+      if {:win32, :nt} == :os.type() do
+        @windows_file unquote(windows_file)
+        defp __resolve(@windows_file, line), do: __resolve(@__zig_manifest, [], line)
+      end
 
       defp __resolve(file, line) when is_binary(file), do: {file, line}
 

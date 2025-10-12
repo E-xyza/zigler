@@ -54,17 +54,19 @@ after
 
       {dir_mod, _} ->
         Path.relative_to(from, dir_mod)
-    end 
+    end
   end
 
   if {:win32, :nt} == :os.type() do
     defp norm(path) do
-      path 
+      path
       |> String.replace("\\", "/")
       |> case do
-        <<a, ?:, rest :: binary>> when a in ?A..?Z ->
+        <<a, ?:, rest::binary>> when a in ?A..?Z ->
           <<a + 32, ?:, rest::binary>>
-        other -> other
+
+        other ->
+          other
       end
     end
   else

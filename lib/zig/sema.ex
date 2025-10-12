@@ -660,10 +660,11 @@ defmodule Zig.Sema do
     {:unix, :freebsd} ->
       # freebsd
       def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
-        tmp_path = 16
-        |> :crypto.strong_rand_bytes
-        |> Base.encode16(case: :lower)
-        |> then(&Path.join(System.tmp_dir!(), &1))
+        tmp_path =
+          16
+          |> :crypto.strong_rand_bytes()
+          |> Base.encode16(case: :lower)
+          |> then(&Path.join(System.tmp_dir!(), &1))
 
         File.touch!(tmp_path)
 

@@ -54,11 +54,15 @@ defmodule Zig.CompileError do
 
   defp parse_line(error_line, absolute_path, relative_path, manifest_module) do
     absolute_path = adjust_windows_path(absolute_path)
+
     cond do
       # if it's the first part of the error message, we must memoize the new file/line
       String.starts_with?(error_line, "#{absolute_path}:") ->
         linerest = String.trim_leading(error_line, "#{absolute_path}:")
-        {new_file, new_line, rest} = do_resolution(linerest, absolute_path, manifest_module)
+        {linerest, absolute_path, manifest_module} |> dbg
+
+        {new_file, new_line, rest} =
+          do_resolution(linerest, absolute_path, manifest_module) |> dbg
 
         {[
            new_file,
@@ -85,12 +89,14 @@ defmodule Zig.CompileError do
     end
   end
 
-  if {:wint32, :nt} == :os.type() do
+  if {:win32, :nt} == :os.type() do
     defp adjust_windows_path(path) do
       case String.replace(path, "/", "\\") do
         <<drive_letter, ":", rest::binary>> when drive_letter in ?a..?z ->
           <<drive_letter - 32, ":", rest::binary>>
-        other -> other
+
+        other ->
+          other
       end
     end
   else

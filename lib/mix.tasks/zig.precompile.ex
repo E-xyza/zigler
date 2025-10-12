@@ -22,8 +22,7 @@ defmodule Mix.Tasks.Zig.Precompile do
   @winsdk_dir System.get_env("WINSDK_ROOT", "")
   @winsdk_version System.get_env("WINSDK_VER", "")
 
-  if match?({_, :nt}, :os.type()) or
-       Enum.all?([@msvc_dir, @winsdk_dir, @winsdk_version], &(&1 != "")) do
+  if Enum.all?([@msvc_dir, @winsdk_dir, @winsdk_version], &(&1 != "")) or match?({_, :nt}, :os.type()) do
     @windows [:msvc, :gnu]
   else
     Logger.warning("not cross-compiling windows-msvc")

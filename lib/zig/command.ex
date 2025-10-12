@@ -40,10 +40,21 @@ defmodule Zig.Command do
 
     run_zig("build -Dzigler-mode=sema", cd: staging_dir, stderr_to_stdout: true)
 
+    attempt_json(staging_dir, 5)
+  end
+
+  def attempt_json(_, 0) do
+    raise Zig.CompileError, command: "sema"
+  end
+  
+  def attempt_json(staging_dir, n) do
     staging_dir
     |> Path.join("zig-out/bin/sema")
-    |> System.cmd([])
+    |> System.cmd(["--json"])
     |> case do
+      {"", 0} ->
+        Process.sleep(100)
+        attempt_json(staging_dir, n - 1)
       {res, 0} -> res
       {error, code} -> raise Zig.CompileError, command: "sema", code: code, error: error
     end
