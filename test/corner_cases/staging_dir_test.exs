@@ -3,7 +3,6 @@ defmodule ZiglerTest.CornerCases.StagingDirTest do
   # as an environment variable
   use ExUnit.Case
 
-  @moduletag :skip_windows
   @staging_dir Path.join(System.tmp_dir!(), "zigler_staging")
 
   require ZiglerTest.Compiler

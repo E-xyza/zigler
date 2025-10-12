@@ -57,8 +57,12 @@ defmodule Zig.Command do
       {"", 0} ->
         Process.sleep(100)
         attempt_json(staging_dir, n - 1)
-      {res, 0} -> res
-      {error, code} -> raise Zig.CompileError, command: "sema", code: code, error: error
+
+      {res, 0} ->
+        res
+
+      {error, code} ->
+        raise Zig.CompileError, command: "sema", code: code, error: error
     end
   end
 
@@ -108,6 +112,7 @@ defmodule Zig.Command do
     # as this is required by two different build systems, we might as well
     # remove on all.
     File.rm(dst_lib_path)
+
     if src_lib_path != dst_lib_path do
       File.cp!(src_lib_path, dst_lib_path)
     end

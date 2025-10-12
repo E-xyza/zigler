@@ -10,7 +10,7 @@ this_version =
 
 windows? = :os.type() == {:win32, :nt}
 
-if Version.match?(this_version, ">= 16.1.0") do
+if Version.match?(this_version, ">= 16.1.0") and not windows? do
   priv_dir = :code.priv_dir(:zigler)
 
   suffix = if windows?, do: "dll", else: "so"
@@ -72,7 +72,7 @@ if Version.match?(this_version, ">= 16.1.0") do
   defmodule ZiglerTest.LocalPrecompiledTest do
     use ExUnit.Case, async: true
 
-    use Zig, otp_app: :zigler, precompiled: "./priv/lib/precompiled.#{suffix}"
+    use Zig, otp_app: :zigler, precompiled: "./priv/lib/precompiled.#{suffix}", dump: true
 
     ~Z"""
     pub fn add_one(x: u32) u32 {

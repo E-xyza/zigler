@@ -11,6 +11,10 @@ Logger.configure(level: log_level)
 
 custom_directory = "test/.custom_location"
 
+if :os.type() == {:win32, :nt} do
+  File.mkdir_p!(System.tmp_dir!())
+end
+
 if File.dir?(custom_directory), do: File.rm_rf!("test/.custom_location")
 File.mkdir_p!("test/.custom_location")
 

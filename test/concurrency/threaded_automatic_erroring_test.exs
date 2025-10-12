@@ -1,7 +1,8 @@
 defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
   use ZiglerTest.IntegrationCase, async: true
 
-  @moduletag [threaded: true, erroring: true, skip_windows: true]
+  @moduletag :threaded
+  @moduletag :erroring
 
   use Zig, otp_app: :zigler, nifs: [threaded: [:threaded]]
 

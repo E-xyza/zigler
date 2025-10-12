@@ -669,8 +669,11 @@ defmodule Zig.Sema do
         File.touch!(tmp_path)
 
         case System.cmd("objcopy", ["-O", "binary", "-j", ".sema", file, tmp_path]) do
-          {_, 0} -> {module, tmp_path |> File.read!() |> String.trim_trailing(<<0>>)}
-          {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
+          {_, 0} ->
+            {module, tmp_path |> File.read!() |> String.trim_trailing(<<0>>)}
+
+          {_, other} ->
+            raise "error obtaining semantic analysis from #{file} (#{other})"
         end
       end
 
@@ -685,9 +688,19 @@ defmodule Zig.Sema do
 
     {_, :nt} ->
       def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
-        case System.cmd("objcopy", ["--dump-section", ".sema=-", file]) do
-          {json, 0} -> {module, String.trim_trailing(json, <<0>>)}
-          {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
+        tmp_path =
+          16
+          |> :crypto.strong_rand_bytes()
+          |> Base.encode16(case: :lower)
+          |> then(&Path.join(System.tmp_dir!(), &1))
+
+        case System.cmd("objcopy", ["--dump-section", ".sema=#{tmp_path}", file]) do
+          {_, 0} ->
+            System.cmd("objdump", ["-s", "-j", ".sema", file])
+            {module, tmp_path |> File.read!() |> String.trim_trailing(<<0>>)}
+
+          {_, other} ->
+            raise "error obtaining semantic analysis from #{file} (#{other})"
         end
       end
   end
