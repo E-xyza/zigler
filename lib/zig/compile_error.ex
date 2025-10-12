@@ -59,10 +59,10 @@ defmodule Zig.CompileError do
       # if it's the first part of the error message, we must memoize the new file/line
       String.starts_with?(error_line, "#{absolute_path}:") ->
         linerest = String.trim_leading(error_line, "#{absolute_path}:")
-        {linerest, absolute_path, manifest_module} |> dbg
+        {linerest, absolute_path, manifest_module}
 
         {new_file, new_line, rest} =
-          do_resolution(linerest, absolute_path, manifest_module) |> dbg
+          do_resolution(linerest, absolute_path, manifest_module)
 
         {[
            new_file,

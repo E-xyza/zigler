@@ -43,11 +43,13 @@ defmodule Zig.Command do
     attempt_json(staging_dir, 5)
   end
 
-  def attempt_json(_, 0) do
+  # this function needs to be repeated on the windows platform because it sometimes fails with
+  # no text.
+  defp attempt_json(_, 0) do
     raise Zig.CompileError, command: "sema"
   end
-  
-  def attempt_json(staging_dir, n) do
+
+  defp attempt_json(staging_dir, n) do
     staging_dir
     |> Path.join("zig-out/bin/sema")
     |> System.cmd(["--json"])
@@ -106,7 +108,9 @@ defmodule Zig.Command do
     # as this is required by two different build systems, we might as well
     # remove on all.
     File.rm(dst_lib_path)
-    File.cp!(src_lib_path, dst_lib_path)
+    if src_lib_path != dst_lib_path do
+      File.cp!(src_lib_path, dst_lib_path)
+    end
 
     precompile_callback(dst_lib_path)
 
