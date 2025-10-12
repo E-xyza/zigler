@@ -668,7 +668,7 @@ defmodule Zig.Sema do
         File.touch!(tmp_path)
 
         case System.cmd("objcopy", ["-O", "binary", "-j", ".sema", file, tmp_path]) do
-          {_, 0} -> {module, File.read!(tmp_path)}
+          {_, 0} -> {module, tmp_path |> File.read!() |> String.trim_trailing(<<0>>)}
           {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
         end
       end
