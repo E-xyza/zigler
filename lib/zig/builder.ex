@@ -41,7 +41,12 @@ after
 
   # this is required because Elixir version < 1.16 doesn't support Path.relative_to/3
   def staging_directory(module, from) do
-    case {staging_directory(module), from} do
+    case {norm(staging_directory(module)), from} do
+      {<<drive>> <> ":/" <> mod_rest, <<drive>> <> ":/" <> from_rest} ->
+        from_rest
+        |> String.split("/")
+        |> force_relative(String.split(mod_rest, "/"))
+
       {"/" <> mod_rest, "/" <> from_rest} ->
         from_rest
         |> String.split("/")
@@ -49,7 +54,21 @@ after
 
       {dir_mod, _} ->
         Path.relative_to(from, dir_mod)
+    end 
+  end
+
+  if {:win32, :nt} == :os.type() do
+    defp norm(path) do
+      path 
+      |> String.replace("\\", "/")
+      |> case do
+        <<a, ?:, rest :: binary>> when a in ?A..?Z ->
+          <<a + 32, ?:, rest::binary>>
+        other -> other
+      end
     end
+  else
+    defp norm(path), do: path
   end
 
   defp force_relative([same | rest_left], [same | rest_right]),
