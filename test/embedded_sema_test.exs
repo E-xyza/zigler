@@ -15,7 +15,13 @@ defmodule ZiglerTest.EmbeddedSemaTest do
 
   use ExUnit.Case, async: true
 
-  @filename "Elixir.ZiglerTest.EmbeddedSema.so"
+  if {:win32, :nt} == :os.type() do
+    @suffix "dll"
+  else
+    @suffix "so"
+  end
+  
+  @filename "Elixir.ZiglerTest.EmbeddedSema.#{@suffix}"
 
   test "linksection" do
     file =
