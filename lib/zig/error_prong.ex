@@ -5,7 +5,7 @@ defmodule Zig.ErrorProng do
 
   def argument_error_prong(:elixir, file, line) do
     quote do
-      :error, {:argument_error, index, error_lines} ->
+      :error, {:badarg, index, error_lines} ->
         new_stacktrace =
           case __STACKTRACE__ do
             # this module is only created when the function is being marshalled.

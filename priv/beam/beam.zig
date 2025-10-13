@@ -1035,9 +1035,8 @@ pub const make = make_.make;
 
 // special getters
 
-
 /// <!-- topic: Term Management; args: source_list, options -->
-/// 
+///
 /// This is a thin wrapper over [`e.enif_get_list_cell`](https://www.erlang.org/doc/man/erl_nif.html#enif_get_list_cell).
 ///
 /// See also [`make_list_cell`](#make_list_cell) for the reverse operation.
@@ -1055,7 +1054,6 @@ pub const make = make_.make;
 /// test "get list_cell " do
 ///   assert 47 = get_list_cell_example([40 | 7])
 /// end
-
 pub const get_list_cell = get_.get_list_cell;
 
 // special makers
@@ -1938,11 +1936,7 @@ pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: 
 /// exception, the function that wraps the nif must be able to catch the
 /// error and append the zig error return trace to the existing stacktrace.
 pub fn raise_with_error_return(err: anytype, maybe_return_trace: ?*std.builtin.StackTrace, opts: anytype) term {
-
-    // stacktrace not supported in windows
-    if (@import("builtin").os.tag == .windows) {
-        return raise_exception(.{ .@"error", err }, opts);
-    }
+    if (@import("builtin").os.tag == .windows) return raise_exception(.{ .@"error", err, null }, opts);
 
     return if (maybe_return_trace) |return_trace|
         raise_exception(.{ .@"error", err, return_trace }, opts)

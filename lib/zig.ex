@@ -730,6 +730,10 @@ defmodule Zig do
         # x86, see: https://github.com/ziglang/zig/issues/25157
         false
 
+      {:win32, :nt} ->
+        # windows still causes panic? segfault? when unwinding error return traces.
+        false
+
       _ ->
         true
     end

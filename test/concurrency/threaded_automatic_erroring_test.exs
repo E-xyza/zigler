@@ -36,10 +36,10 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
 
     if Zig._errors_available?() do
       expected_file = Path.relative_to_cwd(__ENV__.file)
-      assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 15]} = head
+      assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 16]} = head
     else
       expected_file = Path.relative_to_cwd(__ENV__.file) |> to_charlist
-      assert {__MODULE__, :threaded, 1, [file: ^expected_file, line: 13]} = head
+      assert {__MODULE__, :threaded, 1, [file: ^expected_file, line: 14]} = head
     end
 
     refute Enum.any?(stacktrace, fn {_, function, _, _} -> function == :"threaded-join" end)

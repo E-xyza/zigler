@@ -4,7 +4,7 @@ const std = @import("std");
 const resource = @import("resource.zig");
 const options = @import("options.zig");
 
-const GetError = error{ argument_error, unreachable_error };
+const GetError = error{ badarg, unreachable_error };
 
 // get API function.
 
@@ -31,13 +31,13 @@ pub fn get(comptime T: type, src: beam.term, opts: anytype) !T {
 // basic special types
 pub fn get_pid(src: beam.term, opts: anytype) GetError!beam.pid {
     var pid: beam.pid = undefined;
-    if (e.enif_get_local_pid(options.env(opts), src.v, &pid) == 0) return GetError.argument_error;
+    if (e.enif_get_local_pid(options.env(opts), src.v, &pid) == 0) return GetError.badarg;
     return pid;
 }
 
 pub fn get_port(src: beam.term, opts: anytype) GetError!beam.port {
     var port: beam.port = undefined;
-    if (e.enif_get_local_port(options.env(opts), src.v, &port) == 0) return GetError.argument_error;
+    if (e.enif_get_local_port(options.env(opts), src.v, &port) == 0) return GetError.badarg;
     return port;
 }
 
@@ -82,7 +82,7 @@ pub fn get_int(comptime T: type, src: beam.term, opts: anytype) GetError!T {
                 @memcpy(buf_ptr[0..bytes], result.data[0..bytes]);
                 // check to make sure that the top bits are all zeros.
                 const top_bit_count = (bytes * 8 - int.bits);
-                if (@clz(buf) < top_bit_count) return GetError.argument_error;
+                if (@clz(buf) < top_bit_count) return GetError.badarg;
 
                 return @as(T, @intCast(buf));
             },
@@ -114,7 +114,7 @@ pub fn get_int(comptime T: type, src: beam.term, opts: anytype) GetError!T {
                 @memcpy(@as([*]u8, @ptrCast(&buf))[0..bytes], result.data[0..bytes]);
                 // check to make sure that the top bits are all zeros.
                 const top_bit_count = (bytes * 8 - int.bits);
-                if (@clz(buf) < top_bit_count) return GetError.argument_error;
+                if (@clz(buf) < top_bit_count) return GetError.badarg;
 
                 return @as(T, @intCast(buf));
             },
@@ -127,12 +127,12 @@ inline fn genericGetInt(comptime T: type, src: beam.term, result_ptr: anytype, o
     errdefer error_got(src, opts);
 
     if (src.term_type(opts) != .integer) {
-        return GetError.argument_error;
+        return GetError.badarg;
     }
 
     if (fun(options.env(opts), src.v, result_ptr) == 0) {
         error_line(.{ "note: out of bounds (", .{ .inspect, minInt(T) }, "..", .{ .inspect, maxInt(T) }, ")" }, opts);
-        return GetError.argument_error;
+        return GetError.badarg;
     }
 }
 
@@ -144,12 +144,12 @@ inline fn lowerInt(comptime T: type, src: beam.term, result: anytype, opts: anyt
     const int = @typeInfo(T).int;
     if (int.signedness == .signed) {
         if (result < std.math.minInt(T)) {
-            return GetError.argument_error;
+            return GetError.badarg;
         }
     }
 
     if (result > std.math.maxInt(T)) {
-        return GetError.argument_error;
+        return GetError.badarg;
     }
 
     return @as(T, @intCast(result));
@@ -186,9 +186,9 @@ pub fn get_enum(comptime T: type, src: beam.term, opts: anytype) !T {
             inline for (enum_info.fields) |field| {
                 if (std.mem.eql(u8, field.name[0..], slice)) return @field(T, field.name);
             }
-            return GetError.argument_error;
+            return GetError.badarg;
         },
-        else => return GetError.argument_error,
+        else => return GetError.badarg,
     }
 }
 
@@ -212,7 +212,7 @@ pub fn get_float(comptime T: type, src: beam.term, opts: anytype) !T {
             // erase the errors coming back from get_enum!
             const special_form = get_enum(FloatAtoms, src, .{}) catch {
                 error_line(.{ "note: not an atom value for ", .{ .typename, @typeName(T) }, " (should be one of `[:infinity, :neg_infinity, :NaN]`" }, opts);
-                return GetError.argument_error;
+                return GetError.badarg;
             };
 
             return switch (special_form) {
@@ -223,17 +223,17 @@ pub fn get_float(comptime T: type, src: beam.term, opts: anytype) !T {
         },
         .integer => {
             error_line(.{"note: integers are not allowed as arguments to float"}, opts);
-            return GetError.argument_error;
+            return GetError.badarg;
         },
         else => {
-            return GetError.argument_error;
+            return GetError.badarg;
         },
     }
 }
 
 pub fn get_atom(src: beam.term, buf: *[256]u8, opts: anytype) ![]u8 {
     const len = @as(usize, @intCast(e.enif_get_atom(options.env(opts), src.v, buf, 256, e.ERL_NIF_LATIN1)));
-    if (len == 0) return GetError.argument_error;
+    if (len == 0) return GetError.badarg;
     return buf[0 .. len - 1];
 }
 
@@ -261,13 +261,13 @@ pub fn get_resource(comptime T: type, src: beam.term, opts: anytype) !T {
 
     // make sure it's a reference type
     if (src.term_type(opts) != .ref) {
-        return GetError.argument_error;
+        return GetError.badarg;
     }
 
     var res: T = undefined;
     res.get(src, opts) catch {
         error_line(.{"note: the reference passed is not associated with a resource of the correct type"}, opts);
-        return GetError.argument_error;
+        return GetError.badarg;
     };
 
     // by default, we keep the resource.
@@ -286,15 +286,15 @@ fn get_tuple_to_buf(src: beam.term, buf: anytype, opts: anytype) !void {
     const child_type_info = @typeInfo(type_info.pointer.child);
     // compile-time type checking on the buf variable
 
-    if (src.term_type(opts) != .tuple) return GetError.argument_error;
+    if (src.term_type(opts) != .tuple) return GetError.badarg;
 
     var arity: c_int = undefined;
     var src_array: [*c]const e.ErlNifTerm = undefined;
 
     const result = e.enif_get_tuple(options.env(opts), src.v, &arity, @ptrCast(&src_array));
 
-    if (result == 0) return GetError.argument_error;
-    if (arity != child_type_info.array.len) return GetError.argument_error;
+    if (result == 0) return GetError.badarg;
+    if (arity != child_type_info.array.len) return GetError.badarg;
 
     for (buf, 0..) |*slot, index| {
         slot.* = .{ .v = src_array[index] };
@@ -321,7 +321,7 @@ pub fn get_bool(comptime T: type, src: beam.term, opts: anytype) !T {
         else => {},
     }
 
-    return GetError.argument_error;
+    return GetError.badarg;
 }
 
 pub fn get_array(comptime T: type, src: beam.term, opts: anytype) !T {
@@ -385,7 +385,7 @@ pub fn get_slice(comptime T: type, src: beam.term, opts: anytype) !T {
     switch (src.term_type(opts)) {
         .bitstring => return get_slice_binary(T, src, opts),
         .list => return get_slice_list(T, src, opts),
-        else => return GetError.argument_error,
+        else => return GetError.badarg,
     }
 }
 
@@ -393,7 +393,7 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
     const slice_info = @typeInfo(T).pointer;
     const Child = slice_info.child;
 
-    const byte_size_condition = get_byte_size(T) orelse return GetError.argument_error;
+    const byte_size_condition = get_byte_size(T) orelse return GetError.badarg;
     const expected_size_multiple = byte_size_condition.variable;
 
     var str_res: e.ErlNifBinary = undefined;
@@ -402,7 +402,7 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
     if (str_res.size % expected_size_multiple != 0) {
         error_line(.{ "got: ", .{ .inspect, str_res.size } }, opts);
         error_line(.{ "note: binary size must be a multiple of ", .{ .inspect, expected_size_multiple } }, opts);
-        return GetError.argument_error;
+        return GetError.badarg;
     }
 
     const item_count = str_res.size / expected_size_multiple;
@@ -450,7 +450,7 @@ pub fn get_slice_list(comptime T: type, src: beam.term, opts: anytype) !T {
         var head: e.ErlNifTerm = undefined;
         if (e.enif_get_list_cell(options.env(opts), list, &head, &list) == 0) return GetError.unreachable_error;
         item.* = get(Child, .{ .v = head }, opts) catch |err| {
-            if (err == GetError.argument_error) {
+            if (err == GetError.badarg) {
                 error_enter(.{ "at index ", .{ .inspect, index }, ":" }, opts);
             }
             return err;
@@ -492,7 +492,7 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
     switch (src.term_type(opts)) {
         .atom => return try null_or_atom(T, src, opts),
         .map => if (@typeInfo(Child) != .@"struct") {
-            return GetError.argument_error;
+            return GetError.badarg;
         } else {
             // we have to allocate this as a slice, so that it can be safely cleaned later.
             const alloc = options.allocator(opts);
@@ -536,7 +536,7 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
 
             return result_slice.ptr;
         },
-        else => return GetError.argument_error,
+        else => return GetError.badarg,
     }
 }
 
@@ -565,27 +565,27 @@ fn fill_array(comptime T: type, result: *T, src: beam.term, opts: anytype) GetEr
                 var head: e.ErlNifTerm = undefined;
                 if (e.enif_get_list_cell(options.env(opts), tail, &head, &tail) != 0) {
                     item.* = get(Child, .{ .v = head }, opts) catch |err| {
-                        if (err == GetError.argument_error) {
+                        if (err == GetError.badarg) {
                             error_enter(.{ "at index ", .{ .inspect, index }, ":" }, opts);
                         }
                         return err;
                     };
                 } else {
                     error_line(.{ "note: length ", .{ .inspect, array_info.len }, " expected but got length ", .{ .inspect, index } }, opts);
-                    return GetError.argument_error;
+                    return GetError.badarg;
                 }
             }
             if (e.enif_is_empty_list(options.env(opts), tail) == 0) {
                 var list_len: c_uint = undefined;
                 if (e.enif_get_list_length(options.env(opts), tail, &list_len) == 0) return GetError.unreachable_error;
                 error_line(.{ "note: length ", .{ .inspect, array_info.len }, " expected but got length ", .{ .inspect, list_len + array_info.len } }, opts);
-                return GetError.argument_error;
+                return GetError.badarg;
             }
         },
         .bitstring => {
             beam.ignore_when_sema();
 
-            const byte_size_condition = get_byte_size(T) orelse return GetError.argument_error;
+            const byte_size_condition = get_byte_size(T) orelse return GetError.badarg;
             const expected_size = byte_size_condition.fixed;
 
             var str_res: e.ErlNifBinary = undefined;
@@ -595,12 +595,12 @@ fn fill_array(comptime T: type, result: *T, src: beam.term, opts: anytype) GetEr
 
             if (str_res.size != expected_size) {
                 error_line(.{ "note: binary size ", .{ .inspect, expected_size }, " expected but got size ", .{ .inspect, str_res.size } }, opts);
-                return GetError.argument_error;
+                return GetError.badarg;
             }
 
             @memcpy(u8_result_ptr[0..str_res.size], str_res.data[0..str_res.size]);
         },
-        else => return GetError.argument_error,
+        else => return GetError.badarg,
     }
 }
 
@@ -616,7 +616,7 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
                 var map_value: e.ErlNifTerm = undefined;
                 if (e.enif_get_map_value(options.env(opts), src.v, field_atom.v, &map_value) == 1) {
                     @field(result.*, field.name) = get(F, .{ .v = map_value }, opts) catch |err| {
-                        if (err == GetError.argument_error) {
+                        if (err == GetError.badarg) {
                             error_enter(.{ "in field `:", field.name, "`:" }, opts);
                         }
                         return err;
@@ -633,7 +633,7 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
 
                 if (failed) {
                     error_line(.{ "note: ", .{ .typename, @typeName(T) }, " requires the field `:", field.name, "`, which is missing.)" }, opts);
-                    return GetError.argument_error;
+                    return GetError.badarg;
                 }
             }
         },
@@ -656,7 +656,7 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
                 scan_fields: inline for (struct_info.fields) |field| {
                     if (std.mem.eql(u8, atom_name, field.name)) {
                         @field(result.*, field.name) = get(field.type, value, opts) catch |err| {
-                            if (err == GetError.argument_error) {
+                            if (err == GetError.badarg) {
                                 error_enter(.{ "in field `:", field.name, "`:" }, opts);
                             }
                             return err;
@@ -676,7 +676,7 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
                         @field(result.*, field.name) = @as(*const Tf, @ptrCast(@alignCast(defaultptr))).*;
                     } else {
                         error_line(.{ "note: ", .{ .typename, @typeName(T) }, " requires the field `:", field.name, "`, which is missing.)" }, opts);
-                        return GetError.argument_error;
+                        return GetError.badarg;
                     }
                 }
             }
@@ -688,10 +688,10 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
                     const bits = @as(*align(@alignOf(T)) B, @ptrCast(result));
                     try fill_array(B, bits, src, opts);
                 },
-                else => return GetError.argument_error,
+                else => return GetError.badarg,
             }
         },
-        else => return GetError.argument_error,
+        else => return GetError.badarg,
     }
 }
 
@@ -733,7 +733,7 @@ fn null_or_atom(comptime T: type, src: beam.term, opts: anytype) !T {
     }
 
     error_line(.{ "note: ", .{ .typename, @typeName(T) }, " can take the atom `nil` but no other atom" }, opts);
-    return GetError.argument_error;
+    return GetError.badarg;
 }
 
 inline fn error_line(msg: anytype, opts: anytype) void {
@@ -912,12 +912,15 @@ fn get_byte_size(comptime T: type) ?BinarySize {
 
 // special getters
 
-pub fn get_list_cell(list: beam.term, opts: anytype) !struct{ beam.term, beam.term } {
+pub fn get_list_cell(list: beam.term, opts: anytype) !struct { beam.term, beam.term } {
+    errdefer error_expected([]beam.term, opts);
+    errdefer error_got(list, opts);
+
     const env = options.env(opts);
     var head: e.ErlNifTerm = undefined;
     var tail: e.ErlNifTerm = undefined;
 
     if (e.enif_get_list_cell(env, list.v, &head, &tail) == 0) return error.badarg;
 
-    return .{.{ .v = head }, .{ .v = tail }};
+    return .{ .{ .v = head }, .{ .v = tail } };
 }
