@@ -206,7 +206,10 @@ pub fn Thread(comptime function: anytype) type {
                         if (@intFromError(err) == TERMINATED) {
                             result_ptr.* = .{ .error_return_trace = beam.make_empty_list(.{}) };
                         } else {
-                            const response = .{ .@"error", err, @errorReturnTrace() };
+                            const response = if (@import("builtin").os.tag == .windows)
+                                .{ .@"error", err, null }
+                            else
+                                .{ .@"error", err, @errorReturnTrace() };
                             result_ptr.* = .{ .error_return_trace = beam.make(response, .{}) };
                         }
                     }
