@@ -20,7 +20,7 @@ defmodule ZiglerTest.EmbeddedSemaTest do
   else
     @suffix "so"
   end
-  
+
   @filename "Elixir.ZiglerTest.EmbeddedSema.#{@suffix}"
 
   test "linksection" do

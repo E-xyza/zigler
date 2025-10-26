@@ -71,8 +71,7 @@ defmodule Zig.Type.Integer do
           ] do
       unless variable === 0 do
         :erlang.error(
-          {:badarg, index,
-           [{"expected: zero (for `#{name}`)"}, {"got: `#{inspect(variable)}`"}]}
+          {:badarg, index, [{"expected: zero (for `#{name}`)"}, {"got: `#{inspect(variable)}`"}]}
         )
       end
 

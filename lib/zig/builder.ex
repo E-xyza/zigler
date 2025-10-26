@@ -149,7 +149,10 @@ after
       File.write!(build_zig_path, render_build(%{module | libc_txt: libc_txt}))
       Command.fmt(build_zig_path)
 
-      File.write!(build_zig_zon_path, build_zig_zon(%{module | dependencies: processed_dependencies}))
+      File.write!(
+        build_zig_zon_path,
+        build_zig_zon(%{module | dependencies: processed_dependencies})
+      )
     end
 
     Logger.debug("wrote build.zig to #{build_zig_path}")
