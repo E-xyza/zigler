@@ -41,19 +41,31 @@ after
 
   # this is required because Elixir version < 1.16 doesn't support Path.relative_to/3
   def staging_directory(module, from) do
-    case {norm(staging_directory(module)), from} do
-      {<<drive>> <> ":/" <> mod_rest, <<drive>> <> ":/" <> from_rest} ->
-        from_rest
-        |> String.split("/")
-        |> force_relative(String.split(mod_rest, "/"))
+    staging_dir = staging_directory(module)
 
-      {"/" <> mod_rest, "/" <> from_rest} ->
-        from_rest
-        |> String.split("/")
-        |> force_relative(String.split(mod_rest, "/"))
+    # On Windows, always copy dependencies into the staging directory because
+    # Zig's build.zig.zon requires relative paths, and Windows path issues
+    # (different drives, path length limits) can make relative paths problematic.
+    if :os.type() == {:win32, :nt} do
+      {:copy, staging_dir, from}
+    else
+      normalized_staging = norm(staging_dir)
+      normalized_from = norm(from)
 
-      {dir_mod, _} ->
-        Path.relative_to(from, dir_mod)
+      case {normalized_staging, normalized_from} do
+        {<<drive>> <> ":/" <> mod_rest, <<drive>> <> ":/" <> from_rest} ->
+          from_rest
+          |> String.split("/")
+          |> force_relative(String.split(mod_rest, "/"))
+
+        {"/" <> mod_rest, "/" <> from_rest} ->
+          from_rest
+          |> String.split("/")
+          |> force_relative(String.split(mod_rest, "/"))
+
+        {dir_mod, _} ->
+          Path.relative_to(from, dir_mod)
+      end
     end
   end
 
@@ -118,6 +130,9 @@ after
     build_zig_zon_path = Path.join(staging_directory, "build.zig.zon")
 
     if dir = module.build_files_dir do
+      # Process dependencies even when using build_files_dir
+      process_dependencies(module, staging_directory)
+
       dir
       |> Zig._normalize_path(Path.dirname(module.file))
       |> Path.join("build.zig")
@@ -128,10 +143,13 @@ after
       |> Path.join("build.zig.zon")
       |> File.cp!(build_zig_zon_path)
     else
+      # Process dependencies - copy them if needed on Windows
+      processed_dependencies = process_dependencies(module, staging_directory)
+
       File.write!(build_zig_path, render_build(%{module | libc_txt: libc_txt}))
       Command.fmt(build_zig_path)
 
-      File.write!(build_zig_zon_path, build_zig_zon(module))
+      File.write!(build_zig_zon_path, build_zig_zon(%{module | dependencies: processed_dependencies}))
     end
 
     Logger.debug("wrote build.zig to #{build_zig_path}")
@@ -145,6 +163,31 @@ after
 
   # if precompiled file is specified, do nothing.
   def stage(module), do: module
+
+  defp process_dependencies(module, staging_directory) do
+    Enum.map(module.dependencies, fn {name, path} ->
+      case staging_directory(module.module, path) do
+        {:copy, _staging_dir, from} ->
+          # Need to copy the dependency into the staging directory
+          deps_dir = Path.join(staging_directory, "deps")
+          File.mkdir_p!(deps_dir)
+
+          dep_name = Path.basename(from)
+          dest = Path.join(deps_dir, dep_name)
+
+          # Copy the entire dependency directory
+          Logger.debug("copying dependency #{from} to #{dest}")
+          File.cp_r!(from, dest)
+
+          # Return the dependency with the new relative path
+          {name, "./deps/#{dep_name}"}
+
+        relative_path ->
+          # Normal case - use the relative path as-is
+          {name, relative_path}
+      end
+    end)
+  end
 
   defp build_libc_file(staging_directory) do
     # build a libc file for windows-msvc target

@@ -7,7 +7,7 @@
     "build.zig.zon"
   },
   .dependencies = .{<%= for {name, path} <- @dependencies do %>
-    .<%= name %> = .{.path = "<%= staging_directory(@module, path) %>"},
+    .<%= name %> = .{.path = "<%= path %>"},
   <% end %>
   }
 }
