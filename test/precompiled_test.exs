@@ -72,7 +72,7 @@ if Version.match?(this_version, ">= 16.1.0") and not windows? do
   defmodule ZiglerTest.LocalPrecompiledTest do
     use ExUnit.Case, async: true
 
-    use Zig, otp_app: :zigler, precompiled: "./priv/lib/precompiled.#{suffix}", dump: true
+    use Zig, otp_app: :zigler, precompiled: "./priv/lib/precompiled.#{suffix}"
 
     ~Z"""
     pub fn add_one(x: u32) u32 {
