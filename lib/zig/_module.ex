@@ -6,7 +6,7 @@ defmodule Zig.Module do
   alias Zig.Builder
   alias Zig.C
   alias Zig.DepsModule
-  alias Zig.ExtraModule
+  alias Zig.BuildModule
   alias Zig.Nif
   alias Zig.Options
   alias Zig.Resources
@@ -82,7 +82,7 @@ defmodule Zig.Module do
           optimize: Zig.optimize(),
           error_tracing: boolean,
           ignore: [atom],
-          extra_modules: [ExtraModule.t()],
+          extra_modules: [BuildModule.t()],
           dependencies: keyword(),
           resources: [atom],
           callbacks: [on_load: atom, on_upgrade: atom, on_unload: atom],
@@ -248,7 +248,7 @@ defmodule Zig.Module do
     end)
 
     try do
-      %ExtraModule{
+      %BuildModule{
         name: k,
         path: Zig._normalize_path(path, Path.dirname(context.file)),
         deps: deps
@@ -586,7 +586,7 @@ defmodule Zig.Module do
 
   def render_c(nil, _), do: ""
   def render_c(%DepsModule{}, _), do: ""
-  def render_c(%ExtraModule{} = m, mode), do: render_c(m.c, mode)
+  def render_c(%BuildModule{} = m, mode), do: render_c(m.c, mode)
 
   def render_c(%C{} = c, mode) do
     link_libs =

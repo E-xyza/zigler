@@ -1,4 +1,4 @@
-defmodule Zig.ExtraModule do
+defmodule Zig.BuildModule do
   @moduledoc false
 
   # this module encapulates a struct which carries attributes of extra zig modules
