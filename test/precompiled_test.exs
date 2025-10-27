@@ -10,7 +10,9 @@ this_version =
 
 windows? = :os.type() == {:win32, :nt}
 
-if Version.match?(this_version, ">= 16.1.0") and not windows? do
+skip = true
+
+if Version.match?(this_version, ">= 16.1.0") and not skip do
   priv_dir = :code.priv_dir(:zigler)
 
   suffix = if windows?, do: "dll", else: "so"

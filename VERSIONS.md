@@ -175,6 +175,7 @@ Thanks to Dave Cottlehuber @dch for testing.
   - error return traces by default in ReleaseSafe builds
 - Temporary Regressions:
   - Error return traces are disabled in MacOS (due to https://github.com/ziglang/zig/issues/25433)
+  - on_upgrade tests are failing in elixir 1.19.x; may or may not reflect a real problem.
 - Outstanding issues:
   - c_ulonglong doesn't work on windows; c_long doesn't work on other platforms.
 - Features:

@@ -43,8 +43,8 @@ defmodule Mix.Tasks.Zig.Precompile do
         acc ->
           for {os, platforms} <- targets, reduce: acc do
             acc2 ->
-              for platform <- List.wrap(platforms), into: acc2 do
-                compile(file, arch, os, platform)
+              for platform <- List.wrap(platforms), reduce: acc2 do
+                acc3 -> [compile(file, arch, os, platform) | acc3]
               end
           end
       end
