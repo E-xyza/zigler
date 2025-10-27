@@ -14,6 +14,8 @@ defmodule ZiglerTest.CornerCases.StagingDirTest do
       File.rm_rf!(@staging_dir)
     end
 
+    File.mkdir_p!(@staging_dir)
+
     modname = ZiglerTest.Compiler.compile("staging_dir.ex")
 
     assert @staging_dir

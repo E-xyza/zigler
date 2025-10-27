@@ -117,12 +117,21 @@ after
     unless File.dir?(staging_directory) do
       Logger.debug("creating staging directory #{staging_directory}")
 
-      # Validate that we can create the directory by checking if parent path exists
-      # This ensures we get "no such file or directory" error instead of platform-specific
-      # errors like "read-only file system" on macOS
-      validate_staging_path!(staging_directory)
+      # Verify the staging root exists before trying to create subdirectories
+      # The staging root should already exist - we only create the module-specific subdirectory
+      staging_root = case System.get_env("ZIGLER_STAGING_ROOT", "") do
+        "" -> System.tmp_dir()
+        path -> path
+      end
 
-      File.mkdir_p!(staging_directory)
+      unless File.dir?(staging_root) do
+        raise File.Error,
+          reason: :enoent,
+          action: "make directory (with -p)",
+          path: staging_directory
+      end
+
+      File.mkdir!(staging_directory)
     end
 
     libc_txt = build_libc_file(staging_directory)
@@ -171,34 +180,6 @@ after
 
   # if precompiled file is specified, do nothing.
   def stage(module), do: module
-
-  defp validate_staging_path!(path) do
-    # Walk up the directory tree until we find an existing directory
-    # If we can't find one, raise an error with the full staging path
-    case find_existing_parent(path) do
-      nil ->
-        raise File.Error,
-          reason: :enoent,
-          action: "make directory (with -p), consider setting ZIGLER_STAGING_ROOT environment variable\n",
-          path: path
-
-      _existing_parent ->
-        :ok
-    end
-  end
-
-  defp find_existing_parent(path) do
-    parent = Path.dirname(path)
-
-    cond do
-      # Reached root
-      parent == path -> nil
-      # Found existing directory
-      File.dir?(parent) -> parent
-      # Keep looking up
-      true -> find_existing_parent(parent)
-    end
-  end
 
   defp process_dependencies(module, staging_directory) do
     Enum.map(module.dependencies, fn {name, path} ->
