@@ -32,7 +32,7 @@ after
   def staging_directory(module) do
     staging_root =
       case System.get_env("ZIGLER_STAGING_ROOT", "") do
-        "" -> System.tmp_dir()
+        "" -> Zig._tmp_dir()
         path -> path
       end
 
@@ -121,7 +121,7 @@ after
       # The staging root should already exist - we only create the module-specific subdirectory
       staging_root =
         case System.get_env("ZIGLER_STAGING_ROOT", "") do
-          "" -> System.tmp_dir()
+          "" -> Zig._tmp_dir()
           path -> path
         end
 

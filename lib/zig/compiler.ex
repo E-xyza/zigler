@@ -218,7 +218,7 @@ defmodule Zig.Compiler do
   ## STEPS
 
   def assembly_dir(env, module) do
-    System.tmp_dir()
+    Zig._tmp_dir()
     |> String.replace("\\", "/")
     |> Path.join(".zigler_compiler/#{env}/#{module}")
   end

@@ -664,7 +664,7 @@ defmodule Zig.Sema do
           16
           |> :crypto.strong_rand_bytes()
           |> Base.encode16(case: :lower)
-          |> then(&Path.join(System.tmp_dir!(), &1))
+          |> then(&Path.join(Zig._tmp_dir(), &1))
 
         File.touch!(tmp_path)
 
@@ -692,7 +692,7 @@ defmodule Zig.Sema do
           16
           |> :crypto.strong_rand_bytes()
           |> Base.encode16(case: :lower)
-          |> then(&Path.join(System.tmp_dir!(), &1))
+          |> then(&Path.join(Zig._tmp_dir(), &1))
 
         case System.cmd("objcopy", ["--dump-section", ".sema=#{tmp_path}", file]) do
           {_, 0} ->

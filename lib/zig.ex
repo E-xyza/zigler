@@ -738,6 +738,55 @@ defmodule Zig do
         true
     end
   end
+
+  @doc false
+  # Returns the system temporary directory with all symlinks resolved.
+  # On macOS, /tmp and /var are symlinks to /private/tmp and /private/var,
+  # which can cause issues with relative path resolution in Zig's build system.
+  def _tmp_dir do
+    tmp = System.tmp_dir()
+    # Remove trailing slash to normalize the path
+    tmp = String.trim_trailing(tmp, "/")
+    resolve_symlinks(tmp)
+  end
+
+  # Recursively resolve all symlinks in a path by checking each component
+  defp resolve_symlinks(path) do
+    # Split the path into components
+    parts = Path.split(path)
+
+    # Rebuild the path, resolving symlinks at each level
+    {resolved, _} =
+      Enum.reduce(parts, {"", ""}, fn part, {current_path, _} ->
+        next_path =
+          if current_path == "" do
+            part
+          else
+            Path.join(current_path, part)
+          end
+
+        # Check if this component is a symlink
+        case File.read_link(next_path) do
+          {:ok, link_target} ->
+            # If the link target is absolute, use it directly
+            # Otherwise, resolve it relative to the current directory
+            resolved_path =
+              if String.starts_with?(link_target, "/") do
+                link_target
+              else
+                Path.join(Path.dirname(next_path), link_target)
+              end
+
+            {resolved_path, ""}
+
+          {:error, _} ->
+            # Not a symlink, continue with the current path
+            {next_path, ""}
+        end
+      end)
+
+    resolved
+  end
 end
 
 # check that the otp_version is 24 or greater.
