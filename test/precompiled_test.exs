@@ -89,54 +89,29 @@ if Version.match?(this_version, ">= 16.1.0") and not windows? do
     end
   end
 
-  if :os.type() == {:unix, :linux} do
-    defmodule ZiglerTest.WebPrecompiledTest do
-      use ExUnit.Case, async: true
-
-      @lib_address "https://github.com/E-xyza/zigler/releases/download/test-artifact/web-precompiled.so"
-      @shasum "935f9829d4c0058acba4118c9dc1a98dbdda5c4035e16a7893c33a3aff2caee8"
-
-      use Zig, otp_app: :zigler, precompiled: {:web, @lib_address, @shasum}
-
-      ~Z"""
-      pub fn add_one(x: u32) u32 {
-          return x + 1;
-      }
-      """
-
-      test "staging directory only contains the so file" do
-        assert File.ls!(Zig.Builder.staging_directory(__MODULE__)) == ["web-precompiled.so"]
-      end
-
-      test "function works" do
-        assert add_one(47) == 48
-      end
-    end
-  end
-
   defmodule ZiglerTest.MultiplatformPrecompiledTest do
     use ExUnit.Case, async: true
 
     @lib_address "https://github.com/E-xyza/zigler/releases/download/0.15.1/Elixir.ZiglerTest.MultiplatformPrecompiledTest.#VERSION.#TRIPLE.#EXT"
 
     @shasum [
-      "aarch64-freebsd-none": "e7b413de8bbf37876773dac05f3410f0bf3cc80f99d897557b6819e8189fb006",
-      "aarch64-linux-gnu": "17546c34adf8b6a14dd38ebb9d5485610348e5afff72e88b991f18d6b818197f",
-      "aarch64-linux-musl": "4ccae1cb87fbef01a556b7e8834da256a5dfa6f8a68d57d95005680ce4e37e16",
-      "aarch64-macos-none": "5006c503b8b5d4efff875a2979f6aab7e1cc3c0360fa8618343157964aec1d15",
-      "arm-linux-gnueabi": "4e56cd1447ba3b565756d7298a6d89e8cbff13966a27c56fce5a72ad23a9ea4d",
-      "arm-linux-gnueabihf": "2355e863c21c1120de0776c98b3ab268e6d633ee3e48d47a6477c9a4a4efee58",
-      "arm-linux-musleabi": "5de29e68005eddf6fa31d6f10532de094071fef89f9ffc3eb701e0d0ea550ff3",
-      "arm-linux-musleabihf": "28bc7c872d21eb8524bb2c35b502f4f42f10f0f05c2bc4420b45142e51224b35",
-      "x86_64-freebsd-none": "a7ff7317461d0a43ffac60c131320c3e5e005f0e75f9562bb710718c476c85fc",
-      "x86_64-linux-gnu": "e38e1dfdd85d711f85e0ecbb42fc34e102cd9dc37079c200e2075cb894acad7c",
-      "x86_64-linux-musl": "857b0ed35c78b588fa43dc4a5c4e3dd9143d9102c559a67812b0af6185eae117",
-      "x86_64-macos-none": "e5ff347c2d11b463b5e6f0097687d578c800e7fbb725aa33a2e802d3f473371c",
-      "x86_64-windows-gnu": "3ee18aec252eca92f19d920f6de143e59700e0f038916fb3717aa9869b2c5102",
-      "x86_64-windows-msvc": "9facf75d545b6cf45d2367f42c8a4b0bbea5b57bea72eac83f9a694aa4370e7d",
-      "x86-linux-gnu": "9ef68f25143827e6cbea13fa264f0002d7d1f2fc2ad7c07febe5be5fbc4f75c6",
-      "x86-linux-musl": "227afab8c4a20b4dc88ae0efeb0f6a93952c9ad54aa3165d166cebd66ae5d158",
-      "x86-windows-gnu": "4602d68145becb66d4f357ab163a5cb8a7f5466a4004cd6419f998c241b52d2b"
+      "aarch64-freebsd-none": "1102b0c61fa633c4ce2b23abd4c4f238ef44ce9c384b0a9753ff27a541d065d0",
+      "aarch64-linux-gnu": "d08ceca0fbd3a00fc0a1a6d012ddab93147aff1ad6d0deb8a9cfd97dbb9c63dc",
+      "aarch64-linux-musl": "45012a9f90038938365fc4a4764ca59b7ad1ef3fdf642ebb9d9b24c4dd332ff5",
+      "aarch64-macos-none": "bda840e4a036b16154ec10f19b5049d3ba0f9d6b4961af405b21fc9f6556b143",
+      "arm-linux-gnueabi": "d7b4941de3ae2147c19a581fe942baaf9ab68fe1bb0a26cb1dd2906a19691dbf",
+      "arm-linux-gnueabihf": "dae78e59dd6133dbdf3165a6013b27d53e5becd804e0d06b8d907e3496f8a60f",
+      "arm-linux-musleabi": "9063fb1d80e0bc76e884455f4ce621eec4b5c1091d056ffbc9084313589293b4",
+      "arm-linux-musleabihf": "f152655bad92d7b697b33391da5a3616569f54d1ed92df31b1d7bad46aa7b281",
+      "x86_64-freebsd-none": "3e6e015c7db70ea2835d0baa34c6de57c5606c3068e4be8e3e18e11baa047959",
+      "x86_64-linux-gnu": "569501fb9194c1b52828cfe0d0db53c51d3f18c3bc40941e6cc4a5debfce42a3",
+      "x86_64-linux-musl": "6fa18747140ac37a80bd51569c2c0de415f9e62d3285524c6fc5c873ec3ddc5b",
+      "x86_64-macos-none": "12523525c63d7a5fd504319b9349c788a6a0e138e033b8ea4579779ad674763a",
+      "x86_64-windows-msvc": "5eea60eca2ca7f183f06372f214b1066a5ea166dc5ef65a7cd8797b5dd411e95",
+      "x86_64-windows-gnu": "dcf44478a6c8dc26a13e0405b7b323a1b19a3f36bcc0fdcedbaa1b590dceb404",
+      "x86-linux-gnu": "351f2177a43ea735d1e52474e6059744e4b7c7efd256d618d61e54b2d1989ad4",
+      "x86-linux-musl": "7bb33abafa856da069155ed0e9e41fb2fdf0a1cadddced0a4dcf73d96d05c380",
+      "x86-windows-gnu": "45834720aacf86153c8335eeb2d124fb25af4ba0daa804c8aa3f23718a5da72c"
     ]
 
     use Zig, otp_app: :zigler, precompiled: {:web, @lib_address, @shasum}

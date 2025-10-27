@@ -1,15 +1,15 @@
 defmodule Zigler.MixProject do
   use Mix.Project
 
-  def zig_version, do: "0.15.1"
+  def zig_version, do: "0.15.2"
 
   def project do
     env = Mix.env()
 
     [
       app: :zigler,
-      version: "0.15.1",
-      elixir: "~> 1.14",
+      version: "0.15.2",
+      elixir: "~> 1.15",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
       deps: deps(),
@@ -25,7 +25,6 @@ defmodule Zigler.MixProject do
         }
       ],
       dialyzer: [plt_add_deps: :transitive],
-      preferred_cli_env: [dialyzer: :dev],
       source_url: "https://github.com/E-xyza/zigler/",
       docs: docs(),
       aliases: [
@@ -72,8 +71,6 @@ defmodule Zigler.MixProject do
 
   def deps do
     [
-      # dialyzer
-      {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       # zig parser is pinned to a version of zig parser because versions of zig parser
       # are pinned to zig versions
       {:zig_parser, "~> 0.6"},

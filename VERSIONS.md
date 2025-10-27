@@ -164,7 +164,7 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 - no changes.
 
-## 0.15.1
+## 0.15.2
 
 - Breaking changes:
   - rename "packages" option to "extra_modules"

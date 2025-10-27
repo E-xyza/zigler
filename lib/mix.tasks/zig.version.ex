@@ -13,7 +13,7 @@ defmodule Mix.Tasks.Zig.Version do
         IO.puts(version)
 
       error ->
-        Mix.raise("errored with #{error}")
+        Mix.raise("errored with #{inspect(error)}")
     end
   end
 end

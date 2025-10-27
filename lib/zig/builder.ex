@@ -119,10 +119,11 @@ after
 
       # Verify the staging root exists before trying to create subdirectories
       # The staging root should already exist - we only create the module-specific subdirectory
-      staging_root = case System.get_env("ZIGLER_STAGING_ROOT", "") do
-        "" -> System.tmp_dir()
-        path -> path
-      end
+      staging_root =
+        case System.get_env("ZIGLER_STAGING_ROOT", "") do
+          "" -> System.tmp_dir()
+          path -> path
+        end
 
       unless File.dir?(staging_root) do
         raise File.Error,
