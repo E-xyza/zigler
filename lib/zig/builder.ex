@@ -117,6 +117,11 @@ after
     unless File.dir?(staging_directory) do
       Logger.debug("creating staging directory #{staging_directory}")
 
+      # Validate that we can create the directory by checking if parent path exists
+      # This ensures we get "no such file or directory" error instead of platform-specific
+      # errors like "read-only file system" on macOS
+      validate_staging_path!(staging_directory)
+
       File.mkdir_p!(staging_directory)
     end
 
@@ -166,6 +171,34 @@ after
 
   # if precompiled file is specified, do nothing.
   def stage(module), do: module
+
+  defp validate_staging_path!(path) do
+    # Walk up the directory tree until we find an existing directory
+    # If we can't find one, raise an error with the full staging path
+    case find_existing_parent(path) do
+      nil ->
+        raise File.Error,
+          reason: :enoent,
+          action: "make directory (with -p), consider setting ZIGLER_STAGING_ROOT environment variable\n",
+          path: path
+
+      _existing_parent ->
+        :ok
+    end
+  end
+
+  defp find_existing_parent(path) do
+    parent = Path.dirname(path)
+
+    cond do
+      # Reached root
+      parent == path -> nil
+      # Found existing directory
+      File.dir?(parent) -> parent
+      # Keep looking up
+      true -> find_existing_parent(parent)
+    end
+  end
 
   defp process_dependencies(module, staging_directory) do
     Enum.map(module.dependencies, fn {name, path} ->
