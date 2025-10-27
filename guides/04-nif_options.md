@@ -147,7 +147,7 @@ defmodule LeakCheckTest do
   }
   """
 
-  @tag [erroring: true, skip_windows: true]
+  @tag :erroring
   test "leak check" do
     require Logger
     Logger.warning("====== the following leak message is expected: =========== START")
@@ -177,7 +177,7 @@ defmodule LeakCheckAllTest do
   }
   """
 
-  @tag [erroring: true, skip_windows: true]
+  @tag :erroring
   test "leak check" do
     require Logger
     Logger.warning("====== the following leak message is expected: =========== START")

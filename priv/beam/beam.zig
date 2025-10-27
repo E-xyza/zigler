@@ -1033,6 +1033,29 @@ pub const get = get_.get;
 /// ```
 pub const make = make_.make;
 
+// special getters
+
+/// <!-- topic: Term Management; args: source_list, options -->
+///
+/// This is a thin wrapper over [`e.enif_get_list_cell`](https://www.erlang.org/doc/man/erl_nif.html#enif_get_list_cell).
+///
+/// See also [`make_list_cell`](#make_list_cell) for the reverse operation.
+///
+/// #### Example
+///
+/// ```elixir
+/// ~Z"""
+/// pub fn get_list_cell_example(term: beam.term) !i32 {
+///     const x, const y = try beam.get_list_cell(term, .{});
+///     return try beam.get(i32, x, .{}) + try beam.get(i32, y, .{});
+/// }
+/// """
+///
+/// test "get list_cell " do
+///   assert 47 = get_list_cell_example([40 | 7])
+/// end
+pub const get_list_cell = get_.get_list_cell;
+
 // special makers
 
 /// <!-- topic: Term Management; args: string -->
@@ -1772,7 +1795,7 @@ const yield_ = @import("yield.zig");
 ///     defer beam.free_env(env);
 ///
 ///     while (true) {
-///        std.time.sleep(100000);
+///        std.Thread.sleep(100000);
 ///        beam.yield() catch {
 ///           try beam.send(pid, .died, .{.env = env});
 ///           return;
@@ -1913,16 +1936,12 @@ pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: 
 /// exception, the function that wraps the nif must be able to catch the
 /// error and append the zig error return trace to the existing stacktrace.
 pub fn raise_with_error_return(err: anytype, maybe_return_trace: ?*std.builtin.StackTrace, opts: anytype) term {
-
-    // stacktrace not supported in windows
-    if (@import("builtin").os.tag == .windows) {
-        return raise_exception(.{ .@"error", err }, opts);
-    }
+    if (@import("builtin").os.tag == .windows) return raise_exception(.{ .@"error", err, null }, opts);
 
     return if (maybe_return_trace) |return_trace|
         raise_exception(.{ .@"error", err, return_trace }, opts)
     else
-        raise_exception(.{ .@"error", err }, opts);
+        raise_exception(.{ .@"error", err, null }, opts);
 }
 
 // unignore this on 0.15, if this is validated

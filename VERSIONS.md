@@ -164,8 +164,26 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 - no changes.
 
-## Upcoming
-- `precompiled` mode that will let you obtain packages with precompiled assets.
+## 0.15.2
 
-## Possible
+- Breaking changes:
+  - rename "packages" option to "extra_modules"
+  - unification of path scheme ("./" is project-rooted)
+  - renamed `release_mode` to `optimize`.  Also note the new optimize policy defaults
+    to `ReleaseSafe` in non-dev, non-test modes and defaults to `Debug` in test and dev.
+- Policy changes:
+  - error return traces by default in ReleaseSafe builds
+- Temporary Regressions:
+  - Error return traces are disabled in MacOS (due to https://github.com/ziglang/zig/issues/25433)
+  - on_upgrade tests are failing in elixir 1.19.x; may or may not reflect a real problem.
+- Outstanding issues:
+  - c_ulonglong doesn't work on windows; c_long doesn't work on other platforms.
+- Features:
+  - add "dependency" option for zig dependencies
+  - `precompiled` option that will let you use precompiled library assets.  NOTE: this feature is highly
+    experimental and functions might need to be compiled for different erts versions.  This will likely 
+    be changed in the future.
+  - adds `beam.get_list_cell`
+
+## Possible Future Changes
 - `struct` which lets you declare a struct inside your zig code as the module's struct

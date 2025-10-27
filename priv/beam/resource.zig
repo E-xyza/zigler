@@ -19,6 +19,8 @@ const ResourceError = error{incorrect_resource_type};
 
 pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOpts) type {
     return struct {
+        pub const __is_zigler_resource = true;
+        
         __payload: *T,
 
         // indicates if the resource, in context of this nif call, should be released at the end
@@ -151,7 +153,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                     return @ptrCast(@alignCast(obj.?));
                 }
 
-                fn dtor(env_: beam.env, obj: ?*anyopaque) callconv(.C) void {
+                fn dtor(env_: beam.env, obj: ?*anyopaque) callconv(.c) void {
                     set_callback_context(env_);
 
                     if (@hasDecl(Callbacks, "dtor")) {
@@ -159,7 +161,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                     }
                 }
 
-                fn down(env_: beam.env, obj: ?*anyopaque, pid: [*c]beam.pid, monitor: [*c]beam.monitor) callconv(.C) void {
+                fn down(env_: beam.env, obj: ?*anyopaque, pid: [*c]beam.pid, monitor: [*c]beam.monitor) callconv(.c) void {
                     set_callback_context(env_);
 
                     if (@hasDecl(Callbacks, "down")) {
@@ -167,7 +169,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                     }
                 }
 
-                fn stop(env_: beam.env, obj: ?*anyopaque, event: beam.event, is_direct_call: c_int) callconv(.C) void {
+                fn stop(env_: beam.env, obj: ?*anyopaque, event: beam.event, is_direct_call: c_int) callconv(.c) void {
                     set_callback_context(env_);
 
                     if (@hasDecl(Callbacks, "stop")) {
@@ -175,7 +177,7 @@ pub fn Resource(comptime T: type, comptime root: type, comptime opts: ResourceOp
                     }
                 }
 
-                fn dyncall(env_: beam.env, obj: ?*anyopaque, calldata: ?*anyopaque) callconv(.C) void {
+                fn dyncall(env_: beam.env, obj: ?*anyopaque, calldata: ?*anyopaque) callconv(.c) void {
                     set_callback_context(env_);
 
                     if (@hasDecl(Callbacks, "dyncall")) {

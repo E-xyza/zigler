@@ -59,9 +59,7 @@ defmodule Zig.Compiler do
 
           path =
             if is_binary(path) do
-              env.file
-              |> Path.dirname()
-              |> Path.join(path)
+              path
             else
               # This allows for using module attributes and
               # other non-literal constructs for the file path
@@ -137,6 +135,7 @@ defmodule Zig.Compiler do
       |> Path.expand()
 
     opts
+    |> add_fingerprint(zig_code)
     |> Map.replace!(:zig_code_path, zig_code_path)
     |> tap(&write_code!(&1, zig_code))
     |> Builder.stage()
@@ -178,7 +177,7 @@ defmodule Zig.Compiler do
     %{module | parsed: parsed, external_resources: external_resources}
   end
 
-  defp precompile(module) do
+  defp precompile(%{precompiled: nil} = module) do
     path =
       module.module
       |> Builder.staging_directory()
@@ -189,6 +188,8 @@ defmodule Zig.Compiler do
 
     Logger.debug("wrote module code to #{path}")
   end
+
+  defp precompile(_), do: :ok
 
   defp recursive_resource_search(parsed, path, so_far) do
     Enum.reduce(parsed.dependencies, so_far, fn dep, so_far ->
@@ -217,7 +218,7 @@ defmodule Zig.Compiler do
   ## STEPS
 
   def assembly_dir(env, module) do
-    System.tmp_dir()
+    Zig._tmp_dir()
     |> String.replace("\\", "/")
     |> Path.join(".zigler_compiler/#{env}/#{module}")
   end
@@ -259,4 +260,10 @@ defmodule Zig.Compiler do
   end
 
   defp elixir_save_zigler_opts(opts), do: opts
+
+  defp add_fingerprint(opts, code) do
+    import Bitwise
+    fingerprint = :erlang.crc32("#{opts.otp_app}") <<< 32 ||| :erlang.crc32(code)
+    %{opts | fingerprint: "0x#{Integer.to_string(fingerprint, 16)}"}
+  end
 end

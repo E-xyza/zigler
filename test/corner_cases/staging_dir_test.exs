@@ -3,7 +3,6 @@ defmodule ZiglerTest.CornerCases.StagingDirTest do
   # as an environment variable
   use ExUnit.Case
 
-  @moduletag :skip_windows
   @staging_dir Path.join(System.tmp_dir!(), "zigler_staging")
 
   require ZiglerTest.Compiler
@@ -14,6 +13,8 @@ defmodule ZiglerTest.CornerCases.StagingDirTest do
     if File.dir?(@staging_dir) do
       File.rm_rf!(@staging_dir)
     end
+
+    File.mkdir_p!(@staging_dir)
 
     modname = ZiglerTest.Compiler.compile("staging_dir.ex")
 

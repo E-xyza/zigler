@@ -11,12 +11,12 @@ Logger.configure(level: log_level)
 
 custom_directory = "test/.custom_location"
 
+if :os.type() == {:win32, :nt} do
+  File.mkdir_p!(System.tmp_dir!())
+end
+
 if File.dir?(custom_directory), do: File.rm_rf!("test/.custom_location")
 File.mkdir_p!("test/.custom_location")
-
-defmodule MyApp do
-  def env, do: :test
-end
 
 ZiglerTest.Compiler.init()
 
@@ -28,4 +28,7 @@ ZiglerTest.MakeReadme.go()
 
 ZiglerTest.MakeZig.go()
 
-ExUnit.start()
+exclude_more = List.wrap(if Version.match?(System.version(), "~> 1.19"), do: :on_upgrade)
+exclude = ExUnit.configuration()[:exclude] ++ exclude_more
+
+ExUnit.start(exclude: exclude)

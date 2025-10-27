@@ -71,8 +71,7 @@ defmodule Zig.Type.Integer do
           ] do
       unless variable === 0 do
         :erlang.error(
-          {:argument_error, index,
-           [{"expected: zero (for `#{name}`)"}, {"got: `#{inspect(variable)}`"}]}
+          {:badarg, index, [{"expected: zero (for `#{name}`)"}, {"got: `#{inspect(variable)}`"}]}
         )
       end
 
@@ -94,14 +93,14 @@ defmodule Zig.Type.Integer do
             ] do
         unless is_integer(variable) do
           :erlang.error(
-            {:argument_error, index,
+            {:badarg, index,
              [{"expected: integer (for `#{name}`)"}, {"got: `#{inspect(variable)}`"}]}
           )
         end
 
         unless variable >= min do
           :erlang.error(
-            {:argument_error, index,
+            {:badarg, index,
              [
                {"expected: integer (for `#{name}`)"},
                {"got: `#{inspect(variable)}`"},
@@ -112,7 +111,7 @@ defmodule Zig.Type.Integer do
 
         unless variable <= max do
           :erlang.error(
-            {:argument_error, index,
+            {:badarg, index,
              [
                {"expected: integer (for `#{name}`)"},
                {"got: `#{inspect(variable)}`"},

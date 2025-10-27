@@ -106,8 +106,11 @@ higher alignment than the maximum alignment for builtin types.
 
 ```elixir
 ~Z"""
+const std = @import("std");
+
 pub fn allocate_large_aligned(count: usize) !usize {
-    const page = try beam.allocator.allocWithOptions(u8, count, 4096, null);
+    const alignment = comptime std.mem.Alignment.fromByteUnits(4096);
+    const page = try beam.allocator.alignedAlloc(u8, alignment, count);
     defer beam.allocator.free(page);
 
     return @intFromPtr(page.ptr);
@@ -151,7 +154,7 @@ pub fn noleak() !bool {
 }
 """
 
-@tag [erroring: true, skip_windows: true]
+@tag :erroring
 test "leak checks with debug allocator" do
   require Logger
   Logger.warning("====== the following leak message is expected: =========== START")
@@ -166,14 +169,12 @@ end
 ## Building composable allocators backed by zig's beam allocator
 
 Because zigler's beam allocators conform to zig's allocator interface, you may use use any
-composable allocator in the standard library or any composable allocator from an imported zig
-package, passing any one of the beam allocators into place. 
+composable allocator in the standard library or any composable allocator from an imported module,
+passing any one of the beam allocators into place. 
 
 ```elixir
 ~Z"""
 pub fn with_arena() !beam.term {
-    const std = @import("std");
-
     var arena = std.heap.ArenaAllocator.init(beam.allocator);
     defer arena.deinit();
 

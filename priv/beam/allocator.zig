@@ -127,7 +127,12 @@ fn raw_free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ret
 /////////////////////////////////////////////////////////////////////////////
 // Debug allocator
 
-const BeamDebugAllocator = std.heap.DebugAllocator(.{ .thread_safe = true });
+const BeamDebugAllocator = std.heap.DebugAllocator(.{
+    .thread_safe = true,
+    // On Windows, stack trace collection in dynamically loaded libraries (NIFs) can cause
+    // segfaults due to limitations in the debug info access. Disable stack traces on Windows.
+    .stack_trace_frames = if (@import("builtin").os.tag == .windows) 0 else 8,
+});
 
 pub fn make_debug_allocator_instance() BeamDebugAllocator {
     return BeamDebugAllocator{ .backing_allocator = beam_allocator };

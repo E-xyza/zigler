@@ -14,7 +14,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "non-path raises" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `module_code_path` option must be a path, got: `:foo`",
+                   "test/options_test.exs:4: option `module_code_path` must be a path, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, module_code_path: :foo)
                    end
@@ -32,7 +32,7 @@ defmodule ZiglerTest.OptionsTest do
 
     test "non-path raises" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `zig_code_path` option must be a path, got: `:foo`",
+                   "test/options_test.exs:4: option `zig_code_path` must be a path, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, zig_code_path: :foo)
                    end
@@ -202,12 +202,13 @@ defmodule ZiglerTest.OptionsTest do
 
   describe "the dir option" do
     test "accepts iodata" do
-      assert %{dir: "foo/bar"} = make_module(otp_app: :zigler, dir: ["foo", "/" | "bar"])
+      local_path = Path.join(__DIR__, "foo/bar")
+      assert %{dir: ^local_path} = make_module(otp_app: :zigler, dir: ["foo", "/" | "bar"])
     end
 
     test "rejects non-iodata" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `dir` option must be a path, got: `:foo`",
+                   "test/options_test.exs:4: option `dir` must be a path, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, dir: :foo)
                    end
@@ -221,25 +222,25 @@ defmodule ZiglerTest.OptionsTest do
 
     test "rejects non-iodata" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: `easy_c` option must be a path, got: `:foo`",
+                   "test/options_test.exs:4: option `easy_c` must be a path, got: `:foo`",
                    fn ->
                      make_module(otp_app: :zigler, easy_c: :foo)
                    end
     end
   end
 
-  describe "release_mode" do
-    test "is ok with fast, small, safe, debug, env" do
-      Enum.each(~w[fast small safe debug env]a, fn mode ->
-        assert %{release_mode: ^mode} = make_module(otp_app: :zigler, release_mode: mode)
+  describe "optimize" do
+    test "is ok with fast, small, safe, debug" do
+      Enum.each(~w[fast small safe debug]a, fn mode ->
+        assert %{optimize: ^mode} = make_module(otp_app: :zigler, optimize: mode)
       end)
     end
 
     test "rejects other" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `release_mode` must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env` or `{:env, mode}`, got: `:foo`",
+                   "test/options_test.exs:4: option `optimize` must be one of `:debug`, `:safe`, `:fast`, `:small`, `:env`, or `{:env, mode}`, got: `:foo`",
                    fn ->
-                     make_module(otp_app: :zigler, release_mode: :foo)
+                     make_module(otp_app: :zigler, optimize: :foo)
                    end
     end
   end
@@ -262,47 +263,66 @@ defmodule ZiglerTest.OptionsTest do
     end
   end
 
-  describe "packages" do
+  describe "extra_modules" do
     test "accepts name-path-deps" do
-      assert %{packages: [foo: {"bar", [:baz, :quux]}]} =
-               make_module(otp_app: :zigler, packages: [foo: {"bar", [:baz, :quux]}])
+      assert %{extra_modules: [%{name: :foo, path: path, deps: [:baz, :quux]}]} =
+               make_module(otp_app: :zigler, extra_modules: [foo: {"bar", [:baz, :quux]}])
+
+      assert path == Path.expand("test/bar")
+    end
+
+    test "accepts dep-mod" do
+      assert %{extra_modules: [%{dep: :dep, dst_mod: :foo, src_mod: :mymod}]} =
+               make_module(
+                 otp_app: :zigler,
+                 dependencies: [dep: "path/to/dep"],
+                 extra_modules: [foo: {:dep, :mymod}]
+               )
+    end
+
+    test "dependency used in extra modules must be in dependencies" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `extra_modules > foo` requires the `dep` dependency, got: `[]`",
+                   fn ->
+                     make_module(otp_app: :zigler, extra_modules: [foo: {:dep, :mymod}])
+                   end
     end
 
     test "path must be a string" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `packages > foo` must be a tuple of the form `{path, [deps...]}`, got: `:bar` for path",
+                   "test/options_test.exs:4: option `extra_modules > foo` must be a tuple of the form `{path, [deps...]}`, got: `:bar` for path",
                    fn ->
-                     make_module(otp_app: :zigler, packages: [foo: {:bar, [:baz, :quux]}])
+                     make_module(otp_app: :zigler, extra_modules: [foo: {:bar, [:baz, :quux]}])
                    end
     end
 
     test "deps must be a list of atoms" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `packages > foo` must be a list of atoms representing dependencies, got: `\"baz\"`",
+                   "test/options_test.exs:4: option `extra_modules > foo` must be a list of atoms representing dependencies, got: `\"baz\"`",
                    fn ->
-                     make_module(otp_app: :zigler, packages: [foo: {"bar", "baz"}])
+                     make_module(otp_app: :zigler, extra_modules: [foo: {"bar", "baz"}])
                    end
     end
 
     test "must be a keyword list" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `packages` must be a list of package specifications, got: `\"foo\"`",
+                   "test/options_test.exs:4: option `extra_modules` must be a list of module specifications, got: `\"foo\"`",
                    fn ->
-                     make_module(otp_app: :zigler, packages: "foo")
+                     make_module(otp_app: :zigler, extra_modules: "foo")
                    end
 
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `packages` must be a list of package specifications, got: `\"bar\"`",
+                   "test/options_test.exs:4: option `extra_modules` must be a list of module specifications, got: `\"bar\"`",
                    fn ->
-                     make_module(otp_app: :zigler, packages: ["bar"])
+                     make_module(otp_app: :zigler, extra_modules: ["bar"])
                    end
     end
 
     test "payload must be a tuple" do
       assert_raise CompileError,
-                   "test/options_test.exs:4: option `packages > foo` must be a tuple of the form `{path, [deps...]}`, got: `\"bar\"`",
+                   "test/options_test.exs:4: option `extra_modules > foo` must be a tuple of the form `{path, [deps...]}`, got: `\"bar\"`",
                    fn ->
-                     make_module(otp_app: :zigler, packages: [foo: "bar"])
+                     make_module(otp_app: :zigler, extra_modules: [foo: "bar"])
                    end
     end
   end

@@ -211,11 +211,11 @@ after
       %{"type" => "float"} ->
         Float.from_json(json)
 
-      %{
-        "type" => "struct",
-        "fields" => [%{"name" => "__payload"}, %{"name" => "__should_release"}]
-      } ->
+      %{"type" => "resource"} ->
         Resource.from_json(json, module)
+
+      %{"type" => "struct", "name" => "beam.term"} ->
+        :term
 
       %{"type" => "struct"} ->
         Struct.from_json(json, module)
@@ -249,9 +249,6 @@ after
 
       %{"type" => "erl_nif_term"} ->
         :erl_nif_term
-
-      %{"type" => "struct", "name" => "beam.term"} ->
-        :term
 
       %{"type" => "pid"} ->
         :pid

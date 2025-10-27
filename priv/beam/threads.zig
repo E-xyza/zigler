@@ -3,7 +3,7 @@ const beam = @import("beam.zig");
 const e = @import("erl_nif");
 const options = @import("options.zig");
 
-const BeamThreadFn = *const fn (?*anyopaque) callconv(.C) ?*anyopaque;
+const BeamThreadFn = *const fn (?*anyopaque) callconv(.c) ?*anyopaque;
 
 pub const ThreadError = error{ threaderror, threadtooktoolong, processnotjoined, processterminated };
 
@@ -30,7 +30,7 @@ pub const ThreadState = enum {
 
     pub fn wait_while(self: *This, state: ThreadState) void {
         while (self.get() == state) {
-            std.time.sleep(1000);
+            std.Thread.sleep(1000);
         }
     }
 
@@ -54,7 +54,7 @@ pub const ThreadState = enum {
 
         while (!check_against(self.get(), state_or_states)) : (so_far += 1) {
             if (so_far > cycles) return error.threadtooktoolong;
-            std.time.sleep(1000);
+            std.Thread.sleep(1000);
         }
     }
 };
@@ -140,7 +140,7 @@ pub fn Thread(comptime function: anytype) type {
         }
 
         // this is a wrapped function designed explicitly to be called by e.enif_thread_create.
-        fn wrapped(void_thread: ?*anyopaque) callconv(.C) ?*anyopaque {
+        fn wrapped(void_thread: ?*anyopaque) callconv(.c) ?*anyopaque {
             const thread = @as(*This, @ptrCast(@alignCast(void_thread.?)));
             // set critical threadlocal variables
             local_join_started = &thread.join_started;
@@ -206,7 +206,10 @@ pub fn Thread(comptime function: anytype) type {
                         if (@intFromError(err) == TERMINATED) {
                             result_ptr.* = .{ .error_return_trace = beam.make_empty_list(.{}) };
                         } else {
-                            const response = .{ .@"error", err, @errorReturnTrace() };
+                            const response = if (@import("builtin").os.tag == .windows)
+                                .{ .@"error", err, null }
+                            else
+                                .{ .@"error", err, @errorReturnTrace() };
                             result_ptr.* = .{ .error_return_trace = beam.make(response, .{}) };
                         }
                     }

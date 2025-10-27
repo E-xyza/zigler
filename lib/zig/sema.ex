@@ -1,7 +1,5 @@
 defmodule Zig.Sema do
   @moduledoc false
-  require EEx
-  alias Zig.Attributes
   alias Zig.Module
   alias Zig.Nif
   alias Zig.Options
@@ -18,22 +16,12 @@ defmodule Zig.Sema do
   @enforce_keys [:functions, :types, :decls, :callbacks]
   defstruct @enforce_keys
 
-  @type t :: %__MODULE__{
+  @type info :: %__MODULE__{
           functions: [Function.t()],
           types: keyword(Type.t()),
           decls: keyword(Type.t()),
           callbacks: [Function.t()]
         }
-
-  case Code.ensure_loaded(:json) do
-    {:module, :json} ->
-      defp json_decode!(string), do: :json.decode(string)
-      defp json_encode!(json, _), do: :json.encode(json)
-
-    _ ->
-      defp json_decode!(string), do: Jason.decode!(string)
-      defp json_encode!(json, opts), do: Jason.encode!(json, opts)
-  end
 
   # PHASE 1:  SEMA EXECUTION
 
@@ -42,27 +30,37 @@ defmodule Zig.Sema do
   # actually executing the zig command to obtaitest/mark_as_impl_test.exsn the semantic analysis of the
   # desired file.
   def run_sema!(module) do
-    module.zig_code_path
-    |> Zig.Command.run_sema!(attribs_file: Attributes.code_path(module), c: module.c)
-    |> json_decode!()
-    |> maybe_dump(module)
-    |> reject_ignored(module)
-    |> reject_allocators(module)
-    |> reject_error_interpreters(module)
-    |> assign_callbacks(module)
-    |> integrate_sema(module)
-    |> then(&Map.replace!(module, :sema, &1))
+    {module, json} = _obtain_precompiled_sema_json(module)
+
+    json_map =
+      if module.precompiled do
+        Zig._json_decode!(json)
+      else
+        module
+        |> Zig.Command.run_sema!()
+        |> Zig._json_decode!()
+        |> maybe_dump(module)
+        |> reject_ignored(module)
+        |> reject_allocators(module)
+        |> reject_error_interpreters(module)
+      end
+
+    sema =
+      json_map
+      |> assign_callbacks(module)
+      |> integrate_sema(module)
+
+    sema_json =
+      json_map
+      |> Zig._json_encode!()
+      |> IO.iodata_to_binary()
+
+    %{module | sema: sema, sema_json: sema_json}
   rescue
     e in Zig.CompileError ->
-      Logger.error("sema error: #{Exception.message(e)}")
-      reraise Zig.CompileError.resolve(e, module), __STACKTRACE__
-  end
-
-  def run_sema_doc(file) do
-    file
-    |> Zig.Command.run_sema_doc!()
-    |> json_decode!()
-    |> integrate_sema(%{module: nil})
+      resolved = Zig.CompileError.resolve(e, module)
+      Logger.error("sema error: #{Exception.message(resolved)}")
+      reraise resolved, __STACKTRACE__
   end
 
   defp assign_callbacks(sema, module) do
@@ -114,6 +112,7 @@ defmodule Zig.Sema do
   end
 
   defp reject_error_interpreters(json, module) do
+    # {f
     nifs =
       case module.nifs do
         {:auto, list} -> list
@@ -142,10 +141,10 @@ defmodule Zig.Sema do
            "functions" => functions,
            "types" => types,
            "decls" => decls
-         } = sema,
+         } = sema_json,
          module
        ) do
-    callbacks = List.wrap(sema["callbacks"])
+    callbacks = List.wrap(sema_json["callbacks"])
 
     %__MODULE__{
       functions: Enum.map(functions, &Function.from_json(&1, module.module)),
@@ -168,7 +167,7 @@ defmodule Zig.Sema do
 
   defp maybe_dump(sema_json, module) do
     if module.dump_sema do
-      sema_json_pretty = json_encode!(sema_json, pretty: true)
+      sema_json_pretty = Zig._json_encode!(sema_json, pretty: true)
       IO.puts([IO.ANSI.yellow(), sema_json_pretty, IO.ANSI.reset()])
     end
 
@@ -600,5 +599,147 @@ defmodule Zig.Sema do
       description: if(error2, do: error2.(print_name), else: error1.(print_name)),
       file: module.file,
       line: module.line
+  end
+
+  def _obtain_precompiled_sema_json(%{precompiled: nil} = module), do: {module, nil}
+
+  def _obtain_precompiled_sema_json(%{precompiled: {:web, address, shasum}} = module) do
+    file = http_get!(address)
+
+    found_hash =
+      :sha256
+      |> :crypto.hash(file)
+      |> Base.encode16(case: :lower)
+
+    found_hash == String.downcase(shasum) ||
+      raise "hash mismatch: expected #{shasum}, got #{found_hash}"
+
+    staging_dir = Zig.Builder.staging_directory(module.module)
+    staging_path = Path.join(staging_dir, Path.basename(address))
+
+    File.mkdir_p!(staging_dir)
+    File.write!(staging_path, file)
+
+    _obtain_precompiled_sema_json(%{module | precompiled: staging_path})
+  end
+
+  case :os.type() do
+    {:unix, :darwin} ->
+      def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
+        case System.cmd("otool", ["-s", "__DATA", "__sema", file]) do
+          {out, 0} -> {module, parse_otool_sema(out)}
+          {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
+        end
+      end
+
+      defp parse_otool_sema(otool_output) do
+        otool_output
+        |> String.split("\n")
+        |> Enum.drop(2)
+        |> Enum.map(&parse_otool_line/1)
+        |> IO.iodata_to_binary()
+        |> Base.decode16!(case: :mixed)
+        |> String.trim(<<0>>)
+      end
+
+      defp parse_otool_line(line) do
+        line
+        |> String.trim()
+        |> String.split()
+        |> Enum.drop(1)
+        |> Enum.map(&endian_reverse/1)
+      end
+
+      defp endian_reverse(str) do
+        str
+        |> String.to_charlist()
+        |> Enum.chunk_every(2)
+        |> Enum.reverse()
+      end
+
+    {:unix, :freebsd} ->
+      # freebsd
+      def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
+        tmp_path =
+          16
+          |> :crypto.strong_rand_bytes()
+          |> Base.encode16(case: :lower)
+          |> then(&Path.join(Zig._tmp_dir(), &1))
+
+        File.touch!(tmp_path)
+
+        case System.cmd("objcopy", ["-O", "binary", "-j", ".sema", file, tmp_path]) do
+          {_, 0} ->
+            {module, tmp_path |> File.read!() |> String.trim_trailing(<<0>>)}
+
+          {_, other} ->
+            raise "error obtaining semantic analysis from #{file} (#{other})"
+        end
+      end
+
+    {:unix, _} ->
+      # linux
+      def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
+        case System.cmd("objcopy", ["--dump-section", ".sema=/dev/stdout", file]) do
+          {json, 0} -> {module, String.trim_trailing(json, <<0>>)}
+          {_, other} -> raise "error obtaining semantic analysis from #{file} (#{other})"
+        end
+      end
+
+    {_, :nt} ->
+      def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
+        tmp_path =
+          16
+          |> :crypto.strong_rand_bytes()
+          |> Base.encode16(case: :lower)
+          |> then(&Path.join(Zig._tmp_dir(), &1))
+
+        case System.cmd("objcopy", ["--dump-section", ".sema=#{tmp_path}", file]) do
+          {_, 0} ->
+            System.cmd("objdump", ["-s", "-j", ".sema", file])
+            {module, tmp_path |> File.read!() |> String.trim_trailing(<<0>>)}
+
+          {_, other} ->
+            raise "error obtaining semantic analysis from #{file} (#{other})"
+        end
+      end
+  end
+
+  @otp_version :otp_release
+               |> :erlang.system_info()
+               |> List.to_integer()
+
+  if @otp_version >= 25 do
+    defp ssl_opts do
+      [
+        verify: :verify_peer,
+        cacerts: :public_key.cacerts_get()
+      ]
+    end
+  else
+    defp ssl_opts do
+      # unfortunately in otp 24 there is not a clean way of obtaining cacerts
+      []
+    end
+  end
+
+  defp http_get!(url) do
+    {:ok, {{_, 200, _}, _headers, body}} =
+      :httpc.request(
+        :get,
+        {url, []},
+        [
+          ssl:
+            [
+              depth: 100,
+              customize_hostname_check: [
+                match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+              ]
+            ] ++ ssl_opts()
+        ],
+        body_format: :binary
+      )
+
+    body
   end
 end

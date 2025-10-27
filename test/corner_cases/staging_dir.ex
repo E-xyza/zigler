@@ -1,7 +1,13 @@
 mod =
   "ZIGLER_STAGING_ROOT"
   |> System.fetch_env!()
-  |> String.trim_leading("/")
+  |> then(fn path ->
+    # On Windows, remove drive letter (e.g., "C:\") and convert backslashes
+    path
+    |> String.replace(~r/^[A-Za-z]:/, "")
+    |> String.replace("\\", "/")
+    |> String.trim_leading("/")
+  end)
   |> Macro.camelize()
   |> then(&Module.concat(Zigler.StagingDir, &1))
 

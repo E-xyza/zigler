@@ -1,0 +1,12 @@
+<% name = Keyword.fetch!(opts, :name) %>
+
+<%= for dir <- @include_dirs do %>
+  <%= case dir do %>
+    <% {:system, path} -> %> <%= name %>.addSystemIncludePath(.{.cwd_relative = "<%= path %>"});
+    <% _ -> %> <%= name %>.addIncludePath(.{.cwd_relative = "<%= dir %>"});
+  <% end %>
+<% end %>
+
+<%= for dir <- @library_dirs do %>
+<%= name %>.addLibraryPath(.{.cwd_relative = "<%= dir %>"});
+<% end %>

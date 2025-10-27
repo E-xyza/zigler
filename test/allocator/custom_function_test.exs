@@ -59,7 +59,7 @@ defmodule ZiglerTest.Allocator.CustomFunctionTest do
     assert_receive {:free, 10}
   end
 
-  # this currently segfaults.  Fix in 0.14.0
+  # this currently segfaults.  Fix in 0.16.0
   @tag :skip
   test "for threaded function works" do
     threaded("0123456789")

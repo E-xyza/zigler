@@ -6,9 +6,12 @@ defmodule Zig.C do
 
   defstruct include_dirs: [],
             library_dirs: [],
-            src: [],
             link_lib: [],
+            src: [],
+            link_libc: true,
             link_libcpp: false
+
+  use Zig.Builder, template: "templates/build_c.zig.eex"
 
   alias Zig.Options
 
@@ -16,6 +19,7 @@ defmodule Zig.C do
           include_dirs: [String.t() | {:system, String.t()}],
           library_dirs: [String.t() | {:system, String.t()}],
           link_lib: [String.t() | {:system, String.t()}],
+          link_libc: boolean,
           link_libcpp: boolean,
           src: [{String.t(), [String.t()]}]
         }
@@ -61,13 +65,9 @@ defmodule Zig.C do
   end
 
   defp resolve_path(path, context) do
-    case IO.iodata_to_binary(path) do
-      "./" <> rest ->
-        {:system, Path.join(File.cwd!(), rest)}
-
-      path ->
-        Path.expand(path, Path.dirname(context.file))
-    end
+    path
+    |> IO.iodata_to_binary()
+    |> Zig._normalize_path(Path.dirname(context.file))
   rescue
     _ in ArgumentError ->
       Options.raise_with(

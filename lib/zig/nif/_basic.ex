@@ -100,7 +100,7 @@ defmodule Zig.Nif.Basic do
     error_return_prong =
       List.wrap(
         if match?(%Zig.Type.Error{}, nif.signature.return) do
-          ErrorProng.return_error_prong(:elixir, [marshal_name])
+          ErrorProng.return_error_prong(:elixir, [marshal_name], nif.name, nif.line)
         end
       )
 
@@ -197,7 +197,7 @@ defmodule Zig.Nif.Basic do
       error_return_prong =
         List.wrap(
           if match?(%Zig.Type.Error{}, nif.signature.return) do
-            ErrorProng.return_error_prong(:erlang, [])
+            ErrorProng.return_error_prong(:erlang, [], nif.name, nif.line)
           end
         )
 

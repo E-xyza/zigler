@@ -15,7 +15,7 @@ defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
 
   var resource_type: *e.ErlNifResourceType = undefined;
 
-  fn dtor(env: beam.env, res_ptr: ?*anyopaque) callconv(.C) void {
+  fn dtor(env: beam.env, res_ptr: ?*anyopaque) callconv(.c) void {
       _ = env;
       var rres_ptr: ?*anyopaque = undefined;
       const res: *Resource = @ptrCast(@alignCast(res_ptr.?));
@@ -29,7 +29,7 @@ defmodule ZiglerTest.Concurrency.ThreadedVeryManualTest do
       return 0;
   }
 
-  fn thread(info: ?*anyopaque) callconv(.C) ?*anyopaque {
+  fn thread(info: ?*anyopaque) callconv(.c) ?*anyopaque {
       const res: *Resource = @ptrCast(@alignCast(info.?));
       beam.context = .{
           .mode = .threaded,

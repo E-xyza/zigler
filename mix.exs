@@ -1,15 +1,15 @@
 defmodule Zigler.MixProject do
   use Mix.Project
 
-  def zig_version, do: "0.14.1"
+  def zig_version, do: "0.15.2"
 
   def project do
     env = Mix.env()
 
     [
       app: :zigler,
-      version: "0.14.1",
-      elixir: "~> 1.14",
+      version: "0.15.2",
+      elixir: "~> 1.15",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
       deps: deps(),
@@ -25,10 +25,13 @@ defmodule Zigler.MixProject do
         }
       ],
       dialyzer: [plt_add_deps: :transitive],
-      preferred_cli_env: [dialyzer: :dev],
       source_url: "https://github.com/E-xyza/zigler/",
       docs: docs(),
-      aliases: [docs: "zig_doc"],
+      aliases: [
+        docs: "zig_doc",
+        tidewave:
+          "run --no-halt -e 'Agent.start(fn -> Bandit.start_link(plug: Tidewave, port: 4000) end)'"
+      ],
       test_elixirc_options: [
         debug_info: true,
         docs: true
@@ -68,16 +71,12 @@ defmodule Zigler.MixProject do
 
   def deps do
     [
-      # credo
-      # {:credo, "~> 1.7", only: [:dev, :test], runtime: false},
-      # dialyzer
-      {:dialyxir, "~> 0.5", only: [:dev], runtime: false},
       # zig parser is pinned to a version of zig parser because versions of zig parser
       # are pinned to zig versions
-      {:zig_parser, "~> 0.5"},
+      {:zig_parser, "~> 0.6"},
       # utility to help manage type protocols
-      {:protoss, "~> 0.2"},
-      {:zig_get, "~> 0.14.2"},
+      {:protoss, "~> 1.0"},
+      {:zig_get, "== 0.15.2", runtime: false},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
       {:zig_doc, "~> 0.5", only: :dev, runtime: false}
@@ -85,8 +84,8 @@ defmodule Zigler.MixProject do
   end
 
   defp json do
-    case Code.ensure_loaded(:json) do
-      {:module, :json} ->
+    case Code.ensure_loaded(JSON) do
+      {:module, JSON} ->
         []
 
       _ ->

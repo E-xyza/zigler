@@ -1,6 +1,6 @@
 defmodule ZiglerTest.CornerCases.ReleaseMode do
   use ExUnit.Case, async: true
-  use Zig, otp_app: :zigler, release_mode: :safe
+  use Zig, otp_app: :zigler, optimize: :safe
 
   ~Z"""
   pub fn add(a: u32, b: u32) u32 {

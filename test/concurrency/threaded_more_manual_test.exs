@@ -27,7 +27,7 @@ defmodule ZiglerTest.Concurrency.ThreadedMoreManualTest do
 
   const Thread = struct { env: beam.env, pid: beam.pid, tid: beam.tid, ref: beam.term };
 
-  fn thread(info: ?*anyopaque) callconv(.C) ?*anyopaque {
+  fn thread(info: ?*anyopaque) callconv(.c) ?*anyopaque {
       const thr: *Thread = @ptrCast(@alignCast(info.?));
 
       beam.context = .{

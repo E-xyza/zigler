@@ -1,0 +1,13 @@
+.{
+  .name = .<%= @otp_app %>,
+  .version = "<%= @version %>",
+  .fingerprint = <%= @fingerprint %>,
+  .paths = .{
+    "build.zig",
+    "build.zig.zon"
+  },
+  .dependencies = .{<%= for {name, path} <- @dependencies do %>
+    .<%= name %> = .{.path = "<%= path %>"},
+  <% end %>
+  }
+}

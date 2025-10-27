@@ -132,7 +132,7 @@ For more on marshalling collection datatypes, see [`collections`](collections.ht
 
 You may also manually marshal types into and out of the beam by using the
 [`beam.term`](beam.html#term) datatype. To do so, you must first import the [`beam`](beam.html)
-package. The `beam.term` type is an opaque, wrapped datatype that ensures safe manipulation of terms
+module. The `beam.term` type is an opaque, wrapped datatype that ensures safe manipulation of terms
 as a token in your zig code.
 
 ```elixir
@@ -215,6 +215,16 @@ test "erroring" do
   assert_raise ErlangError, "Erlang error: :oops", fn -> erroring() end
 end
 ```
+
+> ### Error Return Trace Availability {: .info}
+>
+> errorReturnTrace is enabled by default in Debug and ReleaseSafe builds, and disabled in ReleaseFast
+> and ReleaseSmall builds. This differs from the zig default. 
+>
+> Note that the erlang compiler has a --no-debug-info parameter that might be set; if this flag is
+> set, then errorReturnTrace will be disabled in ReleaseSafe builds.
+>
+> To override this policy, set the `:error_tracing` option.
 
 ### A few notes on the above code.
 

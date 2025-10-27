@@ -33,8 +33,11 @@ defmodule ZiglerTest.AllocatorTest do
       return @intFromPtr(ptr.ptr);
   }
 
+  const std = @import("std");
+
   pub fn allocate_aligned() usize {
-      const ptr = beam.allocator.allocWithOptions(u8, 10_000, 1024, null) catch unreachable;
+      const alignment = comptime std.mem.Alignment.fromByteUnits(1024);
+      const ptr = beam.allocator.alignedAlloc(u8, alignment, 10_000) catch unreachable;
       return @intFromPtr(ptr.ptr);
   }
 

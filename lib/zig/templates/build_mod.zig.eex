@@ -1,0 +1,86 @@
+<% _ = opts %>
+const std = @import("std");
+
+const BuildMode = enum{ nif_lib, sema };
+
+pub fn build(b: *std.Build) void {
+    const resolved_target = b.standardTargetOptions(<%=Zig.Target.for_builder()%>);
+    const optimize: std.builtin.OptimizeMode = <%= render_optimize_mode(assigns) %>;
+    const error_tracing = <%= @error_tracing %>;
+
+    const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
+
+    <%= for {name, _} <- @dependencies do %>
+    const <%= name %> = b.dependency("<%= name %>", .{
+        .target = resolved_target,
+        .optimize = optimize
+    });
+    <% end %>
+
+    switch (mode) {
+        .nif_lib => {
+
+            <%= Builder.render_build(BuildModule.erl_nif()) %>
+            <%= Builder.render_build(BuildModule.beam()) %>
+            <%= Builder.render_build(BuildModule.attributes()) %>
+            <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
+            <%= Builder.render_build(BuildModule.from_beam_module(assigns)) %>
+            <%= Builder.render_build(BuildModule.nif_shim()) %>
+
+            const lib = b.addLibrary(.{
+                .name = "<%= @module %>",
+                .linkage = .dynamic,
+                .version = .{.major = <%= @version.major %>,
+                             .minor = <%= @version.minor %>,
+                             .patch = <%= @version.patch %>},
+                .root_module = nif_shim
+            });
+
+            <%= render_c(@c, :lib) %>
+            <%= for extra_module <- @extra_modules, do: render_c(extra_module, :lib) %>
+
+            lib.linker_allow_shlib_undefined = true;
+
+            // the native backend still causes segfaults, so we must disable it for now.
+            lib.use_llvm = true;
+
+            // Only for 32-bit x86 targets
+            if (resolved_target.result.cpu.arch == .x86) {
+                lib.link_z_notext = true; // passes -z notext to the linker
+            }
+
+            <%= if @libc_txt do %>
+            lib.setLibCFile(b.path("<%= @libc_txt %>"));
+            <% end %>
+
+            b.installArtifact(lib);
+        },
+        .sema => {
+            <%= Builder.render_build(BuildModule.stub_erl_nif()) %>
+            <%= Builder.render_build(BuildModule.beam()) %>
+            <%= Builder.render_build(BuildModule.attributes()) %>
+            <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
+            <%= Builder.render_build(BuildModule.from_beam_module(assigns)) %>
+            <%= Builder.render_build(BuildModule.sema()) %>
+
+            const sema_exe = b.addExecutable(.{
+                .name = "sema",
+                .root_module = sema
+            });
+
+            <%= render_c(@c, :sema_exe) %>
+            <%= for extra_module <- @extra_modules, do: render_c(extra_module, :sema_exe) %>
+
+            b.installArtifact(sema_exe);
+
+            const sema_run_cmd = b.addRunArtifact(sema_exe);
+            if (b.args) |args| sema_run_cmd.addArgs(args);
+            const sema_step = b.step("sema", "Run sema");
+            sema_step.dependOn(&sema_run_cmd.step);
+        }
+    }
+}
+
+fn getenvAlloc(alloc: std.mem.Allocator, name: []const u8) ?[]u8 {
+    return std.process.getEnvVarOwned(alloc, name) catch null;
+}

@@ -6,28 +6,32 @@ defmodule ZiglerTest.MakeGuides do
 
     "guides"
     |> File.ls!()
-    |> Enum.each(fn filename ->
-      if String.ends_with?(filename, ".md") do
-        basename =
-          filename
-          |> Path.basename(".md")
-          |> String.split("-")
-          |> Enum.at(1)
+    |> Enum.each(fn
+      "11-precompiled.md" ->
+        :ok
 
-        dest_filename = String.replace_suffix(basename, "", "_test.exs")
+      filename ->
+        if String.ends_with?(filename, ".md") do
+          basename =
+            filename
+            |> Path.basename(".md")
+            |> String.split("-")
+            |> Enum.at(1)
 
-        dest_stream =
-          "test/guides"
-          |> Path.join(dest_filename)
-          |> File.stream!([])
+          dest_filename = String.replace_suffix(basename, "", "_test.exs")
 
-        "guides"
-        |> Path.join(filename)
-        |> File.stream!([], :line)
-        |> Enum.reduce(%__MODULE__{needs_module: module(basename)}, &collect_sections/2)
-        |> prepare
-        |> Enum.into(dest_stream)
-      end
+          dest_stream =
+            "test/guides"
+            |> Path.join(dest_filename)
+            |> File.stream!([])
+
+          "guides"
+          |> Path.join(filename)
+          |> File.stream!([], :line)
+          |> Enum.reduce(%__MODULE__{needs_module: module(basename)}, &collect_sections/2)
+          |> prepare
+          |> Enum.into(dest_stream)
+        end
     end)
   end
 

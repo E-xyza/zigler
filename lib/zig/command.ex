@@ -15,10 +15,10 @@ defmodule Zig.Command do
   #############################################################################
   ## API
 
-  defp run_zig(command, module) do
+  def run_zig(command, opts) do
     args = String.split(command)
 
-    base_opts = Keyword.take(module, [:cd, :stderr_to_stdout])
+    base_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
     zig_cmd = executable_path()
     Logger.debug("running command: #{zig_cmd} #{command}")
 
@@ -31,78 +31,39 @@ defmodule Zig.Command do
     end
   end
 
-  require EEx
-  sema_command = Path.join(__DIR__, "templates/sema_command.eex")
-  EEx.function_from_file(:defp, :sema_command, sema_command, [:assigns])
-
-  def run_sema!(file, opts) do
-    # TODO: add availability of further options here.
-    priv_dir = :code.priv_dir(:zigler)
-    sema_file = Path.join(priv_dir, "beam/sema.zig")
-    beam_file = Path.join(priv_dir, "beam/beam.zig")
-    erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
-    attribs_file = opts[:attribs_file]
-    c = maybe_add_windows_shim(opts[:c])
-
+  def run_sema!(module) do
     # nerves will put in a `CC` command that we need to bypass because it misidentifies
     # libc locations for statically linking it.
     System.delete_env("CC")
 
-    analyte_deps =
-      [:erl_nif, :beam] ++
-        List.wrap(if attribs_file, do: [:attributes])
+    staging_dir = Path.dirname(module.module_code_path)
 
-    mods =
-      [erl_nif: %{path: erl_nif_file}, beam: %{deps: [:erl_nif], path: beam_file}] ++
-        List.wrap(if attribs_file, do: [attributes: %{path: attribs_file}]) ++
-        [analyte: %{deps: analyte_deps, path: file}]
+    run_zig("build -Dzigler-mode=sema", cd: staging_dir, stderr_to_stdout: true)
 
-    sema_command(
-      sema: sema_file,
-      mods: mods,
-      c: c
-    )
-    |> IO.iodata_to_binary()
-    |> String.split()
-    |> Enum.join(" ")
-    |> run_zig(stderr_to_stdout: true)
+    attempt_json(staging_dir, 5)
   end
 
-  defp maybe_add_windows_shim(c) do
-    # TODO: replace this with Target info
-    case :os.type() do
-      {_, :nt} ->
-        :zigler
-        |> :code.priv_dir()
-        |> Path.join("erl_nif_win")
-        |> then(&%{c | include_dirs: [&1 | c.include_dirs]})
+  # this function needs to be repeated on the windows platform because it sometimes fails with
+  # no text.
+  defp attempt_json(_, 0) do
+    raise Zig.CompileError, command: "sema"
+  end
 
-      _ ->
-        c
+  defp attempt_json(staging_dir, n) do
+    staging_dir
+    |> Path.join("zig-out/bin/sema")
+    |> System.cmd(["--json"])
+    |> case do
+      {"", 0} ->
+        Process.sleep(100)
+        attempt_json(staging_dir, n - 1)
+
+      {res, 0} ->
+        res
+
+      {error, code} ->
+        raise Zig.CompileError, command: "sema", code: code, error: error
     end
-  end
-
-  # documentation requires a separate pathway because otherwise compilation
-  # doesn't go that well.
-
-  # TODO: unify this with the normal sema function using options.
-  def run_sema_doc!(file) do
-    priv_dir = :code.priv_dir(:zigler)
-    sema_file = Path.join(priv_dir, "beam/sema_doc.zig")
-    erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
-
-    analyte_deps = [:erl_nif]
-
-    mods = [erl_nif: %{path: erl_nif_file}, analyte: %{deps: analyte_deps, path: file}]
-
-    sema_command(
-      sema: sema_file,
-      mods: mods
-    )
-    |> IO.iodata_to_binary()
-    |> String.split()
-    |> Enum.join(" ")
-    |> run_zig(stderr_to_stdout: true)
   end
 
   def fmt(file) do
@@ -111,42 +72,54 @@ defmodule Zig.Command do
     end
   end
 
-  def compile!(module) do
+  def compile!(module = %{precompiled: nil}) do
     staging_directory = Builder.staging_directory(module.module)
+    precompiler_settings = precompile_meta()
 
-    so_dir = :code.priv_dir(module.otp_app)
+    so_dir =
+      if precompiler_settings do
+        Path.dirname(module.file)
+      else
+        :code.priv_dir(module.otp_app)
+      end
 
     lib_dir = Path.join(so_dir, "lib")
+    dst_lib_path = Path.join(lib_dir, dst_lib_name(module))
 
-    run_zig("build -Doptimize=#{release_mode(module)} --prefix #{so_dir}",
+    target = precompile_name("-Dtarget=")
+
+    run_zig("build #{target} --prefix #{so_dir}",
       cd: staging_directory,
       stderr_to_stdout: true
     )
 
-    case :os.type() do
-      {_, :nt} ->
+    Logger.debug("compiled lib at: #{so_dir}")
+
+    src_lib_path =
+      if windows?() do
         # windows dlls wind up in the bin directory instead of the lib directory.
-        bin_dir = Path.join(so_dir, "bin")
-        src_lib_path = Path.join(bin_dir, src_lib_name(module.module))
-        dst_lib_path = Path.join(lib_dir, dst_lib_name(module.module))
+        so_dir
+        |> Path.join("bin")
+        |> Path.join(src_lib_name(module.module))
+      else
+        Path.join(lib_dir, src_lib_name(module.module))
+      end
 
-        # on Windows, not deleting this causes a file permissions error.
-        File.rm(dst_lib_path)
-        File.cp!(src_lib_path, dst_lib_path)
+    # on Windows, not deleting this causes a file permissions error.
+    # on MacOS, we must delete the old library because otherwise library
+    # integrity checker will kill the process
+    #
+    # as this is required by two different build systems, we might as well
+    # remove on all.
+    File.rm(dst_lib_path)
 
-        Logger.debug("built library at #{dst_lib_path}")
-
-      _ ->
-        src_lib_path = Path.join(lib_dir, src_lib_name(module.module))
-        dst_lib_path = Path.join(lib_dir, dst_lib_name(module.module))
-
-        # on MacOS, we must delete the old library because otherwise library
-        # integrity checker will kill the process
-        File.rm(dst_lib_path)
-        File.cp!(src_lib_path, dst_lib_path)
-
-        Logger.debug("built library at #{dst_lib_path}")
+    if src_lib_path != dst_lib_path do
+      File.cp!(src_lib_path, dst_lib_path)
     end
+
+    precompile_callback(dst_lib_path)
+
+    Logger.debug("moved library to #{dst_lib_path}")
 
     module
   rescue
@@ -154,33 +127,34 @@ defmodule Zig.Command do
       reraise Zig.CompileError.resolve(e, module), __STACKTRACE__
   end
 
+  def compile!(module) do
+    # `precompiled` contains the path to a precompiled library.
+    Logger.debug(
+      "skipping compile step for precompiled module #{module.module}, at #{module.precompiled}"
+    )
+
+    so_dir = :code.priv_dir(module.otp_app)
+    lib_dir = Path.join(so_dir, "lib")
+
+    dst_lib_path = Path.join(lib_dir, dst_lib_name(module))
+    Logger.debug("destination library path: #{dst_lib_path}")
+
+    force_reload = System.get_env("ZIGLER_PRECOMPILED_FORCE_RELOAD", "false") == "true"
+    lib_missing = not File.exists?(dst_lib_path)
+
+    if force_reload or lib_missing do
+      Logger.debug("transferring cached library from #{module.precompiled} to #{dst_lib_path}")
+      # on MacOS, we must delete the old library because otherwise library
+      # integrity checker will kill the process
+      File.rm(dst_lib_path)
+      File.cp!(module.precompiled, dst_lib_path)
+    end
+
+    module
+  end
+
   def targets do
     run_zig("targets", [])
-  end
-
-  @release_modes %{
-    debug: "Debug",
-    fast: "ReleaseFast",
-    small: "ReleaseSmall",
-    safe: "ReleaseSafe"
-  }
-
-  def release_mode(%{release_mode: :env}) do
-    System.fetch_env!("ZIGLER_RELEASE_MODE")
-  end
-
-  def release_mode(%{release_mode: {:env, mode}}) do
-    case System.get_env("ZIGLER_RELEASE_MODE") do
-      env when env in ["", nil] ->
-        Map.fetch!(@release_modes, mode)
-
-      supplied ->
-        supplied
-    end
-  end
-
-  def release_mode(module) do
-    Map.fetch!(@release_modes, module.release_mode)
   end
 
   def executable_path do
@@ -240,29 +214,36 @@ defmodule Zig.Command do
     if File.exists?(zig_executable), do: zig_executable
   end
 
-  defp src_lib_name(module) do
-    case {Target.resolve(), :os.type()} do
-      {nil, {:unix, :darwin}} ->
-        "lib#{module}.dylib"
+  defp precompile_name(prefix) do
+    if triple = precompile_meta() do
+      triple
+      |> Tuple.to_list()
+      |> Enum.take(3)
+      |> Enum.join("-")
+      |> String.replace_prefix("", prefix)
+    end
+  end
 
-      {nil, {_, :nt}} ->
+  defp src_lib_name(module) do
+    cond do
+      windows?() ->
         "#{module}.dll"
 
-      _ ->
+      macos?() ->
+        "lib#{module}.dylib"
+
+      true ->
         "lib#{module}.so"
     end
   end
 
   defp dst_lib_name(module) do
-    case {Target.resolve(), :os.type()} do
-      {nil, {:unix, :darwin}} ->
-        "#{module}.so"
+    affix = precompile_name(".#{module.version}.")
 
-      {nil, {_, :nt}} ->
-        "#{module}.dll"
-
-      _ ->
-        "#{module}.so"
+    if windows?() do
+      "#{module.module}#{affix}.dll"
+    else
+      "#{module.module}#{affix}.so"
     end
   end
 
@@ -285,6 +266,36 @@ defmodule Zig.Command do
     case :os.type() do
       {_, :nt} -> "\r\n"
       _ -> "\n"
+    end
+  end
+
+  defp macos? do
+    case {Target.resolve(), :os.type(), precompile_meta()} do
+      {_, _, {_, :macos, _, _}} -> true
+      {_, _, {_, _, _, _}} -> false
+      {nil, {:unix, :darwin}, nil} -> true
+      _ -> false
+    end
+  end
+
+  defp windows? do
+    case {Target.resolve(), :os.type(), precompile_meta()} do
+      {_, _, {_, :windows, _, _}} -> true
+      {_, _, {_, _, _, _}} -> false
+      {nil, {_, :nt}, nil} -> true
+      _ -> false
+    end
+  end
+
+  defp precompile_meta, do: Application.get_env(:zigler, :precompiling)
+
+  defp precompile_callback(filename) do
+    case precompile_meta() do
+      {_, _, _, callback} ->
+        callback.(filename)
+
+      _ ->
+        :ok
     end
   end
 end

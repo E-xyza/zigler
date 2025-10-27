@@ -42,6 +42,7 @@ defmodule Zig do
   - [Global module options](08-module_options.html)
   - [Raw calling](09-raw_nifs.html)
   - [Module callbacks](10-callbacks.html)
+  - [Precompiled packages](11-precompiled.html)]
 
   > ### Zig version support {: .warning }
   >
@@ -54,6 +55,12 @@ defmodule Zig do
   Nerves is supported out of the box, and Zigler will be able to seamlessly
   detect the cross-compilation information (os, architecture, runtime) and
   build correctly for that target.
+
+  > ### Nerves warnings {: .warning }
+  >
+  > Note that when compiling for nerves, you may encounter warnings about modules
+  > being unable to be loaded.  This is because the system is cross-compiling the
+  > module for a different target architecture and this is normal behavior.
 
   ### Basic NIFs
 
@@ -333,7 +340,7 @@ defmodule Zig do
   - `otp_app`: required.  Default location where the shared libraries will be installed depends
     on this value.
   - `c`: see `t:c_options/0` for details.
-  - `release_mode`: the release mode to use when building the shared object.
+  - `optimize`: the release mode to use when building the shared object.
     - `:debug` (default) builds your shared object in zig's `Debug` build mode.
     - `:safe` builds your shared object in zig's `ReleaseSafe` build mode.
     - `:fast` builds your shared object in zig's `ReleaseFast` build mode.
@@ -342,26 +349,26 @@ defmodule Zig do
     - `{:env, mode}` reads `ZIGLER_RELEASE_MODE` environment variable with fallback to the specified mode.
   - `easy_c`: path to a header file that will be used to generate a C wrapper.
     if this is set, you must specify `:nifs` without the `:auto` (or `...`) specifier.
-    A path beginning with `./` will be treated as a relative to cwd (usually the project root), 
+    A path beginning with `./` will be treated as a relative to cwd (usually the project root),
     otherwise the path will be treated as relative to the module file.
-    You may provide code using either the `c` > `link_lib` option or `c` > `src`. You 
-    may also NOT provide any `~Z` blocks in your module.  
+    You may provide code using either the `c` > `link_lib` option or `c` > `src`. You
+    may also NOT provide any `~Z` blocks in your module.
   - `zig_code_path`: path to a zig file that will be used to as a target.  A path beginning
     with `./` will be treated as relative to cwd (usually the project root), otherwise the
     path will be relative to the module file.  If you specify this option, you may NOT
     provide any `~Z` blocks in your module.
-  - `nifs`: a list of nifs to be generated.  If you specify as `{:auto, nifs}`, zigler 
+  - `nifs`: a list of nifs to be generated.  If you specify as `{:auto, nifs}`, zigler
     will search the target zig code for `pub` functions and generate the default nifs for
-    those that do not appear in the nifs list.  If you specify as a list of nifs, only 
-    the nifs in the list will be used.  In Elixir, using `...` in your nifs list 
+    those that do not appear in the nifs list.  If you specify as a list of nifs, only
+    the nifs in the list will be used.  In Elixir, using `...` in your nifs list
     converts it to `{:auto, nifs}`.  The nifs list should be a keyword list with the
     keys being the function names.  See `t:nif_options/0` for details on the options.
   - `ignore`: any functions found in the `ignore` list will not be generated as nifs if
     you are autodetecting nifs.
-  - `packages`: a list of packages to be included in the build.  Each package is a tuple
-    of the form `{name, {path, deps}}` where `name` is the name of the package, `path` is
-    the path to the package, and `deps` is a list of dependencies for that package.  Those
-    dependencies must alse be in the `packages` list.
+  - `extra_modules`: a list of zig modules to be included in the build.  Each module is declared
+    with a tuple of the form `{name, {path, deps}}` where `name` is the name of the module
+    (as an atom), `path` is the path to the module, and `deps` is a list of transitive
+    dependencies for that module.  Those dependencies must also be in the `extra_modules` list.
   - `resources`: a list of types in the zig code that are to be treated as resources.
   - `callbacks`: see `t:callback_option/0` for details.
   - `cleanup`: (default `true`) can be used to shut down cleanup for allocated datatypes
@@ -371,17 +378,17 @@ defmodule Zig do
   - `dump`: if set to `true`, the generated zig code will be dumped to the console.
   - `dump_sema`: if set to `true`, the semantic analysis of the generated zig code will be dumped to the console.
   - `dump_build_zig`: if set to `true`, the generated zig code will be dumped to the console.
-    If set to `:stdout`, or `:stderr` it will be sent to the respective stdio channels. If set 
+    If set to `:stdout`, or `:stderr` it will be sent to the respective stdio channels. If set
     to a path, the generated zig code will be written to a file at that path.
   """
   @type options :: [
           otp_app: atom,
           c: [c_options],
-          release_mode: release_mode | :env | {:env, release_mode},
+          optimize: optimize | :env | {:env, optimize},
           easy_c: Path.t(),
           nifs: {:auto, keyword(nif_options)} | keyword(nif_options),
           ignore: [atom],
-          packages: [{name :: atom, {path :: Path.t(), deps :: [atom]}}],
+          module: [{name :: atom, {path :: Path.t(), deps :: [atom]}}],
           resources: [atom],
           callbacks: [callback_option],
           cleanup: boolean,
@@ -391,7 +398,7 @@ defmodule Zig do
           dump_build_zig: boolean | :stdout | :stderr | Path.t()
         ]
 
-  @type release_mode :: :debug | :safe | :fast | :small
+  @type optimize :: :debug | :safe | :fast | :small
 
   @typedoc """
   options for compiling C code.  See `t:c_path/0` for details on how to specify paths.
@@ -446,7 +453,7 @@ defmodule Zig do
   - `allocator`: (default: `nil`) the allocator type to use for this function.
     if unset, the default allocator `beam.allocator` will be used.
     see [Allocators](03-allocators.html) for details on how to use allocators.
-  - `params`: a map of parameter indices to lists of parameter options.  See 
+  - `params`: a map of parameter indices to lists of parameter options.  See
     `t:param_option/0` for details on the options.  Skipping paramater indices
     is allowed.
   - `return`: options for the return value of the function.  See `t:return_option/0`
@@ -454,7 +461,7 @@ defmodule Zig do
   - `leak_check`: (default `false`) if set to `true`, the default allocator
     will be set to `std.heap.DebugAllocator` and the leak check method will
     be run at the end of the function.
-  - `alias`: if set, the nif name will be the name of BEAM function in the 
+  - `alias`: if set, the nif name will be the name of BEAM function in the
     module, but the zig function called will be the alias name.
   - `arity`: (only available for raw functions) the arities of the function
     that are accepted.
@@ -485,8 +492,8 @@ defmodule Zig do
     from this parameter's type instead of the return type.
 
     Only one parameter may be marked as `:in_out` in a function.
-  - :sentinel (same as `{:sentinel, true}`) if the parameter is a `[*c]` type parameter, 
-    a sentinel should be attached when allocating space for the parameter.  This option is 
+  - :sentinel (same as `{:sentinel, true}`) if the parameter is a `[*c]` type parameter,
+    a sentinel should be attached when allocating space for the parameter.  This option is
     disallowed if the parameter is not a `[*c]`.
   """
   @type param_option ::
@@ -525,7 +532,7 @@ defmodule Zig do
   sets the return type of the function, if it's ambiguous.  For example,
   a `[]u8` can be forced to return a list instead of the default binary.
 
-  For collections, you can specify deep typing.  For example`{:list, :list}` 
+  For collections, you can specify deep typing.  For example`{:list, :list}`
   can be forced to return a list of lists for `[][]u8`.  Map fields can
   be set using a keyword list, for example `{:map, [foo: :list]}` will
   force a struct to return a map with the field `foo` typed as a list.
@@ -631,6 +638,23 @@ defmodule Zig do
 
   # UTILITIES
 
+  @doc false
+  # implements the common path normalization scheme for files in the `use Zig`
+  # directory:  "./<file>" maps to "project-relative, "/<file>" maps to "absolute"
+  # and "<file>" maps to elixir module-relative.
+  def _normalize_path(path, relative_dir) do
+    case path do
+      "./" <> rest ->
+        Path.expand(rest)
+
+      "/" <> _ ->
+        path
+
+      _ ->
+        Path.expand(path, relative_dir)
+    end
+  end
+
   # converts `use Zig` options AST to a form that can be stored into a module
   # attribute.  Two `use Zig` features cannot be directly evaluated inside the
   # module.  First one is the `...` used to indicate to autodetect nifs.  Second
@@ -672,6 +696,96 @@ defmodule Zig do
       {:spec, spec} -> {:spec, Macro.escape(spec)}
       other -> other
     end)
+  end
+
+  case Code.ensure_loaded(JSON) do
+    {:module, JSON} ->
+      @doc false
+      def _json_decode!(string), do: JSON.decode!(string)
+
+      @doc false
+      def _json_encode!(term, opts \\ []) do
+        if Keyword.get(opts, :pretty, false) do
+          term
+          |> JSON.encode!()
+          |> :json.format(%{indent: "  ", line_separator: "\n", after_colon: " "})
+        else
+          JSON.encode!(term)
+        end
+      end
+
+    _ ->
+      @doc false
+      def _json_decode!(string), do: Jason.decode!(string)
+      @doc false
+      def _json_encode!(term, opts \\ []), do: Jason.encode!(term, opts)
+  end
+
+  @doc false
+  # true if error return traces are available on this platform
+  def _errors_available? do
+    case :os.type() do
+      {:unix, :darwin} ->
+        # MacOS in general: https://github.com/ziglang/zig/issues/25433
+        # x86, see: https://github.com/ziglang/zig/issues/25157
+        false
+
+      {:win32, :nt} ->
+        # windows still causes panic? segfault? when unwinding error return traces.
+        false
+
+      _ ->
+        true
+    end
+  end
+
+  @doc false
+  # Returns the system temporary directory with all symlinks resolved.
+  # On macOS, /tmp and /var are symlinks to /private/tmp and /private/var,
+  # which can cause issues with relative path resolution in Zig's build system.
+  def _tmp_dir do
+    tmp = System.tmp_dir()
+    # Remove trailing slash to normalize the path
+    tmp = String.trim_trailing(tmp, "/")
+    resolve_symlinks(tmp)
+  end
+
+  # Recursively resolve all symlinks in a path by checking each component
+  defp resolve_symlinks(path) do
+    # Split the path into components
+    parts = Path.split(path)
+
+    # Rebuild the path, resolving symlinks at each level
+    {resolved, _} =
+      Enum.reduce(parts, {"", ""}, fn part, {current_path, _} ->
+        next_path =
+          if current_path == "" do
+            part
+          else
+            Path.join(current_path, part)
+          end
+
+        # Check if this component is a symlink
+        case File.read_link(next_path) do
+          {:ok, link_target} ->
+            # If the link target is absolute, use it directly
+            # Otherwise, resolve it relative to the current directory
+            resolved_path =
+              if String.starts_with?(link_target, "/") do
+                link_target
+              else
+                Path.join(Path.dirname(next_path), link_target)
+              end
+
+            {resolved_path, ""}
+
+          {:error, _} ->
+            # Not a symlink, continue with the current path
+            {next_path, ""}
+        end
+      end)
+
+    resolved
   end
 end
 

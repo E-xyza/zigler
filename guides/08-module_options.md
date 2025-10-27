@@ -69,15 +69,15 @@ defmodule Attribute do
 end
 ```
 
-## adding packages
+## adding modules
 
-It's possible to add zig files as packages using the `packages` keyword option. The name of the
-package is the key, and the value is a tuple of the path to the zig file that acts as the package
-and a list of dependencies for the package. 
+It's possible to add zig files as modules using the `extra_modules` keyword option. The name of the
+module is the key, and the value is a tuple of the path to the zig file that acts as the module
+and a list of transitive module dependencies. 
 
 ### Example extra.zig
 
-```zig
+````zig
 pub const value = 47;
 ```
 
@@ -86,7 +86,7 @@ defmodule PackageFile do
   use ExUnit.Case, async: true
   use Zig, 
     otp_app: :zigler,
-    packages: [extra: {"test/_support/package/extra.zig", [:beam]}]
+    extra_modules: [extra: {"./test/_support/module/extra.zig", [:beam]}]
 
   ~Z"""
   const extra = @import("extra");
@@ -96,7 +96,7 @@ defmodule PackageFile do
   }
   """
 
-  test "package file" do
+  test "module file" do
     assert 47 = extra_value()
   end
 end
@@ -105,18 +105,16 @@ end
 ## Release Mode
 
 Zig has several release modes, and you can specify which release mode to build your program under
-using the `release_mode` option. Importantly, it is possible to set a release mode that depends on
-mix environment.
+using the `optimize` option.  This option defaults to `:debug` if you are in `:dev` or `:test`
+and `:safe` otherwise (or if the `Mix` module is not available).  You may also specify `:env` which
+reades the `ZIGLER_RELEASE_MODE` environment variable, or `{:env, default}` which lets you specify
+a different default mode if `ZIGLER_RELEASE_MODE` is not set.
 
 ```elixir
 defmodule ReleaseMode do
   use ExUnit.Case, async: true
-  mode = case MyApp.env() do
-    :prod -> :safe
-    _ -> :debug
-  end
 
-  use Zig, otp_app: :zigler, release_mode: mode
+  use Zig, otp_app: :zigler, optimize: :fast
 
   ~Z"""
   const beam = @import("beam");
@@ -126,7 +124,40 @@ defmodule ReleaseMode do
   """
 
   test "release mode" do
-    assert :Debug == get_mode()
+    assert :ReleaseFast == get_mode()
+  end
+end
+```
+
+## Error Traces
+
+By default, zigler will provide error traces in Debug and ReleaseSafe modes.  You may
+override this in ReleaseSafe by supplying the `error_tracing` option
+
+```elixir
+defmodule ErrorTraces do
+  use ExUnit.Case, async: true
+
+  use Zig, otp_app: :zigler, error_tracing: false, optimize: :safe
+
+  ~Z"""
+  pub fn add_one(x: u32) !u32 {
+      if (x == 42) return error.BadNumber;
+      return x + 1;
+  }
+  """
+
+  test "error traces can be overridden" do
+    assert 48 == add_one(47)
+
+    stacktrace = try do
+      add_one(42)
+    rescue
+      _ ->
+        __STACKTRACE__
+    end
+
+    assert [{__MODULE__, :add_one, 1, _} | _] = stacktrace
   end
 end
 

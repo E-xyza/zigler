@@ -30,18 +30,10 @@ defmodule Zig.Options do
   end
 
   def normalize_path(opts, key, context) do
-    Keyword.update(opts, key, nil, fn path_iodata ->
-      case IO.iodata_to_binary(path_iodata) do
-        "./" <> rest ->
-          Path.join(File.cwd!(), rest)
-
-        path ->
-          path
-      end
-    end)
+    Keyword.update(opts, key, nil, &Zig._normalize_path(&1, Path.dirname(context.file)))
   rescue
-    _ in ArgumentError ->
-      raise_with("`#{key}` option must be a path", opts[key], context)
+    _ ->
+      raise_with("must be a path", opts[key], push_key(context, key))
   end
 
   def boolean_normalizer([{key, value}]) when is_atom(key) and is_boolean(value),
@@ -139,6 +131,7 @@ defmodule Zig.Options do
     end
   end
 
+  @spec raise_with(String.t(), term, term) :: no_return
   def raise_with(message, content \\ nil, context) do
     message =
       case content do

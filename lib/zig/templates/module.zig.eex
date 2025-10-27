@@ -5,6 +5,7 @@ const Allocator = @import("std").mem.Allocator;
 const Resource = beam.Resource;
 const root = @This();
 const threads = beam.threads;
+const builtin = @import("builtin");
 
 <%= for nif <- @nifs do %>
 <%= Nif.render_zig(nif) %>
@@ -13,7 +14,7 @@ const threads = beam.threads;
 <%= Resources.render(resources: @resources, module: @module) %>
 
 // this will be filled out later.
-fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.C) c_int {
+fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.c) c_int {
     defer load_resources(env);
     <%= if @callbacks[:on_load] do %>
       <%= render_on_load(assigns) %>
@@ -26,7 +27,7 @@ fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) call
 
 var exported_nifs = [_]e.ErlNifFunc{<%= table_entries(@nifs) %>};
 
-fn upgrade(env: beam.env, priv_data: [*c]?*anyopaque, old_priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.C) c_int {
+fn upgrade(env: beam.env, priv_data: [*c]?*anyopaque, old_priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) callconv(.c) c_int {
     defer load_resources(env);
     <%= if @callbacks[:on_upgrade] do %>
       <%= render_on_upgrade(@sema.callbacks) %>
@@ -48,8 +49,8 @@ const entry = e.ErlNifEntry{
     .funcs = &exported_nifs,
     .load = load,
     .reload = null,   // never supported as of OTP 20
-    .upgrade = <%= if @callbacks[:on_upgrade] do %> upgrade <% else %> beam.loader.blank_upgrade <% end %>, 
-    .unload = <%= if @callbacks[:on_unload] do %> unload <% else %> beam.loader.blank_unload <% end %>,  
+    .upgrade = <%= if @callbacks[:on_upgrade] do %> upgrade <% else %> beam.loader.blank_upgrade <% end %>,
+    .unload = <%= if @callbacks[:on_unload] do %> unload <% else %> beam.loader.blank_unload <% end %>,
     .vm_variant = "beam.vanilla",
     .options = 1,
     .sizeof_ErlNifResourceTypeInit = @sizeOf(e.ErlNifResourceTypeInit),
@@ -73,3 +74,12 @@ export fn nif_init() *const e.ErlNifEntry {
     return &entry;
 }
 <% end %>
+
+fn sectionName() []const u8 {
+    return switch (builtin.target.ofmt) {
+        .macho => "__DATA,__sema", // Mach-O requires SEGMENT,SECTION
+        else => ".sema",           // ELF/COFF-style single name
+    };
+}
+
+export const sema: [<%= byte_size(@sema_json) %>:0] u8 linksection(sectionName()) = "<%= escape(@sema_json) %>".*;

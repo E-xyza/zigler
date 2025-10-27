@@ -1,0 +1,30 @@
+<% _ = opts %>
+const <%= @name %> = b.createModule(
+    .{
+        .root_source_file = .{.cwd_relative = "<%= @path %>"},
+        .imports = &[_]std.Build.Module.Import{<%= for dep <- @deps, is_atom(dep) do%>
+          .{
+            .name = "<%= dep %>",
+            .module = <%= dep %>
+          },
+        <% end %>},
+        <%= if @c && @c.link_libc do %>
+        .link_libc = true,
+        <% end %>
+        <%= if @c && @c.link_libcpp do %>
+        .link_libcpp = true,
+        <% end %>
+        <%= if @root? do %>
+        .target = resolved_target,
+        .optimize = optimize,
+        .error_tracing = error_tracing,
+        <% end %>
+    });
+
+<%= for {dep, {src_mod, dst_mod}} <- @deps do %>
+<%= @name %>.addImport("<%= dst_mod %>", <%= dep %>.module("<%= src_mod %>"));
+<% end %>
+
+<%= if @c do %>
+<%= Builder.render_build(@c, name: @name) %>
+<% end %>
