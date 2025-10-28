@@ -4,11 +4,7 @@ const analyte = @import("analyte");
 
 const json = std.json;
 
-const WriteError = std.fs.File.WriteError;
-const FileWriter = std.io.Writer(std.fs.File, WriteError, std.fs.File.write);
-const JsonStreamPtr = *json.WriteStream(FileWriter, .{ .assumed_correct = {} });
-
-fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) WriteError!void {
+fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
     try typeHeader(stream, "integer");
     try stream.objectField("signedness");
     switch (i.signedness) {
@@ -19,7 +15,7 @@ fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) WriteError!void 
     try stream.write(i.bits);
 }
 
-fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: type) WriteError!void {
+fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: type) !void {
     if (en.fields.len <= 1) {
         try typeHeader(stream, "unusable:" ++ @typeName(T));
         return;
@@ -37,13 +33,13 @@ fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: t
     try stream.endObject();
 }
 
-fn streamFloat(stream: anytype, comptime f: std.builtin.Type.float) WriteError!void {
+fn streamFloat(stream: anytype, comptime f: std.builtin.Type.float) !void {
     try typeHeader(stream, "float");
     try stream.objectField("bits");
     try stream.write(f.bits);
 }
 
-fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S: type) WriteError!void {
+fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S: type) !void {
     const name = @typeName(S);
 
     try typeHeader(stream, "struct");
@@ -82,7 +78,7 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S
     try stream.endArray();
 }
 
-fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) WriteError!void {
+fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) !void {
     try typeHeader(stream, "array");
     try stream.objectField("len");
     try stream.write(a.len);
@@ -94,7 +90,7 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
     try stream.write(repr);
 }
 
-fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) WriteError!void {
+fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) !void {
     switch (p.size) {
         .one => {
             try typeHeader(stream, "pointer");
@@ -123,13 +119,13 @@ fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: an
     try streamType(stream, p.child);
 }
 
-fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) WriteError!void {
+fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) !void {
     try typeHeader(stream, "optional");
     try stream.objectField("child");
     try streamType(stream, o.child);
 }
 
-fn typeHeader(stream: anytype, comptime name: []const u8) WriteError!void {
+fn typeHeader(stream: anytype, comptime name: []const u8) !void {
     try stream.objectField("type");
     try stream.write(name);
 }
@@ -152,7 +148,7 @@ const typemapping = .{
     .{ .match = "?*stub_erl_nif.ErlNifEnv", .name = "env" },
 };
 
-fn streamType(stream: anytype, comptime T: type) WriteError!void {
+fn streamType(stream: anytype, comptime T: type) !void {
     try stream.beginObject();
 
     // catch any types that depend on either `beam` or `erl_nif`
@@ -193,7 +189,7 @@ fn streamType(stream: anytype, comptime T: type) WriteError!void {
     try stream.endObject();
 }
 
-pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.Fn) WriteError!void {
+pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.Fn) !void {
     try stream.beginObject();
 
     // emit name
@@ -222,7 +218,7 @@ pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.buil
     try stream.endObject();
 }
 
-pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
+pub fn streamModule(stream: anytype, comptime Mod: type) !void {
     const mod_info = @typeInfo(Mod).@"struct";
     try stream.beginObject();
     try stream.objectField("functions");
@@ -287,10 +283,12 @@ pub fn streamModule(stream: anytype, comptime Mod: type) WriteError!void {
     try stream.endObject();
 }
 
-pub fn main() WriteError!void {
-    var bw = std.io.bufferedWriter(std.fs.File.stdout().writer());
-    var stream = json.writeStream(bw, .{});
+pub fn main() !void {
+    const stdout = std.fs.File.stdout();
+    var buffer: [256]u8 = undefined;
+    var stdout_writer = stdout.writer(&buffer);
+    var stream: json.Stringify = .{ .writer = &stdout_writer.interface };
 
     try streamModule(&stream, analyte);
-    try bw.flush();
+    try stdout_writer.interface.flush();
 }

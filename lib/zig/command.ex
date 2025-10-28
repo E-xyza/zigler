@@ -43,6 +43,66 @@ defmodule Zig.Command do
     attempt_json(staging_dir, 5)
   end
 
+  # Documentation-specific semantic analysis for zig_doc compatibility
+  # Uses sema_doc.zig which provides a simpler analysis without full build context
+  def run_sema_doc!(file) do
+    priv_dir = :code.priv_dir(:zigler)
+    sema_file = Path.join(priv_dir, "beam/sema_doc.zig")
+    erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
+    # Ensure the file path is absolute
+    abs_file = Path.expand(file)
+
+    System.delete_env("CC")
+
+    # Create a temporary directory for the doc build
+    tmp_dir = Path.join(System.tmp_dir!(), "zigler_doc_#{:erlang.unique_integer([:positive])}")
+    File.mkdir_p!(tmp_dir)
+
+    # Create build.zig that imports the files we need
+    build_zig = """
+    const std = @import("std");
+
+    pub fn build(b: *std.Build) void {
+        const target = b.standardTargetOptions(.{});
+        const optimize = b.standardOptimizeOption(.{});
+
+        const exe = b.addExecutable(.{
+            .name = "sema_doc",
+            .root_module = b.createModule(.{
+                .root_source_file = .{ .cwd_relative = "#{sema_file}" },
+                .target = target,
+                .optimize = optimize,
+            }),
+        });
+
+        const erl_nif = b.addModule("erl_nif", .{ .root_source_file = .{ .cwd_relative = "#{erl_nif_file}" } });
+        const analyte = b.addModule("analyte", .{ .root_source_file = .{ .cwd_relative = "#{abs_file}" } });
+
+        // analyte (beam.zig) imports erl_nif, so we need to add it to analyte's imports
+        analyte.addImport("erl_nif", erl_nif);
+
+        exe.root_module.addImport("erl_nif", erl_nif);
+        exe.root_module.addImport("analyte", analyte);
+
+        b.installArtifact(exe);
+
+        const run_cmd = b.addRunArtifact(exe);
+        const run_step = b.step("run", "Run sema_doc");
+        run_step.dependOn(&run_cmd.step);
+    }
+    """
+
+    build_zig_path = Path.join(tmp_dir, "build.zig")
+    File.write!(build_zig_path, build_zig)
+
+    try do
+      # Run zig build to execute sema_doc
+      run_zig("build run", cd: tmp_dir, stderr_to_stdout: true)
+    after
+      File.rm_rf!(tmp_dir)
+    end
+  end
+
   # this function needs to be repeated on the windows platform because it sometimes fails with
   # no text.
   defp attempt_json(_, 0) do

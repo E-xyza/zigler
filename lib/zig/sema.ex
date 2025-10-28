@@ -25,6 +25,15 @@ defmodule Zig.Sema do
 
   # PHASE 1:  SEMA EXECUTION
 
+  # Documentation helper function for zig_doc compatibility
+  # This is a simpler version that works with just a file path for doc generation
+  def run_sema_doc(file_path) do
+    file_path
+    |> Zig.Command.run_sema_doc!()
+    |> Zig._json_decode!()
+    |> integrate_sema(%{module: nil})
+  end
+
   @spec run_sema!(Module.t()) :: Module.t()
   # performs the first stage of semantic analysis:
   # actually executing the zig command to obtaitest/mark_as_impl_test.exsn the semantic analysis of the

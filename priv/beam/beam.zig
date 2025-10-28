@@ -7,8 +7,8 @@
 //! project as a package.  You may import it into any project zig code
 //! using the following code:
 //!
-//! ```
-//! const beam = @import("beam")
+//! ```zig
+//! const beam = @import("beam");
 //! ```
 //!
 //! If there's something in the BEAM nif API you need which is not provided,
@@ -16,7 +16,7 @@
 //! equivalent calls from [`erl_nif.h`](https://www.erlang.org/doc/man/erl_nif.html)
 //! This can be done with the following code:
 //!
-//! ```
+//! ```zig
 //! const e = @import("erl_nif");
 //! ```
 

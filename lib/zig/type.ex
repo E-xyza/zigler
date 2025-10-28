@@ -180,7 +180,7 @@ after
 
   def from_json(json, module) do
     case json do
-      :null ->
+      value when value in [:null, nil] ->
         # only allow during documentation sema passes
         if module do
           raise CompileError, description: "zigler encountered anytype"

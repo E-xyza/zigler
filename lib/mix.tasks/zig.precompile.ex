@@ -11,7 +11,7 @@ defmodule Mix.Tasks.Zig.Precompile do
 
   - `MSVC_ROOT`: path to the root of a Visual Studio installation
   - `WINSDK_ROOT`: path to the root of a Windows SDK installation
-  - `WINSDK_VERSION`: version of the Windows SDK to use, e.g. `
+  - `WINSDK_VERSION`: version of the Windows SDK to use, e.g. `10.0.22621.0`
 
   TODO: add a way to specify subsets of platforms.
   """

@@ -44,7 +44,7 @@ defmodule Zigler.MixProject do
       main: "Zig",
       extras: ["README.md" | guides(Mix.env())],
       groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
-      zig_doc: [beam: [file: "priv/beam/beam.zig"]]
+      zig_doc: [beam: [file: "priv/beam/beam.zig"]],
     ]
   end
 
@@ -79,7 +79,7 @@ defmodule Zigler.MixProject do
       {:zig_get, "== 0.15.2", runtime: false},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
-      {:zig_doc, "~> 0.5", only: :dev, runtime: false}
+      {:zig_doc, "~> 0.6", only: :dev, runtime: false}
     ] ++ json()
   end
 

@@ -77,7 +77,7 @@ and a list of transitive module dependencies.
 
 ### Example extra.zig
 
-````zig
+```zig
 pub const value = 47;
 ```
 
