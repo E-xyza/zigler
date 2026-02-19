@@ -6,10 +6,14 @@ defmodule Zig.ErrorProng do
   def argument_error_prong(:elixir, file, line) do
     quote do
       :error, {:badarg, index, error_lines} ->
+        # We use apply/3 here to break Elixir 1.20+ type inference which otherwise
+        # warns that the stacktrace structure doesn't match our pattern.
+        stacktrace = apply(:erlang, :get_stacktrace, [])
+
         new_stacktrace =
-          case __STACKTRACE__ do
+          case stacktrace do
             # this module is only created when the function is being marshalled.
-            [{_m, _f, a, _}, {m, f, _a, opts} | rest] ->
+            [head, {m, f, arity, opts} | rest] when is_list(opts) ->
               indentation = &["\n     ", List.duplicate("| ", &1)]
 
               # TODO: make sure line and file are assigned here.
@@ -55,9 +59,9 @@ defmodule Zig.ErrorProng do
                   }
                 )
 
-              [{m, f, a, new_opts} | rest]
+              [head, {m, f, arity, new_opts} | rest]
 
-            stacktrace ->
+            _ ->
               stacktrace
           end
 
