@@ -598,6 +598,15 @@ defmodule Zig.Module do
           "#{mode}.addObjectFile(.{.cwd_relative = \"#{path}\"});"
       end)
 
+    rpaths =
+      Enum.map(c.rpaths, fn
+        {:special, path} ->
+          "#{mode}.root_module.addRPathSpecial(\"#{escape(path)}\");"
+
+        path ->
+          "#{mode}.root_module.addRPath(.{.cwd_relative = \"#{escape(path)}\"});"
+      end)
+
     c_srcs =
       Enum.map(c.src, fn
         {c_src, flags} ->
@@ -610,7 +619,7 @@ defmodule Zig.Module do
           """
       end)
 
-    link_libs ++ c_srcs
+    link_libs ++ rpaths ++ c_srcs
   end
 
   defp render_flags(flags) do
