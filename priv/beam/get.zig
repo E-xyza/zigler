@@ -701,21 +701,22 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
     const source_fields = source_info.@"struct".fields;
     const default = false;
 
-    var fields: [source_fields.len]std.builtin.Type.StructField = undefined;
+    // Zig 0.16: @Struct(layout, BackingInt, names, types, attrs).
+    // Parallel arrays instead of the old array of StructField records.
+    var field_names: [source_fields.len][]const u8 = undefined;
+    var field_types: [source_fields.len]type = undefined;
+    var field_attrs: [source_fields.len]std.builtin.Type.StructField.Attributes = undefined;
 
     for (source_fields, 0..) |source_field, index| {
-        fields[index] = .{ .name = source_field.name, .type = bool, .default_value_ptr = &default, .is_comptime = false, .alignment = @alignOf(*bool) };
+        field_names[index] = source_field.name;
+        field_types[index] = bool;
+        field_attrs[index] = .{
+            .default_value_ptr = &default,
+            .@"align" = @alignOf(*bool),
+        };
     }
 
-    const decls = [0]std.builtin.Type.Declaration{};
-    const constructed_struct = std.builtin.Type.Struct{
-        .layout = .auto,
-        .fields = fields[0..],
-        .decls = decls[0..],
-        .is_tuple = false,
-    };
-
-    return @Type(.{ .@"struct" = constructed_struct });
+    return @Struct(.auto, null, &field_names, &field_types, &field_attrs);
 }
 
 fn null_or_atom(comptime T: type, src: beam.term, opts: anytype) !T {

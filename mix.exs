@@ -1,14 +1,14 @@
 defmodule Zigler.MixProject do
   use Mix.Project
 
-  def zig_version, do: "0.15.2"
+  def zig_version, do: "0.16.0"
 
   def project do
     env = Mix.env()
 
     [
       app: :zigler,
-      version: "0.15.2",
+      version: "0.16.0-mob1",
       elixir: "~> 1.15",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),

@@ -279,9 +279,16 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
 }
 
 pub fn main() !void {
-    const stdout = std.fs.File.stdout();
+    // Zig 0.16 redesigned I/O around a VTable-based `Io` interface;
+    // `std.fs.File.stdout()` moved to `std.Io.File.stdout()`, and `writer`
+    // now takes an `Io` instance as the first arg before the buffer.
+    // For sema (a synchronous CLI that prints one JSON blob and exits)
+    // the pre-allocated `global_single_threaded` instance is the right
+    // backend — no thread pool / async needed.
+    const io = std.Io.Threaded.global_single_threaded.io();
+    const stdout = std.Io.File.stdout();
     var buffer: [256]u8 = undefined;
-    var stdout_writer = stdout.writer(&buffer);
+    var stdout_writer = stdout.writer(io, &buffer);
     var stream: json.Stringify = .{ .writer = &stdout_writer.interface };
 
     try streamModule(&stream, nif);

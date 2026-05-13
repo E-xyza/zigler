@@ -284,9 +284,13 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
 }
 
 pub fn main() !void {
-    const stdout = std.fs.File.stdout();
+    // See sema.zig's main/0 for the rationale on this Io setup
+    // — Zig 0.16 moved File to std.Io and changed writer/2 to take
+    // an Io instance.
+    const io = std.Io.Threaded.global_single_threaded.io();
+    const stdout = std.Io.File.stdout();
     var buffer: [256]u8 = undefined;
-    var stdout_writer = stdout.writer(&buffer);
+    var stdout_writer = stdout.writer(io, &buffer);
     var stream: json.Stringify = .{ .writer = &stdout_writer.interface };
 
     try streamModule(&stream, analyte);
