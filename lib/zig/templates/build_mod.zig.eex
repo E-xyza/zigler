@@ -10,6 +10,18 @@ pub fn build(b: *std.Build) void {
 
     const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
 
+    // Apple SDK root for cross-compile to iOS/macOS/tvOS/watchOS.
+    // Zig's bundled libc headers don't cover Apple's Darwin extensions
+    // (`sys/types.h`, `_types/_uint8_t.h`, etc.) that any cImport-bearing
+    // module transitively requires — `@cImport(@cInclude("erl_nif.h"))`
+    // is the obvious case but the same applies to any extra_module
+    // doing its own cImports.
+    //
+    // Pass `xcrun --show-sdk-path -sdk iphoneos` (or `iphonesimulator`,
+    // `macosx`, etc.). Empty string = host build, no SDK injection —
+    // the host's default include path resolves system headers normally.
+    const apple_sdkroot = b.option([]const u8, "apple_sdkroot", "Absolute path to an Apple SDK (iPhoneOS/iPhoneSimulator/MacOSX). Required when cross-compiling cImport-bearing modules to an Apple target.") orelse "";
+
     <%= for {name, _} <- @dependencies do %>
     const <%= name %> = b.dependency("<%= name %>", .{
         .target = resolved_target,
@@ -26,6 +38,18 @@ pub fn build(b: *std.Build) void {
             <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
             <%= Builder.render_build(BuildModule.from_beam_module(assigns)) %>
             <%= Builder.render_build(BuildModule.nif_shim()) %>
+
+            // Apple cross-compile: point cImport-bearing modules at the
+            // Apple SDK's `usr/include` so Darwin-flavored system headers
+            // (sys/types.h, etc.) resolve. We attach to `erl_nif`
+            // specifically because it's the standard Zigler module that
+            // cImports a header pulling system types. extra_modules with
+            // their own cImports would need similar treatment if they
+            // hit the same issue (kept narrow here to avoid spraying
+            // sdkroot at modules that don't need it).
+            if (apple_sdkroot.len > 0) {
+                erl_nif.addSystemIncludePath(.{ .cwd_relative = b.fmt("{s}/usr/include", .{apple_sdkroot}) });
+            }
 
             const lib = b.addLibrary(.{
                 .name = "<%= @module %>",
