@@ -6,6 +6,29 @@ const Resource = beam.Resource;
 const root = @This();
 const threads = beam.threads;
 const builtin = @import("builtin");
+const build_options = @import("build_options");
+const std_ = @import("std");
+
+// Static-link builds (embedded BEAM, e.g. iOS) can't tolerate the
+// default panic handler — it pulls in `std.debug.SelfInfo` for
+// stack-trace resolution, which on Mach-O references dyld functions
+// like `_dyld_get_image_header_containing_address`. Those aren't
+// linkable in a static archive destined for an embedded BEAM that
+// doesn't ship its own dyld.
+//
+// When `nif_init_alias` is set (our marker for static-link mode),
+// swap to `std.debug.no_panic` — a trap-only panic that emits no
+// stdlib introspection. NIF-level errors still surface to BEAM via
+// the normal `erlang:error` path; only Zig-language `@panic` calls
+// trap silently.
+//
+// Host builds (no alias) get the default panic — readable backtraces,
+// stderr-printed messages, all the usual stdlib introspection. They
+// have a host BEAM with dyld so there's nothing to link-break.
+pub const panic = if (build_options.nif_init_alias.len > 0)
+    std_.debug.no_panic
+else
+    std_.debug.simple_panic;
 
 <%= for nif <- @nifs do %>
 <%= Nif.render_zig(nif) %>
@@ -70,10 +93,27 @@ export fn nif_init(callbacks: [*c]e.TWinDynNifCallbacks) callconv(.winapi) [*c]c
     return &entry;
 }
 <% _ -> %>
-export fn nif_init() *const e.ErlNifEntry {
+fn nif_init() callconv(.c) *const e.ErlNifEntry {
     return &entry;
 }
 <% end %>
+
+// Static-NIF table lookup matches `<modname>_nif_init`. When the
+// consumer (e.g. an embedded BEAM on iOS) passes a non-empty
+// `-Dnif_init_alias=<name>` to `zig build`, emit ONLY that aliased
+// name and suppress the bare `nif_init`. Suppressing matters because
+// when several static NIF archives are linked into one binary, each
+// one's bare `nif_init` collides at link time — ld may merge them
+// and the per-module aliased symbol ends up pointing at another
+// crate's code (verified failure mode with Rustler). Empty alias =
+// host build, export the standard `nif_init` so dlopen works.
+comptime {
+    const nif_init_link_name = if (build_options.nif_init_alias.len > 0)
+        build_options.nif_init_alias
+    else
+        "nif_init";
+    @export(&nif_init, .{ .name = nif_init_link_name });
+}
 
 fn sectionName() []const u8 {
     return switch (builtin.target.ofmt) {

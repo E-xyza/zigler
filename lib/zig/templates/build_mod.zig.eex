@@ -10,6 +10,23 @@ pub fn build(b: *std.Build) void {
 
     const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
 
+    // For static-linked NIFs, BEAM's `erts_static_nif_tab[]` lookup
+    // matches a symbol named `<modname>_nif_init`. Zigler's default
+    // export name is plain `nif_init` (matches the dlopen path). When
+    // the consumer wants the static-table form, they pass
+    // `-Dnif_init_alias=<name>_nif_init` and the emitted nif_init is
+    // exported under that name instead. The bare symbol is suppressed
+    // to avoid duplicate-symbol collisions when multiple static NIFs
+    // (e.g. Rustler + Zigler) are linked into one binary. Empty string
+    // = host build, default `nif_init` export.
+    const nif_init_alias = b.option([]const u8, "nif_init_alias", "Exported symbol name for nif_init when linking into a static-NIF table (e.g. `<name>_nif_init`); default is `nif_init` for the dlopen path") orelse "";
+
+    // Thread nif_init_alias into module.zig via b.addOptions. The
+    // module's `comptime` block consumes the option to pick the export
+    // name. See module.zig.eex.
+    const build_options = b.addOptions();
+    build_options.addOption([]const u8, "nif_init_alias", nif_init_alias);
+
     <%= for {name, _} <- @dependencies do %>
     const <%= name %> = b.dependency("<%= name %>", .{
         .target = resolved_target,
@@ -26,6 +43,11 @@ pub fn build(b: *std.Build) void {
             <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
             <%= Builder.render_build(BuildModule.from_beam_module(assigns)) %>
             <%= Builder.render_build(BuildModule.nif_shim()) %>
+
+            // Make build_options visible to nif_shim (which contains
+            // module.zig's `nif_init`). The shim picks the @export name
+            // from `nif_init_alias` — see module.zig for the consumer.
+            nif_shim.addImport("build_options", build_options.createModule());
 
             const lib = b.addLibrary(.{
                 .name = "<%= @module %>",
