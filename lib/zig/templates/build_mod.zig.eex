@@ -10,6 +10,15 @@ pub fn build(b: *std.Build) void {
 
     const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
 
+    // Android NDK sysroot for cross-compile to aarch64-linux-android or
+    // arm-linux-androideabi. Zig's bundled libc headers don't ship
+    // `sys/types.h` for the Android target, so erl_nif's cImport of
+    // erl_nif.h (which transitively includes Bionic headers via
+    // erl_drv_nif.h) fails with "'sys/types.h' not found".
+    // Set via `<ANDROID_HOME>/ndk/<vsn>/toolchains/llvm/prebuilt/<host>/sysroot`.
+    // Empty string = no injection — host or Apple builds don't need it.
+    const android_sdkroot = b.option([]const u8, "android_sdkroot", "Absolute path to an Android NDK sysroot (toolchains/llvm/prebuilt/<host>/sysroot). Required when cross-compiling cImport-bearing modules to an Android target.") orelse "";
+
     <%= for {name, _} <- @dependencies do %>
     const <%= name %> = b.dependency("<%= name %>", .{
         .target = resolved_target,
@@ -26,6 +35,50 @@ pub fn build(b: *std.Build) void {
             <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
             <%= Builder.render_build(BuildModule.from_beam_module(assigns)) %>
             <%= Builder.render_build(BuildModule.nif_shim()) %>
+
+            // Android cross-compile: Bionic libc headers live under the
+            // NDK sysroot at `usr/include/`; per-arch headers (e.g.
+            // `aarch64-linux-android/asm/types.h`) live one level
+            // deeper. Add both so erl_nif.h's transitive cImports
+            // resolve.
+            //
+            // Bionic's headers use Clang's nullability extension on
+            // array parameters — e.g. `unsigned short __xsubi[_Nonnull
+            // 3]` in stdlib.h. Zig 0.16's translate-c rejects that
+            // syntax with "nullability specifier cannot be applied to
+            // non-pointer type". Override the nullability keywords
+            // with empty macros: the preprocessor expands `_Nonnull`
+            // / `_Nullable` / `_Null_unspecified` to nothing before
+            // the lexer sees them, so Bionic's `int foo[_Nonnull N]`
+            // becomes `int foo[ N]` — plain C99. Until Zig's
+            // translate-c gains native support for array nullability,
+            // this lets cImport chain through stdlib.h on both
+            // aarch64-linux-android and armv7's arm-linux-androideabi.
+            //
+            // PIC is set on the relevant modules because the produced
+            // archive is typically linked into a shared library on
+            // Android (the app's `lib<name>.so`), and without PIC the
+            // link step fails with "R_AARCH64_ABS64 cannot be used
+            // against local symbol; recompile with -fPIC". Harmless
+            // on dynamic-linkage builds.
+            if (android_sdkroot.len > 0) {
+                const android_arch_subdir = switch (resolved_target.result.cpu.arch) {
+                    .aarch64 => "aarch64-linux-android",
+                    .arm => "arm-linux-androideabi",
+                    else => @panic("zigler: unsupported Android target arch — only aarch64 and arm are wired today"),
+                };
+
+                erl_nif.addSystemIncludePath(.{ .cwd_relative = b.fmt("{s}/usr/include", .{android_sdkroot}) });
+                erl_nif.addSystemIncludePath(.{ .cwd_relative = b.fmt("{s}/usr/include/{s}", .{ android_sdkroot, android_arch_subdir }) });
+                erl_nif.addCMacro("_Nonnull", "");
+                erl_nif.addCMacro("_Nullable", "");
+                erl_nif.addCMacro("_Null_unspecified", "");
+
+                erl_nif.pic = true;
+                beam.pic = true;
+                attributes.pic = true;
+                nif_shim.pic = true;
+            }
 
             const lib = b.addLibrary(.{
                 .name = "<%= @module %>",
