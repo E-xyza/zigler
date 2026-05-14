@@ -10,6 +10,12 @@ pub fn build(b: *std.Build) void {
 
     const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
 
+    // `nif_linkage` controls whether the produced NIF is a dynamic
+    // library (default — what a host BEAM dlopens from priv/) or a
+    // static archive (.a — needed when linking the NIF into an
+    // embedded BEAM that doesn't have dlopen, e.g. iOS device).
+    const nif_linkage = b.option(std.builtin.LinkMode, "nif_linkage", "NIF library linkage — dynamic (host) or static (embedded/iOS)") orelse .dynamic;
+
     <%= for {name, _} <- @dependencies do %>
     const <%= name %> = b.dependency("<%= name %>", .{
         .target = resolved_target,
@@ -29,7 +35,7 @@ pub fn build(b: *std.Build) void {
 
             const lib = b.addLibrary(.{
                 .name = "<%= @module %>",
-                .linkage = .dynamic,
+                .linkage = nif_linkage,
                 .version = .{.major = <%= @version.major %>,
                              .minor = <%= @version.minor %>,
                              .patch = <%= @version.patch %>},
@@ -39,7 +45,13 @@ pub fn build(b: *std.Build) void {
             <%= render_c(@c, :lib) %>
             <%= for extra_module <- @extra_modules, do: render_c(extra_module, :lib) %>
 
-            lib.linker_allow_shlib_undefined = true;
+            // Static archives can't have unresolved symbols deferred to
+            // load-time (that's a shared-library concept). Skip the flag
+            // when the user requested a staticlib — the linker that
+            // eventually consumes the .a will resolve the `enif_*` etc.
+            if (nif_linkage == .dynamic) {
+                lib.linker_allow_shlib_undefined = true;
+            }
 
             // the native backend still causes segfaults, so we must disable it for now.
             lib.use_llvm = true;
