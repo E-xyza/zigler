@@ -64,15 +64,17 @@ pub fn zigler_free() void {
     beam.allocator.free(global_zigler);
 }
 
-const c_stdlib = @cImport(@cInclude("stdlib.h"));
+// Declare C stdlib functions as extern
+extern fn malloc(size: usize) ?[*]u8;
+extern fn free(ptr: ?[*]u8) void;
 
-var global_cstd: [*c]u8 = undefined;
+var global_cstd: [*]u8 = undefined;
 pub fn c_malloc() void {
-    global_cstd = @ptrCast(c_stdlib.malloc(1_000_000));
+    global_cstd = malloc(1_000_000) orelse unreachable;
 }
 
 pub fn c_free() void {
-    c_stdlib.free(global_cstd);
+    free(global_cstd);
 }
 """
 

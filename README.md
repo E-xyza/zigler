@@ -155,17 +155,15 @@ if {:unix, :linux} == :os.type() do
   
     ~Z"""
     const beam = @import("beam");
-    const blas = @cImport({
-        @cInclude("cblas.h");
-    });
 
-    const BadArgs = error { badarg };
-  
+    // Declare cblas function as extern
+    extern fn cblas_daxpy(n: c_int, a: f64, x: [*]const f64, incx: c_int, y: [*]f64, incy: c_int) void;
+
     pub fn blas_axpy(a: f64, x: []f64, y: []f64) ![]f64 {
         if (x.len != y.len) return error.badarg;
-    
-        blas.cblas_daxpy(@intCast(x.len), a, x.ptr, 1, y.ptr, 1);
-    
+
+        cblas_daxpy(@intCast(x.len), a, x.ptr, 1, y.ptr, 1);
+
         return y;
     }
     """

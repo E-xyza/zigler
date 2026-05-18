@@ -2,6 +2,17 @@
 
 Zigler offers several tools to integrate your code with C and C++ code.
 
+> ### Zig 0.16.0 C API changes {: .warning}
+>
+> In Zig 0.16.0, `@cImport` was removed. To call C functions from Zig, declare them
+> as `extern` functions with the appropriate signature. For example:
+>
+> ```zig
+> // Instead of: const c = @cImport(@cInclude("myheader.h"));
+> // Declare the function directly:
+> pub extern fn my_c_function(arg: c_int) c_int;
+> ```
+
 ## compiling C using the C toolchain
 
 If you want to compile C or C++ files using the C and C++ toolchain bundled with the zig programming
@@ -33,14 +44,13 @@ int plus_one(int value) {
 ```elixir
 defmodule CompilingC do
   use ExUnit.Case, async: true
-  use Zig, 
+  use Zig,
     otp_app: :zigler,
-    c: [include_dirs: "include", src: "src/*"] 
+    c: [include_dirs: "include", src: "src/*"]
 
   ~Z"""
-  const c = @cImport(@cInclude("included.h"));
-
-  pub const plus_one = c.plus_one;
+  // Declare the C function as extern
+  pub extern fn plus_one(value: c_int) c_int;
   """
 
   test "c plus one" do
@@ -73,12 +83,15 @@ C files.
 if Application.fetch_env!(:zigler, :test_blas) do
   defmodule LibraryTest do
     use ExUnit.Case, async: true
-    use Zig, 
+    use Zig,
       otp_app: :zigler,
       c: [link_lib: {:system, "blas"}]
 
     ~Z"""
-    pub const dasum = @cImport(@cInclude("cblas.h")).cblas_dasum;
+    // Declare the C function as extern with its signature
+    pub extern fn cblas_dasum(n: c_int, x: [*]const f64, incx: c_int) f64;
+
+    pub const dasum = cblas_dasum;
     """
 
     test "dasum" do
