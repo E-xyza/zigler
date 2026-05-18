@@ -54,6 +54,8 @@ end
 
 ```elixir
 ~Z"""
+const std = @import("std");
+
 var global_zigler: []u8 = undefined;
 
 pub fn zigler_alloc() !void {
@@ -64,17 +66,13 @@ pub fn zigler_free() void {
     beam.allocator.free(global_zigler);
 }
 
-// Declare C stdlib functions as extern
-extern fn malloc(size: usize) ?[*]u8;
-extern fn free(ptr: ?[*]u8) void;
-
-var global_cstd: [*]u8 = undefined;
+var global_cstd: *anyopaque = undefined;
 pub fn c_malloc() void {
-    global_cstd = malloc(1_000_000) orelse unreachable;
+    global_cstd = std.c.malloc(1_000_000) orelse unreachable;
 }
 
 pub fn c_free() void {
-    free(global_cstd);
+    std.c.free(global_cstd);
 }
 """
 
@@ -108,8 +106,6 @@ higher alignment than the maximum alignment for builtin types.
 
 ```elixir
 ~Z"""
-const std = @import("std");
-
 pub fn allocate_large_aligned(count: usize) !usize {
     const alignment = comptime std.mem.Alignment.fromByteUnits(4096);
     const page = try beam.allocator.alignedAlloc(u8, alignment, count);
@@ -145,14 +141,14 @@ pub fn leaks() !bool {
 
     // note that we haven't freed it yet, that happens on deferral,
     // which lands after the return call.
-
-    return beam.allocator_.debug_allocator_instance.detectLeaks();
+    // detectLeaks() returns usize (number of leaks), convert to bool
+    return beam.allocator_.debug_allocator_instance.detectLeaks() > 0;
 }
 
 pub fn noleak() !bool {
     const memory = try beam.debug_allocator.alloc(u8, 8);
     beam.debug_allocator.free(memory);
-    return beam.allocator_.debug_allocator_instance.detectLeaks();
+    return beam.allocator_.debug_allocator_instance.detectLeaks() > 0;
 }
 """
 
