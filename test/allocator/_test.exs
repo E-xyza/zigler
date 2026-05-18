@@ -6,13 +6,15 @@ defmodule ZiglerTest.AllocatorTest do
   ~Z"""
   const beam = @import("beam");
 
+  var raw_slice: []u8 = undefined;
+
   pub fn raw_allocate() usize {
-      const ptr = beam.raw_allocator.alloc(u8, 10_000) catch unreachable;
-      return @intFromPtr(ptr.ptr);
+      raw_slice = beam.raw_allocator.alloc(u8, 10_000) catch unreachable;
+      return @intFromPtr(raw_slice.ptr);
   }
 
-  pub fn raw_free(addr: usize) void {
-      beam.raw_allocator.free(@as([*]u8, @ptrFromInt(addr))[0..10_000]);
+  pub fn raw_free() void {
+      beam.raw_allocator.free(raw_slice);
   }
   """
 
@@ -22,27 +24,34 @@ defmodule ZiglerTest.AllocatorTest do
     end
 
     test "free works" do
-      addr = raw_allocate()
-      raw_free(addr)
+      raw_allocate()
+      raw_free()
     end
   end
 
   ~Z"""
-  pub fn allocate() usize {
-      const ptr = beam.allocator.alloc(u8, 10_000) catch unreachable;
-      return @intFromPtr(ptr.ptr);
-  }
-
   const std = @import("std");
+
+  var large_slice: []u8 = undefined;
+  var aligned_slice: []align(1024) u8 = undefined;
+
+  pub fn allocate() usize {
+      large_slice = beam.allocator.alloc(u8, 10_000) catch unreachable;
+      return @intFromPtr(large_slice.ptr);
+  }
 
   pub fn allocate_aligned() usize {
       const alignment = comptime std.mem.Alignment.fromByteUnits(1024);
-      const ptr = beam.allocator.alignedAlloc(u8, alignment, 10_000) catch unreachable;
-      return @intFromPtr(ptr.ptr);
+      aligned_slice = beam.allocator.alignedAlloc(u8, alignment, 10_000) catch unreachable;
+      return @intFromPtr(aligned_slice.ptr);
   }
 
-  pub fn free(addr: usize) void {
-      beam.allocator.free(@as([*]u8, @ptrFromInt(addr))[0..10_000]);
+  pub fn free() void {
+      beam.allocator.free(large_slice);
+  }
+
+  pub fn free_aligned() void {
+      beam.allocator.free(aligned_slice);
   }
   """
 
@@ -52,30 +61,33 @@ defmodule ZiglerTest.AllocatorTest do
     end
 
     test "free works" do
-      addr = allocate()
-      free(addr)
+      allocate()
+      free()
     end
 
     test "allocate with alignment works" do
       addr = allocate_aligned()
       assert rem(addr, 1024) == 0
+      free_aligned()
     end
 
     test "free with alignment works" do
-      addr = allocate_aligned()
-      free(addr)
+      allocate_aligned()
+      free_aligned()
     end
   end
 
   describe "for the debug allocator" do
     ~Z"""
+    var debug_slice: []u8 = undefined;
+
     pub fn debug_allocate() usize {
-        const ptr = beam.debug_allocator.alloc(u8, 10_000) catch unreachable;
-        return @intFromPtr(ptr.ptr);
+        debug_slice = beam.debug_allocator.alloc(u8, 10_000) catch unreachable;
+        return @intFromPtr(debug_slice.ptr);
     }
 
-    pub fn debug_free(addr: usize) void {
-        beam.debug_allocator.free(@as([*]u8, @ptrFromInt(addr))[0..10_000]);
+    pub fn debug_free() void {
+        beam.debug_allocator.free(debug_slice);
     }
     """
 
@@ -84,8 +96,8 @@ defmodule ZiglerTest.AllocatorTest do
     end
 
     test "free works" do
-      addr = debug_allocate()
-      debug_free(addr)
+      debug_allocate()
+      debug_free()
     end
   end
 end
