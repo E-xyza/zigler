@@ -174,7 +174,7 @@ pub fn get_enum(comptime T: type, src: beam.term, opts: anytype) !T {
 
             // put erasure on get_int setting the error_line
             const result = try get_int(IntType, src, opts);
-            return try std.meta.intToEnum(T, result);
+            return std.enums.fromInt(T, result) orelse return GetError.badarg;
         },
         .atom => {
             errdefer error_line(.{ "note: not an atom value for ", .{ .typename, @typeName(T) }, " (should be one of `", .{ .inspect, enum_values }, "`)" }, opts);
@@ -699,23 +699,20 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
     const source_info = @typeInfo(SourceStruct);
     if (source_info != .@"struct") @compileError("StructRegistry may only be called with a struct type");
     const source_fields = source_info.@"struct".fields;
-    const default = false;
+    const default_value = false;
 
-    var fields: [source_fields.len]std.builtin.Type.StructField = undefined;
-
+    var names: [source_fields.len][:0]const u8 = undefined;
     for (source_fields, 0..) |source_field, index| {
-        fields[index] = .{ .name = source_field.name, .type = bool, .default_value_ptr = &default, .is_comptime = false, .alignment = @alignOf(*bool) };
+        names[index] = source_field.name;
     }
 
-    const decls = [0]std.builtin.Type.Declaration{};
-    const constructed_struct = std.builtin.Type.Struct{
-        .layout = .auto,
-        .fields = fields[0..],
-        .decls = decls[0..],
-        .is_tuple = false,
-    };
-
-    return @Type(.{ .@"struct" = constructed_struct });
+    return @Struct(
+        .auto,
+        null,
+        &names,
+        &(@as([source_fields.len]type, @splat(bool))),
+        &(@as([source_fields.len]std.builtin.Type.StructField.Attributes, @splat(.{ .default_value_ptr = &default_value }))),
+    );
 }
 
 fn null_or_atom(comptime T: type, src: beam.term, opts: anytype) !T {

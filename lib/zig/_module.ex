@@ -592,17 +592,17 @@ defmodule Zig.Module do
     link_libs =
       Enum.map(c.link_lib, fn
         {:system, libname} ->
-          "#{mode}.linkSystemLibrary(\"#{libname}\");"
+          "#{mode}.root_module.linkSystemLibrary(\"#{libname}\", .{});"
 
         path ->
-          "#{mode}.addObjectFile(.{.cwd_relative = \"#{path}\"});"
+          "#{mode}.root_module.addObjectFile(.{.cwd_relative = \"#{path}\"});"
       end)
 
     c_srcs =
       Enum.map(c.src, fn
         {c_src, flags} ->
           """
-          #{mode}.addCSourceFiles(.{
+          #{mode}.root_module.addCSourceFiles(.{
             .root = .{.cwd_relative = "#{Path.dirname(c_src)}"},
             .files = &.{"#{Path.basename(c_src)}"},
             .flags = &.{ #{render_flags(flags)}},

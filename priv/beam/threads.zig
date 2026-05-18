@@ -54,7 +54,9 @@ pub const ThreadState = enum {
 
         while (!check_against(self.get(), state_or_states)) : (so_far += 1) {
             if (so_far > cycles) return error.threadtooktoolong;
-            std.Thread.sleep(1000);
+            // TODO: Roll this into BEAM Io abstraction
+            const ts = std.c.timespec{ .sec = 0, .nsec = 1000 };
+            _ = std.c.nanosleep(&ts, null);
         }
     }
 };

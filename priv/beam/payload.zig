@@ -10,30 +10,13 @@ pub fn Payload(comptime function: anytype) type {
         else => @compileError("Payload is only available for a function"),
     };
 
-    const SF = std.builtin.Type.StructField;
+    var types: []const type = &[_]type{};
 
-    var fields: []const SF = &[_]SF{};
-    const decls = [0]std.builtin.Type.Declaration{};
-
-    for (params, 0..) |param, index| {
-        const new_field = [1]SF{.{
-            .name = std.fmt.comptimePrint("{}", .{index}),
-            .type = param.type.?,
-            .default_value_ptr = null,
-            .is_comptime = false,
-            .alignment = @alignOf(param.type.?),
-        }};
-        fields = fields ++ &new_field;
+    for (params) |param| {
+        types = types ++ &[_]type{param.type.?};
     }
 
-    const result_type_info: std.builtin.Type = .{ .@"struct" = .{
-        .layout = .auto,
-        .fields = fields,
-        .decls = &decls,
-        .is_tuple = true,
-    } };
-
-    return @Type(result_type_info);
+    return @Tuple(types);
 }
 
 // gets the arity of a function f
