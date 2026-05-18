@@ -144,7 +144,6 @@ if Application.fetch_env!(:zigler, :test_blas) do
       assert 6.0 == dasum(3, [1.0, 2.0, 3.0], 1)
     end
   end
-end
 ```
 
 > ### linking against libcpp: {: .info}

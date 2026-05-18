@@ -189,6 +189,8 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 - Breaking changes:
   - Updated to Zig 0.16.0
+- Features:
+  - `headers:` option for C integration - automatically translate C headers to Zig modules
 - Temporary Regressions:
   - Error stacktrace symbolication disabled pending BEAM Io implementation
   - `std.Thread.sleep` uses libc nanosleep instead of Zig's Io abstraction

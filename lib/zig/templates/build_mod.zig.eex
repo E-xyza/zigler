@@ -97,6 +97,26 @@ pub fn build(b: *std.Build) void {
             <%= Builder.render_build(BuildModule.attributes()) %>
             <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
             <%= Builder.render_build(BuildModule.from_beam_module(assigns)) %>
+<%= if @c && @c.headers != [] do %>
+            // Translate user-specified C headers for sema
+<%= for {header_path, module_name} <- @c.headers do %>
+            {
+                const translate_c_<%= module_name %> = b.addTranslateC(.{
+                    .root_source_file = .{ .cwd_relative = "<%= header_path %>" },
+                    .target = resolved_target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                });
+<%= for dir <- @c.include_dirs do %>
+<%= case dir do %>
+<% {:system, path} -> %>                translate_c_<%= module_name %>.addSystemIncludePath(.{ .cwd_relative = "<%= path %>" });
+<% _ -> %>                translate_c_<%= module_name %>.addIncludePath(.{ .cwd_relative = "<%= dir %>" });
+<% end %>
+<% end %>
+                nif.addImport("<%= module_name %>", translate_c_<%= module_name %>.createModule());
+            }
+<% end %>
+<% end %>
             <%= Builder.render_build(BuildModule.sema()) %>
 
             const sema_exe = b.addExecutable(.{
