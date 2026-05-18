@@ -1,4 +1,9 @@
 <% _ = opts %>
+<%
+  # Compute paths for erl_nif header translation
+  erts_include_path = Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
+  erl_nif_win_path = :zigler |> :code.priv_dir() |> Path.join("erl_nif_win")
+%>
 const std = @import("std");
 
 const BuildMode = enum{ nif_lib, sema };
@@ -19,8 +24,19 @@ pub fn build(b: *std.Build) void {
 
     switch (mode) {
         .nif_lib => {
+            // Translate erl_nif.h to Zig module (replaces @cImport in Zig 0.16.0)
+            const erl_translate_c = b.addTranslateC(.{
+                .root_source_file = .{ .cwd_relative = "<%= erts_include_path %>/erl_nif.h" },
+                .target = resolved_target,
+                .optimize = optimize,
+                .link_libc = true,
+            });
+            erl_translate_c.addSystemIncludePath(.{ .cwd_relative = "<%= erts_include_path %>" });
+            erl_translate_c.addSystemIncludePath(.{ .cwd_relative = "<%= erl_nif_win_path %>" });
+            const erl_module = erl_translate_c.createModule();
 
             <%= Builder.render_build(BuildModule.erl_nif()) %>
+            erl_nif.addImport("erl", erl_module);
             <%= Builder.render_build(BuildModule.beam()) %>
             <%= Builder.render_build(BuildModule.attributes()) %>
             <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>

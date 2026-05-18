@@ -189,11 +189,6 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 - Breaking changes:
   - Updated to Zig 0.16.0
-  - Build API changes: `addCSourceFiles`, `linkSystemLibrary`, and `addObjectFile` now called on `root_module`
-  - `std.meta.intToEnum` replaced with `std.enums.fromInt`
-  - `std.Thread.sleep` replaced with `std.c.nanosleep` (temporary; pending BEAM Io implementation)
-  - `std.debug.SelfInfo` API changed; error stacktrace symbolication temporarily disabled
-  - `detectLeaks()` now returns `usize` (leak count) instead of `bool`
 - Temporary Regressions:
   - Error stacktrace symbolication disabled pending BEAM Io implementation
   - `std.Thread.sleep` uses libc nanosleep instead of Zig's Io abstraction
