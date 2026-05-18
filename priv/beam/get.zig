@@ -602,6 +602,12 @@ fn fill_array(comptime T: type, result: *T, src: beam.term, opts: anytype) GetEr
         },
         else => return GetError.badarg,
     }
+
+    // Set sentinel value if this is a sentinel-terminated array
+    if (array_info.sentinel_ptr) |sentinel| {
+        const sentinel_value: *const Child = @ptrCast(@alignCast(sentinel));
+        result[array_info.len] = sentinel_value.*;
+    }
 }
 
 fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !void {
