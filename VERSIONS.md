@@ -195,8 +195,6 @@ Thanks to Dave Cottlehuber @dch for testing.
     - Time functions use `enif_monotonic_time`/`enif_time_offset` for BEAM-consistent time
     - No-op stderr locking (can't coordinate with BEAM's stderr)
     - Disabled environ (use `os:getenv/1` or `System.get_env/1` and pass as NIF parameter)
-- Temporary Regressions:
-  - Error stacktrace symbolication disabled (needs integration with `beam.io`)
 
 ## Possible Future Changes
 - `struct` which lets you declare a struct inside your zig code as the module's struct
