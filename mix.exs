@@ -1,14 +1,14 @@
 defmodule Zigler.MixProject do
   use Mix.Project
 
-  def zig_version, do: "0.15.2"
+  def zig_version, do: "0.16.0"
 
   def project do
     env = Mix.env()
 
     [
       app: :zigler,
-      version: "0.15.2",
+      version: "0.16.0",
       elixir: "~> 1.15",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
@@ -73,13 +73,13 @@ defmodule Zigler.MixProject do
     [
       # zig parser is pinned to a version of zig parser because versions of zig parser
       # are pinned to zig versions
-      {:zig_parser, "~> 0.6"},
+      {:zig_parser, "~> 0.7.0"},
       # utility to help manage type protocols
       {:protoss, "~> 1.0"},
-      {:zig_get, "== 0.15.2", runtime: false},
+      {:zig_get, path: "installer", runtime: false},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
-      {:zig_doc, "~> 0.6", only: :dev, runtime: false}
+      {:zig_doc, path: "../zig_doc"}
     ] ++ json()
   end
 
