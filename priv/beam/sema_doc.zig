@@ -284,11 +284,12 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
 }
 
 pub fn main(init: std.process.Init) !void {
-    const stdout = init.io.stdOut();
     var buffer: [256]u8 = undefined;
-    var buffered_writer = std.io.BufferedWriter(256, @TypeOf(stdout)){ .unbuffered_writer = stdout };
-    var stream = json.writeStream(buffered_writer.writer());
+    var stdout_writer = std.Io.File.stdout().writer(init.io, &buffer);
+    var stream: json.Stringify = .{
+        .writer = &stdout_writer.interface,
+    };
 
     try streamModule(&stream, analyte);
-    try buffered_writer.flush();
+    try stdout_writer.interface.flush();
 }
