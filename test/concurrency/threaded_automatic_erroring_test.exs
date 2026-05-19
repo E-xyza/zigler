@@ -34,13 +34,8 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticErroringTest do
 
     assert %{payload: :BadNumber, stacktrace: [head | _] = stacktrace} = error
 
-    if Zig._errors_available?() do
-      expected_file = Path.relative_to_cwd(__ENV__.file)
-      assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 16]} = head
-    else
-      expected_file = Path.relative_to_cwd(__ENV__.file) |> to_charlist
-      assert {__MODULE__, :threaded, 1, [file: ^expected_file, line: 14]} = head
-    end
+    expected_file = Path.relative_to_cwd(__ENV__.file)
+    assert {__MODULE__, :threaded, [:...], [file: ^expected_file, line: 16]} = head
 
     refute Enum.any?(stacktrace, fn {_, function, _, _} -> function == :"threaded-join" end)
   end

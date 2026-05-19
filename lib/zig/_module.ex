@@ -649,9 +649,6 @@ defmodule Zig.Module do
 
   defp set_error_tracing(opts) do
     cond do
-      !Zig._errors_available?() ->
-        Keyword.put(opts, :error_tracing, false)
-
       !Code.compiler_options()[:debug_info] ->
         Keyword.put(opts, :error_tracing, false)
 

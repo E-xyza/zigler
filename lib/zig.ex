@@ -722,24 +722,6 @@ defmodule Zig do
   end
 
   @doc false
-  # true if error return traces are available on this platform
-  def _errors_available? do
-    case :os.type() do
-      {:unix, :darwin} ->
-        # MacOS in general: https://github.com/ziglang/zig/issues/25433
-        # x86, see: https://github.com/ziglang/zig/issues/25157
-        false
-
-      {:win32, :nt} ->
-        # windows still causes panic? segfault? when unwinding error return traces.
-        false
-
-      _ ->
-        true
-    end
-  end
-
-  @doc false
   # Returns the system temporary directory with all symlinks resolved.
   # On macOS, /tmp and /var are symlinks to /private/tmp and /private/var,
   # which can cause issues with relative path resolution in Zig's build system.
