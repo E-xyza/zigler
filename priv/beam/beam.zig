@@ -1058,6 +1058,7 @@ pub const make = make_.make;
 /// test "get list_cell " do
 ///   assert 47 = get_list_cell_example([40 | 7])
 /// end
+/// ```
 pub const get_list_cell = get_.get_list_cell;
 
 // special makers

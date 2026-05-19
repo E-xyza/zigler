@@ -180,6 +180,10 @@ fn streamType(stream: anytype, comptime T: type) !void {
                     try stream.objectField("child");
                     try streamType(stream, eu.payload);
                 },
+                .@"fn" => {
+                    // Function pointers are not supported as NIF types
+                    try typeHeader(stream, "unusable:fn");
+                },
                 else => {
                     try typeHeader(stream, "unusable:" ++ @typeName(T));
                 },
