@@ -22,7 +22,8 @@ fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifT
         .env = env,
         // TODO: make this configurable
         .mode = .synchronous,
-        .allocator = allocator
+        .allocator = allocator,
+        .io = beam.io.get(allocator),
     };
 
     <%= if needs_make? do %>
@@ -58,6 +59,7 @@ fn @"<%= @name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTer
         .env = env,
         .mode = .threaded,
         .allocator = beam.allocator, //thread.allocator
+        .io = beam.io.get(beam.allocator),
     };
 
     const result = thread.join() catch {

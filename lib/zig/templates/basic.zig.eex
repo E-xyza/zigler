@@ -14,7 +14,8 @@ fn <%=@name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callco
     beam.context = .{
         .env = env,
         .mode = .<%= context(@concurrency) %>,
-        .allocator = allocator
+        .allocator = allocator,
+        .io = beam.io.get(allocator),
     };
 
     <%= if needs_make? do %>

@@ -21,6 +21,7 @@ fn load(env: beam.env, priv_data: [*c]?*anyopaque, load_info: e.ErlNifTerm) call
     <% else %>
     _ = priv_data;
     _ = load_info;
+    beam.io.initGlobal();
     return 0;
     <% end %>
 }

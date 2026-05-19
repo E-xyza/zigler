@@ -151,6 +151,7 @@ pub fn Thread(comptime function: anytype) type {
                 .mode = .threaded,
                 .allocator = thread.allocator,
                 .env = thread.env,
+                .io = beam.io.get(thread.allocator),
             };
 
             if (thread.state.exchange(.prepped, .running)) |state| switch (state) {
