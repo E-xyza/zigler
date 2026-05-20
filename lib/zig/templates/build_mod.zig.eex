@@ -3,6 +3,9 @@
   # Compute paths for erl_nif header translation
   erts_include_path = Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
   erl_nif_win_path = :zigler |> :code.priv_dir() |> Path.join("erl_nif_win")
+  # On Windows, use custom header that avoids translate-c issues with macro-based function pointers
+  is_windows = match?({_, :nt}, :os.type())
+  erl_nif_header = if is_windows, do: Path.join(erl_nif_win_path, "erl_nif_win.h"), else: Path.join(erts_include_path, "erl_nif.h")
 %>
 const std = @import("std");
 
@@ -25,8 +28,9 @@ pub fn build(b: *std.Build) void {
     switch (mode) {
         .nif_lib => {
             // Translate erl_nif.h to Zig module (replaces @cImport in Zig 0.16.0)
+            // On Windows, uses custom erl_nif_win.h to avoid translate-c issues with macro-based function pointers
             const erl_translate_c = b.addTranslateC(.{
-                .root_source_file = .{ .cwd_relative = "<%= erts_include_path %>/erl_nif.h" },
+                .root_source_file = .{ .cwd_relative = "<%= erl_nif_header %>" },
                 .target = resolved_target,
                 .optimize = optimize,
                 .link_libc = true,
