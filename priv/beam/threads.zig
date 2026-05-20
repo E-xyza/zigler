@@ -5,6 +5,13 @@ const options = @import("options.zig");
 
 const BeamThreadFn = *const fn (?*anyopaque) callconv(.c) ?*anyopaque;
 
+/// Sleep for the specified number of nanoseconds using beam.io.
+/// The global Io is initialized in on_load, so it's always available.
+fn nanosleep(ns: u64) void {
+    const io = beam.io.get(beam.allocator);
+    io.sleep(.{ .nanoseconds = @intCast(ns) }, .awake) catch {};
+}
+
 pub const ThreadError = error{ threaderror, threadtooktoolong, processnotjoined, processterminated };
 
 pub const ThreadState = enum {
@@ -30,7 +37,7 @@ pub const ThreadState = enum {
 
     pub fn wait_while(self: *This, state: ThreadState) void {
         while (self.get() == state) {
-            std.Thread.sleep(1000);
+            nanosleep(1000);
         }
     }
 
@@ -54,9 +61,8 @@ pub const ThreadState = enum {
 
         while (!check_against(self.get(), state_or_states)) : (so_far += 1) {
             if (so_far > cycles) return error.threadtooktoolong;
-            // TODO: Roll this into BEAM Io abstraction
-            const ts = std.c.timespec{ .sec = 0, .nsec = 1000 };
-            _ = std.c.nanosleep(&ts, null);
+            // Sleep 1 microsecond (1000 nanoseconds)
+            nanosleep(1000);
         }
     }
 };
