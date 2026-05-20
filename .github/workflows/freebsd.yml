@@ -28,13 +28,13 @@ jobs:
       id: zig-cache
       with:
         path: zig
-        key: zig-freebsd
+        key: zig-freebsd-0.16.0
 
     - name: get zig
       run: |
         if [ ! -d zig ]; then
-          git clone -b 0.15.1 https://github.com/ziglang/zig.git
-        fi 
+          git clone -b 0.16.0 https://codeberg.org/zig/zig.git
+        fi
 
     - name: Test in FreeBSD
       id: test
@@ -62,7 +62,7 @@ jobs:
           ninja -C .
 
           export ZIG_EXECUTABLE_PATH="$(pwd)/stage3/bin/zig"
-          export PATH="/usr/local/lib/erlang27/bin:$PATH"
+          export PATH="/usr/local/lib/erlang28/bin:$PATH"
           export SSL_CACERTFILE=/usr/local/etc/ssl/cert.pem
 
           cd ../..
