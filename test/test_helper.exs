@@ -28,7 +28,4 @@ ZiglerTest.MakeReadme.go()
 
 ZiglerTest.MakeZig.go()
 
-exclude_more = List.wrap(if Version.match?(System.version(), "~> 1.19"), do: :on_upgrade)
-exclude = ExUnit.configuration()[:exclude] ++ exclude_more
-
-ExUnit.start(exclude: exclude)
+ExUnit.start()

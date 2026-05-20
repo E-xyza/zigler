@@ -26,8 +26,10 @@ var global_threaded: ?Threaded = null;
 var vtable: Io.VTable = undefined;
 
 /// Initialize the global Io instance.
-/// Called from on_load.
+/// Called from on_load and on_upgrade.
+/// Idempotent - safe to call multiple times.
 pub fn initGlobal() void {
+    if (global_threaded != null) return;
     global_threaded = .{
         .allocator = beam.allocator,
         .stack_size = std.Thread.SpawnConfig.default_stack_size,
