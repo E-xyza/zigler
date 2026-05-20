@@ -59,7 +59,16 @@ end
 
 ### Option 2: Using the headers option
 
-Use the `headers:` option to translate C headers to Zig modules automatically:
+Use the `headers:` option to translate C headers to Zig modules automatically.
+
+> ### Header paths {: .info}
+>
+> The `headers:` option follows the same path rules as other zigler path options:
+>
+> - `"path/to/header.h"` - relative to the source file location
+> - `"./path/to/header.h"` - relative to the project root
+> - `{:priv, "path/to/header.h"}` - relative to the otp_app's priv directory
+> - `{:system, "header.h"}` - system header (looked up via system include paths)
 
 ```elixir
 defmodule CompilingCHeaders do
@@ -131,7 +140,7 @@ if Application.fetch_env!(:zigler, :test_blas) do
     use ExUnit.Case, async: true
     use Zig,
       otp_app: :zigler,
-      c: [link_lib: {:system, "blas"}, headers: [cblas: "cblas.h"]]
+      c: [link_lib: {:system, "blas"}, headers: [cblas: {:system, "cblas.h"}]]
 
     ~Z"""
     // Import the translated C header as a module

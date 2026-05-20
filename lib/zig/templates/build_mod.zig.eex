@@ -45,12 +45,25 @@ pub fn build(b: *std.Build) void {
             // Translate user-specified C headers
 <%= for {header_path, module_name} <- @c.headers do %>
             {
+<%= case header_path do %>
+<% {:system, header_name} -> %>
+                // System header - generate wrapper that includes it
+                const wf_<%= module_name %> = b.addWriteFiles();
+                const wrapper_<%= module_name %> = wf_<%= module_name %>.add("<%= module_name %>_wrapper.h", "#include <<%= header_name %>>\n");
+                const translate_c_<%= module_name %> = b.addTranslateC(.{
+                    .root_source_file = wrapper_<%= module_name %>,
+                    .target = resolved_target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                });
+<% _ -> %>
                 const translate_c_<%= module_name %> = b.addTranslateC(.{
                     .root_source_file = .{ .cwd_relative = "<%= header_path %>" },
                     .target = resolved_target,
                     .optimize = optimize,
                     .link_libc = true,
                 });
+<% end %>
 <%= for dir <- @c.include_dirs do %>
 <%= case dir do %>
 <% {:system, path} -> %>                translate_c_<%= module_name %>.addSystemIncludePath(.{ .cwd_relative = "<%= path %>" });
@@ -101,12 +114,25 @@ pub fn build(b: *std.Build) void {
             // Translate user-specified C headers for sema
 <%= for {header_path, module_name} <- @c.headers do %>
             {
+<%= case header_path do %>
+<% {:system, header_name} -> %>
+                // System header - generate wrapper that includes it
+                const wf_<%= module_name %> = b.addWriteFiles();
+                const wrapper_<%= module_name %> = wf_<%= module_name %>.add("<%= module_name %>_wrapper.h", "#include <<%= header_name %>>\n");
+                const translate_c_<%= module_name %> = b.addTranslateC(.{
+                    .root_source_file = wrapper_<%= module_name %>,
+                    .target = resolved_target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                });
+<% _ -> %>
                 const translate_c_<%= module_name %> = b.addTranslateC(.{
                     .root_source_file = .{ .cwd_relative = "<%= header_path %>" },
                     .target = resolved_target,
                     .optimize = optimize,
                     .link_libc = true,
                 });
+<% end %>
 <%= for dir <- @c.include_dirs do %>
 <%= case dir do %>
 <% {:system, path} -> %>                translate_c_<%= module_name %>.addSystemIncludePath(.{ .cwd_relative = "<%= path %>" });

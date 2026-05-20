@@ -152,7 +152,7 @@ if {:unix, :linux} == :os.type() do
     use Zig,
       otp_app: :zigler,
       c: [
-        headers: [cblas: "cblas.h"],
+        headers: [cblas: {:system, "cblas.h"}],
         link_lib: {:system, "blas"}
       ]
 
