@@ -13,11 +13,15 @@
 //! - Signal handlers are disabled (BEAM manages signals)
 
 const std = @import("std");
+const builtin = @import("builtin");
 const beam = @import("beam.zig");
 const e = @import("erl_nif");
 
 const Io = std.Io;
 const Threaded = Io.Threaded;
+const Dir = Io.Dir;
+const File = Io.File;
+const windows = std.os.windows;
 
 /// Global Threaded instance - initialized in on_load
 var global_threaded: ?Threaded = null;
@@ -55,6 +59,12 @@ pub fn initGlobal() void {
     vtable.lockStderr = lockStderr;
     vtable.tryLockStderr = tryLockStderr;
     vtable.unlockStderr = unlockStderr;
+
+    // Windows-specific: Override dirOpenFile to bypass sliceToPrefixedFileW
+    // which hangs when called from threads created by enif_thread_create.
+    if (builtin.os.tag == .windows) {
+        vtable.dirOpenFile = dirOpenFileWindows;
+    }
 }
 
 pub fn deinitGlobal() void {
@@ -134,6 +144,49 @@ fn tryLockStderr(userdata: ?*anyopaque, mode: ?Io.Terminal.Mode) Io.Cancelable!?
 
 fn unlockStderr(_: ?*anyopaque) void {
     // No-op since we don't lock
+}
+
+/// Windows-specific dirOpenFile that bypasses sliceToPrefixedFileW.
+/// The standard path conversion hangs when called from threads created by
+/// enif_thread_create. This implementation directly converts to NT paths.
+fn dirOpenFileWindows(
+    userdata: ?*anyopaque,
+    dir: Dir,
+    sub_path: []const u8,
+    flags: Dir.OpenFileOptions,
+) File.OpenError!File {
+    _ = userdata; // Unused - we go directly to dirOpenFileWtf16
+
+    // Convert WTF8 path to WTF16
+    var path_buffer: [windows.PATH_MAX_WIDE]u16 = undefined;
+    const path_len = std.unicode.wtf8ToWtf16Le(&path_buffer, sub_path) catch {
+        return error.BadPathName;
+    };
+
+    // Check if path is absolute (drive letter like C:\ or UNC like \\server)
+    const is_absolute = blk: {
+        if (path_len >= 3 and path_buffer[1] == ':' and
+            (path_buffer[2] == '\\' or path_buffer[2] == '/'))
+        {
+            break :blk true; // Drive absolute: C:\...
+        }
+        if (path_len >= 2 and path_buffer[0] == '\\' and path_buffer[1] == '\\') {
+            break :blk true; // UNC: \\server\...
+        }
+        break :blk false;
+    };
+
+    if (is_absolute) {
+        // For absolute paths, add NT prefix \??\ and use null dir handle
+        var nt_path_buffer: [4 + windows.PATH_MAX_WIDE]u16 = undefined;
+        nt_path_buffer[0..4].* = .{ '\\', '?', '?', '\\' };
+        @memcpy(nt_path_buffer[4..][0..path_len], path_buffer[0..path_len]);
+        return Threaded.dirOpenFileWtf16(null, nt_path_buffer[0 .. 4 + path_len], flags);
+    } else {
+        // For relative paths, use the dir handle directly
+        // The standard implementation should work for relative paths
+        return Threaded.dirOpenFileWtf16(dir.handle, path_buffer[0..path_len], flags);
+    }
 }
 
 // Note: Other functions we considered but left with Threaded defaults:

@@ -177,6 +177,17 @@ defmodule Zig.Command do
       File.cp!(src_lib_path, dst_lib_path)
     end
 
+    # On Windows, also copy the PDB file for debug symbol resolution
+    if windows?() do
+      src_pdb_path = String.replace_suffix(src_lib_path, ".dll", ".pdb")
+      dst_pdb_path = String.replace_suffix(dst_lib_path, ".dll", ".pdb")
+
+      if File.exists?(src_pdb_path) do
+        File.cp!(src_pdb_path, dst_pdb_path)
+        Logger.debug("copied PDB to #{dst_pdb_path}")
+      end
+    end
+
     precompile_callback(dst_lib_path)
 
     Logger.debug("moved library to #{dst_lib_path}")
