@@ -78,6 +78,26 @@ pub fn build(b: *std.Build) void {
             }
 <% end %>
 <% end %>
+<%= if @easy_c do %>
+            // Translate easy_c header
+            {
+                const wf_easy_c = b.addWriteFiles();
+                const wrapper_easy_c = wf_easy_c.add("easy_c_wrapper.h", "#include <<%= @easy_c %>>\n");
+                const translate_c_easy_c = b.addTranslateC(.{
+                    .root_source_file = wrapper_easy_c,
+                    .target = resolved_target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                });
+<%= for dir <- (if @c, do: @c.include_dirs, else: []) do %>
+<%= case dir do %>
+<% {:system, path} -> %>                translate_c_easy_c.addSystemIncludePath(.{ .cwd_relative = "<%= path %>" });
+<% _ -> %>                translate_c_easy_c.addIncludePath(.{ .cwd_relative = "<%= dir %>" });
+<% end %>
+<% end %>
+                nif.addImport("easy_c", translate_c_easy_c.createModule());
+            }
+<% end %>
             <%= Builder.render_build(BuildModule.nif_shim()) %>
 
             const lib = b.addLibrary(.{
@@ -146,6 +166,26 @@ pub fn build(b: *std.Build) void {
                 nif.addImport("<%= module_name %>", translate_c_<%= module_name %>.createModule());
             }
 <% end %>
+<% end %>
+<%= if @easy_c do %>
+            // Translate easy_c header for sema
+            {
+                const wf_easy_c = b.addWriteFiles();
+                const wrapper_easy_c = wf_easy_c.add("easy_c_wrapper.h", "#include <<%= @easy_c %>>\n");
+                const translate_c_easy_c = b.addTranslateC(.{
+                    .root_source_file = wrapper_easy_c,
+                    .target = resolved_target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                });
+<%= for dir <- (if @c, do: @c.include_dirs, else: []) do %>
+<%= case dir do %>
+<% {:system, path} -> %>                translate_c_easy_c.addSystemIncludePath(.{ .cwd_relative = "<%= path %>" });
+<% _ -> %>                translate_c_easy_c.addIncludePath(.{ .cwd_relative = "<%= dir %>" });
+<% end %>
+<% end %>
+                nif.addImport("easy_c", translate_c_easy_c.createModule());
+            }
 <% end %>
             <%= Builder.render_build(BuildModule.sema()) %>
 

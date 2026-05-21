@@ -1,10 +1,10 @@
 if {:unix, :linux} == :os.type() do
   defmodule ZiglerTest.CXX.SystemLibTest do
     use ZiglerTest.IntegrationCase, async: true
-    use Zig, otp_app: :zigler, c: [link_lib: {:system, "blas"}]
+    use Zig, otp_app: :zigler, c: [link_lib: {:system, "blas"}, headers: [c: {:system, "cblas.h"}]]
 
     ~Z"""
-    const c = @cImport(@cInclude("cblas.h"));
+    const c = @import("c");
 
     pub const dasum = c.cblas_dasum;
     """
