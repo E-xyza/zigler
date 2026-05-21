@@ -406,6 +406,9 @@ defmodule Zig do
   - `include_dirs`: a path or list of paths to search for C header files.
   - `library_dirs`: a path or list of paths to search for C libraries.
   - `link_lib`: a path or list of libraries to link against.
+  - `rpaths`: a path or list of runtime library search paths to embed. Use
+    `{:special, "$ORIGIN"}` for loader-relative paths such as bundled shared
+    libraries placed next to the NIF.
   - `link_libcpp`: if set to `true`, the C++ standard library will be linked.
   - `src`: a list of C source files to compile.  Each source file can be a tuple
     of the form `{path, options}` where `path` is the path to the source file and
@@ -416,6 +419,7 @@ defmodule Zig do
           include_dirs: c_path | [c_path],
           library_dirs: c_path | [c_path],
           link_lib: c_path | [c_path],
+          rpaths: c_path | [c_path],
           link_libcpp: boolean,
           src: [c_path | {c_path, [compiler_options :: String.t()]}]
         ]

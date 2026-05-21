@@ -144,6 +144,27 @@ defmodule ZiglerTest.OptionsTest do
                )
     end
 
+    test "rpaths accepts paths and special loader-relative forms" do
+      local_dir = Path.join(__DIR__, "my_dir")
+      priv_dir = Path.join(:code.priv_dir(:zigler), "my_dir")
+
+      assert %{c: %{rpaths: [^local_dir]}} = make_module(otp_app: :zigler, c: [rpaths: "my_dir"])
+
+      assert %{c: %{rpaths: [^priv_dir]}} =
+               make_module(otp_app: :zigler, c: [rpaths: {:priv, "my_dir"}])
+
+      assert %{c: %{rpaths: [special: "$ORIGIN"]}} =
+               make_module(otp_app: :zigler, c: [rpaths: {:special, "$ORIGIN"}])
+    end
+
+    test "rpaths not a string list" do
+      assert_raise CompileError,
+                   "test/options_test.exs:4: option `c > rpaths` must be #{@valid_type_phrase}, got: `:moop`",
+                   fn ->
+                     make_module(otp_app: :zigler, c: [rpaths: :moop])
+                   end
+    end
+
     test "link_lib not a string list" do
       assert_raise CompileError,
                    "test/options_test.exs:4: option `c > link_lib` must be #{@valid_type_phrase}, got: `:moop`",
