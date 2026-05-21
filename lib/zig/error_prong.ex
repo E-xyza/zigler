@@ -112,9 +112,19 @@ defmodule Zig.ErrorProng do
                            source_location: source_location
                          } ->
             {file, line} = __resolve(source_location)
-            # Handle nil values from platforms without debug info (e.g., Windows)
-            # Use to_atom since these strings come from debug info, not user input
-            module = if(module_str, do: String.to_atom(module_str), else: :unknown)
+
+            module =
+              if module_str do
+                # On Windows, the compile_unit_name from PDB debug info includes the Zig
+                # compilation unit object file suffix "_zcu.obj" (e.g., "Elixir.MyModule_zcu.obj").
+                # Strip this suffix to get the actual Elixir module name.
+                module_str
+                |> String.replace_suffix("_zcu.obj", "")
+                |> String.to_atom()
+              else
+                :unknown
+              end
+
             func = if(fn_str, do: String.to_atom(fn_str), else: :unknown)
             {module, func, [:...], [file: file, line: line]}
           end)
