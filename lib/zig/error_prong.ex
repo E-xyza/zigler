@@ -112,7 +112,10 @@ defmodule Zig.ErrorProng do
                            source_location: source_location
                          } ->
             {file, line} = __resolve(source_location)
-            {String.to_atom(module_str), String.to_atom(fn_str), [:...], [file: file, line: line]}
+            # Handle nil values from platforms without debug info (e.g., Windows)
+            module = if(module_str, do: String.to_existing_atom(module_str), else: :unknown)
+            func = if(fn_str, do: String.to_existing_atom(fn_str), else: :unknown)
+            {module, func, [:...], [file: file, line: line]}
           end)
           |> Enum.reverse(stacktrace)
 
