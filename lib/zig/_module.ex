@@ -324,17 +324,29 @@ defmodule Zig.Module do
         )
 
     if shasum = normalize_shasum(shasum) do
-      case Base.decode16(shasum, case: :mixed) do
-        {:ok, _} ->
-          if System.get_env("ZIGLER_PRECOMPILE_FORCE_RECOMPILE", "false") != "true",
-            do: {:web, substitute_url(url, context), shasum}
-
-        :error ->
-          Options.raise_with(
-            "shasum must be base-16 encoded",
-            Options.push_key(context, :precompiled)
-          )
+      if valid_shasum?(shasum) do
+        if System.get_env("ZIGLER_PRECOMPILE_FORCE_RECOMPILE", "false") != "true",
+          do: {:web, substitute_url(url, context), shasum}
+      else
+        Options.raise_with(
+          "shasum must be base-16 encoded",
+          Options.push_key(context, :precompiled)
+        )
       end
+    end
+  end
+
+  # Validate shasum format - handles both plain string and map format for Windows
+  defp valid_shasum?(%{dll: dll_sha, pdb: pdb_sha}) do
+    valid_hex?(dll_sha) and valid_hex?(pdb_sha)
+  end
+
+  defp valid_shasum?(shasum) when is_binary(shasum), do: valid_hex?(shasum)
+
+  defp valid_hex?(str) do
+    case Base.decode16(str, case: :mixed) do
+      {:ok, _} -> true
+      :error -> false
     end
   end
 
@@ -416,6 +428,9 @@ defmodule Zig.Module do
   end
 
   defp normalize_shasum(shasum) when is_binary(shasum), do: shasum
+
+  # Handle new map format with :dll and :pdb keys for Windows targets
+  defp normalize_shasum(%{dll: _dll_sha} = map), do: map
 
   defp normalize_shasum(kwl) do
     Keyword.get(kwl, sysarch_to_key())

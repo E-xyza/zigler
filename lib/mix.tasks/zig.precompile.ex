@@ -74,11 +74,25 @@ defmodule Mix.Tasks.Zig.Precompile do
     try do
       receive do
         {:result, file} ->
-          file
-          |> File.read!()
-          |> then(&:crypto.hash(:sha256, &1))
-          |> Base.encode16(case: :lower)
-          |> then(&{:"#{arch}-#{os}-#{platform}", &1})
+          dll_sha =
+            file
+            |> File.read!()
+            |> then(&:crypto.hash(:sha256, &1))
+            |> Base.encode16(case: :lower)
+
+          if os == :windows do
+            pdb_file = String.replace_suffix(file, ".dll", ".pdb")
+
+            pdb_sha =
+              pdb_file
+              |> File.read!()
+              |> then(&:crypto.hash(:sha256, &1))
+              |> Base.encode16(case: :lower)
+
+            {:"#{arch}-#{os}-#{platform}", %{dll: dll_sha, pdb: pdb_sha}}
+          else
+            {:"#{arch}-#{os}-#{platform}", dll_sha}
+          end
       end
     after
       # clean up the build directory

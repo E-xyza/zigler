@@ -615,13 +615,15 @@ defmodule Zig.Sema do
   def _obtain_precompiled_sema_json(%{precompiled: {:web, address, shasum}} = module) do
     file = http_get!(address)
 
+    {dll_shasum, pdb_shasum} = normalize_shasum_parts(shasum)
+
     found_hash =
       :sha256
       |> :crypto.hash(file)
       |> Base.encode16(case: :lower)
 
-    found_hash == String.downcase(shasum) ||
-      raise "hash mismatch: expected #{shasum}, got #{found_hash}"
+    found_hash == String.downcase(dll_shasum) ||
+      raise "hash mismatch: expected #{dll_shasum}, got #{found_hash}"
 
     staging_dir = Zig.Builder.staging_directory(module.module)
     staging_path = Path.join(staging_dir, Path.basename(address))
@@ -629,8 +631,37 @@ defmodule Zig.Sema do
     File.mkdir_p!(staging_dir)
     File.write!(staging_path, file)
 
+    # Download PDB file for Windows targets (optional - may not exist for all releases)
+    if String.ends_with?(address, ".dll") do
+      pdb_address = String.replace_suffix(address, ".dll", ".pdb")
+
+      case http_get(pdb_address) do
+        {:ok, pdb_file} ->
+          if pdb_shasum do
+            found_pdb_hash =
+              :sha256
+              |> :crypto.hash(pdb_file)
+              |> Base.encode16(case: :lower)
+
+            found_pdb_hash == String.downcase(pdb_shasum) ||
+              raise "PDB hash mismatch: expected #{pdb_shasum}, got #{found_pdb_hash}"
+          end
+
+          pdb_staging_path = String.replace_suffix(staging_path, ".dll", ".pdb")
+          File.write!(pdb_staging_path, pdb_file)
+
+        {:error, _} ->
+          # PDB file not available - this is acceptable for older releases
+          Logger.debug("PDB file not available at #{pdb_address}")
+      end
+    end
+
     _obtain_precompiled_sema_json(%{module | precompiled: staging_path})
   end
+
+  # Extract DLL and PDB shasums from either the new map format or legacy string format
+  defp normalize_shasum_parts(%{dll: dll_sha, pdb: pdb_sha}), do: {dll_sha, pdb_sha}
+  defp normalize_shasum_parts(shasum) when is_binary(shasum), do: {shasum, nil}
 
   case :os.type() do
     {:unix, :darwin} ->
@@ -733,22 +764,30 @@ defmodule Zig.Sema do
   end
 
   defp http_get!(url) do
-    {:ok, {{_, 200, _}, _headers, body}} =
-      :httpc.request(
-        :get,
-        {url, []},
-        [
-          ssl:
-            [
-              depth: 100,
-              customize_hostname_check: [
-                match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
-              ]
-            ] ++ ssl_opts()
-        ],
-        body_format: :binary
-      )
+    case http_get(url) do
+      {:ok, body} -> body
+      {:error, reason} -> raise "HTTP GET failed for #{url}: #{inspect(reason)}"
+    end
+  end
 
-    body
+  defp http_get(url) do
+    case :httpc.request(
+           :get,
+           {url, []},
+           [
+             ssl:
+               [
+                 depth: 100,
+                 customize_hostname_check: [
+                   match_fun: :public_key.pkix_verify_hostname_match_fun(:https)
+                 ]
+               ] ++ ssl_opts()
+           ],
+           body_format: :binary
+         ) do
+      {:ok, {{_, 200, _}, _headers, body}} -> {:ok, body}
+      {:ok, {{_, status, _}, _headers, _body}} -> {:error, {:http_status, status}}
+      {:error, reason} -> {:error, reason}
+    end
   end
 end
