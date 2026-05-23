@@ -112,6 +112,9 @@ defmodule Zig.ErrorProng do
                            source_location: source_location
                          } ->
             {file, line} = __resolve(source_location)
+            # Normalize path separators for Windows (debug info uses backslashes,
+            # but Elixir's Path module uses forward slashes)
+            file = if is_binary(file), do: String.replace(file, "\\", "/"), else: file
 
             module =
               if module_str do
