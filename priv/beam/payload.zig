@@ -10,13 +10,16 @@ pub fn Payload(comptime function: anytype) type {
         else => @compileError("Payload is only available for a function"),
     };
 
-    var types: []const type = &[_]type{};
-
-    for (params) |param| {
-        types = types ++ &[_]type{param.type.?};
+    // Zig 0.16: tuples got their own builtin — @Tuple(field_types).
+    // (@Struct can also represent tuples but the indexing semantics
+    // differ; for runtime indexing into the payload we need a true
+    // tuple type, not a struct-with-numeric-names.)
+    var field_types: [params.len]type = undefined;
+    for (params, 0..) |param, index| {
+        field_types[index] = param.type.?;
     }
 
-    return @Tuple(types);
+    return @Tuple(&field_types);
 }
 
 // gets the arity of a function f

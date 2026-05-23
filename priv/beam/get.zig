@@ -705,20 +705,24 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
     const source_info = @typeInfo(SourceStruct);
     if (source_info != .@"struct") @compileError("StructRegistry may only be called with a struct type");
     const source_fields = source_info.@"struct".fields;
-    const default_value = false;
+    const default = false;
 
-    var names: [source_fields.len][:0]const u8 = undefined;
+    // Zig 0.16: @Struct(layout, BackingInt, names, types, attrs).
+    // Parallel arrays instead of the old array of StructField records.
+    var field_names: [source_fields.len][]const u8 = undefined;
+    var field_types: [source_fields.len]type = undefined;
+    var field_attrs: [source_fields.len]std.builtin.Type.StructField.Attributes = undefined;
+
     for (source_fields, 0..) |source_field, index| {
-        names[index] = source_field.name;
+        field_names[index] = source_field.name;
+        field_types[index] = bool;
+        field_attrs[index] = .{
+            .default_value_ptr = &default,
+            .@"align" = @alignOf(*bool),
+        };
     }
 
-    return @Struct(
-        .auto,
-        null,
-        &names,
-        &(@as([source_fields.len]type, @splat(bool))),
-        &(@as([source_fields.len]std.builtin.Type.StructField.Attributes, @splat(.{ .default_value_ptr = &default_value }))),
-    );
+    return @Struct(.auto, null, &field_names, &field_types, &field_attrs);
 }
 
 fn null_or_atom(comptime T: type, src: beam.term, opts: anytype) !T {
