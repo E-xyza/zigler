@@ -13,6 +13,8 @@ const BuildMode = enum{ nif_lib, sema };
 
 pub fn build(b: *std.Build) void {
     const resolved_target = b.standardTargetOptions(<%=Zig.Target.for_builder()%>);
+    // Host target for sema - must run on build machine during cross-compilation
+    const host_target = b.graph.host;
     const optimize: std.builtin.OptimizeMode = <%= render_optimize_mode(assigns) %>;
     const error_tracing = <%= @error_tracing %>;
 
@@ -27,6 +29,9 @@ pub fn build(b: *std.Build) void {
 
     switch (mode) {
         .nif_lib => {
+            // For NIF library, use the cross-compile target
+            const target_for_modules = resolved_target;
+
             // Translate erl_nif.h to Zig module (replaces @cImport in Zig 0.16.0)
             // On Windows, uses custom erl_nif_win.h to avoid translate-c issues with macro-based function pointers
             const erl_translate_c = b.addTranslateC(.{
@@ -129,13 +134,16 @@ pub fn build(b: *std.Build) void {
             b.installArtifact(lib);
         },
         .sema => {
+            // For sema, use host target - must run on build machine during cross-compilation
+            const target_for_modules = host_target;
+
             <%= Builder.render_build(BuildModule.stub_erl_nif()) %>
             <%= Builder.render_build(BuildModule.beam()) %>
             <%= Builder.render_build(BuildModule.attributes()) %>
             <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
             <%= Builder.render_build(BuildModule.from_beam_module(assigns)) %>
 <%= if @c && @c.headers != [] do %>
-            // Translate user-specified C headers for sema
+            // Translate user-specified C headers for sema (using host target for cross-compilation)
 <%= for {header_path, module_name} <- @c.headers do %>
             {
 <%= case header_path do %>
@@ -145,14 +153,14 @@ pub fn build(b: *std.Build) void {
                 const wrapper_<%= module_name %> = wf_<%= module_name %>.add("<%= module_name %>_wrapper.h", "#include <<%= header_name %>>\n");
                 const translate_c_<%= module_name %> = b.addTranslateC(.{
                     .root_source_file = wrapper_<%= module_name %>,
-                    .target = resolved_target,
+                    .target = host_target,
                     .optimize = optimize,
                     .link_libc = true,
                 });
 <% _ -> %>
                 const translate_c_<%= module_name %> = b.addTranslateC(.{
                     .root_source_file = .{ .cwd_relative = "<%= header_path %>" },
-                    .target = resolved_target,
+                    .target = host_target,
                     .optimize = optimize,
                     .link_libc = true,
                 });
@@ -168,13 +176,13 @@ pub fn build(b: *std.Build) void {
 <% end %>
 <% end %>
 <%= if @easy_c do %>
-            // Translate easy_c header for sema
+            // Translate easy_c header for sema (using host target for cross-compilation)
             {
                 const wf_easy_c = b.addWriteFiles();
                 const wrapper_easy_c = wf_easy_c.add("easy_c_wrapper.h", "#include <<%= @easy_c %>>\n");
                 const translate_c_easy_c = b.addTranslateC(.{
                     .root_source_file = wrapper_easy_c,
-                    .target = resolved_target,
+                    .target = host_target,
                     .optimize = optimize,
                     .link_libc = true,
                 });
@@ -191,7 +199,7 @@ pub fn build(b: *std.Build) void {
 
             const sema_exe = b.addExecutable(.{
                 .name = "sema",
-                .root_module = sema
+                .root_module = sema,
             });
 
             <%= render_c(@c, :sema_exe) %>

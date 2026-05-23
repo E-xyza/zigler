@@ -15,7 +15,7 @@ const <%= @name %> = b.createModule(
         .link_libcpp = true,
         <% end %>
         <%= if @root? do %>
-        .target = resolved_target,
+        .target = target_for_modules,
         .optimize = optimize,
         .error_tracing = error_tracing,
         <% end %>
