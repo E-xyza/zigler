@@ -147,8 +147,9 @@ defmodule Zig.Command do
     dst_lib_path = Path.join(lib_dir, dst_lib_name(module))
 
     target = precompile_name("-Dtarget=")
+    build_flags = Enum.join(module.build_flags, " ")
 
-    run_zig("build #{target} --prefix #{so_dir}",
+    run_zig("build #{target} #{build_flags} --prefix #{so_dir}",
       cd: staging_directory,
       stderr_to_stdout: true
     )
