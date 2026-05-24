@@ -1,4 +1,5 @@
 <% needs_make? = @params |> Map.values |> Enum.any?(&Type.needs_make?(&1.type)) %>
+<% needs_size? = @params |> Enum.any?(fn {_index, param} -> Parameter.needs_size?(param) end) %>
 
 fn <%=@name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.c) e.ErlNifTerm {
     <%= cond do %>
@@ -22,7 +23,17 @@ fn <%=@name %>(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callco
     var error_info: ?beam.term = null;
     <% end %>
 
-    <%= for {index, param} <- @params, do: Parameter.render_accessory_variables(param, index) %>
+    <%= if needs_size? do %>
+    var payload_sizes: struct {
+        <%= for {index, param} <- @params, Parameter.needs_size?(param) do %>
+        arg<%= index %>: ?usize = null,
+        <% end %>
+    } = .{};
+    <% end %>
+
+    <%= for {index, param} <- @params, param.in_out do %>
+    var arg<%= index %>: <%= Parameter.render_in_out_type(param) %> = undefined;
+    <% end %>
 
     const return_value = execution_block: {
         const payload_opts = .{

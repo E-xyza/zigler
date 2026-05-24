@@ -89,15 +89,6 @@ defmodule Zig.Type.Pointer do
   def binary_size(_), do: nil
 
   @impl true
-  def render_accessory_variables(type, param, prefix) do
-    if param.in_out do
-      ~s(var #{prefix}: #{Type.render_zig(type.child)} = undefined;)
-    else
-      raise "unreachable"
-    end
-  end
-
-  @impl true
   # pointer might be used as a in-out return value.
   def payload_options(_, _), do: [error_info: "&error_info"]
 
@@ -108,6 +99,9 @@ defmodule Zig.Type.Pointer do
 
   @impl true
   def render_cleanup(_, _), do: Type._default_cleanup()
+
+  @impl true
+  def needs_size?(_), do: false
 
   @impl true
   def render_elixir_spec(type, context), do: Type.render_elixir_spec(type.child, context)

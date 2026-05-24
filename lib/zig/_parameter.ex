@@ -87,8 +87,12 @@ defmodule Zig.Parameter do
 
   # code rendering
 
-  def render_accessory_variables(parameter, index),
-    do: Type.render_accessory_variables(parameter.type, parameter, "arg#{index}")
+  alias Zig.Type.Pointer
+
+  def render_in_out_type(%{type: %Pointer{child: child}}), do: Type.render_zig(child)
+  def render_in_out_type(%{type: type}), do: Type.render_zig(type)
+
+  def needs_size?(parameter), do: Type.needs_size?(parameter.type)
 
   def render_payload_options(parameter, index) do
     parameter.type

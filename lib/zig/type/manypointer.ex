@@ -50,26 +50,15 @@ defmodule Zig.Type.Manypointer do
   end
 
   @impl true
-  def render_accessory_variables(type, param, prefix) do
-    in_out =
-      List.wrap(
-        if param.in_out do
-          ~s(var #{prefix}: #{render_zig(type)} = undefined;)
-        end
-      )
-
-    cleanup = List.wrap(if param.cleanup, do: ~s(var @"#{prefix}-size": usize = undefined;))
-
-    in_out ++ cleanup
-  end
-
-  @impl true
   def payload_options(_, prefix) do
-    [error_info: "&error_info", size: ~s(&@"#{prefix}-size")]
+    [error_info: "&error_info", size: ~s(&payload_sizes.#{prefix})]
   end
 
   @impl true
-  def render_cleanup(_type, index), do: ~s(.{.cleanup = true, .size = @"arg#{index}-size"},)
+  def render_cleanup(_type, index), do: ~s(.{.cleanup = true, .size = payload_sizes.arg#{index}},)
+
+  @impl true
+  def needs_size?(_), do: true
 
   @impl true
   def marshal_param(_, variable, _, platform), do: Type._default_marshal_param(platform, variable)

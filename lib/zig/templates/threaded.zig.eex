@@ -4,6 +4,7 @@ pub const @"ThreadResource-<%= @name %>" = beam.Resource(*@"Thread-<%= @name %>"
 });
 
 <% needs_make? = @params |> Map.values |> Enum.any?(&Type.needs_make?(&1.type)) %>
+<% needs_size? = @params |> Enum.any?(fn {_index, param} -> Parameter.needs_size?(param) end) %>
 
 fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.c) e.ErlNifTerm {
 
@@ -28,6 +29,14 @@ fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifT
 
     <%= if needs_make? do %>
     var error_info: ?beam.term = null;
+    <% end %>
+
+    <%= if needs_size? do %>
+    var payload_sizes: struct {
+        <%= for {index, param} <- @params, Parameter.needs_size?(param) do %>
+        arg<%= index %>: ?usize = null,
+        <% end %>
+    } = .{};
     <% end %>
 
     const payload_opts = .{

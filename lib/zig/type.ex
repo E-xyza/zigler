@@ -64,14 +64,14 @@ defprotocol Zig.Type do
   def binary_size(type)
 
   # rendered zig code:
-  @spec render_accessory_variables(t, term, iodata) :: iodata
-  def render_accessory_variables(type, opts, prefix)
-
   @spec payload_options(t, String.t()) :: iodata
   def payload_options(type, prefix)
 
   @spec render_cleanup(t, non_neg_integer) :: iodata
   def render_cleanup(type, index)
+
+  @spec needs_size?(t) :: boolean
+  def needs_size?(type)
 
   @spec render_zig(t) :: String.t()
   def render_zig(type)
@@ -284,8 +284,6 @@ after
 
   def _default_payload_options, do: [error_info: "&error_info"]
 
-  def _default_accessory_variables, do: []
-
   def _default_marshal_param(Elixir, _variable), do: []
   def _default_marshal_param(:erlang, variable), do: "#{variable}_m = #{variable},"
 
@@ -319,9 +317,6 @@ defimpl Zig.Type, for: Atom do
   def render_zig(atom), do: "#{atom}"
 
   @impl true
-  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
-
-  @impl true
   def payload_options(:erl_nif_term, _), do: []
   def payload_options(:term, _), do: []
 
@@ -333,6 +328,9 @@ defimpl Zig.Type, for: Atom do
 
   @impl true
   def render_cleanup(_, _), do: Type._default_cleanup()
+
+  @impl true
+  def needs_size?(_), do: false
 
   @impl true
   def render_elixir_spec(:void, %Zig.Return{}), do: :ok

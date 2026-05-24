@@ -23,7 +23,16 @@ pub inline fn should_clear(opts: anytype) bool {
 }
 
 pub inline fn size(opts: anytype) ?usize {
-    return if (@hasField(@TypeOf(opts), "size")) opts.size else null;
+    if (!@hasField(@TypeOf(opts), "size")) return null;
+    // Handle both usize and ?usize field types
+    const SizeType = @TypeOf(opts.size);
+    if (SizeType == ?usize) {
+        return opts.size;
+    } else if (SizeType == usize) {
+        return opts.size;
+    } else {
+        @compileError("size field must be usize or ?usize");
+    }
 }
 
 pub inline fn length(opts: anytype) ?usize {

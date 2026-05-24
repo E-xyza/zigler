@@ -408,27 +408,29 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
     const item_count = str_res.size / expected_size_multiple;
     const result_ptr = @as([*]Child, @ptrCast(@alignCast(str_res.data)));
 
-    if (slice_info.is_const) {
+    const sentinel_ptr: ?*const Child = if (slice_info.sentinel_ptr) |sentinel| @ptrCast(@alignCast(sentinel)) else options.sentinel_ptr(Child, opts);
+
+    // For const slices without sentinel requirement, return raw pointer
+    if (slice_info.is_const and sentinel_ptr == null) {
         return result_ptr[0..item_count];
-    } else {
-        const sentinel_ptr: ?*const Child = if (slice_info.sentinel_ptr) |sentinel| @ptrCast(@alignCast(sentinel)) else options.sentinel_ptr(Child, opts);
-
-        const alloc = options.allocator(opts);
-        const alloc_count = if (sentinel_ptr) |_| item_count + 1 else item_count;
-
-        const result = alloc.alloc(Child, alloc_count) catch |err| {
-            return err;
-        };
-
-        if (sentinel_ptr) |sentinel| {
-            @memcpy(result[0..item_count], result_ptr[0..item_count]);
-            result[alloc_count - 1] = sentinel.*;
-        } else {
-            @memcpy(result, result_ptr[0..item_count]);
-        }
-
-        return @as(T, @ptrCast(result));
     }
+
+    // Allocate copy (required for non-const or when sentinel is needed)
+    const alloc = options.allocator(opts);
+    const alloc_count = if (sentinel_ptr) |_| item_count + 1 else item_count;
+
+    const result = alloc.alloc(Child, alloc_count) catch |err| {
+        return err;
+    };
+
+    if (sentinel_ptr) |sentinel| {
+        @memcpy(result[0..item_count], result_ptr[0..item_count]);
+        result[alloc_count - 1] = sentinel.*;
+    } else {
+        @memcpy(result, result_ptr[0..item_count]);
+    }
+
+    return @as(T, @ptrCast(result));
 }
 
 pub fn get_slice_list(comptime T: type, src: beam.term, opts: anytype) !T {
@@ -524,7 +526,14 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
             return result_slice.ptr;
         },
         .bitstring => {
-            const result_slice = try get_slice_binary([]Child, src, opts);
+            // For u8 cpointers from binaries, allocate a null-terminated copy for C compatibility
+            const result_slice = if (Child == u8)
+                try get_slice_binary([]Child, src, .{
+                    .allocator = options.allocator(opts),
+                    .sentinel = @as(u8, 0),
+                })
+            else
+                try get_slice_binary([]Child, src, opts);
 
             if (@hasField(@TypeOf(opts), "size")) {
                 opts.size.* = result_slice.len;

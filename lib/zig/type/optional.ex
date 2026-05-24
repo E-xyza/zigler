@@ -26,9 +26,6 @@ defmodule Zig.Type.Optional do
   def render_zig(optional), do: "?#{Type.render_zig(optional.child)}"
 
   @impl true
-  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
-
-  @impl true
   def payload_options(_, _), do: Type._default_payload_options()
   @impl true
   def marshal_param(_, variable, _, platform), do: Type._default_marshal_param(platform, variable)
@@ -38,6 +35,9 @@ defmodule Zig.Type.Optional do
   # TODO: optional multipointer
   @impl true
   def render_cleanup(_type, _index), do: Type._default_cleanup()
+
+  @impl true
+  def needs_size?(_), do: false
 
   @impl true
   def render_elixir_spec(optional, context) do

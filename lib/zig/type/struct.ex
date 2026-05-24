@@ -153,10 +153,10 @@ defmodule Zig.Type.Struct do
   def binary_size(_), do: nil
 
   @impl true
-  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
+  def render_cleanup(_, _), do: Type._default_cleanup()
 
   @impl true
-  def render_cleanup(_, _), do: Type._default_cleanup()
+  def needs_size?(_), do: false
 
   @impl true
   def payload_options(_, _), do: Type._default_payload_options()

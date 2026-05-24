@@ -49,20 +49,8 @@ defmodule Zig.Type.Cpointer do
   def binary_size(_), do: nil
 
   @impl true
-  def render_accessory_variables(type, param, prefix) do
-    in_out =
-      List.wrap(
-        if param.in_out do
-          ~s(var #{prefix}: #{render_zig(type)} = undefined;)
-        end
-      )
-
-    in_out ++ [~s(var @"#{prefix}-size": usize = undefined;)]
-  end
-
-  @impl true
   def payload_options(type, prefix) do
-    [error_info: "&error_info", size: ~s(&@"#{prefix}-size")] ++
+    [error_info: "&error_info", size: ~s(&payload_sizes.#{prefix})] ++
       List.wrap(
         if sentinel = type.sentinel do
           {:sentinel, "@as(#{Type.render_zig(type.child)}, #{sentinel})"}
@@ -72,8 +60,11 @@ defmodule Zig.Type.Cpointer do
 
   @impl true
   def render_cleanup(_, index) do
-    ~s(.{.cleanup = true, .size = @"arg#{index}-size"},)
+    ~s(.{.cleanup = true, .size = payload_sizes.arg#{index}},)
   end
+
+  @impl true
+  def needs_size?(_), do: true
 
   @impl true
   def render_zig(%{child: child}), do: "[*c]#{Type.render_zig(child)}"

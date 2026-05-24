@@ -28,6 +28,9 @@ defmodule Zig.Type.Float do
   def render_cleanup(_, _), do: Type._default_cleanup()
 
   @impl true
+  def needs_size?(_), do: false
+
+  @impl true
   def render_elixir_spec(_, _) do
     quote do
       float()
@@ -44,8 +47,6 @@ defmodule Zig.Type.Float do
   @impl true
   def binary_size(float), do: {:indirect, div(float.bits, 8)}
 
-  @impl true
-  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
   @impl true
   def payload_options(_, _), do: Type._default_payload_options()
   @impl true
