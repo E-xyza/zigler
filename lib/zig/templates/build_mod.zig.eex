@@ -1,12 +1,4 @@
 <% _ = opts %>
-<%
-  # Compute paths for erl_nif header translation
-  erts_include_path = Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
-  erl_nif_win_path = :zigler |> :code.priv_dir() |> Path.join("erl_nif_win")
-  # On Windows, use custom header that avoids translate-c issues with macro-based function pointers
-  is_windows = match?({_, :nt}, :os.type())
-  erl_nif_header = if is_windows, do: Path.join(erl_nif_win_path, "erl_nif_win.h"), else: Path.join(erts_include_path, "erl_nif.h")
-%>
 const std = @import("std");
 
 const BuildMode = enum{ nif_lib, sema };
@@ -18,8 +10,12 @@ pub fn build(b: *std.Build) void {
     const optimize: std.builtin.OptimizeMode = <%= render_optimize_mode(assigns) %>;
     const error_tracing = <%= @error_tracing %>;
 
-    // ERTS include path - auto-injected by zigler, available for custom build.zig files
-    _ = b.option([]const u8, "erts_include", "ERTS include path (auto-injected by zigler)");
+    // ERTS and zigler paths (auto-injected by zigler as -D flags)
+    const erts_include = b.option([]const u8, "erts_include", "ERTS include path") orelse @panic("erts_include required");
+    const erl_nif_header = b.option([]const u8, "erl_nif_header", "Path to erl_nif.h (or erl_nif_win.h on Windows)") orelse @panic("erl_nif_header required");
+    const erl_nif_win_path = b.option([]const u8, "erl_nif_win_path", "Path to Windows erl_nif compatibility headers") orelse @panic("erl_nif_win_path required");
+    const zigler_priv = b.option([]const u8, "zigler_priv", "Path to zigler priv directory") orelse @panic("zigler_priv required");
+    const module_root = b.option([]const u8, "module_root", "Path to module source directory") orelse @panic("module_root required");
 
     const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
 
@@ -38,13 +34,13 @@ pub fn build(b: *std.Build) void {
             // Translate erl_nif.h to Zig module (replaces @cImport in Zig 0.16.0)
             // On Windows, uses custom erl_nif_win.h to avoid translate-c issues with macro-based function pointers
             const erl_translate_c = b.addTranslateC(.{
-                .root_source_file = .{ .cwd_relative = "<%= erl_nif_header %>" },
+                .root_source_file = .{ .cwd_relative = erl_nif_header },
                 .target = resolved_target,
                 .optimize = optimize,
                 .link_libc = true,
             });
-            erl_translate_c.addSystemIncludePath(.{ .cwd_relative = "<%= erts_include_path %>" });
-            erl_translate_c.addSystemIncludePath(.{ .cwd_relative = "<%= erl_nif_win_path %>" });
+            erl_translate_c.addSystemIncludePath(.{ .cwd_relative = erts_include });
+            erl_translate_c.addSystemIncludePath(.{ .cwd_relative = erl_nif_win_path });
             const erl_module = erl_translate_c.createModule();
 
             <%= Builder.render_build(BuildModule.erl_nif()) %>

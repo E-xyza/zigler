@@ -5,25 +5,27 @@ const BuildMode = enum { nif_lib, sema };
 pub fn build(b: *std.Build) void {
     const resolved_target = b.standardTargetOptions(.{});
     const host_target = b.graph.host;
-    const optimize = b.standardOptimizeOption(.{});
+    const optimize: std.builtin.OptimizeMode = .Debug;
+    const error_tracing = true;
 
-    // ERTS paths (auto-injected by zigler as -D flags)
+    // ERTS and zigler paths (auto-injected by zigler as -D flags)
     const erts_include = b.option([]const u8, "erts_include", "ERTS include path") orelse @panic("erts_include required");
     const erl_nif_header = b.option([]const u8, "erl_nif_header", "Path to erl_nif.h (or erl_nif_win.h on Windows)") orelse @panic("erl_nif_header required");
     const erl_nif_win_path = b.option([]const u8, "erl_nif_win_path", "Path to Windows erl_nif compatibility headers") orelse @panic("erl_nif_win_path required");
+    const zigler_priv = b.option([]const u8, "zigler_priv", "Path to zigler priv directory") orelse @panic("zigler_priv required");
+    const module_root = b.option([]const u8, "module_root", "Path to module source directory") orelse @panic("module_root required");
 
-    // Custom build option example - receives value from build_flags
-    const custom_message = b.option(
-        []const u8,
-        "custom_message",
-        "A custom message to embed in the NIF"
-    ) orelse "default message";
+    // Custom build flag option - this is what we're testing
+    const custom_message = b.option([]const u8, "custom_message", "A custom message to embed") orelse "default";
 
     // Create build_options module above switch so it's available to both branches
     const build_options = b.addOptions();
     build_options.addOption([]const u8, "custom_message", custom_message);
 
     const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
+
+    // Helper to build paths relative to zigler_priv
+    const beam_path = std.fs.path.join(b.allocator, &.{ zigler_priv, "beam" }) catch @panic("OOM");
 
     switch (mode) {
         .nif_lib => {
@@ -38,8 +40,9 @@ pub fn build(b: *std.Build) void {
             erl_translate_c.addSystemIncludePath(.{ .cwd_relative = erl_nif_win_path });
             const erl_module = erl_translate_c.createModule();
 
+            const erl_nif_path = std.fs.path.join(b.allocator, &.{ beam_path, "erl_nif.zig" }) catch @panic("OOM");
             const erl_nif = b.createModule(.{
-                .root_source_file = b.path("../../../priv/beam/erl_nif.zig"),
+                .root_source_file = .{ .cwd_relative = erl_nif_path },
                 .imports = &[_]std.Build.Module.Import{},
                 .link_libc = true,
             });
@@ -48,8 +51,9 @@ pub fn build(b: *std.Build) void {
             erl_nif.addSystemIncludePath(.{ .cwd_relative = erl_nif_win_path });
             erl_nif.addImport("erl", erl_module);
 
+            const beam_zig_path = std.fs.path.join(b.allocator, &.{ beam_path, "beam.zig" }) catch @panic("OOM");
             const beam = b.createModule(.{
-                .root_source_file = b.path("../../../priv/beam/beam.zig"),
+                .root_source_file = .{ .cwd_relative = beam_zig_path },
                 .imports = &[_]std.Build.Module.Import{
                     .{ .name = "erl_nif", .module = erl_nif },
                 },
@@ -60,18 +64,13 @@ pub fn build(b: *std.Build) void {
                 .imports = &[_]std.Build.Module.Import{},
             });
 
-            const module = b.createModule(.{
-                .root_source_file = b.path("module.zig"),
-                .imports = &[_]std.Build.Module.Import{},
-            });
-
+            const nif_path = std.fs.path.join(b.allocator, &.{ module_root, ".Elixir.ZiglerTest.Guides.BuildFlagsCustomTest.zig" }) catch @panic("OOM");
             const nif = b.createModule(.{
-                .root_source_file = b.path("../.Elixir.ZiglerTest.CornerCases.BuildFilesOverrideTest.zig"),
+                .root_source_file = .{ .cwd_relative = nif_path },
                 .imports = &[_]std.Build.Module.Import{
                     .{ .name = "erl_nif", .module = erl_nif },
                     .{ .name = "beam", .module = beam },
                     .{ .name = "attributes", .module = attributes },
-                    .{ .name = "module", .module = module },
                 },
                 .link_libc = true,
             });
@@ -80,7 +79,7 @@ pub fn build(b: *std.Build) void {
             nif.addOptions("build_options", build_options);
 
             const nif_shim = b.createModule(.{
-                .root_source_file = .{ .cwd_relative = "nif_shim.zig" },
+                .root_source_file = .{ .cwd_relative = "module.zig" },
                 .imports = &[_]std.Build.Module.Import{
                     .{ .name = "beam", .module = beam },
                     .{ .name = "erl_nif", .module = erl_nif },
@@ -88,10 +87,11 @@ pub fn build(b: *std.Build) void {
                 },
                 .target = resolved_target,
                 .optimize = optimize,
+                .error_tracing = error_tracing,
             });
 
             const lib = b.addLibrary(.{
-                .name = "Elixir.ZiglerTest.CornerCases.BuildFilesOverrideTest",
+                .name = "Elixir.ZiglerTest.Guides.BuildFlagsCustomTest",
                 .linkage = .dynamic,
                 .version = .{ .major = 0, .minor = 16, .patch = 0 },
                 .root_module = nif_shim,
@@ -100,16 +100,22 @@ pub fn build(b: *std.Build) void {
             lib.linker_allow_shlib_undefined = true;
             lib.use_llvm = true;
 
+            if (resolved_target.result.cpu.arch == .x86) {
+                lib.link_z_notext = true;
+            }
+
             b.installArtifact(lib);
         },
         .sema => {
+            const stub_path = std.fs.path.join(b.allocator, &.{ beam_path, "stub_erl_nif.zig" }) catch @panic("OOM");
             const erl_nif = b.createModule(.{
-                .root_source_file = b.path("../../../priv/beam/stub_erl_nif.zig"),
+                .root_source_file = .{ .cwd_relative = stub_path },
                 .imports = &[_]std.Build.Module.Import{},
             });
 
+            const beam_zig_path = std.fs.path.join(b.allocator, &.{ beam_path, "beam.zig" }) catch @panic("OOM");
             const beam = b.createModule(.{
-                .root_source_file = b.path("../../../priv/beam/beam.zig"),
+                .root_source_file = .{ .cwd_relative = beam_zig_path },
                 .imports = &[_]std.Build.Module.Import{
                     .{ .name = "erl_nif", .module = erl_nif },
                 },
@@ -120,32 +126,29 @@ pub fn build(b: *std.Build) void {
                 .imports = &[_]std.Build.Module.Import{},
             });
 
-            const module = b.createModule(.{
-                .root_source_file = b.path("module.zig"),
-                .imports = &[_]std.Build.Module.Import{},
-            });
-
+            const nif_path = std.fs.path.join(b.allocator, &.{ module_root, ".Elixir.ZiglerTest.Guides.BuildFlagsCustomTest.zig" }) catch @panic("OOM");
             const nif = b.createModule(.{
-                .root_source_file = b.path("../.Elixir.ZiglerTest.CornerCases.BuildFilesOverrideTest.zig"),
+                .root_source_file = .{ .cwd_relative = nif_path },
                 .imports = &[_]std.Build.Module.Import{
                     .{ .name = "erl_nif", .module = erl_nif },
                     .{ .name = "beam", .module = beam },
                     .{ .name = "attributes", .module = attributes },
-                    .{ .name = "module", .module = module },
                 },
                 .link_libc = true,
             });
 
-            // Also add to sema so the code compiles during analysis
+            // Add build_options for sema
             nif.addOptions("build_options", build_options);
 
+            const sema_path = std.fs.path.join(b.allocator, &.{ beam_path, "sema.zig" }) catch @panic("OOM");
             const sema = b.createModule(.{
-                .root_source_file = b.path("../../../priv/beam/sema.zig"),
+                .root_source_file = .{ .cwd_relative = sema_path },
                 .imports = &[_]std.Build.Module.Import{
                     .{ .name = "nif", .module = nif },
                 },
                 .target = host_target,
                 .optimize = optimize,
+                .error_tracing = error_tracing,
             });
 
             const sema_exe = b.addExecutable(.{

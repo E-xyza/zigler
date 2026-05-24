@@ -189,13 +189,24 @@ Thanks to Dave Cottlehuber @dch for testing.
 
 - Breaking changes:
   - Updated to Zig 0.16.0
+  - `@cImport` replaced with `addTranslateC` - use `headers:` option instead
 - Features:
   - `headers:` option for C integration - automatically translate C headers to Zig modules
+  - `build_flags:` option for passing custom `-D` flags to `zig build`
+  - `build_files_dir:` option for providing custom `build.zig` files
+  - Auto-injected `-D` flags for custom build.zig: `erts_include`, `erl_nif_header`,
+    `erl_nif_win_path`, `zigler_priv`, `module_root`
   - `beam.io` module providing `std.Io` interface for Zig 0.16.0 with BEAM-specific overrides:
     - Time functions use `enif_monotonic_time`/`enif_time_offset` for BEAM-consistent time
     - No-op stderr locking (can't coordinate with BEAM's stderr)
     - Disabled environ (use `os:getenv/1` or `System.get_env/1` and pass as NIF parameter)
   - Error return traces re-enabled for macOS and Windows
+  - Runtime library rpaths support
+- Fixes:
+  - Cross-compilation sema now uses host target correctly
+  - Windows: PDB packaging for debug symbols
+  - Windows: Error stacktrace handling improvements
+  - Windows: Threaded NIF hang fix in Io.Dir.openFile
 
 ## Possible Future Changes
 - `struct` which lets you declare a struct inside your zig code as the module's struct

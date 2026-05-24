@@ -37,8 +37,16 @@ defmodule Zig.Command do
     System.delete_env("CC")
 
     staging_dir = Path.dirname(module.module_code_path)
+    module_root = Path.dirname(module.zig_code_path)
 
-    run_zig("build -Dzigler-mode=sema", cd: staging_dir, stderr_to_stdout: true)
+    # Auto-inject ERTS and zigler paths (same as compile!)
+    erts_include = Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
+    zigler_priv = :zigler |> :code.priv_dir() |> to_string()
+    erl_nif_win_path = Path.join(zigler_priv, "erl_nif_win")
+    erl_nif_header = if windows?(), do: Path.join(erl_nif_win_path, "erl_nif_win.h"), else: Path.join(erts_include, "erl_nif.h")
+    auto_flags = "-Derts_include=#{erts_include} -Derl_nif_header=#{erl_nif_header} -Derl_nif_win_path=#{erl_nif_win_path} -Dzigler_priv=#{zigler_priv} -Dmodule_root=#{module_root}"
+
+    run_zig("build -Dzigler-mode=sema #{auto_flags}", cd: staging_dir, stderr_to_stdout: true)
 
     attempt_json(staging_dir, 5)
   end
@@ -148,10 +156,14 @@ defmodule Zig.Command do
 
     target = precompile_name("-Dtarget=")
     build_flags = Enum.join(module.build_flags, " ")
+    module_root = Path.dirname(module.zig_code_path)
 
-    # Auto-inject ERTS include path for custom build.zig files
+    # Auto-inject ERTS and zigler paths for custom build.zig files
     erts_include = Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
-    auto_flags = "-Derts_include=#{erts_include}"
+    zigler_priv = :zigler |> :code.priv_dir() |> to_string()
+    erl_nif_win_path = Path.join(zigler_priv, "erl_nif_win")
+    erl_nif_header = if windows?(), do: Path.join(erl_nif_win_path, "erl_nif_win.h"), else: Path.join(erts_include, "erl_nif.h")
+    auto_flags = "-Derts_include=#{erts_include} -Derl_nif_header=#{erl_nif_header} -Derl_nif_win_path=#{erl_nif_win_path} -Dzigler_priv=#{zigler_priv} -Dmodule_root=#{module_root}"
 
     run_zig("build #{target} #{auto_flags} #{build_flags} --prefix #{so_dir}",
       cd: staging_directory,
