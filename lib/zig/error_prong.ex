@@ -133,11 +133,14 @@ defmodule Zig.ErrorProng do
 
             module =
               if module_str do
-                # On Windows, the compile_unit_name from PDB debug info includes the Zig
-                # compilation unit object file suffix "_zcu.obj" (e.g., "Elixir.MyModule_zcu.obj").
-                # Strip this suffix to get the actual Elixir module name.
+                # Normalize compile_unit_name to an Elixir module atom:
+                # - Windows PDB: "Elixir.MyModule_zcu.obj" → strip "_zcu.obj" suffix
+                # - Native backend: ".Elixir.MyModule.zig" → strip leading "." and ".zig" suffix
+                # - LLVM backend: "Elixir.MyModule" → use as-is
                 module_str
                 |> String.replace_suffix("_zcu.obj", "")
+                |> String.replace_suffix(".zig", "")
+                |> String.replace_prefix(".", "")
                 |> String.to_atom()
               else
                 :unknown
