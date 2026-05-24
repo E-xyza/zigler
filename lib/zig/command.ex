@@ -149,7 +149,11 @@ defmodule Zig.Command do
     target = precompile_name("-Dtarget=")
     build_flags = Enum.join(module.build_flags, " ")
 
-    run_zig("build #{target} #{build_flags} --prefix #{so_dir}",
+    # Auto-inject ERTS include path for custom build.zig files
+    erts_include = Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
+    auto_flags = "-Derts_include=#{erts_include}"
+
+    run_zig("build #{target} #{auto_flags} #{build_flags} --prefix #{so_dir}",
       cd: staging_directory,
       stderr_to_stdout: true
     )

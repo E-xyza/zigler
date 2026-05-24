@@ -18,6 +18,9 @@ pub fn build(b: *std.Build) void {
     const optimize: std.builtin.OptimizeMode = <%= render_optimize_mode(assigns) %>;
     const error_tracing = <%= @error_tracing %>;
 
+    // ERTS include path - auto-injected by zigler, available for custom build.zig files
+    _ = b.option([]const u8, "erts_include", "ERTS include path (auto-injected by zigler)");
+
     const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
 
     <%= for {name, _} <- @dependencies do %>
