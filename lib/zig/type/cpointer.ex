@@ -3,6 +3,7 @@ defmodule Zig.Type.Cpointer do
 
   alias Zig.Parameter
   alias Zig.Type
+  alias Zig.Type.Manypointer
   alias Zig.Type.Struct
 
   use Type
@@ -31,6 +32,8 @@ defmodule Zig.Type.Cpointer do
       ~t(u8) -> true
       # null-terminated list of pointers.
       %__MODULE__{child: child} -> Type.make_allowed?(child)
+      # sentinel-terminated many-pointers (e.g., [*c][*:0]const u8 for char**)
+      %Manypointer{has_sentinel?: true} = mp -> Type.make_allowed?(mp)
       # NB: we assume these are single pointer returns.
       struct = %Struct{} -> Type.make_allowed?(struct)
       _ -> false

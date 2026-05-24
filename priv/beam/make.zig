@@ -335,7 +335,9 @@ fn make_cpointer(cpointer: anytype, opts: anytype) beam.term {
         if (cpointer) |_| {
             // the following two types have inferrable sentinels
             if (Child == u8) {
-                return make(@as([*:0]u8, @ptrCast(cpointer)), opts);
+                // Preserve const qualifier when casting to sentinel pointer
+                const SentinelPtr = if (pointer.is_const) [*:0]const u8 else [*:0]u8;
+                return make(@as(SentinelPtr, @ptrCast(cpointer)), opts);
             }
             if (@typeInfo(Child) == .pointer) {
                 return make(@as([*:null]Child, @ptrCast(cpointer)), opts);
