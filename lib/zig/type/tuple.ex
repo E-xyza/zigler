@@ -50,11 +50,10 @@ defmodule Zig.Type.Tuple do
     element_specs =
       elements
       |> Enum.with_index()
-      |> Enum.map(fn {element, index} ->
+      |> Enum.map_join(", ", fn {element, index} ->
         element_opts = element_opts(context, index)
         Type.render_erlang_spec(element, element_opts)
       end)
-      |> Enum.join(", ")
 
     "{#{element_specs}}"
   end

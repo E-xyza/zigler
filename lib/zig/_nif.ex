@@ -419,8 +419,7 @@ defmodule Zig.Nif do
     params =
       nif.params
       |> Enum.sort()
-      |> Enum.map(fn {_, p} -> Type.render_erlang_spec(p.type, p) end)
-      |> Enum.join(", ")
+      |> Enum.map_join(", ", fn {_, p} -> Type.render_erlang_spec(p.type, p) end)
 
     return_spec = Type.render_erlang_spec(nif.return.type, nif.return)
     ["-spec #{nif.name}(#{params}) -> #{return_spec}."]
