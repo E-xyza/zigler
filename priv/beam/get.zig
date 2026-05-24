@@ -865,8 +865,8 @@ fn typespec_for(comptime T: type) []const u8 {
             }
         },
         .float => "float | :infinity | :neg_infinity | :NaN",
-        // a struct might be a reosurce.  If it's not, then it could be map/keyword, or maybe a binary (if packed or extern).
-        .@"struct" => |s| if (resource.MaybeUnwrap(s)) |_| "reference" else "map | keyword" ++ binary_spec(T),
+        // a struct might be a resource.  If it's not, then it could be map/keyword, tuple, or maybe a binary (if packed or extern).
+        .@"struct" => |s| if (resource.MaybeUnwrap(s)) |_| "reference" else if (s.is_tuple) "tuple" else "map | keyword" ++ binary_spec(T),
         .bool => "boolean",
         .array => |a| "list(" ++ typespec_for(a.child) ++ ")" ++ binary_spec(T),
         .pointer => |p| switch (p.size) {
