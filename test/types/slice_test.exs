@@ -344,4 +344,30 @@ defmodule ZiglerTest.Types.SliceTest do
       assert 0 == sentinel_terminated_test("foo")
     end
   end
+
+  describe "sub-binary alignment (issue #471)" do
+    ~Z"""
+    pub fn const_slice_f64_sum(slice: []const f64) f64 {
+        var sum: f64 = 0;
+        for (slice) |val| {
+            sum += val;
+        }
+        return sum;
+    }
+    """
+
+    test "const f64 slice works with misaligned sub-binary at offset 1" do
+      # f64 requires 8-byte alignment, create sub-binary at offset 1
+      full_binary = <<0, 1.0::float-native, 2.0::float-native, 3.0::float-native>>
+      sub_binary = binary_part(full_binary, 1, 24)
+      assert 6.0 == const_slice_f64_sum(sub_binary)
+    end
+
+    test "const f64 slice works with sub-binary at offset 4" do
+      # Offset 4 is also misaligned for f64 (needs 8-byte alignment)
+      full_binary = <<0, 0, 0, 0, 1.0::float-native, 2.0::float-native, 3.0::float-native>>
+      sub_binary = binary_part(full_binary, 4, 24)
+      assert 6.0 == const_slice_f64_sum(sub_binary)
+    end
+  end
 end

@@ -441,16 +441,21 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
     }
 
     const item_count = str_res.size / expected_size_multiple;
-    const result_ptr = @as([*]Child, @ptrCast(@alignCast(str_res.data)));
 
     const sentinel_ptr: ?*const Child = if (slice_info.sentinel_ptr) |sentinel| @ptrCast(@alignCast(sentinel)) else options.sentinel_ptr(Child, opts);
 
-    // For const slices without sentinel requirement, return raw pointer
-    if (slice_info.is_const and sentinel_ptr == null) {
+    // Check if the binary data pointer is properly aligned for Child type.
+    // Sub-binaries and binaries from network can have arbitrary alignment.
+    const is_aligned = @intFromPtr(str_res.data) % @alignOf(Child) == 0;
+
+    // For const slices without sentinel requirement and properly aligned data,
+    // we can return the raw pointer directly without copying.
+    if (slice_info.is_const and sentinel_ptr == null and is_aligned) {
+        const result_ptr = @as([*]Child, @ptrCast(@alignCast(str_res.data)));
         return result_ptr[0..item_count];
     }
 
-    // Allocate copy (required for non-const or when sentinel is needed)
+    // Allocate copy (required for non-const, sentinel, or misaligned data)
     const alloc = options.allocator(opts);
     const alloc_count = if (sentinel_ptr) |_| item_count + 1 else item_count;
 
@@ -458,11 +463,12 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
         return err;
     };
 
+    // Copy bytes to properly aligned memory
+    const u8_result_ptr: [*]u8 = @ptrCast(result);
+    @memcpy(u8_result_ptr[0..str_res.size], str_res.data[0..str_res.size]);
+
     if (sentinel_ptr) |sentinel| {
-        @memcpy(result[0..item_count], result_ptr[0..item_count]);
         result[alloc_count - 1] = sentinel.*;
-    } else {
-        @memcpy(result, result_ptr[0..item_count]);
     }
 
     return @as(T, @ptrCast(result));
