@@ -95,8 +95,10 @@ pub fn Thread(comptime function: anytype) type {
         payload: Payload,
         result: ?*Result = null,
         cleanup_fn: ?*const fn (*This) void = null,
+        debug_allocator: ?*beam.DebugAllocator = null,
+        leaked: bool = false,
 
-        pub fn launch(comptime ThreadResource: type, argc: c_int, args: [*c]const e.ErlNifTerm, payload_opts: anytype, cleanup_opts: anytype) !beam.term {
+        pub fn launch(comptime ThreadResource: type, argc: c_int, args: [*c]const e.ErlNifTerm, payload_opts: anytype, cleanup_opts: anytype, leak_check: bool) !beam.term {
             // assign the context, as the self() function needs this to be correct.
             // note that opts MUST contain `payload_opts` field, which is a
             switch (beam.context.mode) {
@@ -106,8 +108,18 @@ pub fn Thread(comptime function: anytype) type {
             }
 
             // thread struct necessities
-            const allocator = options.allocator(.{});
             const thread_env = beam.alloc_env();
+
+            // Set up allocator - use debug allocator if leak_check is enabled
+            var debug_alloc_ptr: ?*beam.DebugAllocator = null;
+            const allocator = if (leak_check) blk: {
+                debug_alloc_ptr = try beam.allocator.create(beam.DebugAllocator);
+                debug_alloc_ptr.?.* = beam.make_debug_allocator_instance();
+                break :blk debug_alloc_ptr.?.allocator();
+            } else options.allocator(.{});
+
+            // Set context allocator so payload building uses the correct allocator
+            beam.context.allocator = allocator;
 
             // initialize the payload
             var error_index: u8 = undefined;
@@ -133,8 +145,9 @@ pub fn Thread(comptime function: anytype) type {
                 .pid = try beam.self(.{}),
                 .payload = payload,
                 .allocator = allocator,
-                .result = try allocator.create(Result),
+                .result = try beam.allocator.create(Result),
                 .cleanup_fn = &CleanupFn.do_cleanup,
+                .debug_allocator = debug_alloc_ptr,
             };
 
             // build the resource and bind it to beam term.
@@ -171,6 +184,14 @@ pub fn Thread(comptime function: anytype) type {
                 .allocator = thread.allocator,
                 .env = thread.env,
                 .io = beam.io.get(thread.allocator),
+            };
+
+            // Check for leaks after cleanup (runs last due to defer order)
+            defer if (thread.debug_allocator) |dbg| {
+                if (dbg.deinit() == .leak) {
+                    thread.leaked = true;
+                }
+                beam.allocator.destroy(dbg);
             };
 
             // Cleanup payload after function completes
@@ -214,7 +235,7 @@ pub fn Thread(comptime function: anytype) type {
                 @call(.auto, function, thread.payload);
                 return null;
             } else {
-                const result_ptr = thread.allocator.create(Result) catch {
+                const result_ptr = beam.allocator.create(Result) catch {
                     thread.state.set(.failed);
                     return null;
                 };
@@ -277,6 +298,9 @@ pub fn Thread(comptime function: anytype) type {
         }
 
         fn join_result(self: *This) !Result {
+            if (self.leaked) {
+                return error.memoryleak;
+            }
             if (Result == void) {
                 return;
             }
@@ -337,7 +361,7 @@ pub fn Thread(comptime function: anytype) type {
 
         pub fn cleanup(self: *This) void {
             if (self.result) |result| {
-                self.allocator.destroy(result);
+                beam.allocator.destroy(result);
             }
             beam.release_binary(&self.refbin);
             beam.free_env(self.env);

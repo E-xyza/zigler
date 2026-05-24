@@ -127,7 +127,7 @@ fn raw_free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ret
 /////////////////////////////////////////////////////////////////////////////
 // Debug allocator
 
-const BeamDebugAllocator = std.heap.DebugAllocator(.{
+pub const BeamDebugAllocator = std.heap.DebugAllocator(.{
     .thread_safe = true,
     // On Windows, stack trace collection in dynamically loaded libraries (NIFs) can cause
     // segfaults due to limitations in the debug info access. Disable stack traces on Windows.

@@ -8,13 +8,9 @@ pub const @"ThreadResource-<%= @name %>" = beam.Resource(*@"Thread-<%= @name %>"
 
 fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTerm) callconv(.c) e.ErlNifTerm {
 
-    <%= cond do %>
-    <% allocator = @allocator -> %>
+    <%= if allocator = @allocator do %>
     const allocator = nif.<%= allocator %>();
-    <% @leak_check -> %>
-    var gpa = beam.make_debug_allocator_instance();
-    const allocator = gpa.allocator();
-    <% :else -> %>
+    <% else %>
     const allocator = beam.allocator;
     <% end %>
 
@@ -51,7 +47,7 @@ fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifT
         <%= for {index, param} <- @params, do: Parameter.render_cleanup(param, index) %>
     };
 
-    const result = @"Thread-<%= @name %>".launch(@"ThreadResource-<%= @name %>", argc, args, payload_opts, cleanup_opts) catch {
+    const result = @"Thread-<%= @name %>".launch(@"ThreadResource-<%= @name %>", argc, args, payload_opts, cleanup_opts, <%= @leak_check %>) catch {
         @panic("error launching thread");
     };
 
@@ -75,8 +71,14 @@ fn @"<%= @name %>-join"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifTer
         .io = beam.io.get(beam.allocator),
     };
 
-    const result = thread.join() catch {
-        // TODO: fix this
+    const result = thread.join() catch |err| {
+        if (err == error.memoryleak) {
+            return beam.raise_exception(beam.make(.{
+                .__struct__ = .@"Elixir.RuntimeError",
+                .message = "memory leak detected in threaded function `<%= @name %>`",
+                .__exception__ = true,
+            }, .{}), .{}).v;
+        }
         @panic("error joining thread");
     };
 
