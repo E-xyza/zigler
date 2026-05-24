@@ -41,21 +41,38 @@ defmodule ZiglerTest.Types.TupleTest do
     assert {"hello", 10} = mixed_tuple({10, "hello", false})
   end
 
-  test "raises on wrong arity" do
-    assert_raise ArgumentError, fn ->
+  test "raises on wrong arity with helpful message" do
+    error = assert_raise ArgumentError, fn ->
       sum_point({1, 2, 3})
     end
+
+    assert error.message =~ "expected: tuple"
+    assert error.message =~ "expected tuple of size 2, got 3"
   end
 
-  test "raises on wrong element type" do
-    assert_raise ArgumentError, fn ->
+  test "raises on wrong element type with index" do
+    error = assert_raise ArgumentError, fn ->
       sum_point({1.5, 2.5})
     end
+
+    assert error.message =~ "expected: tuple"
+    assert error.message =~ "in tuple element 0:"
+    assert error.message =~ "expected: integer"
   end
 
   test "raises on non-tuple" do
-    assert_raise ArgumentError, fn ->
+    error = assert_raise ArgumentError, fn ->
       sum_point([1, 2])
     end
+
+    assert error.message =~ "expected: tuple"
+  end
+
+  test "raises on wrong element type at specific index" do
+    error = assert_raise ArgumentError, fn ->
+      mixed_tuple({10, 123, true})
+    end
+
+    assert error.message =~ "in tuple element 1:"
   end
 end
