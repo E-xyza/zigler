@@ -137,7 +137,6 @@ after
 
     libc_txt = build_libc_file(staging_directory)
 
-    # TODO: move to Attributes module.
     attribs_path = Path.join(staging_directory, "attributes.zig")
     File.write!(attribs_path, Enum.map(module.attributes, &Attributes.render_zig/1))
 

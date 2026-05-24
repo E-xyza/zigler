@@ -398,8 +398,6 @@ defmodule Zig.Nif do
   end
 
   def render_erlang(nif, _opts \\ []) do
-    # TODO: typespec in erlang.
-
     function =
       nif
       |> nif.concurrency.render_erlang

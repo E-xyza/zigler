@@ -17,8 +17,6 @@ defmodule Zig.Nif.Threaded do
     used_params_ast = Nif.elixir_parameters(arity, true)
     unused_params_ast = Nif.elixir_parameters(arity, false)
 
-    # TODO: marshal parameters (that need to be marshalled) here.
-
     function_code = [
       do:
         quote do

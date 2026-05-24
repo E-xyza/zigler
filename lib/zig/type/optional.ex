@@ -32,7 +32,6 @@ defmodule Zig.Type.Optional do
   @impl true
   def marshal_return(_, variable, platform), do: Type._default_marshal_return(platform, variable)
 
-  # TODO: optional multipointer
   @impl true
   def render_cleanup(_type, _index), do: Type._default_cleanup()
 
