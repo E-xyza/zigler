@@ -1,4 +1,5 @@
 defmodule ZiglerTest.Compiler do
+  @moduledoc false
   @root_dir "test/code"
 
   def init do

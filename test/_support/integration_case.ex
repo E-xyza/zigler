@@ -1,4 +1,5 @@
 defmodule ZiglerTest.IntegrationCase do
+  @moduledoc false
   defmacro __using__(opts) do
     opts =
       if Application.get_env(:zigler, :id_integration) do

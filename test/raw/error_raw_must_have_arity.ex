@@ -1,4 +1,5 @@
 defmodule ZiglerTest.Raw.ErrorRawMustHaveArity do
+  @moduledoc false
   use Zig, otp_app: :zigler
 
   ~Z"""

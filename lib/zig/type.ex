@@ -12,10 +12,10 @@ defprotocol Zig.Type do
   alias Zig.Type.Manypointer
   alias Zig.Type.Optional
   alias Zig.Type.Pointer
+  alias Zig.Type.Resource
   alias Zig.Type.Slice
   alias Zig.Type.Struct
   alias Zig.Type.Tuple
-  alias Zig.Type.Resource
 
   @type t ::
           Array.t()

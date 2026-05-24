@@ -1,4 +1,5 @@
 defmodule ZiglerTest.Raw.Typespec do
+  @moduledoc false
   @compile :debug_info
   use Zig, otp_app: :zigler, nifs: [raw: [arity: 1], multi_raw: [arity: [1, 3..4]]]
 

@@ -46,7 +46,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticVoidTest do
     redefine_warn =
       capture_io(:stderr, fn ->
         build_module(42)
-        assert_receive {:result, 42}, 10000
+        assert_receive {:result, 42}, 10_000
       end)
 
     assert redefine_warn =~ "redefining module ZiglerTest.OnUpgradeAutomaticVoid"

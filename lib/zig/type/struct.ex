@@ -81,7 +81,7 @@ defmodule Zig.Type.Struct do
     Type.binary_typespec(struct)
   end
 
-  # default map form.  Handles `:default`, `:map`, and `{:map, ...}` specs 
+  # default map form.  Handles `:default`, `:map`, and `{:map, ...}` specs
   def render_elixir_spec(struct, context) do
     all_fields =
       struct.optional

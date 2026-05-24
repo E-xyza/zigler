@@ -4,9 +4,9 @@ defmodule Zig.Module do
   # module
 
   alias Zig.Builder
+  alias Zig.BuildModule
   alias Zig.C
   alias Zig.DepsModule
-  alias Zig.BuildModule
   alias Zig.Nif
   alias Zig.Options
   alias Zig.Resources

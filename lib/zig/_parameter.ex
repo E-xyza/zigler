@@ -10,7 +10,7 @@ defmodule Zig.Parameter do
 
   import Type, only: [sigil_t: 2]
 
-  # information supplied by the user. 
+  # information supplied by the user.
   @type unmerged :: %__MODULE__{
           cleanup: boolean,
           in_out: boolean

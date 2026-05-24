@@ -1,4 +1,5 @@
 defmodule ZiglerTest.SpecTemplate do
+  @moduledoc false
   defmacro spec([{:->, _, [params, return]}]) do
     params_ast = Enum.map(params, &convert(&1, __CALLER__))
     return_ast = convert(return, __CALLER__)

@@ -1,4 +1,5 @@
 defmodule ZiglerTest.Documentation do
+  @moduledoc false
   use Zig, otp_app: :zigler
 
   ~Z"""

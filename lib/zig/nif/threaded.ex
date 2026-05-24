@@ -5,8 +5,8 @@ defmodule Zig.Nif.Threaded do
 
   alias Zig.ErrorProng
   alias Zig.Nif
-  alias Zig.Type
   alias Zig.Parameter
+  alias Zig.Type
 
   require EEx
 

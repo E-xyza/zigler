@@ -140,7 +140,7 @@ defmodule Zig.Command do
     end
   end
 
-  def compile!(module = %{precompiled: nil}) do
+  def compile!(%{precompiled: nil} = module) do
     staging_directory = Builder.staging_directory(module.module)
     precompiler_settings = precompile_meta()
 

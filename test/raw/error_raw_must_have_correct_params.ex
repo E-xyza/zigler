@@ -1,4 +1,5 @@
 defmodule ZiglerTest.Raw.ErrorRawMustHaveCorrectParams do
+  @moduledoc false
   use Zig, otp_app: :zigler
 
   ~Z"""

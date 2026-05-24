@@ -6,7 +6,7 @@ defmodule Zig.Return do
   alias Zig.Options
   alias Zig.Type
 
-  # information supplied by the user. 
+  # information supplied by the user.
   @type unmerged :: %__MODULE__{
           cleanup: boolean,
           error: atom,

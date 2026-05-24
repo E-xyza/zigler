@@ -81,7 +81,9 @@ defmodule Zigler.MixProject do
       {:zig_get, path: "installer", runtime: false},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
-      {:zig_doc, "~> 0.7.0"}
+      {:zig_doc, "~> 0.7.0"},
+      # linting
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ] ++ json()
   end
 

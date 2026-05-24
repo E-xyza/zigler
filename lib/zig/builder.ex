@@ -111,7 +111,7 @@ after
     |> Path.join("beam/#{path}")
   end
 
-  def stage(module = %{precompiled: nil}) do
+  def stage(%{precompiled: nil} = module) do
     staging_directory = staging_directory(module.module)
 
     unless File.dir?(staging_directory) do
