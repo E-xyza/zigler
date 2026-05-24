@@ -105,4 +105,7 @@ defmodule Zig.Type.Pointer do
 
   @impl true
   def render_elixir_spec(type, context), do: Type.render_elixir_spec(type.child, context)
+
+  @impl true
+  def render_erlang_spec(type, context), do: Type.render_erlang_spec(type.child, context)
 end

@@ -584,9 +584,21 @@ defmodule Zig.Module do
         module_id: ~C'lib/' ++ module_name
       )
 
+    spec_code =
+      module.nifs
+      |> Enum.filter(& &1.spec)
+      |> Enum.flat_map(&Nif.render_erlang_spec/1)
+      |> Enum.map(&parse_erlang_spec/1)
+
     function_code = Enum.map(module.nifs, &Nif.render_erlang/1)
 
-    Enum.flat_map(function_code, & &1) ++ init_function
+    spec_code ++ Enum.flat_map(function_code, & &1) ++ init_function
+  end
+
+  defp parse_erlang_spec(spec_string) do
+    {:ok, tokens, _} = :erl_scan.string(String.to_charlist(spec_string))
+    {:ok, form} = :erl_parse.parse_form(tokens)
+    form
   end
 
   # EEX Helper functions

@@ -31,6 +31,10 @@ defmodule Zig.Type.Resource do
   end
 
   @impl true
+  def render_erlang_spec(_resource, %Return{as: :binary}), do: "binary()"
+  def render_erlang_spec(_resource, _), do: "reference()"
+
+  @impl true
   def make_allowed?(_resource), do: true
   @impl true
   def get_allowed?(_), do: true

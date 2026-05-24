@@ -71,6 +71,24 @@ defmodule Zig.Type.Slice do
   end
 
   @impl true
+  def render_erlang_spec(type, %Return{as: as}), do: render_erlang_spec(type, as)
+
+  def render_erlang_spec(type, %Parameter{} = params) do
+    child_spec = Type.render_erlang_spec(type.child, params)
+
+    case type.child do
+      ~t(u8) -> "[#{child_spec}] | binary()"
+      _ -> "[#{child_spec}]"
+    end
+  end
+
+  def render_erlang_spec(%{child: child}, {:list, child_spec}), do: "[#{Type.render_erlang_spec(child, child_spec)}]"
+  def render_erlang_spec(%{child: child}, :list), do: "[#{Type.render_erlang_spec(child, :default)}]"
+  def render_erlang_spec(_spec, :binary), do: "binary()"
+  def render_erlang_spec(%{child: ~t(u8)}, :default), do: "binary()"
+  def render_erlang_spec(%{child: child}, :default), do: "[#{Type.render_erlang_spec(child, :default)}]"
+
+  @impl true
   def render_zig(slice), do: slice.repr
 
   @impl true

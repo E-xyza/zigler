@@ -6,7 +6,7 @@ defmodule ZiglerTest.CXX.ErrorInOutOnNonPointerTest do
     assert_raise CompileError,
                  ~r"nif function `takes_int` cannot have a an in-out parameter of type i32",
                  fn ->
-                   ZiglerTest.Compiler.compile("error_in_out_on_non_pointer.ex")
+                   ZiglerTest.Compiler.compile("_error_in_out_on_non_pointer.ex")
                  end
   end
 end

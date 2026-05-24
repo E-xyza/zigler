@@ -38,6 +38,9 @@ defmodule Zig.Type.Float do
   end
 
   @impl true
+  def render_erlang_spec(_, _), do: "float()"
+
+  @impl true
   def get_allowed?(_), do: true
   @impl true
   def make_allowed?(_), do: true

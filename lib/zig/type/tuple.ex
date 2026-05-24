@@ -40,6 +40,25 @@ defmodule Zig.Type.Tuple do
     render_tuple_spec(tuple, context)
   end
 
+  @impl true
+  def render_erlang_spec(tuple, %Return{as: as}), do: render_erlang_spec(tuple, as)
+
+  def render_erlang_spec(tuple, %Parameter{} = params), do: render_erlang_tuple_spec(tuple, params)
+  def render_erlang_spec(tuple, context), do: render_erlang_tuple_spec(tuple, context)
+
+  defp render_erlang_tuple_spec(%{elements: elements}, context) do
+    element_specs =
+      elements
+      |> Enum.with_index()
+      |> Enum.map(fn {element, index} ->
+        element_opts = element_opts(context, index)
+        Type.render_erlang_spec(element, element_opts)
+      end)
+      |> Enum.join(", ")
+
+    "{#{element_specs}}"
+  end
+
   defp render_tuple_spec(%{elements: elements}, context) do
     element_specs =
       elements

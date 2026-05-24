@@ -154,6 +154,38 @@ defmodule Zig.Type.Cpointer do
   @impl true
   def marshal_return(_, variable, platform), do: Type._default_marshal_return(platform, variable)
 
+  @impl true
+  def render_erlang_spec(%{child: child}, %Parameter{} = parameter) do
+    child_spec = Type.render_erlang_spec(child, parameter)
+
+    case child do
+      ~t(u8) -> "[#{child_spec}] | binary() | nil"
+      %Type.Struct{extern: true} -> "#{child_spec} | [#{child_spec}] | nil"
+      _ -> "[#{child_spec}] | nil"
+    end
+  end
+
+  def render_erlang_spec(%{child: ~t(u8)}, context) do
+    case context do
+      %{as: :list} -> "[0..255]"
+      %{as: type} when type in ~w[default binary]a -> "binary() | nil"
+    end
+  end
+
+  def render_erlang_spec(%{child: %__MODULE__{child: ~t(u8)}}, _), do: "[binary()]"
+
+  def render_erlang_spec(%{child: child = %__MODULE__{}}, context) do
+    "[#{Type.render_erlang_spec(child, child_context(context))}]"
+  end
+
+  def render_erlang_spec(%{child: child}, context) do
+    case context do
+      %{as: :default} -> "[#{Type.render_erlang_spec(child, context)}]"
+      _ when child.__struct__ == Type.Struct -> Type.render_erlang_spec(child, child_context(context))
+      _ -> "[#{Type.render_erlang_spec(child, context)}]"
+    end
+  end
+
   defp child_context(%{as: {:list, list_child_as}} = context), do: %{context | as: list_child_as}
   defp child_context(_), do: :default
 

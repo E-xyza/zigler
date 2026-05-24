@@ -79,6 +79,9 @@ defprotocol Zig.Type do
 
   @spec render_elixir_spec(t, Return.t() | Param.t() | Return.type()) :: Macro.t()
   def render_elixir_spec(type, context)
+
+  @spec render_erlang_spec(t, Return.t() | Param.t() | Return.type()) :: String.t()
+  def render_erlang_spec(type, context)
 after
   defmacro sigil_t({:<<>>, _, [string]}, _) do
     string
@@ -273,6 +276,11 @@ defimpl Zig.Type, for: Atom do
       term()
     end
   end
+
+  @impl true
+  def render_erlang_spec(:void, %Zig.Return{}), do: "ok"
+  def render_erlang_spec(:pid, _), do: "pid()"
+  def render_erlang_spec(term, _) when term in ~w[term erl_nif_term]a, do: "term()"
 
   @impl true
   def marshal_param(_, variable, _, platform), do: Type._default_marshal_param(platform, variable)

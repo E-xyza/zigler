@@ -67,6 +67,45 @@ defmodule Zig.Type.Enum do
     |> unionize
   end
 
+  @impl true
+  def render_erlang_spec(%{tags: tags}, %Parameter{}) do
+    integers = erlang_integers(tags)
+    atoms = erlang_atoms(tags)
+    Enum.join(integers ++ atoms, " | ")
+  end
+
+  def render_erlang_spec(type, %Return{as: as}), do: render_erlang_spec(type, as)
+
+  def render_erlang_spec(type, :integer) do
+    type.tags
+    |> erlang_integers()
+    |> Enum.join(" | ")
+  end
+
+  def render_erlang_spec(type, :default) do
+    type.tags
+    |> erlang_atoms()
+    |> Enum.join(" | ")
+  end
+
+  defp erlang_integers(tags) do
+    tags
+    |> Map.values()
+    |> Enum.sort(:desc)
+    |> Enum.reduce([], &accumulate/2)
+    |> Enum.map(&erlang_rerender/1)
+  end
+
+  defp erlang_atoms(tags) do
+    tags
+    |> Map.keys()
+    |> Enum.sort(:asc)
+    |> Enum.map(&Atom.to_string/1)
+  end
+
+  defp erlang_rerender(a..b//1), do: "#{a}..#{b}"
+  defp erlang_rerender(number), do: "#{number}"
+
   defp integers(tags) do
     tags
     |> Map.values()

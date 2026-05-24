@@ -46,5 +46,10 @@ defmodule Zig.Type.Error do
     Type.render_elixir_spec(error.child, context)
   end
 
+  @impl true
+  def render_erlang_spec(error, context) do
+    Type.render_erlang_spec(error.child, context)
+  end
+
   def of(child), do: %__MODULE__{child: child}
 end

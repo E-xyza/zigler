@@ -103,6 +103,23 @@ defmodule Zig.Type.Manypointer do
     end
   end
 
+  @impl true
+  def render_erlang_spec(%{child: ~t(u8), has_sentinel?: true}, %Return{as: as} = context) do
+    case as do
+      :list -> "[#{Type.render_erlang_spec(~t(u8), context)}]"
+      type when type in ~w[default binary]a -> "binary()"
+    end
+  end
+
+  def render_erlang_spec(type, %Parameter{} = context) do
+    child_spec = Type.render_erlang_spec(type.child, context)
+
+    case type.child do
+      ~t(u8) -> "[#{child_spec}] | binary()"
+      _ -> "[#{child_spec}]"
+    end
+  end
+
   def of(type, opts \\ []) do
     struct(__MODULE__, opts ++ [child: type])
   end

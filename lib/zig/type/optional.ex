@@ -45,5 +45,10 @@ defmodule Zig.Type.Optional do
     end
   end
 
+  @impl true
+  def render_erlang_spec(optional, context) do
+    "#{Type.render_erlang_spec(optional.child, context)} | nil"
+  end
+
   def of(child), do: %__MODULE__{child: child}
 end

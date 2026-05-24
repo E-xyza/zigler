@@ -255,6 +255,12 @@ defmodule Zig.Type.Integer do
     end
   end
 
+  @impl true
+  def render_erlang_spec(%{bits: 0}, _), do: "0"
+  def render_erlang_spec(%{signedness: :unsigned, bits: 8}, _), do: "byte()"
+  def render_erlang_spec(%{signedness: :unsigned} = type, _), do: "0..#{typemax(type)}"
+  def render_erlang_spec(%{signedness: :signed} = type, _), do: "#{typemin(type)}..#{typemax(type)}"
+
   # note that we're currently not using this function for unsigned ints, which we know is zero
   defp typemin(%{signedness: :signed, bits: 0}), do: 0
   defp typemin(%{signedness: :signed, bits: bits}), do: -Bitwise.<<<(1, bits - 1)

@@ -41,4 +41,7 @@ defmodule Zig.Type.Bool do
       boolean()
     end
   end
+
+  @impl true
+  def render_erlang_spec(_, _), do: "boolean()"
 end

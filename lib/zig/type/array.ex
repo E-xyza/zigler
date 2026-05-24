@@ -111,6 +111,29 @@ defmodule Zig.Type.Array do
     end
   end
 
+  @impl true
+  def render_erlang_spec(type, %Parameter{} = param) do
+    child_spec = Type.render_erlang_spec(type.child, param)
+
+    case type.child do
+      ~t(u8) -> "[#{child_spec}] | binary()"
+      _ -> "[#{child_spec}]"
+    end
+  end
+
+  def render_erlang_spec(type, %Return{as: as}), do: render_erlang_spec(type, as)
+
+  def render_erlang_spec(type, {:list, subspec}), do: "[#{Type.render_erlang_spec(type.child, subspec)}]"
+  def render_erlang_spec(type, :list), do: "[#{Type.render_erlang_spec(type.child, :default)}]"
+  def render_erlang_spec(_type, :binary), do: "binary()"
+
+  def render_erlang_spec(type, :default) do
+    case type.child do
+      ~t(u8) -> "binary()"
+      _ -> "[#{Type.render_erlang_spec(type.child, :default)}]"
+    end
+  end
+
   def of(type, len, opts \\ []) do
     struct(__MODULE__, opts ++ [child: type, len: len])
   end

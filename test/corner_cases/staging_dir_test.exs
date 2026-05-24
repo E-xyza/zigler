@@ -16,7 +16,7 @@ defmodule ZiglerTest.CornerCases.StagingDirTest do
 
     File.mkdir_p!(@staging_dir)
 
-    modname = ZiglerTest.Compiler.compile("staging_dir.ex")
+    modname = ZiglerTest.Compiler.compile("_staging_dir.ex")
 
     assert @staging_dir
            |> Path.join("#{modname}")
@@ -32,7 +32,7 @@ defmodule ZiglerTest.CornerCases.StagingDirTest do
     assert_raise File.Error,
                  "could not make directory (with -p), consider setting ZIGLER_STAGING_ROOT environment variable\n \"/this/is/not/a/usable/path/Elixir.Zigler.StagingDir.This.Is.Not.A.Usable.Path\": no such file or directory",
                  fn ->
-                   ZiglerTest.Compiler.compile("staging_dir.ex")
+                   ZiglerTest.Compiler.compile("_staging_dir.ex")
                  end
   end
 end

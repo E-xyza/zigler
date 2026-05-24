@@ -408,6 +408,24 @@ defmodule Zig.Nif do
     end
   end
 
+  def render_erlang_spec(%{raw: t, arity: arities} = nif) when not is_nil(t) do
+    Enum.map(arities, fn arity ->
+      params = Enum.map_join(1..arity//1, ", ", fn _ -> "term()" end)
+      "-spec #{nif.name}(#{params}) -> term()."
+    end)
+  end
+
+  def render_erlang_spec(nif) do
+    params =
+      nif.params
+      |> Enum.sort()
+      |> Enum.map(fn {_, p} -> Type.render_erlang_spec(p.type, p) end)
+      |> Enum.join(", ")
+
+    return_spec = Type.render_erlang_spec(nif.return.type, nif.return)
+    ["-spec #{nif.name}(#{params}) -> #{return_spec}."]
+  end
+
   def render_erlang(nif, _opts \\ []) do
     function =
       nif
