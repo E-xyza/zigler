@@ -659,10 +659,6 @@ defmodule Zig.Sema do
     _obtain_precompiled_sema_json(%{module | precompiled: staging_path})
   end
 
-  # Extract DLL and PDB shasums from either the new map format or legacy string format
-  defp normalize_shasum_parts(%{dll: dll_sha, pdb: pdb_sha}), do: {dll_sha, pdb_sha}
-  defp normalize_shasum_parts(shasum) when is_binary(shasum), do: {shasum, nil}
-
   case :os.type() do
     {:unix, :darwin} ->
       def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
@@ -744,6 +740,10 @@ defmodule Zig.Sema do
         end
       end
   end
+
+  # Extract DLL and PDB shasums from either the new map format or legacy string format
+  defp normalize_shasum_parts(%{dll: dll_sha, pdb: pdb_sha}), do: {dll_sha, pdb_sha}
+  defp normalize_shasum_parts(shasum) when is_binary(shasum), do: {shasum, nil}
 
   @otp_version :otp_release
                |> :erlang.system_info()

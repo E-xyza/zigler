@@ -35,7 +35,9 @@ defmodule Zigler.MixProject do
       test_elixirc_options: [
         debug_info: true,
         docs: true
-      ]
+      ],
+      # Ignore helper modules that start with underscore (they define modules used by tests)
+      test_ignore_filters: [&String.contains?(&1, "/_")]
     ]
   end
 
@@ -44,7 +46,7 @@ defmodule Zigler.MixProject do
       main: "Zig",
       extras: ["README.md" | guides(Mix.env())],
       groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
-      zig_doc: [beam: [file: "priv/beam/beam.zig"]],
+      zig_doc: [beam: [file: "priv/beam/beam.zig"]]
     ]
   end
 

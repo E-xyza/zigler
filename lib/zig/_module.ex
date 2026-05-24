@@ -338,6 +338,13 @@ defmodule Zig.Module do
     end
   end
 
+  defp normalize_precompiled(_, context) do
+    Options.raise_with(
+      "must be a path or `{:web, url, shasum}` tuple",
+      Options.push_key(context, :precompiled)
+    )
+  end
+
   # Validate shasum format - handles both plain string and map format for Windows
   defp valid_shasum?(%{dll: dll_sha, pdb: pdb_sha}) do
     valid_hex?(dll_sha) and valid_hex?(pdb_sha)
@@ -350,13 +357,6 @@ defmodule Zig.Module do
       {:ok, _} -> true
       :error -> false
     end
-  end
-
-  defp normalize_precompiled(_, context) do
-    Options.raise_with(
-      "must be a path or `{:web, url, shasum}` tuple",
-      Options.push_key(context, :precompiled)
-    )
   end
 
   defp substitute_url(url, context) do
