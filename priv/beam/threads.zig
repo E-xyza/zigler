@@ -98,7 +98,7 @@ pub fn Thread(comptime function: anytype) type {
         debug_allocator: ?*beam.DebugAllocator = null,
         leaked: bool = false,
 
-        pub fn launch(comptime ThreadResource: type, argc: c_int, args: [*c]const e.ErlNifTerm, payload_opts: anytype, cleanup_opts: anytype, leak_check: bool) !beam.term {
+        pub fn launch(comptime ThreadResource: type, argc: c_int, args: [*c]const e.ErlNifTerm, payload_opts: anytype, cleanup_opts: anytype, leak_check: bool, error_info_ptr: ?*?beam.term) !beam.term {
             // assign the context, as the self() function needs this to be correct.
             // note that opts MUST contain `payload_opts` field, which is a
             switch (beam.context.mode) {
@@ -123,8 +123,21 @@ pub fn Thread(comptime function: anytype) type {
 
             // initialize the payload
             var error_index: u8 = undefined;
-            const payload = beam.payload.build(function, argc, args, &error_index, payload_opts) catch {
-                @panic("errors not implemented yet");
+            const payload = beam.payload.build(function, argc, args, &error_index, payload_opts) catch |err| {
+                // Clean up allocated resources before raising exception
+                if (debug_alloc_ptr) |dbg| {
+                    _ = dbg.deinit();
+                    beam.allocator.destroy(dbg);
+                }
+                beam.free_env(thread_env);
+
+                // Raise proper exception with error info
+                const env = beam.context.env;
+                if (err == error.OutOfMemory) {
+                    return beam.term{ .v = e.enif_raise_exception(env, beam.make(.{ err, error_index }, .{}).v) };
+                }
+                const error_info = if (error_info_ptr) |ptr| ptr.* orelse beam.make_empty_list(.{}) else beam.make_empty_list(.{});
+                return beam.term{ .v = e.enif_raise_exception(env, beam.make(.{ err, error_index, error_info }, .{}).v) };
             };
 
             // initialize the thread struct
