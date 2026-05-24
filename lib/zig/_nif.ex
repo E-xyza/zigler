@@ -263,6 +263,7 @@ defmodule Zig.Nif do
   @spec merge(sema_typed, unmerged) :: typed
   def merge(sema_nif, spec_nif) do
     verify_raw_concurrency(sema_nif, spec_nif)
+    verify_return_struct(sema_nif, spec_nif)
 
     # these are the fields we are going to merge
     merge_fields = ~w[name cleanup allocator impl alias export concurrency spec leak_check]a
@@ -287,6 +288,17 @@ defmodule Zig.Nif do
     raise CompileError,
       description:
         "the raw function `#{sema.name}` may only be used with `:synchronous`, `:dirty_cpu` or `:dirty_io` concurrency",
+      file: spec.file,
+      line: spec.line
+  end
+
+  defp verify_return_struct(_, %{return: %{struct: nil}}), do: :ok
+  defp verify_return_struct(%{return: %{type: %Zig.Type.Struct{}}}, _), do: :ok
+
+  defp verify_return_struct(sema, spec) do
+    raise CompileError,
+      description:
+        "the `struct:` return option was specified for `#{sema.name}` but the return type is `#{Zig.Type.render_zig(sema.return.type)}`, not a struct",
       file: spec.file,
       line: spec.line
   end
