@@ -12,8 +12,6 @@ defmodule Zig.ErrorProng do
             [{_m, _f, a, _}, {m, f, _a, opts} | rest] ->
               indentation = &["\n     ", List.duplicate("| ", &1)]
 
-              # TODO: make sure line and file are assigned here.
-
               new_opts =
                 Keyword.merge(opts,
                   error_info: %{module: __MODULE__, function: :_format_error},

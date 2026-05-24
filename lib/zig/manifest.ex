@@ -3,7 +3,6 @@ defmodule Zig.Manifest do
 
   alias Zig.Command
 
-  # TODO: spec this better
   @type t :: [{pos_integer(), {Path.t(), pos_integer()}}]
 
   defmacro resolver(manifest, file, def_or_defp) do
