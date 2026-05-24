@@ -750,22 +750,26 @@ inline fn error_line(msg: anytype, opts: anytype) void {
     // needs to be passed back to the VM.
 
     // in order to pass values back, .{} should contain the `.error_info` field
-    // and this field should be a pointer to a `beam.term` object.  Anything
-    // else will result in a compiler error.
+    // and this field should be a pointer to an optional `beam.term` object.
+    // The optional allows deferring list creation until an error actually occurs.
 
     if (!@hasField(@TypeOf(opts), "error_info")) return;
 
     inline for (@typeInfo(@TypeOf(opts)).@"struct".fields) |field| {
         if (std.mem.eql(u8, "error_info", field.name)) {
             const field_type = @TypeOf(opts.error_info);
-            if (field_type != *beam.term) {
+            if (field_type != *?beam.term) {
                 const error_msg = comptime mblk: {
-                    break :mblk std.fmt.comptimePrint("the `.error_info` field of the get opts parameter must be `*beam.term`, got: {}", .{field_type});
+                    break :mblk std.fmt.comptimePrint("the `.error_info` field of the get opts parameter must be `*?beam.term`, got: {}", .{field_type});
                 };
                 @compileError(error_msg);
             }
 
-            opts.error_info.v = e.enif_make_list_cell(options.env(opts), beam.make(msg, opts).v, opts.error_info.v);
+            // Initialize the list on first error (deferred from function entry)
+            if (opts.error_info.* == null) {
+                opts.error_info.* = beam.make_empty_list(opts);
+            }
+            opts.error_info.*.?.v = e.enif_make_list_cell(options.env(opts), beam.make(msg, opts).v, opts.error_info.*.?.v);
         }
     }
 }

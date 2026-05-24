@@ -27,7 +27,7 @@ fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifT
     };
 
     <%= if needs_make? do %>
-    var error_info = beam.make_empty_list(.{});
+    var error_info: ?beam.term = null;
     <% end %>
 
     const payload_opts = .{
