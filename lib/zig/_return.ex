@@ -57,7 +57,7 @@ defmodule Zig.Return do
   end
 
   @as ~w[binary list integer map default]a
-  @deep ~w[list map]a
+  @deep ~w[list map tuple]a
 
   def normalize_type({type}, _context) when type in @as, do: {:ok, type}
   def normalize_type({_}, _context), do: :error
@@ -102,6 +102,9 @@ defmodule Zig.Return do
   defp validate_type({:map, list}, context),
     do: validate_map_type(list, Options.push_key(context, :map))
 
+  defp validate_type({:tuple, list}, context),
+    do: validate_tuple_type(list, Options.push_key(context, :tuple))
+
   defp validate_type(wrong, context), do: Options.raise_with(@invalid_type_error, wrong, context)
 
   @invalid_map_type_error "has an invalid map type specification (map parameter must be a keyword list of atoms as keys and type specifications as values)"
@@ -118,6 +121,21 @@ defmodule Zig.Return do
 
   defp validate_map_type(wrong, context),
     do: Options.raise_with(@invalid_map_type_error, wrong, context)
+
+  @invalid_tuple_type_error "has an invalid tuple type specification (tuple parameter must be a list of {index, type} pairs where index is a non-negative integer)"
+
+  defp validate_tuple_type(list, context) when is_list(list) do
+    Enum.each(list, fn
+      {index, type} when is_integer(index) and index >= 0 ->
+        validate_type(type, Options.push_key(context, index))
+
+      _ ->
+        Options.raise_with(@invalid_tuple_type_error, list, context)
+    end)
+  end
+
+  defp validate_tuple_type(wrong, context),
+    do: Options.raise_with(@invalid_tuple_type_error, wrong, context)
 
   @spec merge(sema, unmerged) :: t
   def merge(sema, spec) do
@@ -160,9 +178,18 @@ defmodule Zig.Return do
   defp render_return_as({:map, map_kv_list}),
     do: ".{.map = .{#{render_map_kv_list(map_kv_list)}}}"
 
+  defp render_return_as({:tuple, tuple_list}),
+    do: ".{.tuple = .{#{render_tuple_list(tuple_list)}}}"
+
   defp render_map_kv_list(map_kv_list) do
     Enum.map_join(map_kv_list, ", ", fn {key, value} ->
       ".#{key} = #{render_return_as(value)}"
+    end)
+  end
+
+  defp render_tuple_list(tuple_list) do
+    Enum.map_join(tuple_list, ", ", fn {index, value} ->
+      ".@\"#{index}\" = #{render_return_as(value)}"
     end)
   end
 

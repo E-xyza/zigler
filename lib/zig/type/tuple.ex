@@ -32,21 +32,38 @@ defmodule Zig.Type.Tuple do
     render_elixir_spec(tuple, as)
   end
 
-  def render_elixir_spec(tuple, %Parameter{}) do
-    render_tuple_spec(tuple)
+  def render_elixir_spec(tuple, %Parameter{} = params) do
+    render_tuple_spec(tuple, params)
   end
 
-  def render_elixir_spec(tuple, _context) do
-    render_tuple_spec(tuple)
+  def render_elixir_spec(tuple, context) do
+    render_tuple_spec(tuple, context)
   end
 
-  defp render_tuple_spec(%{elements: elements}) do
-    element_specs = Enum.map(elements, &Type.render_elixir_spec(&1, :default))
+  defp render_tuple_spec(%{elements: elements}, context) do
+    element_specs =
+      elements
+      |> Enum.with_index()
+      |> Enum.map(fn {element, index} ->
+        element_opts = element_opts(context, index)
+        Type.render_elixir_spec(element, element_opts)
+      end)
 
     quote do
       {unquote_splicing(element_specs)}
     end
   end
+
+  defp element_opts({:tuple, list}, index) when is_list(list) do
+    Enum.find_value(list, :default, fn
+      {^index, type} -> type
+      _ -> nil
+    end)
+  end
+
+  defp element_opts(%Parameter{} = params, _index), do: params
+
+  defp element_opts(_, _), do: :default
 
   @impl true
   def render_zig(%{name: name}), do: "nif.#{name}"

@@ -245,4 +245,9 @@ defmodule ZiglerTest.Types.SpecTest do
     assert spec(({unquote(i32_range), unquote(i32_range)} -> {unquote(i32_range), unquote(i32_range)})) =
              Map.fetch!(specs, {:tuple_fn, 1})
   end
+
+  test "tuple with element encoding override", specs do
+    assert spec(({unquote(i32_range), [byte] | binary} -> {unquote(i32_range), binary})) =
+             Map.fetch!(specs, {:tuple_with_slice_fn, 1})
+  end
 end

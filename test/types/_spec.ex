@@ -16,7 +16,8 @@ defmodule ZiglerTest.Types.Spec do
       slice_u8_fn_list_return: [return: :list],
       packed_struct_fn_map_return: [return: :map],
       extern_struct_fn_binary_return: [return: :binary],
-      extern_struct_fn_internal_binary_return: [return: {:map, value: :binary}]
+      extern_struct_fn_internal_binary_return: [return: {:map, value: :binary}],
+      tuple_with_slice_fn: [return: {:tuple, [{1, :binary}]}]
     ]
 
   ~Z"""
@@ -192,6 +193,10 @@ defmodule ZiglerTest.Types.Spec do
   }
 
   pub fn tuple_fn(data: struct { i32, i32 }) struct { i32, i32 } {
+      return data;
+  }
+
+  pub fn tuple_with_slice_fn(data: struct { i32, []const u8 }) struct { i32, []const u8 } {
       return data;
   }
   """

@@ -1492,6 +1492,9 @@ pub const allocator = allocator_.beam_allocator;
 /// a function which returns a new debug allocator instance.
 pub const make_debug_allocator_instance = allocator_.make_debug_allocator_instance;
 
+/// The debug allocator type used for leak checking.
+pub const DebugAllocator = allocator_.BeamDebugAllocator;
+
 /// implements `std.mem.Allocator` using the `std.mem.DebugAllocator`
 /// factory, backed by `beam.wide_alignment_allocator`.
 pub const debug_allocator = allocator_.debug_allocator;
