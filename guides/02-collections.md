@@ -111,6 +111,26 @@ types, the scope of datatypes accepted must be limited:
 - cpointer to a pointer (`[*c]?*T`). This will assume cpointer is null-terminated, if it can't be
   considered `[*:null]?*T` then the behaviour is undefined.
 
+> #### Double cpointers `[*c][*c]T` {: .warning}
+>
+> Double cpointers (`[*c][*c]T`) are particularly dangerous and should be avoided when possible.
+> These types have multiple issues:
+>
+> 1. **Unknown lengths at both levels** - Neither the outer array length nor inner array lengths
+>    are known at compile time. Zigler assumes null-termination for both levels, which may not
+>    match your C library's semantics.
+>
+> 2. **Memory ownership ambiguity** - It's unclear who owns the memory: the outer array, the
+>    inner pointers, or the data they point to. This makes cleanup error-prone.
+>
+> 3. **Lifetime issues** - The inner pointers may become invalid if the underlying data is freed
+>    while the outer array still exists.
+>
+> If you must use double cpointers, consider:
+> - Using a raw NIF to manually handle the marshalling
+> - Converting to a safer Zig type (like `[][]T`) within your Zig code before returning
+> - Documenting the exact memory ownership semantics of your C library
+
 ## Passing and returning enums
 
 Enums are collections of integer values that are given special identifier status in the zig
