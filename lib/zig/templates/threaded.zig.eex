@@ -47,7 +47,11 @@ fn @"<%= @name %>-launch"(env: beam.env, argc: c_int, args: [*c] const e.ErlNifT
         <% end %>
     };
 
-    const result = @"Thread-<%= @name %>".launch(@"ThreadResource-<%= @name %>", argc, args, payload_opts) catch {
+    const cleanup_opts = .{
+        <%= for {index, param} <- @params, do: Parameter.render_cleanup(param, index) %>
+    };
+
+    const result = @"Thread-<%= @name %>".launch(@"ThreadResource-<%= @name %>", argc, args, payload_opts, cleanup_opts) catch {
         @panic("error launching thread");
     };
 

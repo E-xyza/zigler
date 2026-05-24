@@ -94,8 +94,9 @@ pub fn Thread(comptime function: anytype) type {
         allocator: std.mem.Allocator,
         payload: Payload,
         result: ?*Result = null,
+        cleanup_fn: ?*const fn (*This) void = null,
 
-        pub fn launch(comptime ThreadResource: type, argc: c_int, args: [*c]const e.ErlNifTerm, payload_opts: anytype) !beam.term {
+        pub fn launch(comptime ThreadResource: type, argc: c_int, args: [*c]const e.ErlNifTerm, payload_opts: anytype, cleanup_opts: anytype) !beam.term {
             // assign the context, as the self() function needs this to be correct.
             // note that opts MUST contain `payload_opts` field, which is a
             switch (beam.context.mode) {
@@ -120,7 +121,21 @@ pub fn Thread(comptime function: anytype) type {
             const threadptr = try beam.allocator.create(This);
             errdefer beam.allocator.destroy(threadptr);
 
-            threadptr.* = .{ .env = thread_env, .pid = try beam.self(.{}), .payload = payload, .allocator = allocator, .result = try allocator.create(Result) };
+            // Create a cleanup function that captures cleanup_opts at comptime
+            const CleanupFn = struct {
+                fn do_cleanup(thread: *This) void {
+                    beam.payload.cleanup(thread.payload, cleanup_opts);
+                }
+            };
+
+            threadptr.* = .{
+                .env = thread_env,
+                .pid = try beam.self(.{}),
+                .payload = payload,
+                .allocator = allocator,
+                .result = try allocator.create(Result),
+                .cleanup_fn = &CleanupFn.do_cleanup,
+            };
 
             // build the resource and bind it to beam term.
             const resource = try ThreadResource.create(threadptr, .{});
@@ -132,9 +147,6 @@ pub fn Thread(comptime function: anytype) type {
             // we won't be able to trigger the resource destructor.
             threadptr.refbin = try beam.term_to_binary(res_term, .{});
             errdefer beam.release_binary(&threadptr.refbin);
-
-            // set the self_pid function
-            self_pid = &This.self_pid_fn;
 
             // launch the thread
             _ = e.enif_thread_create(name_ptr(), &threadptr.tid, wrapped, threadptr, null);
@@ -152,6 +164,7 @@ pub fn Thread(comptime function: anytype) type {
             const thread = @as(*This, @ptrCast(@alignCast(void_thread.?)));
             // set critical threadlocal variables
             local_join_started = &thread.join_started;
+            self_pid = &This.self_pid_fn;
 
             beam.context = .{
                 .mode = .threaded,
@@ -159,6 +172,9 @@ pub fn Thread(comptime function: anytype) type {
                 .env = thread.env,
                 .io = beam.io.get(thread.allocator),
             };
+
+            // Cleanup payload after function completes
+            defer if (thread.cleanup_fn) |cleanup_fn| cleanup_fn(thread);
 
             if (thread.state.exchange(.prepped, .running)) |state| switch (state) {
                 .prepped => unreachable, // exchange can't return what it started with.

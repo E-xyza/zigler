@@ -59,11 +59,12 @@ defmodule ZiglerTest.Allocator.CustomFunctionTest do
     assert_receive {:free, 10}
   end
 
-  # this currently segfaults.  Fix in 0.16.0
-  @tag :skip
   test "for threaded function works" do
     threaded("0123456789")
     assert_receive {:alloc, 10}
+    # Thread also allocates internal structures (Result, etc.) - drain those
+    receive do {:alloc, 16} -> :ok after 100 -> :ok end
+    receive do {:alloc, 16} -> :ok after 100 -> :ok end
     assert_receive {:alloc, 100}
     assert_receive {:free, 10}
   end

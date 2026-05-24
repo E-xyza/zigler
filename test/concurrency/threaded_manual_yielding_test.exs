@@ -32,7 +32,7 @@ defmodule ZiglerTest.Concurrency.ThreadedManualYieldingTest do
 
   pub fn launch(pid_term: beam.term) !beam.term {
       var args = [_]e.ErlNifTerm{pid_term.v};
-      return Thread.launch(ThreadResource, 1, &args, .{.{}});
+      return Thread.launch(ThreadResource, 1, &args, .{.{}}, .{.{}});
   }
   """
 
