@@ -738,40 +738,20 @@ defmodule Zig do
 
   # Recursively resolve all symlinks in a path by checking each component
   defp resolve_symlinks(path) do
-    # Split the path into components
-    parts = Path.split(path)
+    path
+    |> Path.split()
+    |> Enum.reduce("", &resolve_symlink_component/2)
+  end
 
-    # Rebuild the path, resolving symlinks at each level
-    {resolved, _} =
-      Enum.reduce(parts, {"", ""}, fn part, {current_path, _} ->
-        next_path =
-          if current_path == "" do
-            part
-          else
-            Path.join(current_path, part)
-          end
+  defp resolve_symlink_component(part, ""), do: resolve_link(part)
+  defp resolve_symlink_component(part, current), do: resolve_link(Path.join(current, part))
 
-        # Check if this component is a symlink
-        case File.read_link(next_path) do
-          {:ok, link_target} ->
-            # If the link target is absolute, use it directly
-            # Otherwise, resolve it relative to the current directory
-            resolved_path =
-              if String.starts_with?(link_target, "/") do
-                link_target
-              else
-                Path.join(Path.dirname(next_path), link_target)
-              end
-
-            {resolved_path, ""}
-
-          {:error, _} ->
-            # Not a symlink, continue with the current path
-            {next_path, ""}
-        end
-      end)
-
-    resolved
+  defp resolve_link(path) do
+    case File.read_link(path) do
+      {:ok, "/" <> _ = absolute_target} -> absolute_target
+      {:ok, relative_target} -> Path.join(Path.dirname(path), relative_target)
+      {:error, _} -> path
+    end
   end
 end
 

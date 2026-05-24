@@ -360,17 +360,16 @@ defmodule Zig.Nif do
 
   def render_elixir_spec(%{raw: t, arity: arities} = nif) when not is_nil(t) do
     Enum.map(arities, fn arity ->
-      param_spec =
-        case arity do
-          0 -> []
-          arity -> Enum.map(0..(arity - 1), fn _ -> {:term, [], []} end)
-        end
+      param_spec = raw_param_spec(arity)
 
       quote do
         @spec unquote(nif.name)(unquote_splicing(param_spec)) :: term
       end
     end)
   end
+
+  defp raw_param_spec(0), do: []
+  defp raw_param_spec(arity), do: Enum.map(1..arity, fn _ -> {:term, [], []} end)
 
   def render_elixir_spec(nif) do
     param_spec =

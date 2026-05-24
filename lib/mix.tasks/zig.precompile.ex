@@ -37,17 +37,18 @@ defmodule Mix.Tasks.Zig.Precompile do
     x86: [linux: [:gnu, :musl], windows: :gnu]
   ]
 
+  defp all_targets do
+    for {arch, targets} <- @triples,
+        {os, platforms} <- targets,
+        platform <- List.wrap(platforms) do
+      {arch, os, platform}
+    end
+  end
+
   def run([file]) do
     shas =
-      for {arch, targets} <- @triples, reduce: [] do
-        acc ->
-          for {os, platforms} <- targets, reduce: acc do
-            acc2 ->
-              for platform <- List.wrap(platforms), reduce: acc2 do
-                acc3 -> [compile(file, arch, os, platform) | acc3]
-              end
-          end
-      end
+      all_targets()
+      |> Enum.map(fn {arch, os, platform} -> compile(file, arch, os, platform) end)
       |> inspect(pretty: true)
       |> String.split("\n")
       |> Enum.join("\n  ")

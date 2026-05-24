@@ -315,27 +315,25 @@ defmodule Zig.Module do
   end
 
   defp normalize_precompiled({:web, url, shasum}, context) do
-    if not is_binary(url),
-      do: Options.raise_with("url must be a binary", Options.push_key(context, :precompiled))
+    precompiled_context = Options.push_key(context, :precompiled)
 
-    if not (is_binary(shasum) or is_list(shasum)),
-      do:
-        Options.raise_with(
-          "shasum must be a binary or keyword list",
-          Options.push_key(context, :precompiled)
-        )
+    unless is_binary(url),
+      do: Options.raise_with("url must be a binary", precompiled_context)
 
-    if shasum = normalize_shasum(shasum) do
-      if valid_shasum?(shasum) do
-        if System.get_env("ZIGLER_PRECOMPILE_FORCE_RECOMPILE", "false") != "true",
-          do: {:web, substitute_url(url, context), shasum}
-      else
-        Options.raise_with(
-          "shasum must be base-16 encoded",
-          Options.push_key(context, :precompiled)
-        )
-      end
-    end
+    unless is_binary(shasum) or is_list(shasum),
+      do: Options.raise_with("shasum must be a binary or keyword list", precompiled_context)
+
+    validate_and_build_precompiled(url, normalize_shasum(shasum), context, precompiled_context)
+  end
+
+  defp validate_and_build_precompiled(_url, nil, _context, _precompiled_context), do: nil
+
+  defp validate_and_build_precompiled(url, shasum, context, precompiled_context) do
+    unless valid_shasum?(shasum),
+      do: Options.raise_with("shasum must be base-16 encoded", precompiled_context)
+
+    if System.get_env("ZIGLER_PRECOMPILE_FORCE_RECOMPILE", "false") != "true",
+      do: {:web, substitute_url(url, context), shasum}
   end
 
   defp normalize_precompiled(_, context) do

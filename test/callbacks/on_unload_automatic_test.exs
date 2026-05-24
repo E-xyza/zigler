@@ -44,7 +44,7 @@ defmodule ZiglerTest.Callbacks.OnUnloadAutomaticTest do
     Application.put_env(:zigler, OnUnloadAutomatic, this)
 
     build_module()
-    assert :ok = apply(OnUnloadAutomatic, :bar, [])
+    assert :ok = OnUnloadAutomatic.bar()
 
     :code.delete(OnUnloadAutomatic)
     :code.purge(OnUnloadAutomatic)

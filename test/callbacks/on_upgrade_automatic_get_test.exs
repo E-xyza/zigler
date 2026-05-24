@@ -36,7 +36,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticGetTest do
   test "on_upgrade generally works" do
     this = self()
     build_module(pid: this, value: 0)
-    assert 0 = apply(OnUpgradeAutomaticGet, :bar, [])
+    assert 0 = OnUpgradeAutomaticGet.bar()
 
     redefine_warn =
       capture_io(:stderr, fn ->

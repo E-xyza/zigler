@@ -41,7 +41,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticVoidTest do
 
   test "on_upgrade generally works" do
     build_module(0)
-    assert 0 = apply(OnUpgradeAutomaticVoid, :bar, [])
+    assert 0 = OnUpgradeAutomaticVoid.bar()
 
     redefine_warn =
       capture_io(:stderr, fn ->

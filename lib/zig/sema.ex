@@ -204,16 +204,8 @@ defmodule Zig.Sema do
         {:auto, specified_nifs} ->
           # go through the list of sema_functions and add them to the specified nifs list
           # if they aren't there yet.
-
           sema_functions
-          |> Enum.reduce(specified_nifs, fn
-            sema_function, so_far ->
-              if Enum.any?(so_far, &(&1.name == sema_function.name)) do
-                so_far
-              else
-                [make_default_nif(sema_function, module) | so_far]
-              end
-          end)
+          |> Enum.reduce(specified_nifs, &add_missing_nif(&1, &2, module))
           |> build_from_specs(sema_functions, module)
 
         specified_nifs when is_list(specified_nifs) ->
@@ -225,24 +217,35 @@ defmodule Zig.Sema do
     %{module | nifs: nifs}
   end
 
+  defp add_missing_nif(sema_function, so_far, module) do
+    if Enum.any?(so_far, &(&1.name == sema_function.name)) do
+      so_far
+    else
+      [make_default_nif(sema_function, module) | so_far]
+    end
+  end
+
   defp build_from_specs(specified_nifs, sema_functions, module) do
-    Enum.map(specified_nifs, fn nif ->
-      expected_name = nif.alias || nif.name
+    Enum.map(specified_nifs, &build_nif_from_spec(&1, sema_functions, module))
+  end
 
-      if sema_function = Enum.find(sema_functions, &(&1.name == expected_name)) do
-        sema_function
-        |> make_default_nif(module)
-        |> Nif.merge(nif)
-      else
-        needed_msg = if nif.alias, do: " (needed by nif #{nif.name})"
+  defp build_nif_from_spec(nif, sema_functions, module) do
+    expected_name = nif.alias || nif.name
 
-        raise CompileError,
-          description:
-            "public function named `#{expected_name}`#{needed_msg} not found in semantic analysis of module.",
-          file: module.file,
-          line: module.line
-      end
-    end)
+    case Enum.find(sema_functions, &(&1.name == expected_name)) do
+      nil -> raise_missing_function_error(expected_name, nif, module)
+      sema_function -> make_default_nif(sema_function, module) |> Nif.merge(nif)
+    end
+  end
+
+  defp raise_missing_function_error(expected_name, nif, module) do
+    needed_msg = if nif.alias, do: " (needed by nif #{nif.name})", else: ""
+
+    raise CompileError,
+      description:
+        "public function named `#{expected_name}`#{needed_msg} not found in semantic analysis of module.",
+      file: module.file,
+      line: module.line
   end
 
   @module_settings ~w[module file line module_code_path zig_code_path]a
@@ -310,284 +313,260 @@ defmodule Zig.Sema do
   end
 
   defp check_invalid_callbacks!(module) do
-    Enum.each(module.sema.callbacks, fn
-      {type, nil} ->
-        seek_and_raise!(
-          type,
-          module,
-          &"#{type} callback #{&1}must be declared `pub`",
-          &"#{type} callback #{&1}not found"
-        )
+    Enum.each(module.sema.callbacks, &check_invalid_callback!(&1, module))
+  end
 
-      {:on_load, %{arity: arity}} when arity not in [2, 3] ->
-        seek_and_raise!(:on_load, module, &"on_load callback #{&1}must have arity 2 or 3")
+  defp check_invalid_callback!({type, nil}, module) do
+    seek_and_raise!(
+      type,
+      module,
+      &"#{type} callback #{&1}must be declared `pub`",
+      &"#{type} callback #{&1}not found"
+    )
+  end
 
-      {:on_load, %{arity: 2} = function} ->
-        case function.params do
-          [%Pointer{optional: true, child: %Pointer{optional: true}}, second] ->
-            if Type.get_allowed?(second) do
-              :ok
-            else
-              seek_and_raise!(
-                :on_load,
-                module,
-                &"on_load (automatic-style) callback #{&1}must have a second parameter of a type compatible with `beam.get`.\n\n    got: `#{Type.render_zig(second)}`"
-              )
-            end
+  defp check_invalid_callback!({:on_load, %{arity: arity}}, module) when arity not in [2, 3] do
+    seek_and_raise!(:on_load, module, &"on_load callback #{&1}must have arity 2 or 3")
+  end
 
-          [first, _] ->
-            seek_and_raise!(
-              :on_load,
-              module,
-              &"on_load (automatic-style) callback #{&1}must have a first paramater of a `?*?*` type.\n\n    got: `#{Type.render_zig(first)}`"
-            )
-        end
+  defp check_invalid_callback!({:on_load, %{arity: 2} = function}, module) do
+    check_on_load_auto_params!(function.params, module)
+    check_on_load_auto_return!(function.return, module)
+  end
 
-        case function.return do
-          :void ->
-            :ok
+  defp check_invalid_callback!({:on_load, %{arity: 3} = function}, module) do
+    check_on_load_raw_params!(function.params, module)
+    check_on_load_raw_return!(function.return, module)
+  end
 
-          %Integer{} ->
-            :ok
+  defp check_invalid_callback!({:on_upgrade, %{arity: arity}}, module) when arity not in [3, 4] do
+    seek_and_raise!(:on_upgrade, module, &"on_upgrade callback #{&1}must have arity 3 or 4")
+  end
 
-          %Zig.Type.Enum{} ->
-            :ok
+  defp check_invalid_callback!({:on_upgrade, %{arity: 3} = function}, module) do
+    check_on_upgrade_auto_params!(function.params, module)
+    check_on_upgrade_auto_return!(function.return, module)
+  end
 
-          %Error{child: :void} ->
-            :ok
+  defp check_invalid_callback!({:on_upgrade, %{arity: 4} = function}, module) do
+    check_on_upgrade_raw_params!(function.params, module)
+    check_on_upgrade_raw_return!(function.return, module)
+  end
 
-          bad ->
-            seek_and_raise!(
-              :on_load,
-              module,
-              &"on_load (automatic-style) callback #{&1}must have a return of type integer, enum, `void`, or `!void`.\n\n    got: `#{Type.render_zig(bad)}`"
-            )
-        end
+  defp check_invalid_callback!({:on_unload, %{arity: arity}}, module) when arity not in [1, 2] do
+    seek_and_raise!(:on_unload, module, &"on_unload callback #{&1}must have arity 1 or 2")
+  end
 
-      {:on_load, %{arity: 3} = function} ->
-        case function.params do
-          [:env, %Pointer{optional: true, child: %Pointer{optional: true}}, :erl_nif_term] ->
-            :ok
+  defp check_invalid_callback!({:on_unload, %{arity: 1} = function}, module) do
+    check_on_unload_auto_params!(function.params, module)
+    check_on_unload_auto_return!(function.return, module)
+  end
 
-          [first, _, _] when first != :env ->
-            seek_and_raise!(
-              :on_load,
-              module,
-              &"on_load (raw-style) callback #{&1}must have a first parameter of type `beam.env`.\n\n    got: `#{Type.render_zig(first)}`"
-            )
+  defp check_invalid_callback!({:on_unload, %{arity: 2} = function}, module) do
+    check_on_unload_raw_params!(function.params, module)
+    check_on_unload_raw_return!(function.return, module)
+  end
 
-          [_, _, third] when third != :erl_nif_term ->
-            seek_and_raise!(
-              :on_load,
-              module,
-              &"on_load (raw-style) callback #{&1}must have a third parameter of type `e.ErlNifTerm`.\n\n    got: `#{Type.render_zig(third)}`"
-            )
+  defp check_invalid_callback!(_, _module), do: :ok
 
-          [_, second, _] ->
-            seek_and_raise!(
-              :on_load,
-              module,
-              &"on_load (raw-style) callback #{&1}must have a second parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(second)}`"
-            )
-        end
+  # on_load automatic style (arity 2)
+  defp check_on_load_auto_params!([%Pointer{optional: true, child: %Pointer{optional: true}}, second], module) do
+    unless Type.get_allowed?(second) do
+      seek_and_raise!(
+        :on_load,
+        module,
+        &"on_load (automatic-style) callback #{&1}must have a second parameter of a type compatible with `beam.get`.\n\n    got: `#{Type.render_zig(second)}`"
+      )
+    end
+  end
 
-        case function.return do
-          %Integer{signedness: :signed, bits: 32} ->
-            :ok
+  defp check_on_load_auto_params!([first, _], module) do
+    seek_and_raise!(
+      :on_load,
+      module,
+      &"on_load (automatic-style) callback #{&1}must have a first paramater of a `?*?*` type.\n\n    got: `#{Type.render_zig(first)}`"
+    )
+  end
 
-          bad ->
-            seek_and_raise!(
-              :on_load,
-              module,
-              &"on_load (raw-style) callback #{&1}must have return type `c_int`.\n\n    got: `#{Type.render_zig(bad)}`"
-            )
-        end
+  defp check_on_load_auto_return!(ret, _module) when ret in [:void] or is_struct(ret, Integer) or is_struct(ret, Zig.Type.Enum), do: :ok
+  defp check_on_load_auto_return!(%Error{child: :void}, _module), do: :ok
 
-      {:on_upgrade, %{arity: arity}} when arity not in [3, 4] ->
-        seek_and_raise!(:on_upgrade, module, &"on_upgrade callback #{&1}must have arity 3 or 4")
+  defp check_on_load_auto_return!(bad, module) do
+    seek_and_raise!(
+      :on_load,
+      module,
+      &"on_load (automatic-style) callback #{&1}must have a return of type integer, enum, `void`, or `!void`.\n\n    got: `#{Type.render_zig(bad)}`"
+    )
+  end
 
-      {:on_upgrade, %{arity: 3} = function} ->
-        case function.params do
-          [
-            %Pointer{optional: true, child: %Pointer{optional: true}},
-            %Pointer{optional: true, child: %Pointer{optional: true}},
-            third
-          ] ->
-            if Type.get_allowed?(third) do
-              :ok
-            else
-              seek_and_raise!(
-                :on_upgrade,
-                module,
-                &"on_upgrade (automatic-style) callback #{&1}must have a third parameter of a type compatible with `beam.get`.\n\n    got: `#{Type.render_zig(third)}`"
-              )
-            end
+  # on_load raw style (arity 3)
+  defp check_on_load_raw_params!([:env, %Pointer{optional: true, child: %Pointer{optional: true}}, :erl_nif_term], _module), do: :ok
 
-          [%Pointer{optional: true, child: %Pointer{optional: true}}, second, _] ->
-            seek_and_raise!(
-              :on_upgrade,
-              module,
-              &"on_upgrade (automatic-style) callback #{&1}must have a second parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(second)}`"
-            )
+  defp check_on_load_raw_params!([first, _, _], module) when first != :env do
+    seek_and_raise!(
+      :on_load,
+      module,
+      &"on_load (raw-style) callback #{&1}must have a first parameter of type `beam.env`.\n\n    got: `#{Type.render_zig(first)}`"
+    )
+  end
 
-          [first, _, _] ->
-            seek_and_raise!(
-              :on_upgrade,
-              module,
-              &"on_upgrade (automatic-style) callback #{&1}must have a first parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(first)}`"
-            )
-        end
+  defp check_on_load_raw_params!([_, _, third], module) when third != :erl_nif_term do
+    seek_and_raise!(
+      :on_load,
+      module,
+      &"on_load (raw-style) callback #{&1}must have a third parameter of type `e.ErlNifTerm`.\n\n    got: `#{Type.render_zig(third)}`"
+    )
+  end
 
-        case function.return do
-          :void ->
-            :ok
+  defp check_on_load_raw_params!([_, second, _], module) do
+    seek_and_raise!(
+      :on_load,
+      module,
+      &"on_load (raw-style) callback #{&1}must have a second parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(second)}`"
+    )
+  end
 
-          %Integer{} ->
-            :ok
+  defp check_on_load_raw_return!(%Integer{signedness: :signed, bits: 32}, _module), do: :ok
 
-          %Zig.Type.Enum{} ->
-            :ok
+  defp check_on_load_raw_return!(bad, module) do
+    seek_and_raise!(
+      :on_load,
+      module,
+      &"on_load (raw-style) callback #{&1}must have return type `c_int`.\n\n    got: `#{Type.render_zig(bad)}`"
+    )
+  end
 
-          %Error{child: :void} ->
-            :ok
+  # on_upgrade automatic style (arity 3)
+  defp check_on_upgrade_auto_params!([%Pointer{optional: true, child: %Pointer{optional: true}}, %Pointer{optional: true, child: %Pointer{optional: true}}, third], module) do
+    unless Type.get_allowed?(third) do
+      seek_and_raise!(
+        :on_upgrade,
+        module,
+        &"on_upgrade (automatic-style) callback #{&1}must have a third parameter of a type compatible with `beam.get`.\n\n    got: `#{Type.render_zig(third)}`"
+      )
+    end
+  end
 
-          bad ->
-            seek_and_raise!(
-              :on_upgrade,
-              module,
-              &"on_upgrade (automatic-style) callback #{&1}must have an integer, enum, `void`, or `!void` as a return.\n\n    got: `#{Type.render_zig(bad)}`"
-            )
-        end
+  defp check_on_upgrade_auto_params!([%Pointer{optional: true, child: %Pointer{optional: true}}, second, _], module) do
+    seek_and_raise!(
+      :on_upgrade,
+      module,
+      &"on_upgrade (automatic-style) callback #{&1}must have a second parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(second)}`"
+    )
+  end
 
-      {:on_upgrade, %{arity: 4} = function} ->
-        case function.params do
-          [
-            :env,
-            %Pointer{optional: true, child: %Pointer{optional: true}},
-            %Pointer{optional: true, child: %Pointer{optional: true}},
-            :erl_nif_term
-          ] ->
-            :ok
+  defp check_on_upgrade_auto_params!([first, _, _], module) do
+    seek_and_raise!(
+      :on_upgrade,
+      module,
+      &"on_upgrade (automatic-style) callback #{&1}must have a first parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(first)}`"
+    )
+  end
 
-          [
-            :env,
-            %Pointer{optional: true, child: %Pointer{optional: true}},
-            %Pointer{optional: true, child: %Pointer{optional: true}},
-            fourth
-          ] ->
-            seek_and_raise!(
-              :on_upgrade,
-              module,
-              &"on_upgrade (raw-style) callback #{&1}must have a fourth parameter of type `e.ErlNifTerm`.\n\n    got: `#{Type.render_zig(fourth)}`"
-            )
+  defp check_on_upgrade_auto_return!(ret, _module) when ret in [:void] or is_struct(ret, Integer) or is_struct(ret, Zig.Type.Enum), do: :ok
+  defp check_on_upgrade_auto_return!(%Error{child: :void}, _module), do: :ok
 
-          [
-            :env,
-            %Pointer{optional: true, child: %Pointer{optional: true}},
-            third,
-            _
-          ] ->
-            seek_and_raise!(
-              :on_upgrade,
-              module,
-              &"on_upgrade (raw-style) callback #{&1}must have a third parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(third)}`"
-            )
+  defp check_on_upgrade_auto_return!(bad, module) do
+    seek_and_raise!(
+      :on_upgrade,
+      module,
+      &"on_upgrade (automatic-style) callback #{&1}must have an integer, enum, `void`, or `!void` as a return.\n\n    got: `#{Type.render_zig(bad)}`"
+    )
+  end
 
-          [
-            :env,
-            second,
-            _,
-            _
-          ] ->
-            seek_and_raise!(
-              :on_upgrade,
-              module,
-              &"on_upgrade (raw-style) callback #{&1}must have a second parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(second)}`"
-            )
+  # on_upgrade raw style (arity 4)
+  defp check_on_upgrade_raw_params!([:env, %Pointer{optional: true, child: %Pointer{optional: true}}, %Pointer{optional: true, child: %Pointer{optional: true}}, :erl_nif_term], _module), do: :ok
 
-          [first, _, _, _] ->
-            seek_and_raise!(
-              :on_upgrade,
-              module,
-              &"on_upgrade (raw-style) callback #{&1}must have a first parameter of type `beam.env`.\n\n    got: `#{Type.render_zig(first)}`"
-            )
-        end
+  defp check_on_upgrade_raw_params!([:env, %Pointer{optional: true, child: %Pointer{optional: true}}, %Pointer{optional: true, child: %Pointer{optional: true}}, fourth], module) do
+    seek_and_raise!(
+      :on_upgrade,
+      module,
+      &"on_upgrade (raw-style) callback #{&1}must have a fourth parameter of type `e.ErlNifTerm`.\n\n    got: `#{Type.render_zig(fourth)}`"
+    )
+  end
 
-        case function.return do
-          %Integer{signedness: :signed, bits: 32} ->
-            :ok
+  defp check_on_upgrade_raw_params!([:env, %Pointer{optional: true, child: %Pointer{optional: true}}, third, _], module) do
+    seek_and_raise!(
+      :on_upgrade,
+      module,
+      &"on_upgrade (raw-style) callback #{&1}must have a third parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(third)}`"
+    )
+  end
 
-          bad ->
-            seek_and_raise!(
-              :on_upgrade,
-              module,
-              &"on_upgrade (raw-style) callback #{&1}must have an `c_int` as a return.\n\n    got: `#{Type.render_zig(bad)}`"
-            )
-        end
+  defp check_on_upgrade_raw_params!([:env, second, _, _], module) do
+    seek_and_raise!(
+      :on_upgrade,
+      module,
+      &"on_upgrade (raw-style) callback #{&1}must have a second parameter of type `?*?*`.\n\n    got: `#{Type.render_zig(second)}`"
+    )
+  end
 
-      {:on_unload, %{arity: arity}} when arity not in [1, 2] ->
-        seek_and_raise!(:on_unload, module, &"on_unload callback #{&1}must have arity 1 or 2")
+  defp check_on_upgrade_raw_params!([first, _, _, _], module) do
+    seek_and_raise!(
+      :on_upgrade,
+      module,
+      &"on_upgrade (raw-style) callback #{&1}must have a first parameter of type `beam.env`.\n\n    got: `#{Type.render_zig(first)}`"
+    )
+  end
 
-      {:on_unload, %{arity: 1} = function} ->
-        case function.params do
-          [%Pointer{optional: true}] ->
-            :ok
+  defp check_on_upgrade_raw_return!(%Integer{signedness: :signed, bits: 32}, _module), do: :ok
 
-          [first] ->
-            seek_and_raise!(
-              :on_unload,
-              module,
-              &"on_unload (automatic-style) callback #{&1}must have a parameter of type `?*`.\n\n    got: `#{Type.render_zig(first)}`"
-            )
-        end
+  defp check_on_upgrade_raw_return!(bad, module) do
+    seek_and_raise!(
+      :on_upgrade,
+      module,
+      &"on_upgrade (raw-style) callback #{&1}must have an `c_int` as a return.\n\n    got: `#{Type.render_zig(bad)}`"
+    )
+  end
 
-        case function.return do
-          :void ->
-            :ok
+  # on_unload automatic style (arity 1)
+  defp check_on_unload_auto_params!([%Pointer{optional: true}], _module), do: :ok
 
-          bad ->
-            seek_and_raise!(
-              :on_unload,
-              module,
-              &"on_unload (automatic-style) callback #{&1}must have `void` as a return.\n\n    got: `#{Type.render_zig(bad)}`"
-            )
-        end
+  defp check_on_unload_auto_params!([first], module) do
+    seek_and_raise!(
+      :on_unload,
+      module,
+      &"on_unload (automatic-style) callback #{&1}must have a parameter of type `?*`.\n\n    got: `#{Type.render_zig(first)}`"
+    )
+  end
 
-      {:on_unload, %{arity: 2} = function} ->
-        case function.params do
-          [:env, %Pointer{optional: true}] ->
-            :ok
+  defp check_on_unload_auto_return!(:void, _module), do: :ok
 
-          [first, %Pointer{optional: true}] ->
-            seek_and_raise!(
-              :on_unload,
-              module,
-              &"on_unload (raw-style) callback #{&1}must have a first parameter of type `beam.env`.\n\n    got: `#{Type.render_zig(first)}`"
-            )
+  defp check_on_unload_auto_return!(bad, module) do
+    seek_and_raise!(
+      :on_unload,
+      module,
+      &"on_unload (automatic-style) callback #{&1}must have `void` as a return.\n\n    got: `#{Type.render_zig(bad)}`"
+    )
+  end
 
-          [_, second] ->
-            seek_and_raise!(
-              :on_unload,
-              module,
-              &"on_unload (raw-style) callback #{&1}must have a second parameter of type `?*`.\n\n    got: `#{Type.render_zig(second)}`"
-            )
-        end
+  # on_unload raw style (arity 2)
+  defp check_on_unload_raw_params!([:env, %Pointer{optional: true}], _module), do: :ok
 
-        case function.return do
-          :void ->
-            :ok
+  defp check_on_unload_raw_params!([first, %Pointer{optional: true}], module) do
+    seek_and_raise!(
+      :on_unload,
+      module,
+      &"on_unload (raw-style) callback #{&1}must have a first parameter of type `beam.env`.\n\n    got: `#{Type.render_zig(first)}`"
+    )
+  end
 
-          bad ->
-            seek_and_raise!(
-              :on_unload,
-              module,
-              &"on_unload (raw-style) callback #{&1}must have `void` as a return.\n\n    got: `#{Type.render_zig(bad)}`"
-            )
-        end
+  defp check_on_unload_raw_params!([_, second], module) do
+    seek_and_raise!(
+      :on_unload,
+      module,
+      &"on_unload (raw-style) callback #{&1}must have a second parameter of type `?*`.\n\n    got: `#{Type.render_zig(second)}`"
+    )
+  end
 
-      _ ->
-        :ok
-    end)
+  defp check_on_unload_raw_return!(:void, _module), do: :ok
+
+  defp check_on_unload_raw_return!(bad, module) do
+    seek_and_raise!(
+      :on_unload,
+      module,
+      &"on_unload (raw-style) callback #{&1}must have `void` as a return.\n\n    got: `#{Type.render_zig(bad)}`"
+    )
   end
 
   defp seek_and_raise!(type, module, error1, error2 \\ nil) do
@@ -632,31 +611,40 @@ defmodule Zig.Sema do
     File.write!(staging_path, file)
 
     # Download PDB file for Windows targets (optional - may not exist for all releases)
-    if String.ends_with?(address, ".dll") do
-      pdb_address = String.replace_suffix(address, ".dll", ".pdb")
-
-      case http_get(pdb_address) do
-        {:ok, pdb_file} ->
-          if pdb_shasum do
-            found_pdb_hash =
-              :sha256
-              |> :crypto.hash(pdb_file)
-              |> Base.encode16(case: :lower)
-
-            found_pdb_hash == String.downcase(pdb_shasum) ||
-              raise "PDB hash mismatch: expected #{pdb_shasum}, got #{found_pdb_hash}"
-          end
-
-          pdb_staging_path = String.replace_suffix(staging_path, ".dll", ".pdb")
-          File.write!(pdb_staging_path, pdb_file)
-
-        {:error, _} ->
-          # PDB file not available - this is acceptable for older releases
-          Logger.debug("PDB file not available at #{pdb_address}")
-      end
-    end
+    maybe_download_pdb(address, staging_path, pdb_shasum)
 
     _obtain_precompiled_sema_json(%{module | precompiled: staging_path})
+  end
+
+  defp maybe_download_pdb(address, staging_path, pdb_shasum) do
+    if String.ends_with?(address, ".dll") do
+      pdb_address = String.replace_suffix(address, ".dll", ".pdb")
+      download_pdb(pdb_address, staging_path, pdb_shasum)
+    end
+  end
+
+  defp download_pdb(pdb_address, staging_path, pdb_shasum) do
+    case http_get(pdb_address) do
+      {:ok, pdb_file} ->
+        verify_pdb_hash(pdb_file, pdb_shasum)
+        pdb_staging_path = String.replace_suffix(staging_path, ".dll", ".pdb")
+        File.write!(pdb_staging_path, pdb_file)
+
+      {:error, _} ->
+        Logger.debug("PDB file not available at #{pdb_address}")
+    end
+  end
+
+  defp verify_pdb_hash(_pdb_file, nil), do: :ok
+
+  defp verify_pdb_hash(pdb_file, pdb_shasum) do
+    found_pdb_hash =
+      :sha256
+      |> :crypto.hash(pdb_file)
+      |> Base.encode16(case: :lower)
+
+    found_pdb_hash == String.downcase(pdb_shasum) ||
+      raise "PDB hash mismatch: expected #{pdb_shasum}, got #{found_pdb_hash}"
   end
 
   case :os.type() do

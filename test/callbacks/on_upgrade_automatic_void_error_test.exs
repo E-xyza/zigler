@@ -40,7 +40,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticVoidErrorTest do
   test "on_upgrade generally works" do
     this = self()
     build_module(pid: this, value: 0)
-    assert 0 = apply(OnUpgradeAutomaticVoidError, :bar, [])
+    assert 0 = OnUpgradeAutomaticVoidError.bar()
 
     log_line =
       capture_log(fn ->
