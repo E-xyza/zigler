@@ -245,6 +245,8 @@ pub fn get_struct(comptime T: type, src: beam.term, opts: anytype) !T {
 
     if (resource.MaybeUnwrap(struct_info)) |_| {
         return get_resource(T, src, opts);
+    } else if (struct_info.is_tuple) {
+        return get_tuple(T, src, opts);
     } else {
         errdefer error_expected(T, opts);
         errdefer error_got(src, opts);
@@ -253,6 +255,39 @@ pub fn get_struct(comptime T: type, src: beam.term, opts: anytype) !T {
         try fill_struct(T, &result, src, opts);
         return result;
     }
+}
+
+fn get_tuple(comptime T: type, src: beam.term, opts: anytype) !T {
+    const struct_info = @typeInfo(T).@"struct";
+
+    errdefer error_expected(T, opts);
+    errdefer error_got(src, opts);
+
+    if (src.term_type(opts) != .tuple) return GetError.badarg;
+
+    var arity: c_int = undefined;
+    var src_array: [*c]const e.ErlNifTerm = undefined;
+
+    const result = e.enif_get_tuple(options.env(opts), src.v, &arity, @ptrCast(&src_array));
+    if (result == 0) return GetError.badarg;
+
+    if (arity != struct_info.fields.len) {
+        error_line(.{ "note: expected tuple of size ", .{ .inspect, struct_info.fields.len }, ", got ", .{ .inspect, @as(usize, @intCast(arity)) } }, opts);
+        return GetError.badarg;
+    }
+
+    var tuple_result: T = undefined;
+    inline for (struct_info.fields, 0..) |field, index| {
+        const elem_term: beam.term = .{ .v = src_array[index] };
+        @field(tuple_result, field.name) = get(field.type, elem_term, opts) catch |err| {
+            if (err == GetError.badarg) {
+                error_enter(.{ "in tuple element ", .{ .inspect, index }, ":" }, opts);
+            }
+            return err;
+        };
+    }
+
+    return tuple_result;
 }
 
 pub fn get_resource(comptime T: type, src: beam.term, opts: anytype) !T {

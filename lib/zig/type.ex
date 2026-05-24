@@ -14,6 +14,7 @@ defprotocol Zig.Type do
   alias Zig.Type.Pointer
   alias Zig.Type.Slice
   alias Zig.Type.Struct
+  alias Zig.Type.Tuple
   alias Zig.Type.Resource
 
   @type t ::
@@ -216,6 +217,9 @@ after
 
       %{"type" => "struct", "name" => "beam.term"} ->
         :term
+
+      %{"type" => "struct", "is_tuple" => true} ->
+        Tuple.from_json(json, module)
 
       %{"type" => "struct"} ->
         Struct.from_json(json, module)

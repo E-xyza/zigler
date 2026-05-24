@@ -58,6 +58,8 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S
             },
             .auto => {},
         }
+        try stream.objectField("is_tuple");
+        try stream.write(s.is_tuple);
         try stream.objectField("fields");
         try stream.beginArray();
         inline for (s.fields) |field| {
