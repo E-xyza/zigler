@@ -697,8 +697,8 @@ defmodule Zig.Sema do
         |> Enum.reverse()
       end
 
-    {:unix, :freebsd} ->
-      # freebsd
+    {:unix, bsd} when bsd in [:freebsd, :openbsd] ->
+      # freebsd/openbsd - BSD objcopy doesn't support --dump-section=/dev/stdout
       def _obtain_precompiled_sema_json(%{precompiled: file} = module) do
         tmp_path =
           16
