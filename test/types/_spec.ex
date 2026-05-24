@@ -190,5 +190,9 @@ defmodule ZiglerTest.Types.Spec do
   pub fn really_big_struct(value: []BigStruct) []BigStruct {
       return value;
   }
+
+  pub fn tuple_fn(data: struct { i32, i32 }) struct { i32, i32 } {
+      return data;
+  }
   """
 end

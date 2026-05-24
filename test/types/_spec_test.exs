@@ -238,4 +238,11 @@ defmodule ZiglerTest.Types.SpecTest do
                      }
                    ])) = Map.fetch!(specs, {:really_big_struct, 1})
   end
+
+  i32_range = -2_147_483_648..2_147_483_647
+
+  test "tuple", specs do
+    assert spec(({unquote(i32_range), unquote(i32_range)} -> {unquote(i32_range), unquote(i32_range)})) =
+             Map.fetch!(specs, {:tuple_fn, 1})
+  end
 end

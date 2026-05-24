@@ -88,6 +88,12 @@ defmodule ZiglerTest.SpecTemplate do
     end
   end
 
+  defp convert(integer, _context) when is_integer(integer) and integer < 0 do
+    quote do
+      {:op, _, :-, {:integer, _, unquote(-integer)}}
+    end
+  end
+
   defp convert(integer, _context) when is_integer(integer) do
     quote do
       {:integer, _, unquote(integer)}
