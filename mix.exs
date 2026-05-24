@@ -82,6 +82,8 @@ defmodule Zigler.MixProject do
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
       {:zig_doc, "~> 0.7.0"},
+      # Zig syntax highlighting for documentation
+      {:makeup_syntect, "~> 0.1", only: :dev, runtime: false},
       # linting
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ] ++ json()
