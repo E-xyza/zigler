@@ -59,6 +59,8 @@ defmodule ZiglerTest.Allocator.CustomFunctionTest do
     assert_receive {:free, 10}
   end
 
+  # See: https://github.com/E-xyza/zigler/issues/591
+  @tag :no_windows
   test "for threaded function works" do
     threaded("0123456789")
     assert_receive {:alloc, 10}

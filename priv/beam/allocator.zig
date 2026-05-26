@@ -127,11 +127,16 @@ fn raw_free(context: *anyopaque, memory: []u8, alignment: std.mem.Alignment, ret
 /////////////////////////////////////////////////////////////////////////////
 // Debug allocator
 
+const builtin = @import("builtin");
+
+// Stack trace frames are disabled on macOS and Windows due to crashes:
+// - macOS: MachO debug info panics with "cast causes pointer to be null"
+// - Windows: Memory corruption leading to massive allocation attempts
+const stack_trace_frames: u8 = if (builtin.os.tag == .macos or builtin.os.tag == .windows) 0 else 8;
+
 pub const BeamDebugAllocator = std.heap.DebugAllocator(.{
     .thread_safe = true,
-    // On Windows, stack trace collection in dynamically loaded libraries (NIFs) can cause
-    // segfaults due to limitations in the debug info access. Disable stack traces on Windows.
-    .stack_trace_frames = if (@import("builtin").os.tag == .windows) 0 else 8,
+    .stack_trace_frames = stack_trace_frames,
 });
 
 pub fn make_debug_allocator_instance() BeamDebugAllocator {

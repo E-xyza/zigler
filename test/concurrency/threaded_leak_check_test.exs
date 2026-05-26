@@ -37,7 +37,9 @@ defmodule ZiglerTest.Concurrency.ThreadedLeakCheckTest do
   """
 
   describe "a leak is detected" do
+    # leak_check is disabled on Windows - see issue #591
     @tag :erroring
+    @tag :no_windows
     test "when you don't cleanup" do
       Logger.warning("====== the following leak message is expected: =========== START")
       Process.sleep(200)
