@@ -20,7 +20,7 @@ defmodule ZiglerTest.Concurrency.ThreadedManualTest do
 
   pub fn launch(x: beam.term) !beam.term {
       var args = [_]e.ErlNifTerm{x.v};
-      const abc = try Thread.launch(ThreadResource, 1, &args, .{.{}});
+      const abc = try Thread.launch(ThreadResource, 1, &args, .{.{}}, .{.{}}, false, null);
       return abc;
   }
 

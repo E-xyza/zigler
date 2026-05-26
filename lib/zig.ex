@@ -406,6 +406,9 @@ defmodule Zig do
   - `include_dirs`: a path or list of paths to search for C header files.
   - `library_dirs`: a path or list of paths to search for C libraries.
   - `link_lib`: a path or list of libraries to link against.
+  - `rpaths`: a path or list of runtime library search paths to embed. Use
+    `{:special, "$ORIGIN"}` for loader-relative paths such as bundled shared
+    libraries placed next to the NIF.
   - `link_libcpp`: if set to `true`, the C++ standard library will be linked.
   - `src`: a list of C source files to compile.  Each source file can be a tuple
     of the form `{path, options}` where `path` is the path to the source file and
@@ -416,6 +419,7 @@ defmodule Zig do
           include_dirs: c_path | [c_path],
           library_dirs: c_path | [c_path],
           link_lib: c_path | [c_path],
+          rpaths: c_path | [c_path],
           link_libcpp: boolean,
           src: [c_path | {c_path, [compiler_options :: String.t()]}]
         ]
@@ -722,24 +726,6 @@ defmodule Zig do
   end
 
   @doc false
-  # true if error return traces are available on this platform
-  def _errors_available? do
-    case :os.type() do
-      {:unix, :darwin} ->
-        # MacOS in general: https://github.com/ziglang/zig/issues/25433
-        # x86, see: https://github.com/ziglang/zig/issues/25157
-        false
-
-      {:win32, :nt} ->
-        # windows still causes panic? segfault? when unwinding error return traces.
-        false
-
-      _ ->
-        true
-    end
-  end
-
-  @doc false
   # Returns the system temporary directory with all symlinks resolved.
   # On macOS, /tmp and /var are symlinks to /private/tmp and /private/var,
   # which can cause issues with relative path resolution in Zig's build system.
@@ -752,40 +738,20 @@ defmodule Zig do
 
   # Recursively resolve all symlinks in a path by checking each component
   defp resolve_symlinks(path) do
-    # Split the path into components
-    parts = Path.split(path)
+    path
+    |> Path.split()
+    |> Enum.reduce("", &resolve_symlink_component/2)
+  end
 
-    # Rebuild the path, resolving symlinks at each level
-    {resolved, _} =
-      Enum.reduce(parts, {"", ""}, fn part, {current_path, _} ->
-        next_path =
-          if current_path == "" do
-            part
-          else
-            Path.join(current_path, part)
-          end
+  defp resolve_symlink_component(part, ""), do: resolve_link(part)
+  defp resolve_symlink_component(part, current), do: resolve_link(Path.join(current, part))
 
-        # Check if this component is a symlink
-        case File.read_link(next_path) do
-          {:ok, link_target} ->
-            # If the link target is absolute, use it directly
-            # Otherwise, resolve it relative to the current directory
-            resolved_path =
-              if String.starts_with?(link_target, "/") do
-                link_target
-              else
-                Path.join(Path.dirname(next_path), link_target)
-              end
-
-            {resolved_path, ""}
-
-          {:error, _} ->
-            # Not a symlink, continue with the current path
-            {next_path, ""}
-        end
-      end)
-
-    resolved
+  defp resolve_link(path) do
+    case File.read_link(path) do
+      {:ok, "/" <> _ = absolute_target} -> absolute_target
+      {:ok, relative_target} -> Path.join(Path.dirname(path), relative_target)
+      {:error, _} -> path
+    end
   end
 end
 

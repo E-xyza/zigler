@@ -8,10 +8,10 @@ if {:unix, :linux} == :os.type() and is_blas_in_priv do
   defmodule ZiglerTest.CXX.PrivLibTest do
     use ZiglerTest.IntegrationCase, async: true
 
-    use Zig, otp_app: :zigler, c: [link_lib: {:priv, "lib/libblas.so"}]
+    use Zig, otp_app: :zigler, c: [link_lib: {:priv, "lib/libblas.so"}, headers: [c: {:system, "cblas.h"}]]
 
     ~Z"""
-    const c = @cImport(@cInclude("cblas.h"));
+    const c = @import("c");
 
     pub const dasum = c.cblas_dasum;
     """

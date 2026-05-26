@@ -2,7 +2,8 @@ defmodule ZiglerTest.Types.OptionalTest do
   use ZiglerTest.IntegrationCase, async: true
 
   use Zig,
-    otp_app: :zigler
+    otp_app: :zigler,
+    leak_check: true
 
   ~Z"""
   pub fn nullable_integer_test(value: ?u64) ?u64 {
@@ -71,5 +72,48 @@ defmodule ZiglerTest.Types.OptionalTest do
     assert_raise ArgumentError,
                  "errors were found at the given arguments:\n\n  * 1st argument: \n\n     expected: nil | integer (for `?u64`)\n     got: `:foo`\n     note: ?u64 can take the atom `nil` but no other atom\n",
                  fn -> nullable_integer_test(:foo) end
+  end
+
+  # Test for optional manypointer (issue #587)
+  ~Z"""
+  pub fn optional_manypointer_test(value: ?[*]u32) ?u32 {
+      if (value) |ptr| {
+          // Read first element
+          return ptr[0];
+      } else {
+          return null;
+      }
+  }
+
+  pub fn optional_manypointer_sum(value: ?[*:0]u32) u32 {
+      if (value) |ptr| {
+          var sum: u32 = 0;
+          var i: usize = 0;
+          while (ptr[i] != 0) : (i += 1) {
+              sum += ptr[i];
+          }
+          return sum;
+      } else {
+          return 0;
+      }
+  }
+  """
+
+  describe "optional manypointer (issue #587)" do
+    test "can pass nil to optional manypointer" do
+      assert nil == optional_manypointer_test(nil)
+    end
+
+    test "can pass list to optional manypointer" do
+      assert 42 == optional_manypointer_test([42, 1, 2, 3])
+    end
+
+    test "can pass nil to sentinel-terminated optional manypointer" do
+      assert 0 == optional_manypointer_sum(nil)
+    end
+
+    test "can pass list to sentinel-terminated optional manypointer" do
+      assert 6 == optional_manypointer_sum([1, 2, 3])
+    end
   end
 end

@@ -37,17 +37,18 @@ defmodule Mix.Tasks.Zig.Precompile do
     x86: [linux: [:gnu, :musl], windows: :gnu]
   ]
 
+  defp all_targets do
+    for {arch, targets} <- @triples,
+        {os, platforms} <- targets,
+        platform <- List.wrap(platforms) do
+      {arch, os, platform}
+    end
+  end
+
   def run([file]) do
     shas =
-      for {arch, targets} <- @triples, reduce: [] do
-        acc ->
-          for {os, platforms} <- targets, reduce: acc do
-            acc2 ->
-              for platform <- List.wrap(platforms), reduce: acc2 do
-                acc3 -> [compile(file, arch, os, platform) | acc3]
-              end
-          end
-      end
+      all_targets()
+      |> Enum.map(fn {arch, os, platform} -> compile(file, arch, os, platform) end)
       |> inspect(pretty: true)
       |> String.split("\n")
       |> Enum.join("\n  ")
@@ -74,11 +75,25 @@ defmodule Mix.Tasks.Zig.Precompile do
     try do
       receive do
         {:result, file} ->
-          file
-          |> File.read!()
-          |> then(&:crypto.hash(:sha256, &1))
-          |> Base.encode16(case: :lower)
-          |> then(&{:"#{arch}-#{os}-#{platform}", &1})
+          dll_sha =
+            file
+            |> File.read!()
+            |> then(&:crypto.hash(:sha256, &1))
+            |> Base.encode16(case: :lower)
+
+          if os == :windows do
+            pdb_file = String.replace_suffix(file, ".dll", ".pdb")
+
+            pdb_sha =
+              pdb_file
+              |> File.read!()
+              |> then(&:crypto.hash(:sha256, &1))
+              |> Base.encode16(case: :lower)
+
+            {:"#{arch}-#{os}-#{platform}", %{dll: dll_sha, pdb: pdb_sha}}
+          else
+            {:"#{arch}-#{os}-#{platform}", dll_sha}
+          end
       end
     after
       # clean up the build directory

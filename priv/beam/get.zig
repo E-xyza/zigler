@@ -174,7 +174,7 @@ pub fn get_enum(comptime T: type, src: beam.term, opts: anytype) !T {
 
             // put erasure on get_int setting the error_line
             const result = try get_int(IntType, src, opts);
-            return try std.meta.intToEnum(T, result);
+            return std.enums.fromInt(T, result) orelse return GetError.badarg;
         },
         .atom => {
             errdefer error_line(.{ "note: not an atom value for ", .{ .typename, @typeName(T) }, " (should be one of `", .{ .inspect, enum_values }, "`)" }, opts);
@@ -245,6 +245,8 @@ pub fn get_struct(comptime T: type, src: beam.term, opts: anytype) !T {
 
     if (resource.MaybeUnwrap(struct_info)) |_| {
         return get_resource(T, src, opts);
+    } else if (struct_info.is_tuple) {
+        return get_tuple(T, src, opts);
     } else {
         errdefer error_expected(T, opts);
         errdefer error_got(src, opts);
@@ -253,6 +255,39 @@ pub fn get_struct(comptime T: type, src: beam.term, opts: anytype) !T {
         try fill_struct(T, &result, src, opts);
         return result;
     }
+}
+
+fn get_tuple(comptime T: type, src: beam.term, opts: anytype) !T {
+    const struct_info = @typeInfo(T).@"struct";
+
+    errdefer error_expected(T, opts);
+    errdefer error_got(src, opts);
+
+    if (src.term_type(opts) != .tuple) return GetError.badarg;
+
+    var arity: c_int = undefined;
+    var src_array: [*c]const e.ErlNifTerm = undefined;
+
+    const result = e.enif_get_tuple(options.env(opts), src.v, &arity, @ptrCast(&src_array));
+    if (result == 0) return GetError.badarg;
+
+    if (arity != struct_info.fields.len) {
+        error_line(.{ "note: expected tuple of size ", .{ .inspect, struct_info.fields.len }, ", got ", .{ .inspect, @as(usize, @intCast(arity)) } }, opts);
+        return GetError.badarg;
+    }
+
+    var tuple_result: T = undefined;
+    inline for (struct_info.fields, 0..) |field, index| {
+        const elem_term: beam.term = .{ .v = src_array[index] };
+        @field(tuple_result, field.name) = get(field.type, elem_term, opts) catch |err| {
+            if (err == GetError.badarg) {
+                error_enter(.{ "in tuple element ", .{ .inspect, index }, ":" }, opts);
+            }
+            return err;
+        };
+    }
+
+    return tuple_result;
 }
 
 pub fn get_resource(comptime T: type, src: beam.term, opts: anytype) !T {
@@ -406,29 +441,37 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
     }
 
     const item_count = str_res.size / expected_size_multiple;
-    const result_ptr = @as([*]Child, @ptrCast(@alignCast(str_res.data)));
 
-    if (slice_info.is_const) {
+    const sentinel_ptr: ?*const Child = if (slice_info.sentinel_ptr) |sentinel| @ptrCast(@alignCast(sentinel)) else options.sentinel_ptr(Child, opts);
+
+    // Check if the binary data pointer is properly aligned for Child type.
+    // Sub-binaries and binaries from network can have arbitrary alignment.
+    const is_aligned = @intFromPtr(str_res.data) % @alignOf(Child) == 0;
+
+    // For const slices without sentinel requirement and properly aligned data,
+    // we can return the raw pointer directly without copying.
+    if (slice_info.is_const and sentinel_ptr == null and is_aligned) {
+        const result_ptr = @as([*]Child, @ptrCast(@alignCast(str_res.data)));
         return result_ptr[0..item_count];
-    } else {
-        const sentinel_ptr: ?*const Child = if (slice_info.sentinel_ptr) |sentinel| @ptrCast(@alignCast(sentinel)) else options.sentinel_ptr(Child, opts);
-
-        const alloc = options.allocator(opts);
-        const alloc_count = if (sentinel_ptr) |_| item_count + 1 else item_count;
-
-        const result = alloc.alloc(Child, alloc_count) catch |err| {
-            return err;
-        };
-
-        if (sentinel_ptr) |sentinel| {
-            @memcpy(result[0..item_count], result_ptr[0..item_count]);
-            result[alloc_count - 1] = sentinel.*;
-        } else {
-            @memcpy(result, result_ptr[0..item_count]);
-        }
-
-        return @as(T, @ptrCast(result));
     }
+
+    // Allocate copy (required for non-const, sentinel, or misaligned data)
+    const alloc = options.allocator(opts);
+    const alloc_count = if (sentinel_ptr) |_| item_count + 1 else item_count;
+
+    const result = alloc.alloc(Child, alloc_count) catch |err| {
+        return err;
+    };
+
+    // Copy bytes to properly aligned memory
+    const u8_result_ptr: [*]u8 = @ptrCast(result);
+    @memcpy(u8_result_ptr[0..str_res.size], str_res.data[0..str_res.size]);
+
+    if (sentinel_ptr) |sentinel| {
+        result[alloc_count - 1] = sentinel.*;
+    }
+
+    return @as(T, @ptrCast(result));
 }
 
 pub fn get_slice_list(comptime T: type, src: beam.term, opts: anytype) !T {
@@ -524,7 +567,14 @@ pub fn get_cpointer(comptime T: type, src: beam.term, opts: anytype) !T {
             return result_slice.ptr;
         },
         .bitstring => {
-            const result_slice = try get_slice_binary([]Child, src, opts);
+            // For u8 cpointers from binaries, allocate a null-terminated copy for C compatibility
+            const result_slice = if (Child == u8)
+                try get_slice_binary([]Child, src, .{
+                    .allocator = options.allocator(opts),
+                    .sentinel = @as(u8, 0),
+                })
+            else
+                try get_slice_binary([]Child, src, opts);
 
             if (@hasField(@TypeOf(opts), "size")) {
                 opts.size.* = result_slice.len;
@@ -601,6 +651,12 @@ fn fill_array(comptime T: type, result: *T, src: beam.term, opts: anytype) GetEr
             @memcpy(u8_result_ptr[0..str_res.size], str_res.data[0..str_res.size]);
         },
         else => return GetError.badarg,
+    }
+
+    // Set sentinel value if this is a sentinel-terminated array
+    if (array_info.sentinel_ptr) |sentinel| {
+        const sentinel_value: *const Child = @ptrCast(@alignCast(sentinel));
+        result[array_info.len] = sentinel_value.*;
     }
 }
 
@@ -701,21 +757,22 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
     const source_fields = source_info.@"struct".fields;
     const default = false;
 
-    var fields: [source_fields.len]std.builtin.Type.StructField = undefined;
+    // Zig 0.16: @Struct(layout, BackingInt, names, types, attrs).
+    // Parallel arrays instead of the old array of StructField records.
+    var field_names: [source_fields.len][]const u8 = undefined;
+    var field_types: [source_fields.len]type = undefined;
+    var field_attrs: [source_fields.len]std.builtin.Type.StructField.Attributes = undefined;
 
     for (source_fields, 0..) |source_field, index| {
-        fields[index] = .{ .name = source_field.name, .type = bool, .default_value_ptr = &default, .is_comptime = false, .alignment = @alignOf(*bool) };
+        field_names[index] = source_field.name;
+        field_types[index] = bool;
+        field_attrs[index] = .{
+            .default_value_ptr = &default,
+            .@"align" = @alignOf(*bool),
+        };
     }
 
-    const decls = [0]std.builtin.Type.Declaration{};
-    const constructed_struct = std.builtin.Type.Struct{
-        .layout = .auto,
-        .fields = fields[0..],
-        .decls = decls[0..],
-        .is_tuple = false,
-    };
-
-    return @Type(.{ .@"struct" = constructed_struct });
+    return @Struct(.auto, null, &field_names, &field_types, &field_attrs);
 }
 
 fn null_or_atom(comptime T: type, src: beam.term, opts: anytype) !T {
@@ -743,22 +800,26 @@ inline fn error_line(msg: anytype, opts: anytype) void {
     // needs to be passed back to the VM.
 
     // in order to pass values back, .{} should contain the `.error_info` field
-    // and this field should be a pointer to a `beam.term` object.  Anything
-    // else will result in a compiler error.
+    // and this field should be a pointer to an optional `beam.term` object.
+    // The optional allows deferring list creation until an error actually occurs.
 
     if (!@hasField(@TypeOf(opts), "error_info")) return;
 
     inline for (@typeInfo(@TypeOf(opts)).@"struct".fields) |field| {
         if (std.mem.eql(u8, "error_info", field.name)) {
             const field_type = @TypeOf(opts.error_info);
-            if (field_type != *beam.term) {
+            if (field_type != *?beam.term) {
                 const error_msg = comptime mblk: {
-                    break :mblk std.fmt.comptimePrint("the `.error_info` field of the get opts parameter must be `*beam.term`, got: {}", .{field_type});
+                    break :mblk std.fmt.comptimePrint("the `.error_info` field of the get opts parameter must be `*?beam.term`, got: {}", .{field_type});
                 };
                 @compileError(error_msg);
             }
 
-            opts.error_info.v = e.enif_make_list_cell(options.env(opts), beam.make(msg, opts).v, opts.error_info.v);
+            // Initialize the list on first error (deferred from function entry)
+            if (opts.error_info.* == null) {
+                opts.error_info.* = beam.make_empty_list(opts);
+            }
+            opts.error_info.*.?.v = e.enif_make_list_cell(options.env(opts), beam.make(msg, opts).v, opts.error_info.*.?.v);
         }
     }
 }
@@ -810,8 +871,8 @@ fn typespec_for(comptime T: type) []const u8 {
             }
         },
         .float => "float | :infinity | :neg_infinity | :NaN",
-        // a struct might be a reosurce.  If it's not, then it could be map/keyword, or maybe a binary (if packed or extern).
-        .@"struct" => |s| if (resource.MaybeUnwrap(s)) |_| "reference" else "map | keyword" ++ binary_spec(T),
+        // a struct might be a resource.  If it's not, then it could be map/keyword, tuple, or maybe a binary (if packed or extern).
+        .@"struct" => |s| if (resource.MaybeUnwrap(s)) |_| "reference" else if (s.is_tuple) "tuple" else "map | keyword" ++ binary_spec(T),
         .bool => "boolean",
         .array => |a| "list(" ++ typespec_for(a.child) ++ ")" ++ binary_spec(T),
         .pointer => |p| switch (p.size) {

@@ -1,4 +1,5 @@
 defmodule ZiglerTest.SpecTemplate do
+  @moduledoc false
   defmacro spec([{:->, _, [params, return]}]) do
     params_ast = Enum.map(params, &convert(&1, __CALLER__))
     return_ast = convert(return, __CALLER__)
@@ -85,6 +86,12 @@ defmodule ZiglerTest.SpecTemplate do
   defp convert(atom, _context) when is_atom(atom) do
     quote do
       {:atom, _, unquote(atom)}
+    end
+  end
+
+  defp convert(integer, _context) when is_integer(integer) and integer < 0 do
+    quote do
+      {:op, _, :-, {:integer, _, unquote(-integer)}}
     end
   end
 

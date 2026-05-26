@@ -1,4 +1,5 @@
 defmodule ZiglerTest.Compiler do
+  @moduledoc false
   @root_dir "test/code"
 
   def init do
@@ -26,12 +27,12 @@ defmodule ZiglerTest.Compiler do
     end
   end
 
-  def compile_erlang(file) do
+  def compile_erlang(file, extra_opts \\ []) do
     {:ok, mod} =
       :compile.file(file, [
         :return_errors,
         outdir: :filename.join(:code.lib_dir(:zigler), ~c"ebin")
-      ])
+      ] ++ extra_opts)
 
     Code.ensure_loaded(mod)
   end

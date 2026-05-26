@@ -23,7 +23,16 @@ pub inline fn should_clear(opts: anytype) bool {
 }
 
 pub inline fn size(opts: anytype) ?usize {
-    return if (@hasField(@TypeOf(opts), "size")) opts.size else null;
+    if (!@hasField(@TypeOf(opts), "size")) return null;
+    // Handle both usize and ?usize field types
+    const SizeType = @TypeOf(opts.size);
+    if (SizeType == ?usize) {
+        return opts.size;
+    } else if (SizeType == usize) {
+        return opts.size;
+    } else {
+        @compileError("size field must be usize or ?usize");
+    }
 }
 
 pub inline fn length(opts: anytype) ?usize {
@@ -66,8 +75,11 @@ pub inline fn output(opts: anytype) OutputType {
                     if (std.mem.eql(u8, field.name, "map")) {
                         return .map;
                     }
+                    if (std.mem.eql(u8, field.name, "tuple")) {
+                        return .default;
+                    }
                 }
-                @compileError("invalid `as` Struct, must have a field named `list` or `map`");
+                @compileError("invalid `as` Struct, must have a field named `list`, `map`, or `tuple`");
             },
             else => @compileError("invalid `as` type, must be an EnumLiteral or a Struct"),
         }
@@ -143,6 +155,48 @@ pub fn map_child(map_as: anytype, comptime name: []const u8) MapChildOf(@TypeOf(
         .@"struct" => {
             const M = @TypeOf(map_as.map);
             if (@hasField(M, name)) return @field(map_as.map, name);
+            return .default;
+        },
+        else => unreachable,
+    }
+}
+
+fn TupleChildOf(T: type, comptime index: []const u8) type {
+    switch (@typeInfo(T)) {
+        .enum_literal => {
+            return @TypeOf(.default);
+        },
+        .@"struct" => |S| {
+            inline for (S.fields) |field| {
+                if (std.mem.eql(u8, field.name, "tuple")) {
+                    const M = field.type;
+                    switch (@typeInfo(M)) {
+                        .@"struct" => |MT| {
+                            inline for (MT.fields) |mfield| {
+                                if (std.mem.eql(u8, mfield.name, index)) return mfield.type;
+                            }
+                            // Index not found, return default
+                            return @TypeOf(.default);
+                        },
+                        else => @compileError("tuple as definition needs to be a struct"),
+                    }
+                }
+            }
+            return @TypeOf(.default);
+        },
+        else => @compileError("the as field must be an enum literal or a struct."),
+    }
+}
+
+pub fn tuple_child(tuple_as: anytype, comptime index: []const u8) TupleChildOf(@TypeOf(tuple_as), index) {
+    const T = @TypeOf(tuple_as);
+    switch (@typeInfo(T)) {
+        .enum_literal => return .default,
+        .@"struct" => {
+            if (@hasField(T, "tuple")) {
+                const M = @TypeOf(tuple_as.tuple);
+                if (@hasField(M, index)) return @field(tuple_as.tuple, index);
+            }
             return .default;
         },
         else => unreachable,

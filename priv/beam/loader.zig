@@ -12,4 +12,6 @@ pub export fn blank_upgrade(_: beam.env, _: ?*?*anyopaque, _: ?*?*anyopaque, _: 
     return 0;
 }
 
-pub export fn blank_unload(_: beam.env, _: ?*anyopaque) void {}
+pub export fn blank_unload(_: beam.env, _: ?*anyopaque) void {
+    beam.io.deinitGlobal();
+}

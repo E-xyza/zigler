@@ -2,6 +2,13 @@
 
 Zigler offers several tools to integrate your code with C and C++ code.
 
+> ### Zig 0.16.0 C API changes {: .warning}
+>
+> In Zig 0.16.0, `@cImport` was removed. Zigler provides two alternatives:
+>
+> 1. **`extern` declarations** - manually declare C function signatures
+> 2. **`headers:` option** - automatically translate C headers to Zig modules
+
 ## compiling C using the C toolchain
 
 If you want to compile C or C++ files using the C and C++ toolchain bundled with the zig programming
@@ -28,17 +35,51 @@ int plus_one(int value) {
 }
 ```
 
-### Elixir code
+### Option 1: Using extern declarations
+
+Declare C functions directly in your Zig code with `extern`:
 
 ```elixir
-defmodule CompilingC do
+defmodule CompilingCExtern do
   use ExUnit.Case, async: true
-  use Zig, 
+  use Zig,
     otp_app: :zigler,
-    c: [include_dirs: "include", src: "src/*"] 
+    c: [include_dirs: "include", src: "src/*"]
 
   ~Z"""
-  const c = @cImport(@cInclude("included.h"));
+  // Declare the C function as extern
+  pub extern fn plus_one(value: c_int) c_int;
+  """
+
+  test "c plus one" do
+    assert 48 = plus_one(47)
+  end
+end
+```
+
+### Option 2: Using the headers option
+
+Use the `headers:` option to translate C headers to Zig modules automatically.
+
+> ### Header paths {: .info}
+>
+> The `headers:` option follows the same path rules as other zigler path options:
+>
+> - `"path/to/header.h"` - relative to the source file location
+> - `"./path/to/header.h"` - relative to the project root
+> - `{:priv, "path/to/header.h"}` - relative to the otp_app's priv directory
+> - `{:system, "header.h"}` - system header (looked up via system include paths)
+
+```elixir
+defmodule CompilingCHeaders do
+  use ExUnit.Case, async: true
+  use Zig,
+    otp_app: :zigler,
+    c: [include_dirs: "include", src: "src/*", headers: [c: "include/included.h"]]
+
+  ~Z"""
+  // Import the translated C header as a module
+  const c = @import("c");
 
   pub const plus_one = c.plus_one;
   """
@@ -53,7 +94,7 @@ end
 
 This example shows you how to link in a system library (which can be `.a`, `.so`, `.obj`, or
 `.dll`). Zig will resolve the extension based on the operating system native rules. To use the
-functions in the library, there must also be an associated `.h` file with `extern` functions.
+functions in the library, you can either use `extern` declarations or the `headers:` option.
 
 If you wish to distribute a `.so` file with the project, you have two options:
 
@@ -69,16 +110,43 @@ the list.
 The [rules for collections](#2-collections.html) apply to functions that are directly imported from
 C files.
 
+### Option 1: Using extern declarations
+
 ```elixir
 if Application.fetch_env!(:zigler, :test_blas) do
-  defmodule LibraryTest do
+  defmodule LibraryTestExtern do
     use ExUnit.Case, async: true
-    use Zig, 
+    use Zig,
       otp_app: :zigler,
       c: [link_lib: {:system, "blas"}]
 
     ~Z"""
-    pub const dasum = @cImport(@cInclude("cblas.h")).cblas_dasum;
+    // Declare the C function as extern with its signature
+    pub extern fn cblas_dasum(n: c_int, x: [*]const f64, incx: c_int) f64;
+
+    pub const dasum = cblas_dasum;
+    """
+
+    test "dasum" do
+      assert 6.0 == dasum(3, [1.0, 2.0, 3.0], 1)
+    end
+  end
+```
+
+### Option 2: Using the headers option
+
+```elixir
+  defmodule LibraryTestHeaders do
+    use ExUnit.Case, async: true
+    use Zig,
+      otp_app: :zigler,
+      c: [link_lib: {:system, "blas"}, headers: [cblas: {:system, "cblas.h"}]]
+
+    ~Z"""
+    // Import the translated C header as a module
+    const cblas = @import("cblas");
+
+    pub const dasum = cblas.cblas_dasum;
     """
 
     test "dasum" do

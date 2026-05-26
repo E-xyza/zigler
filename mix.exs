@@ -1,14 +1,14 @@
 defmodule Zigler.MixProject do
   use Mix.Project
 
-  def zig_version, do: "0.15.2"
+  def zig_version, do: "0.16.0"
 
   def project do
     env = Mix.env()
 
     [
       app: :zigler,
-      version: "0.15.2",
+      version: "0.16.0",
       elixir: "~> 1.15",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
@@ -35,7 +35,9 @@ defmodule Zigler.MixProject do
       test_elixirc_options: [
         debug_info: true,
         docs: true
-      ]
+      ],
+      # Ignore helper modules that start with underscore (they define modules used by tests)
+      test_ignore_filters: [&String.contains?(&1, "/_")]
     ]
   end
 
@@ -44,7 +46,7 @@ defmodule Zigler.MixProject do
       main: "Zig",
       extras: ["README.md" | guides(Mix.env())],
       groups_for_extras: [Guides: Path.wildcard("guides/*.md")],
-      zig_doc: [beam: [file: "priv/beam/beam.zig"]],
+      zig_doc: [beam: [file: "priv/beam/beam.zig"]]
     ]
   end
 
@@ -73,13 +75,15 @@ defmodule Zigler.MixProject do
     [
       # zig parser is pinned to a version of zig parser because versions of zig parser
       # are pinned to zig versions
-      {:zig_parser, "~> 0.6"},
+      {:zig_parser, "~> 0.7.0"},
       # utility to help manage type protocols
       {:protoss, "~> 1.0"},
-      {:zig_get, "== 0.15.2", runtime: false},
+      {:zig_get, path: "installer", runtime: false},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
-      {:zig_doc, "~> 0.6", only: :dev, runtime: false}
+      {:zig_doc, "~> 0.7.0"},
+      # linting
+      {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ] ++ json()
   end
 

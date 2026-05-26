@@ -3,10 +3,28 @@ const std = @import("std");
 
 const BuildMode = enum{ nif_lib, sema };
 
+// Helper to strip surrounding quotes from paths (needed for Windows paths with spaces)
+fn stripQuotes(path: []const u8) []const u8 {
+    if (path.len >= 2 and path[0] == '"' and path[path.len - 1] == '"') {
+        return path[1..path.len - 1];
+    }
+    return path;
+}
+
 pub fn build(b: *std.Build) void {
     const resolved_target = b.standardTargetOptions(<%=Zig.Target.for_builder()%>);
+    // Host target for sema - must run on build machine during cross-compilation
+    const host_target = b.graph.host;
     const optimize: std.builtin.OptimizeMode = <%= render_optimize_mode(assigns) %>;
     const error_tracing = <%= @error_tracing %>;
+
+    // ERTS and zigler paths (auto-injected by zigler as -D flags)
+    // stripQuotes handles Windows paths with spaces that are quoted on the command line
+    const erts_include = stripQuotes(b.option([]const u8, "erts_include", "ERTS include path") orelse @panic("erts_include required"));
+    const erl_nif_header = stripQuotes(b.option([]const u8, "erl_nif_header", "Path to erl_nif.h (or erl_nif_win.h on Windows)") orelse @panic("erl_nif_header required"));
+    const erl_nif_win_path = stripQuotes(b.option([]const u8, "erl_nif_win_path", "Path to Windows erl_nif compatibility headers") orelse @panic("erl_nif_win_path required"));
+    const zigler_priv = stripQuotes(b.option([]const u8, "zigler_priv", "Path to zigler priv directory") orelse @panic("zigler_priv required"));
+    const module_root = stripQuotes(b.option([]const u8, "module_root", "Path to module source directory") orelse @panic("module_root required"));
 
     const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
 
@@ -19,12 +37,80 @@ pub fn build(b: *std.Build) void {
 
     switch (mode) {
         .nif_lib => {
+            // For NIF library, use the cross-compile target
+            const target_for_modules = resolved_target;
+
+            // Translate erl_nif.h to Zig module (replaces @cImport in Zig 0.16.0)
+            // On Windows, uses custom erl_nif_win.h to avoid translate-c issues with macro-based function pointers
+            const erl_translate_c = b.addTranslateC(.{
+                .root_source_file = .{ .cwd_relative = erl_nif_header },
+                .target = resolved_target,
+                .optimize = optimize,
+                .link_libc = true,
+            });
+            erl_translate_c.addSystemIncludePath(.{ .cwd_relative = erts_include });
+            erl_translate_c.addSystemIncludePath(.{ .cwd_relative = erl_nif_win_path });
+            const erl_module = erl_translate_c.createModule();
 
             <%= Builder.render_build(BuildModule.erl_nif()) %>
+            erl_nif.addImport("erl", erl_module);
             <%= Builder.render_build(BuildModule.beam()) %>
             <%= Builder.render_build(BuildModule.attributes()) %>
             <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
             <%= Builder.render_build(BuildModule.from_beam_module(assigns)) %>
+<%= if @c && @c.headers != [] do %>
+            // Translate user-specified C headers
+<%= for {header_path, module_name} <- @c.headers do %>
+            {
+<%= case header_path do %>
+<% {:system, header_name} -> %>
+                // System header - generate wrapper that includes it
+                const wf_<%= module_name %> = b.addWriteFiles();
+                const wrapper_<%= module_name %> = wf_<%= module_name %>.add("<%= module_name %>_wrapper.h", "#include <<%= header_name %>>\n");
+                const translate_c_<%= module_name %> = b.addTranslateC(.{
+                    .root_source_file = wrapper_<%= module_name %>,
+                    .target = resolved_target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                });
+<% _ -> %>
+                const translate_c_<%= module_name %> = b.addTranslateC(.{
+                    .root_source_file = .{ .cwd_relative = "<%= header_path %>" },
+                    .target = resolved_target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                });
+<% end %>
+<%= for dir <- @c.include_dirs do %>
+<%= case dir do %>
+<% {:system, path} -> %>                translate_c_<%= module_name %>.addSystemIncludePath(.{ .cwd_relative = "<%= path %>" });
+<% _ -> %>                translate_c_<%= module_name %>.addIncludePath(.{ .cwd_relative = "<%= dir %>" });
+<% end %>
+<% end %>
+                nif.addImport("<%= module_name %>", translate_c_<%= module_name %>.createModule());
+            }
+<% end %>
+<% end %>
+<%= if @easy_c do %>
+            // Translate easy_c header
+            {
+                const wf_easy_c = b.addWriteFiles();
+                const wrapper_easy_c = wf_easy_c.add("easy_c_wrapper.h", "#include <<%= @easy_c %>>\n");
+                const translate_c_easy_c = b.addTranslateC(.{
+                    .root_source_file = wrapper_easy_c,
+                    .target = resolved_target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                });
+<%= for dir <- (if @c, do: @c.include_dirs, else: []) do %>
+<%= case dir do %>
+<% {:system, path} -> %>                translate_c_easy_c.addSystemIncludePath(.{ .cwd_relative = "<%= path %>" });
+<% _ -> %>                translate_c_easy_c.addIncludePath(.{ .cwd_relative = "<%= dir %>" });
+<% end %>
+<% end %>
+                nif.addImport("easy_c", translate_c_easy_c.createModule());
+            }
+<% end %>
             <%= Builder.render_build(BuildModule.nif_shim()) %>
 
             const lib = b.addLibrary(.{
@@ -41,9 +127,6 @@ pub fn build(b: *std.Build) void {
 
             lib.linker_allow_shlib_undefined = true;
 
-            // the native backend still causes segfaults, so we must disable it for now.
-            lib.use_llvm = true;
-
             // Only for 32-bit x86 targets
             if (resolved_target.result.cpu.arch == .x86) {
                 lib.link_z_notext = true; // passes -z notext to the linker
@@ -56,16 +139,72 @@ pub fn build(b: *std.Build) void {
             b.installArtifact(lib);
         },
         .sema => {
+            // For sema, use host target - must run on build machine during cross-compilation
+            const target_for_modules = host_target;
+
             <%= Builder.render_build(BuildModule.stub_erl_nif()) %>
             <%= Builder.render_build(BuildModule.beam()) %>
             <%= Builder.render_build(BuildModule.attributes()) %>
             <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
             <%= Builder.render_build(BuildModule.from_beam_module(assigns)) %>
+<%= if @c && @c.headers != [] do %>
+            // Translate user-specified C headers for sema (using host target for cross-compilation)
+<%= for {header_path, module_name} <- @c.headers do %>
+            {
+<%= case header_path do %>
+<% {:system, header_name} -> %>
+                // System header - generate wrapper that includes it
+                const wf_<%= module_name %> = b.addWriteFiles();
+                const wrapper_<%= module_name %> = wf_<%= module_name %>.add("<%= module_name %>_wrapper.h", "#include <<%= header_name %>>\n");
+                const translate_c_<%= module_name %> = b.addTranslateC(.{
+                    .root_source_file = wrapper_<%= module_name %>,
+                    .target = host_target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                });
+<% _ -> %>
+                const translate_c_<%= module_name %> = b.addTranslateC(.{
+                    .root_source_file = .{ .cwd_relative = "<%= header_path %>" },
+                    .target = host_target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                });
+<% end %>
+<%= for dir <- @c.include_dirs do %>
+<%= case dir do %>
+<% {:system, path} -> %>                translate_c_<%= module_name %>.addSystemIncludePath(.{ .cwd_relative = "<%= path %>" });
+<% _ -> %>                translate_c_<%= module_name %>.addIncludePath(.{ .cwd_relative = "<%= dir %>" });
+<% end %>
+<% end %>
+                nif.addImport("<%= module_name %>", translate_c_<%= module_name %>.createModule());
+            }
+<% end %>
+<% end %>
+<%= if @easy_c do %>
+            // Translate easy_c header for sema (using host target for cross-compilation)
+            {
+                const wf_easy_c = b.addWriteFiles();
+                const wrapper_easy_c = wf_easy_c.add("easy_c_wrapper.h", "#include <<%= @easy_c %>>\n");
+                const translate_c_easy_c = b.addTranslateC(.{
+                    .root_source_file = wrapper_easy_c,
+                    .target = host_target,
+                    .optimize = optimize,
+                    .link_libc = true,
+                });
+<%= for dir <- (if @c, do: @c.include_dirs, else: []) do %>
+<%= case dir do %>
+<% {:system, path} -> %>                translate_c_easy_c.addSystemIncludePath(.{ .cwd_relative = "<%= path %>" });
+<% _ -> %>                translate_c_easy_c.addIncludePath(.{ .cwd_relative = "<%= dir %>" });
+<% end %>
+<% end %>
+                nif.addImport("easy_c", translate_c_easy_c.createModule());
+            }
+<% end %>
             <%= Builder.render_build(BuildModule.sema()) %>
 
             const sema_exe = b.addExecutable(.{
                 .name = "sema",
-                .root_module = sema
+                .root_module = sema,
             });
 
             <%= render_c(@c, :sema_exe) %>

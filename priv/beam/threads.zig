@@ -5,6 +5,13 @@ const options = @import("options.zig");
 
 const BeamThreadFn = *const fn (?*anyopaque) callconv(.c) ?*anyopaque;
 
+/// Sleep for the specified number of nanoseconds using beam.io.
+/// The global Io is initialized in on_load, so it's always available.
+fn nanosleep(ns: u64) void {
+    const io = beam.io.get(beam.allocator);
+    io.sleep(.{ .nanoseconds = @intCast(ns) }, .awake) catch {};
+}
+
 pub const ThreadError = error{ threaderror, threadtooktoolong, processnotjoined, processterminated };
 
 pub const ThreadState = enum {
@@ -30,7 +37,7 @@ pub const ThreadState = enum {
 
     pub fn wait_while(self: *This, state: ThreadState) void {
         while (self.get() == state) {
-            std.Thread.sleep(1000);
+            nanosleep(1000);
         }
     }
 
@@ -54,7 +61,8 @@ pub const ThreadState = enum {
 
         while (!check_against(self.get(), state_or_states)) : (so_far += 1) {
             if (so_far > cycles) return error.threadtooktoolong;
-            std.Thread.sleep(1000);
+            // Sleep 1 microsecond (1000 nanoseconds)
+            nanosleep(1000);
         }
     }
 };
@@ -86,8 +94,11 @@ pub fn Thread(comptime function: anytype) type {
         allocator: std.mem.Allocator,
         payload: Payload,
         result: ?*Result = null,
+        cleanup_fn: ?*const fn (*This) void = null,
+        debug_allocator: ?*beam.DebugAllocator = null,
+        leaked: bool = false,
 
-        pub fn launch(comptime ThreadResource: type, argc: c_int, args: [*c]const e.ErlNifTerm, payload_opts: anytype) !beam.term {
+        pub fn launch(comptime ThreadResource: type, argc: c_int, args: [*c]const e.ErlNifTerm, payload_opts: anytype, cleanup_opts: anytype, leak_check: bool, error_info_ptr: ?*?beam.term) !beam.term {
             // assign the context, as the self() function needs this to be correct.
             // note that opts MUST contain `payload_opts` field, which is a
             switch (beam.context.mode) {
@@ -97,13 +108,36 @@ pub fn Thread(comptime function: anytype) type {
             }
 
             // thread struct necessities
-            const allocator = options.allocator(.{});
             const thread_env = beam.alloc_env();
+
+            // Set up allocator - use debug allocator if leak_check is enabled
+            var debug_alloc_ptr: ?*beam.DebugAllocator = null;
+            const allocator = if (leak_check) blk: {
+                debug_alloc_ptr = try beam.allocator.create(beam.DebugAllocator);
+                debug_alloc_ptr.?.* = beam.make_debug_allocator_instance();
+                break :blk debug_alloc_ptr.?.allocator();
+            } else options.allocator(.{});
+
+            // Set context allocator so payload building uses the correct allocator
+            beam.context.allocator = allocator;
 
             // initialize the payload
             var error_index: u8 = undefined;
-            const payload = beam.payload.build(function, argc, args, &error_index, payload_opts) catch {
-                @panic("errors not implemented yet");
+            const payload = beam.payload.build(function, argc, args, &error_index, payload_opts) catch |err| {
+                // Clean up allocated resources before raising exception
+                if (debug_alloc_ptr) |dbg| {
+                    _ = dbg.deinit();
+                    beam.allocator.destroy(dbg);
+                }
+                beam.free_env(thread_env);
+
+                // Raise proper exception with error info
+                const env = beam.context.env;
+                if (err == error.OutOfMemory) {
+                    return beam.term{ .v = e.enif_raise_exception(env, beam.make(.{ err, error_index }, .{}).v) };
+                }
+                const error_info = if (error_info_ptr) |ptr| ptr.* orelse beam.make_empty_list(.{}) else beam.make_empty_list(.{});
+                return beam.term{ .v = e.enif_raise_exception(env, beam.make(.{ err, error_index, error_info }, .{}).v) };
             };
 
             // initialize the thread struct
@@ -112,7 +146,22 @@ pub fn Thread(comptime function: anytype) type {
             const threadptr = try beam.allocator.create(This);
             errdefer beam.allocator.destroy(threadptr);
 
-            threadptr.* = .{ .env = thread_env, .pid = try beam.self(.{}), .payload = payload, .allocator = allocator, .result = try allocator.create(Result) };
+            // Create a cleanup function that captures cleanup_opts at comptime
+            const CleanupFn = struct {
+                fn do_cleanup(thread: *This) void {
+                    beam.payload.cleanup(thread.payload, cleanup_opts);
+                }
+            };
+
+            threadptr.* = .{
+                .env = thread_env,
+                .pid = try beam.self(.{}),
+                .payload = payload,
+                .allocator = allocator,
+                .result = try beam.allocator.create(Result),
+                .cleanup_fn = &CleanupFn.do_cleanup,
+                .debug_allocator = debug_alloc_ptr,
+            };
 
             // build the resource and bind it to beam term.
             const resource = try ThreadResource.create(threadptr, .{});
@@ -124,9 +173,6 @@ pub fn Thread(comptime function: anytype) type {
             // we won't be able to trigger the resource destructor.
             threadptr.refbin = try beam.term_to_binary(res_term, .{});
             errdefer beam.release_binary(&threadptr.refbin);
-
-            // set the self_pid function
-            self_pid = &This.self_pid_fn;
 
             // launch the thread
             _ = e.enif_thread_create(name_ptr(), &threadptr.tid, wrapped, threadptr, null);
@@ -144,12 +190,25 @@ pub fn Thread(comptime function: anytype) type {
             const thread = @as(*This, @ptrCast(@alignCast(void_thread.?)));
             // set critical threadlocal variables
             local_join_started = &thread.join_started;
+            self_pid = &This.self_pid_fn;
 
             beam.context = .{
                 .mode = .threaded,
                 .allocator = thread.allocator,
                 .env = thread.env,
+                .io = beam.io.get(thread.allocator),
             };
+
+            // Check for leaks after cleanup (runs last due to defer order)
+            defer if (thread.debug_allocator) |dbg| {
+                if (dbg.deinit() == .leak) {
+                    thread.leaked = true;
+                }
+                beam.allocator.destroy(dbg);
+            };
+
+            // Cleanup payload after function completes
+            defer if (thread.cleanup_fn) |cleanup_fn| cleanup_fn(thread);
 
             if (thread.state.exchange(.prepped, .running)) |state| switch (state) {
                 .prepped => unreachable, // exchange can't return what it started with.
@@ -189,7 +248,7 @@ pub fn Thread(comptime function: anytype) type {
                 @call(.auto, function, thread.payload);
                 return null;
             } else {
-                const result_ptr = thread.allocator.create(Result) catch {
+                const result_ptr = beam.allocator.create(Result) catch {
                     thread.state.set(.failed);
                     return null;
                 };
@@ -206,11 +265,7 @@ pub fn Thread(comptime function: anytype) type {
                         if (@intFromError(err) == TERMINATED) {
                             result_ptr.* = .{ .error_return_trace = beam.make_empty_list(.{}) };
                         } else {
-                            const response = if (@import("builtin").os.tag == .windows)
-                                .{ .@"error", err, null }
-                            else
-                                .{ .@"error", err, @errorReturnTrace() };
-                            result_ptr.* = .{ .error_return_trace = beam.make(response, .{}) };
+                            result_ptr.* = .{ .error_return_trace = beam.make(.{ .@"error", err, @errorReturnTrace() }, .{}) };
                         }
                     }
 
@@ -256,6 +311,9 @@ pub fn Thread(comptime function: anytype) type {
         }
 
         fn join_result(self: *This) !Result {
+            if (self.leaked) {
+                return error.memoryleak;
+            }
             if (Result == void) {
                 return;
             }
@@ -316,7 +374,7 @@ pub fn Thread(comptime function: anytype) type {
 
         pub fn cleanup(self: *This) void {
             if (self.result) |result| {
-                self.allocator.destroy(result);
+                beam.allocator.destroy(result);
             }
             beam.release_binary(&self.refbin);
             beam.free_env(self.env);

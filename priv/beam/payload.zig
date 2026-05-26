@@ -10,30 +10,16 @@ pub fn Payload(comptime function: anytype) type {
         else => @compileError("Payload is only available for a function"),
     };
 
-    const SF = std.builtin.Type.StructField;
-
-    var fields: []const SF = &[_]SF{};
-    const decls = [0]std.builtin.Type.Declaration{};
-
+    // Zig 0.16: tuples got their own builtin — @Tuple(field_types).
+    // (@Struct can also represent tuples but the indexing semantics
+    // differ; for runtime indexing into the payload we need a true
+    // tuple type, not a struct-with-numeric-names.)
+    var field_types: [params.len]type = undefined;
     for (params, 0..) |param, index| {
-        const new_field = [1]SF{.{
-            .name = std.fmt.comptimePrint("{}", .{index}),
-            .type = param.type.?,
-            .default_value_ptr = null,
-            .is_comptime = false,
-            .alignment = @alignOf(param.type.?),
-        }};
-        fields = fields ++ &new_field;
+        field_types[index] = param.type.?;
     }
 
-    const result_type_info: std.builtin.Type = .{ .@"struct" = .{
-        .layout = .auto,
-        .fields = fields,
-        .decls = &decls,
-        .is_tuple = true,
-    } };
-
-    return @Type(result_type_info);
+    return @Tuple(&field_types);
 }
 
 // gets the arity of a function f

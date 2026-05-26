@@ -177,13 +177,7 @@ defmodule Zig.Nif.Basic do
       {marshalled_vars, marshal_code} =
         signature.params
         |> Enum.zip(used_vars)
-        |> Enum.map_reduce([], fn {param_type, {:var, var}}, so_far ->
-          if marshals_param?(param_type) do
-            {{:var, :"#{var}_m"}, [so_far, Type.marshal_param(param_type, var, nil, :erlang)]}
-          else
-            {{:var, var}, so_far}
-          end
-        end)
+        |> Enum.map_reduce([], &marshal_param_for_erlang/2)
 
       result_code =
         if marshals_param?(signature.return) do
@@ -237,6 +231,14 @@ defmodule Zig.Nif.Basic do
         vars: unused_vars,
         error_text: error_text
       )
+    end
+  end
+
+  defp marshal_param_for_erlang({param_type, {:var, var}}, so_far) do
+    if marshals_param?(param_type) do
+      {{:var, :"#{var}_m"}, [so_far, Type.marshal_param(param_type, var, nil, :erlang)]}
+    else
+      {{:var, var}, so_far}
     end
   end
 

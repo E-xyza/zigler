@@ -12,9 +12,10 @@ defprotocol Zig.Type do
   alias Zig.Type.Manypointer
   alias Zig.Type.Optional
   alias Zig.Type.Pointer
+  alias Zig.Type.Resource
   alias Zig.Type.Slice
   alias Zig.Type.Struct
-  alias Zig.Type.Resource
+  alias Zig.Type.Tuple
 
   @type t ::
           Array.t()
@@ -64,20 +65,23 @@ defprotocol Zig.Type do
   def binary_size(type)
 
   # rendered zig code:
-  @spec render_accessory_variables(t, term, iodata) :: iodata
-  def render_accessory_variables(type, opts, prefix)
-
   @spec payload_options(t, String.t()) :: iodata
   def payload_options(type, prefix)
 
   @spec render_cleanup(t, non_neg_integer) :: iodata
   def render_cleanup(type, index)
 
+  @spec needs_size?(t) :: boolean
+  def needs_size?(type)
+
   @spec render_zig(t) :: String.t()
   def render_zig(type)
 
   @spec render_elixir_spec(t, Return.t() | Param.t() | Return.type()) :: Macro.t()
   def render_elixir_spec(type, context)
+
+  @spec render_erlang_spec(t, Return.t() | Param.t() | Return.type()) :: String.t()
+  def render_erlang_spec(type, context)
 after
   defmacro sigil_t({:<<>>, _, [string]}, _) do
     string
@@ -85,61 +89,31 @@ after
     |> Macro.escape()
   end
 
-  def parse(string) do
-    case string do
-      "u" <> _ ->
-        Integer.parse(string)
+  def parse("u" <> _ = string), do: Integer.parse(string)
+  def parse("i" <> _ = string), do: Integer.parse(string)
+  def parse("f" <> _ = string), do: Float.parse(string)
+  def parse("c_uint" <> _ = string), do: Integer.parse(string)
+  def parse("[]" <> rest), do: Slice.of(parse(rest))
+  def parse("[:0]" <> rest), do: Slice.of(parse(rest), has_sentinel?: true)
+  def parse("[*]" <> rest), do: Manypointer.of(parse(rest))
+  def parse("[*:0]" <> rest), do: Manypointer.of(parse(rest), has_sentinel?: true)
+  def parse("[*c]" <> rest), do: Cpointer.of(parse(rest))
+  def parse("?" <> rest), do: Optional.of(parse(rest))
 
-      "i" <> _ ->
-        Integer.parse(string)
+  def parse("[" <> maybe_array = string) do
+    case Elixir.Integer.parse(maybe_array) do
+      {count, "]" <> rest} -> Array.of(parse(rest), count)
+      {count, ":0]" <> rest} -> Array.of(parse(rest), count, has_sentinel?: true)
+      _ -> raise "unknown type #{string}"
+    end
+  end
 
-      "f" <> _ ->
-        Float.parse(string)
-
-      "c_uint" <> _ ->
-        Integer.parse(string)
-
-      "[]" <> rest ->
-        Slice.of(parse(rest))
-
-      "[:0]" <> rest ->
-        Slice.of(parse(rest), has_sentinel?: true)
-
-      "[*]" <> rest ->
-        Manypointer.of(parse(rest))
-
-      "[*:0]" <> rest ->
-        Manypointer.of(parse(rest), has_sentinel?: true)
-
-      "[*c]" <> rest ->
-        Cpointer.of(parse(rest))
-
-      "?" <> rest ->
-        Optional.of(parse(rest))
-
-      "[" <> maybe_array ->
-        case Elixir.Integer.parse(maybe_array) do
-          {count, "]" <> rest} ->
-            Array.of(parse(rest), count)
-
-          {count, ":0]" <> rest} ->
-            Array.of(parse(rest), count, has_sentinel?: true)
-
-          _ ->
-            raise "unknown type #{string}"
-        end
-
-      "?*.cimport" <> rest ->
-        if String.ends_with?(rest, "struct_enif_environment_t") do
-          Env
-        else
-          unknown =
-            rest
-            |> String.split(".")
-            |> List.last()
-
-          raise "unknown type #{unknown}"
-        end
+  def parse("?*.cimport" <> rest) do
+    if String.ends_with?(rest, "struct_enif_environment_t") do
+      Env
+    else
+      unknown = rest |> String.split(".") |> List.last()
+      raise "unknown type #{unknown}"
     end
   end
 
@@ -178,103 +152,58 @@ after
   # @callback from_json(json, term) :: t
   # @optional_callbacks [from_json: 2]
 
-  def from_json(json, module) do
-    case json do
-      value when value in [:null, nil] ->
-        # only allow during documentation sema passes
-        if module do
-          raise CompileError, description: "zigler encountered anytype"
-        else
-          :anytype
-        end
+  # Handle null/nil - only allow during documentation sema passes
+  def from_json(value, module) when value in [:null, nil] do
+    if module, do: raise(CompileError, description: "zigler encountered anytype"), else: :anytype
+  end
 
-      %{"type" => "unusable:" <> typename} ->
-        # only allow during documentation sema passes
-        if module do
-          raise CompileError, description: "zigler encountered the unusable type #{typename}"
-        else
-          String.to_atom(typename)
-        end
-
-      %{"type" => "bool"} ->
-        Bool.from_json(json)
-
-      %{"type" => "void"} ->
-        :void
-
-      %{"type" => "integer"} ->
-        Integer.from_json(json)
-
-      %{"type" => "enum"} ->
-        Zig.Type.Enum.from_json(json, module)
-
-      %{"type" => "float"} ->
-        Float.from_json(json)
-
-      %{"type" => "resource"} ->
-        Resource.from_json(json, module)
-
-      %{"type" => "struct", "name" => "beam.term"} ->
-        :term
-
-      %{"type" => "struct"} ->
-        Struct.from_json(json, module)
-
-      %{"type" => "array"} ->
-        Array.from_json(json, module)
-
-      %{"type" => "slice"} ->
-        Slice.from_json(json, module)
-
-      %{"type" => "pointer"} = type ->
-        Pointer.from_json(type, module)
-
-      %{"type" => "optional", "child" => %{"type" => "pointer"}} = type ->
-        Pointer.from_json(type, module)
-
-      %{"type" => "manypointer"} ->
-        Manypointer.from_json(json, module)
-
-      %{"type" => "cpointer"} ->
-        Cpointer.from_json(json, module)
-
-      %{"type" => "optional"} ->
-        Optional.from_json(json, module)
-
-      %{"type" => "error"} ->
-        Error.from_json(json, module)
-
-      %{"type" => "env"} ->
-        :env
-
-      %{"type" => "erl_nif_term"} ->
-        :erl_nif_term
-
-      %{"type" => "pid"} ->
-        :pid
-
-      %{"type" => "port"} ->
-        :port
-
-      %{"type" => "term"} ->
-        :term
-
-      %{"type" => "e.ErlNifBinary"} ->
-        :erl_nif_binary
-
-      %{"type" => "e.ErlNifEvent"} ->
-        :erl_nif_event
-
-      %{"type" => "pointer", "child" => %{"type" => "e.ErlNifBinary"}} ->
-        :erl_nif_binary_pointer
-
-      %{"type" => "pointer", "child" => %{"type" => "builtin.StackTrace"}} ->
-        :stacktrace
-
-      %{"type" => "builtin.StackTrace"} ->
-        :stacktrace
+  # Handle unusable types - only allow during documentation sema passes
+  def from_json(%{"type" => "unusable:" <> typename}, module) do
+    if module do
+      raise CompileError, description: "zigler encountered the unusable type #{typename}"
+    else
+      String.to_atom(typename)
     end
   end
+
+  # Simple type mappings
+  def from_json(%{"type" => "bool"} = json, _module), do: Bool.from_json(json)
+  def from_json(%{"type" => "void"}, _module), do: :void
+  def from_json(%{"type" => "integer"} = json, _module), do: Integer.from_json(json)
+  def from_json(%{"type" => "enum"} = json, module), do: Zig.Type.Enum.from_json(json, module)
+  def from_json(%{"type" => "float"} = json, _module), do: Float.from_json(json)
+  def from_json(%{"type" => "resource"} = json, module), do: Resource.from_json(json, module)
+
+  # Struct types
+  def from_json(%{"type" => "struct", "name" => "beam.term"}, _module), do: :term
+  def from_json(%{"type" => "struct", "is_tuple" => true} = json, module), do: Tuple.from_json(json, module)
+  def from_json(%{"type" => "struct"} = json, module), do: Struct.from_json(json, module)
+
+  # Collection types
+  def from_json(%{"type" => "array"} = json, module), do: Array.from_json(json, module)
+  def from_json(%{"type" => "slice"} = json, module), do: Slice.from_json(json, module)
+  def from_json(%{"type" => "manypointer"} = json, module), do: Manypointer.from_json(json, module)
+  def from_json(%{"type" => "cpointer"} = json, module), do: Cpointer.from_json(json, module)
+  def from_json(%{"type" => "error"} = json, module), do: Error.from_json(json, module)
+
+  # Pointer types - specific patterns first
+  def from_json(%{"type" => "pointer", "child" => %{"type" => "e.ErlNifBinary"}}, _module), do: :erl_nif_binary_pointer
+  def from_json(%{"type" => "pointer", "child" => %{"type" => "builtin.StackTrace"}}, _module), do: :stacktrace
+  def from_json(%{"type" => "optional", "child" => %{"type" => "pointer"}} = json, module), do: Pointer.from_json(json, module)
+  def from_json(%{"type" => "pointer"} = json, module), do: Pointer.from_json(json, module)
+
+  # Optional (general - after specific optional patterns)
+  def from_json(%{"type" => "optional"} = json, module), do: Optional.from_json(json, module)
+
+  # Beam/NIF types
+  def from_json(%{"type" => "env"}, _module), do: :env
+  def from_json(%{"type" => "erl_nif_term"}, _module), do: :erl_nif_term
+  def from_json(%{"type" => "pid"}, _module), do: :pid
+  def from_json(%{"type" => "port"}, _module), do: :port
+  def from_json(%{"type" => "term"}, _module), do: :term
+  def from_json(%{"type" => "e.ErlNifBinary"}, _module), do: :erl_nif_binary
+  def from_json(%{"type" => "e.ErlNifEvent"}, _module), do: :erl_nif_event
+  def from_json(%{"type" => "builtin.StackTrace"}, _module), do: :stacktrace
 
   def needs_make?(:erl_nif_term), do: false
   def needs_make?(:term), do: false
@@ -283,8 +212,6 @@ after
   # defaults
 
   def _default_payload_options, do: [error_info: "&error_info"]
-
-  def _default_accessory_variables, do: []
 
   def _default_marshal_param(Elixir, _variable), do: []
   def _default_marshal_param(:erlang, variable), do: "#{variable}_m = #{variable},"
@@ -319,9 +246,6 @@ defimpl Zig.Type, for: Atom do
   def render_zig(atom), do: "#{atom}"
 
   @impl true
-  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
-
-  @impl true
   def payload_options(:erl_nif_term, _), do: []
   def payload_options(:term, _), do: []
 
@@ -333,6 +257,9 @@ defimpl Zig.Type, for: Atom do
 
   @impl true
   def render_cleanup(_, _), do: Type._default_cleanup()
+
+  @impl true
+  def needs_size?(_), do: false
 
   @impl true
   def render_elixir_spec(:void, %Zig.Return{}), do: :ok
@@ -349,6 +276,11 @@ defimpl Zig.Type, for: Atom do
       term()
     end
   end
+
+  @impl true
+  def render_erlang_spec(:void, %Zig.Return{}), do: "ok"
+  def render_erlang_spec(:pid, _), do: "pid()"
+  def render_erlang_spec(term, _) when term in ~w[term erl_nif_term]a, do: "term()"
 
   @impl true
   def marshal_param(_, variable, _, platform), do: Type._default_marshal_param(platform, variable)

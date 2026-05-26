@@ -161,7 +161,10 @@ fn make_struct(value: anytype, opts: anytype) beam.term {
             if (@TypeOf(tuple_term) == beam.term) {
                 tuple_item.* = tuple_term.v;
             } else {
-                tuple_item.* = make(tuple_term, opts).v;
+                const index_str = comptime std.fmt.comptimePrint("{d}", .{index});
+                const tuple_child_as = if (@hasField(@TypeOf(opts), "as")) options.tuple_child(opts.as, index_str) else .default;
+                const child_opts = .{ .env = env, .as = tuple_child_as };
+                tuple_item.* = make(tuple_term, child_opts).v;
             }
         }
         return .{ .v = e.enif_make_tuple_from_array(env, &tuple_list, value.len) };
@@ -335,7 +338,9 @@ fn make_cpointer(cpointer: anytype, opts: anytype) beam.term {
         if (cpointer) |_| {
             // the following two types have inferrable sentinels
             if (Child == u8) {
-                return make(@as([*:0]u8, @ptrCast(cpointer)), opts);
+                // Preserve const qualifier when casting to sentinel pointer
+                const SentinelPtr = if (pointer.is_const) [*:0]const u8 else [*:0]u8;
+                return make(@as(SentinelPtr, @ptrCast(cpointer)), opts);
             }
             if (@typeInfo(Child) == .pointer) {
                 return make(@as([*:null]Child, @ptrCast(cpointer)), opts);

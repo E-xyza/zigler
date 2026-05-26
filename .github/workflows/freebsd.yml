@@ -24,48 +24,26 @@ jobs:
     - name: get deps
       run: mix deps.get
 
-    - uses: actions/cache@v3
-      id: zig-cache
-      with:
-        path: zig
-        key: zig-freebsd
-
-    - name: get zig
-      run: |
-        if [ ! -d zig ]; then
-          git clone -b 0.15.1 https://github.com/ziglang/zig.git
-        fi 
-
     - name: Test in FreeBSD
       id: test
-      uses: vmactions/freebsd-vm@v1      
+      uses: vmactions/freebsd-vm@v1
       with:
         mem: 8192
         usesh: true
         prepare: |
           pkg install -y erlang-runtime28
           pkg install -y elixir
-          pkg install -y llvm20
           pkg install -y ca_root_nss
 
-          pkg install -y cmake zstd libxml2 lzma ninja
-
-          ldconfig /usr/local/lib
+          # Download prebuilt Zig 0.16.0 for FreeBSD
+          fetch https://ziglang.org/download/0.16.0/zig-x86_64-freebsd-0.16.0.tar.xz
+          tar -xJf zig-x86_64-freebsd-0.16.0.tar.xz
+          mv zig-x86_64-freebsd-0.16.0 /usr/local/zig
 
         run: |
-          cd zig
-          mkdir -p build
-
-          cd build
-          cmake .. -G Ninja -DZIG_STATIC_LLVM=ON -DCMAKE_PREFIX_PATH="/usr/local/llvm20;/usr/local;/usr/local/lib" -DCMAKE_EXE_LINKER_FLAGS="-L/usr/local/lib" -DCMAKE_BUILD_TYPE=ReleaseSafe
-          
-          ninja -C .
-
-          export ZIG_EXECUTABLE_PATH="$(pwd)/stage3/bin/zig"
-          export PATH="/usr/local/lib/erlang27/bin:$PATH"
+          export ZIG_EXECUTABLE_PATH="/usr/local/zig/zig"
+          export PATH="/usr/local/lib/erlang28/bin:$PATH"
           export SSL_CACERTFILE=/usr/local/etc/ssl/cert.pem
-
-          cd ../..
 
           mix local.hex --force
 

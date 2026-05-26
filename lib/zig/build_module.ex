@@ -23,7 +23,8 @@ defmodule Zig.BuildModule do
   def from_beam_module(build) do
     %__MODULE__{
       name: :nif,
-      path: build.zig_code_path,
+      # Use just the filename - will be joined with module_root in template
+      path: Path.basename(build.zig_code_path),
       deps: [:erl_nif, :beam, :attributes] ++ Enum.map(build.extra_modules, &module_spec/1),
       c: build.c
     }
@@ -35,19 +36,12 @@ defmodule Zig.BuildModule do
   # default modules
 
   def erl_nif do
-    system_include_path =
-      Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
-
-    erl_nif_win_path =
-      :zigler
-      |> :code.priv_dir()
-      |> Path.join("erl_nif_win")
-
     %__MODULE__{
       name: :erl_nif,
-      path: Builder.beam_file("erl_nif.zig"),
+      path: "beam/erl_nif.zig",
       c: %C{
-        include_dirs: [system: system_include_path, system: erl_nif_win_path],
+        # Include dirs are now handled via erts_include and erl_nif_win_path -D flags
+        include_dirs: [],
         link_libc: true
       }
     }
@@ -56,14 +50,14 @@ defmodule Zig.BuildModule do
   def stub_erl_nif do
     %__MODULE__{
       name: :erl_nif,
-      path: Builder.beam_file("stub_erl_nif.zig")
+      path: "beam/stub_erl_nif.zig"
     }
   end
 
   def beam do
     %__MODULE__{
       name: :beam,
-      path: Builder.beam_file("beam.zig"),
+      path: "beam/beam.zig",
       deps: [:erl_nif]
     }
   end
@@ -78,7 +72,7 @@ defmodule Zig.BuildModule do
   def sema do
     %__MODULE__{
       name: :sema,
-      path: Builder.beam_file("sema.zig"),
+      path: "beam/sema.zig",
       deps: [:nif],
       root?: true
     }

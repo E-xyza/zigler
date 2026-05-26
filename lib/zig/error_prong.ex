@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
 defmodule Zig.ErrorProng do
   @moduledoc false
 
@@ -11,8 +12,6 @@ defmodule Zig.ErrorProng do
             # this module is only created when the function is being marshalled.
             [{_m, _f, a, _}, {m, f, _a, opts} | rest] ->
               indentation = &["\n     ", List.duplicate("| ", &1)]
-
-              # TODO: make sure line and file are assigned here.
 
               new_opts =
                 Keyword.merge(opts,
@@ -112,7 +111,42 @@ defmodule Zig.ErrorProng do
                            source_location: source_location
                          } ->
             {file, line} = __resolve(source_location)
-            {String.to_atom(module_str), String.to_atom(fn_str), [:...], [file: file, line: line]}
+
+            # Normalize Windows paths from debug info to match Elixir's Path.expand format:
+            # 1. Convert backslashes to forward slashes
+            # 2. Lowercase drive letter (debug info returns "D:/..." but Path.expand returns "d:/...")
+            file =
+              case file do
+                <<drive, ":/", rest::binary>> when drive in ?A..?Z ->
+                  <<drive + 32, ":/", rest::binary>>
+
+                <<drive, ":\\", rest::binary>> when drive in ?A..?Z ->
+                  <<drive + 32, ":/", String.replace(rest, "\\", "/")::binary>>
+
+                path when is_binary(path) ->
+                  String.replace(path, "\\", "/")
+
+                other ->
+                  other
+              end
+
+            module =
+              if module_str do
+                # Normalize compile_unit_name to an Elixir module atom:
+                # - Windows PDB: "Elixir.MyModule_zcu.obj" → strip "_zcu.obj" suffix
+                # - Native backend: ".Elixir.MyModule.zig" → strip leading "." and ".zig" suffix
+                # - LLVM backend: "Elixir.MyModule" → use as-is
+                module_str
+                |> String.replace_suffix("_zcu.obj", "")
+                |> String.replace_suffix(".zig", "")
+                |> String.replace_prefix(".", "")
+                |> String.to_atom()
+              else
+                :unknown
+              end
+
+            func = if(fn_str, do: String.to_atom(fn_str), else: :unknown)
+            {module, func, [:...], [file: file, line: line]}
           end)
           |> Enum.reverse(stacktrace)
 

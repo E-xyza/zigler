@@ -7,14 +7,9 @@ defmodule ZiglerTest.ErrorReturnTest do
 
   @expected_file "test/error_return_test.exs"
 
-  defmacrop assert_stacktrace(stacktrace_e, stacktrace_ne, code) do
-    components = [
-      payload: :my_error,
-      stacktrace: List.wrap(if Zig._errors_available?(), do: stacktrace_e, else: stacktrace_ne)
-    ]
-
+  defmacrop assert_stacktrace(stacktrace, code) do
     quote do
-      assert %{unquote_splicing(components)} =
+      assert %{payload: :my_error, stacktrace: unquote(stacktrace)} =
                (try do
                   unquote(code)
                 rescue
@@ -29,15 +24,8 @@ defmodule ZiglerTest.ErrorReturnTest do
   defmacrop info(function, file \\ @expected_file, line) do
     file = Macro.expand(file, __CALLER__)
 
-    if Zig._errors_available?() do
-      quote do
-        {__MODULE__, unquote(function), [:...], [file: unquote(file), line: unquote(line)]}
-      end
-    else
-      quote do
-        {__MODULE__, unquote(function), 0,
-         [file: unquote(to_charlist(file)), line: unquote(line)]}
-      end
+    quote do
+      {__MODULE__, unquote(function), [:...], [file: unquote(file), line: unquote(line)]}
     end
   end
 
@@ -48,7 +36,7 @@ defmodule ZiglerTest.ErrorReturnTest do
   """
 
   test "when you call an erroring function" do
-    assert_stacktrace([info(:erroring, 46) | _], [info(:erroring, 45) | _], erroring())
+    assert_stacktrace([info(:erroring, 34) | _], erroring())
   end
 
   ~Z"""
@@ -59,8 +47,7 @@ defmodule ZiglerTest.ErrorReturnTest do
 
   test "when you call a transitively erroring function" do
     assert_stacktrace(
-      [info(:erroring, 46), info(:transitive_error, 56) | _],
-      [info(:transitive_error, 55) | _],
+      [info(:erroring, 34), info(:transitive_error, 44) | _],
       transitive_error()
     )
   end
@@ -76,9 +63,8 @@ defmodule ZiglerTest.ErrorReturnTest do
     assert_stacktrace(
       [
         info(:erroring, @transitive_error_file, 2),
-        info(:transitive_file_error, 70) | _
+        info(:transitive_file_error, 57) | _
       ],
-      [info(:transitive_file_error, 69) | _],
       transitive_file_error()
     )
   end

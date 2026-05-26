@@ -1,4 +1,5 @@
 defmodule ZiglerTest.MakeGuides do
+  @moduledoc false
   defstruct lines: [], on: false, needs_module: true, top: []
 
   def go do
@@ -35,7 +36,7 @@ defmodule ZiglerTest.MakeGuides do
     end)
   end
 
-  defp collect_sections(line, acc = %{on: false}) do
+  defp collect_sections(line, %{on: false} = acc) do
     %{acc | on: String.trim(line) == "```elixir"}
   end
 
@@ -60,6 +61,7 @@ defmodule ZiglerTest.MakeGuides do
   defp header(module) do
     """
     defmodule #{module} do
+      @moduledoc false
       use ExUnit.Case
       use Zig, otp_app: :zigler
     """

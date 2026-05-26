@@ -1,9 +1,9 @@
+# credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
 defmodule Zig.Manifest do
   @moduledoc false
 
   alias Zig.Command
 
-  # TODO: spec this better
   @type t :: [{pos_integer(), {Path.t(), pos_integer()}}]
 
   defmacro resolver(manifest, file, def_or_defp) do

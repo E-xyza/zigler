@@ -40,7 +40,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticEnumTest do
   test "on_upgrade generally works" do
     this = self()
     build_module(pid: this, value: 0)
-    assert 0 = apply(OnUpgradeAutomaticEnum, :bar, [])
+    assert 0 = OnUpgradeAutomaticEnum.bar()
 
     redefine_warn =
       capture_io(:stderr, fn ->

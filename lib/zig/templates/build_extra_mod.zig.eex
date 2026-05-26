@@ -1,7 +1,20 @@
-<% _ = opts %>
+<% _ = opts
+   # beam/* files are in zigler's priv directory
+   # :nif module contains the user's code, located via module_root
+   is_beam_file = String.starts_with?(@path, "beam/")
+   is_nif_module = @name == :nif
+   needs_path_join = is_beam_file or is_nif_module
+%>
+<%= cond do %>
+<% is_beam_file -> %>
+    const <%= @name %>_path = std.fs.path.join(b.allocator, &.{ zigler_priv, "<%= @path %>" }) catch @panic("OOM");
+<% is_nif_module -> %>
+    const <%= @name %>_path = std.fs.path.join(b.allocator, &.{ module_root, "<%= @path %>" }) catch @panic("OOM");
+<% true -> %>
+<% end %>
 const <%= @name %> = b.createModule(
     .{
-        .root_source_file = .{.cwd_relative = "<%= @path %>"},
+        .root_source_file = .{.cwd_relative = <%= if needs_path_join, do: "#{@name}_path", else: "\"#{@path}\"" %>},
         .imports = &[_]std.Build.Module.Import{<%= for dep <- @deps, is_atom(dep) do%>
           .{
             .name = "<%= dep %>",
@@ -15,7 +28,7 @@ const <%= @name %> = b.createModule(
         .link_libcpp = true,
         <% end %>
         <%= if @root? do %>
-        .target = resolved_target,
+        .target = target_for_modules,
         .optimize = optimize,
         .error_tracing = error_tracing,
         <% end %>

@@ -1,4 +1,5 @@
 defmodule ZiglerTest.MakeZig do
+  @moduledoc false
   defstruct elixir: [], zig: %{}
 
   alias Zig.Command
@@ -50,10 +51,11 @@ defmodule ZiglerTest.MakeZig do
 
     templated = """
     defmodule ZiglerTest.ZigTest do
+      @moduledoc false
       use ExUnit.Case
 
     #{content.elixir}
-      
+
     end
     """
 

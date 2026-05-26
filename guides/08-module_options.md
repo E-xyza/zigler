@@ -72,8 +72,8 @@ end
 ## adding modules
 
 It's possible to add zig files as modules using the `extra_modules` keyword option. The name of the
-module is the key, and the value is a tuple of the path to the zig file that acts as the module
-and a list of transitive module dependencies. 
+module is the key, and the value is a tuple of the path to the zig file that acts as the module and
+a list of transitive module dependencies. 
 
 ### Example extra.zig
 
@@ -105,10 +105,10 @@ end
 ## Release Mode
 
 Zig has several release modes, and you can specify which release mode to build your program under
-using the `optimize` option.  This option defaults to `:debug` if you are in `:dev` or `:test`
-and `:safe` otherwise (or if the `Mix` module is not available).  You may also specify `:env` which
-reades the `ZIGLER_RELEASE_MODE` environment variable, or `{:env, default}` which lets you specify
-a different default mode if `ZIGLER_RELEASE_MODE` is not set.
+using the `optimize` option. This option defaults to `:debug` if you are in `:dev` or `:test` and
+`:safe` otherwise (or if the `Mix` module is not available). You may also specify `:env` which
+reades the `ZIGLER_RELEASE_MODE` environment variable, or `{:env, default}` which lets you specify a
+different default mode if `ZIGLER_RELEASE_MODE` is not set.
 
 ```elixir
 defmodule ReleaseMode do
@@ -131,8 +131,8 @@ end
 
 ## Error Traces
 
-By default, zigler will provide error traces in Debug and ReleaseSafe modes.  You may
-override this in ReleaseSafe by supplying the `error_tracing` option
+By default, zigler will provide error traces in Debug and ReleaseSafe modes. You may override this
+in ReleaseSafe by supplying the `error_tracing` option
 
 ```elixir
 defmodule ErrorTraces do
@@ -163,6 +163,28 @@ end
 
 # module
 ```
+
+## Custom Build Files
+
+The `build_files_dir` option allows you to provide a custom `build.zig` instead of using zigler's
+auto-generated one. This is useful for advanced build customization.
+
+When using `build_files_dir`, zigler automatically injects these `-D` flags:
+
+| Flag | Description |
+|------|-------------|
+| `erts_include` | Path to ERTS include directory |
+| `erl_nif_header` | Path to erl_nif.h (or erl_nif_win.h on Windows) |
+| `erl_nif_win_path` | Path to Windows erl_nif compatibility headers |
+| `zigler_priv` | Path to zigler's priv directory (for beam/*.zig files) |
+| `module_root` | Path to the module's source directory |
+
+Your custom `build.zig` must define `b.option()` calls for these flags. Use `zigler_priv` to
+construct paths to beam files (e.g., `beam/beam.zig`) and `module_root` to construct paths
+to your module's zig source file.
+
+The `build_flags` option passes additional `-D` flags to `zig build`. See the
+[Custom Build Flags](12-build_flags.md) guide for details.
 
 ## dump options
 

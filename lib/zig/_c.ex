@@ -7,7 +7,9 @@ defmodule Zig.C do
   defstruct include_dirs: [],
             library_dirs: [],
             link_lib: [],
+            rpaths: [],
             src: [],
+            headers: [],
             link_libc: true,
             link_libcpp: false
 
@@ -19,9 +21,11 @@ defmodule Zig.C do
           include_dirs: [String.t() | {:system, String.t()}],
           library_dirs: [String.t() | {:system, String.t()}],
           link_lib: [String.t() | {:system, String.t()}],
+          rpaths: [String.t()],
           link_libc: boolean,
           link_libcpp: boolean,
-          src: [{String.t(), [String.t()]}]
+          src: [{String.t(), [String.t()]}],
+          headers: [{String.t(), String.t()}]
         }
 
   @spec new(Zig.c_options(), Options.context()) :: t
@@ -31,12 +35,33 @@ defmodule Zig.C do
     |> Options.normalize_kw(:include_dirs, [], &normalize_pathlist/2, context)
     |> Options.normalize_kw(:library_dirs, [], &normalize_pathlist/2, context)
     |> Options.normalize_kw(:link_lib, [], &normalize_pathlist/2, context)
+    |> Options.normalize_kw(:rpaths, [], &normalize_rpaths/2, context)
     |> Options.normalize_kw(:src, [], &normalize_c_src/2, context)
+    |> Options.normalize_kw(:headers, [], &normalize_headers/2, context)
     |> Options.validate(:link_libcpp, :boolean, context)
     |> then(&struct!(__MODULE__, &1))
   rescue
     e in KeyError ->
       Options.raise_with("was supplied the invalid option `#{e.key}`", context)
+  end
+
+  def normalize_headers(headers, context) when is_list(headers) do
+    Enum.map(headers, &normalize_header(&1, context))
+  end
+
+  def normalize_headers(header, context), do: normalize_headers([header], context)
+
+  # headers: [module_name: "header.h"]
+  defp normalize_header({module_name, path}, context) when is_atom(module_name) do
+    {resolve_path(path, context), to_string(module_name)}
+  end
+
+  defp normalize_header(other, context) do
+    Options.raise_with(
+      "headers must be a keyword list like [module_name: \"header.h\"]",
+      other,
+      context
+    )
   end
 
   def normalize_pathlist([n | _] = charlist, context) when is_integer(n),
@@ -76,6 +101,34 @@ defmodule Zig.C do
         context
       )
   end
+
+  def normalize_rpaths([n | _] = charlist, context) when is_integer(n),
+    do: [normalize_rpath("#{charlist}", context)]
+
+  def normalize_rpaths(path_or_paths, context) do
+    path_or_paths
+    |> List.wrap()
+    |> Enum.map(&normalize_rpath(&1, context))
+  end
+
+  defp normalize_rpath({:special, path}, context) do
+    path =
+      path
+      |> IO.iodata_to_binary()
+      |> validate_special_rpath(context)
+
+    {:special, path}
+  rescue
+    _ in ArgumentError ->
+      Options.raise_with("special rpath must be iodata", path, context)
+  end
+
+  defp normalize_rpath(path, context), do: resolve_path(path, context)
+
+  defp validate_special_rpath("", context),
+    do: Options.raise_with("special rpath cannot be empty", context)
+
+  defp validate_special_rpath(path, _context), do: path
 
   def normalize_c_src([n | _] = charlist, context) when is_integer(n),
     do: [{resolve_path("#{charlist}", context), []}]

@@ -15,11 +15,14 @@ defmodule Zig.Command do
   #############################################################################
   ## API
 
-  def run_zig(command, opts) do
-    args = String.split(command)
+  def run_zig(command, opts) when is_binary(command) do
+    run_zig(String.split(command), opts)
+  end
 
+  def run_zig(args, opts) when is_list(args) do
     base_opts = Keyword.take(opts, [:cd, :stderr_to_stdout])
     zig_cmd = executable_path()
+    command = Enum.join(args, " ")
     Logger.debug("running command: #{zig_cmd} #{command}")
 
     case System.cmd(zig_cmd, args, base_opts) do
@@ -37,8 +40,25 @@ defmodule Zig.Command do
     System.delete_env("CC")
 
     staging_dir = Path.dirname(module.module_code_path)
+    module_root = Path.dirname(module.zig_code_path)
 
-    run_zig("build -Dzigler-mode=sema", cd: staging_dir, stderr_to_stdout: true)
+    # Auto-inject ERTS and zigler paths (same as compile!)
+    erts_include = Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
+    zigler_priv = :zigler |> :code.priv_dir() |> to_string()
+    erl_nif_win_path = Path.join(zigler_priv, "erl_nif_win")
+    erl_nif_header = if windows?(), do: Path.join(erl_nif_win_path, "erl_nif_win.h"), else: Path.join(erts_include, "erl_nif.h")
+
+    args = [
+      "build",
+      "-Dzigler-mode=sema",
+      zig_option("erts_include", erts_include),
+      zig_option("erl_nif_header", erl_nif_header),
+      zig_option("erl_nif_win_path", erl_nif_win_path),
+      zig_option("zigler_priv", zigler_priv),
+      zig_option("module_root", module_root)
+    ]
+
+    run_zig(args, cd: staging_dir, stderr_to_stdout: true)
 
     attempt_json(staging_dir, 5)
   end
@@ -132,7 +152,7 @@ defmodule Zig.Command do
     end
   end
 
-  def compile!(module = %{precompiled: nil}) do
+  def compile!(%{precompiled: nil} = module) do
     staging_directory = Builder.staging_directory(module.module)
     precompiler_settings = precompile_meta()
 
@@ -147,8 +167,28 @@ defmodule Zig.Command do
     dst_lib_path = Path.join(lib_dir, dst_lib_name(module))
 
     target = precompile_name("-Dtarget=")
+    module_root = Path.dirname(module.zig_code_path)
 
-    run_zig("build #{target} --prefix #{so_dir}",
+    # Auto-inject ERTS and zigler paths for custom build.zig files
+    erts_include = Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
+    zigler_priv = :zigler |> :code.priv_dir() |> to_string()
+    erl_nif_win_path = Path.join(zigler_priv, "erl_nif_win")
+    erl_nif_header = if windows?(), do: Path.join(erl_nif_win_path, "erl_nif_win.h"), else: Path.join(erts_include, "erl_nif.h")
+
+    args =
+      ["build"] ++
+      (if target, do: [target], else: []) ++
+      [
+        zig_option("erts_include", erts_include),
+        zig_option("erl_nif_header", erl_nif_header),
+        zig_option("erl_nif_win_path", erl_nif_win_path),
+        zig_option("zigler_priv", zigler_priv),
+        zig_option("module_root", module_root)
+      ] ++
+      module.build_flags ++
+      ["--prefix", to_string(so_dir)]
+
+    run_zig(args,
       cd: staging_directory,
       stderr_to_stdout: true
     )
@@ -175,6 +215,17 @@ defmodule Zig.Command do
 
     if src_lib_path != dst_lib_path do
       File.cp!(src_lib_path, dst_lib_path)
+    end
+
+    # On Windows, also copy the PDB file for debug symbol resolution
+    if windows?() do
+      src_pdb_path = String.replace_suffix(src_lib_path, ".dll", ".pdb")
+      dst_pdb_path = String.replace_suffix(dst_lib_path, ".dll", ".pdb")
+
+      if File.exists?(src_pdb_path) do
+        File.cp!(src_pdb_path, dst_pdb_path)
+        Logger.debug("copied PDB to #{dst_pdb_path}")
+      end
     end
 
     precompile_callback(dst_lib_path)
@@ -347,6 +398,21 @@ defmodule Zig.Command do
     end
   end
 
+  # Helper to create -D options with proper quoting for paths containing spaces.
+  # On Windows, the command line is reconstructed and Zig's parser splits on spaces,
+  # so we need to quote values that contain spaces.
+  defp zig_option(key, value) when is_binary(value) do
+    if String.contains?(value, " ") do
+      "-D#{key}=\"#{value}\""
+    else
+      "-D#{key}=#{value}"
+    end
+  end
+
+  defp zig_option(key, value) when is_list(value) do
+    zig_option(key, to_string(value))
+  end
+
   defp precompile_meta, do: Application.get_env(:zigler, :precompiling)
 
   defp precompile_callback(filename) do
@@ -358,4 +424,5 @@ defmodule Zig.Command do
         :ok
     end
   end
+
 end

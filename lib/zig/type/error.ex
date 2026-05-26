@@ -30,9 +30,6 @@ defmodule Zig.Type.Error do
   def binary_size(type), do: Type.binary_size(type.child)
 
   @impl true
-  def render_accessory_variables(_, _, _), do: raise("unreachable")
-
-  @impl true
   def payload_options(_, _), do: raise("unreachable")
 
   @impl true
@@ -42,8 +39,16 @@ defmodule Zig.Type.Error do
   def render_cleanup(_, _), do: raise("unreachable")
 
   @impl true
+  def needs_size?(_), do: false
+
+  @impl true
   def render_elixir_spec(error, context) do
     Type.render_elixir_spec(error.child, context)
+  end
+
+  @impl true
+  def render_erlang_spec(error, context) do
+    Type.render_erlang_spec(error.child, context)
   end
 
   def of(child), do: %__MODULE__{child: child}

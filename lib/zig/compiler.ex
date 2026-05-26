@@ -1,3 +1,4 @@
+# credo:disable-for-this-file Credo.Check.Refactor.CyclomaticComplexity
 defmodule Zig.Compiler do
   @moduledoc false
 

@@ -1,4 +1,5 @@
 defmodule ZiglerTest.MakeBeam do
+  @moduledoc false
   alias Zig.Command
 
   def go do
@@ -18,6 +19,7 @@ defmodule ZiglerTest.MakeBeam do
 
     templated = """
     defmodule ZiglerTest.BeamTest do
+      @moduledoc false
       use ExUnit.Case, async: true
       use Zig, otp_app: :zigler,
         nifs: [..., yielding_example: [:dirty_cpu]]

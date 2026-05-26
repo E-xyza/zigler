@@ -3,6 +3,8 @@
 beam.context.env = env;
 beam.context.mode = .callback;
 beam.context.allocator = beam.allocator;
+beam.io.initGlobal();
+beam.context.io = beam.io.get(beam.allocator);
 <% name = @on_upgrade.name %>
 <%= if @on_upgrade.arity == 3 do %>
 // following type is guaranteed to exist as per semantic analysis.

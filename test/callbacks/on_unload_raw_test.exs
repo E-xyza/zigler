@@ -41,7 +41,7 @@ defmodule ZiglerTest.Callbacks.OnUnloadRawTest do
     Application.put_env(:zigler, OnUnloadRaw, this)
 
     build_module()
-    assert :ok = apply(OnUnloadRaw, :bar, [])
+    assert :ok = OnUnloadRaw.bar()
 
     :code.delete(OnUnloadRaw)
     :code.purge(OnUnloadRaw)

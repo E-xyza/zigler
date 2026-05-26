@@ -98,8 +98,12 @@ died and will return `error.processterminated`.
 
 > ### return from yield quickly! {: .warning}
 >
-> You must return from the yield quickly (within 750us). If you are unable to return quickly, then
-> zigler run will cause the thread metadata to leak. This will be fixed in zigler 0.11.
+> When the parent process dies or the thread resource is garbage collected, Zigler signals the thread
+> to terminate (causing `beam.yield()` to return `error.processterminated`) and waits up to 750µs for
+> the thread to finish. If your thread doesn't return within this window, a small amount of thread
+> metadata (environment, reference binary, thread struct) will leak. This is a best-effort cleanup
+> to avoid blocking the BEAM scheduler. In practice, if you call `beam.yield()` regularly and return
+> promptly when it returns an error, this leak will not occur.
 
 ```elixir
 defmodule Threaded do

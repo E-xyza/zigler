@@ -15,8 +15,6 @@ defmodule ZiglerTest.Types.PidTest do
   }
   """
 
-  # TODO: make sure that the "count" thing is the type we expect.
-
   describe "beam parameters" do
     test "are valid" do
       spawned =

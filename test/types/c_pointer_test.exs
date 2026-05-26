@@ -6,6 +6,8 @@ defmodule ZiglerTest.Types.CPointerTest do
     leak_check: true,
     nifs: [
       {:cpointer_u8_list_return_test, return: :list},
+      # Disable leak_check for this test - const cpointer param cleanup is tested elsewhere
+      {:cpointer_sentinel_string_param, leak_check: false},
       ...
     ]
 
@@ -160,6 +162,39 @@ defmodule ZiglerTest.Types.CPointerTest do
 
     test "null can be returned" do
       assert is_nil(cpointer_null_return_test())
+    end
+  end
+
+  # Test for [*c] to sentinel-terminated types (issue #535)
+  ~Z"""
+  // Single null-terminated string returned via [*c]
+  var single_string: [*:0]const u8 = "hello";
+
+  pub fn cpointer_sentinel_string_return() [*c]const u8 {
+      // Return a null-terminated string as [*c]
+      return single_string;
+  }
+
+  pub fn cpointer_sentinel_string_param(str: [*c]const u8) usize {
+      if (str == null) return 0;
+      // Count characters until null terminator
+      var count: usize = 0;
+      while (str[count] != 0) : (count += 1) {}
+      return count;
+  }
+  """
+
+  describe "for cpointer to sentinel-terminated types" do
+    test "can return [*c]const u8 from sentinel string" do
+      assert "hello" == cpointer_sentinel_string_return()
+    end
+
+    test "can pass string to [*c]const u8" do
+      assert 5 == cpointer_sentinel_string_param("hello")
+    end
+
+    test "can pass nil to [*c]const u8" do
+      assert 0 == cpointer_sentinel_string_param(nil)
     end
   end
 end

@@ -26,24 +26,28 @@ defmodule Zig.Type.Optional do
   def render_zig(optional), do: "?#{Type.render_zig(optional.child)}"
 
   @impl true
-  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
-
-  @impl true
-  def payload_options(_, _), do: Type._default_payload_options()
+  def payload_options(optional, prefix), do: Type.payload_options(optional.child, prefix)
   @impl true
   def marshal_param(_, variable, _, platform), do: Type._default_marshal_param(platform, variable)
   @impl true
   def marshal_return(_, variable, platform), do: Type._default_marshal_return(platform, variable)
 
-  # TODO: optional multipointer
   @impl true
-  def render_cleanup(_type, _index), do: Type._default_cleanup()
+  def render_cleanup(optional, index), do: Type.render_cleanup(optional.child, index)
+
+  @impl true
+  def needs_size?(optional), do: Type.needs_size?(optional.child)
 
   @impl true
   def render_elixir_spec(optional, context) do
     quote do
       unquote(Type.render_elixir_spec(optional.child, context)) | nil
     end
+  end
+
+  @impl true
+  def render_erlang_spec(optional, context) do
+    "#{Type.render_erlang_spec(optional.child, context)} | nil"
   end
 
   def of(child), do: %__MODULE__{child: child}

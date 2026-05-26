@@ -1,4 +1,5 @@
 defmodule Mix.Tasks.Zig.Version do
+  @moduledoc false
   use Mix.Task
 
   @shortdoc "Relays the zig version being used"

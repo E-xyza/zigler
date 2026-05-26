@@ -194,6 +194,7 @@ fn set_callback_context(env_: beam.env) void {
         .mode = .callback,
         .env = env_,
         .allocator = beam.allocator,
+        .io = beam.io.get(beam.allocator),
     };
 }
 

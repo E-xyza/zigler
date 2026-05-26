@@ -81,7 +81,7 @@ defmodule Zig.Type.Struct do
     Type.binary_typespec(struct)
   end
 
-  # default map form.  Handles `:default`, `:map`, and `{:map, ...}` specs 
+  # default map form.  Handles `:default`, `:map`, and `{:map, ...}` specs
   def render_elixir_spec(struct, context) do
     all_fields =
       struct.optional
@@ -89,6 +89,39 @@ defmodule Zig.Type.Struct do
       |> to_fields(:required, context)
 
     map_spec([], all_fields)
+  end
+
+  @impl true
+  def render_erlang_spec(struct, %Return{as: as}), do: render_erlang_spec(struct, as)
+
+  def render_erlang_spec(struct, %Parameter{} = params) do
+    optional = to_erlang_fields(struct.optional, params)
+    required = to_erlang_fields(struct.required, params)
+
+    "\#{#{Enum.join(optional ++ required, ", ")}}"
+  end
+
+  def render_erlang_spec(_struct, :binary), do: "binary()"
+
+  def render_erlang_spec(%{packed: packed}, :default) when is_integer(packed), do: "binary()"
+
+  # default map form
+  def render_erlang_spec(struct, context) do
+    all_fields =
+      struct.optional
+      |> Map.merge(struct.required)
+      |> to_erlang_fields(context)
+
+    "\#{#{Enum.join(all_fields, ", ")}}"
+  end
+
+  defp to_erlang_fields(portion, opts) do
+    portion
+    |> Enum.map(fn {k, v} ->
+      key_opts = key_opts(opts, k)
+      "#{k} := #{Type.render_erlang_spec(v, key_opts)}"
+    end)
+    |> Enum.sort()
   end
 
   defp map_spec(optional, required) do
@@ -153,10 +186,10 @@ defmodule Zig.Type.Struct do
   def binary_size(_), do: nil
 
   @impl true
-  def render_accessory_variables(_, _, _), do: Type._default_accessory_variables()
+  def render_cleanup(_, _), do: Type._default_cleanup()
 
   @impl true
-  def render_cleanup(_, _), do: Type._default_cleanup()
+  def needs_size?(_), do: false
 
   @impl true
   def payload_options(_, _), do: Type._default_payload_options()

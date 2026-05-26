@@ -11,14 +11,12 @@ defmodule ZiglerTest.GenericFacts do
   """
 
   test "foo contents" do
-    file = __ENV__.file
-
     assert [
              %{
                nifs: [
                  %{
                    name: :foo,
-                   file: ^file,
+                   file: "test/generic_facts_test.exs",
                    line: 8
                  }
                ]

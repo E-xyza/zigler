@@ -9,8 +9,6 @@ defmodule ZiglerTest.CXX.InOutParamsTest do
     ]
 
   ~Z"""
-  const c = @cImport(@cInclude("c.h"));
-
   pub fn in_out_int(value: *u32) c_int {
       if (value.* == 42) return 1;
       value.* = value.* + 1;

@@ -1,5 +1,6 @@
 try do
   defmodule Zig.Formatter do
+  @moduledoc false
     use Zig, otp_app: :zigler
 
     @behaviour Mix.Tasks.Format

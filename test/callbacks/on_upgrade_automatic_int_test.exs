@@ -40,7 +40,7 @@ defmodule ZiglerTest.Callbacks.OnUpgradeAutomaticIntTest do
   test "on_upgrade generally works" do
     this = self()
     build_module(pid: this, value: 0)
-    assert 0 = apply(OnUpgradeAutomaticInt, :bar, [])
+    assert 0 = OnUpgradeAutomaticInt.bar()
 
     log_line =
       capture_log(fn ->

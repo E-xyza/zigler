@@ -58,6 +58,8 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S
             },
             .auto => {},
         }
+        try stream.objectField("is_tuple");
+        try stream.write(s.is_tuple);
         try stream.objectField("fields");
         try stream.beginArray();
         inline for (s.fields) |field| {
@@ -278,12 +280,12 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
     try stream.endObject();
 }
 
-pub fn main() !void {
-    const stdout = std.fs.File.stdout();
+pub fn main(init: std.process.Init) !void {
+    const stdout_file = std.Io.File.stdout();
     var buffer: [256]u8 = undefined;
-    var stdout_writer = stdout.writer(&buffer);
-    var stream: json.Stringify = .{ .writer = &stdout_writer.interface };
+    var file_writer = std.Io.File.Writer.init(stdout_file, init.io, &buffer);
+    var stream: json.Stringify = .{ .writer = &file_writer.interface };
 
     try streamModule(&stream, nif);
-    try stdout_writer.interface.flush();
+    try file_writer.interface.flush();
 }

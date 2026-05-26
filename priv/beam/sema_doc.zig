@@ -180,6 +180,10 @@ fn streamType(stream: anytype, comptime T: type) !void {
                     try stream.objectField("child");
                     try streamType(stream, eu.payload);
                 },
+                .@"fn" => {
+                    // Function pointers are not supported as NIF types
+                    try typeHeader(stream, "unusable:fn");
+                },
                 else => {
                     try typeHeader(stream, "unusable:" ++ @typeName(T));
                 },
@@ -283,11 +287,12 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
     try stream.endObject();
 }
 
-pub fn main() !void {
-    const stdout = std.fs.File.stdout();
+pub fn main(init: std.process.Init) !void {
     var buffer: [256]u8 = undefined;
-    var stdout_writer = stdout.writer(&buffer);
-    var stream: json.Stringify = .{ .writer = &stdout_writer.interface };
+    var stdout_writer = std.Io.File.stdout().writer(init.io, &buffer);
+    var stream: json.Stringify = .{
+        .writer = &stdout_writer.interface,
+    };
 
     try streamModule(&stream, analyte);
     try stdout_writer.interface.flush();

@@ -149,28 +149,26 @@ than using C to bind C libraries.  Here is an example:
 ```elixir
 if {:unix, :linux} == :os.type() do
   defmodule Blas do
-    use Zig,     
+    use Zig,
       otp_app: :zigler,
-      c: [link_lib: {:system, "blas"}]
-  
-    ~Z"""
-    const beam = @import("beam");
-    const blas = @cImport({
-        @cInclude("cblas.h");
-    });
+      c: [
+        headers: [cblas: {:system, "cblas.h"}],
+        link_lib: {:system, "blas"}
+      ]
 
-    const BadArgs = error { badarg };
-  
+    ~Z"""
+    const cblas = @import("cblas");
+
     pub fn blas_axpy(a: f64, x: []f64, y: []f64) ![]f64 {
         if (x.len != y.len) return error.badarg;
-    
-        blas.cblas_daxpy(@intCast(x.len), a, x.ptr, 1, y.ptr, 1);
-    
+
+        cblas.cblas_daxpy(@intCast(x.len), a, x.ptr, 1, y.ptr, 1);
+
         return y;
     }
     """
   end
-  
+
   test "we can use a blas shared library" do
     # returns aX+Y
     assert [11.0, 18.0] == Blas.blas_axpy(3.0, [2.0, 4.0], [5.0, 6.0])

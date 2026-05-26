@@ -5,8 +5,8 @@ defmodule Zig.Nif.Threaded do
 
   alias Zig.ErrorProng
   alias Zig.Nif
-  alias Zig.Type
   alias Zig.Parameter
+  alias Zig.Type
 
   require EEx
 
@@ -16,8 +16,6 @@ defmodule Zig.Nif.Threaded do
   def render_elixir(%{signature: %{arity: arity}} = nif, overrides) do
     used_params_ast = Nif.elixir_parameters(arity, true)
     unused_params_ast = Nif.elixir_parameters(arity, false)
-
-    # TODO: marshal parameters (that need to be marshalled) here.
 
     function_code = [
       do:

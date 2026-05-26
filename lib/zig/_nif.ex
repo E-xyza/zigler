@@ -263,6 +263,7 @@ defmodule Zig.Nif do
   @spec merge(sema_typed, unmerged) :: typed
   def merge(sema_nif, spec_nif) do
     verify_raw_concurrency(sema_nif, spec_nif)
+    verify_return_struct(sema_nif, spec_nif)
 
     # these are the fields we are going to merge
     merge_fields = ~w[name cleanup allocator impl alias export concurrency spec leak_check]a
@@ -287,6 +288,17 @@ defmodule Zig.Nif do
     raise CompileError,
       description:
         "the raw function `#{sema.name}` may only be used with `:synchronous`, `:dirty_cpu` or `:dirty_io` concurrency",
+      file: spec.file,
+      line: spec.line
+  end
+
+  defp verify_return_struct(_, %{return: %{struct: nil}}), do: :ok
+  defp verify_return_struct(%{return: %{type: %Zig.Type.Struct{}}}, _), do: :ok
+
+  defp verify_return_struct(sema, spec) do
+    raise CompileError,
+      description:
+        "the `struct:` return option was specified for `#{sema.name}` but the return type is `#{Zig.Type.render_zig(sema.return.type)}`, not a struct",
       file: spec.file,
       line: spec.line
   end
@@ -360,17 +372,16 @@ defmodule Zig.Nif do
 
   def render_elixir_spec(%{raw: t, arity: arities} = nif) when not is_nil(t) do
     Enum.map(arities, fn arity ->
-      param_spec =
-        case arity do
-          0 -> []
-          arity -> Enum.map(0..(arity - 1), fn _ -> {:term, [], []} end)
-        end
+      param_spec = raw_param_spec(arity)
 
       quote do
         @spec unquote(nif.name)(unquote_splicing(param_spec)) :: term
       end
     end)
   end
+
+  defp raw_param_spec(0), do: []
+  defp raw_param_spec(arity), do: Enum.map(1..arity, fn _ -> {:term, [], []} end)
 
   def render_elixir_spec(nif) do
     param_spec =
@@ -397,9 +408,24 @@ defmodule Zig.Nif do
     end
   end
 
-  def render_erlang(nif, _opts \\ []) do
-    # TODO: typespec in erlang.
+  def render_erlang_spec(%{raw: t, arity: arities} = nif) when not is_nil(t) do
+    Enum.map(arities, fn arity ->
+      params = Enum.map_join(1..arity//1, ", ", fn _ -> "term()" end)
+      "-spec #{nif.name}(#{params}) -> term()."
+    end)
+  end
 
+  def render_erlang_spec(nif) do
+    params =
+      nif.params
+      |> Enum.sort()
+      |> Enum.map_join(", ", fn {_, p} -> Type.render_erlang_spec(p.type, p) end)
+
+    return_spec = Type.render_erlang_spec(nif.return.type, nif.return)
+    ["-spec #{nif.name}(#{params}) -> #{return_spec}."]
+  end
+
+  def render_erlang(nif, _opts \\ []) do
     function =
       nif
       |> nif.concurrency.render_erlang

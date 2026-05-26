@@ -42,6 +42,10 @@ pub inline fn ignore_when_sema() void {
 /// which are no-op versions of these functions.
 pub const loader = @import("loader.zig");
 
+/// BEAM-based Io implementation for Zig 0.16.0
+/// Provides std.Io interface backed by Threaded with BEAM-specific stubs
+pub const io = @import("io.zig");
+
 /// identical to [`?*e.ErlNifEnv`](https://www.erlang.org/doc/man/erl_nif.html#ErlNifEnv)
 ///
 /// > #### env {: .info }
@@ -1054,6 +1058,7 @@ pub const make = make_.make;
 /// test "get list_cell " do
 ///   assert 47 = get_list_cell_example([40 | 7])
 /// end
+/// ```
 pub const get_list_cell = get_.get_list_cell;
 
 // special makers
@@ -1487,6 +1492,9 @@ pub const allocator = allocator_.beam_allocator;
 /// a function which returns a new debug allocator instance.
 pub const make_debug_allocator_instance = allocator_.make_debug_allocator_instance;
 
+/// The debug allocator type used for leak checking.
+pub const DebugAllocator = allocator_.BeamDebugAllocator;
+
 /// implements `std.mem.Allocator` using the `std.mem.DebugAllocator`
 /// factory, backed by `beam.wide_alignment_allocator`.
 pub const debug_allocator = allocator_.debug_allocator;
@@ -1596,7 +1604,8 @@ pub const ContextMode = enum { synchronous, dirty, callback, threaded, yielding,
 /// - `mode`: the concurrency mode of the nif
 /// - `env`: the environment of the nif
 /// - `allocator`: the allocator to use for allocations
-pub const Context = struct { mode: ContextMode, env: env, allocator: std.mem.Allocator };
+/// - `io`: the Io interface for std library operations
+pub const Context = struct { mode: ContextMode, env: env, allocator: std.mem.Allocator, io: std.Io };
 
 /// <!-- topic: Context -->
 /// threadlocal variable that stores the execution context for the nif.
@@ -1936,8 +1945,6 @@ pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: 
 /// exception, the function that wraps the nif must be able to catch the
 /// error and append the zig error return trace to the existing stacktrace.
 pub fn raise_with_error_return(err: anytype, maybe_return_trace: ?*std.builtin.StackTrace, opts: anytype) term {
-    if (@import("builtin").os.tag == .windows) return raise_exception(.{ .@"error", err, null }, opts);
-
     return if (maybe_return_trace) |return_trace|
         raise_exception(.{ .@"error", err, return_trace }, opts)
     else

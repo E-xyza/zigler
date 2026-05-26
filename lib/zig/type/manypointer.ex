@@ -50,26 +50,15 @@ defmodule Zig.Type.Manypointer do
   end
 
   @impl true
-  def render_accessory_variables(type, param, prefix) do
-    in_out =
-      List.wrap(
-        if param.in_out do
-          ~s(var #{prefix}: #{render_zig(type)} = undefined;)
-        end
-      )
-
-    cleanup = List.wrap(if param.cleanup, do: ~s(var @"#{prefix}-size": usize = undefined;))
-
-    in_out ++ cleanup
-  end
-
-  @impl true
   def payload_options(_, prefix) do
-    [error_info: "&error_info", size: ~s(&@"#{prefix}-size")]
+    [error_info: "&error_info", size: ~s(&payload_sizes.#{prefix})]
   end
 
   @impl true
-  def render_cleanup(_type, index), do: ~s(.{.cleanup = true, .size = @"arg#{index}-size"},)
+  def render_cleanup(_type, index), do: ~s(.{.cleanup = true, .size = payload_sizes.arg#{index}},)
+
+  @impl true
+  def needs_size?(_), do: true
 
   @impl true
   def marshal_param(_, variable, _, platform), do: Type._default_marshal_param(platform, variable)
@@ -111,6 +100,23 @@ defmodule Zig.Type.Manypointer do
       end
     else
       [Type.render_elixir_spec(type.child, context)]
+    end
+  end
+
+  @impl true
+  def render_erlang_spec(%{child: ~t(u8), has_sentinel?: true}, %Return{as: as} = context) do
+    case as do
+      :list -> "[#{Type.render_erlang_spec(~t(u8), context)}]"
+      type when type in ~w[default binary]a -> "binary()"
+    end
+  end
+
+  def render_erlang_spec(type, %Parameter{} = context) do
+    child_spec = Type.render_erlang_spec(type.child, context)
+
+    case type.child do
+      ~t(u8) -> "[#{child_spec}] | binary()"
+      _ -> "[#{child_spec}]"
     end
   end
 

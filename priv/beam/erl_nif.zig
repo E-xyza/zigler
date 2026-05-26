@@ -21,7 +21,9 @@
 // C struct field.  Until that is fixed
 const builtin = @import("builtin");
 
-const e = if (builtin.os.tag == .windows) @cImport(@cInclude("erl_nif_win.h")) else @cImport(@cInclude("erl_nif.h"));
+// In Zig 0.16.0, @cImport was removed. The C header translation is now done
+// via addTranslateC in the build system, and the result is imported as "erl".
+const e = @import("erl");
 
 pub const ErlNifTerm = e.ERL_NIF_TERM;
 

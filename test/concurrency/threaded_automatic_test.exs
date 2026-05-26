@@ -36,4 +36,12 @@ defmodule ZiglerTest.Concurrency.ThreadedAutomaticTest do
     Process.exit(pid, :kill)
     assert_receive :killed, 500
   end
+
+  test "threaded function with invalid argument raises ArgumentError" do
+    assert_raise ArgumentError,
+                 ~r/errors were found at the given arguments/,
+                 fn ->
+                   threaded("not_a_bool", self())
+                 end
+  end
 end

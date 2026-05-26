@@ -1,4 +1,5 @@
 defmodule ZiglerTest.MakeReadme do
+  @moduledoc false
   alias Zig.Command
 
   def go do
@@ -17,6 +18,7 @@ defmodule ZiglerTest.MakeReadme do
 
     templated = """
     defmodule ZiglerTest.ReadmeTest do
+      @moduledoc false
       use ExUnit.Case
 
       test "version" do
@@ -29,7 +31,7 @@ defmodule ZiglerTest.MakeReadme do
       end
 
     #{internal_code}
-      
+
     end
     """
 
