@@ -2,19 +2,28 @@ const std = @import("std");
 
 const BuildMode = enum { nif_lib, sema };
 
+// Helper to strip surrounding quotes from paths (needed for Windows paths with spaces)
+fn stripQuotes(path: []const u8) []const u8 {
+    if (path.len >= 2 and path[0] == '"' and path[path.len - 1] == '"') {
+        return path[1 .. path.len - 1];
+    }
+    return path;
+}
+
 pub fn build(b: *std.Build) void {
     const resolved_target = b.standardTargetOptions(.{});
     const host_target = b.graph.host;
     const optimize = b.standardOptimizeOption(.{});
 
     // ERTS paths (auto-injected by zigler as -D flags)
-    const erts_include = b.option([]const u8, "erts_include", "ERTS include path") orelse @panic("erts_include required");
-    const erl_nif_header = b.option([]const u8, "erl_nif_header", "Path to erl_nif.h (or erl_nif_win.h on Windows)") orelse @panic("erl_nif_header required");
-    const erl_nif_win_path = b.option([]const u8, "erl_nif_win_path", "Path to Windows erl_nif compatibility headers") orelse @panic("erl_nif_win_path required");
+    // stripQuotes handles Windows paths with spaces that are quoted on the command line
+    const erts_include = stripQuotes(b.option([]const u8, "erts_include", "ERTS include path") orelse @panic("erts_include required"));
+    const erl_nif_header = stripQuotes(b.option([]const u8, "erl_nif_header", "Path to erl_nif.h (or erl_nif_win.h on Windows)") orelse @panic("erl_nif_header required"));
+    const erl_nif_win_path = stripQuotes(b.option([]const u8, "erl_nif_win_path", "Path to Windows erl_nif compatibility headers") orelse @panic("erl_nif_win_path required"));
 
     // Zigler paths (auto-injected by zigler as -D flags)
-    const zigler_priv = b.option([]const u8, "zigler_priv", "Zigler priv directory") orelse @panic("zigler_priv required");
-    const module_root = b.option([]const u8, "module_root", "Module root directory") orelse @panic("module_root required");
+    const zigler_priv = stripQuotes(b.option([]const u8, "zigler_priv", "Zigler priv directory") orelse @panic("zigler_priv required"));
+    const module_root = stripQuotes(b.option([]const u8, "module_root", "Module root directory") orelse @panic("module_root required"));
 
     const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
 
