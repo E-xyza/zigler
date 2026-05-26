@@ -589,33 +589,6 @@ defmodule Zig.Sema do
       line: module.line
   end
 
-  def _obtain_precompiled_sema_json(%{precompiled: nil} = module), do: {module, nil}
-
-  def _obtain_precompiled_sema_json(%{precompiled: {:web, address, shasum}} = module) do
-    file = http_get!(address)
-
-    {dll_shasum, pdb_shasum} = normalize_shasum_parts(shasum)
-
-    found_hash =
-      :sha256
-      |> :crypto.hash(file)
-      |> Base.encode16(case: :lower)
-
-    found_hash == String.downcase(dll_shasum) ||
-      raise "hash mismatch: expected #{dll_shasum}, got #{found_hash}"
-
-    staging_dir = Zig.Builder.staging_directory(module.module)
-    staging_path = Path.join(staging_dir, Path.basename(address))
-
-    File.mkdir_p!(staging_dir)
-    File.write!(staging_path, file)
-
-    # Download PDB file for Windows targets (optional - may not exist for all releases)
-    maybe_download_pdb(address, staging_path, pdb_shasum)
-
-    _obtain_precompiled_sema_json(%{module | precompiled: staging_path})
-  end
-
   defp maybe_download_pdb(address, staging_path, pdb_shasum) do
     if String.ends_with?(address, ".dll") do
       pdb_address = String.replace_suffix(address, ".dll", ".pdb")
@@ -647,6 +620,36 @@ defmodule Zig.Sema do
       raise "PDB hash mismatch: expected #{pdb_shasum}, got #{found_pdb_hash}"
   end
 
+  def _obtain_precompiled_sema_json(%{precompiled: nil} = module), do: {module, nil}
+
+  def _obtain_precompiled_sema_json(%{precompiled: {:web, address, shasum}} = module) do
+    file = http_get!(address)
+
+    {dll_shasum, pdb_shasum} = normalize_shasum_parts(shasum)
+
+    found_hash =
+      :sha256
+      |> :crypto.hash(file)
+      |> Base.encode16(case: :lower)
+
+    found_hash == String.downcase(dll_shasum) ||
+      raise "hash mismatch: expected #{dll_shasum}, got #{found_hash}"
+
+    staging_dir = Zig.Builder.staging_directory(module.module)
+    staging_path = Path.join(staging_dir, Path.basename(address))
+
+    File.mkdir_p!(staging_dir)
+    File.write!(staging_path, file)
+
+    # Download PDB file for Windows targets (optional - may not exist for all releases)
+    maybe_download_pdb(address, staging_path, pdb_shasum)
+
+    _obtain_precompiled_sema_json(%{module | precompiled: staging_path})
+  end
+
+  # OS-specific implementations for extracting sema from precompiled binaries.
+  # These clauses are defined inside a case :os.type() block to select the appropriate
+  # implementation at compile time. They must come after the nil and {:web, ...} clauses.
   case :os.type() do
     {:unix, :darwin} ->
       def _obtain_precompiled_sema_json(%{precompiled: file} = module) do

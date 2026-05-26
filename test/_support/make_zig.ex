@@ -51,7 +51,7 @@ defmodule ZiglerTest.MakeZig do
 
     templated = """
     defmodule ZiglerTest.ZigTest do
-  @moduledoc false
+      @moduledoc false
       use ExUnit.Case
 
     #{content.elixir}

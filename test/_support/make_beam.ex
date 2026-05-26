@@ -19,7 +19,7 @@ defmodule ZiglerTest.MakeBeam do
 
     templated = """
     defmodule ZiglerTest.BeamTest do
-  @moduledoc false
+      @moduledoc false
       use ExUnit.Case, async: true
       use Zig, otp_app: :zigler,
         nifs: [..., yielding_example: [:dirty_cpu]]

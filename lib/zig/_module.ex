@@ -326,6 +326,13 @@ defmodule Zig.Module do
     validate_and_build_precompiled(url, normalize_shasum(shasum), context, precompiled_context)
   end
 
+  defp normalize_precompiled(_, context) do
+    Options.raise_with(
+      "must be a path or `{:web, url, shasum}` tuple",
+      Options.push_key(context, :precompiled)
+    )
+  end
+
   defp validate_and_build_precompiled(_url, nil, _context, _precompiled_context), do: nil
 
   defp validate_and_build_precompiled(url, shasum, context, precompiled_context) do
@@ -334,13 +341,6 @@ defmodule Zig.Module do
 
     if System.get_env("ZIGLER_PRECOMPILE_FORCE_RECOMPILE", "false") != "true",
       do: {:web, substitute_url(url, context), shasum}
-  end
-
-  defp normalize_precompiled(_, context) do
-    Options.raise_with(
-      "must be a path or `{:web, url, shasum}` tuple",
-      Options.push_key(context, :precompiled)
-    )
   end
 
   # Validate shasum format - handles both plain string and map format for Windows

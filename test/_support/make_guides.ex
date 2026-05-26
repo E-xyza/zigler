@@ -61,7 +61,7 @@ defmodule ZiglerTest.MakeGuides do
   defp header(module) do
     """
     defmodule #{module} do
-  @moduledoc false
+      @moduledoc false
       use ExUnit.Case
       use Zig, otp_app: :zigler
     """

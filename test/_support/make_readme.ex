@@ -18,7 +18,7 @@ defmodule ZiglerTest.MakeReadme do
 
     templated = """
     defmodule ZiglerTest.ReadmeTest do
-  @moduledoc false
+      @moduledoc false
       use ExUnit.Case
 
       test "version" do
