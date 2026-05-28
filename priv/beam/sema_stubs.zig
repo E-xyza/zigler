@@ -1,3 +1,6 @@
+const std = @import("std");
+const StreamError = std.Io.Writer.Error;
+
 const StubType = struct { v: []const u8 };
 
 const StubFunction = struct {
@@ -5,7 +8,7 @@ const StubFunction = struct {
     params: []const StubType,
     return_type: StubType,
 
-    pub fn stream(comptime self: StubFunction, json_stream: anytype) !void {
+    pub fn stream(comptime self: StubFunction, json_stream: anytype) StreamError!void {
         try json_stream.beginObject();
 
         // emit name

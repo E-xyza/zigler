@@ -157,7 +157,8 @@ after
     if module, do: raise(CompileError, description: "zigler encountered anytype"), else: :anytype
   end
 
-  # Handle unusable types - only allow during documentation sema passes
+  # Handle unusable types - only allow during documentation sema passes.
+  # module is nil only when called from run_sema_doc/1 for zig_doc generation.
   def from_json(%{"type" => "unusable:" <> typename}, module) do
     if module do
       raise CompileError, description: "zigler encountered the unusable type #{typename}"
