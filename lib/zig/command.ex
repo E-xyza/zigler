@@ -255,6 +255,7 @@ defmodule Zig.Command do
 
     if force_reload or lib_missing do
       Logger.debug("transferring cached library from #{module.precompiled} to #{dst_lib_path}")
+      File.mkdir_p!(lib_dir)
       # on MacOS, we must delete the old library because otherwise library
       # integrity checker will kill the process
       File.rm(dst_lib_path)
