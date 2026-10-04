@@ -24,7 +24,6 @@ defmodule Zig.Get.MixProject do
         links: %{"GitHub" => @scm_url},
         files: ~w[mix.tasks mix.exs README.md]
       ],
-      preferred_cli_env: [docs: :docs],
       source_url: @scm_url,
       docs: docs(),
       elixirc_paths: elixirc_paths(),
@@ -32,6 +31,10 @@ defmodule Zig.Get.MixProject do
       `zig.get` is a Mix task that downloads and installs the Zig compiler toolchain.
       """
     ]
+  end
+
+  def cli do
+    [preferred_envs: [docs: :docs]]
   end
 
   def application do
