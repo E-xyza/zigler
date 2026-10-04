@@ -201,12 +201,15 @@ const WindowsDebugInfo = struct {
                 while (iter.next(module)) |inline_site| {
                     if (inline_site.inlinee == last_inlinee) continue;
 
-                    for (pdb.getInlineeSourceLines(module, inline_site.inlinee)) |inlinee_src_line| {
+                    // zig 0.17: getInlineeSourceLines returns an iterator rather
+                    // than a slice.
+                    var src_line_iter = pdb.getInlineeSourceLines(module, inline_site.inlinee);
+                    while (src_line_iter.next()) |inlinee_src_line| {
                         const maybe_loc = pdb.getInlineSiteSourceLocation(
                             arena,
                             module,
                             inline_site,
-                            inlinee_src_line.info,
+                            inlinee_src_line,
                             offset_in_func,
                         ) catch continue;
                         const loc = maybe_loc orelse continue;

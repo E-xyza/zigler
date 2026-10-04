@@ -34,6 +34,9 @@ jobs:
           pkg install -y erlang-runtime29
           pkg install -y elixir
           pkg install -y ca_root_nss
+          # translate-c and aro are git dependencies, and mix shells out to git
+          # to check their lock status even though the host already fetched them.
+          pkg install -y git
 
           # Download prebuilt Zig 0.17.0 for FreeBSD
           fetch https://ziglang.org/download/0.17.0/zig-x86_64-freebsd-0.17.0.tar.xz

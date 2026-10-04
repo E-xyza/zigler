@@ -401,6 +401,9 @@ defmodule Zig.Command do
     case {Target.resolve(), :os.type(), precompile_meta()} do
       {_, _, {_, :windows, _, _}} -> true
       {_, _, {_, _, _, _}} -> false
+      # cross compiling to windows needs the windows erl_nif headers even
+      # though the build machine is not itself windows.
+      {%Target{os: "windows"}, _, nil} -> true
       {nil, {_, :nt}, nil} -> true
       _ -> false
     end

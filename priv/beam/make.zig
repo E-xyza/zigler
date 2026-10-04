@@ -97,13 +97,15 @@ fn make_int(value: anytype, opts: anytype) beam.term {
         .signed => switch (int.bits) {
             0 => return .{ .v = e.enif_make_int(options.env(opts), 0) },
             1...32 => return .{ .v = e.enif_make_int(options.env(opts), @as(i32, @intCast(value))) },
-            33...64 => return .{ .v = e.enif_make_int64(options.env(opts), @as(i64, @intCast(value))) },
+            // on windows enif_make_int64 is an alias for enif_make_long, whose
+            // parameter is c_long, so take the type from the function itself.
+            33...64 => return .{ .v = e.enif_make_int64(options.env(opts), @intCast(value)) },
             else => {},
         },
         .unsigned => switch (int.bits) {
             0 => return .{ .v = e.enif_make_int(options.env(opts), 0) },
             1...32 => return .{ .v = e.enif_make_uint(options.env(opts), @as(u32, @intCast(value))) },
-            33...64 => return .{ .v = e.enif_make_uint64(options.env(opts), @as(u64, @intCast(value))) },
+            33...64 => return .{ .v = e.enif_make_uint64(options.env(opts), @intCast(value)) },
             else => {
                 const Bigger = @Int(.unsigned, try std.math.ceilPowerOfTwo(u16, int.bits));
                 const buf_size = @sizeOf(Bigger);
