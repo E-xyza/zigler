@@ -75,7 +75,7 @@ defmodule Zigler.MixProject do
     [
       # zig parser is pinned to a version of zig parser because versions of zig parser
       # are pinned to zig versions
-      {:zig_parser, "~> 0.7.0"},
+      {:zig_parser, "~> 0.8.0"},
       # utility to help manage type protocols
       {:protoss, "~> 1.0"},
       {:zig_get, path: "installer", runtime: false},
@@ -91,7 +91,8 @@ defmodule Zigler.MixProject do
        compile: false, app: false, runtime: false},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
-      {:zig_doc, "~> 0.7.0"},
+      # TODO: back to {:zig_doc, "~> 0.8.0"} once 0.8.0 is published to hex
+      {:zig_doc, path: "../zig_doc"},
       # linting
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ] ++ json()
