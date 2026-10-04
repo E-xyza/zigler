@@ -69,6 +69,7 @@ defmodule Zig.Command do
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema_doc.zig")
     erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
+    reflect_file = Path.join(priv_dir, "beam/reflect.zig")
     # Ensure the file path is absolute
     abs_file = Path.expand(file)
 
@@ -98,11 +99,17 @@ defmodule Zig.Command do
         const erl_nif = b.addModule("erl_nif", .{ .root_source_file = .{ .cwd_relative = "#{erl_nif_file}" } });
         const analyte = b.addModule("analyte", .{ .root_source_file = .{ .cwd_relative = "#{abs_file}" } });
 
+        // reflect.zig has to be its own module: a file may belong to only one
+        // module, and sema_doc, beam.zig and the nif all reach for it.
+        const reflect = b.addModule("reflect", .{ .root_source_file = .{ .cwd_relative = "#{reflect_file}" } });
+
         // analyte (beam.zig) imports erl_nif, so we need to add it to analyte's imports
         analyte.addImport("erl_nif", erl_nif);
+        analyte.addImport("reflect", reflect);
 
         exe.root_module.addImport("erl_nif", erl_nif);
         exe.root_module.addImport("analyte", analyte);
+        exe.root_module.addImport("reflect", reflect);
 
         b.installArtifact(exe);
 

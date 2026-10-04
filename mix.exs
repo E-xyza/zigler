@@ -91,8 +91,7 @@ defmodule Zigler.MixProject do
        compile: false, app: false, runtime: false},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
-      # TODO: back to {:zig_doc, "~> 0.8.0"} once 0.8.0 is published to hex
-      {:zig_doc, path: "../zig_doc"},
+      {:zig_doc, "~> 0.8.0"},
       # linting
       {:credo, "~> 1.7", only: [:dev, :test], runtime: false}
     ] ++ json()
