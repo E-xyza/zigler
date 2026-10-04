@@ -3,11 +3,12 @@ const stubs = @import("sema_stubs.zig");
 const analyte = @import("analyte");
 
 const json = std.json;
+const reflect = @import("reflect");
 
 // Use explicit error type to break dependency loop in recursive stream functions
 const StreamError = std.Io.Writer.Error;
 
-fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) StreamError!void {
+fn streamInt(stream: anytype, comptime i: std.lang.Type.Int) StreamError!void {
     try typeHeader(stream, "integer");
     try stream.objectField("signedness");
     switch (i.signedness) {
@@ -18,8 +19,8 @@ fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) StreamError!void
     try stream.write(i.bits);
 }
 
-fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: type) StreamError!void {
-    if (en.fields.len <= 1) {
+fn streamEnum(stream: anytype, comptime en: std.lang.Type.Enum, comptime T: type) StreamError!void {
+    if (en.field_names.len <= 1) {
         try typeHeader(stream, "unusable:" ++ @typeName(T));
         return;
     }
@@ -29,20 +30,20 @@ fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: t
     try stream.write(@typeName(T));
     try stream.objectField("tags");
     try stream.beginObject();
-    inline for (en.fields) |field| {
+    inline for (reflect.enumInfoFields(en)) |field| {
         try stream.objectField(field.name);
         try stream.write(field.value);
     }
     try stream.endObject();
 }
 
-fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) StreamError!void {
+fn streamFloat(stream: anytype, comptime f: std.lang.Type.Float) StreamError!void {
     try typeHeader(stream, "float");
     try stream.objectField("bits");
     try stream.write(f.bits);
 }
 
-fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S: type) StreamError!void {
+fn streamStruct(stream: anytype, comptime s: std.lang.Type.Struct, comptime S: type) StreamError!void {
     const name = @typeName(S);
 
     try typeHeader(stream, "struct");
@@ -61,7 +62,7 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S
     }
     try stream.objectField("fields");
     try stream.beginArray();
-    inline for (s.fields) |field| {
+    inline for (reflect.structFields(s)) |field| {
         try stream.beginObject();
         try stream.objectField("name");
         try stream.write(field.name);
@@ -81,7 +82,7 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S
     try stream.endArray();
 }
 
-fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) StreamError!void {
+fn streamArray(stream: anytype, comptime a: std.lang.Type.Array, repr: anytype) StreamError!void {
     try typeHeader(stream, "array");
     try stream.objectField("len");
     try stream.write(a.len);
@@ -93,7 +94,7 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
     try stream.write(repr);
 }
 
-fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) StreamError!void {
+fn streamPointer(stream: anytype, comptime p: std.lang.Type.Pointer, repr: anytype) StreamError!void {
     switch (p.size) {
         .one => {
             try typeHeader(stream, "pointer");
@@ -117,12 +118,12 @@ fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: an
         },
     }
     try stream.objectField("is_const");
-    try stream.write(p.is_const);
+    try stream.write(p.attrs.@"const");
     try stream.objectField("child");
     try streamType(stream, p.child);
 }
 
-fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) StreamError!void {
+fn streamOptional(stream: anytype, comptime o: std.lang.Type.Optional) StreamError!void {
     try typeHeader(stream, "optional");
     try stream.objectField("child");
     try streamType(stream, o.child);
@@ -166,7 +167,7 @@ fn streamType(stream: anytype, comptime T: type) StreamError!void {
     }
 
     switch (T) {
-        std.builtin.StackTrace => {
+        std.lang.StackTrace => {
             try typeHeader(stream, "builtin.StackTrace");
         },
         else => {
@@ -198,7 +199,7 @@ fn streamType(stream: anytype, comptime T: type) StreamError!void {
     try stream.endObject();
 }
 
-pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.Fn) StreamError!void {
+pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.lang.Type.Fn) StreamError!void {
     try stream.beginObject();
 
     // emit name
@@ -216,8 +217,10 @@ pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.buil
     // emit params
     try stream.objectField("params");
     try stream.beginArray();
-    inline for (fun.params) |param| {
-        if (param.type) |T| {
+    // zig 0.17 reports fn params as parallel param_types/param_attrs arrays;
+    // param_types is already []const ?type, so the optional is the element.
+    inline for (fun.param_types) |param_type| {
+        if (param_type) |T| {
             try streamType(stream, T);
         } else {
             try stream.write(null);
@@ -233,11 +236,11 @@ pub fn streamModule(stream: anytype, comptime Mod: type) StreamError!void {
     try stream.objectField("functions");
     try stream.beginArray();
     // functions are found in decls
-    inline for (mod_info.decls) |decl| {
-        const decl_info = @typeInfo(@TypeOf(@field(Mod, decl.name)));
+    inline for (mod_info.decl_names) |decl_name| {
+        const decl_info = @typeInfo(@TypeOf(@field(Mod, decl_name)));
         comptime var is_stubbed: bool = false;
         inline for (stubs.functions) |stub| {
-            comptime var found = std.mem.eql(u8, stub.name, decl.name);
+            comptime var found = std.mem.eql(u8, stub.name, decl_name);
             found = found and true;
             if (found) {
                 try stub.stream(stream);
@@ -246,7 +249,7 @@ pub fn streamModule(stream: anytype, comptime Mod: type) StreamError!void {
         }
 
         if (!is_stubbed and .@"fn" == decl_info) {
-            try streamFun(stream, decl.name, decl_info.@"fn");
+            try streamFun(stream, decl_name, decl_info.@"fn");
         }
     }
 
@@ -255,13 +258,13 @@ pub fn streamModule(stream: anytype, comptime Mod: type) StreamError!void {
     try stream.objectField("types");
     try stream.beginArray();
     // types are found in decls
-    inline for (mod_info.decls) |decl| {
-        switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
+    inline for (mod_info.decl_names) |decl_name| {
+        switch (@typeInfo(@TypeOf(@field(Mod, decl_name)))) {
             .type => {
-                const T = @field(Mod, decl.name);
+                const T = @field(Mod, decl_name);
                 try stream.beginObject();
                 try stream.objectField("name");
-                try stream.write(decl.name);
+                try stream.write(decl_name);
                 try stream.objectField("type");
                 try streamType(stream, T);
                 try stream.endObject();
@@ -273,16 +276,16 @@ pub fn streamModule(stream: anytype, comptime Mod: type) StreamError!void {
 
     try stream.objectField("decls");
     try stream.beginArray();
-    inline for (mod_info.decls) |decl| {
-        switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
+    inline for (mod_info.decl_names) |decl_name| {
+        switch (@typeInfo(@TypeOf(@field(Mod, decl_name)))) {
             .type => {},
             .@"fn" => {},
             else => {
                 try stream.beginObject();
                 try stream.objectField("name");
-                try stream.write(decl.name);
+                try stream.write(decl_name);
                 try stream.objectField("type");
-                try stream.write(@typeName(@TypeOf(@field(Mod, decl.name))));
+                try stream.write(@typeName(@TypeOf(@field(Mod, decl_name))));
                 try stream.endObject();
             },
         }

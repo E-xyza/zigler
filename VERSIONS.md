@@ -185,6 +185,38 @@ Thanks to Dave Cottlehuber @dch for testing.
     be changed in the future.
   - adds `beam.get_list_cell`
 
+## 0.17.0
+
+- Breaking changes:
+  - Updated to Zig 0.17.0
+  - **`@hasDecl` only sees public declarations.** Resource `Callbacks` structs must
+    declare `pub fn dtor`, `pub fn stop`, `pub fn down` and `pub fn dyncall`; a
+    callback that is not `pub` is now silently not detected.
+  - `std.builtin` is deprecated in favor of `std.lang` (it remains as an alias).
+    NIF code using `std.builtin.Type`, `std.builtin.StackTrace`, etc. should move to
+    `std.lang`.
+  - Optimize mode tags lost their `Release` prefix: `@import("builtin").mode` now
+    reports `.debug`/`.safe`/`.fast`/`.small`. Zigler's own `optimize:` option is
+    unchanged, since it already used those names.
+  - Zig 0.17 removed the `**` array repetition operator (use `@splat`), the
+    `errdefer |err|` capture, `void{}` and the `i0` type. `i0` is therefore no longer
+    a supported nif parameter or return type.
+  - `std.meta.Int` was removed in favor of the new `@Int` builtin.
+  - C header translation now goes through the ZSF `translate-c` package instead of
+    the built-in `std.Build.Step.TranslateC`, which Zig 0.17 deprecates.  Zigler
+    fetches `translate-c` and `arocc` as source-only git dependencies (pinned in
+    `mix.lock`) and stages them beside the generated `build.zig`, so nif compilation
+    still needs no network access.  If you supply your own build files with
+    `build_files_dir:`, use the `Translator` API rather than `b.addTranslateC`;
+    zigler declares the `translate_c` package in your `build.zig.zon` for you.
+- Fixes:
+  - `priv/erl_nif_win` is now included in the hex package; it is required to compile
+    nifs on Windows.
+- Internal:
+  - `@typeInfo` reports struct, union and enum members as parallel arrays rather than
+    an array of per-field records. `priv/beam/reflect.zig` is a new module providing
+    the previous per-field view to the marshalling code.
+
 ## 0.16.0
 
 - Breaking changes:

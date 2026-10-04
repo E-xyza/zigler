@@ -1,4 +1,4 @@
-//! BEAM-based Io implementation for Zig 0.16.0
+//! BEAM-based Io implementation for Zig 0.17.0
 //!
 //! This module provides an std.Io interface backed by std.Io.Threaded
 //! configured for BEAM NIF use, with BEAM-specific overrides:

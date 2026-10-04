@@ -35,10 +35,10 @@ jobs:
           pkg install -y elixir
           pkg install -y ca_root_nss
 
-          # Download prebuilt Zig 0.16.0 for FreeBSD
-          fetch https://ziglang.org/download/0.16.0/zig-x86_64-freebsd-0.16.0.tar.xz
-          tar -xJf zig-x86_64-freebsd-0.16.0.tar.xz
-          mv zig-x86_64-freebsd-0.16.0 /usr/local/zig
+          # Download prebuilt Zig 0.17.0 for FreeBSD
+          fetch https://ziglang.org/download/0.17.0/zig-x86_64-freebsd-0.17.0.tar.xz
+          tar -xJf zig-x86_64-freebsd-0.17.0.tar.xz
+          mv zig-x86_64-freebsd-0.17.0 /usr/local/zig
 
         run: |
           export ZIG_EXECUTABLE_PATH="/usr/local/zig/zig"

@@ -3,6 +3,7 @@ const e = @import("erl_nif");
 const std = @import("std");
 const resource = @import("resource.zig");
 const options = @import("options.zig");
+const reflect = @import("reflect");
 
 pub fn make(value: anytype, opts: anytype) beam.term {
     const T = @TypeOf(value);
@@ -19,7 +20,7 @@ pub fn make(value: anytype, opts: anytype) beam.term {
     }
 
     // special case on stacktrace
-    if (T == *std.builtin.StackTrace) {
+    if (T == *std.lang.StackTrace) {
         options.assert_default(T, opts);
         return beam.make_stacktrace(value, opts);
     }
@@ -104,7 +105,7 @@ fn make_int(value: anytype, opts: anytype) beam.term {
             1...32 => return .{ .v = e.enif_make_uint(options.env(opts), @as(u32, @intCast(value))) },
             33...64 => return .{ .v = e.enif_make_uint64(options.env(opts), @as(u64, @intCast(value))) },
             else => {
-                const Bigger = std.meta.Int(.unsigned, comptime try std.math.ceilPowerOfTwo(u16, int.bits));
+                const Bigger = @Int(.unsigned, try std.math.ceilPowerOfTwo(u16, int.bits));
                 const buf_size = @sizeOf(Bigger);
                 var result: e.ErlNifTerm = undefined;
                 var intermediate = @as(Bigger, @intCast(value));
@@ -182,7 +183,7 @@ fn make_struct(value: anytype, opts: anytype) beam.term {
 fn make_struct_map(value: anytype, opts: anytype) beam.term {
     const struct_info = @typeInfo(@TypeOf(value)).@"struct";
     const env = options.env(opts);
-    const fields = struct_info.fields;
+    const fields = reflect.structFields(struct_info);
     var result: e.ErlNifTerm = undefined;
     var keys: [fields.len]e.ErlNifTerm = undefined;
     var vals: [fields.len]e.ErlNifTerm = undefined;
@@ -339,7 +340,7 @@ fn make_cpointer(cpointer: anytype, opts: anytype) beam.term {
             // the following two types have inferrable sentinels
             if (Child == u8) {
                 // Preserve const qualifier when casting to sentinel pointer
-                const SentinelPtr = if (pointer.is_const) [*:0]const u8 else [*:0]u8;
+                const SentinelPtr = if (pointer.attrs.@"const") [*:0]const u8 else [*:0]u8;
                 return make(@as(SentinelPtr, @ptrCast(cpointer)), opts);
             }
             if (@typeInfo(Child) == .pointer) {

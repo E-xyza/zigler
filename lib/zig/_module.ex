@@ -604,10 +604,10 @@ defmodule Zig.Module do
   # EEX Helper functions
   defp render_optimize_mode(build) do
     case build.optimize do
-      :debug -> ".Debug"
-      :safe -> ".ReleaseSafe"
-      :fast -> ".ReleaseFast"
-      :small -> ".ReleaseSmall"
+      :debug -> ".debug"
+      :safe -> ".safe"
+      :fast -> ".fast"
+      :small -> ".small"
     end
   end
 

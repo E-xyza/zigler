@@ -1,14 +1,14 @@
 defmodule Zigler.MixProject do
   use Mix.Project
 
-  def zig_version, do: "0.16.0"
+  def zig_version, do: "0.17.0"
 
   def project do
     env = Mix.env()
 
     [
       app: :zigler,
-      version: "0.16.0",
+      version: "0.17.0",
       elixir: "~> 1.15",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
@@ -18,7 +18,7 @@ defmodule Zigler.MixProject do
         licenses: ["MIT"],
         # we need to package the zig BEAM adapters and the c include files as a part
         # of the hex packaging system.
-        files: ~w[lib mix.exs README* LICENSE* VERSIONS* priv/beam],
+        files: ~w[lib mix.exs README* LICENSE* VERSIONS* priv/beam priv/erl_nif_win],
         links: %{
           "GitHub" => "https://github.com/E-xyza/zigler",
           "Zig" => "https://ziglang.org/"
@@ -78,7 +78,17 @@ defmodule Zigler.MixProject do
       {:zig_parser, "~> 0.7.0"},
       # utility to help manage type protocols
       {:protoss, "~> 1.0"},
-      {:zig_get, "~> 0.16.0", runtime: false},
+      {:zig_get, path: "installer", runtime: false},
+      # Zig 0.17 deprecates the built-in std.Build.Step.TranslateC in favour of the
+      # ZSF translate-c package, which in turn needs the aro C frontend.  Neither is
+      # an elixir project, so they are fetched as source-only git deps and handed to
+      # `zig build` as path dependencies -- this keeps nif compilation offline, with
+      # the exact commits pinned in mix.lock.
+      {:translate_c, git: "https://codeberg.org/ziglang/translate-c.git", branch: "zig-0.17.x",
+       compile: false, app: false, runtime: false},
+      {:arocc, git: "https://codeberg.org/ziglang/arocc.git",
+       ref: "d0c8c4d9c55daa7ef6e40cf0f630a5b5e900989b",
+       compile: false, app: false, runtime: false},
       # documentation
       {:markdown_formatter, "~> 0.6", only: :dev, runtime: false},
       {:zig_doc, "~> 0.7.0"},

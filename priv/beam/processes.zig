@@ -3,6 +3,7 @@ const e = @import("erl_nif");
 const options = @import("options.zig");
 const threads = @import("threads.zig");
 const std = @import("std");
+const reflect = @import("reflect");
 
 const PidError = error{ NotProcessBound, Dead, NotDelivered };
 
@@ -25,7 +26,7 @@ pub fn self(opts: anytype) PidError!beam.pid {
 
 fn SendReturnType(Opts: type) type {
     if (@typeInfo(Opts) != .@"struct") @compileError("opts must be a tuple");
-    inline for (@typeInfo(Opts).@"struct".fields) |field| {
+    inline for (reflect.fields(Opts)) |field| {
         if (std.mem.eql(u8, field.name, "persist")) {
             return field.type;
         }

@@ -124,7 +124,9 @@ defmodule ReleaseMode do
   """
 
   test "release mode" do
-    assert :ReleaseFast == get_mode()
+    # zig 0.17 renamed std.builtin.OptimizeMode to std.lang.Optimize and dropped
+    # the "Release" prefix from its tags: .ReleaseFast is now .fast
+    assert :fast == get_mode()
   end
 end
 ```
