@@ -12,8 +12,8 @@ jobs:
     - uses: erlef/setup-beam@v1
       name: Setup Erlang
       with:
-        otp-version: '27.3'
-        elixir-version: '1.17.3'
+        otp-version: '29.1'
+        elixir-version: '1.20.4'
 
     - uses: actions/cache@v3
       id: deps-cache
@@ -31,7 +31,7 @@ jobs:
         mem: 8192
         usesh: true
         prepare: |
-          pkg install -y erlang-runtime28
+          pkg install -y erlang-runtime29
           pkg install -y elixir
           pkg install -y ca_root_nss
 
@@ -42,7 +42,7 @@ jobs:
 
         run: |
           export ZIG_EXECUTABLE_PATH="/usr/local/zig/zig"
-          export PATH="/usr/local/lib/erlang28/bin:$PATH"
+          export PATH="/usr/local/lib/erlang29/bin:$PATH"
           export SSL_CACERTFILE=/usr/local/etc/ssl/cert.pem
 
           mix local.hex --force

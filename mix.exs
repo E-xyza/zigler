@@ -9,7 +9,7 @@ defmodule Zigler.MixProject do
     [
       app: :zigler,
       version: "0.17.0",
-      elixir: "~> 1.15",
+      elixir: "~> 1.18",
       start_permanent: env == :prod,
       elixirc_paths: elixirc_paths(env),
       deps: deps(),
@@ -78,7 +78,7 @@ defmodule Zigler.MixProject do
       {:zig_parser, "~> 0.8.0"},
       # utility to help manage type protocols
       {:protoss, "~> 1.0"},
-      {:zig_get, path: "installer", runtime: false},
+      {:zig_get, "~> 0.17.0", runtime: false},
       # Zig 0.17 deprecates the built-in std.Build.Step.TranslateC in favour of the
       # ZSF translate-c package, which in turn needs the aro C frontend.  Neither is
       # an elixir project, so they are fetched as source-only git deps and handed to

@@ -18,6 +18,6 @@
   "rustler_precompiled": {:hex, :rustler_precompiled, "0.8.4", "700a878312acfac79fb6c572bb8b57f5aae05fe1cf70d34b5974850bbf2c05bf", [:mix], [{:castore, "~> 0.1 or ~> 1.0", [hex: :castore, repo: "hexpm", optional: false]}, {:rustler, "~> 0.23", [hex: :rustler, repo: "hexpm", optional: true]}], "hexpm", "3b33d99b540b15f142ba47944f7a163a25069f6d608783c321029bc1ffb09514"},
   "translate_c": {:git, "https://codeberg.org/ziglang/translate-c.git", "02ff0c523fb92a38939b04d0145c4a9602a74d56", [branch: "zig-0.17.x"]},
   "zig_doc": {:hex, :zig_doc, "0.8.0", "e303fa042561bb2086e4944df08cff2de511d569cc4e6d015a075546e5e46e91", [:mix], [{:ex_doc, "0.39.1", [hex: :ex_doc, repo: "hexpm", optional: false]}, {:zig_parser, "~> 0.8.0", [hex: :zig_parser, repo: "hexpm", optional: false]}], "hexpm", "593001d36746b432bc5e3cb16ee4063fdeb48143465d6e862a89cf22624313e1"},
-  "zig_get": {:hex, :zig_get, "0.16.0", "de0d5ef81a4917c142496d4f26e12f3fbbe209b3ed7b3af25a57437ac3af6542", [:mix], [], "hexpm", "2841127cf2005da74fb28d3cc68397a393d3d71df5f45752b974345e696beb01"},
+  "zig_get": {:hex, :zig_get, "0.17.0", "24e84b448ca315919f22f3c47388d1e95cfc96b8b0e4cd2afcddd75ed113692a", [:mix], [], "hexpm", "1f592acdd762d8a44a988a4618b1cd54d80861d1e27ef7cb8f4c57baadaccee1"},
   "zig_parser": {:hex, :zig_parser, "0.8.0", "bfc46c2a911fee0e1f5a895eea6e850590586d8f96986cd15e7a4f23db36efbe", [:mix], [{:pegasus, "~> 0.2.4", [hex: :pegasus, repo: "hexpm", optional: false]}], "hexpm", "2d8503b91c20ff873598bc6b0997240e30db5104772dcfd5d3bded868cb3020f"},
 }

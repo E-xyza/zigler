@@ -8,17 +8,16 @@ jobs:
     name: Linux OTP ${{matrix.pair.otp-version}} / Elixir ${{matrix.pair.elixir-version}}
     strategy:
       matrix:
+        # OTP supports the two most recent majors, so 27 and older are dropped.
         pair:
-          - otp-version: '28.1'
-            elixir-version: '1.19.1'
-          - otp-version: '28.1'
-            elixir-version: '1.18.4'
-          - otp-version: '27.3'
-            elixir-version: '1.17.3'
-          - otp-version: '26.2'
-            elixir-version: '1.16.3'
-          - otp-version: '25.3'
-            elixir-version: '1.15.8'
+          - otp-version: '29.1'
+            elixir-version: '1.20.4'
+          - otp-version: '28.5'
+            elixir-version: '1.20.4'
+          - otp-version: '28.5'
+            elixir-version: '1.19.6'
+          - otp-version: '28.5'
+            elixir-version: '1.18.5'
     steps:
     - uses: actions/checkout@v4
     - uses: erlef/setup-beam@v1
@@ -51,10 +50,12 @@ jobs:
       id: zig-version
       run: echo "version=$(mix run --no-compile --no-start -e 'IO.puts(Zig.version())')" >> $GITHUB_OUTPUT
 
+    # mix zig.get installs into ZIG_ARCHIVE_PATH, so cache that rather than a
+    # repo-relative `zig` directory that never gets written.
     - uses: actions/cache@v3
       id: zig-cache
       with:
-        path: zig
+        path: ~/.cache/zigler
         key: ${{ runner.os }}-zig-${{ steps.zig-version.outputs.version }}
 
     - name: Get Zig
@@ -73,14 +74,16 @@ jobs:
     - uses: actions/checkout@v4
     - uses: erlef/setup-beam@v1
       with:
-        otp-version: '28.1'
-        elixir-version: '1.19.1'
+        # credo 1.7.x cannot tokenize the ~t() sigil under elixir 1.20, so this
+        # job stays on 1.19 until credo supports it.
+        otp-version: '28.5'
+        elixir-version: '1.19.6'
 
     - uses: actions/cache@v3
       id: deps-cache
       with:
         path: deps
-        key: ${{ runner.os }}-mix-28.1-1.19.1-${{ hashFiles('mix.lock') }}-${{ hashFiles('installer/**/*') }}
+        key: ${{ runner.os }}-mix-28.5-1.19.6-${{ hashFiles('mix.lock') }}-${{ hashFiles('installer/**/*') }}
 
     - name: Install dependencies
       run: mix deps.get
