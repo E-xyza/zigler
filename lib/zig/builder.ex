@@ -40,6 +40,14 @@ after
     Path.join(staging_root, to_string(module))
   end
 
+  # zig rejects absolute paths in build.zig.zon.  The shared translate-c tree lives
+  # in a fingerprinted directory alongside this module's staging directory, so it
+  # is reached as ../<fingerprinted dir>/translate_c.
+  defp zon_path(path) do
+    parent = path |> Path.dirname() |> Path.basename()
+    Path.join(["..", parent, Path.basename(path)])
+  end
+
   # this is required because Elixir version < 1.16 doesn't support Path.relative_to/3
   def staging_directory(module, from) do
     staging_dir = staging_directory(module)
@@ -146,7 +154,8 @@ after
 
     # zig 0.17 deprecated the built-in translate-c build step; stage the ZSF package
     # (and aro) so the generated build.zig can reach them as path dependencies.
-    translate_c_path = TranslateC.stage!(staging_directory)
+    # Staged once and shared, not copied per module: the trees are ~23MB.
+    translate_c_path = TranslateC.stage!()
 
     if dir = module.build_files_dir do
       # Process dependencies even when using build_files_dir
@@ -164,7 +173,7 @@ after
 
       # a user-supplied build.zig.zon won't know about the staged translate-c
       # package, so declare it on their behalf.
-      TranslateC.inject_dependency!(build_zig_zon_path, translate_c_path)
+      TranslateC.inject_dependency!(build_zig_zon_path, zon_path(translate_c_path))
     else
       # Process dependencies - copy them if needed on Windows
       processed_dependencies = process_dependencies(module, staging_directory)
@@ -176,7 +185,10 @@ after
         build_zig_zon_path,
         build_zig_zon(%{
           module
-          | dependencies: [{:translate_c, translate_c_path} | processed_dependencies]
+          | dependencies: [
+              {:translate_c, zon_path(translate_c_path)}
+              | processed_dependencies
+            ]
         })
       )
     end

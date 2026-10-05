@@ -5,53 +5,92 @@ defmodule Zig.TranslateC do
   # ZSF `translate-c` package, which depends in turn on the `aro` C frontend.
   #
   # Both are plain zig source, fetched as source-only git deps (see mix.exs) so that
-  # their commits are pinned in mix.lock.  `zig build` cannot consume them directly
-  # from `deps/`, though: translate-c's own build.zig.zon declares aro by git URL, so
-  # a build would reach for the network and fail in an airgapped or sandboxed CI.
+  # their commits are pinned in mix.lock.  `zig build` cannot consume them straight
+  # out of `deps/`, though: translate-c's own build.zig.zon declares aro by git URL,
+  # so a build would reach for the network and fail in an airgapped or sandboxed CI.
   #
-  # So the two trees are staged next to the generated build.zig with that one
+  # So the two trees are staged once, into a shared directory, with that one
   # declaration rewritten to a relative path dependency.  The staged copy is derived
   # state -- `mix deps.get` rewrites deps/ freely and we re-derive from it.
+  #
+  # This is deliberately *not* per-module: the two trees are ~23MB across ~1300
+  # files, and copying that into every nif's staging directory is slow enough on
+  # windows to blow ExUnit's timeout.
 
   require Logger
 
   @aro_dep_pattern ~r/\.aro\s*=\s*\.\{\s*\.url\s*=\s*"[^"]+"\s*,\s*\.hash\s*=\s*"[^"]+"\s*,?\s*\},?/s
 
   @doc """
-  Stages translate-c and aro into `staging_directory` and returns the path to the
-  translate-c tree, relative to that directory, for use as a zig path dependency.
+  Stages translate-c and aro, and returns an absolute path to the translate-c tree
+  for use as a zig path dependency.
+
+  The staged trees are shared across every module in a build, and re-derived only
+  when the dependency sources are newer.
   """
-  def stage!(staging_directory) do
+  def stage! do
     translate_c_src = dep_path!(:translate_c)
     aro_src = dep_path!(:arocc)
 
-    deps_dir = Path.join(staging_directory, "deps")
-    translate_c_dst = Path.join(deps_dir, "translate_c")
-    aro_dst = Path.join(deps_dir, "aro")
+    root = cache_directory()
+    translate_c_dst = Path.join(root, "translate_c")
+    aro_dst = Path.join(root, "aro")
 
     sync!(translate_c_src, translate_c_dst)
     sync!(aro_src, aro_dst)
 
     rewrite_aro_dependency!(translate_c_dst)
 
-    "./deps/translate_c"
+    translate_c_dst
   end
 
-  # the vendored trees are large-ish; only re-copy when the source is newer.
-  defp sync!(src, dst) do
-    if stale?(src, dst) do
-      File.rm_rf!(dst)
-      File.mkdir_p!(Path.dirname(dst))
-      File.cp_r!(src, dst)
-      Logger.debug("staged #{src} to #{dst}")
+  @doc """
+  Where the staged trees live.  Honours `ZIGLER_STAGING_ROOT` so that a build with a
+  relocated staging area keeps everything together.
+  """
+  def cache_directory do
+    # sits directly in the staging root, as a sibling of every module's staging
+    # directory, so each generated build.zig.zon can reach it with a relative
+    # path -- zig rejects absolute paths in build.zig.zon.
+    Path.join(staging_root(), ".translate_c-#{deps_fingerprint()}")
+  end
+
+  defp staging_root do
+    case System.get_env("ZIGLER_STAGING_ROOT", "") do
+      "" -> Zig._tmp_dir()
+      path -> path
     end
   end
 
-  defp stale?(src, dst) do
-    case {File.stat(src), File.stat(dst)} do
-      {{:ok, %{mtime: src_mtime}}, {:ok, %{mtime: dst_mtime}}} -> src_mtime > dst_mtime
-      {{:ok, _}, _} -> true
-      _ -> raise File.Error, reason: :enoent, action: "stage translate-c from", path: src
+  # key the staged copy on the dependency revisions, so that a `mix deps.update`
+  # lands in a fresh directory instead of being half-overwritten.
+  defp deps_fingerprint do
+    [:translate_c, :arocc]
+    |> Enum.map(fn dep ->
+      case Mix.Project.deps_paths()[dep] do
+        nil -> "missing"
+        path -> path |> File.stat!() |> Map.get(:mtime) |> :erlang.term_to_binary()
+      end
+    end)
+    |> :erlang.term_to_binary()
+    |> then(&:crypto.hash(:sha256, &1))
+    |> Base.encode16(case: :lower)
+    |> binary_part(0, 16)
+  end
+
+  defp sync!(src, dst) do
+    # the fingerprint already captures dependency changes, so an existing
+    # directory is up to date by construction.
+    unless File.dir?(dst) do
+      tmp = "#{dst}.#{:erlang.unique_integer([:positive])}"
+      File.mkdir_p!(Path.dirname(dst))
+      File.cp_r!(src, tmp)
+
+      # rename is atomic, so concurrent compilations cannot observe a half-copy
+      case File.rename(tmp, dst) do
+        :ok -> Logger.debug("staged #{src} to #{dst}")
+        {:error, _} -> File.rm_rf!(tmp)
+      end
     end
   end
 
@@ -91,25 +130,23 @@ defmodule Zig.TranslateC do
       String.contains?(zon, ".translate_c") ->
         :ok
 
-      # .dependencies = .{} -- empty, possibly with whitespace or a newline
       Regex.match?(~r/\.dependencies\s*=\s*\.\{\s*\}/s, zon) ->
         File.write!(
           zon_path,
           String.replace(
             zon,
             ~r/\.dependencies\s*=\s*\.\{\s*\}/s,
-            ".dependencies = .{\n    .translate_c = .{.path = \"#{translate_c_path}\"},\n  }"
+            ".dependencies = .{\n    .translate_c = .{.path = \"#{zon_path_escape(translate_c_path)}\"},\n  }"
           )
         )
 
-      # .dependencies = .{ ...entries... }
       Regex.match?(~r/\.dependencies\s*=\s*\.\{/s, zon) ->
         File.write!(
           zon_path,
           String.replace(
             zon,
             ~r/\.dependencies\s*=\s*\.\{/s,
-            ".dependencies = .{\n    .translate_c = .{.path = \"#{translate_c_path}\"},",
+            ".dependencies = .{\n    .translate_c = .{.path = \"#{zon_path_escape(translate_c_path)}\"},",
             global: false
           )
         )
@@ -124,6 +161,10 @@ defmodule Zig.TranslateC do
           """
     end
   end
+
+  @doc false
+  # zon strings are escaped like zig strings, so windows separators need doubling.
+  def zon_path_escape(path), do: String.replace(path, "\\", "\\\\")
 
   defp dep_path!(dep) do
     case Mix.Project.deps_paths()[dep] do
