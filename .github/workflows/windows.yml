@@ -58,4 +58,6 @@ jobs:
       - name: Run Tests
         env:
           RUNNING_CI: "TRUE"
-        run: mix test --exclude no_ci --exclude on_upgrade --exclude no_windows --max-cases 2
+        # the runner OOM-killed the BEAM at --max-cases 2; each concurrent zig
+        # build peaks near 300MB even with a warm cache.
+        run: mix test --exclude no_ci --exclude on_upgrade --exclude no_windows --max-cases 1
