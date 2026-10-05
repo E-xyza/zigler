@@ -130,6 +130,15 @@ defmodule Zig.ErrorProng do
                   other
               end
 
+            # zig 0.17 can report a path relative to the build root (macos emits
+            # e.g. "../../../../Users/.../foo.zig").  Resolve those back to the
+            # absolute path the manifest and the caller both expect.
+            file =
+              case file do
+                "../" <> _ = relative -> Path.expand(relative)
+                other -> other
+              end
+
             module =
               if module_str do
                 # Normalize compile_unit_name to an Elixir module atom:
