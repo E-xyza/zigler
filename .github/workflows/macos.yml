@@ -54,6 +54,9 @@ jobs:
       - name: Get Zig
         run: mix zig.get
   
+      - name: Warm the translate-c cache
+        run: mix zig.warm
+
       - name: Run Tests
         env:
           RUNNING_CI: "TRUE"

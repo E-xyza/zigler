@@ -50,4 +50,12 @@ jobs:
 
           mix local.hex --force
 
-          mix test --exclude no_ci --exclude skip_freebsd
+          # build translate-c and aro into the global zig cache up front: it costs
+          # about a minute and a gigabyte, once, and doing it here keeps it out of
+          # any individual test.
+          mix zig.warm
+
+          # translate-c/aro is precompiled above, so no test pays for it.  The
+          # fan-out is still capped: each zig build peaks near 300MB and the VM
+          # has 8GB.
+          mix test --exclude no_ci --exclude skip_freebsd --max-cases 4
