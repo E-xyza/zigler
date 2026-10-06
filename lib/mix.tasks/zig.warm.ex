@@ -26,10 +26,14 @@ defmodule Mix.Tasks.Zig.Warm do
   @requirements ["app.config"]
 
   def run(_args) do
-    # build inside the cache directory, so translate_c is reachable as ../translate_c
-    # -- zig rejects absolute paths in build.zig.zon.
-    _translate_c = TranslateC.stage!()
-    staging = Path.join(TranslateC.cache_directory(), "warm")
+    # Build from a sibling of the staged tree, exactly where a module's staging
+    # directory sits, so that the relative path in build.zig.zon is character for
+    # character the one a real build uses.  Zig's cache key covers the source
+    # paths, so warming from a different depth produces a different hash and the
+    # work is simply redone.  (Absolute paths are not an option: zig rejects them
+    # in build.zig.zon.)
+    translate_c = TranslateC.stage!()
+    staging = Path.join(Path.dirname(TranslateC.cache_directory()), "zigler_warm")
 
     File.mkdir_p!(staging)
 
@@ -37,7 +41,7 @@ defmodule Mix.Tasks.Zig.Warm do
       Path.join([:code.root_dir(), "/erts-#{:erlang.system_info(:version)}", "/include"])
 
     File.write!(Path.join(staging, "build.zig"), build_zig())
-    File.write!(Path.join(staging, "build.zig.zon"), build_zig_zon())
+    File.write!(Path.join(staging, "build.zig.zon"), build_zig_zon(translate_c))
 
     Mix.shell().info("precompiling translate-c (this takes a minute the first time)")
 
@@ -54,7 +58,7 @@ defmodule Mix.Tasks.Zig.Warm do
     Mix.shell().info("translate-c is in the global zig cache")
   end
 
-  defp build_zig_zon do
+  defp build_zig_zon(translate_c) do
     """
     .{
       .name = .zigler_warm,
@@ -62,10 +66,16 @@ defmodule Mix.Tasks.Zig.Warm do
       .fingerprint = 0x516e6589bc520873,
       .paths = .{ "build.zig", "build.zig.zon" },
       .dependencies = .{
-        .translate_c = .{ .path = "../translate_c" },
+        .translate_c = .{ .path = "#{warm_relative_path(translate_c)}" },
       },
     }
     """
+  end
+
+  # mirrors Zig.Builder's zon_path/1: ../<fingerprinted dir>/translate_c
+  defp warm_relative_path(translate_c) do
+    parent = translate_c |> Path.dirname() |> Path.basename()
+    Path.join(["..", parent, Path.basename(translate_c)])
   end
 
   # the smallest build that still forces translate-c (and therefore aro) to be
