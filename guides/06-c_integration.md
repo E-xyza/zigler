@@ -2,6 +2,14 @@
 
 Zigler offers several tools to integrate your code with C and C++ code.
 
+> ### Zig 0.17.0 C translation {: .info}
+>
+> Zig 0.17 deprecated the compiler's built-in translate-c build step, so zigler now
+> performs C header translation with the ZSF `translate-c` package.  This is handled
+> for you: the package and its `arocc` dependency are ordinary (source-only) mix
+> dependencies, staged automatically when your nif is compiled, and no network access
+> is required at compile time.  The `headers:` option below is unchanged.
+
 > ### Zig 0.16.0 C API changes {: .warning}
 >
 > In Zig 0.16.0, `@cImport` was removed. Zigler provides two alternatives:

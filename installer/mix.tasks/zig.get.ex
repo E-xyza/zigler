@@ -24,18 +24,18 @@ defmodule Mix.Tasks.Zig.Get do
 
   @shortdoc "Obtains the Zig compiler toolchain"
 
-  @default_version "0.16.0"
+  @default_version "0.17.0"
 
   @moduledoc """
   obtains the Zig compiler toolchain
 
-      $ mix zig.get [--version VERSION] [--from FROM] [--os OS] [--arch ARCH] [other options]
+      $ mix zig.get [--version VERSION] [--file FILE] [--os OS] [--arch ARCH] [other options]
 
   the zigler compiler will be downloaded to ZIG_ARCHIVE_PATH/VERSION
 
   if unspecified, VERSION defaults to #{@default_version}.
 
-  if FROM is specified, will use the FROM file instead of getting from the internet.
+  if FILE is specified, will use that tarball instead of getting from the internet.
 
   if unspecified, ZIG_ARCHIVE_PATH defaults to the user cache path given by
   `:filename.basedir/3` with application name `"zigler"`.
@@ -48,12 +48,12 @@ defmodule Mix.Tasks.Zig.Get do
   - `TAR_COMMAND`: path to a tar executable that is equivalent to gnu tar.
     only useful for non-windows architectures.
   - `ZIG_ARCHIVE_PATH`: path to desired directory to achive the zig compiler toolchain.
+  - `VERIFY`: set to `false` to skip sha256 verification of the downloaded tarball
+    against the manifest at `https://ziglang.org/download/index.json`.
 
   ### other options
 
   - `--force` overwrites the existing installation if it exists.
-  - `--disable-verify` disables the hash verification of the downloaded file.
-    it's possible that the manifest at `https://ziglang.org/download/index.json`
   """
 
   defstruct ~w[version path arch os url file verify hash force]a
@@ -140,7 +140,10 @@ defmodule Mix.Tasks.Zig.Get do
   end
 
   defp ensure_destination(opts) do
-    target_directory = Path.join(opts.path, "zig-#{opts.os}-#{opts.arch}-#{opts.version}")
+    # NB: arch comes before os, matching both the directory name inside the
+    # upstream tarball and what Zig.Command expects to find.  These must agree or
+    # an existing toolchain is never detected and gets re-downloaded every time.
+    target_directory = Path.join(opts.path, "zig-#{opts.arch}-#{opts.os}-#{opts.version}")
 
     cond do
       File.exists?(target_directory) && opts.force ->
@@ -174,6 +177,11 @@ defmodule Mix.Tasks.Zig.Get do
     _ ->
       defp json_decode!(string), do: Jason.decode!(string)
   end
+
+  # with --file there is nothing to download, so don't reach for the manifest:
+  # that would make an offline install impossible.  The hash in the manifest is
+  # the hash of the upstream tarball, so it is only meaningful for a download.
+  defp get_meta(%{file: file} = opts) when not is_nil(file), do: %{opts | verify: false}
 
   defp get_meta(opts) do
     meta =

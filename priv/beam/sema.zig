@@ -1,8 +1,9 @@
 const std = @import("std");
 const nif = @import("nif");
 const json = std.json;
+const reflect = @import("reflect");
 
-fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
+fn streamInt(stream: anytype, comptime i: std.lang.Type.Int) !void {
     try typeHeader(stream, "integer");
     try stream.objectField("signedness");
     switch (i.signedness) {
@@ -13,8 +14,8 @@ fn streamInt(stream: anytype, comptime i: std.builtin.Type.Int) !void {
     try stream.write(i.bits);
 }
 
-fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: type) !void {
-    if (en.fields.len <= 1) {
+fn streamEnum(stream: anytype, comptime en: std.lang.Type.Enum, comptime T: type) !void {
+    if (en.field_names.len <= 1) {
         try typeHeader(stream, "unusable:" ++ @typeName(T));
         return;
     }
@@ -24,20 +25,20 @@ fn streamEnum(stream: anytype, comptime en: std.builtin.Type.Enum, comptime T: t
     try stream.write(@typeName(T));
     try stream.objectField("tags");
     try stream.beginObject();
-    inline for (en.fields) |field| {
+    inline for (reflect.enumInfoFields(en)) |field| {
         try stream.objectField(field.name);
         try stream.write(field.value);
     }
     try stream.endObject();
 }
 
-fn streamFloat(stream: anytype, comptime f: std.builtin.Type.Float) !void {
+fn streamFloat(stream: anytype, comptime f: std.lang.Type.Float) !void {
     try typeHeader(stream, "float");
     try stream.objectField("bits");
     try stream.write(f.bits);
 }
 
-fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S: type) !void {
+fn streamStruct(stream: anytype, comptime s: std.lang.Type.Struct, comptime S: type) !void {
     const name = @typeName(S);
     if (@hasDecl(S, "__is_zigler_resource")) {
         try typeHeader(stream, "resource");
@@ -54,7 +55,9 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S
             },
             .@"extern" => {
                 try stream.objectField("extern_size");
-                try stream.write(@bitSizeOf(S));
+                // Zig 0.17 rejects @bitSizeOf on extern structs; extern layout is
+                // byte-addressed, so the size in bits is @sizeOf * 8.
+                try stream.write(@sizeOf(S) * 8);
             },
             .auto => {},
         }
@@ -62,7 +65,7 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S
         try stream.write(s.is_tuple);
         try stream.objectField("fields");
         try stream.beginArray();
-        inline for (s.fields) |field| {
+        inline for (reflect.structFields(s)) |field| {
             try stream.beginObject();
             try stream.objectField("name");
             try stream.write(field.name);
@@ -83,7 +86,7 @@ fn streamStruct(stream: anytype, comptime s: std.builtin.Type.Struct, comptime S
     }
 }
 
-fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytype) !void {
+fn streamArray(stream: anytype, comptime a: std.lang.Type.Array, repr: anytype) !void {
     try typeHeader(stream, "array");
     try stream.objectField("len");
     try stream.write(a.len);
@@ -95,7 +98,7 @@ fn streamArray(stream: anytype, comptime a: std.builtin.Type.Array, repr: anytyp
     try stream.write(repr);
 }
 
-fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: anytype) !void {
+fn streamPointer(stream: anytype, comptime p: std.lang.Type.Pointer, repr: anytype) !void {
     switch (p.size) {
         .one => {
             try typeHeader(stream, "pointer");
@@ -119,12 +122,12 @@ fn streamPointer(stream: anytype, comptime p: std.builtin.Type.Pointer, repr: an
         },
     }
     try stream.objectField("is_const");
-    try stream.write(p.is_const);
+    try stream.write(p.attrs.@"const");
     try stream.objectField("child");
     try streamType(stream, p.child);
 }
 
-fn streamOptional(stream: anytype, comptime o: std.builtin.Type.Optional) !void {
+fn streamOptional(stream: anytype, comptime o: std.lang.Type.Optional) !void {
     try typeHeader(stream, "optional");
     try stream.objectField("child");
     try streamType(stream, o.child);
@@ -167,7 +170,7 @@ fn streamType(stream: anytype, comptime T: type) !void {
 
     // catch special types pid, port and term
     switch (T) {
-        std.builtin.StackTrace => {
+        std.lang.StackTrace => {
             try typeHeader(stream, "builtin.StackTrace");
         },
         else => {
@@ -195,7 +198,7 @@ fn streamType(stream: anytype, comptime T: type) !void {
     try stream.endObject();
 }
 
-pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.builtin.Type.Fn) !void {
+pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.lang.Type.Fn) !void {
     try stream.beginObject();
 
     // emit name
@@ -213,8 +216,10 @@ pub fn streamFun(stream: anytype, comptime name: anytype, comptime fun: std.buil
     // emit params
     try stream.objectField("params");
     try stream.beginArray();
-    inline for (fun.params) |param| {
-        if (param.type) |T| {
+    // zig 0.17 reports fn params as parallel param_types/param_attrs arrays;
+    // param_types is already []const ?type, so the optional is the element.
+    inline for (fun.param_types) |param_type| {
+        if (param_type) |T| {
             try streamType(stream, T);
         } else {
             try stream.write(null);
@@ -230,11 +235,11 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
     try stream.objectField("functions");
     try stream.beginArray();
     // functions are found in decls
-    inline for (mod_info.decls) |decl| {
-        const decl_info = @typeInfo(@TypeOf(@field(Mod, decl.name)));
+    inline for (mod_info.decl_names) |decl_name| {
+        const decl_info = @typeInfo(@TypeOf(@field(Mod, decl_name)));
 
         if (.@"fn" == decl_info) {
-            try streamFun(stream, decl.name, decl_info.@"fn");
+            try streamFun(stream, decl_name, decl_info.@"fn");
         }
     }
 
@@ -243,13 +248,13 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
     try stream.objectField("types");
     try stream.beginArray();
     // types are found in decls
-    inline for (mod_info.decls) |decl| {
-        switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
+    inline for (mod_info.decl_names) |decl_name| {
+        switch (@typeInfo(@TypeOf(@field(Mod, decl_name)))) {
             .type => {
-                const T = @field(Mod, decl.name);
+                const T = @field(Mod, decl_name);
                 try stream.beginObject();
                 try stream.objectField("name");
-                try stream.write(decl.name);
+                try stream.write(decl_name);
                 try stream.objectField("type");
                 try streamType(stream, T);
                 try stream.endObject();
@@ -261,16 +266,16 @@ pub fn streamModule(stream: anytype, comptime Mod: type) !void {
 
     try stream.objectField("decls");
     try stream.beginArray();
-    inline for (mod_info.decls) |decl| {
-        switch (@typeInfo(@TypeOf(@field(Mod, decl.name)))) {
+    inline for (mod_info.decl_names) |decl_name| {
+        switch (@typeInfo(@TypeOf(@field(Mod, decl_name)))) {
             .type => {},
             .@"fn" => {},
             else => {
                 try stream.beginObject();
                 try stream.objectField("name");
-                try stream.write(decl.name);
+                try stream.write(decl_name);
                 try stream.objectField("type");
-                try stream.write(@typeName(@TypeOf(@field(Mod, decl.name))));
+                try stream.write(@typeName(@TypeOf(@field(Mod, decl_name))));
                 try stream.endObject();
             },
         }

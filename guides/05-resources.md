@@ -159,6 +159,12 @@ The following functions are supported in the Callbacks, and are all optional.
 - `down`: called on resource down, on behalf of `e.enif_monitor_process`
 - `dyncall`: called on dynamic resource call, on behalf of `enif_dynamic_resource_call`
 
+> ### Callbacks must be `pub` {: .warning}
+>
+> As of Zig 0.17, `@hasDecl` only reports *public* declarations, and zigler uses it to
+> discover these callbacks.  A callback declared as `fn dtor(...)` instead of
+> `pub fn dtor(...)` will be silently ignored rather than being called.
+
 ```elixir
 ~Z"""
 pub const PointerResource = beam.Resource(*MyStruct, root, .{.Callbacks = PointerResourceCallbacks});

@@ -3,6 +3,7 @@ const e = @import("erl_nif");
 const std = @import("std");
 const resource = @import("resource.zig");
 const options = @import("options.zig");
+const reflect = @import("reflect");
 
 const GetError = error{ badarg, unreachable_error };
 
@@ -68,7 +69,7 @@ pub fn get_int(comptime T: type, src: beam.term, opts: anytype) GetError!T {
             else => {
                 // for integers bigger than 64-bytes the number
                 // is imported as a binary.
-                const Bigger = std.meta.Int(.unsigned, comptime try std.math.ceilPowerOfTwo(u16, int.bits));
+                const Bigger = @Int(.unsigned, try std.math.ceilPowerOfTwo(u16, int.bits));
                 const bytes = @sizeOf(Bigger);
 
                 var result: e.ErlNifBinary = undefined;
@@ -101,7 +102,7 @@ pub fn get_int(comptime T: type, src: beam.term, opts: anytype) GetError!T {
             else => {
                 // for integers bigger than 64-bytes the number
                 // is imported as a binary.
-                const Bigger = std.meta.Int(.unsigned, comptime try std.math.ceilPowerOfTwo(u16, int.bits));
+                const Bigger = @Int(.unsigned, try std.math.ceilPowerOfTwo(u16, int.bits));
                 const bytes = @sizeOf(Bigger);
 
                 var result: e.ErlNifBinary = undefined;
@@ -158,9 +159,10 @@ inline fn lowerInt(comptime T: type, src: beam.term, result: anytype, opts: anyt
 pub fn get_enum(comptime T: type, src: beam.term, opts: anytype) !T {
     const enum_info = @typeInfo(T).@"enum";
     const IntType = enum_info.tag_type;
-    comptime var int_values: [enum_info.fields.len]IntType = undefined;
+    const enum_fields = reflect.enumInfoFields(enum_info);
+    comptime var int_values: [enum_fields.len]IntType = undefined;
     comptime for (&int_values, 0..) |*value, index| {
-        value.* = enum_info.fields[index].value;
+        value.* = enum_fields[index].value;
     };
     const enum_values = std.enums.values(T);
 
@@ -183,7 +185,7 @@ pub fn get_enum(comptime T: type, src: beam.term, opts: anytype) !T {
             var buf: [256]u8 = undefined;
             const slice = try get_atom(src, &buf, opts);
 
-            inline for (enum_info.fields) |field| {
+            inline for (enum_fields) |field| {
                 if (std.mem.eql(u8, field.name[0..], slice)) return @field(T, field.name);
             }
             return GetError.badarg;
@@ -271,13 +273,14 @@ fn get_tuple(comptime T: type, src: beam.term, opts: anytype) !T {
     const result = e.enif_get_tuple(options.env(opts), src.v, &arity, @ptrCast(&src_array));
     if (result == 0) return GetError.badarg;
 
-    if (arity != struct_info.fields.len) {
-        error_line(.{ "note: expected tuple of size ", .{ .inspect, struct_info.fields.len }, ", got ", .{ .inspect, @as(usize, @intCast(arity)) } }, opts);
+    const tuple_fields = reflect.structFields(struct_info);
+    if (arity != tuple_fields.len) {
+        error_line(.{ "note: expected tuple of size ", .{ .inspect, tuple_fields.len }, ", got ", .{ .inspect, @as(usize, @intCast(arity)) } }, opts);
         return GetError.badarg;
     }
 
     var tuple_result: T = undefined;
-    inline for (struct_info.fields, 0..) |field, index| {
+    inline for (tuple_fields, 0..) |field, index| {
         const elem_term: beam.term = .{ .v = src_array[index] };
         @field(tuple_result, field.name) = get(field.type, elem_term, opts) catch |err| {
             if (err == GetError.badarg) {
@@ -450,7 +453,7 @@ pub fn get_slice_binary(comptime T: type, src: beam.term, opts: anytype) !T {
 
     // For const slices without sentinel requirement and properly aligned data,
     // we can return the raw pointer directly without copying.
-    if (slice_info.is_const and sentinel_ptr == null and is_aligned) {
+    if (slice_info.attrs.@"const" and sentinel_ptr == null and is_aligned) {
         const result_ptr = @as([*]Child, @ptrCast(@alignCast(str_res.data)));
         return result_ptr[0..item_count];
     }
@@ -662,11 +665,12 @@ fn fill_array(comptime T: type, result: *T, src: beam.term, opts: anytype) GetEr
 
 fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !void {
     const struct_info = @typeInfo(T).@"struct";
+    const struct_fields = reflect.structFields(struct_info);
     switch (src.term_type(opts)) {
         .map => {
             var failed: bool = false;
             // look for each of the fields:
-            inline for (struct_info.fields) |field| {
+            inline for (struct_fields) |field| {
                 const F = field.type;
                 const field_atom = beam.make_into_atom(field.name, .{ .env = options.env(opts) });
                 var map_value: e.ErlNifTerm = undefined;
@@ -709,7 +713,7 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
                 const atom_name = try get_atom(key, &atom_buf, opts);
 
                 // scan the list of fields to see if we have found one.
-                scan_fields: inline for (struct_info.fields) |field| {
+                scan_fields: inline for (struct_fields) |field| {
                     if (std.mem.eql(u8, atom_name, field.name)) {
                         @field(result.*, field.name) = get(field.type, value, opts) catch |err| {
                             if (err == GetError.badarg) {
@@ -724,7 +728,7 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
                 }
             }
 
-            inline for (struct_info.fields) |field| {
+            inline for (struct_fields) |field| {
                 // skip anything that was defined in the last section.
                 if (!@field(registry, field.name)) {
                     const Tf = field.type;
@@ -754,17 +758,16 @@ fn fill_struct(comptime T: type, result: *T, src: beam.term, opts: anytype) !voi
 pub fn StructRegistry(comptime SourceStruct: type) type {
     const source_info = @typeInfo(SourceStruct);
     if (source_info != .@"struct") @compileError("StructRegistry may only be called with a struct type");
-    const source_fields = source_info.@"struct".fields;
+    const source_struct = source_info.@"struct";
     const default = false;
 
-    // Zig 0.16: @Struct(layout, BackingInt, names, types, attrs).
-    // Parallel arrays instead of the old array of StructField records.
-    var field_names: [source_fields.len][]const u8 = undefined;
-    var field_types: [source_fields.len]type = undefined;
-    var field_attrs: [source_fields.len]std.builtin.Type.StructField.Attributes = undefined;
+    // Zig 0.17: @typeInfo now reports fields in the same struct-of-arrays shape that
+    // @Struct(layout, BackingInt, names, types, attrs) consumes, so the source names
+    // pass straight through and only the types/attrs need building.
+    var field_types: [source_struct.field_names.len]type = undefined;
+    var field_attrs: [source_struct.field_names.len]std.lang.Type.Struct.FieldAttributes = undefined;
 
-    for (source_fields, 0..) |source_field, index| {
-        field_names[index] = source_field.name;
+    for (0..source_struct.field_names.len) |index| {
         field_types[index] = bool;
         field_attrs[index] = .{
             .default_value_ptr = &default,
@@ -772,7 +775,7 @@ pub fn StructRegistry(comptime SourceStruct: type) type {
         };
     }
 
-    return @Struct(.auto, null, &field_names, &field_types, &field_attrs);
+    return @Struct(.auto, null, source_struct.field_names, &field_types, &field_attrs);
 }
 
 fn null_or_atom(comptime T: type, src: beam.term, opts: anytype) !T {
@@ -805,7 +808,7 @@ inline fn error_line(msg: anytype, opts: anytype) void {
 
     if (!@hasField(@TypeOf(opts), "error_info")) return;
 
-    inline for (@typeInfo(@TypeOf(opts)).@"struct".fields) |field| {
+    inline for (reflect.fields(@TypeOf(opts))) |field| {
         if (std.mem.eql(u8, "error_info", field.name)) {
             const field_type = @TypeOf(opts.error_info);
             if (field_type != *?beam.term) {
@@ -855,7 +858,7 @@ fn typespec_for(comptime T: type) []const u8 {
                 var typespec: []const u8 = "";
                 var should_pipe = false;
 
-                for (en.fields) |field| {
+                for (reflect.enumInfoFields(en)) |field| {
                     if (should_pipe) {
                         typespec = typespec ++ " | ";
                     }
@@ -863,7 +866,7 @@ fn typespec_for(comptime T: type) []const u8 {
                     should_pipe = true;
                 }
 
-                for (en.fields) |field| {
+                for (reflect.enumInfoFields(en)) |field| {
                     typespec = typespec ++ " | " ++ ":" ++ field.name[0..];
                 }
 
@@ -897,7 +900,7 @@ fn typename_for(comptime T: type) []const u8 {
 }
 
 fn refname_for(comptime T: type) []const u8 {
-    inline for (@typeInfo(T).@"struct".fields) |field| {
+    inline for (reflect.fields(T)) |field| {
         if (std.mem.eql(u8, field.name, "__payload")) {
             return "beam.Resource(" ++ @typeName(@typeInfo(field.type).pointer.child) ++ ", @import(\"root\"), .{...})";
         }

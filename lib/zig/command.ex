@@ -60,7 +60,7 @@ defmodule Zig.Command do
 
     run_zig(args, cd: staging_dir, stderr_to_stdout: true)
 
-    attempt_json(staging_dir, 5)
+    attempt_json(staging_dir, 10)
   end
 
   # Documentation-specific semantic analysis for zig_doc compatibility
@@ -69,6 +69,7 @@ defmodule Zig.Command do
     priv_dir = :code.priv_dir(:zigler)
     sema_file = Path.join(priv_dir, "beam/sema_doc.zig")
     erl_nif_file = Path.join(priv_dir, "beam/stub_erl_nif.zig")
+    reflect_file = Path.join(priv_dir, "beam/reflect.zig")
     # Ensure the file path is absolute
     abs_file = Path.expand(file)
 
@@ -98,11 +99,17 @@ defmodule Zig.Command do
         const erl_nif = b.addModule("erl_nif", .{ .root_source_file = .{ .cwd_relative = "#{erl_nif_file}" } });
         const analyte = b.addModule("analyte", .{ .root_source_file = .{ .cwd_relative = "#{abs_file}" } });
 
+        // reflect.zig has to be its own module: a file may belong to only one
+        // module, and sema_doc, beam.zig and the nif all reach for it.
+        const reflect = b.addModule("reflect", .{ .root_source_file = .{ .cwd_relative = "#{reflect_file}" } });
+
         // analyte (beam.zig) imports erl_nif, so we need to add it to analyte's imports
         analyte.addImport("erl_nif", erl_nif);
+        analyte.addImport("reflect", reflect);
 
         exe.root_module.addImport("erl_nif", erl_nif);
         exe.root_module.addImport("analyte", analyte);
+        exe.root_module.addImport("reflect", reflect);
 
         b.installArtifact(exe);
 
@@ -124,7 +131,16 @@ defmodule Zig.Command do
   end
 
   # this function needs to be repeated on the windows platform because it sometimes fails with
-  # no text.
+  # no text.  It can also come back *truncated* there, which used to surface as a
+  # JSON.DecodeError out of Zig.Sema; a partial document is now retried the same way an
+  # empty one is.
+  #
+  # The cause is not understood.  Running the same sema executable 40 times by hand, and 40
+  # more through System.cmd/2, produced the complete document every time -- it only goes
+  # short part way through a full test suite run, which builds hundreds of nifs back to back.
+  # That is a level of process churn no ordinary project generates, so this is treated as
+  # pressure-induced flakiness and simply retried: sema is deterministic, so running it
+  # again gets the whole thing.
   defp attempt_json(_, 0) do
     raise Zig.CompileError, command: "sema"
   end
@@ -139,7 +155,12 @@ defmodule Zig.Command do
         attempt_json(staging_dir, n - 1)
 
       {res, 0} ->
-        res
+        if complete_json?(res) do
+          res
+        else
+          Process.sleep(100)
+          attempt_json(staging_dir, n - 1)
+        end
 
       {error, code} ->
         raise Zig.CompileError, command: "sema", code: code, error: error
@@ -394,9 +415,19 @@ defmodule Zig.Command do
     case {Target.resolve(), :os.type(), precompile_meta()} do
       {_, _, {_, :windows, _, _}} -> true
       {_, _, {_, _, _, _}} -> false
+      # cross compiling to windows needs the windows erl_nif headers even
+      # though the build machine is not itself windows.
+      {%Target{os: "windows"}, _, nil} -> true
       {nil, {_, :nt}, nil} -> true
       _ -> false
     end
+  end
+
+  defp complete_json?(binary) do
+    Zig._json_decode!(binary)
+    true
+  rescue
+    _ -> false
   end
 
   # Helper to create -D options with proper quoting for paths containing spaces.

@@ -10,10 +10,12 @@ fn stripQuotes(path: []const u8) []const u8 {
     return path;
 }
 
+const Translator = @import("translate_c").Translator;
+
 pub fn build(b: *std.Build) void {
     const resolved_target = b.standardTargetOptions(.{});
     const host_target = b.graph.host;
-    const optimize: std.builtin.OptimizeMode = .Debug;
+    const optimize: std.lang.Optimize = .debug;
     const error_tracing = true;
 
     // ERTS and zigler paths (auto-injected by zigler as -D flags)
@@ -33,21 +35,29 @@ pub fn build(b: *std.Build) void {
 
     const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
 
+    // zig 0.17 deprecated b.addTranslateC; zigler stages the ZSF translate-c
+    // package (and aro) beside this file so it resolves without network access.
+    const translate_c_dep = b.dependency("translate_c", .{
+        .target = resolved_target,
+        .optimize = optimize,
+    });
+
     // Helper to build paths relative to zigler_priv
     const beam_path = std.fs.path.join(b.allocator, &.{ zigler_priv, "beam" }) catch @panic("OOM");
 
     switch (mode) {
         .nif_lib => {
             // Translate erl_nif.h to Zig module
-            const erl_translate_c = b.addTranslateC(.{
-                .root_source_file = .{ .cwd_relative = erl_nif_header },
+            const erl_translate_c: Translator = .init(translate_c_dep, .{
+                .name = "erl",
+                .c_source_file = .{ .cwd_relative = erl_nif_header },
                 .target = resolved_target,
                 .optimize = optimize,
                 .link_libc = true,
             });
             erl_translate_c.addSystemIncludePath(.{ .cwd_relative = erts_include });
             erl_translate_c.addSystemIncludePath(.{ .cwd_relative = erl_nif_win_path });
-            const erl_module = erl_translate_c.createModule();
+            const erl_module = erl_translate_c.mod;
 
             const erl_nif_path = std.fs.path.join(b.allocator, &.{ beam_path, "erl_nif.zig" }) catch @panic("OOM");
             const erl_nif = b.createModule(.{
@@ -61,10 +71,18 @@ pub fn build(b: *std.Build) void {
             erl_nif.addImport("erl", erl_module);
 
             const beam_zig_path = std.fs.path.join(b.allocator, &.{ beam_path, "beam.zig" }) catch @panic("OOM");
+            // zig 0.17: reflect.zig is its own module -- a file may belong to
+            // exactly one module, and both beam and the sema root need it.
+            const reflect_zig_path = std.fs.path.join(b.allocator, &.{ beam_path, "reflect.zig" }) catch @panic("OOM");
+            const reflect = b.createModule(.{
+                .root_source_file = .{ .cwd_relative = reflect_zig_path },
+                .imports = &[_]std.Build.Module.Import{},
+            });
             const beam = b.createModule(.{
                 .root_source_file = .{ .cwd_relative = beam_zig_path },
                 .imports = &[_]std.Build.Module.Import{
                     .{ .name = "erl_nif", .module = erl_nif },
+                    .{ .name = "reflect", .module = reflect },
                 },
             });
 
@@ -123,10 +141,18 @@ pub fn build(b: *std.Build) void {
             });
 
             const beam_zig_path = std.fs.path.join(b.allocator, &.{ beam_path, "beam.zig" }) catch @panic("OOM");
+            // zig 0.17: reflect.zig is its own module -- a file may belong to
+            // exactly one module, and both beam and the sema root need it.
+            const reflect_zig_path = std.fs.path.join(b.allocator, &.{ beam_path, "reflect.zig" }) catch @panic("OOM");
+            const reflect = b.createModule(.{
+                .root_source_file = .{ .cwd_relative = reflect_zig_path },
+                .imports = &[_]std.Build.Module.Import{},
+            });
             const beam = b.createModule(.{
                 .root_source_file = .{ .cwd_relative = beam_zig_path },
                 .imports = &[_]std.Build.Module.Import{
                     .{ .name = "erl_nif", .module = erl_nif },
+                    .{ .name = "reflect", .module = reflect },
                 },
             });
 
@@ -154,6 +180,7 @@ pub fn build(b: *std.Build) void {
                 .root_source_file = .{ .cwd_relative = sema_path },
                 .imports = &[_]std.Build.Module.Import{
                     .{ .name = "nif", .module = nif },
+                    .{ .name = "reflect", .module = reflect },
                 },
                 .target = host_target,
                 .optimize = optimize,
@@ -168,7 +195,7 @@ pub fn build(b: *std.Build) void {
             b.installArtifact(sema_exe);
 
             const sema_run_cmd = b.addRunArtifact(sema_exe);
-            if (b.args) |args| sema_run_cmd.addArgs(args);
+            sema_run_cmd.addPassthruArgs();
             const sema_step = b.step("sema", "Run sema");
             sema_step.dependOn(&sema_run_cmd.step);
         },
