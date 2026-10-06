@@ -188,34 +188,49 @@ Thanks to Dave Cottlehuber @dch for testing.
 ## 0.17.0
 
 - Breaking changes:
-  - Updated to Zig 0.17.0
-  - **`@hasDecl` only sees public declarations.** Resource `Callbacks` structs must
+  - Updated to Zig 0.17.0.  You will need to install the new toolchain:
+    `mix zig.get`.
+  - Requires Elixir 1.18 or later (was 1.15).
+  - **`@hasDecl` only sees public declarations.**  Resource `Callbacks` structs must
     declare `pub fn dtor`, `pub fn stop`, `pub fn down` and `pub fn dyncall`; a
     callback that is not `pub` is now silently not detected.
-  - `std.builtin` is deprecated in favor of `std.lang` (it remains as an alias).
-    NIF code using `std.builtin.Type`, `std.builtin.StackTrace`, etc. should move to
-    `std.lang`.
-  - Optimize mode tags lost their `Release` prefix: `@import("builtin").mode` now
-    reports `.debug`/`.safe`/`.fast`/`.small`. Zigler's own `optimize:` option is
-    unchanged, since it already used those names.
   - Zig 0.17 removed the `**` array repetition operator (use `@splat`), the
-    `errdefer |err|` capture, `void{}` and the `i0` type. `i0` is therefore no longer
-    a supported nif parameter or return type.
-  - `std.meta.Int` was removed in favor of the new `@Int` builtin.
-  - C header translation now goes through the ZSF `translate-c` package instead of
-    the built-in `std.Build.Step.TranslateC`, which Zig 0.17 deprecates.  Zigler
-    fetches `translate-c` and `arocc` as source-only git dependencies (pinned in
-    `mix.lock`) and stages them beside the generated `build.zig`, so nif compilation
-    still needs no network access.  If you supply your own build files with
-    `build_files_dir:`, use the `Translator` API rather than `b.addTranslateC`;
+    `errdefer |err|` capture, `void{}`, and the `i0` type.  `i0` is therefore no
+    longer a supported nif parameter or return type.
+  - `std.builtin` is deprecated in favour of `std.lang` (it remains as an alias).
+    Nif code using `std.builtin.Type`, `std.builtin.StackTrace` and friends should
+    move to `std.lang`.
+  - `std.meta.Int` was removed in favour of the new `@Int` builtin.
+  - Optimize mode tags lost their `Release` prefix: `@import("builtin").mode` now
+    reports `.debug`/`.safe`/`.fast`/`.small`.  Zigler's own `optimize:` option is
+    unchanged, as it already used those names.
+  - C header translation now goes through the ZSF `translate-c` package, since Zig
+    0.17 deprecates the built-in `std.Build.Step.TranslateC`.  Zigler fetches
+    `translate-c` and `arocc` as source-only git dependencies -- pinned in
+    `mix.lock` -- and stages them beside the generated `build.zig`, so compiling a
+    nif still requires no network access.  If you supply your own build files with
+    `build_files_dir:`, use the `Translator` API instead of `b.addTranslateC`;
     zigler declares the `translate_c` package in your `build.zig.zon` for you.
+- Features:
+  - `mix zig.warm` precompiles `translate-c` into the global zig cache.  Nothing
+    needs to call it -- the first nif compiled does the work, and zig's cache lock
+    means concurrent builds wait rather than duplicate it -- but it is useful in CI,
+    where that one-off minute would otherwise land inside a test.
 - Fixes:
-  - `priv/erl_nif_win` is now included in the hex package; it is required to compile
-    nifs on Windows.
+  - Source locations in error return traces are resolved correctly again on macos
+    and freebsd, where Zig 0.17 reports paths relative to the build root.
+  - Cross-compiling to Windows works: the windows `erl_nif` headers are selected
+    from the *target*, not the build host, and `translate-c` is built for the host
+    rather than the target.
+- Dependencies:
+  - `zig_parser` 0.8.0, `zig_doc` 0.8.0 and `zig_get` 0.17.0, all of which track
+    Zig versions.
 - Internal:
-  - `@typeInfo` reports struct, union and enum members as parallel arrays rather than
-    an array of per-field records. `priv/beam/reflect.zig` is a new module providing
-    the previous per-field view to the marshalling code.
+  - `@typeInfo` reports struct, union and enum members as parallel arrays rather
+    than an array of per-field records.  `priv/beam/reflect.zig` is a new module
+    that rebuilds the previous per-field view for the marshalling code.
+  - `priv/erl_nif_win/erl_nif_win.h` now documents why those headers are vendored,
+    and what to re-check when `translate-c` improves.
 
 ## 0.16.0
 
