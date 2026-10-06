@@ -229,6 +229,8 @@ Thanks to Dave Cottlehuber @dch for testing.
   - `@typeInfo` reports struct, union and enum members as parallel arrays rather
     than an array of per-field records.  `priv/beam/reflect.zig` is a new module
     that rebuilds the previous per-field view for the marshalling code.
+  - Removes `Zig.Analyzer`, which nothing called.  The `// ref <file>:<line>`
+    comments it parsed are handled by `Zig.Manifest` now.
   - `priv/erl_nif_win/erl_nif_win.h` now documents why those headers are vendored,
     and what to re-check when `translate-c` improves.
 
