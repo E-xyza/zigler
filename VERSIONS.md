@@ -205,12 +205,12 @@ Thanks to Dave Cottlehuber @dch for testing.
     reports `.debug`/`.safe`/`.fast`/`.small`.  Zigler's own `optimize:` option is
     unchanged, as it already used those names.
   - C header translation now goes through the ZSF `translate-c` package, since Zig
-    0.17 deprecates the built-in `std.Build.Step.TranslateC`.  Zigler fetches
-    `translate-c` and `arocc` as source-only git dependencies -- pinned in
-    `mix.lock` -- and stages them beside the generated `build.zig`, so compiling a
-    nif still requires no network access.  If you supply your own build files with
-    `build_files_dir:`, use the `Translator` API instead of `b.addTranslateC`;
-    zigler declares the `translate_c` package in your `build.zig.zon` for you.
+    0.17 deprecates the built-in `std.Build.Step.TranslateC`.  `translate-c` and
+    its `aro` dependency are vendored under `priv/` and ship with the package, so
+    compiling a nif still requires no network access.  If you supply your own build
+    files with `build_files_dir:`, use the `Translator` API instead of
+    `b.addTranslateC`; zigler declares the `translate_c` package in your
+    `build.zig.zon` for you.
 - Features:
   - `mix zig.warm` precompiles `translate-c` into the global zig cache.  Nothing
     needs to call it -- the first nif compiled does the work, and zig's cache lock

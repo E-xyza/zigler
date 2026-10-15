@@ -1,0 +1,23 @@
+.{
+    .name = .aro,
+
+    .version = "0.0.0",
+
+    .fingerprint = 0x76501fb842f52025, // Changing this has security and trust implications.
+
+    .minimum_zig_version = "0.17.0-dev.2338+b46a7f3a2",
+
+    .dependencies = .{},
+
+    .paths = .{
+        "build",
+        "build.zig",
+        "build.zig.zon",
+        "deps",
+        "include",
+        "src",
+        "LICENSE",
+        "LICENSE-UNICODE",
+        "README.md",
+    },
+}

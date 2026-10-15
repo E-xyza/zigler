@@ -1,0 +1,630 @@
+const std = @import("std");
+const mem = std.mem;
+
+const system_defaults = @import("system_defaults");
+
+const Compilation = @import("Compilation.zig");
+const Driver = @import("Driver.zig");
+const Multilib = @import("Driver/Multilib.zig");
+const Target = @import("Target.zig");
+const Linux = @import("toolchains/Linux.zig");
+const Darwin = @import("toolchains/Darwin.zig");
+
+pub const PathList = std.ArrayList([]const u8);
+
+pub const RuntimeLibKind = enum {
+    compiler_rt,
+    libgcc,
+};
+
+pub const FileKind = enum {
+    object,
+    static,
+    shared,
+};
+
+pub const LibGCCKind = enum {
+    unspecified,
+    static,
+    shared,
+};
+
+pub const UnwindLibKind = enum {
+    none,
+    compiler_rt,
+    libgcc,
+};
+
+const Inner = union(enum) {
+    uninitialized,
+    darwin: Darwin,
+    linux: Linux,
+    unknown: void,
+
+    fn deinit(self: *Inner, allocator: mem.Allocator) void {
+        switch (self.*) {
+            .linux => |*linux| linux.deinit(allocator),
+            .darwin, .uninitialized, .unknown => {},
+        }
+    }
+};
+
+const Toolchain = @This();
+
+driver: *Driver,
+
+/// The list of toolchain specific path prefixes to search for libraries.
+library_paths: PathList = .empty,
+
+/// The list of toolchain specific path prefixes to search for files.
+file_paths: PathList = .empty,
+
+/// The list of toolchain specific path prefixes to search for programs.
+program_paths: PathList = .empty,
+
+selected_multilib: Multilib = .{},
+
+inner: Inner = .{ .uninitialized = {} },
+
+pub fn getTarget(tc: *const Toolchain) *const Target {
+    return &tc.driver.comp.target;
+}
+
+fn getDefaultLinker(tc: *const Toolchain) []const u8 {
+    return switch (tc.inner) {
+        .uninitialized => unreachable,
+        .linux => |linux| linux.getDefaultLinker(tc.getTarget()),
+        .darwin, .unknown => "ld",
+    };
+}
+
+/// Call this after driver has finished parsing command line arguments to find the toolchain
+pub fn discover(tc: *Toolchain) !void {
+    if (tc.inner != .uninitialized) return;
+
+    const target = tc.getTarget();
+    tc.inner = switch (target.os.tag) {
+        .linux,
+        => if (target.cpu.arch == .hexagon)
+            .{ .unknown = {} } // TODO
+        else if (target.cpu.arch.isMIPS())
+            .{ .unknown = {} } // TODO
+        else if (target.cpu.arch.isPowerPC())
+            .{ .unknown = {} } // TODO
+        else if (target.cpu.arch == .ve)
+            .{ .unknown = {} } // TODO
+        else
+            .{ .linux = .{} },
+        else => if (target.os.tag.isDarwin())
+            .{ .darwin = .{ .sdk = .fromTarget(tc.getTarget().*) } }
+        else
+            .{ .unknown = {} }, // TODO
+    };
+    return switch (tc.inner) {
+        .uninitialized => unreachable,
+        .linux => |*linux| linux.discover(tc),
+        .darwin, .unknown => {},
+    };
+}
+
+pub fn deinit(tc: *Toolchain) void {
+    const gpa = tc.driver.comp.gpa;
+    tc.inner.deinit(gpa);
+
+    tc.library_paths.deinit(gpa);
+    tc.file_paths.deinit(gpa);
+    tc.program_paths.deinit(gpa);
+}
+
+/// Write assembler path to `buf` and return a slice of it
+pub fn getAssemblerPath(tc: *const Toolchain, buf: []u8) ![]const u8 {
+    return tc.getProgramPath("as", buf);
+}
+
+/// Write linker path to `buf` and return a slice of it
+pub fn getLinkerPath(tc: *const Toolchain, buf: []u8) ![]const u8 {
+    // --ld-path= takes precedence over -fuse-ld= and specifies the executable
+    // name. -B, COMPILER_PATH and PATH are consulted if the value does not
+    // contain a path component separator.
+    // -fuse-ld=lld can be used with --ld-path= to indicate that the binary
+    // that --ld-path= points to is lld.
+    const use_linker = tc.driver.use_linker orelse system_defaults.linker;
+
+    if (tc.driver.linker_path) |ld_path| {
+        var path = ld_path;
+        if (path.len > 0) {
+            if (std.fs.path.dirname(path) == null) {
+                path = tc.getProgramPath(path, buf);
+            }
+            if (tc.canExecute(path)) {
+                return path;
+            }
+        }
+        return tc.driver.fatal(
+            "invalid linker name in argument '--ld-path={s}'",
+            .{path},
+        );
+    }
+
+    // If we're passed -fuse-ld= with no argument, or with the argument ld,
+    // then use whatever the default system linker is.
+    if (use_linker.len == 0 or mem.eql(u8, use_linker, "ld")) {
+        const default = tc.getDefaultLinker();
+        if (std.fs.path.isAbsolute(default)) return default;
+        return tc.getProgramPath(default, buf);
+    }
+
+    // Extending -fuse-ld= to an absolute or relative path is unexpected. Checking
+    // for the linker flavor is brittle. In addition, prepending "ld." or "ld64."
+    // to a relative path is surprising. This is more complex due to priorities
+    // among -B, COMPILER_PATH and PATH. --ld-path= should be used instead.
+    if (mem.findScalar(u8, use_linker, '/') != null) {
+        try tc.driver.comp.diagnostics.add(.{
+            .text = "'-fuse-ld=' taking a path is deprecated; use '--ld-path=' instead",
+            .kind = .off,
+            .opt = .@"fuse-ld-path",
+            .location = null,
+        });
+    }
+
+    if (std.fs.path.isAbsolute(use_linker)) {
+        if (tc.canExecute(use_linker)) {
+            return use_linker;
+        }
+    } else {
+        const gpa = tc.driver.comp.gpa;
+        var linker_name: std.ArrayList(u8) = .empty;
+        defer linker_name.deinit(gpa);
+        try linker_name.ensureUnusedCapacity(tc.driver.comp.gpa, 5 + use_linker.len); // "ld64." ++ use_linker
+
+        if (tc.getTarget().os.tag.isDarwin()) {
+            linker_name.appendSliceAssumeCapacity("ld64.");
+        } else {
+            linker_name.appendSliceAssumeCapacity("ld.");
+        }
+        linker_name.appendSliceAssumeCapacity(use_linker);
+        const linker_path = tc.getProgramPath(linker_name.items, buf);
+        if (tc.canExecute(linker_path)) {
+            return linker_path;
+        }
+    }
+
+    if (tc.driver.use_linker) |linker| {
+        return tc.driver.fatal(
+            "invalid linker name in argument '-fuse-ld={s}'",
+            .{linker},
+        );
+    }
+    const default_linker = tc.getDefaultLinker();
+    return tc.getProgramPath(default_linker, buf);
+}
+
+/// If an explicit target is provided, also check the prefixed tool-specific name
+/// TODO: this isn't exactly right since our target names don't necessarily match up
+/// with GCC's.
+/// For example the Zig target `arm-freestanding-eabi` would need the `arm-none-eabi` tools
+fn possibleProgramNames(
+    raw_triple: ?[]const u8,
+    name: []const u8,
+    buf: *[64]u8,
+    possible_name_buf: *[2][]const u8,
+) []const []const u8 {
+    var i: u32 = 0;
+    if (raw_triple) |triple| {
+        if (mem.print(buf, "{s}-{s}", .{ triple, name })) |res| {
+            possible_name_buf[i] = res;
+            i += 1;
+        } else |_| {}
+    }
+    possible_name_buf[i] = name;
+
+    return possible_name_buf[0..i];
+}
+
+/// Add toolchain `file_paths` to argv as `-L` arguments
+pub fn addFilePathLibArgs(tc: *const Toolchain, argv: *std.ArrayList([]const u8)) !void {
+    try argv.ensureUnusedCapacity(tc.driver.comp.gpa, tc.file_paths.items.len);
+
+    var bytes_needed: usize = 0;
+    for (tc.file_paths.items) |path| {
+        bytes_needed += path.len + 2; // +2 for `-L`
+    }
+    var bytes = try tc.driver.comp.arena.alloc(u8, bytes_needed);
+    var index: usize = 0;
+    for (tc.file_paths.items) |path| {
+        @memcpy(bytes[index..][0..2], "-L");
+        @memcpy(bytes[index + 2 ..][0..path.len], path);
+        argv.appendAssumeCapacity(bytes[index..][0 .. path.len + 2]);
+        index += path.len + 2;
+    }
+}
+
+/// Search for an executable called `name` or `{triple}-{name} in program_paths and the $PATH environment variable
+/// If not found there, just use `name`
+/// Writes the result to `buf` and returns a slice of it
+fn getProgramPath(tc: *const Toolchain, name: []const u8, buf: []u8) []const u8 {
+    var path_buf: [std.fs.max_path_bytes]u8 = undefined;
+    var fib = std.heap.FixedBufferAllocator.init(&path_buf);
+
+    var tool_specific_buf: [64]u8 = undefined;
+    var possible_name_buf: [2][]const u8 = undefined;
+    const possible_names = possibleProgramNames(tc.driver.raw_target_triple, name, &tool_specific_buf, &possible_name_buf);
+
+    for (possible_names) |tool_name| {
+        for (tc.program_paths.items) |program_path| {
+            defer fib.reset();
+
+            const candidate = std.fs.path.join(fib.allocator(), &.{ program_path, tool_name }) catch continue;
+
+            if (tc.canExecute(candidate) and candidate.len <= buf.len) {
+                @memcpy(buf[0..candidate.len], candidate);
+                return buf[0..candidate.len];
+            }
+        }
+        return tc.findProgramByName(name, buf) orelse continue;
+    }
+    @memcpy(buf[0..name.len], name);
+    return buf[0..name.len];
+}
+
+pub fn getSysroot(tc: *const Toolchain) []const u8 {
+    return tc.driver.sysroot orelse system_defaults.sysroot;
+}
+
+/// Search for `name` in a variety of places
+/// TODO: cache results based on `name` so we're not repeatedly allocating the same strings?
+pub fn getFilePath(tc: *const Toolchain, name: []const u8) ![]const u8 {
+    var path_buf: [std.fs.max_path_bytes]u8 = undefined;
+    var fib = std.heap.FixedBufferAllocator.init(&path_buf);
+    const allocator = fib.allocator();
+    const arena = tc.driver.comp.arena;
+
+    const sysroot = tc.getSysroot();
+
+    // todo check resource dir
+    // todo check compiler RT path
+    const aro_dir = std.fs.path.dirname(tc.driver.aro_name) orelse "";
+    const candidate = try std.fs.path.join(allocator, &.{ aro_dir, "..", name });
+    if (tc.exists(candidate)) {
+        return arena.dupe(u8, candidate);
+    }
+
+    if (tc.searchPaths(&fib, sysroot, tc.library_paths.items, name)) |path| {
+        return arena.dupe(u8, path);
+    }
+
+    if (tc.searchPaths(&fib, sysroot, tc.file_paths.items, name)) |path| {
+        return try arena.dupe(u8, path);
+    }
+
+    return name;
+}
+
+/// Search a list of `path_prefixes` for the existence `name`
+/// Assumes that `fba` is a fixed-buffer allocator, so does not free joined path candidates
+fn searchPaths(tc: *const Toolchain, fib: *std.heap.FixedBufferAllocator, sysroot: []const u8, path_prefixes: []const []const u8, name: []const u8) ?[]const u8 {
+    for (path_prefixes) |path| {
+        fib.reset();
+        if (path.len == 0) continue;
+
+        const candidate = if (path[0] == '=')
+            std.fs.path.join(fib.allocator(), &.{ sysroot, path[1..], name }) catch continue
+        else
+            std.fs.path.join(fib.allocator(), &.{ path, name }) catch continue;
+
+        if (tc.exists(candidate)) {
+            return candidate;
+        }
+    }
+    return null;
+}
+
+const PathKind = enum {
+    library,
+    file,
+    program,
+};
+
+/// Join `components` into a path. If the path exists, dupe it into the Compilation arena and
+/// add it to the specified path list.
+pub fn addPathIfExists(tc: *Toolchain, components: []const []const u8, dest_kind: PathKind) !void {
+    var path_buf: [std.fs.max_path_bytes]u8 = undefined;
+    var fib = std.heap.FixedBufferAllocator.init(&path_buf);
+
+    const candidate = try std.fs.path.join(fib.allocator(), components);
+
+    if (tc.exists(candidate)) {
+        const duped = try tc.driver.comp.arena.dupe(u8, candidate);
+        const dest = switch (dest_kind) {
+            .library => &tc.library_paths,
+            .file => &tc.file_paths,
+            .program => &tc.program_paths,
+        };
+        try dest.append(tc.driver.comp.gpa, duped);
+    }
+}
+
+/// Join `components` using the Compilation arena and add the resulting path to `dest_kind`. Does not check
+/// whether the path actually exists
+pub fn addPathFromComponents(tc: *Toolchain, components: []const []const u8, dest_kind: PathKind) !void {
+    const full_path = try std.fs.path.join(tc.driver.comp.arena, components);
+    const dest = switch (dest_kind) {
+        .library => &tc.library_paths,
+        .file => &tc.file_paths,
+        .program => &tc.program_paths,
+    };
+    try dest.append(tc.driver.comp.gpa, full_path);
+}
+
+/// Add linker args to `argv`. Does not add path to linker executable as first item; that must be handled separately
+/// Items added to `argv` will be string literals or owned by `tc.driver.comp.arena` so they must not be individually freed
+pub fn buildLinkerArgs(tc: *Toolchain, argv: *std.ArrayList([]const u8)) !void {
+    return switch (tc.inner) {
+        .uninitialized => unreachable,
+        .linux => |*linux| linux.buildLinkerArgs(tc, argv),
+        .darwin, .unknown => @panic("This toolchain does not support linking yet"),
+    };
+}
+
+fn getDefaultRuntimeLibKind(tc: *const Toolchain) RuntimeLibKind {
+    if (tc.getTarget().abi.isAndroid()) {
+        return .compiler_rt;
+    }
+    return .libgcc;
+}
+
+pub fn getRuntimeLibKind(tc: *const Toolchain) RuntimeLibKind {
+    const libname = tc.driver.rtlib orelse system_defaults.rtlib;
+    if (mem.eql(u8, libname, "compiler-rt"))
+        return .compiler_rt
+    else if (mem.eql(u8, libname, "libgcc"))
+        return .libgcc
+    else
+        return tc.getDefaultRuntimeLibKind();
+}
+
+/// TODO
+pub fn getCompilerRt(tc: *const Toolchain, component: []const u8, file_kind: FileKind) ![]const u8 {
+    _ = file_kind;
+    _ = component;
+    _ = tc;
+    return "";
+}
+
+fn getLibGCCKind(tc: *const Toolchain) LibGCCKind {
+    const target = tc.getTarget();
+    if (tc.driver.static_libgcc or tc.driver.static or tc.driver.static_pie or target.abi.isAndroid()) {
+        return .static;
+    }
+    if (tc.driver.shared_libgcc) {
+        return .shared;
+    }
+    return .unspecified;
+}
+
+fn getUnwindLibKind(tc: *const Toolchain) !UnwindLibKind {
+    const libname = tc.driver.unwindlib orelse system_defaults.unwindlib;
+    if (libname.len == 0 or mem.eql(u8, libname, "platform")) {
+        switch (tc.getRuntimeLibKind()) {
+            .compiler_rt => {
+                const target = tc.getTarget();
+                if (target.abi.isAndroid()) {
+                    return .compiler_rt;
+                } else {
+                    return .none;
+                }
+            },
+            .libgcc => return .libgcc,
+        }
+    } else if (mem.eql(u8, libname, "none")) {
+        return .none;
+    } else if (mem.eql(u8, libname, "libgcc")) {
+        return .libgcc;
+    } else if (mem.eql(u8, libname, "libunwind")) {
+        if (tc.getRuntimeLibKind() == .libgcc) {
+            try tc.driver.err("--rtlib=libgcc requires --unwindlib=libgcc", .{});
+        }
+        return .compiler_rt;
+    } else {
+        unreachable;
+    }
+}
+
+fn getAsNeededOption(is_illumos: bool, needed: bool) []const u8 {
+    if (is_illumos) {
+        return if (needed) "-zignore" else "-zrecord";
+    } else {
+        return if (needed) "--as-needed" else "--no-as-needed";
+    }
+}
+
+fn addUnwindLibrary(tc: *const Toolchain, argv: *std.ArrayList([]const u8)) !void {
+    const unw = try tc.getUnwindLibKind();
+    const target = tc.getTarget();
+    if ((target.abi.isAndroid() and unw == .libgcc) or
+        target.ofmt == .wasm or
+        target.isWindowsMSVCEnvironment() or
+        unw == .none) return;
+
+    const lgk = tc.getLibGCCKind();
+    const as_needed = lgk == .unspecified and !target.abi.isAndroid() and !target.isMinGW();
+
+    try argv.ensureUnusedCapacity(tc.driver.comp.gpa, 3);
+    if (as_needed) {
+        argv.appendAssumeCapacity(getAsNeededOption(target.os.tag == .illumos, true));
+    }
+    switch (unw) {
+        .none => return,
+        .libgcc => argv.appendAssumeCapacity(if (lgk == .static) "-lgcc_eh" else "-lgcc_s"),
+        .compiler_rt => if (lgk == .static) {
+            argv.appendAssumeCapacity("-l:libunwind.a");
+        } else if (lgk == .shared) {
+            if (target.isMinGW()) {
+                argv.appendAssumeCapacity("-l:libunwind.dll.a");
+            } else {
+                argv.appendAssumeCapacity("-l:libunwind.so");
+            }
+        } else {
+            argv.appendAssumeCapacity("-lunwind");
+        },
+    }
+
+    if (as_needed) {
+        argv.appendAssumeCapacity(getAsNeededOption(target.os.tag == .illumos, false));
+    }
+}
+
+fn addLibGCC(tc: *const Toolchain, argv: *std.ArrayList([]const u8)) !void {
+    const gpa = tc.driver.comp.gpa;
+    const libgcc_kind = tc.getLibGCCKind();
+    if (libgcc_kind == .static or libgcc_kind == .unspecified) {
+        try argv.append(gpa, "-lgcc");
+    }
+    try tc.addUnwindLibrary(argv);
+    if (libgcc_kind == .shared) {
+        try argv.append(gpa, "-lgcc");
+    }
+}
+
+pub fn addRuntimeLibs(tc: *const Toolchain, argv: *std.ArrayList([]const u8)) !void {
+    const target = tc.getTarget();
+    const rlt = tc.getRuntimeLibKind();
+    switch (rlt) {
+        .compiler_rt => {
+            // TODO
+        },
+        .libgcc => {
+            if (target.isKnownWindowsMSVCEnvironment()) {
+                const rtlib_str = tc.driver.rtlib orelse system_defaults.rtlib;
+                if (!mem.eql(u8, rtlib_str, "platform")) {
+                    try tc.driver.err("unsupported runtime library 'libgcc' for platform 'MSVC'", .{});
+                }
+            } else {
+                try tc.addLibGCC(argv);
+            }
+        },
+    }
+
+    if (target.abi.isAndroid() and !tc.driver.static and !tc.driver.static_pie) {
+        try argv.append(tc.driver.comp.gpa, "-ldl");
+    }
+}
+
+pub fn defineSystemIncludes(tc: *Toolchain) !void {
+    return switch (tc.inner) {
+        .uninitialized => unreachable,
+        .linux => |*linux| linux.defineSystemIncludes(tc),
+        .darwin => |*darwin| darwin.defineSystemIncludes(tc),
+        .unknown => {
+            if (tc.driver.nostdinc) return;
+
+            if (!tc.driver.nobuiltininc) {
+                try tc.addBuiltinIncludeDir();
+            }
+
+            if (!tc.driver.nostdlibinc) {
+                try tc.addSystemIncludeDir("/usr/include");
+            }
+        },
+    };
+}
+
+pub fn addSystemIncludeDirJoined(tc: *const Toolchain, components: []const []const u8) !void {
+    const path = try std.fs.path.join(tc.driver.comp.arena, components);
+    try tc.addSystemIncludeDir(path);
+}
+
+pub fn addSystemIncludeDir(tc: *const Toolchain, path: []const u8) !void {
+    const d = tc.driver;
+    _ = try d.includes.append(d.comp.gpa, .{ .kind = .system, .path = try d.comp.arena.dupe(u8, path) });
+}
+
+/// Add built-in aro headers directory to system include paths
+pub fn addBuiltinIncludeDir(tc: *const Toolchain) !void {
+    const d = tc.driver;
+    const comp = d.comp;
+    const io = comp.io;
+    const gpa = comp.gpa;
+    const arena = comp.arena;
+    try d.includes.ensureUnusedCapacity(gpa, 1);
+    if (d.resource_dir) |resource_dir| {
+        const path = try std.fs.path.join(arena, &.{ resource_dir, "include" });
+        comp.cwd.access(io, path, .{}) catch {
+            return d.fatal("Aro builtin headers not found in provided -resource-dir", .{});
+        };
+        d.includes.appendAssumeCapacity(.{ .kind = .system, .path = path });
+        return;
+    }
+    var search_path = d.aro_name;
+    while (std.fs.path.dirname(search_path)) |dirname| : (search_path = dirname) {
+        var base_dir = d.comp.cwd.openDir(io, dirname, .{}) catch continue;
+        defer base_dir.close(io);
+
+        base_dir.access(io, "include/stddef.h", .{}) catch continue;
+        const path = try std.fs.path.join(arena, &.{ dirname, "include" });
+        d.includes.appendAssumeCapacity(.{ .kind = .system, .path = path });
+        break;
+    } else return d.fatal("unable to find Aro builtin headers", .{});
+}
+
+/// Read the file at `path` into `buf`.
+/// Returns null if any errors are encountered
+/// Otherwise returns a slice of `buf`. If the file is larger than `buf` partial contents are returned
+pub fn readFile(tc: *const Toolchain, path: []const u8, buf: []u8) ?[]const u8 {
+    const comp = tc.driver.comp;
+    return comp.cwd.readFile(comp.io, path, buf) catch null;
+}
+
+pub fn exists(tc: *const Toolchain, path: []const u8) bool {
+    const comp = tc.driver.comp;
+    comp.cwd.access(comp.io, path, .{}) catch return false;
+    return true;
+}
+
+pub fn joinedExists(tc: *const Toolchain, parts: []const []const u8) bool {
+    var buf: [std.fs.max_path_bytes]u8 = undefined;
+    var fib = std.heap.FixedBufferAllocator.init(&buf);
+    const joined = std.fs.path.join(fib.allocator(), parts) catch return false;
+    return tc.exists(joined);
+}
+
+pub fn canExecute(tc: *const Toolchain, path: []const u8) bool {
+    if (@import("builtin").os.tag == .windows) {
+        // TODO
+        return true;
+    }
+
+    const comp = tc.driver.comp;
+    comp.cwd.access(comp.io, path, .{ .execute = true }) catch return false;
+    // Todo: ensure path is not a directory
+    return true;
+}
+
+/// Search for an executable named `name` using platform-specific logic
+/// If it's found, write the full path to `buf` and return a slice of it
+/// Otherwise retun null
+pub fn findProgramByName(tc: *const Toolchain, name: []const u8, buf: []u8) ?[]const u8 {
+    std.debug.assert(name.len > 0);
+    if (@import("builtin").os.tag == .windows) {
+        // TODO
+        return null;
+    }
+    const comp = tc.driver.comp;
+
+    // TODO: does WASI need special handling?
+    if (mem.findScalar(u8, name, '/') != null) {
+        @memcpy(buf[0..name.len], name);
+        return buf[0..name.len];
+    }
+    const path_env = comp.environment.path orelse return null;
+    var fib = std.heap.FixedBufferAllocator.init(buf);
+
+    var it = mem.tokenizeScalar(u8, path_env, std.fs.path.delimiter);
+    while (it.next()) |path_dir| {
+        defer fib.reset();
+        const full_path = std.fs.path.join(fib.allocator(), &.{ path_dir, name }) catch continue;
+        if (tc.canExecute(full_path)) return full_path;
+    }
+
+    return null;
+}

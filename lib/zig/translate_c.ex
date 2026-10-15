@@ -4,22 +4,21 @@ defmodule Zig.TranslateC do
   # Zig 0.17 deprecates the built-in `std.Build.Step.TranslateC` in favour of the
   # ZSF `translate-c` package, which depends in turn on the `aro` C frontend.
   #
-  # Both are plain zig source, fetched as source-only git deps (see mix.exs) so that
-  # their commits are pinned in mix.lock.  `zig build` cannot consume them straight
-  # out of `deps/`, though: translate-c's own build.zig.zon declares aro by git URL,
-  # so a build would reach for the network and fail in an airgapped or sandboxed CI.
+  # Both are vendored under priv/ -- see priv/translate_c/VENDORED.md -- because a
+  # hex package may only depend on other hex packages, so neither can be a git
+  # dependency of a published zigler, and because compiling a nif should not need
+  # network access.
   #
-  # So the two trees are staged once, into a shared directory, with that one
-  # declaration rewritten to a relative path dependency.  The staged copy is derived
-  # state -- `mix deps.get` rewrites deps/ freely and we re-derive from it.
+  # `zig build` still cannot read them straight out of priv/: paths in
+  # build.zig.zon must be relative to the build root, and priv/ is nowhere near a
+  # module staging directory.  So the trees are copied beside the staging
+  # directories once per build and referenced from there.
   #
-  # This is deliberately *not* per-module: the two trees are ~23MB across ~1300
-  # files, and copying that into every nif's staging directory is slow enough on
+  # That copy is deliberately *not* per-module: the two trees are several thousand
+  # files, and copying them into every nif's staging directory is slow enough on
   # windows to blow ExUnit's timeout.
 
   require Logger
-
-  @aro_dep_pattern ~r/\.aro\s*=\s*\.\{\s*\.url\s*=\s*"[^"]+"\s*,\s*\.hash\s*=\s*"[^"]+"\s*,?\s*\},?/s
 
   @doc """
   Stages translate-c and aro, and returns an absolute path to the translate-c tree
@@ -29,17 +28,11 @@ defmodule Zig.TranslateC do
   when the dependency sources are newer.
   """
   def stage! do
-    translate_c_src = dep_path!(:translate_c)
-    aro_src = dep_path!(:arocc)
-
     root = cache_directory()
     translate_c_dst = Path.join(root, "translate_c")
-    aro_dst = Path.join(root, "aro")
 
-    sync!(translate_c_src, translate_c_dst)
-    sync!(aro_src, aro_dst)
-
-    rewrite_aro_dependency!(translate_c_dst)
+    sync!(vendored!("translate_c"), translate_c_dst)
+    sync!(vendored!("aro"), Path.join(root, "aro"))
 
     translate_c_dst
   end
@@ -62,16 +55,17 @@ defmodule Zig.TranslateC do
     end
   end
 
-  # key the staged copy on the dependency revisions, so that a `mix deps.update`
-  # lands in a fresh directory instead of being half-overwritten.
+  # key the staged copy on the vendored sources, so that upgrading zigler lands in
+  # a fresh directory instead of half-overwriting the previous one.
   defp deps_fingerprint do
-    [:translate_c, :arocc]
-    |> Enum.map(fn dep ->
-      case Mix.Project.deps_paths()[dep] do
-        nil -> "missing"
-        path -> path |> File.stat!() |> Map.get(:mtime) |> :erlang.term_to_binary()
+    ["translate_c", "aro"]
+    |> Enum.map(fn name ->
+      case File.stat(Path.join(:code.priv_dir(:zigler), name)) do
+        {:ok, stat} -> stat.mtime
+        _ -> :missing
       end
     end)
+    |> then(&[Application.spec(:zigler, :vsn) | &1])
     |> :erlang.term_to_binary()
     |> then(&:crypto.hash(:sha256, &1))
     |> Base.encode16(case: :lower)
@@ -91,31 +85,6 @@ defmodule Zig.TranslateC do
         :ok -> Logger.debug("staged #{src} to #{dst}")
         {:error, _} -> File.rm_rf!(tmp)
       end
-    end
-  end
-
-  # translate-c pins aro by git URL + hash.  Point it at the sibling copy instead, so
-  # that `zig build` resolves it locally and never touches the network.
-  defp rewrite_aro_dependency!(translate_c_dir) do
-    zon_path = Path.join(translate_c_dir, "build.zig.zon")
-    zon = File.read!(zon_path)
-
-    cond do
-      String.contains?(zon, ~S(.aro = .{ .path = "../aro" })) ->
-        :ok
-
-      Regex.match?(@aro_dep_pattern, zon) ->
-        File.write!(zon_path, String.replace(zon, @aro_dep_pattern, ~S(.aro = .{ .path = "../aro" },)))
-
-      true ->
-        raise CompileError,
-          description: """
-          could not find the `aro` dependency in translate-c's build.zig.zon.
-
-          Zigler rewrites that declaration to a local path so that nif compilation
-          does not require network access.  The upstream package may have changed
-          shape; please file an issue at https://github.com/E-xyza/zigler
-          """
     end
   end
 
@@ -166,20 +135,19 @@ defmodule Zig.TranslateC do
   # zon strings are escaped like zig strings, so windows separators need doubling.
   def zon_path_escape(path), do: String.replace(path, "\\", "\\\\")
 
-  defp dep_path!(dep) do
-    case Mix.Project.deps_paths()[dep] do
-      nil ->
-        raise CompileError,
-          description: """
-          the `#{dep}` dependency is missing.
+  defp vendored!(name) do
+    path = :zigler |> :code.priv_dir() |> Path.join(name)
 
-          Zigler needs it to translate C headers (including erl_nif.h) with Zig 0.17.
-          Run `mix deps.get`; if it is still missing, check that your project is not
-          overriding zigler's dependencies.
-          """
-
-      path ->
-        path
+    unless File.dir?(path) do
+      raise CompileError, description: missing_vendored_message(name, path)
     end
+
+    path
+  end
+
+  defp missing_vendored_message(name, path) do
+    "zigler's vendored copy of `#{name}` is missing from #{path}.  It ships with " <>
+      "the package; if you are working from a git checkout, check that priv/#{name} " <>
+      "is present."
   end
 end
