@@ -1,6 +1,7 @@
 /// common options utilities functions:
 const std = @import("std");
 const beam = @import("beam.zig");
+const reflect = @import("reflect");
 
 pub inline fn allocator(opts: anytype) std.mem.Allocator {
     return if (@hasField(@TypeOf(opts), "allocator")) opts.allocator else beam.context.allocator;
@@ -68,7 +69,7 @@ pub inline fn output(opts: anytype) OutputType {
                 @compileError("invalid `as` type, must be default list, binary, integer, or map");
             },
             .@"struct" => |S| {
-                for (S.fields) |field| {
+                for (reflect.structFields(S)) |field| {
                     if (std.mem.eql(u8, field.name, "list")) {
                         return .list;
                     }
@@ -101,7 +102,7 @@ fn ListChildOf(T: type) type {
             return @TypeOf(.default);
         },
         .@"struct" => |S| {
-            inline for (S.fields) |field| {
+            inline for (reflect.structFields(S)) |field| {
                 if (std.mem.eql(u8, field.name, "list")) return field.type;
             }
             @compileError("list_child is only callable from a list declaration");
@@ -126,12 +127,12 @@ fn MapChildOf(T: type, comptime name: []const u8) type {
         },
         .@"struct" => |S| {
             if (!@hasField(T, name)) return @TypeOf(.default);
-            inline for (S.fields) |field| {
+            inline for (reflect.structFields(S)) |field| {
                 if (std.mem.eql(u8, field.name, "map")) {
                     const M = field.type;
                     switch (@typeInfo(M)) {
                         .@"struct" => |MT| {
-                            inline for (MT.fields) |mfield| {
+                            inline for (reflect.structFields(MT)) |mfield| {
                                 if (std.mem.eql(u8, mfield.name, name)) return mfield.type;
                             }
                             const error_msg = std.fmt.comptimePrint("field '{s}' not found in target struct", .{name});
@@ -167,12 +168,12 @@ fn TupleChildOf(T: type, comptime index: []const u8) type {
             return @TypeOf(.default);
         },
         .@"struct" => |S| {
-            inline for (S.fields) |field| {
+            inline for (reflect.structFields(S)) |field| {
                 if (std.mem.eql(u8, field.name, "tuple")) {
                     const M = field.type;
                     switch (@typeInfo(M)) {
                         .@"struct" => |MT| {
-                            inline for (MT.fields) |mfield| {
+                            inline for (reflect.structFields(MT)) |mfield| {
                                 if (std.mem.eql(u8, mfield.name, index)) return mfield.type;
                             }
                             // Index not found, return default

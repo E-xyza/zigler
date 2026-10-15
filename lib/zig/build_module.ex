@@ -54,11 +54,18 @@ defmodule Zig.BuildModule do
     }
   end
 
+  def reflect do
+    %__MODULE__{
+      name: :reflect,
+      path: "beam/reflect.zig"
+    }
+  end
+
   def beam do
     %__MODULE__{
       name: :beam,
       path: "beam/beam.zig",
-      deps: [:erl_nif]
+      deps: [:erl_nif, :reflect]
     }
   end
 
@@ -73,7 +80,7 @@ defmodule Zig.BuildModule do
     %__MODULE__{
       name: :sema,
       path: "beam/sema.zig",
-      deps: [:nif],
+      deps: [:nif, :reflect],
       root?: true
     }
   end

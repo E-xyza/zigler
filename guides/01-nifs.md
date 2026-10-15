@@ -50,7 +50,7 @@ end
 Note that Zigler will automatically marshal input and output values across the nif boundary. The
 following scalar types are accepted by zigler:
 
-- signed integer (`i0`..`i65535`), including non-power-of-two values
+- signed integer (`i1`..`i65535`), including non-power-of-two values
 - unsigned integer (`u0`..`u65535`), including non-power-of-two values
 - `usize`, `isize`, architecture-dependent size (roughly `size_t` and `ssize_t` in C)
 - `c_char`, `c_short`, `c_ushort`, `c_int`, `c_uint`, `c_ulong`, `c_longlong`, `c_ulonglong`, which

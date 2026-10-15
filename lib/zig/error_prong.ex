@@ -130,6 +130,14 @@ defmodule Zig.ErrorProng do
                   other
               end
 
+            # zig 0.17 can report a path relative to the build root, as a run of
+            # "../" climbing out of it followed by what is really an absolute path
+            # (macos: "../../../../Users/...", freebsd: "../../home/runner/...").
+            # Expanding that against the cwd is wrong -- the build root is not the
+            # cwd, and on freebsd it produced a doubled prefix -- so strip the
+            # climb and keep the absolute remainder.
+            file = Zig.ErrorProng.unclimb(file)
+
             module =
               if module_str do
                 # Normalize compile_unit_name to an Elixir module atom:
@@ -157,4 +165,21 @@ defmodule Zig.ErrorProng do
   def return_error_prong(:erlang, _, _, _) do
     ["error:{error, Type, _ExtraStacktrace}:Stacktrace -> erlang:raise(error, Type, Stacktrace)"]
   end
+
+  @doc false
+  # zig 0.17 reports some paths relative to the build root: a run of "../"
+  # climbing out of it, followed by what was an absolute path.  Strip the climb
+  # and restore the leading separator.  Paths that do not start with "../" are
+  # left exactly as they are.
+  def unclimb("../" <> _ = climbed) do
+    case String.replace(climbed, ~r|^(\.\./)+|, "") do
+      # a windows path keeps its drive letter and needs no separator
+      <<_, ":/", _::binary>> = drive -> drive
+      "/" <> _ = absolute -> absolute
+      rest -> "/" <> rest
+    end
+  end
+
+  def unclimb(other), do: other
+
 end

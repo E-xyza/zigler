@@ -42,7 +42,7 @@ pub inline fn ignore_when_sema() void {
 /// which are no-op versions of these functions.
 pub const loader = @import("loader.zig");
 
-/// BEAM-based Io implementation for Zig 0.16.0
+/// BEAM-based Io implementation for Zig 0.17.0
 /// Provides std.Io interface backed by Threaded with BEAM-specific stubs
 pub const io = @import("io.zig");
 
@@ -614,7 +614,7 @@ pub const get = get_.get;
 /// end
 /// ```
 ///
-/// ### `std.builtin.StackTrace`
+/// ### `std.lang.StackTrace`
 /// - special interface for returning stacktrace info to BEAM.
 ///
 /// ### integers
@@ -1181,7 +1181,7 @@ pub const make_ref = make_.make_ref;
 
 /// <!-- topic: Term Management; args: _, options -->
 ///
-/// converts a zig `std.builtin.StackTrace` into a special term
+/// converts a zig `std.lang.StackTrace` into a special term
 /// that is designed to be translated and concatenated onto a BEAM
 /// stacktrace.
 ///
@@ -1671,14 +1671,12 @@ pub fn ClearEnvReturn(comptime T: type) type {
     const info = @typeInfo(T);
     if (info != .@"struct") @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
     if (!info.@"struct".is_tuple) @compileError("unsupported type for ClearEnvReturn, must be a tuple of `beam.term`");
-    const fields = info.@"struct".fields;
-
     // type assertion that it's a struct.
-    inline for (fields) |field| {
-        if (field.type != term) @compileError("unsupported type for CleanEnvReturn, must be a tuple of `beam.term`");
+    inline for (info.@"struct".field_types) |field_type| {
+        if (field_type != term) @compileError("unsupported type for CleanEnvReturn, must be a tuple of `beam.term`");
     }
 
-    switch (fields.len) {
+    switch (info.@"struct".field_types.len) {
         0 => return void,
         1 => return term,
         else => return T,
@@ -1727,7 +1725,7 @@ pub fn ClearEnvReturn(comptime T: type) type {
 pub fn clear_env(env_: env, persist: anytype) ClearEnvReturn(@TypeOf(persist)) {
     const T = @TypeOf(persist);
     e.enif_clear_env(env_);
-    if (@typeInfo(T).@"struct".fields.len == 1) {
+    if (@typeInfo(T).@"struct".field_names.len == 1) {
         return .{ .v = e.enif_make_copy(env_, persist[0].v) };
     } else {
         var result: ClearEnvReturn(T) = undefined;
@@ -1771,6 +1769,7 @@ pub const Thread = threads.Thread;
 pub const ThreadedCallbacks = threads.Callbacks;
 
 const yield_ = @import("yield.zig");
+
 
 /// <!-- topic: Concurrency -->
 /// periodic check-in function for long-running nifs.
@@ -1880,8 +1879,11 @@ pub fn thread_not_running(err: anytype) bool {
 }
 
 fn has_processterminated(comptime T: type) bool {
-    inline for (@typeInfo(T).error_set.?) |err| {
-        if (std.mem.eql(u8, err.name, "processterminated")) return true;
+    // zig 0.17: Type.ErrorSet is a struct holding an optional error_names list,
+    // rather than an optional list of error records.
+    const error_names = @typeInfo(T).error_set.error_names orelse return false;
+    inline for (error_names) |name| {
+        if (std.mem.eql(u8, name, "processterminated")) return true;
     }
     return false;
 }
@@ -1944,7 +1946,7 @@ pub fn raise_elixir_exception(comptime module: []const u8, data: anytype, opts: 
 /// stacktrace.  In order to concatenate this stacktrace onto your BEAM
 /// exception, the function that wraps the nif must be able to catch the
 /// error and append the zig error return trace to the existing stacktrace.
-pub fn raise_with_error_return(err: anytype, maybe_return_trace: ?*std.builtin.StackTrace, opts: anytype) term {
+pub fn raise_with_error_return(err: anytype, maybe_return_trace: ?*std.lang.StackTrace, opts: anytype) term {
     return if (maybe_return_trace) |return_trace|
         raise_exception(.{ .@"error", err, return_trace }, opts)
     else

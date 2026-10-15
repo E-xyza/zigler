@@ -21,6 +21,38 @@
 /* Include file for writers of Native Implemented Functions. 
 */
 
+/* ZIGLER NOTE
+ *
+ * This is a copy of erlang's erl_nif.h, kept because translate-c cannot consume
+ * the upstream windows path.  On windows the NIF functions are not exported as
+ * symbols: erl_nif.h defines
+ *
+ *     #define ERL_NIF_API_FUNC_MACRO(NAME) (WinDynNifCallbacks.NAME)
+ *
+ * and then re-includes the API list so that every entry becomes
+ *
+ *     #define enif_alloc ERL_NIF_API_FUNC_MACRO(enif_alloc)
+ *
+ * translate-c renders that nested macro literally, producing
+ *
+ *     pub const enif_alloc = ERL_NIF_API_FUNC_MACRO(enif_alloc);
+ *
+ * which zig rejects: "value of declaration 'enif_alloc' depends on itself".  In C
+ * the argument is a token consumed by member access; in zig it resolves to the
+ * declaration being defined.  All 174 macro-ised functions are affected (zig only
+ * reports one per compile, so a single build badly understates it).
+ *
+ * erl_nif_api_funcs_win.h therefore pre-expands the macros to a direct field
+ * access, `#define enif_alloc WinDynNifCallbacks.enif_alloc`, which translate-c
+ * turns into a proper callable wrapper.  This file differs from upstream only in
+ * including that header instead, and in a missing `#include <string.h>`.
+ *
+ * Re-test on new translate-c/aro releases: if the nested form ever translates to a
+ * call-time wrapper, both of these files can be dropped in favour of the real
+ * erl_nif.h.  Note that 5 callbacks are variadic (enif_fprintf, enif_make_list,
+ * enif_make_tuple, enif_set_option, enif_snprintf) and would still need care.
+ */
+
 #ifndef __ERL_NIF_H__
 #define __ERL_NIF_H__
 

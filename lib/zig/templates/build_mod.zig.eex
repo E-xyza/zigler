@@ -11,11 +11,13 @@ fn stripQuotes(path: []const u8) []const u8 {
     return path;
 }
 
+const Translator = @import("translate_c").Translator;
+
 pub fn build(b: *std.Build) void {
     const resolved_target = b.standardTargetOptions(<%=Zig.Target.for_builder()%>);
     // Host target for sema - must run on build machine during cross-compilation
     const host_target = b.graph.host;
-    const optimize: std.builtin.OptimizeMode = <%= render_optimize_mode(assigns) %>;
+    const optimize: std.lang.Optimize = <%= render_optimize_mode(assigns) %>;
     const error_tracing = <%= @error_tracing %>;
 
     // ERTS and zigler paths (auto-injected by zigler as -D flags)
@@ -27,6 +29,16 @@ pub fn build(b: *std.Build) void {
     const module_root = stripQuotes(b.option([]const u8, "module_root", "Path to module source directory") orelse @panic("module_root required"));
 
     const mode = b.option(BuildMode, "zigler-mode", "Build either the nif library or the sema analysis module") orelse .nif_lib;
+
+    // zig 0.17 deprecated b.addTranslateC in favour of the ZSF translate-c package.
+    // Zigler stages it (and aro) next to this file, so it resolves with no network.
+    // NB: translate-c is a build-time *tool*; it has to run on the build machine, so
+    // it is built for the host even when cross compiling.  The headers it translates
+    // are still parsed for the target, which `Translator.init` is told separately.
+    const translate_c_dep = b.dependency("translate_c", .{
+        .target = host_target,
+        .optimize = optimize,
+    });
 
     <%= for {name, _} <- @dependencies do %>
     const <%= name %> = b.dependency("<%= name %>", .{
@@ -42,18 +54,20 @@ pub fn build(b: *std.Build) void {
 
             // Translate erl_nif.h to Zig module (replaces @cImport in Zig 0.16.0)
             // On Windows, uses custom erl_nif_win.h to avoid translate-c issues with macro-based function pointers
-            const erl_translate_c = b.addTranslateC(.{
-                .root_source_file = .{ .cwd_relative = erl_nif_header },
+            const erl_translate_c: Translator = .init(translate_c_dep, .{
+                .name = "erl",
+                .c_source_file = .{ .cwd_relative = erl_nif_header },
                 .target = resolved_target,
                 .optimize = optimize,
                 .link_libc = true,
             });
             erl_translate_c.addSystemIncludePath(.{ .cwd_relative = erts_include });
             erl_translate_c.addSystemIncludePath(.{ .cwd_relative = erl_nif_win_path });
-            const erl_module = erl_translate_c.createModule();
+            const erl_module = erl_translate_c.mod;
 
             <%= Builder.render_build(BuildModule.erl_nif()) %>
             erl_nif.addImport("erl", erl_module);
+            <%= Builder.render_build(BuildModule.reflect()) %>
             <%= Builder.render_build(BuildModule.beam()) %>
             <%= Builder.render_build(BuildModule.attributes()) %>
             <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
@@ -67,15 +81,17 @@ pub fn build(b: *std.Build) void {
                 // System header - generate wrapper that includes it
                 const wf_<%= module_name %> = b.addWriteFiles();
                 const wrapper_<%= module_name %> = wf_<%= module_name %>.add("<%= module_name %>_wrapper.h", "#include <<%= header_name %>>\n");
-                const translate_c_<%= module_name %> = b.addTranslateC(.{
-                    .root_source_file = wrapper_<%= module_name %>,
+                const translate_c_<%= module_name %>: Translator = .init(translate_c_dep, .{
+                    .name = "translate_c_<%= module_name %>",
+                    .c_source_file = wrapper_<%= module_name %>,
                     .target = resolved_target,
                     .optimize = optimize,
                     .link_libc = true,
                 });
 <% _ -> %>
-                const translate_c_<%= module_name %> = b.addTranslateC(.{
-                    .root_source_file = .{ .cwd_relative = "<%= header_path %>" },
+                const translate_c_<%= module_name %>: Translator = .init(translate_c_dep, .{
+                    .name = "translate_c_<%= module_name %>",
+                    .c_source_file = .{ .cwd_relative = "<%= header_path %>" },
                     .target = resolved_target,
                     .optimize = optimize,
                     .link_libc = true,
@@ -87,7 +103,7 @@ pub fn build(b: *std.Build) void {
 <% _ -> %>                translate_c_<%= module_name %>.addIncludePath(.{ .cwd_relative = "<%= dir %>" });
 <% end %>
 <% end %>
-                nif.addImport("<%= module_name %>", translate_c_<%= module_name %>.createModule());
+                nif.addImport("<%= module_name %>", translate_c_<%= module_name %>.mod);
             }
 <% end %>
 <% end %>
@@ -96,8 +112,9 @@ pub fn build(b: *std.Build) void {
             {
                 const wf_easy_c = b.addWriteFiles();
                 const wrapper_easy_c = wf_easy_c.add("easy_c_wrapper.h", "#include <<%= @easy_c %>>\n");
-                const translate_c_easy_c = b.addTranslateC(.{
-                    .root_source_file = wrapper_easy_c,
+                const translate_c_easy_c: Translator = .init(translate_c_dep, .{
+                    .name = "translate_c_easy_c",
+                    .c_source_file = wrapper_easy_c,
                     .target = resolved_target,
                     .optimize = optimize,
                     .link_libc = true,
@@ -108,7 +125,7 @@ pub fn build(b: *std.Build) void {
 <% _ -> %>                translate_c_easy_c.addIncludePath(.{ .cwd_relative = "<%= dir %>" });
 <% end %>
 <% end %>
-                nif.addImport("easy_c", translate_c_easy_c.createModule());
+                nif.addImport("easy_c", translate_c_easy_c.mod);
             }
 <% end %>
             <%= Builder.render_build(BuildModule.nif_shim()) %>
@@ -143,6 +160,7 @@ pub fn build(b: *std.Build) void {
             const target_for_modules = host_target;
 
             <%= Builder.render_build(BuildModule.stub_erl_nif()) %>
+            <%= Builder.render_build(BuildModule.reflect()) %>
             <%= Builder.render_build(BuildModule.beam()) %>
             <%= Builder.render_build(BuildModule.attributes()) %>
             <%= for extra_module <- @extra_modules, do: Builder.render_build(extra_module)%>
@@ -156,15 +174,17 @@ pub fn build(b: *std.Build) void {
                 // System header - generate wrapper that includes it
                 const wf_<%= module_name %> = b.addWriteFiles();
                 const wrapper_<%= module_name %> = wf_<%= module_name %>.add("<%= module_name %>_wrapper.h", "#include <<%= header_name %>>\n");
-                const translate_c_<%= module_name %> = b.addTranslateC(.{
-                    .root_source_file = wrapper_<%= module_name %>,
+                const translate_c_<%= module_name %>: Translator = .init(translate_c_dep, .{
+                    .name = "translate_c_<%= module_name %>",
+                    .c_source_file = wrapper_<%= module_name %>,
                     .target = host_target,
                     .optimize = optimize,
                     .link_libc = true,
                 });
 <% _ -> %>
-                const translate_c_<%= module_name %> = b.addTranslateC(.{
-                    .root_source_file = .{ .cwd_relative = "<%= header_path %>" },
+                const translate_c_<%= module_name %>: Translator = .init(translate_c_dep, .{
+                    .name = "translate_c_<%= module_name %>",
+                    .c_source_file = .{ .cwd_relative = "<%= header_path %>" },
                     .target = host_target,
                     .optimize = optimize,
                     .link_libc = true,
@@ -176,7 +196,7 @@ pub fn build(b: *std.Build) void {
 <% _ -> %>                translate_c_<%= module_name %>.addIncludePath(.{ .cwd_relative = "<%= dir %>" });
 <% end %>
 <% end %>
-                nif.addImport("<%= module_name %>", translate_c_<%= module_name %>.createModule());
+                nif.addImport("<%= module_name %>", translate_c_<%= module_name %>.mod);
             }
 <% end %>
 <% end %>
@@ -185,8 +205,9 @@ pub fn build(b: *std.Build) void {
             {
                 const wf_easy_c = b.addWriteFiles();
                 const wrapper_easy_c = wf_easy_c.add("easy_c_wrapper.h", "#include <<%= @easy_c %>>\n");
-                const translate_c_easy_c = b.addTranslateC(.{
-                    .root_source_file = wrapper_easy_c,
+                const translate_c_easy_c: Translator = .init(translate_c_dep, .{
+                    .name = "translate_c_easy_c",
+                    .c_source_file = wrapper_easy_c,
                     .target = host_target,
                     .optimize = optimize,
                     .link_libc = true,
@@ -197,7 +218,7 @@ pub fn build(b: *std.Build) void {
 <% _ -> %>                translate_c_easy_c.addIncludePath(.{ .cwd_relative = "<%= dir %>" });
 <% end %>
 <% end %>
-                nif.addImport("easy_c", translate_c_easy_c.createModule());
+                nif.addImport("easy_c", translate_c_easy_c.mod);
             }
 <% end %>
             <%= Builder.render_build(BuildModule.sema()) %>
@@ -213,7 +234,7 @@ pub fn build(b: *std.Build) void {
             b.installArtifact(sema_exe);
 
             const sema_run_cmd = b.addRunArtifact(sema_exe);
-            if (b.args) |args| sema_run_cmd.addArgs(args);
+            sema_run_cmd.addPassthruArgs();
             const sema_step = b.step("sema", "Run sema");
             sema_step.dependOn(&sema_run_cmd.step);
         }

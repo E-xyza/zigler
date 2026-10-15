@@ -31,7 +31,19 @@ defmodule Zig.Manifest do
         defp __resolve(@windows_file, line), do: __resolve(@__zig_manifest, [], line)
       end
 
-      defp __resolve(file, line) when is_binary(file), do: {file, line}
+      # zig 0.17 can report the source path relative to the build root on some
+      # platforms (macos emits e.g. "../../../../Users/.../foo.zig"), which
+      # matches neither of the clauses above.  Fall back to the basename, which
+      # is stable across however the path is spelled.
+      @__zig_basename Path.basename(unquote(file))
+
+      defp __resolve(file, line) when is_binary(file) do
+        if Path.basename(file) == @__zig_basename do
+          __resolve(@__zig_manifest, [], line)
+        else
+          {file, line}
+        end
+      end
 
       defp __resolve([{anchor_line, _} = head | rest], stack, line) when anchor_line < line do
         __resolve(rest, [head | stack], line)

@@ -25,7 +25,7 @@ by adding `zigler` to your list of dependencies in `mix.exs`:
 ```elixir
 def deps do
   [
-    {:zigler, "~> 0.15.1", runtime: false}
+    {:zigler, "~> 0.17.0", runtime: false}
   ]
 end
 ```
@@ -36,7 +36,7 @@ end
 
 TBD.
 
-`~/.cache/zigler/zig-linux-<arch>-0.15.1`
+`~/.cache/zigler/zig-<arch>-linux-0.17.0`
 
 ### Main Installation
 
@@ -49,7 +49,7 @@ have difficulty.
 ```erlang
 {plugins, [rebar_mix]}.
 
-{deps, [{zigler, "0.14"}]}.
+{deps, [{zigler, "0.17.0"}]}.
 
 ```
 

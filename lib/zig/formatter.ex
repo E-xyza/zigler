@@ -26,7 +26,7 @@ try do
 
         @memcpy(source_z.ptr, source_code);
 
-        var tree = try std.zig.Ast.parse(beam.allocator, source_z, .zig);
+        var tree = try std.zig.Ast.parse(beam.allocator, source_z, .{ .mode = .zig });
         defer tree.deinit(beam.allocator);
 
         // no-op if parsing errors

@@ -5,8 +5,8 @@ const beam = @import("beam.zig");
 pub fn Payload(comptime function: anytype) type {
     const T = if (@TypeOf(function) == type) function else @TypeOf(function);
 
-    const params = switch (@typeInfo(T)) {
-        .@"fn" => |f| f.params,
+    const param_types = switch (@typeInfo(T)) {
+        .@"fn" => |f| f.param_types,
         else => @compileError("Payload is only available for a function"),
     };
 
@@ -14,9 +14,11 @@ pub fn Payload(comptime function: anytype) type {
     // (@Struct can also represent tuples but the indexing semantics
     // differ; for runtime indexing into the payload we need a true
     // tuple type, not a struct-with-numeric-names.)
-    var field_types: [params.len]type = undefined;
-    for (params, 0..) |param, index| {
-        field_types[index] = param.type.?;
+    // Zig 0.17: fn params are reported as a parallel param_types array, which
+    // is already []const ?type, so the element is the optional.
+    var field_types: [param_types.len]type = undefined;
+    for (param_types, 0..) |param_type, index| {
+        field_types[index] = param_type.?;
     }
 
     return @Tuple(&field_types);
@@ -26,8 +28,8 @@ pub fn Payload(comptime function: anytype) type {
 
 fn arity(fun: anytype) u8 {
     return switch (@typeInfo(@TypeOf(fun))) {
-        .@"fn" => |f| f.params.len,
-        .@"struct" => |s| s.fields.len,
+        .@"fn" => |f| f.param_types.len,
+        .@"struct" => |s| s.field_names.len,
         else => @compileError("arity is only available for a function"),
     };
 }

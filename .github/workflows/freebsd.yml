@@ -12,8 +12,8 @@ jobs:
     - uses: erlef/setup-beam@v1
       name: Setup Erlang
       with:
-        otp-version: '27.3'
-        elixir-version: '1.17.3'
+        otp-version: '29.1'
+        elixir-version: '1.20.4'
 
     - uses: actions/cache@v3
       id: deps-cache
@@ -31,20 +31,31 @@ jobs:
         mem: 8192
         usesh: true
         prepare: |
-          pkg install -y erlang-runtime28
+          pkg install -y erlang-runtime29
           pkg install -y elixir
           pkg install -y ca_root_nss
+          # translate-c and aro are git dependencies, and mix shells out to git
+          # to check their lock status even though the host already fetched them.
+          pkg install -y git
 
-          # Download prebuilt Zig 0.16.0 for FreeBSD
-          fetch https://ziglang.org/download/0.16.0/zig-x86_64-freebsd-0.16.0.tar.xz
-          tar -xJf zig-x86_64-freebsd-0.16.0.tar.xz
-          mv zig-x86_64-freebsd-0.16.0 /usr/local/zig
+          # Download prebuilt Zig 0.17.0 for FreeBSD
+          fetch https://ziglang.org/download/0.17.0/zig-x86_64-freebsd-0.17.0.tar.xz
+          tar -xJf zig-x86_64-freebsd-0.17.0.tar.xz
+          mv zig-x86_64-freebsd-0.17.0 /usr/local/zig
 
         run: |
           export ZIG_EXECUTABLE_PATH="/usr/local/zig/zig"
-          export PATH="/usr/local/lib/erlang28/bin:$PATH"
+          export PATH="/usr/local/lib/erlang29/bin:$PATH"
           export SSL_CACERTFILE=/usr/local/etc/ssl/cert.pem
 
           mix local.hex --force
 
-          mix test --exclude no_ci --exclude skip_freebsd
+          # build translate-c and aro into the global zig cache up front: it costs
+          # about a minute and a gigabyte, once, and doing it here keeps it out of
+          # any individual test.
+          mix zig.warm
+
+          # translate-c/aro is precompiled above, so no test pays for it.  The
+          # fan-out is still capped: each zig build peaks near 300MB and the VM
+          # has 8GB.
+          mix test --exclude no_ci --exclude skip_freebsd --max-cases 4

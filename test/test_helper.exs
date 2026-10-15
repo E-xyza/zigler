@@ -28,4 +28,8 @@ ZiglerTest.MakeReadme.go()
 
 ZiglerTest.MakeZig.go()
 
-ExUnit.start()
+# Nearly every test here compiles zig, and CI runners are far slower than a
+# development machine: the suite takes ~20s locally and ~1600s on the macos
+# runner.  The default 60s per-test timeout is comfortable locally but marginal
+# there for the tests that compile a nif inside the test body.
+ExUnit.start(timeout: String.to_integer(System.get_env("ZIGLER_TEST_TIMEOUT", "300000")))

@@ -21,13 +21,13 @@ jobs:
   
       - name: get elixir version
         id: elixir-version
-        run: elixir --version | tail -n 1 | awk '{ print $2 }'
+        run: echo "version=$(elixir --version | tail -n 1 | awk '{ print $2 }')" >> $GITHUB_OUTPUT
         
       - uses: actions/cache@v3
         id: deps-cache
         with:
           path: deps
-          key: ${{ runner.os }}-mix-${{ steps.elixir-version.outputs.stdout }}-${{ hashFiles('mix.lock') }}
+          key: ${{ runner.os }}-mix-${{ steps.elixir-version.outputs.version }}-${{ hashFiles('mix.lock') }}
 
       - name: Install dependencies
         run: mix deps.get
@@ -36,7 +36,7 @@ jobs:
         id: build-cache
         with:
           path: _build
-          key: ${{ runner.os }}-build-${{ steps.elixir-version.outputs.stdout }}-${{ hashFiles('mix.lock') }}
+          key: ${{ runner.os }}-build-${{ steps.elixir-version.outputs.version }}-${{ hashFiles('mix.lock') }}
   
       - name: Compile base
         run: mix compile
@@ -54,6 +54,9 @@ jobs:
       - name: Get Zig
         run: mix zig.get
   
+      - name: Warm the translate-c cache
+        run: mix zig.warm
+
       - name: Run Tests
         env:
           RUNNING_CI: "TRUE"

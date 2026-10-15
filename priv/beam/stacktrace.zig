@@ -1,6 +1,7 @@
 const std = @import("std");
 const builtin = @import("builtin");
 const beam = @import("beam.zig");
+const reflect = @import("reflect");
 
 const SelfInfo = std.debug.SelfInfo;
 const Symbol = std.debug.Symbol;
@@ -93,7 +94,7 @@ fn make_trace_item(debug_info: *SelfInfo, io: std.Io, address: usize, opts: anyt
     }, opts);
 }
 
-pub fn to_term(stacktrace: *std.builtin.StackTrace, opts: anytype) beam.term {
+pub fn to_term(stacktrace: *std.lang.StackTrace, opts: anytype) beam.term {
     if (builtin.strip_debug_info) return beam.make_empty_list(opts);
 
     const debug_info = getSelfInfo();
@@ -200,12 +201,15 @@ const WindowsDebugInfo = struct {
                 while (iter.next(module)) |inline_site| {
                     if (inline_site.inlinee == last_inlinee) continue;
 
-                    for (pdb.getInlineeSourceLines(module, inline_site.inlinee)) |inlinee_src_line| {
+                    // zig 0.17: getInlineeSourceLines returns an iterator rather
+                    // than a slice.
+                    var src_line_iter = pdb.getInlineeSourceLines(module, inline_site.inlinee);
+                    while (src_line_iter.next()) |inlinee_src_line| {
                         const maybe_loc = pdb.getInlineSiteSourceLocation(
                             arena,
                             module,
                             inline_site,
-                            inlinee_src_line.info,
+                            inlinee_src_line,
                             offset_in_func,
                         ) catch continue;
                         const loc = maybe_loc orelse continue;
@@ -266,7 +270,7 @@ const WindowsModule = struct {
 };
 
 // Module cache for Windows
-var windows_modules: [16]?WindowsModule = .{null} ** 16;
+var windows_modules: [16]?WindowsModule = @splat(null);
 
 fn findWindowsModule(address: usize) std.debug.SelfInfoError!*WindowsModule {
     // Check cache
@@ -377,7 +381,7 @@ fn loadWindowsDebugInfo(module: *const WindowsModule, gpa: std.mem.Allocator, io
             break :dwarf null;
         }
         var sections: Dwarf.SectionArray = undefined;
-        inline for (@typeInfo(Dwarf.Section.Id).@"enum".fields, 0..) |section, i| {
+        inline for (reflect.enumFields(Dwarf.Section.Id), 0..) |section, i| {
             sections[i] = if (coff_obj.getSectionByName("." ++ section.name)) |section_header| .{
                 .data = try coff_obj.getSectionDataAlloc(section_header, arena),
                 .owned = false,

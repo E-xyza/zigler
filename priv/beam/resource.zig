@@ -2,8 +2,9 @@ const std = @import("std");
 const beam = @import("beam.zig");
 const e = @import("erl_nif");
 const options = @import("options.zig");
+const reflect = @import("reflect");
 
-const builtin = std.builtin;
+const builtin = std.lang;
 const Allocator = std.mem.Allocator;
 const MAX_ALIGN = @import("allocator.zig").MAX_ALIGN;
 
@@ -203,14 +204,15 @@ pub fn MaybeUnwrap(comptime s: builtin.Type.Struct) ?type {
     // a single field called `__payload` which is a pointer to the wrapped type.
     // return the wrapped type, otherwise return null.
 
-    if (s.fields.len != 2) return null;
-    if (!std.mem.eql(u8, s.fields[0].name, "__payload")) return null;
-    if (!std.mem.eql(u8, s.fields[1].name, "__should_release")) return null;
+    const s_fields = reflect.structFields(s);
+    if (s_fields.len != 2) return null;
+    if (!std.mem.eql(u8, s_fields[0].name, "__payload")) return null;
+    if (!std.mem.eql(u8, s_fields[1].name, "__should_release")) return null;
 
-    switch (@typeInfo(s.fields[0].type)) {
+    switch (@typeInfo(s_fields[0].type)) {
         .pointer => |p| {
             if (p.size != .one) return null;
-            if (p.is_allowzero) return null;
+            if (p.attrs.@"allowzero") return null;
             return p.child;
         },
         else => return null,

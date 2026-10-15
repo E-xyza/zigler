@@ -2,6 +2,7 @@ const std = @import("std");
 const beam = @import("beam.zig");
 const options = @import("options.zig");
 const resource = @import("resource.zig");
+const reflect = @import("reflect");
 
 const CPointerTags = enum { One, Many };
 pub fn CPointerCleanup(comptime T: type) type {
@@ -18,7 +19,7 @@ fn needs_cleanup(comptime T: type, comptime should: bool) bool {
 }
 
 fn struct_needs_cleanup(comptime T: type, comptime should: bool) bool {
-    inline for (@typeInfo(T).@"struct".fields) |field| {
+    inline for (reflect.fields(T)) |field| {
         if (needs_cleanup(field.type, should)) return true;
     }
     return false;
@@ -57,7 +58,7 @@ pub fn cleanup(what: anytype, opts: anytype) void {
 
 fn cleanup_pointer(ptr: anytype, opts: anytype) void {
     const info = @typeInfo(@TypeOf(ptr)).pointer;
-    if (info.is_const) return;
+    if (info.attrs.@"const") return;
     switch (info.size) {
         .one => {
             // TODO: more detailed cleanup.
@@ -85,7 +86,7 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
             }
 
             if (options.size(opts)) |size| {
-                if (info.is_allowzero) {
+                if (info.attrs.@"allowzero") {
                     if (ptr) |_| {
                         const underlying_slice = ptr[0..size];
                         options.allocator(opts).free(underlying_slice);
@@ -102,7 +103,7 @@ fn cleanup_pointer(ptr: anytype, opts: anytype) void {
 fn cleanup_struct(s: anytype, opts: anytype) void {
     const info = @typeInfo(@TypeOf(s)).@"struct";
 
-    inline for (info.fields) |field| {
+    inline for (reflect.structFields(info)) |field| {
         cleanup(@field(s, field.name), opts);
     }
 }
