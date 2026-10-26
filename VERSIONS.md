@@ -205,12 +205,12 @@ Thanks to Dave Cottlehuber @dch for testing.
     reports `.debug`/`.safe`/`.fast`/`.small`.  Zigler's own `optimize:` option is
     unchanged, as it already used those names.
   - C header translation now goes through the ZSF `translate-c` package, since Zig
-    0.17 deprecates the built-in `std.Build.Step.TranslateC`.  Zigler fetches
-    `translate-c` and `arocc` as source-only git dependencies -- pinned in
-    `mix.lock` -- and stages them beside the generated `build.zig`, so compiling a
-    nif still requires no network access.  If you supply your own build files with
-    `build_files_dir:`, use the `Translator` API instead of `b.addTranslateC`;
-    zigler declares the `translate_c` package in your `build.zig.zon` for you.
+    0.17 deprecates the built-in `std.Build.Step.TranslateC`.  `translate-c` and
+    its `aro` dependency are vendored under `priv/` and ship with the package, so
+    compiling a nif still requires no network access.  If you supply your own build
+    files with `build_files_dir:`, use the `Translator` API instead of
+    `b.addTranslateC`; zigler declares the `translate_c` package in your
+    `build.zig.zon` for you.
 - Features:
   - `mix zig.warm` precompiles `translate-c` into the global zig cache.  Nothing
     needs to call it -- the first nif compiled does the work, and zig's cache lock
@@ -222,6 +222,10 @@ Thanks to Dave Cottlehuber @dch for testing.
   - Cross-compiling to Windows works: the windows `erl_nif` headers are selected
     from the *target*, not the build host, and `translate-c` is built for the host
     rather than the target.
+  - Falling back to a `zig` on your `PATH` now checks its version first.  An
+    incompatible system zig used to be accepted silently and produce compilation
+    errors from inside `priv/beam` that looked like zigler bugs; you get a clear
+    message naming both versions instead.
 - Dependencies:
   - `zig_parser` 0.8.0, `zig_doc` 0.8.0 and `zig_get` 0.17.0, all of which track
     Zig versions.

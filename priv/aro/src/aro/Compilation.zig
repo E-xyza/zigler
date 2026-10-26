@@ -1,0 +1,2887 @@
+const std = @import("std");
+const assert = std.debug.assert;
+const EpochSeconds = std.time.epoch.EpochSeconds;
+const Io = std.Io;
+const mem = std.mem;
+const Allocator = mem.Allocator;
+
+const backend = @import("backend");
+const Interner = backend.Interner;
+const CodeGenOptions = backend.CodeGenOptions;
+
+const Builtins = @import("Builtins.zig");
+const Diagnostics = @import("Diagnostics.zig");
+const DepFile = @import("DepFile.zig");
+const LangOpts = @import("LangOpts.zig");
+const Pragma = @import("Pragma.zig");
+const record_layout = @import("record_layout.zig");
+const Source = @import("Source.zig");
+const StringInterner = @import("StringInterner.zig");
+const Target = @import("Target.zig");
+const Tokenizer = @import("Tokenizer.zig");
+const Token = Tokenizer.Token;
+const TypeStore = @import("TypeStore.zig");
+const Type = TypeStore.Type;
+const QualType = TypeStore.QualType;
+
+pub const Error = error{
+    /// A fatal error has occurred and compilation has stopped.
+    FatalError,
+} || Allocator.Error;
+pub const AddSourceError = Error || error{FileTooBig};
+
+pub const bit_int_max_bits = std.math.maxInt(u16);
+const path_buf_stack_limit = 1024;
+
+/// Environment variables used during compilation / linking.
+pub const Environment = struct {
+    /// Directory to use for temporary files
+    /// TODO: not implemented yet
+    tmpdir: ?[]const u8 = null,
+
+    /// PATH environment variable used to search for programs
+    path: ?[]const u8 = null,
+
+    /// Directories to try when searching for subprograms.
+    /// TODO: not implemented yet
+    compiler_path: ?[]const u8 = null,
+
+    /// Directories to try when searching for special linker files, if compiling for the native target
+    /// TODO: not implemented yet
+    library_path: ?[]const u8 = null,
+
+    /// List of directories to be searched as if specified with -I, but after any paths given with -I options on the command line
+    /// Used regardless of the language being compiled
+    /// TODO: not implemented yet
+    cpath: ?[]const u8 = null,
+
+    /// List of directories to be searched as if specified with -I, but after any paths given with -I options on the command line
+    /// Used if the language being compiled is C
+    /// TODO: not implemented yet
+    c_include_path: ?[]const u8 = null,
+
+    /// UNIX timestamp to be used instead of the current date and time in the __DATE__ and __TIME__ macros, and instead of the
+    /// file modification time in the __TIMESTAMP__ macro
+    source_date_epoch: ?[]const u8 = null,
+
+    pub const SourceEpoch = union(enum) {
+        /// Represents system time when aro is invoked; used for __DATE__ and __TIME__ macros
+        system: u64,
+        /// Represents a user-provided time (typically via the SOURCE_DATE_EPOCH environment variable)
+        /// used for __DATE__, __TIME__, and __TIMESTAMP__
+        provided: u64,
+
+        pub const default: SourceEpoch = .{ .provided = 0 };
+    };
+
+    /// Load all of the environment variables from an environ map. Does not copy values.
+    pub fn loadAll(environ_map: *const std.process.Environ.Map) Environment {
+        var env: Environment = .{};
+
+        inline for (@typeInfo(@TypeOf(env)).@"struct".field_names) |field_name| {
+            std.debug.assert(@field(env, field_name) == null);
+
+            var env_var_buf: [field_name.len]u8 = undefined;
+            const env_var_name = std.ascii.upperString(&env_var_buf, field_name);
+            @field(env, field_name) = environ_map.get(env_var_name);
+        }
+        return env;
+    }
+
+    pub fn sourceEpoch(self: *const Environment, io: Io) !SourceEpoch {
+        const max_timestamp = 253402300799; // Dec 31 9999 23:59:59
+
+        if (self.source_date_epoch) |epoch| {
+            const parsed = std.fmt.parseInt(u64, epoch, 10) catch return error.InvalidEpoch;
+            if (parsed > max_timestamp) return error.InvalidEpoch;
+            return .{ .provided = parsed };
+        } else {
+            const timestamp = Io.Clock.real.now(io);
+            const seconds = std.math.cast(u64, timestamp.toSeconds()) orelse return error.InvalidEpoch;
+            return .{ .system = std.math.clamp(seconds, 0, max_timestamp) };
+        }
+    }
+};
+
+pub const Include = struct {
+    kind: Kind,
+    path: []const u8,
+
+    pub const Kind = enum {
+        quote,
+        normal,
+        framework,
+        system,
+        system_framework,
+        after,
+
+        pub fn isFramework(kind: Kind) bool {
+            return switch (kind) {
+                .framework, .system_framework => true,
+                else => false,
+            };
+        }
+
+        pub fn isSystem(kind: Kind) bool {
+            return switch (kind) {
+                .after, .system, .system_framework => true,
+                else => false,
+            };
+        }
+    };
+};
+
+const Compilation = @This();
+
+gpa: Allocator,
+/// Allocations in this arena live all the way until `Compilation.deinit`.
+arena: Allocator,
+io: Io,
+cwd: std.Io.Dir,
+diagnostics: *Diagnostics,
+
+sources: std.StringArrayHashMapUnmanaged(Source) = .empty,
+source_aliases: std.ArrayList(Source) = .empty,
+/// Allocated into `gpa`, but keys are externally managed.
+search_path: std.ArrayList(Include) = .empty,
+/// Allocated into `gpa`, but keys are externally managed.
+embed_dirs: std.ArrayList([]const u8) = .empty,
+
+environment: Environment = .{},
+target: Target = .default,
+darwin_target_variant: ?Target = null,
+cmodel: std.builtin.CodeModel = .default,
+
+code_gen_options: CodeGenOptions = .default,
+langopts: LangOpts = .{},
+generated_buf: std.ArrayList(u8) = .empty,
+builtins: Builtins = .{},
+string_interner: StringInterner = .{},
+interner: Interner = .{},
+type_store: TypeStore = .{},
+pragma_handlers: std.StringArrayHashMapUnmanaged(*Pragma) = .empty,
+/// If this is not null, the directory containing the specified Source will be searched for includes
+/// Used by MS extensions which allow searching for includes relative to the directory of the main source file.
+ms_cwd_source_id: ?Source.Id = null,
+
+pub const InitOptions = struct {
+    gpa: Allocator,
+    arena: Allocator,
+    io: Io,
+    diagnostics: *Diagnostics,
+
+    /// Used to initiate `Compilation.Environment`, values are not copied.
+    environ_map: ?*const std.process.Environ.Map,
+    /// Defaults to `std.Io.Dir.cwd()`
+    cwd: ?std.Io.Dir = null,
+
+    add_default_pragma_handlers: bool = true,
+
+    pub const testing: InitOptions = .{
+        .gpa = std.testing.allocator,
+        .arena = undefined,
+        .io = std.testing.io,
+        .diagnostics = undefined,
+        .environ_map = null,
+        .add_default_pragma_handlers = false,
+    };
+
+    var fuzzing_diagnostics: Diagnostics = .{ .output = .ignore };
+    pub const fuzzing: InitOptions = .{
+        .gpa = std.testing.allocator,
+        .arena = undefined,
+        .io = std.Io.failing,
+        .diagnostics = &fuzzing_diagnostics,
+        .environ_map = null,
+        .add_default_pragma_handlers = false,
+    };
+};
+
+/// Initialize Compilation with default environment,
+/// pragma handlers and emulation mode set to target.
+pub fn init(options: InitOptions) !Compilation {
+    var comp: Compilation = .{
+        .gpa = options.gpa,
+        .arena = options.arena,
+        .io = options.io,
+        .diagnostics = options.diagnostics,
+        .cwd = options.cwd orelse .cwd(),
+    };
+    errdefer comp.deinit();
+
+    if (options.environ_map) |map| {
+        comp.environment = .loadAll(map);
+    }
+
+    if (options.add_default_pragma_handlers) {
+        try comp.addDefaultPragmaHandlers();
+    }
+    return comp;
+}
+
+pub fn deinit(comp: *Compilation) void {
+    const gpa = comp.gpa;
+    for (comp.pragma_handlers.values()) |pragma| {
+        pragma.deinit(pragma, comp);
+    }
+    for (comp.sources.values()) |source| {
+        if (source.umbrella_framework_path) |path| {
+            assert(path.ptr == source.path.ptr);
+        }
+        gpa.free(source.path);
+        gpa.free(source.buf);
+        gpa.free(source.splice_locs);
+    }
+    comp.sources.deinit(gpa);
+    comp.source_aliases.deinit(gpa);
+    comp.search_path.deinit(gpa);
+    comp.embed_dirs.deinit(gpa);
+    comp.pragma_handlers.deinit(gpa);
+    comp.generated_buf.deinit(gpa);
+    comp.builtins.deinit(gpa);
+    comp.string_interner.deinit(gpa);
+    comp.interner.deinit(gpa);
+    comp.type_store.deinit(gpa);
+    comp.* = undefined;
+}
+
+pub fn internString(comp: *Compilation, str: []const u8) !StringInterner.StringId {
+    return comp.string_interner.intern(comp.gpa, str);
+}
+
+/// Which set of system defines to generate via generateBuiltinMacros
+pub const SystemDefinesMode = enum {
+    /// Only define macros required by the C standard (date/time macros and those beginning with `__STDC`)
+    no_system_defines,
+    /// Define the standard set of system macros
+    include_system_defines,
+};
+
+fn generateSystemDefines(comp: *Compilation, w: *Io.Writer) !void {
+    const define = struct {
+        fn define(_w: *Io.Writer, name: []const u8) !void {
+            try _w.print("#define {s} 1\n", .{name});
+        }
+    }.define;
+    const defineStd = struct {
+        fn defineStd(_w: *Io.Writer, name: []const u8, is_gnu: bool) !void {
+            if (is_gnu) {
+                try _w.print("#define {s} 1\n", .{name});
+            }
+            try _w.print(
+                \\#define __{s} 1
+                \\#define __{s}__ 1
+                \\
+            , .{ name, name });
+        }
+    }.defineStd;
+    const defineBool = struct {
+        fn defineBool(_w: *Io.Writer, name: []const u8, value: bool) !void {
+            try _w.print("#define {s} {d}\n", .{ name, @intFromBool(value) });
+        }
+    }.defineBool;
+    const target = &comp.target;
+    const ptr_width = target.ptrBitWidth();
+    const is_gnu = comp.langopts.standard.isGNU();
+
+    const gnuc_version = comp.langopts.gnuc_version orelse comp.langopts.emulate.defaultGccVersion();
+    if (gnuc_version > 0) {
+        try w.print("#define __GNUC__ {d}\n", .{gnuc_version / 10_000});
+        try w.print("#define __GNUC_MINOR__ {d}\n", .{gnuc_version / 100 % 100});
+        try w.print("#define __GNUC_PATCHLEVEL__ {d}\n", .{gnuc_version % 100});
+    }
+
+    try w.writeAll(
+        \\#define __ARO_EMULATE_NO__ 0
+        \\#define __ARO_EMULATE_CLANG__ 1
+        \\#define __ARO_EMULATE_GCC__ 2
+        \\#define __ARO_EMULATE_MSVC__ 3
+        \\
+    );
+    try w.print("#define __ARO_EMULATE__ {s}\n", .{switch (comp.langopts.emulate) {
+        .no => "__ARO_EMULATE_NO__",
+        .clang => "__ARO_EMULATE_CLANG__",
+        .gcc => "__ARO_EMULATE_GCC__",
+        .msvc => "__ARO_EMULATE_MSVC__",
+    }});
+
+    if (comp.langopts.emulate == .msvc) {
+        try w.writeAll("#define _MSC_VER 1933\n");
+        try w.writeAll("#define _MSC_FULL_VER 193300000\n");
+    }
+
+    // Defined for compatibility with clang.
+    try w.writeAll("#define __building_module(x) 0\n");
+
+    if (comp.code_gen_options.optimization_level.hasAnyOptimizations()) {
+        try define(w, "__OPTIMIZE__");
+    }
+    if (comp.code_gen_options.optimization_level.isSizeOptimized()) {
+        try define(w, "__OPTIMIZE_SIZE__");
+    }
+    if (comp.langopts.pthread) switch (target.os.tag) {
+        .maccatalyst,
+        .macos,
+        .tvos,
+        .ios,
+        .driverkit,
+        .visionos,
+        .watchos,
+        .hurd,
+        .linux,
+        .netbsd,
+        .openbsd,
+        .fuchsia,
+        => try define(w, "_REENTRANT"),
+        .windows => if (target.abi == .msvc) {
+            // This matches clang where it is marked as a FIXME
+            try define(w, "_MT");
+        },
+        .emscripten => try define(w, "__EMSCRIPTEN_PTHREADS__"),
+        else => {},
+    };
+
+    // Target OS macros, transcribed from LLVM TargetOSMacros.def
+    if (comp.langopts.hasTargetOsMacros()) {
+        // Windows
+        try defineBool(w, "TARGET_OS_WIN32", target.os.tag == .windows);
+        try defineBool(w, "TARGET_OS_WINDOWS", target.os.tag == .windows);
+
+        // Linux
+        try defineBool(w, "TARGET_OS_LINUX", target.os.tag == .linux);
+
+        // Unix
+        try defineBool(
+            w,
+            "TARGET_OS_UNIX",
+            switch (target.os.tag) {
+                .freebsd, .openbsd, .netbsd, .illumos => true,
+                else => false,
+            },
+        );
+
+        // Apple Targets
+        try defineBool(w, "TARGET_OS_MAC", target.os.tag.isDarwin());
+        // NOTE: LLVM checks the triple for "Triple::Darwin" as well, but this
+        // is different from "isOSDarwin()" and would be like if Zig had a
+        // ".darwin" OS tag, but it doesn't.
+        try defineBool(w, "TARGET_OS_OSX", target.os.tag == .macos);
+        try defineBool(
+            w,
+            "TARGET_OS_IPHONE",
+            switch (target.os.tag) {
+                .ios, .tvos, .watchos => true,
+                else => false,
+            },
+        );
+        try defineBool(w, "TARGET_OS_IOS", target.os.tag == .ios);
+        try defineBool(w, "TARGET_OS_TV", target.os.tag == .tvos);
+        try defineBool(w, "TARGET_OS_WATCH", target.os.tag == .watchos);
+        try defineBool(w, "TARGET_OS_VISION", target.os.tag == .visionos);
+        try defineBool(w, "TARGET_OS_DRIVERKIT", target.os.tag == .driverkit);
+        // Note that LLVM has this as an actual target environment (ABI). Zig
+        // doesn't, so just doing a best effort here and assuming that all
+        // catalyst apps will be tagged as such in the OS.
+        try defineBool(w, "TARGET_OS_MACCATALYST", target.os.tag == .maccatalyst);
+        // Note that there are no other guards for this macro in LLVM either -
+        // running under the assumption that the only things that uses the
+        // ".simulator" ABI are the appropriate Apple device simulators.
+        try defineBool(w, "TARGET_OS_SIMULATOR", target.abi == .simulator);
+        try defineBool(
+            w,
+            "TARGET_OS_EMBEDDED",
+            switch (target.os.tag) {
+                .ios, .tvos, .visionos, .watchos => true,
+                else => false,
+            } and target.abi != .simulator,
+        );
+        try defineBool(w, "TARGET_OS_NANO", target.os.tag == .watchos);
+        try defineBool(w, "TARGET_IPHONE_SIMULATOR", target.abi == .simulator);
+        try defineBool(w, "TARGET_OS_UIKITFORMAC", target.os.tag == .maccatalyst);
+
+        // UEFI
+        try defineBool(w, "TARGET_OS_UEFI", target.os.tag == .uefi);
+    }
+
+    // os macros
+    switch (target.os.tag) {
+        .linux => try defineStd(w, "linux", is_gnu),
+        .windows => {
+            try define(w, "_WIN32");
+            if (ptr_width == 64) {
+                try define(w, "_WIN64");
+            }
+
+            if (target.abi.isGnu()) {
+                try defineStd(w, "WIN32", is_gnu);
+                try defineStd(w, "WINNT", is_gnu);
+                if (ptr_width == 64) {
+                    try defineStd(w, "WIN64", is_gnu);
+                    try define(w, "__MINGW64__");
+                } else {
+                    try define(w, "_X86_");
+                }
+                try define(w, "__MSVCRT__");
+                try define(w, "__MINGW32__");
+            }
+
+            if (target.abi.isGnu()) {
+                // MinGW and Cygwin define __declspec(a) to __attribute((a)).
+                // Like Clang we make the define no op if -fdeclspec is enabled.
+                if (comp.langopts.declspec_attrs) {
+                    try w.writeAll("#define __declspec __declspec\n");
+                } else {
+                    try w.writeAll("#define __declspec(a) __attribute__((a))\n");
+                }
+                if (!comp.langopts.ms_extensions) {
+                    // Provide aliases for the calling convention keywords.
+                    for ([_][]const u8{ "cdecl", "stdcall", "fastcall", "thiscall" }) |keyword| {
+                        try w.print(
+                            \\#define _{[0]s} __attribute__((__{[0]s}__))
+                            \\#define __{[0]s} __attribute__((__{[0]s}__))
+                            \\
+                        , .{keyword});
+                    }
+                }
+            }
+        },
+        .uefi => try define(w, "__UEFI__"),
+        .freebsd => {
+            const release = target.os.version_range.semver.min.major;
+            const cc_version = release * 10_000 + 1;
+            try w.print(
+                \\#define __FreeBSD__ {d}
+                \\#define __FreeBSD_cc_version {d}
+                \\
+            , .{ release, cc_version });
+        },
+        .ps4, .ps5 => {
+            try w.writeAll(
+                \\#define __FreeBSD__ 9
+                \\#define __FreeBSD_cc_version 900001
+                \\
+            );
+        },
+        .netbsd => try define(w, "__NetBSD__"),
+        .openbsd => try define(w, "__OpenBSD__"),
+        .dragonfly => try define(w, "__DragonFly__"),
+        .illumos => {
+            try defineStd(w, "sun", is_gnu);
+            try define(w, "__illumos__");
+        },
+        .maccatalyst,
+        .macos,
+        .tvos,
+        .ios,
+        .driverkit,
+        .visionos,
+        .watchos,
+        => {
+            try define(w, "__APPLE__");
+            try w.writeAll("#define __APPLE_CC__ 6000\n");
+
+            const version = target.os.version_range.semver.min;
+            var version_buf: [8]u8 = undefined;
+            const version_str = if (target.os.tag == .macos and version.order(.{ .major = 10, .minor = 10, .patch = 0 }) == .lt)
+                mem.print(&version_buf, "{d}{d}{d}", .{ version.major, @min(version.minor, 9), @min(version.patch, 9) }) catch unreachable
+            else
+                mem.print(&version_buf, "{d:0>2}{d:0>2}{d:0>2}", .{ version.major, @min(version.minor, 99), @min(version.patch, 99) }) catch unreachable;
+
+            platform_os_version_define: {
+                try w.print("#define {s} {s}\n", .{
+                    switch (target.os.tag) {
+                        .tvos => "__ENVIRONMENT_TV_OS_VERSION_MIN_REQUIRED__",
+                        .ios, .maccatalyst => "__ENVIRONMENT_IPHONE_OS_VERSION_MIN_REQUIRED__",
+                        .watchos => "__ENVIRONMENT_WATCH_OS_VERSION_MIN_REQUIRED__",
+                        .driverkit => "__ENVIRONMENT_DRIVERKIT_VERSION_MIN_REQUIRED__",
+                        .macos => "__ENVIRONMENT_MAC_OS_X_VERSION_MIN_REQUIRED__",
+                        .visionos => {
+                            // No platform-specific OS version define for visionOS
+                            break :platform_os_version_define;
+                        },
+                        else => unreachable,
+                    },
+                    version_str,
+                });
+            }
+
+            try w.print("#define __ENVIRONMENT_OS_VERSION_MIN_REQUIRED__ {s}\n", .{version_str});
+        },
+        .wasi => try define(w, "__wasi__"),
+        .emscripten => try define(w, "__EMSCRIPTEN__"),
+        .serenity => try define(w, "__serenity__"),
+        .@"switch" => try define(w, "__SWITCH__"),
+        .@"3ds" => try define(w, "__3DS__"),
+        .gba => try define(w, "__GBA__"),
+        .psp => try define(w, "__PSP__"),
+        .psx => try define(w, "__psx__"),
+        .vita => try define(w, "__vita__"),
+        .wiiu => try define(w, "__WIIU__"),
+        else => {},
+    }
+
+    // unix and other additional os macros
+    switch (target.os.tag) {
+        .freebsd,
+        .netbsd,
+        .openbsd,
+        .dragonfly,
+        .linux,
+        .haiku,
+        .hurd,
+        .illumos,
+        .emscripten,
+        .ps4,
+        .ps5,
+        => try defineStd(w, "unix", is_gnu),
+        else => {},
+    }
+    if (target.abi.isAndroid()) {
+        try define(w, "__ANDROID__");
+    }
+
+    // architecture macros
+    switch (target.cpu.arch) {
+        .x86, .x86_64 => {
+            try w.print("#define __code_model_{s}__ 1\n", .{switch (comp.cmodel) {
+                .default => "small",
+                else => @tagName(comp.cmodel),
+            }});
+
+            if (target.cpu.arch == .x86_64) {
+                try define(w, "__amd64__");
+                try define(w, "__amd64");
+                try define(w, "__x86_64__");
+                try define(w, "__x86_64");
+
+                if (target.os.tag == .windows and target.abi == .msvc) {
+                    try w.writeAll(
+                        \\#define _M_X64 100
+                        \\#define _M_AMD64 100
+                        \\
+                    );
+                }
+            } else {
+                try defineStd(w, "i386", is_gnu);
+
+                if (target.os.tag == .windows and target.abi == .msvc) {
+                    try w.print("#define _M_IX86 {d}\n", .{blk: {
+                        if (target.cpu.model == &std.Target.x86.cpu.i386) break :blk 300;
+                        if (target.cpu.model == &std.Target.x86.cpu.i486) break :blk 400;
+                        if (target.cpu.model == &std.Target.x86.cpu.i586) break :blk 500;
+                        break :blk @as(u32, 600);
+                    }});
+                }
+            }
+            try define(w, "__SEG_GS");
+            try define(w, "__SEG_FS");
+            try w.writeAll(
+                \\#define __seg_gs __attribute__((address_space(256)))
+                \\#define __seg_fs __attribute__((address_space(257)))
+                \\
+            );
+
+            if (target.cpu.has(.x86, .sahf) or (comp.langopts.emulate == .clang and target.cpu.arch == .x86)) {
+                try define(w, "__LAHF_SAHF__");
+            }
+
+            const features = target.cpu.features;
+            for ([_]struct { std.Target.x86.Feature, []const u8 }{
+                .{ .aes, "__AES__" },
+                .{ .vaes, "__VAES__" },
+                .{ .pclmul, "__PCLMUL__" },
+                .{ .vpclmulqdq, "__VPCLMULQDQ__" },
+                .{ .lzcnt, "__LZCNT__" },
+                .{ .rdrnd, "__RDRND__" },
+                .{ .fsgsbase, "__FSGSBASE__" },
+                .{ .bmi, "__BMI__" },
+                .{ .bmi2, "__BMI2__" },
+                .{ .popcnt, "__POPCNT__" },
+                .{ .rtm, "__RTM__" },
+                .{ .prfchw, "__PRFCHW__" },
+                .{ .rdseed, "__RDSEED__" },
+                .{ .adx, "__ADX__" },
+                .{ .tbm, "__TBM__" },
+                .{ .lwp, "__LWP__" },
+                .{ .mwaitx, "__MWAITX__" },
+                .{ .movbe, "__MOVBE__" },
+
+                .{ .xop, "__XOP__" },
+                .{ .fma4, "__FMA4__" },
+                .{ .sse4a, "__SSE4A__" },
+
+                .{ .fma, "__FMA__" },
+                .{ .f16c, "__F16C__" },
+                .{ .gfni, "__GFNI__" },
+
+                .{ .avx10_1, "__AVX10_1__" },
+                .{ .avx10_1, "__AVX10_1_512__" },
+
+                .{ .avx10_2, "__AVX10_2__" },
+                .{ .avx10_2, "__AVX10_2_512__" },
+
+                .{ .avx512cd, "__AVX512CD__" },
+                .{ .avx512vpopcntdq, "__AVX512VPOPCNTDQ__" },
+                .{ .avx512vnni, "__AVX512VNNI__" },
+                .{ .avx512bf16, "__AVX512BF16__" },
+                .{ .avx512fp16, "__AVX512FP16__" },
+                .{ .avx512dq, "__AVX512DQ__" },
+                .{ .avx512bitalg, "__AVX512BITALG__" },
+                .{ .avx512bw, "__AVX512BW__" },
+
+                .{ .avx512vl, "__AVX512VL__" },
+                .{ .avx512vl, "__EVEX256__" },
+
+                .{ .avx512vbmi, "__AVX512VBMI__" },
+                .{ .avx512vbmi2, "__AVX512VBMI2__" },
+                .{ .avx512ifma, "__AVX512IFMA__" },
+                .{ .avx512vp2intersect, "__AVX512VP2INTERSECT__" },
+                .{ .sha, "__SHA__" },
+                .{ .sha512, "__SHA512__" },
+                .{ .fxsr, "__FXSR__" },
+                .{ .xsave, "__XSAVE__" },
+                .{ .xsaveopt, "__XSAVEOPT__" },
+                .{ .xsavec, "__XSAVEC__" },
+                .{ .xsaves, "__XSAVES__" },
+                .{ .pku, "__PKU__" },
+                .{ .clflushopt, "__CLFLUSHOPT__" },
+                .{ .clwb, "__CLWB__" },
+                .{ .wbnoinvd, "__WBNOINVD__" },
+                .{ .shstk, "__SHSTK__" },
+                .{ .sgx, "__SGX__" },
+                .{ .sm3, "__SM3__" },
+                .{ .sm4, "__SM4__" },
+                .{ .prefetchi, "__PREFETCHI__" },
+                .{ .clzero, "__CLZERO__" },
+                .{ .kl, "__KL__" },
+                .{ .widekl, "__WIDEKL__" },
+                .{ .rdpid, "__RDPID__" },
+                .{ .rdpru, "__RDPRU__" },
+                .{ .cldemote, "__CLDEMOTE__" },
+                .{ .waitpkg, "__WAITPKG__" },
+                .{ .movdiri, "__MOVDIRI__" },
+                .{ .movdir64b, "__MOVDIR64B__" },
+                .{ .movrs, "__MOVRS__" },
+                .{ .pconfig, "__PCONFIG__" },
+                .{ .ptwrite, "__PTWRITE__" },
+                .{ .invpcid, "__INVPCID__" },
+                .{ .enqcmd, "__ENQCMD__" },
+                .{ .hreset, "__HRESET__" },
+                .{ .amx_tile, "__AMX_TILE__" },
+                .{ .amx_int8, "__AMX_INT8__" },
+                .{ .amx_bf16, "__AMX_BF16__" },
+                .{ .amx_fp16, "__AMX_FP16__" },
+                .{ .amx_complex, "__AMX_COMPLEX__" },
+                .{ .amx_fp8, "__AMX_FP8__" },
+                .{ .amx_movrs, "__AMX_MOVRS__" },
+                .{ .amx_avx512, "__AMX_AVX512__" },
+                .{ .amx_tf32, "__AMX_TF32__" },
+                .{ .cmpccxadd, "__CMPCCXADD__" },
+                .{ .raoint, "__RAOINT__" },
+                .{ .avxifma, "__AVXIFMA__" },
+                .{ .avxneconvert, "__AVXNECONVERT__" },
+                .{ .avxvnni, "__AVXVNNI__" },
+                .{ .avxvnniint16, "__AVXVNNIINT16__" },
+                .{ .avxvnniint8, "__AVXVNNIINT8__" },
+                .{ .serialize, "__SERIALIZE__" },
+                .{ .tsxldtrk, "__TSXLDTRK__" },
+                .{ .uintr, "__UINTR__" },
+                .{ .usermsr, "__USERMSR__" },
+                .{ .crc32, "__CRC32__" },
+                .{ .egpr, "__EGPR__" },
+                .{ .push2pop2, "__PUSH2POP2__" },
+                .{ .ppx, "__PPX__" },
+                .{ .ndd, "__NDD__" },
+                .{ .ccmp, "__CCMP__" },
+                .{ .nf, "__NF__" },
+                .{ .cf, "__CF__" },
+                .{ .zu, "__ZU__" },
+
+                .{ .avx512f, "__AVX512F__" },
+                .{ .avx2, "__AVX2__" },
+                .{ .avx, "__AVX__" },
+                .{ .sse4_2, "__SSE4_2__" },
+                .{ .sse4_1, "__SSE4_1__" },
+                .{ .ssse3, "__SSSE3__" },
+                .{ .sse3, "__SSE3__" },
+                .{ .sse2, "__SSE2__" },
+                .{ .sse, "__SSE__" },
+                .{ .sse, "__SSE_MATH__" },
+
+                .{ .mmx, "__MMX__" },
+            }) |fs| {
+                if (features.isEnabled(@backingInt(fs[0]))) {
+                    try define(w, fs[1]);
+                }
+            }
+
+            if (comp.langopts.ms_extensions and target.cpu.arch == .x86) {
+                const level = if (target.cpu.has(.x86, .sse2))
+                    "2"
+                else if (target.cpu.has(.x86, .sse))
+                    "1"
+                else
+                    "0";
+
+                try w.print("#define _M_IX86_FP {s}\n", .{level});
+            }
+
+            if (target.cpu.hasAll(.x86, &.{ .egpr, .push2pop2, .ppx, .ndd, .ccmp, .nf, .cf, .zu })) {
+                try define(w, "__APX_F__");
+            }
+
+            if (target.cpu.hasAll(.x86, &.{ .egpr, .inline_asm_use_gpr32 })) {
+                try define(w, "__APX_INLINE_ASM_USE_GPR32__");
+            }
+
+            if (target.cpu.has(.x86, .cx8)) {
+                try define(w, "__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8");
+            }
+            if (target.cpu.has(.x86, .cx16) and target.cpu.arch == .x86_64) {
+                try define(w, "__GCC_HAVE_SYNC_COMPARE_AND_SWAP_8");
+            }
+
+            if (comp.hasFloat128()) {
+                try w.writeAll("#define __SIZEOF_FLOAT128__ 16\n");
+            }
+        },
+        .mips,
+        .mipsel,
+        .mips64,
+        .mips64el,
+        => {
+            try define(w, "__mips__");
+            try define(w, "_mips");
+            if (is_gnu) try define(w, "mips");
+            switch (target.cpu.arch) {
+                .mips, .mips64 => {
+                    try define(w, "_MIPSEB");
+                    try defineStd(w, "MIPSEB", is_gnu);
+                },
+                .mipsel,
+                .mips64el,
+                => {
+                    try define(w, "_MIPSEL");
+                    try defineStd(w, "MIPSEL", is_gnu);
+                },
+                else => unreachable,
+            }
+
+            switch (target.mipsAbi()) {
+                .o32 => {
+                    try define(w, "__mips_o32");
+                    try define(w, "_ABIO32");
+                    try w.writeAll("#define _MIPS_SIM _ABIO32\n");
+                    try w.writeAll("#define __mips 32\n");
+                    try w.writeAll("#define _MIPS_ISA _MIPS_ISA_MIPS32\n");
+                },
+                .n32 => {
+                    try define(w, "__mips_n32");
+                    try w.writeAll("#define _ABIN32 2\n");
+                    try w.writeAll("#define _MIPS_SIM _ABIN32\n");
+                    try w.writeAll("#define __mips 64\n");
+                    try define(w, "__mips64");
+                    try define(w, "__mips64__");
+                    try w.writeAll("#define _MIPS_ISA _MIPS_ISA_MIPS64\n");
+                },
+                .n64 => {
+                    try define(w, "__mips_n64");
+                    try w.writeAll("#define _ABI64 3\n");
+                    try w.writeAll("#define _MIPS_SIM _ABI64\n");
+                    try w.writeAll("#define __mips 64\n");
+                    try define(w, "__mips64");
+                    try define(w, "__mips64__");
+                    try w.writeAll("#define _MIPS_ISA _MIPS_ISA_MIPS64\n");
+                },
+            }
+            if (target.cpu.model.llvm_name) |name| {
+                try w.print("#define _MIPS_ARCH \"{s}\"\n", .{name});
+                var buf: [16]u8 = undefined;
+                const upper = std.ascii.upperString(&buf, name);
+                try w.print("#define _MIPS_ARCH_{s} 1\n", .{upper});
+            }
+
+            if (!target.cpu.has(.mips, .noabicalls)) {
+                try define(w, "__mips_abicalls");
+                if (target.os.tag.isBSD()) {
+                    try define(w, "__ABICALLS__");
+                }
+            }
+
+            if (target.cpu.has(.mips, .soft_float)) {
+                try define(w, "__mips_soft_float");
+            } else {
+                try define(w, "__mips_hard_float");
+            }
+            if (target.cpu.has(.mips, .single_float)) {
+                try define(w, "__mips_single_float");
+            }
+            {
+                const fpr: u8 = switch (target.defaultMipsFpMode()) {
+                    .fp32 => 32,
+                    .fp64 => 64,
+                    .fpxx => 0,
+                };
+                try w.print("#define __mips_fpr {d}\n", .{fpr});
+                const fpset: u8 = if (target.defaultMipsFpMode() == .fp64 or
+                    target.cpu.has(.mips, .single_float)) 32 else 16;
+                try w.print("#define _MIPS_FPSET {d}\n", .{fpset});
+                const spfpset: u8 = if (target.cpu.has(.mips, .nooddspreg) or
+                    target.defaultMipsFpMode() == .fpxx) 16 else 32;
+                try w.print("#define _MIPS_SPFPSET {d}\n", .{spfpset});
+            }
+            if (target.cpu.has(.mips, .mips16)) try define(w, "__mips16");
+            if (target.cpu.has(.mips, .micromips)) try define(w, "__mips_micromips");
+            if (target.cpu.has(.mips, .nan2008)) try define(w, "__mips_nan2008");
+            if (target.cpu.has(.mips, .abs2008)) try define(w, "__mips_abs2008");
+            if (target.cpu.has(.mips, .dspr3)) {
+                try w.print("#define __mips_dsp_rev 3\n", .{});
+                try w.print("#define __mips_dsp 3\n", .{});
+                try define(w, "__mips_dspr3");
+            } else if (target.cpu.has(.mips, .dspr2)) {
+                try w.print("#define __mips_dsp_rev 2\n", .{});
+                try w.print("#define __mips_dsp 2\n", .{});
+                try define(w, "__mips_dspr2");
+            } else if (target.cpu.has(.mips, .dsp)) {
+                try w.print("#define __mips_dsp_rev 1\n", .{});
+                try w.print("#define __mips_dsp 1\n", .{});
+            }
+            if (target.cpu.has(.mips, .msa)) try define(w, "__mips_msa");
+            if (target.cpu.has(.mips, .nomadd4)) try define(w, "__mips_no_madd4");
+            try w.print("#define _MIPS_SZPTR {d}\n", .{target.ptrBitWidth()});
+            try w.print("#define _MIPS_SZINT {d}\n", .{target.cTypeBitSize(.int)});
+            try w.print("#define _MIPS_SZLONG {d}\n", .{target.cTypeBitSize(.long)});
+            try w.print("#define __mips_isa_rev {d}\n", .{target.mipsIsaRev()});
+        },
+        .powerpc,
+        .powerpcle,
+        => {
+            try define(w, "__powerpc__");
+            try define(w, "__POWERPC__");
+            try define(w, "__ppc__");
+            try define(w, "__PPC__");
+            try define(w, "_ARCH_PPC");
+            try w.print("#define _CALL_ELF {d}\n", .{target.ppcElfVersion()});
+        },
+        .powerpc64,
+        .powerpc64le,
+        => {
+            try define(w, "__powerpc");
+            try define(w, "__powerpc__");
+            try define(w, "__powerpc64__");
+            try define(w, "__POWERPC__");
+            try define(w, "__ppc__");
+            try define(w, "__ppc64__");
+            try define(w, "__PPC__");
+            try define(w, "__PPC64__");
+            try define(w, "_ARCH_PPC");
+            try define(w, "_ARCH_PPC64");
+            try w.print("#define _CALL_ELF {d}\n", .{target.ppcElfVersion()});
+        },
+        .sparc64 => {
+            try defineStd(w, "sparc", is_gnu);
+            try define(w, "__sparc_v9__");
+            try define(w, "__arch64__");
+            if (target.os.tag != .illumos) {
+                try define(w, "__sparc64__");
+                try define(w, "__sparc_v9__");
+                try define(w, "__sparcv9__");
+            }
+        },
+        .sparc => {
+            try defineStd(w, "sparc", is_gnu);
+            if (target.os.tag == .illumos) {
+                try define(w, "__sparcv8");
+            }
+        },
+        .arm, .armeb, .thumb, .thumbeb => |arch| {
+            try define(w, "__arm__");
+            try define(w, "__arm");
+            try define(w, "__ARM_32BIT_STATE");
+            try define(w, "__APCS_32__");
+            try define(w, "__VFP_FP__");
+            try define(w, "__ARM_FP16_ARGS");
+            try define(w, "__ARM_FP16_FORMAT_IEEE");
+
+            try w.writeAll("#define __ARM_ACLE 200\n");
+
+            // see https://clang.llvm.org/doxygen/Basic_2Targets_2ARM_8cpp_source.html
+            // https://developer.arm.com/documentation/dui0774/g/chr1383660321827
+
+            // __ARM_ARCH_ISA_THUMB is defined to 2 if the core supports the Thumb-2 ISA.
+            if (target.armVersion()) |v| {
+                const supports_thumb2 = mem.eql(u8, v.string, "6T2") or
+                    (v.version >= 7 and !mem.eql(u8, v.string, "8M_BASE"));
+                if (supports_thumb2) {
+                    try w.writeAll("#define __ARM_ARCH_ISA_THUMB 2\n");
+                } else if (mem.indexOfScalar(u8, v.string, 'T') != null or v.version >= 6) {
+                    try w.writeAll("#define __ARM_ARCH_ISA_THUMB 1\n");
+                }
+            }
+
+            if (target.cpu.has(.arm, .thumb2) or target.cpu.has(.arm, .thumb_mode)) {
+                try define(w, "__thumb__");
+            }
+            // ARM ISA means we are not M profile
+            if (!target.cpu.has(.arm, .mclass)) {
+                try define(w, "__ARM_ARCH_ISA_ARM");
+            }
+
+            var arm_version: u8 = 6;
+            if (target.armVersion()) |v| {
+                arm_version = v.version;
+                try w.print("#define __ARM_ARCH_{s}__ 1\n", .{v.string});
+                try w.print("#define __ARM_ARCH {d}\n", .{v.version});
+            }
+
+            const arm_profile: ?u8 =
+                if (target.cpu.has(.arm, .aclass))
+                    'A'
+                else if (target.cpu.has(.arm, .rclass))
+                    'R'
+                else if (target.cpu.has(.arm, .mclass))
+                    'M'
+                else
+                    null;
+            if (arm_profile) |p| {
+                try w.print("#define __ARM_ARCH_PROFILE '{c}'\n", .{p});
+            }
+
+            if (arm_version == 5 or (arm_version == 6 and !target.cpu.has(.arm, .mclass)) or arm_version > 6) {
+                try define(w, "__ARM_FEATURE_CLZ");
+            }
+
+            if (target.armHasDsp()) {
+                try define(w, "__ARM_FEATURE_DSP");
+            }
+
+            const is_thumb = arch == .thumb or arch == .thumbeb or target.cpu.has(.arm, .mclass);
+            if ((is_thumb and target.cpu.has(.arm, .hwdiv)) or
+                (!is_thumb and target.cpu.has(.arm, .hwdiv_arm)))
+            {
+                try define(w, "__ARM_FEATURE_IDIV");
+                try define(w, "__ARM_ARCH_EXT_IDIV__");
+            }
+            var sat = false;
+            if (arm_version == 6 and !target.cpu.has(.arm, .mclass) or arm_version > 6) {
+                try define(w, "__ARM_FEATURE_SAT");
+                sat = true;
+            }
+
+            if (target.armHasDsp() or sat) {
+                try define(w, "__ARM_FEATURE_QBIT");
+            }
+
+            if ((!target.cpu.has(.arm, .mclass) and arm_version >= 6) or
+                (target.cpu.has(.arm, .mclass) and target.cpu.has(.arm, .dsp)))
+            {
+                try define(w, "__ARM_FEATURE_SIMD32");
+            }
+
+            // Which co-processor intrinsics in arm_acle.h are available.
+            // See https://arm-software.github.io/acle/main/acle.html#coprocessor-intrinsics
+            const coproc = struct {
+                /// __arm_cdp __arm_ldc, __arm_ldcl, __arm_stc,
+                /// __arm_stcl, __arm_mcr and __arm_mrc
+                const b1: u4 = 1 << 0;
+                /// __arm_cdp2, __arm_ldc2, __arm_stc2, __arm_ldc2l,
+                /// __arm_stc2l, __arm_mcr2 and __arm_mrc2
+                const b2: u4 = 1 << 1;
+                /// __arm_mcrr, __arm_mrrc
+                const b3: u4 = 1 << 2;
+                /// __arm_mcrr2, __arm_mrrc2
+                const b4: u4 = 1 << 3;
+
+                const all: u4 = b1 | b2 | b3 | b4;
+            };
+
+            const coproc_bf: u4 = blk: {
+                const v = target.armVersion() orelse break :blk 0;
+                if (mem.eql(u8, v.string, "6M") or mem.eql(u8, v.string, "6SM") or
+                    mem.eql(u8, v.string, "8M_BASE")) break :blk 0;
+                if (mem.eql(u8, v.string, "8M_MAIN") or mem.eql(u8, v.string, "8_1M_MAIN")) break :blk coproc.all;
+                break :blk switch (v.version) {
+                    4 => coproc.b1,
+                    5 => if (mem.eql(u8, v.string, "5T")) coproc.b1 | coproc.b2 else coproc.b1 | coproc.b2 | coproc.b3,
+                    6, 7 => coproc.all,
+                    8, 9 => coproc.b1 | coproc.b3,
+                    else => 0,
+                };
+            };
+            try w.print("#define __ARM_FEATURE_COPROC 0x{x}\n", .{coproc_bf});
+
+            if (arm_version >= 5 and arm_version <= 8 and target.os.tag != .windows) {
+                try define(w, "__THUMB_INTERWORK__");
+            }
+
+            if (comp.langopts.arm_ldrex) |ldrex| {
+                try w.print("#define __ARM_FEATURE_LDREX 0x{x}\n", .{@as(u4, @bitCast(ldrex))});
+            }
+
+            if (!target.cpu.has(.arm, .strict_align)) {
+                try define(w, "__ARM_FEATURE_UNALIGNED");
+            }
+
+            if (arch == .arm or arch == .thumb) {
+                try define(w, "__ARMEL__");
+            }
+
+            if (arch == .armeb or arch == .thumbeb) {
+                try define(w, "__ARMEB__");
+                try define(w, "__ARM_BIG_ENDIAN");
+            }
+            if (comp.code_gen_options.is_ropi) {
+                try define(w, "__ARM_ROPI");
+            }
+
+            if (comp.code_gen_options.is_rwpi) {
+                try define(w, "__ARM_RWPI");
+            }
+
+            const min_enum_size: u8 = if (comp.langopts.short_enums) 1 else 4;
+            try w.print("#define __ARM_SIZEOF_MINIMAL_ENUM {d}\n", .{min_enum_size});
+            try w.print("#define __ARM_SIZEOF_WCHAR_T {d}\n", .{comp.type_store.wchar.sizeof(comp)});
+        },
+        .aarch64, .aarch64_be => |arch| {
+            try define(w, "__aarch64__");
+            try define(w, "__ARM_64BIT_STATE");
+            try define(w, "__ARM_ARCH_ISA_A64");
+            try define(w, "__ARM_FEATURE_CLZ");
+            try define(w, "__ARM_FEATURE_FMA");
+            if (comp.langopts.arm_ldrex) |ldrex| {
+                try w.print("#define __ARM_FEATURE_LDREX 0x{x}\n", .{@as(u4, @bitCast(ldrex))});
+            }
+            try define(w, "__ARM_FEATURE_IDIV"); // As specified in ACLE
+            try define(w, "__ARM_FEATURE_DIV"); // For backwards compatibility
+            try define(w, "__ARM_STATE_ZA");
+            try define(w, "__ARM_STATE_ZT0");
+            try w.writeAll("#define __ARM_ALIGN_MAX_STACK_PWR 4\n");
+            try define(w, "__ARM_FEATURE_NUMERIC_MAXMIN");
+            try define(w, "__ARM_FEATURE_DIRECTED_ROUNDING");
+
+            try w.writeAll("#define __ARM_ACLE_VERSION(year,quarter,patch) (100 * (year) + 10 * (quarter) + (patch))\n");
+            const acle_version = (100 * 2024) + (10 * 2) + 0; // ACLE 2024.2
+            try w.print("#define __ARM_ACLE {d}\n", .{acle_version});
+
+            const arm_version: u8 = if (target.cpu.has(.aarch64, .v9a)) 9 else 8;
+            const arm_profile: u8 = if (target.cpu.has(.aarch64, .v8r)) 'R' else 'A';
+            try w.print("#define __ARM_ARCH {d}\n", .{arm_version});
+            try w.print("#define __ARM_ARCH_PROFILE '{c}'\n", .{arm_profile});
+
+            if (target.cpu.has(.aarch64, .v8_3a)) {
+                try define(w, "__ARM_FEATURE_COMPLEX");
+                try define(w, "__ARM_FEATURE_JCVT");
+            }
+
+            switch (arch) {
+                .aarch64 => {
+                    try define(w, "__AARCH64EL__");
+                },
+                .aarch64_be => {
+                    try define(w, "__AARCH64EB__");
+                    try define(w, "__AARCH_BIG_ENDIAN");
+                    try define(w, "__ARM_BIG_ENDIAN");
+                },
+                else => unreachable,
+            }
+            if (target.os.tag.isDarwin()) {
+                try define(w, "__AARCH64_SIMD__");
+                if (ptr_width == 32) {
+                    try define(w, "__ARM64_ARCH_8_32__");
+                } else {
+                    try define(w, "__ARM64_ARCH_8__");
+                }
+                try define(w, "__ARM_NEON__");
+                try define(w, "__arm64");
+                try define(w, "__arm64__");
+            }
+            if (target.os.tag == .windows and target.abi == .msvc) {
+                try w.writeAll("#define _M_ARM64 1\n");
+            }
+
+            {
+                const cmodel = switch (comp.cmodel) {
+                    .default => "small",
+                    else => @tagName(comp.cmodel),
+                };
+                try w.writeAll("#define __AARCH64_CMODEL_");
+                for (cmodel) |c| {
+                    try w.writeByte(std.ascii.toUpper(c));
+                }
+                try w.writeAll("__ 1\n");
+            }
+
+            if (target.cpu.has(.aarch64, .fp_armv8)) {
+                try w.writeAll("#define __ARM_FP 0xE\n");
+            }
+            if (target.cpu.has(.aarch64, .neon)) {
+                try define(w, "__ARM_NEON");
+                try w.writeAll("#define __ARM_NEON_FP 0xE\n");
+            }
+            if (target.cpu.has(.aarch64, .bf16)) {
+                try define(w, "__ARM_FEATURE_BF16");
+                try define(w, "__ARM_FEATURE_BF16_VECTOR_ARITHMETIC");
+                try define(w, "__ARM_BF16_FORMAT_ALTERNATIVE");
+                try define(w, "__ARM_FEATURE_BF16_SCALAR_ARITHMETIC");
+                if (target.cpu.has(.aarch64, .sve)) {
+                    try define(w, "__ARM_FEATURE_SVE_BF16");
+                }
+            }
+            if (target.cpu.hasAll(.aarch64, &.{ .sve2, .sve_aes })) {
+                try define(w, "__ARM_FEATURE_SVE2_AES");
+            }
+            if (target.cpu.hasAll(.aarch64, &.{ .sve2, .sve_bitperm })) {
+                try define(w, "__ARM_FEATURE_SVE2_BITPERM");
+            }
+            if (target.cpu.has(.aarch64, .sme)) {
+                try define(w, "__ARM_FEATURE_SME");
+                try define(w, "__ARM_FEATURE_LOCALLY_STREAMING");
+            }
+            if (target.cpu.has(.aarch64, .fmv)) {
+                try define(w, "__HAVE_FUNCTION_MULTI_VERSIONING");
+            }
+            if (target.cpu.has(.aarch64, .sha3)) {
+                try define(w, "__ARM_FEATURE_SHA3");
+                try define(w, "__ARM_FEATURE_SHA512");
+            }
+            if (target.cpu.has(.aarch64, .sm4)) {
+                try define(w, "__ARM_FEATURE_SM3");
+                try define(w, "__ARM_FEATURE_SM4");
+            }
+            if (!target.cpu.has(.aarch64, .strict_align)) {
+                try define(w, "__ARM_FEATURE_UNALIGNED");
+            }
+            if (target.cpu.hasAll(.aarch64, &.{ .neon, .fullfp16 })) {
+                try define(w, "__ARM_FEATURE_FP16_VECTOR_ARITHMETIC");
+            }
+            if (target.cpu.has(.aarch64, .rcpc3)) {
+                try w.writeAll("#define __ARM_FEATURE_RCPC 3\n");
+            } else if (target.cpu.has(.aarch64, .rcpc)) {
+                try define(w, "__ARM_FEATURE_RCPC");
+            }
+
+            const features = target.cpu.features;
+            for ([_]struct { std.Target.aarch64.Feature, []const u8 }{
+                .{ .sve, "SVE" },
+                .{ .sve2, "SVE2" },
+                .{ .sve2p1, "SVE2p1" },
+                .{ .sve2_sha3, "SVE2_SHA3" },
+                .{ .sve2_sm4, "SVE2_SM4" },
+                .{ .sve_b16b16, "SVE_B16B16" },
+                .{ .sme2, "SME2" },
+                .{ .sme2p1, "SME2p1" },
+                .{ .sme_f16f16, "SME_F16F16" },
+                .{ .sme_b16b16, "SME_B16B16" },
+                .{ .crc, "CRC32" },
+                .{ .aes, "AES" },
+                .{ .sha2, "SHA2" },
+                .{ .pauth, "PAUTH" },
+                .{ .pauth_lr, "PAUTH_LR" },
+                .{ .bti, "BTI" },
+                .{ .fullfp16, "FP16_SCALAR_ARITHMETIC" },
+                .{ .dotprod, "DOTPROD" },
+                .{ .mte, "MEMORY_TAGGING" },
+                .{ .i8mm, "MATMUL_INT8" },
+                .{ .lse, "ATOMICS" },
+                .{ .f64mm, "SVE_MATMUL_FP64" },
+                .{ .f32mm, "SVE_MATMUL_FP32" },
+                .{ .i8mm, "SVE_MATMUL_INT8" },
+                .{ .fp16fml, "FP16_FML" },
+                .{ .ls64, "LS64" },
+                .{ .rand, "RNG" },
+                .{ .mops, "MOPS" },
+                .{ .d128, "SYSREG128" },
+                .{ .gcs, "GCS" },
+            }) |fs| {
+                if (features.isEnabled(@backingInt(fs[0]))) {
+                    try w.print("#define __ARM_FEATURE_{s} 1\n", .{fs[1]});
+                }
+            }
+            const min_enum_size: u8 = if (comp.langopts.short_enums) 1 else 4;
+            try w.print("#define __ARM_SIZEOF_MINIMAL_ENUM {d}\n", .{min_enum_size});
+            try w.print("#define __ARM_SIZEOF_WCHAR_T {d}\n", .{comp.type_store.wchar.sizeof(comp)});
+        },
+        .msp430 => {
+            try define(w, "MSP430");
+            try define(w, "__MSP430__");
+        },
+        .arc => {
+            try define(w, "__arc__");
+        },
+        .wasm32, .wasm64 => {
+            try define(w, "__wasm");
+            try define(w, "__wasm__");
+            if (target.cpu.arch == .wasm32) {
+                try define(w, "__wasm32");
+                try define(w, "__wasm32__");
+            } else {
+                try define(w, "__wasm64");
+                try define(w, "__wasm64__");
+            }
+
+            for (target.cpu.arch.allFeaturesList()) |feature| {
+                if (!target.cpu.features.isEnabled(feature.index)) continue;
+                try w.print("#define __wasm_{s}__ 1\n", .{feature.name});
+            }
+        },
+        .s390x => {
+            try define(w, "__s390__");
+            try define(w, "__s390x__");
+            try define(w, "__zarch__");
+
+            if (target.cpu.has(.s390x, .transactional_execution)) {
+                try define(w, "__HTM__");
+            }
+            if (target.cpu.has(.s390x, .vector)) {
+                try define(w, "__VX__");
+            }
+        },
+        .riscv32, .riscv32be, .riscv64, .riscv64be => {
+            try define(w, "__riscv");
+            try w.print("#define __riscv_xlen {d}\n", .{ptr_width});
+            const has_f = target.cpu.has(.riscv, .f);
+            const has_d = target.cpu.has(.riscv, .d);
+            const has_q = target.cpu.has(.riscv, .q);
+            if (has_f) {
+                try w.writeAll("#define __riscv_f 2002000\n");
+            }
+            if (has_d) {
+                try w.writeAll("#define __riscv_d 2002000\n");
+            }
+            if (has_q) {
+                try w.writeAll("#define __riscv_q 2002000\n");
+            }
+            if (has_q) {
+                try w.writeAll("#define __riscv_flen 128\n");
+            } else if (has_d) {
+                try w.writeAll("#define __riscv_flen 64\n");
+            } else if (has_f) {
+                try w.writeAll("#define __riscv_flen 32\n");
+            }
+            try w.print("#define __riscv_float_abi_{t} 1\n", .{riscvFloatAbi(target)});
+        },
+        else => {},
+    }
+
+    if (ptr_width == 64 and target.cTypeBitSize(.long) == 64 and
+        target.cTypeBitSize(.int) == 32)
+    {
+        try define(w, "_LP64");
+        try define(w, "__LP64__");
+    } else if (ptr_width == 32 and target.cTypeBitSize(.long) == 32 and
+        target.cTypeBitSize(.int) == 32)
+    {
+        try define(w, "_ILP32");
+        try define(w, "__ILP32__");
+    }
+
+    if (comp.hasFloat128()) {
+        try define(w, "__FLOAT128__");
+    }
+
+    try w.writeAll(
+        \\#define __ORDER_LITTLE_ENDIAN__ 1234
+        \\#define __ORDER_BIG_ENDIAN__ 4321
+        \\#define __ORDER_PDP_ENDIAN__ 3412
+        \\
+    );
+    if (target.cpu.arch.endian() == .little) try w.writeAll(
+        \\#define __BYTE_ORDER__ __ORDER_LITTLE_ENDIAN__
+        \\#define __LITTLE_ENDIAN__ 1
+        \\
+    ) else try w.writeAll(
+        \\#define __BYTE_ORDER__ __ORDER_BIG_ENDIAN__
+        \\#define __BIG_ENDIAN__ 1
+        \\
+    );
+
+    switch (target.ofmt) {
+        .elf => try define(w, "__ELF__"),
+        .macho => try define(w, "__MACH__"),
+        else => {},
+    }
+
+    if (target.os.tag.isDarwin()) {
+        try w.writeAll(
+            \\#define __nonnull _Nonnull
+            \\#define __null_unspecified _Null_unspecified
+            \\#define __nullable _Nullable
+            \\
+        );
+    }
+
+    // atomics
+    try w.writeAll(
+        \\#define __ATOMIC_RELAXED 0
+        \\#define __ATOMIC_CONSUME 1
+        \\#define __ATOMIC_ACQUIRE 2
+        \\#define __ATOMIC_RELEASE 3
+        \\#define __ATOMIC_ACQ_REL 4
+        \\#define __ATOMIC_SEQ_CST 5
+        \\
+    );
+
+    // TODO: Set these to target-specific constants depending on backend capabilities
+    // For now they are just set to the "may be lock-free" value
+    try w.writeAll(
+        \\#define __ATOMIC_BOOL_LOCK_FREE 1
+        \\#define __ATOMIC_CHAR_LOCK_FREE 1
+        \\#define __ATOMIC_CHAR16_T_LOCK_FREE 1
+        \\#define __ATOMIC_CHAR32_T_LOCK_FREE 1
+        \\#define __ATOMIC_WCHAR_T_LOCK_FREE 1
+        \\#define __ATOMIC_WINT_T_LOCK_FREE 1
+        \\#define __ATOMIC_SHORT_LOCK_FREE 1
+        \\#define __ATOMIC_INT_LOCK_FREE 1
+        \\#define __ATOMIC_LONG_LOCK_FREE 1
+        \\#define __ATOMIC_LLONG_LOCK_FREE 1
+        \\#define __ATOMIC_POINTER_LOCK_FREE 1
+        \\
+    );
+    if (comp.langopts.hasChar8_T()) {
+        try w.writeAll("#define __ATOMIC_CHAR8_T_LOCK_FREE 1\n");
+    }
+
+    // types
+    if (comp.getCharSignedness() == .unsigned) {
+        try w.writeAll("#define __CHAR_UNSIGNED__ 1\n");
+    }
+    if (comp.type_store.wchar.signedness(comp) == .unsigned) {
+        try w.writeAll("#define __WCHAR_UNSIGNED__ 1\n");
+    }
+    if (comp.type_store.wint.signedness(comp) == .unsigned) {
+        try w.writeAll("#define __WINT_UNSIGNED__ 1\n");
+    }
+    try w.writeAll("#define __CHAR_BIT__ 8\n");
+
+    // int maxs
+    try comp.generateIntWidth(w, "BOOL", .bool);
+    try comp.generateIntMaxAndWidth(w, "SCHAR", .schar);
+    try comp.generateIntMaxAndWidth(w, "SHRT", .short);
+    try comp.generateIntMaxAndWidth(w, "INT", .int);
+    try comp.generateIntMaxAndWidth(w, "LONG", .long);
+    try comp.generateIntMaxAndWidth(w, "LONG_LONG", .long_long);
+    if (comp.langopts.has_int24) {
+        const suffix = if (Type.Int.int.bits(comp) == 8) "LL" else "L";
+        const unsigned_suffix = if (Type.Int.int.bits(comp) == 8) "ULL" else "UL";
+        try w.print("#define __INT24_MAX__ 8388607{s}\n", .{suffix});
+        try w.writeAll("#define __INT24_MIN__ (-__INT24_MAX__-1)\n");
+        try w.print("#define __UINT24_MAX__ 16777215{s}\n", .{unsigned_suffix});
+    }
+    try comp.generateIntMaxAndWidth(w, "WCHAR", comp.type_store.wchar);
+    try comp.generateIntMaxAndWidth(w, "WINT", comp.type_store.wint);
+    try comp.generateIntMaxAndWidth(w, "INTMAX", comp.type_store.intmax);
+    try comp.generateIntMaxAndWidth(w, "SIZE", comp.type_store.size);
+    try comp.generateIntMaxAndWidth(w, "UINTMAX", try comp.type_store.intmax.makeIntUnsigned(comp));
+    try comp.generateIntMaxAndWidth(w, "PTRDIFF", comp.type_store.ptrdiff);
+    try comp.generateIntMaxAndWidth(w, "INTPTR", comp.type_store.intptr);
+    try comp.generateIntMaxAndWidth(w, "UINTPTR", try comp.type_store.intptr.makeIntUnsigned(comp));
+    try comp.generateIntMaxAndWidth(w, "SIG_ATOMIC", target.sigAtomicType());
+
+    // int widths
+    try w.print("#define __BITINT_MAXWIDTH__ {d}\n", .{bit_int_max_bits});
+
+    // sizeof types
+    try comp.generateSizeofType(w, "__SIZEOF_FLOAT__", .float);
+    try comp.generateSizeofType(w, "__SIZEOF_DOUBLE__", .double);
+    try comp.generateSizeofType(w, "__SIZEOF_LONG_DOUBLE__", .long_double);
+    try comp.generateSizeofType(w, "__SIZEOF_SHORT__", .short);
+    try comp.generateSizeofType(w, "__SIZEOF_INT__", .int);
+    try comp.generateSizeofType(w, "__SIZEOF_LONG__", .long);
+    try comp.generateSizeofType(w, "__SIZEOF_LONG_LONG__", .long_long);
+    try comp.generateSizeofType(w, "__SIZEOF_POINTER__", .void_pointer);
+    try comp.generateSizeofType(w, "__SIZEOF_PTRDIFF_T__", comp.type_store.ptrdiff);
+    try comp.generateSizeofType(w, "__SIZEOF_SIZE_T__", comp.type_store.size);
+    try comp.generateSizeofType(w, "__SIZEOF_WCHAR_T__", comp.type_store.wchar);
+    try comp.generateSizeofType(w, "__SIZEOF_WINT_T__", comp.type_store.wint);
+
+    if (target.hasInt128()) {
+        try comp.generateSizeofType(w, "__SIZEOF_INT128__", .int128);
+    }
+
+    // various int types
+    try comp.generateTypeMacro(w, "__INTPTR_TYPE__", comp.type_store.intptr);
+    try comp.generateTypeMacro(w, "__UINTPTR_TYPE__", try comp.type_store.intptr.makeIntUnsigned(comp));
+
+    try comp.generateTypeMacro(w, "__INTMAX_TYPE__", comp.type_store.intmax);
+    try comp.generateIntLiteralMacros("__INTMAX", w, comp.type_store.intptr);
+
+    try comp.generateTypeMacro(w, "__UINTMAX_TYPE__", try comp.type_store.intmax.makeIntUnsigned(comp));
+    try comp.generateIntLiteralMacros("__UINTMAX", w, try comp.type_store.intptr.makeIntUnsigned(comp));
+
+    try comp.generateTypeMacro(w, "__PTRDIFF_TYPE__", comp.type_store.ptrdiff);
+    try comp.generateTypeMacro(w, "__SIZE_TYPE__", comp.type_store.size);
+    try comp.generateTypeMacro(w, "__WCHAR_TYPE__", comp.type_store.wchar);
+    try comp.generateTypeMacro(w, "__WINT_TYPE__", comp.type_store.wint);
+    try comp.generateTypeMacro(w, "__CHAR16_TYPE__", comp.type_store.uint_least16_t);
+    try comp.generateTypeMacro(w, "__CHAR32_TYPE__", comp.type_store.uint_least32_t);
+
+    try comp.generateExactWidthTypes(w);
+    try comp.generateFastAndLeastWidthTypes(w);
+
+    if (Target.FPSemantics.halfPrecisionType(target)) |half| {
+        try generateFloatMacros(w, "FLT16", half, "F16");
+    }
+    try generateFloatMacros(w, "FLT", Target.FPSemantics.forType(.float, target), "F");
+    try generateFloatMacros(w, "DBL", Target.FPSemantics.forType(.double, target), "");
+    try generateFloatMacros(w, "LDBL", Target.FPSemantics.forType(.longdouble, target), "L");
+
+    // TODO: clang treats __FLT_EVAL_METHOD__ as a special-cased macro because evaluating it within a scope
+    // where `#pragma clang fp eval_method(X)` has been called produces an error diagnostic.
+    const flt_eval_method = comp.langopts.fp_eval_method orelse target.defaultFpEvalMethod();
+    try w.print("#define __FLT_EVAL_METHOD__ {d}\n", .{@backingInt(flt_eval_method)});
+
+    try w.writeAll(
+        \\#define __FLT_RADIX__ 2
+        \\#define __DECIMAL_DIG__ __LDBL_DECIMAL_DIG__
+        \\
+    );
+
+    switch (comp.code_gen_options.pic_level) {
+        .none => {},
+        .one, .two => {
+            try w.print(
+                \\#define __pic__ {0d}
+                \\#define __PIC__ {0d}
+                \\
+            , .{@backingInt(comp.code_gen_options.pic_level)});
+            if (comp.code_gen_options.is_pie) {
+                try w.print(
+                    \\#define __pie__ {0d}
+                    \\#define __PIE__ {0d}
+                    \\
+                , .{@backingInt(comp.code_gen_options.pic_level)});
+            }
+        },
+    }
+
+    // Blocks
+    if (comp.langopts.blocks) {
+        try define(w, "__BLOCKS__");
+    }
+}
+
+const RiscvFloatAbi = enum { soft, single, double };
+
+fn riscvFloatAbi(target: *const Target) RiscvFloatAbi {
+    return switch (target.abi) {
+        .gnusf, .muslsf => .soft,
+        .gnuf32, .muslf32 => .single,
+        else => if (target.cpu.has(.riscv, .d))
+            .double
+        else if (target.cpu.has(.riscv, .f))
+            .single
+        else
+            .soft,
+    };
+}
+
+/// Generate builtin macros that will be available to each source file.
+pub fn generateBuiltinMacros(comp: *Compilation, system_defines_mode: SystemDefinesMode) AddSourceError!Source {
+    try comp.type_store.initNamedTypes(comp);
+
+    var allocating: Io.Writer.Allocating = try .initCapacity(comp.gpa, 2 << 13);
+    defer allocating.deinit();
+
+    comp.writeBuiltinMacros(system_defines_mode, &allocating.writer) catch |err| switch (err) {
+        error.WriteFailed, error.OutOfMemory => return error.OutOfMemory,
+    };
+
+    if (allocating.written().len > std.math.maxInt(u32)) return error.FileTooBig;
+
+    const contents = try allocating.toOwnedSliceSentinel(0);
+    errdefer comp.gpa.free(contents);
+    return comp.addSourceFromOwnedBuffer("<builtin>", contents, .user);
+}
+
+fn writeBuiltinMacros(comp: *Compilation, system_defines_mode: SystemDefinesMode, w: *Io.Writer) !void {
+    if (system_defines_mode == .include_system_defines) {
+        try w.writeAll(
+            \\#define __VERSION__ "Aro
+        ++ " " ++ @import("backend").version_str ++ "\"\n" ++
+            \\#define __Aro__
+            \\
+        );
+    }
+
+    if (comp.langopts.emulate != .msvc) {
+        try w.writeAll("#define __STDC__ 1\n");
+    }
+    try w.print("#define __STDC_HOSTED__ {d}\n", .{@intFromBool(comp.target.os.tag != .freestanding)});
+
+    // standard macros
+    try w.writeAll(
+        \\#define __STDC_UTF_16__ 1
+        \\#define __STDC_UTF_32__ 1
+        \\#define __STDC_EMBED_NOT_FOUND__ 0
+        \\#define __STDC_EMBED_FOUND__ 1
+        \\#define __STDC_EMBED_EMPTY__ 2
+        \\
+    );
+    if (comp.langopts.standard.atLeast(.c11)) switch (comp.target.os.tag) {
+        .openbsd, .driverkit, .ios, .maccatalyst, .macos, .tvos, .visionos, .watchos => {
+            try w.writeAll("#define __STDC_NO_THREADS__ 1\n");
+        },
+        .ps4, .ps5 => {
+            try w.writeAll(
+                \\#define __STDC_NO_THREADS__ 1
+                \\#define __STDC_NO_COMPLEX__ 1
+                \\
+            );
+        },
+        else => {},
+    };
+    if (comp.langopts.standard.StdCVersionMacro()) |stdc_version| {
+        try w.writeAll("#define __STDC_VERSION__ ");
+        try w.writeAll(stdc_version);
+        try w.writeByte('\n');
+    }
+
+    if (system_defines_mode == .include_system_defines) {
+        try comp.generateSystemDefines(w);
+    }
+}
+
+fn generateFloatMacros(w: *Io.Writer, prefix: []const u8, semantics: Target.FPSemantics, ext: []const u8) !void {
+    const denormMin = semantics.chooseValue(
+        []const u8,
+        .{
+            "5.9604644775390625e-8",
+            "1.40129846e-45",
+            "4.9406564584124654e-324",
+            "3.64519953188247460253e-4951",
+            "4.94065645841246544176568792868221e-324",
+            "6.47517511943802511092443895822764655e-4966",
+        },
+    );
+    const digits = semantics.chooseValue(i32, .{ 3, 6, 15, 18, 31, 33 });
+    const decimalDigits = semantics.chooseValue(i32, .{ 5, 9, 17, 21, 33, 36 });
+    const epsilon = semantics.chooseValue(
+        []const u8,
+        .{
+            "9.765625e-4",
+            "1.19209290e-7",
+            "2.2204460492503131e-16",
+            "1.08420217248550443401e-19",
+            "4.94065645841246544176568792868221e-324",
+            "1.92592994438723585305597794258492732e-34",
+        },
+    );
+    const mantissaDigits = semantics.chooseValue(i32, .{ 11, 24, 53, 64, 106, 113 });
+
+    const min10Exp = semantics.chooseValue(i32, .{ -4, -37, -307, -4931, -291, -4931 });
+    const max10Exp = semantics.chooseValue(i32, .{ 4, 38, 308, 4932, 308, 4932 });
+
+    const minExp = semantics.chooseValue(i32, .{ -13, -125, -1021, -16381, -968, -16381 });
+    const maxExp = semantics.chooseValue(i32, .{ 16, 128, 1024, 16384, 1024, 16384 });
+
+    const min = semantics.chooseValue(
+        []const u8,
+        .{
+            "6.103515625e-5",
+            "1.17549435e-38",
+            "2.2250738585072014e-308",
+            "3.36210314311209350626e-4932",
+            "2.00416836000897277799610805135016e-292",
+            "3.36210314311209350626267781732175260e-4932",
+        },
+    );
+    const max = semantics.chooseValue(
+        []const u8,
+        .{
+            "6.5504e+4",
+            "3.40282347e+38",
+            "1.7976931348623157e+308",
+            "1.18973149535723176502e+4932",
+            "1.79769313486231580793728971405301e+308",
+            "1.18973149535723176508575932662800702e+4932",
+        },
+    );
+
+    try w.print("#define __{s}_DENORM_MIN__ {s}{s}\n", .{ prefix, denormMin, ext });
+    try w.print("#define __{s}_HAS_DENORM__\n", .{prefix});
+    try w.print("#define __{s}_DIG__ {d}\n", .{ prefix, digits });
+    try w.print("#define __{s}_DECIMAL_DIG__ {d}\n", .{ prefix, decimalDigits });
+
+    try w.print("#define __{s}_EPSILON__ {s}{s}\n", .{ prefix, epsilon, ext });
+    try w.print("#define __{s}_HAS_INFINITY__\n", .{prefix});
+    try w.print("#define __{s}_HAS_QUIET_NAN__\n", .{prefix});
+    try w.print("#define __{s}_MANT_DIG__ {d}\n", .{ prefix, mantissaDigits });
+
+    try w.print("#define __{s}_MAX_10_EXP__ {d}\n", .{ prefix, max10Exp });
+    try w.print("#define __{s}_MAX_EXP__ {d}\n", .{ prefix, maxExp });
+    try w.print("#define __{s}_MAX__ {s}{s}\n", .{ prefix, max, ext });
+
+    try w.print("#define __{s}_MIN_10_EXP__ ({d})\n", .{ prefix, min10Exp });
+    try w.print("#define __{s}_MIN_EXP__ ({d})\n", .{ prefix, minExp });
+    try w.print("#define __{s}_MIN__ {s}{s}\n", .{ prefix, min, ext });
+}
+
+fn generateTypeMacro(comp: *const Compilation, w: *Io.Writer, name: []const u8, qt: QualType) !void {
+    try w.print("#define {s} ", .{name});
+    try qt.print(comp, w);
+    try w.writeByte('\n');
+}
+
+pub fn float80Type(comp: *const Compilation) ?QualType {
+    return switch (comp.langopts.emulate) {
+        .no, .gcc => comp.target.float80Type(),
+        .msvc, .clang => null,
+    };
+}
+
+/// target-independent lowest-rank integer type with at least N bits
+pub fn smallestNBitIntTargetIndependent(comp: *const Compilation, bits: usize, signedness: std.builtin.Signedness) QualType {
+    const candidates: [6]QualType = switch (signedness) {
+        .signed => .{ .schar, .short, .int, .long, .long_long, .int128 },
+        .unsigned => .{ .uchar, .ushort, .uint, .ulong, .ulong_long, .uint128 },
+    };
+    for (candidates) |qt| {
+        if (qt.bitSizeof(comp) >= bits) return qt;
+    } else unreachable;
+}
+
+/// Lowest-rank integer type with at least N bits; subject to platform idiosyncrasies
+pub fn intLeastN(comp: *const Compilation, bits: usize, signedness: std.builtin.Signedness) QualType {
+    if (bits <= 24 and bits > Type.Int.int.bits(comp) and comp.langopts.has_int24) {
+        return if (signedness == .signed) .int24 else .uint24;
+    }
+    if (bits == 64 and (comp.target.os.tag.isDarwin() or comp.target.cpu.arch.isWasm())) {
+        // WebAssembly and Darwin use `long long` for `int_least64_t` and `int_fast64_t`.
+        return if (signedness == .signed) .long_long else .ulong_long;
+    }
+    if (bits == 16 and comp.target.cpu.arch == .avr) {
+        // AVR uses int for int_least16_t and int_fast16_t.
+        return if (signedness == .signed) .int else .uint;
+    }
+    return comp.smallestNBitIntTargetIndependent(bits, signedness);
+}
+
+fn generateFastOrLeastType(
+    comp: *Compilation,
+    bits: usize,
+    kind: enum { least, fast },
+    signedness: std.builtin.Signedness,
+    w: *Io.Writer,
+) !void {
+    const ty = comp.intLeastN(bits, signedness); // defining the fast types as the least types is permitted
+
+    var buf: [32]u8 = undefined;
+    const suffix = "_TYPE__";
+    const base_name = switch (signedness) {
+        .signed => "__INT_",
+        .unsigned => "__UINT_",
+    };
+    const kind_str = switch (kind) {
+        .fast => "FAST",
+        .least => "LEAST",
+    };
+
+    const full = mem.print(&buf, "{s}{s}{d}{s}", .{
+        base_name, kind_str, bits, suffix,
+    }) catch unreachable;
+
+    try comp.generateTypeMacro(w, full, ty);
+
+    const prefix = full[2 .. full.len - suffix.len]; // remove "__" and "_TYPE__"
+
+    switch (signedness) {
+        .signed => try comp.generateIntMaxAndWidth(w, prefix, ty),
+        .unsigned => try comp.generateIntMax(w, prefix, ty),
+    }
+    try comp.generateFmt(prefix, w, ty);
+}
+
+fn generateFastAndLeastWidthTypes(comp: *Compilation, w: *Io.Writer) !void {
+    const sizes = [_]usize{ 8, 16, 32, 64 };
+    for (sizes) |size| {
+        try comp.generateFastOrLeastType(size, .least, .signed, w);
+        try comp.generateFastOrLeastType(size, .least, .unsigned, w);
+        try comp.generateFastOrLeastType(size, .fast, .signed, w);
+        try comp.generateFastOrLeastType(size, .fast, .unsigned, w);
+    }
+}
+
+fn generateExactWidthTypes(comp: *Compilation, w: *Io.Writer) !void {
+    try comp.generateExactWidthType(w, .schar);
+    const char_bits = Type.Int.char.bits(comp);
+    const short_bits = Type.Int.short.bits(comp);
+    const int_bits = Type.Int.int.bits(comp);
+    const long_bits = Type.Int.long.bits(comp);
+    const long_long_bits = Type.Int.long_long.bits(comp);
+
+    if (short_bits > char_bits) {
+        try comp.generateExactWidthType(w, .short);
+    }
+
+    if (int_bits > short_bits) {
+        try comp.generateExactWidthType(w, .int);
+    }
+
+    if (long_bits > int_bits) {
+        try comp.generateExactWidthType(w, .long);
+    }
+
+    if (long_long_bits > long_bits) {
+        try comp.generateExactWidthType(w, .long_long);
+    }
+
+    try comp.generateExactWidthType(w, .uchar);
+    try comp.generateExactWidthIntMax(w, .uchar);
+    try comp.generateExactWidthIntMax(w, .schar);
+
+    if (short_bits > char_bits) {
+        try comp.generateExactWidthType(w, .ushort);
+        try comp.generateExactWidthIntMax(w, .ushort);
+        try comp.generateExactWidthIntMax(w, .short);
+    }
+
+    if (int_bits > short_bits) {
+        try comp.generateExactWidthType(w, .uint);
+        try comp.generateExactWidthIntMax(w, .uint);
+        try comp.generateExactWidthIntMax(w, .int);
+    }
+
+    if (long_bits > int_bits) {
+        try comp.generateExactWidthType(w, .ulong);
+        try comp.generateExactWidthIntMax(w, .ulong);
+        try comp.generateExactWidthIntMax(w, .long);
+    }
+
+    if (long_long_bits > long_bits) {
+        try comp.generateExactWidthType(w, .ulong_long);
+        try comp.generateExactWidthIntMax(w, .ulong_long);
+        try comp.generateExactWidthIntMax(w, .long_long);
+    }
+}
+
+fn generateFmt(comp: *const Compilation, prefix: []const u8, w: *Io.Writer, qt: QualType) !void {
+    const unsigned = qt.signedness(comp) == .unsigned;
+    const modifier = qt.formatModifier(comp);
+    const formats = if (unsigned) "ouxX" else "di";
+    for (formats) |c| {
+        try w.print("#define {s}_FMT{c}__ \"{s}{c}\"\n", .{ prefix, c, modifier, c });
+    }
+}
+
+fn generateIntLiteralMacros(comp: *const Compilation, prefix: []const u8, w: *Io.Writer, qt: QualType) !void {
+    const suffix = qt.intValueSuffix(comp);
+    try w.print("#define {s}_C_SUFFIX__ {s}\n", .{ prefix, suffix });
+    if (suffix.len == 0) {
+        try w.print("#define {s}_C(c) c\n", .{prefix});
+    } else {
+        try w.print("#define {s}_C(c) c##{s}\n", .{ prefix, suffix });
+    }
+}
+
+/// Generate the following for a type:
+///     Name macro (e.g. #define __UINT32_TYPE__ unsigned int)
+///     Format strings (e.g. #define __UINT32_FMTu__ "u")
+///     Suffix macro (e.g. #define __UINT32_C_SUFFIX__ U)
+fn generateExactWidthType(comp: *Compilation, w: *Io.Writer, original_qt: QualType) !void {
+    var qt = original_qt;
+    const width = qt.sizeof(comp) * 8;
+    const unsigned = qt.signedness(comp) == .unsigned;
+
+    if (width == 16) {
+        qt = if (unsigned) try comp.type_store.int16.makeIntUnsigned(comp) else comp.type_store.int16;
+    } else if (width == 64) {
+        qt = if (unsigned) try comp.type_store.int64.makeIntUnsigned(comp) else comp.type_store.int64;
+    }
+
+    var buffer: [16]u8 = undefined;
+    const suffix = "_TYPE__";
+    const full = mem.print(&buffer, "{s}{d}{s}", .{
+        if (unsigned) "__UINT" else "__INT", width, suffix,
+    }) catch unreachable;
+
+    try comp.generateTypeMacro(w, full, qt);
+
+    const prefix = full[0 .. full.len - suffix.len]; // remove "_TYPE__"
+
+    try comp.generateFmt(prefix, w, qt);
+    try comp.generateIntLiteralMacros(prefix, w, qt);
+}
+
+pub fn hasFloat128(comp: *const Compilation) bool {
+    return comp.target.hasFloat128();
+}
+
+pub fn hasHalfPrecisionFloatABI(comp: *const Compilation) bool {
+    return comp.langopts.allow_half_args_and_returns or comp.target.hasHalfPrecisionFloatABI();
+}
+
+fn generateIntMax(comp: *const Compilation, w: *Io.Writer, name: []const u8, qt: QualType) !void {
+    const unsigned = qt.signedness(comp) == .unsigned;
+    const max: u128 = switch (qt.bitSizeof(comp)) {
+        8 => if (unsigned) std.math.maxInt(u8) else std.math.maxInt(i8),
+        16 => if (unsigned) std.math.maxInt(u16) else std.math.maxInt(i16),
+        32 => if (unsigned) std.math.maxInt(u32) else std.math.maxInt(i32),
+        64 => if (unsigned) std.math.maxInt(u64) else std.math.maxInt(i64),
+        128 => if (unsigned) std.math.maxInt(u128) else std.math.maxInt(i128),
+        else => unreachable,
+    };
+    try w.print("#define __{s}_MAX__ {d}{s}\n", .{ name, max, qt.intValueSuffix(comp) });
+}
+
+/// Largest value that can be stored in wchar_t
+pub fn wcharMax(comp: *const Compilation) u32 {
+    const unsigned = comp.type_store.wchar.signedness(comp) == .unsigned;
+    return switch (comp.type_store.wchar.bitSizeof(comp)) {
+        8 => if (unsigned) std.math.maxInt(u8) else std.math.maxInt(i8),
+        16 => if (unsigned) std.math.maxInt(u16) else std.math.maxInt(i16),
+        32 => if (unsigned) std.math.maxInt(u32) else std.math.maxInt(i32),
+        else => unreachable,
+    };
+}
+
+fn generateExactWidthIntMax(comp: *Compilation, w: *Io.Writer, original_qt: QualType) !void {
+    var qt = original_qt;
+    const bit_count: u8 = @intCast(qt.sizeof(comp) * 8);
+    const unsigned = qt.signedness(comp) == .unsigned;
+
+    if (bit_count == 64) {
+        qt = if (unsigned) try comp.type_store.int64.makeIntUnsigned(comp) else comp.type_store.int64;
+    }
+
+    var name_buffer: [6]u8 = undefined;
+    const name = mem.print(&name_buffer, "{s}{d}", .{
+        if (unsigned) "UINT" else "INT", bit_count,
+    }) catch unreachable;
+
+    return comp.generateIntMax(w, name, qt);
+}
+
+fn generateIntWidth(comp: *Compilation, w: *Io.Writer, name: []const u8, qt: QualType) !void {
+    try w.print("#define __{s}_WIDTH__ {d}\n", .{ name, qt.sizeof(comp) * 8 });
+}
+
+fn generateIntMaxAndWidth(comp: *Compilation, w: *Io.Writer, name: []const u8, qt: QualType) !void {
+    try comp.generateIntMax(w, name, qt);
+    try comp.generateIntWidth(w, name, qt);
+}
+
+fn generateSizeofType(comp: *Compilation, w: *Io.Writer, name: []const u8, qt: QualType) !void {
+    try w.print("#define {s} {d}\n", .{ name, qt.sizeof(comp) });
+}
+
+pub fn nextLargestIntSameSign(comp: *const Compilation, qt: QualType) ?QualType {
+    assert(qt.isInt(comp));
+    const candidates: []const QualType = if (qt.signedness(comp) == .signed)
+        if (comp.langopts.has_int24) &.{ .short, .int, .int24, .long, .long_long } else &.{ .short, .int, .long, .long_long }
+    else if (comp.langopts.has_int24)
+        &.{ .ushort, .uint, .uint24, .ulong, .ulong_long }
+    else
+        &.{ .ushort, .uint, .ulong, .ulong_long };
+
+    const size = qt.sizeof(comp);
+    for (candidates) |candidate| {
+        if (candidate.sizeof(comp) > size) return candidate;
+    }
+    return null;
+}
+
+/// Maximum size of an array, in bytes
+pub fn maxArrayBytes(comp: *const Compilation) u64 {
+    const max_bits = @min(61, comp.target.ptrBitWidth());
+    return (@as(u64, 1) << @truncate(max_bits)) - 1;
+}
+
+/// If `enum E { ... }` syntax has a fixed underlying integer type regardless of the presence of
+/// __attribute__((packed)) or the range of values of the corresponding enumerator constants,
+/// specify it here.
+/// TODO: likely incomplete
+pub fn fixedEnumTagType(comp: *const Compilation) ?QualType {
+    switch (comp.langopts.emulate) {
+        .msvc => return .int,
+        .no, .clang => if ((comp.target.os.tag == .windows or comp.target.os.tag == .uefi) and comp.target.abi == .msvc) return .int,
+        .gcc => {},
+    }
+    return null;
+}
+
+pub fn getCharSignedness(comp: *const Compilation) std.builtin.Signedness {
+    return comp.langopts.char_signedness_override orelse comp.target.cCharSignedness();
+}
+
+pub fn hasClangStyleBoundsSafety(comp: *const Compilation) bool {
+    return comp.langopts.bounds_safety == .clang;
+}
+
+pub fn getSource(comp: *const Compilation, id: Source.Id) Source {
+    if (id.alias) {
+        return comp.source_aliases.items[@backingInt(id.index)];
+    }
+    if (id.index == .generated) return .{
+        .path = "<scratch space>",
+        .buf = @ptrCast(comp.generated_buf.items),
+        .id = .generated,
+        .splice_locs = &.{},
+        .kind = .user,
+    };
+    return comp.sources.values()[@backingInt(id.index)];
+}
+
+/// Creates a Source from `buf` and adds it to the Compilation
+/// Performs newline splicing and line-ending normalization to '\n'
+/// `buf` will be modified and the allocation will be resized if newline splicing
+/// or line-ending changes happen.
+/// caller retains ownership of `path`
+/// To add a file's contents given its path, see addSourceFromPath
+pub fn addSourceFromOwnedBuffer(comp: *Compilation, path: []const u8, buf: [:0]u8, kind: Source.Kind) !Source {
+    assert(buf.len <= std.math.maxInt(u32));
+    try comp.sources.ensureUnusedCapacity(comp.gpa, 1);
+
+    var contents = buf;
+    const duped_path = try comp.gpa.dupe(u8, path);
+    errdefer comp.gpa.free(duped_path);
+
+    var splice_list: std.ArrayList(u32) = .empty;
+    defer splice_list.deinit(comp.gpa);
+
+    const source_id: Source.Id = .{ .index = @fromBackingInt(@intCast(comp.sources.count())) };
+
+    var i: u32 = 0;
+    var backslash_loc: u32 = undefined;
+    var state: enum {
+        beginning_of_file,
+        bom1,
+        bom2,
+        start,
+        back_slash,
+        cr,
+        back_slash_cr,
+        trailing_ws,
+    } = .beginning_of_file;
+    var line: u32 = 1;
+
+    for (contents) |byte| {
+        contents[i] = byte;
+
+        switch (byte) {
+            '\r' => {
+                switch (state) {
+                    .start, .cr, .beginning_of_file => {
+                        state = .start;
+                        line += 1;
+                        state = .cr;
+                        contents[i] = '\n';
+                        i += 1;
+                    },
+                    .back_slash, .trailing_ws, .back_slash_cr => {
+                        i = backslash_loc;
+                        try splice_list.append(comp.gpa, i);
+                        if (state == .trailing_ws) {
+                            try comp.addNewlineEscapeError(path, buf, splice_list.items, i, line, kind);
+                        }
+                        state = if (state == .back_slash_cr) .cr else .back_slash_cr;
+                        line += 1;
+                    },
+                    .bom1, .bom2 => break, // invalid utf-8
+                }
+            },
+            '\n' => {
+                switch (state) {
+                    .start, .beginning_of_file => {
+                        state = .start;
+                        line += 1;
+                        i += 1;
+                    },
+                    .cr, .back_slash_cr => {},
+                    .back_slash, .trailing_ws => {
+                        i = backslash_loc;
+                        if (state == .back_slash or state == .trailing_ws) {
+                            try splice_list.append(comp.gpa, i);
+                        }
+                        if (state == .trailing_ws) {
+                            try comp.addNewlineEscapeError(path, buf, splice_list.items, i, line, kind);
+                        }
+                        line += 1;
+                    },
+                    .bom1, .bom2 => break,
+                }
+                state = .start;
+            },
+            '\\' => {
+                backslash_loc = i;
+                state = .back_slash;
+                i += 1;
+            },
+            '\t', '\x0B', '\x0C', ' ' => {
+                switch (state) {
+                    .start, .trailing_ws => {},
+                    .beginning_of_file => state = .start,
+                    .cr, .back_slash_cr => state = .start,
+                    .back_slash => state = .trailing_ws,
+                    .bom1, .bom2 => break,
+                }
+                i += 1;
+            },
+            '\xEF' => {
+                i += 1;
+                state = switch (state) {
+                    .beginning_of_file => .bom1,
+                    else => .start,
+                };
+            },
+            '\xBB' => {
+                i += 1;
+                state = switch (state) {
+                    .bom1 => .bom2,
+                    else => .start,
+                };
+            },
+            '\xBF' => {
+                switch (state) {
+                    .bom2 => i = 0, // rewind and overwrite the BOM
+                    else => i += 1,
+                }
+                state = .start;
+            },
+            else => {
+                i += 1;
+                state = .start;
+            },
+        }
+    }
+
+    const splice_locs = try splice_list.toOwnedSlice(comp.gpa);
+    errdefer comp.gpa.free(splice_locs);
+
+    if (i != contents.len) {
+        var list: std.ArrayList(u8) = .{
+            .pointer_stability = .{},
+            .items = contents[0..i],
+            .capacity = contents.len + 1, // +1 for sentinel
+        };
+        contents = try list.toOwnedSliceSentinel(comp.gpa, 0);
+    }
+    errdefer @compileError("errdefers in callers would possibly free the realloced slice using the original len");
+
+    const source: Source = .{
+        .id = source_id,
+        .path = duped_path,
+        .buf = contents,
+        .splice_locs = splice_locs,
+        .kind = kind,
+    };
+
+    comp.sources.putAssumeCapacityNoClobber(duped_path, source);
+    return source;
+}
+
+fn addNewlineEscapeError(
+    comp: *Compilation,
+    path: []const u8,
+    buf: [:0]const u8,
+    splice_locs: []const u32,
+    byte_offset: u32,
+    line: u32,
+    kind: Source.Kind,
+) !void {
+    // Temporary source for getting the location for errors.
+    var tmp_source: Source = .{
+        .path = path,
+        .buf = buf,
+        .id = undefined,
+        .kind = kind,
+        .splice_locs = splice_locs,
+    };
+
+    const diagnostic: Diagnostic = .backslash_newline_escape;
+    var loc = tmp_source.lineCol(.{ .id = undefined, .byte_offset = byte_offset, .line = line });
+    loc.line = loc.line[0 .. loc.line.len - 1];
+    loc.width += 1;
+    loc.col += 1;
+
+    try comp.diagnostics.add(.{
+        .text = diagnostic.fmt,
+        .kind = diagnostic.kind,
+        .opt = diagnostic.opt,
+        .location = loc,
+    });
+}
+
+/// Caller retains ownership of `path` and `buf`.
+/// Dupes the source buffer; if it is acceptable to modify the source buffer and possibly resize
+/// the allocation, please use `addSourceFromOwnedBuffer`
+pub fn addSourceFromBuffer(comp: *Compilation, path: []const u8, buf: []const u8) AddSourceError!Source {
+    if (comp.sources.get(path)) |some| return some;
+    if (buf.len > std.math.maxInt(u32)) return error.FileTooBig;
+
+    const contents = try comp.gpa.dupeSentinel(u8, buf, 0);
+    errdefer comp.gpa.free(contents);
+
+    return comp.addSourceFromOwnedBuffer(path, contents, .user);
+}
+
+/// Caller retains ownership of `path`.
+pub fn addSourceFromPath(comp: *Compilation, path: []const u8) !Source {
+    return comp.addSourceFromPathExtra(path, .user);
+}
+
+/// Caller retains ownership of `path`.
+fn addSourceFromPathExtra(comp: *Compilation, path: []const u8, kind: Source.Kind) !Source {
+    if (comp.sources.get(path)) |some| return some;
+
+    if (mem.findScalar(u8, path, 0) != null) {
+        return error.FileNotFound;
+    }
+
+    const file = try comp.cwd.openFile(comp.io, path, .{});
+    defer file.close(comp.io);
+    return comp.addSourceFromFile(file, path, kind);
+}
+
+pub fn addSourceFromFile(comp: *Compilation, file: std.Io.File, path: []const u8, kind: Source.Kind) !Source {
+    const contents = try comp.getFileContents(file, .unlimited);
+    errdefer comp.gpa.free(contents);
+    return comp.addSourceFromOwnedBuffer(path, contents, kind);
+}
+
+pub fn addSourceAlias(comp: *Compilation, source: Source.Id, new_path: []const u8, new_kind: Source.Kind) !Source.Id {
+    var aliased_source = comp.getSource(source);
+    aliased_source.path = new_path;
+    aliased_source.id = .{ .index = @fromBackingInt(@intCast(comp.source_aliases.items.len)), .alias = true };
+    aliased_source.kind = new_kind;
+    try comp.source_aliases.append(comp.gpa, aliased_source);
+    return aliased_source.id;
+}
+
+// Sort and deduplicate a list of includes into a search path.
+pub fn initSearchPath(comp: *Compilation, includes: []const Include, verbose: bool) !void {
+    comp.search_path.clearRetainingCapacity();
+
+    for (includes) |include| {
+        if (include.kind == .quote) {
+            try comp.addToSearchPath(include, verbose);
+        }
+    }
+
+    try comp.removeDuplicateSearchPaths(0, verbose);
+    const quote_count = comp.search_path.items.len;
+
+    for (includes) |include| {
+        if (include.kind == .normal or include.kind == .framework) {
+            try comp.addToSearchPath(include, verbose);
+        }
+    }
+
+    try comp.removeDuplicateSearchPaths(quote_count, verbose);
+
+    for (includes) |include| {
+        if (include.kind == .system or include.kind == .system_framework) {
+            try comp.addToSearchPath(include, verbose);
+        }
+    }
+
+    for (includes) |include| {
+        if (include.kind == .after) {
+            try comp.addToSearchPath(include, verbose);
+        }
+    }
+
+    try comp.removeDuplicateSearchPaths(quote_count, verbose);
+
+    if (verbose) {
+        std.debug.print("#include \"...\" search starts here:\n", .{});
+        for (comp.search_path.items, 0..) |include, i| {
+            if (i == quote_count) {
+                std.debug.print("#include <...> search starts here:\n", .{});
+            }
+            std.debug.print(" {s}{s}\n", .{
+                include.path,
+                if (include.kind.isFramework())
+                    " (framework directory)"
+                else
+                    "",
+            });
+        }
+        std.debug.print("End of search list.\n", .{});
+    }
+}
+fn addToSearchPath(comp: *Compilation, include: Include, verbose: bool) !void {
+    comp.cwd.access(comp.io, include.path, .{}) catch {
+        if (verbose) {
+            std.debug.print("ignoring nonexistent directory \"{s}\"\n", .{include.path});
+            return;
+        }
+    };
+    try comp.search_path.append(comp.gpa, include);
+}
+fn removeDuplicateSearchPaths(comp: *Compilation, start: usize, verbose: bool) !void {
+    var bfa_buf: [1024]u8 = undefined;
+    var bfa: std.heap.BufferFirstAllocator = .init(&bfa_buf, comp.gpa);
+    const allocator = bfa.allocator();
+    var seen_includes: std.StringHashMapUnmanaged(void) = .empty;
+    defer seen_includes.deinit(allocator);
+    var seen_frameworks: std.StringHashMapUnmanaged(void) = .empty;
+    defer seen_frameworks.deinit(allocator);
+
+    var i = start;
+    for (comp.search_path.items[start..]) |include| {
+        if (include.kind.isFramework()) {
+            const gop = try seen_frameworks.getOrPut(allocator, include.path);
+            if (!gop.found_existing) {
+                comp.search_path.items[i] = include;
+                i += 1;
+                continue;
+            }
+        } else {
+            const gop = try seen_includes.getOrPut(allocator, include.path);
+            if (!gop.found_existing) {
+                comp.search_path.items[i] = include;
+                i += 1;
+                continue;
+            }
+        }
+
+        var removal_index: ?usize = null;
+
+        // If a normal include is later shadowed by a system include remove
+        // the normal include instead.
+        if (include.kind.isSystem()) {
+            for (comp.search_path.items[start..], start..) |previous, previous_index| {
+                if (previous.kind.isFramework() != include.kind.isFramework()) continue;
+                if (!mem.eql(u8, previous.path, include.path)) continue;
+
+                if (!previous.kind.isSystem()) removal_index = previous_index;
+                break;
+            } else {
+                unreachable; // Didn't find the duplicate
+            }
+        }
+
+        if (verbose) {
+            std.debug.print("ignoring duplicate directory \"{s}\"\n", .{include.path});
+            if (removal_index != null)
+                std.debug.print(" as it is a non-system directory that duplicates a system directory\n", .{});
+        }
+
+        if (removal_index) |ri| {
+            const move_size = i - ri;
+            @memmove(
+                comp.search_path.items[ri..][0..move_size],
+                comp.search_path.items[ri + 1 ..][0..move_size],
+            );
+            comp.search_path.items[i - 1] = include;
+        }
+    }
+
+    comp.search_path.shrinkRetainingCapacity(i);
+}
+
+pub fn hasInclude(
+    comp: *Compilation,
+    filename: []const u8,
+    includer_token_source: Source.Id,
+    /// angle bracket vs quotes
+    include_type: IncludeType,
+    /// __has_include vs __has_include_next
+    which: WhichInclude,
+    opt_dep_file: ?*DepFile,
+) Compilation.Error!bool {
+    const includer_source = comp.getSource(includer_token_source);
+    if (try FindInclude.run(comp, filename, includer_source, include_type, switch (which) {
+        .next => .{ .only_search_after_dir = includer_source.path },
+        .first => switch (include_type) {
+            .cli => unreachable,
+            .quotes => .{ .allow_same_dir = includer_source.path },
+            .angle_brackets => .only_search,
+        },
+    })) |found| {
+        if (opt_dep_file) |dep_file| {
+            const source = comp.getSource(found.source);
+            try dep_file.addDependency(comp.gpa, source.path);
+        }
+        return true;
+    } else {
+        return false;
+    }
+}
+
+const FindInclude = struct {
+    comp: *Compilation,
+    include_path: []const u8,
+    /// We won't actually consider any include directories until after this directory.
+    wait_for: ?[]const u8,
+
+    const Result = struct {
+        source: Source.Id,
+        kind: Source.Kind,
+        used_ms_search_rule: bool,
+    };
+
+    fn run(
+        comp: *Compilation,
+        include_path: []const u8,
+        includer_source: Source,
+        include_type: IncludeType,
+        search_strat: union(enum) {
+            allow_same_dir: []const u8,
+            only_search,
+            only_search_after_dir: []const u8,
+        },
+    ) Allocator.Error!?Result {
+        var find: FindInclude = .{
+            .comp = comp,
+            .include_path = include_path,
+            .wait_for = null,
+        };
+
+        if (std.fs.path.isAbsolute(include_path)) {
+            switch (search_strat) {
+                .allow_same_dir, .only_search => {},
+                .only_search_after_dir => return null,
+            }
+            return find.check(&.{include_path}, .user, false);
+        }
+
+        switch (search_strat) {
+            .allow_same_dir => |other_file| {
+                const dir = std.fs.path.dirname(other_file) orelse ".";
+                if (try find.checkIncludeDir(dir, .user)) |res| return res;
+            },
+            .only_search => {},
+            .only_search_after_dir => |other_file| {
+                // TODO: this is not the correct interpretation of `#include_next` and friends,
+                // because a file might not be directly inside of an include directory. To implement
+                // this correctly, we will need to track which include directory a file has been
+                // included from.
+                find.wait_for = std.fs.path.dirname(other_file);
+            },
+        }
+
+        for (comp.search_path.items) |include| {
+            if (include.kind == .quote) {
+                if (include_type != .angle_brackets) {
+                    if (try find.checkIncludeDir(include.path, .user)) |res| return res;
+                }
+                continue;
+            }
+            const source_kind: Source.Kind = if (include.kind.isSystem()) .system else .user;
+            if (include.kind.isFramework()) {
+                if (try find.checkFrameworkDir(include.path, source_kind)) |res| return res;
+            } else {
+                if (try find.checkIncludeDir(include.path, source_kind)) |res| return res;
+            }
+        }
+
+        if (comp.ms_cwd_source_id) |source_id| {
+            if (try find.checkMsCwdIncludeDir(source_id)) |res| return res;
+        }
+
+        if (includer_source.umbrella_framework_path) |umbrella_framework_path| {
+            if (try find.checkSubframeworkDir(umbrella_framework_path, includer_source.kind)) |res| return res;
+        }
+
+        return null;
+    }
+    fn checkIncludeDir(find: *FindInclude, include_dir: []const u8, kind: Source.Kind) Allocator.Error!?Result {
+        return find.check(&.{
+            include_dir,
+            find.include_path,
+        }, kind, false);
+    }
+    fn checkMsCwdIncludeDir(find: *FindInclude, source_id: Source.Id) Allocator.Error!?Result {
+        const path = find.comp.getSource(source_id).path;
+        const dir = std.fs.path.dirname(path) orelse ".";
+        return find.check(&.{
+            dir,
+            find.include_path,
+        }, .user, true);
+    }
+
+    fn checkFrameworkDir(find: *FindInclude, framework_dir: []const u8, kind: Source.Kind) Allocator.Error!?Result {
+        // For an include like 'Foo/Bar.h', search in '<framework_dir>/Foo.framework/Headers/Bar.h'.
+        const framework_name, const header_sub_path = mem.cutScalar(u8, find.include_path, '/') orelse return null;
+
+        var bfa_buf: [path_buf_stack_limit]u8 = undefined;
+        var bfa_state: std.heap.BufferFirstAllocator = .init(&bfa_buf, find.comp.gpa);
+        const bfa = bfa_state.allocator();
+        const framework_lookup = try bfa.print("{s}.framework", .{framework_name});
+        defer bfa.free(framework_lookup);
+
+        const res = try find.check(&.{
+            framework_dir,
+            framework_lookup,
+            "Headers",
+            header_sub_path,
+        }, kind, false) orelse return null;
+
+        // Mark the new source as an umbrella framework for subframework search within it.
+        const new_source = &find.comp.sources.values()[@backingInt(res.source.index)];
+        const framework_name_index = mem.find(u8, new_source.path, framework_lookup) orelse return res;
+        new_source.umbrella_framework_path = new_source.path[0 .. framework_name_index + framework_lookup.len];
+        return res;
+    }
+
+    fn checkSubframeworkDir(find: *FindInclude, umbrella_framework_path: []const u8, kind: Source.Kind) Allocator.Error!?Result {
+        // For an include like 'Foo/Bar.h', search in '<umbrella_framework_path>/Frameworks/Foo.framework/Headers/Bar.h'.
+        const framework_name, const header_sub_path = mem.cutScalar(u8, find.include_path, '/') orelse return null;
+
+        var bfa_buf: [path_buf_stack_limit]u8 = undefined;
+        var bfa_state: std.heap.BufferFirstAllocator = .init(&bfa_buf, find.comp.gpa);
+        const bfa = bfa_state.allocator();
+        const framework_lookup = try bfa.print("{s}.framework", .{framework_name});
+        defer bfa.free(framework_lookup);
+
+        const res = try find.check(&.{
+            umbrella_framework_path,
+            "Frameworks",
+            framework_lookup,
+            "Headers",
+            header_sub_path,
+        }, kind, false) orelse return null;
+
+        // Subframeworks are assumed to not be able to contain other
+        // subframeworks (i.e. they can't be umbrella frameworks), but they
+        // can reference one another, meaning that we keep the same
+        // umbrella framework.
+        const new_source = &find.comp.sources.values()[@backingInt(res.source.index)];
+        new_source.umbrella_framework_path = new_source.path[0..umbrella_framework_path.len];
+        return res;
+    }
+
+    fn check(
+        find: *FindInclude,
+        paths: []const []const u8,
+        kind: Source.Kind,
+        used_ms_search_rule: bool,
+    ) Allocator.Error!?Result {
+        const comp = find.comp;
+
+        var bfa_buf: [path_buf_stack_limit]u8 = undefined;
+        var bfa_state: std.heap.BufferFirstAllocator = .init(&bfa_buf, comp.gpa);
+        const bfa = bfa_state.allocator();
+        const header_path = try std.fs.path.resolve(bfa, paths);
+        defer bfa.free(header_path);
+        find.comp.normalizePath(header_path);
+
+        if (find.wait_for) |wait_for| if (std.fs.path.dirname(header_path)) |header_dir| {
+            if (mem.eql(u8, header_dir, wait_for)) find.wait_for = null;
+            return null;
+        };
+
+        const source = comp.addSourceFromPathExtra(header_path, kind) catch |err| switch (err) {
+            error.OutOfMemory => |e| return e,
+            else => return null,
+        };
+
+        return .{
+            .source = source.id,
+            .kind = kind,
+            .used_ms_search_rule = used_ms_search_rule,
+        };
+    }
+};
+
+pub const WhichInclude = enum {
+    first,
+    next,
+};
+
+pub const IncludeType = enum {
+    quotes,
+    angle_brackets,
+    /// cli behaves like quotes but it is relative to the Driver cwd instead of the main source file's directory.
+    cli,
+};
+
+fn getPathContents(comp: *Compilation, path: []const u8, limit: Io.Limit) ![:0]u8 {
+    if (mem.findScalar(u8, path, 0) != null) {
+        return error.FileNotFound;
+    }
+
+    const file = try comp.cwd.openFile(comp.io, path, .{});
+    defer file.close(comp.io);
+    return comp.getFileContents(file, limit);
+}
+
+fn getFileContents(comp: *Compilation, file: std.Io.File, limit: Io.Limit) ![:0]u8 {
+    var file_buf: [4096]u8 = undefined;
+    var file_reader = file.reader(comp.io, &file_buf);
+
+    var allocating: Io.Writer.Allocating = .init(comp.gpa);
+    defer allocating.deinit();
+    if (file_reader.getSize()) |size| {
+        const limited_size = limit.minInt64(size);
+        if (limited_size > std.math.maxInt(u32)) return error.FileTooBig;
+        try allocating.ensureUnusedCapacity(limited_size);
+    } else |_| {}
+
+    var remaining = limit.min(.limited(std.math.maxInt(u32)));
+    while (remaining.nonzero()) {
+        const n = file_reader.interface.stream(&allocating.writer, remaining) catch |err| switch (err) {
+            error.EndOfStream => return allocating.toOwnedSliceSentinel(0),
+            error.WriteFailed => return error.OutOfMemory,
+            error.ReadFailed => return file_reader.err.?,
+        };
+        remaining = remaining.subtract(n).?;
+    }
+    if (limit == .unlimited) return error.FileTooBig;
+    return allocating.toOwnedSliceSentinel(0);
+}
+
+fn normalizePath(comp: *Compilation, path: []u8) void {
+    if (comp.langopts.ms_extensions and @import("builtin").target.os.tag != .windows) {
+        mem.replaceScalar(u8, path, std.fs.path.sep_windows, std.fs.path.sep_posix);
+    }
+}
+
+pub fn findEmbed(
+    comp: *Compilation,
+    filename: []const u8,
+    includer_token_source: Source.Id,
+    /// angle bracket vs quotes
+    include_type: IncludeType,
+    limit: Io.Limit,
+    opt_dep_file: ?*DepFile,
+) !?[:0]u8 {
+    if (std.fs.path.isAbsolute(filename)) {
+        if (comp.getPathContents(filename, limit)) |some| {
+            errdefer comp.gpa.free(some);
+            if (opt_dep_file) |dep_file| try dep_file.addDependencyDupe(comp.gpa, comp.arena, filename);
+            return some;
+        } else |err| switch (err) {
+            error.OutOfMemory => |e| return e,
+            else => return null,
+        }
+    }
+
+    var bfa_buf: [path_buf_stack_limit]u8 = undefined;
+    var bfa_state: std.heap.BufferFirstAllocator = .init(&bfa_buf, comp.gpa);
+    const bfa = bfa_state.allocator();
+
+    switch (include_type) {
+        .quotes, .cli => {
+            const dir = std.fs.path.dirname(comp.getSource(includer_token_source).path) orelse ".";
+            const path = try std.fs.path.join(bfa, &.{ dir, filename });
+            defer bfa.free(path);
+            comp.normalizePath(path);
+            if (comp.getPathContents(path, limit)) |some| {
+                errdefer comp.gpa.free(some);
+                if (opt_dep_file) |dep_file| try dep_file.addDependencyDupe(comp.gpa, comp.arena, filename);
+                return some;
+            } else |err| switch (err) {
+                error.OutOfMemory => return error.OutOfMemory,
+                else => {},
+            }
+        },
+        .angle_brackets => {},
+    }
+    for (comp.embed_dirs.items) |embed_dir| {
+        const path = try std.fs.path.join(bfa, &.{ embed_dir, filename });
+        defer bfa.free(path);
+        comp.normalizePath(path);
+        if (comp.getPathContents(path, limit)) |some| {
+            errdefer comp.gpa.free(some);
+            if (opt_dep_file) |dep_file| try dep_file.addDependencyDupe(comp.gpa, comp.arena, filename);
+            return some;
+        } else |err| switch (err) {
+            error.OutOfMemory => return error.OutOfMemory,
+            else => {},
+        }
+    }
+    return null;
+}
+
+pub fn findInclude(
+    comp: *Compilation,
+    filename: []const u8,
+    includer_token: Token,
+    /// angle bracket vs quotes
+    include_type: IncludeType,
+    /// include vs include_next
+    which: WhichInclude,
+) Compilation.Error!?Source {
+    const includer_source = comp.getSource(includer_token.source);
+    const found = try FindInclude.run(comp, filename, includer_source, include_type, switch (which) {
+        .next => .{ .only_search_after_dir = includer_source.path },
+        .first => switch (include_type) {
+            .cli => .{ .allow_same_dir = "." },
+            .quotes => .{ .allow_same_dir = includer_source.path },
+            .angle_brackets => .only_search,
+        },
+    }) orelse return null;
+    if (found.used_ms_search_rule) {
+        const diagnostic: Diagnostic = .ms_search_rule;
+        var buf: [1024]u8 = undefined;
+        var bfa: std.heap.BufferFirstAllocator = .init(&buf, comp.gpa);
+        var allocating: std.Io.Writer.Allocating = .init(bfa.allocator());
+        defer allocating.deinit();
+
+        Diagnostics.formatArgs(&allocating.writer, diagnostic.fmt, .{filename}) catch return error.OutOfMemory;
+
+        try comp.diagnostics.add(.{
+            .text = allocating.written(),
+            .kind = diagnostic.kind,
+            .opt = diagnostic.opt,
+            .extension = diagnostic.extension,
+            .location = (Source.Location{
+                .id = includer_token.source,
+                .byte_offset = includer_token.start,
+                .line = includer_token.line,
+            }).expand(comp),
+        });
+    }
+    return comp.getSource(found.source);
+}
+
+pub fn addPragmaHandler(comp: *Compilation, name: []const u8, handler: *Pragma) Allocator.Error!void {
+    try comp.pragma_handlers.putNoClobber(comp.gpa, name, handler);
+}
+
+pub fn addDefaultPragmaHandlers(comp: *Compilation) Allocator.Error!void {
+    const GCC = @import("pragmas/gcc.zig");
+    var gcc = try GCC.init(comp.gpa);
+    errdefer gcc.deinit(gcc, comp);
+
+    const Once = @import("pragmas/once.zig");
+    var once = try Once.init(comp.gpa);
+    errdefer once.deinit(once, comp);
+
+    const Message = @import("pragmas/message.zig");
+    var message = try Message.init(comp.gpa);
+    errdefer message.deinit(message, comp);
+
+    const Pack = @import("pragmas/pack.zig");
+    var pack = try Pack.init(comp.gpa);
+    errdefer pack.deinit(pack, comp);
+
+    try comp.addPragmaHandler("GCC", gcc);
+    try comp.addPragmaHandler("once", once);
+    try comp.addPragmaHandler("message", message);
+    try comp.addPragmaHandler("pack", pack);
+}
+
+pub fn getPragma(comp: *Compilation, name: []const u8) ?*Pragma {
+    return comp.pragma_handlers.get(name);
+}
+
+const PragmaEvent = enum {
+    before_preprocess,
+    before_parse,
+    after_parse,
+};
+
+pub fn pragmaEvent(comp: *Compilation, event: PragmaEvent) void {
+    for (comp.pragma_handlers.values()) |pragma| {
+        const maybe_func = switch (event) {
+            .before_preprocess => pragma.beforePreprocess,
+            .before_parse => pragma.beforeParse,
+            .after_parse => pragma.afterParse,
+        };
+        if (maybe_func) |func| func(pragma, comp);
+    }
+}
+
+pub fn locSlice(comp: *const Compilation, loc: Source.Location) []const u8 {
+    var tmp_tokenizer: Tokenizer = .{
+        .buf = comp.getSource(loc.id).buf,
+        .langopts = comp.langopts,
+        .index = loc.byte_offset,
+        .source = .generated,
+        .splice_locs = &.{},
+    };
+    const tok = tmp_tokenizer.next();
+    return tmp_tokenizer.buf[tok.start..tok.end];
+}
+
+pub fn getSourceMTimeUncached(comp: *const Compilation, source_id: Source.Id) ?u64 {
+    const source = comp.getSource(source_id);
+    if (comp.cwd.statFile(comp.io, source.path, .{})) |stat| {
+        return std.math.cast(u64, stat.mtime.toSeconds());
+    } else |_| {
+        return null;
+    }
+}
+
+pub fn isTargetArch(comp: *const Compilation, query: []const u8) bool {
+    const arch, const opt_sub_arch = Target.parseArchName(query) orelse return false;
+    if (arch != comp.target.cpu.arch) return false;
+    const sub_arch = opt_sub_arch orelse return true;
+    const feature = sub_arch.toFeature(arch) orelse return true;
+    return comp.target.cpu.features.isEnabled(feature);
+}
+
+pub fn isTargetOs(comp: *const Compilation, query: []const u8) bool {
+    return Target.isOs(&comp.target, query);
+}
+
+pub fn isTargetVendor(comp: *const Compilation, query: []const u8) bool {
+    return Target.parseVendorName(query) == comp.target.vendor;
+}
+
+pub fn isTargetAbi(comp: *const Compilation, query: []const u8) bool {
+    return Target.isAbi(&comp.target, query);
+}
+
+pub fn isTargetVariantOs(comp: *const Compilation, query: []const u8) bool {
+    if (comp.target.os.tag.isDarwin()) {
+        const variant_target = &(comp.darwin_target_variant orelse return false);
+        return Target.isOs(variant_target, query);
+    }
+    return false;
+}
+
+pub fn isTargetVariantEnvironment(comp: *const Compilation, query: []const u8) bool {
+    if (comp.target.os.tag.isDarwin()) {
+        const variant_target = &(comp.darwin_target_variant orelse return false);
+        return Target.isAbi(variant_target, query);
+    }
+    return false;
+}
+
+pub const CharUnitSize = enum(u32) {
+    @"1" = 1,
+    @"2" = 2,
+    @"4" = 4,
+
+    pub fn Type(comptime self: CharUnitSize) type {
+        return switch (self) {
+            .@"1" => u8,
+            .@"2" => u16,
+            .@"4" => u32,
+        };
+    }
+};
+
+pub const Diagnostic = struct {
+    fmt: []const u8,
+    kind: Diagnostics.Message.Kind,
+    opt: ?Diagnostics.Option = null,
+    extension: bool = false,
+
+    pub const backslash_newline_escape: Diagnostic = .{
+        .fmt = "backslash and newline separated by space",
+        .kind = .warning,
+        .opt = .@"backslash-newline-escape",
+    };
+
+    pub const ms_search_rule: Diagnostic = .{
+        .fmt = "#include resolved using non-portable Microsoft search rules as: {s}",
+        .kind = .warning,
+        .opt = .@"microsoft-include",
+        .extension = true,
+    };
+
+    pub const ctrl_z_eof: Diagnostic = .{
+        .fmt = "treating Ctrl-Z as end-of-file is a Microsoft extension",
+        .kind = .off,
+        .opt = .@"microsoft-end-of-file",
+        .extension = true,
+    };
+};
+
+test "addSourceFromBuffer" {
+    const Test = struct {
+        fn addSourceFromBuffer(str: []const u8, expected: []const u8, warning_count: u32, splices: []const u32) !void {
+            var diagnostics: Diagnostics = .{ .output = .ignore };
+            var comp = try Compilation.init(.testing);
+            comp.diagnostics = &diagnostics;
+            defer comp.deinit();
+
+            const source = try comp.addSourceFromBuffer("path", str);
+
+            try std.testing.expectEqualStrings(expected, source.buf);
+            try std.testing.expectEqual(warning_count, @as(u32, @intCast(diagnostics.warnings)));
+            try std.testing.expectEqualSlices(u32, splices, source.splice_locs);
+        }
+
+        fn withAllocationFailures(allocator: mem.Allocator) !void {
+            var comp = try Compilation.init(.testing);
+            comp.gpa = allocator;
+            defer comp.deinit();
+
+            _ = try comp.addSourceFromBuffer("path", "spliced\\\nbuffer\n");
+            _ = try comp.addSourceFromBuffer("path", "non-spliced buffer\n");
+        }
+    };
+    try Test.addSourceFromBuffer("ab\\\nc", "abc", 0, &.{2});
+    try Test.addSourceFromBuffer("ab\\\rc", "abc", 0, &.{2});
+    try Test.addSourceFromBuffer("ab\\\r\nc", "abc", 0, &.{2});
+    try Test.addSourceFromBuffer("ab\\ \nc", "abc", 1, &.{2});
+    try Test.addSourceFromBuffer("ab\\\t\nc", "abc", 1, &.{2});
+    try Test.addSourceFromBuffer("ab\\                     \t\nc", "abc", 1, &.{2});
+    try Test.addSourceFromBuffer("ab\\\r \nc", "ab \nc", 0, &.{2});
+    try Test.addSourceFromBuffer("ab\\\\\nc", "ab\\c", 0, &.{3});
+    try Test.addSourceFromBuffer("ab\\   \r\nc", "abc", 1, &.{2});
+    try Test.addSourceFromBuffer("ab\\ \\\nc", "ab\\ c", 0, &.{4});
+    try Test.addSourceFromBuffer("ab\\\r\\\nc", "abc", 0, &.{ 2, 2 });
+    try Test.addSourceFromBuffer("ab\\  \rc", "abc", 1, &.{2});
+    try Test.addSourceFromBuffer("ab\\", "ab\\", 0, &.{});
+    try Test.addSourceFromBuffer("ab\\\\", "ab\\\\", 0, &.{});
+    try Test.addSourceFromBuffer("ab\\ ", "ab\\ ", 0, &.{});
+    try Test.addSourceFromBuffer("ab\\\n", "ab", 0, &.{2});
+    try Test.addSourceFromBuffer("ab\\\r\n", "ab", 0, &.{2});
+    try Test.addSourceFromBuffer("ab\\\r", "ab", 0, &.{2});
+
+    // carriage return normalization
+    try Test.addSourceFromBuffer("ab\r", "ab\n", 0, &.{});
+    try Test.addSourceFromBuffer("ab\r\r", "ab\n\n", 0, &.{});
+    try Test.addSourceFromBuffer("ab\r\r\n", "ab\n\n", 0, &.{});
+    try Test.addSourceFromBuffer("ab\r\r\n\r", "ab\n\n\n", 0, &.{});
+    try Test.addSourceFromBuffer("\r\\", "\n\\", 0, &.{});
+    try Test.addSourceFromBuffer("\\\r\\", "\\", 0, &.{0});
+
+    try std.testing.checkAllAllocationFailures(std.testing.allocator, Test.withAllocationFailures, .{});
+}
+
+test "addSourceFromBuffer - exhaustive check for carriage return elimination" {
+    var arena: std.heap.ArenaAllocator = .init(std.testing.allocator);
+    defer arena.deinit();
+
+    const alphabet = [_]u8{ '\r', '\n', ' ', '\\', 'a' };
+    const alen = alphabet.len;
+    var buf: [alphabet.len]u8 = @splat(alphabet[0]);
+
+    var diagnostics: Diagnostics = .{ .output = .ignore };
+    var comp = try Compilation.init(.testing);
+    comp.diagnostics = &diagnostics;
+    defer comp.deinit();
+
+    var source_count: u32 = 0;
+
+    while (true) {
+        const source = try comp.addSourceFromBuffer(&buf, &buf);
+        source_count += 1;
+        try std.testing.expect(mem.findScalar(u8, source.buf, '\r') == null);
+
+        if (mem.allEqual(u8, &buf, alphabet[alen - 1])) break;
+
+        var idx = mem.findScalar(u8, &alphabet, buf[buf.len - 1]).?;
+        buf[buf.len - 1] = alphabet[(idx + 1) % alen];
+        var j = buf.len - 1;
+        while (j > 0) : (j -= 1) {
+            idx = mem.findScalar(u8, &alphabet, buf[j - 1]).?;
+            if (buf[j] == alphabet[0]) buf[j - 1] = alphabet[(idx + 1) % alen] else break;
+        }
+    }
+    try std.testing.expect(source_count == std.math.powi(usize, alen, alen) catch unreachable);
+}
+
+test "ignore BOM at beginning of file" {
+    const BOM = "\xEF\xBB\xBF";
+    const Test = struct {
+        fn run(buf: []const u8) !void {
+            var comp = try Compilation.init(.testing);
+            defer comp.deinit();
+
+            const source = try comp.addSourceFromBuffer("file.c", buf);
+            const expected_output = if (mem.startsWith(u8, buf, BOM)) buf[BOM.len..] else buf;
+            try std.testing.expectEqualStrings(expected_output, source.buf);
+        }
+    };
+
+    try Test.run(BOM);
+    try Test.run(BOM ++ "x");
+    try Test.run("x" ++ BOM);
+    try Test.run(BOM ++ " ");
+    try Test.run(BOM ++ "\n");
+    try Test.run(BOM ++ "\\");
+
+    try Test.run(BOM[0..1] ++ "x");
+    try Test.run(BOM[0..2] ++ "x");
+    try Test.run(BOM[1..] ++ "x");
+    try Test.run(BOM[2..] ++ "x");
+}

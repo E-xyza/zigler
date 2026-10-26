@@ -1,0 +1,24 @@
+.{
+    .name = .translate_c,
+
+    .version = "2.0.0",
+
+    .fingerprint = 0x1c84f6455a54f043, // Changing this has security and trust implications.
+
+    .minimum_zig_version = "0.17.0",
+
+    .dependencies = .{
+        .aro = .{ .path = "../aro" },
+    },
+
+    .paths = .{
+        "build",
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "lib",
+        "test/cases.zig",
+        "LICENSE",
+        "README.md",
+    },
+}

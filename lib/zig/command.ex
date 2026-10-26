@@ -307,7 +307,7 @@ defmodule Zig.Command do
         Logger.info("zig expected (via cache) in #{path}")
         path
 
-      path = System.find_executable(zig_cmd_name()) ->
+      path = find_on_path() ->
         Logger.info("system zig found in #{path}")
         path
 
@@ -330,6 +330,40 @@ defmodule Zig.Command do
   end
 
   @default_version Zig.version()
+
+  # The env variable and the cache both name a version -- ZIG_EXECUTABLE_PATH by
+  # the user's say-so, the cache by the version in its directory name -- but a zig
+  # on PATH is whatever the system happens to have.  Using a mismatched one gets
+  # you compilation errors from deep inside priv/beam that look like zigler bugs,
+  # so check it first and say plainly what is wrong.
+  defp find_on_path do
+    with path when is_binary(path) <- System.find_executable(zig_cmd_name()),
+         {:ok, version} <- path_version(path) do
+      if Version.compare(version, @default_version) == :eq do
+        path
+      else
+        raise CompileError,
+          description: """
+          the zig in your PATH (#{path}) is version #{version}, but this version of \
+          zigler needs #{@default_version}.
+
+          Run `mix zig.get` to fetch the correct toolchain, or point
+          ZIG_EXECUTABLE_PATH at a #{@default_version} zig.
+          """
+      end
+    else
+      _ -> nil
+    end
+  end
+
+  defp path_version(path) do
+    case System.cmd(path, ["version"], stderr_to_stdout: true) do
+      {output, 0} -> Version.parse(String.trim(output))
+      _ -> :error
+    end
+  rescue
+    _ -> :error
+  end
 
   defp find_in_basedir do
     :user_cache
