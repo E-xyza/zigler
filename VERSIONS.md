@@ -222,6 +222,10 @@ Thanks to Dave Cottlehuber @dch for testing.
   - Cross-compiling to Windows works: the windows `erl_nif` headers are selected
     from the *target*, not the build host, and `translate-c` is built for the host
     rather than the target.
+  - Falling back to a `zig` on your `PATH` now checks its version first.  An
+    incompatible system zig used to be accepted silently and produce compilation
+    errors from inside `priv/beam` that looked like zigler bugs; you get a clear
+    message naming both versions instead.
 - Dependencies:
   - `zig_parser` 0.8.0, `zig_doc` 0.8.0 and `zig_get` 0.17.0, all of which track
     Zig versions.
